@@ -14,7 +14,7 @@ import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwit
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
+import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -580,7 +580,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     reasoningEffort,
     nativeReasoning,
     setNativeReasoning,
-    supportedReasoningEfforts,
+    reasoningCapability,
     promptReasoningSettings,
     setPromptReasoning,
     promptReasoningBudget,
@@ -1160,7 +1160,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // controls even while the engine is running, and vice versa.
   const promptTarget = resolveEndpointForKind(activeKind);
   const promptLocalEngine = promptTarget.localEngine;
-  const promptReasoningEfforts = promptTarget.supportedReasoningEfforts;
+  const promptReasoningCapability = promptTarget.reasoning;
   const endpointControl = {
     value: pinnedEndpointId && routableEndpoints.some((p) => p.id === pinnedEndpointId) ? pinnedEndpointId : null,
     activeName: activeTextEndpointPresetName,
@@ -1226,15 +1226,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Per-prompt Native Reasoning control, hidden where the call is force-suppressed (Inline narration) and on
   // an endpoint probed as non-reasoning. Its switch is shared by both engines; the strength beside it is the
   // token budget on the local engine and the coarse effort level elsewhere.
-  // A probed-but-empty support list means the active endpoint rejects every reasoning_effort literal (even
-  // `none`) — a conclusively non-reasoning model. `null`/undefined = not yet probed, so keep showing controls.
-  const reasoningUnsupported = Array.isArray(promptReasoningEfforts) && promptReasoningEfforts.length === 0;
-  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind) && (promptLocalEngine || !reasoningUnsupported);
+  // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
+  // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
+  const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
+  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind) && (promptLocalEngine || !noNativeReasoning);
   const reasoningControl = reasoningApplicable
     ? {
         setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
         onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
-        options: promptReasoningLevelOptions(promptReasoningEfforts),
+        options: promptReasoningLevelOptions(promptReasoningCapability),
         budget: promptLocalEngine
           ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
           : null,
@@ -1247,7 +1247,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // reach, so a stored level there is left out rather than promising one.
   const hasHiddenValues = !advanced && settingsUseAdvancedValues({
     paragraphLimit, markdownOutput, limitActiveCharacters, activeCharacterLimit,
-    ...(reasoningUnsupported ? {} : { reasoningEffort }),
+    ...(noNativeReasoning ? {} : { reasoningEffort }),
     memoryDigests, semanticMemory, semanticBandCap, semanticRehydration, timeContext, aiClock,
     semanticLore, describeCharacters, characterDiaries, semanticDiaries,
     concurrentTurnRequests, showReasoning, showSilentRequests, maxTokens,
@@ -1650,14 +1650,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               )}
               {/* The endpoint-wide effort every prompt set to Global follows, in every Thinking mode. The levels
                   are whichever the active endpoint accepts (detected on connect). */}
-              {advanced && reasoningUnsupported && (
+              {advanced && noNativeReasoning && (
                 <SubGroup>
                 <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
                   <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
                 </Row>
                 </SubGroup>
               )}
-              {advanced && !reasoningUnsupported && (
+              {advanced && !noNativeReasoning && (
                 <SubGroup>
                 <Row top htmlFor="nativeReasoning" {...optionRowCopy('nativeReasoning')}>
                   {/* Stacks the selected level's help under the control, so the label pins to the first line. */}
@@ -1669,7 +1669,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       strength={{
                         kind: 'level',
                         value: nativeReasoning.level,
-                        options: reasoningLevelOptions(supportedReasoningEfforts),
+                        options: reasoningLevelOptions(reasoningCapability),
                         onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
                       }}
                     />

@@ -3,7 +3,7 @@ import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
   reasoningBudgetBody, reasoningEffortBody, resolvePromptReasoning,
-  type PromptReasoning, type ReasoningEffortField,
+  type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
@@ -20,8 +20,9 @@ export interface AiEndpointTarget {
   localEngine: boolean;
   /** Per-endpoint sampler switches and remembered values. The engine ignores these. */
   samplerOverrides: EndpointSamplerOverrides;
-  /** Effort literals this target accepts, or null when unprobed — an unprobed target is sent none. */
-  supportedReasoningEfforts: readonly ReasoningEffortField[] | null;
+  /** What is known about this target's native reasoning: whether the model reasons, which effort literals the
+   *  endpoint accepts, and whether it takes a token budget. An unanswered question sends no field. */
+  reasoning: ReasoningCapability;
 }
 
 /** The per-call settings snapshot: plain values plus the endpoint resolver, so nothing here touches React. */
@@ -131,9 +132,10 @@ function resolveSamplers(
 /**
  * Builds the complete chat-completions body for one call, engine split included.
  *
- * The built-in engine takes its own sampler trio and caps reasoning by a token budget; an external endpoint
- * keeps its own trio and takes the coarse effort hint instead — and only when reasoning is engaged, so a plain
- * endpoint is never sent a field it rejects. The penalty ships under both spellings: `repetition_penalty` for
+ * The built-in engine takes its own sampler trio; an external endpoint keeps its own. The capability record
+ * decides the reasoning field: a target that takes a token budget is capped by one, and every other target
+ * gets the coarse effort hint instead — and only when reasoning is engaged, so a plain endpoint is never sent
+ * a field it rejects. The penalty ships under both spellings: `repetition_penalty` for
  * vLLM-family servers and the built-in engine, `repeat_penalty` for LM Studio, which ignores the other.
  */
 export function buildRequestBody(snapshot: AiSettingsSnapshot, call: AiCall): AiRequestBody {
@@ -163,10 +165,10 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
         }),
     ...(temperature.value !== undefined && { temperature: temperature.value }),
     ...(repetitionPenalty.value !== undefined && { repetition_penalty: repetitionPenalty.value, repeat_penalty: repetitionPenalty.value }),
-    ...(localEngine
+    ...(target.reasoning.budget
       ? reasoningBudgetBody(effort, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
       : snapshot.reasoningEngaged
-        ? reasoningEffortBody(effort, target.supportedReasoningEfforts)
+        ? reasoningEffortBody(effort, target.reasoning)
         : {}),
     // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),

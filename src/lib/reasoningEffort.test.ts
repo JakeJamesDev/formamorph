@@ -1,6 +1,10 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, detectReasoningCapability, resolveReasoningCapability, type ReasoningCapability, type ReasoningEffortField } from './reasoningEffort';
+import { resetProbeMemo } from '@/lib/probeMemo';
 import type { AIRequestType } from '@/types';
+
+/** A record answering the levels question only, as a probe leaves it. */
+const accepts = (...levels: ReasoningEffortField[]): ReasoningCapability => reasoningCapabilityFromLevels(levels, 'probe');
 
 const ALL_KINDS: AIRequestType[] = [
   'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
@@ -8,7 +12,7 @@ const ALL_KINDS: AIRequestType[] = [
 ];
 
 describe('reasoningEffortBody', () => {
-  const all = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
+  const all = accepts('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max');
 
   it('sends the hint verbatim for every non-auto level the endpoint accepts', () => {
     expect(reasoningEffortBody('none', all)).toEqual({ reasoning_effort: 'none' });
@@ -25,20 +29,84 @@ describe('reasoningEffortBody', () => {
 
   it('omits a value the active endpoint does not accept (a stale selection cannot 400 a turn)', () => {
     // Ollama-like: accepts max, not minimal.
-    const ollama = ['none', 'low', 'medium', 'high', 'max'] as const;
+    const ollama = accepts('none', 'low', 'medium', 'high', 'max');
     expect(reasoningEffortBody('minimal', ollama)).toEqual({});
     expect(reasoningEffortBody('max', ollama)).toEqual({ reasoning_effort: 'max' });
-    expect(reasoningEffortBody('none', ['low', 'medium', 'high'])).toEqual({});
+    expect(reasoningEffortBody('none', accepts('low', 'medium', 'high'))).toEqual({});
   });
 
-  it('sends nothing until support is confirmed — unknown (null/undefined) omits the field', () => {
+  it('sends nothing until the levels question is answered — an unknown record omits the field', () => {
+    expect(reasoningEffortBody('low', { reasons: null, levels: null, budget: null, sources: {} })).toEqual({});
     expect(reasoningEffortBody('low', null)).toEqual({});
     expect(reasoningEffortBody('low')).toEqual({});
   });
 
-  it('sends nothing to a conclusively non-reasoning endpoint (empty support), even none', () => {
-    expect(reasoningEffortBody('none', [])).toEqual({});
-    expect(reasoningEffortBody('high', [])).toEqual({});
+  it('sends nothing to a conclusively non-reasoning endpoint (empty levels), even none', () => {
+    expect(reasoningEffortBody('none', accepts())).toEqual({});
+    expect(reasoningEffortBody('high', accepts())).toEqual({});
+  });
+
+  it('sends nothing to a model the record says does not reason, whatever levels it lists', () => {
+    const listedButNotReasoning: ReasoningCapability = {
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, sources: { reasons: 'native' },
+    };
+    expect(reasoningEffortBody('high', listedButNotReasoning)).toEqual({});
+  });
+});
+
+describe('the capability record', () => {
+  it('reads an empty levels answer as conclusive: the model does not reason, from that same source', () => {
+    expect(reasoningCapabilityFromLevels([], 'probe')).toEqual({
+      reasons: false, levels: [], budget: null, sources: { levels: 'probe', reasons: 'probe' },
+    });
+  });
+
+  it('leaves the reasons question open when levels came back non-empty (accepting `none` proves nothing)', () => {
+    expect(reasoningCapabilityFromLevels(['none', 'low'], 'probe')).toEqual({
+      reasons: null, levels: ['none', 'low'], budget: null, sources: { levels: 'probe' },
+    });
+  });
+
+  it('rules reasoning out on a negative reasons answer or an empty levels list, never on an unknown one', () => {
+    expect(reasoningRuledOut({ reasons: false, levels: null, budget: null, sources: {} })).toBe(true);
+    expect(reasoningRuledOut(accepts())).toBe(true);
+    expect(reasoningRuledOut(accepts('none', 'low'))).toBe(false);
+    expect(reasoningRuledOut({ reasons: null, levels: null, budget: null, sources: {} })).toBe(false);
+    expect(reasoningRuledOut(null)).toBe(false);
+  });
+
+  it('loads a cache entry written as a bare effort list, so an update re-detects nothing', () => {
+    expect(parseReasoningCapability(['none', 'low', 'high'])).toEqual({
+      reasons: null, levels: ['none', 'low', 'high'], budget: null, sources: { levels: 'cache' },
+    });
+  });
+
+  it('keeps a cached empty list hiding the controls, though its reasons answer is unknown', () => {
+    const migrated = parseReasoningCapability([]);
+    expect(migrated).toEqual({ reasons: null, levels: [], budget: null, sources: { levels: 'cache' } });
+    expect(reasoningRuledOut(migrated)).toBe(true);
+  });
+
+  it('loads a stored record back verbatim', () => {
+    const stored: ReasoningCapability = {
+      reasons: true, levels: ['none', 'low'], budget: true, sources: { reasons: 'native', levels: 'probe', budget: 'engine' },
+    };
+    expect(parseReasoningCapability(JSON.parse(JSON.stringify(stored)))).toEqual(stored);
+  });
+
+  it('drops a stored source it does not know, rather than letting it stand as one', () => {
+    const loaded = parseReasoningCapability({
+      reasons: true, levels: null, budget: null, sources: { reasons: 'astrology', levels: 'probe', mood: 'probe' },
+    });
+    expect(loaded?.sources).toEqual({ levels: 'probe' });
+  });
+
+  it('rejects anything that is not a record or a list of known levels', () => {
+    expect(parseReasoningCapability(['none', 'turbo'])).toBeNull();
+    expect(parseReasoningCapability('high')).toBeNull();
+    expect(parseReasoningCapability(null)).toBeNull();
+    expect(parseReasoningCapability({ reasons: 'yes', levels: null, budget: null })).toBeNull();
+    expect(parseReasoningCapability({ reasons: null, levels: ['turbo'], budget: null })).toBeNull();
   });
 });
 
@@ -73,14 +141,14 @@ describe('per-prompt reasoning', () => {
   });
 
   it('lists a prompt\'s strengths as Global, Model Default, then the accepted levels in order, never none', () => {
-    const opts = promptReasoningLevelOptions(['high', 'none', 'low']); // out of order in
+    const opts = promptReasoningLevelOptions(accepts('high', 'none', 'low')); // out of order in
     expect(opts.map((o) => o.value)).toEqual(['global', 'auto', 'low', 'high']);
     expect(opts.map((o) => o.label)).toEqual(['Global', 'Model Default', 'Low', 'High']);
     expect(promptReasoningLevelOptions(null).map((o) => o.value)).toEqual(['global', 'auto', 'low', 'medium', 'high']); // safe fallback
   });
 
   it('lists the endpoint-wide strengths with full-word labels for backend-specific levels', () => {
-    const cloud = reasoningLevelOptions(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+    const cloud = reasoningLevelOptions(accepts('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'));
     expect(cloud.map((o) => o.label)).toEqual(['Model Default', 'Minimal', 'Low', 'Medium', 'High', 'Extra High', 'Max']);
     expect(cloud.map((o) => o.value)).not.toContain('none');
   });
@@ -226,16 +294,76 @@ describe('detectReasoningCapability (LM Studio native /api/v1/models)', () => {
     expect(await detectReasoningCapability('not a url', '', 'm')).toBeNull();
   });
 
-  it('short-circuits detectSupportedReasoningEfforts to [] without sending any effort probe', async () => {
+});
+
+describe('resolveReasoningCapability', () => {
+  // The native list's absence is remembered per origin, so each case starts from a clean memo.
+  beforeEach(() => resetProbeMemo());
+  afterEach(() => vi.unstubAllGlobals());
+
+  const URL_ = 'http://localhost:1234/v1/chat/completions';
+  const nativeList = (models: unknown[]) => ({ ok: true, json: async () => ({ models }) });
+  /** A backend with no native capability list, answering each effort probe by the status this returns. */
+  const probeOnly = (status: (effort: string) => number) => {
+    const fetchMock = vi.fn(async (u: string, init?: { body?: string }) => {
+      if (u.includes('/api/v1/models')) return { ok: false, status: 404 } as unknown as Response;
+      const effort = String(JSON.parse(init?.body ?? '{}').reasoning_effort);
+      return { ok: true, status: status(effort), text: async () => '' } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    return fetchMock;
+  };
+
+  it('answers every question from the native list when it calls the model non-reasoning, sending no probe', async () => {
     const fetchMock = vi.fn(async (u: string) =>
       (u.includes('/api/v1/models')
-        ? list([{ key: 'cydonia', capabilities: {} }])
+        ? nativeList([{ key: 'cydonia', capabilities: {} }])
         : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
     );
     vi.stubGlobal('fetch', fetchMock);
-    expect(await detectSupportedReasoningEfforts('http://localhost:1234/v1/chat/completions', '', 'cydonia')).toEqual([]);
+    expect(await resolveReasoningCapability(URL_, '', 'cydonia')).toEqual({
+      reasons: false, levels: [], budget: null, sources: { reasons: 'native', levels: 'native' },
+    });
     // Only the capability GET fired — no POST probe reached the completions URL.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:1234/api/v1/models', expect.anything());
+  });
+
+  it('credits the native list for the reasons answer and the probe for the levels it narrowed', async () => {
+    const fetchMock = vi.fn(async (u: string, init?: { body?: string }) => {
+      if (u.includes('/api/v1/models')) return nativeList([{ key: 'meromero', capabilities: { reasoning: {} } }]) as unknown as Response;
+      const effort = String(JSON.parse(init?.body ?? '{}').reasoning_effort);
+      return { ok: true, status: ['none', 'low', 'high'].includes(effort) ? 200 : 400, text: async () => '' } as unknown as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await resolveReasoningCapability(URL_, '', 'meromero')).toEqual({
+      reasons: true, levels: ['none', 'low', 'high'], budget: null, sources: { reasons: 'native', levels: 'probe' },
+    });
+  });
+
+  it('leaves the budget question unanswered, whichever source spoke', async () => {
+    probeOnly(() => 200);
+    expect((await resolveReasoningCapability(URL_, '', 'plain'))?.budget).toBeNull();
+  });
+
+  it('marks a model non-reasoning when the endpoint rejects even `none`, without probing the rest', async () => {
+    const fetchMock = probeOnly(() => 400);
+    expect(await resolveReasoningCapability(URL_, '', 'plain')).toEqual({
+      reasons: false, levels: [], budget: null, sources: { reasons: 'probe', levels: 'probe' },
+    });
+    // The native GET plus the single `none` probe: the other six literals were never sent.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the reasons question open when the probe only narrows the levels', async () => {
+    probeOnly((e) => (['none', 'low', 'medium', 'high'].includes(e) ? 200 : 400));
+    expect(await resolveReasoningCapability(URL_, '', 'plain')).toEqual({
+      reasons: null, levels: ['none', 'low', 'medium', 'high'], budget: null, sources: { levels: 'probe' },
+    });
+  });
+
+  it('returns null when nothing answered, so the caller keeps its fallback and caches nothing', async () => {
+    probeOnly(() => 500);
+    expect(await resolveReasoningCapability(URL_, '', 'plain')).toBeNull();
   });
 });

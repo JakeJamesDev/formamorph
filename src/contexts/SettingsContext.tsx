@@ -62,9 +62,10 @@ import {
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
-  detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, parseReasoningSetting,
+  resolveReasoningCapability, detectReasoningCapability, isReasoningEngaged, parseReasoningSetting,
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
-  type ReasoningEffortField, type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting,
+  parseReasoningCapability, reasoningRuledOut, nonReasoningCapability, UNKNOWN_REASONING_CAPABILITY,
+  type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
 } from '../lib/reasoningEffort';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
@@ -600,32 +601,52 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [onUserEndpoint, detectContextWindow]);
 
-  // Which reasoning_effort levels each endpoint+model accepts, probed once and remembered per `endpoint|model`
-  // so flipping between endpoints (or swapping the model on one) doesn't re-probe. A missing key means "not yet
-  // known" — the UI falls back to the universally-accepted levels until detected. Bounded so heavy testers don't
-  // grow it without limit; the oldest entry is dropped past the cap.
+  // What each endpoint+model answered about its native reasoning, resolved once and remembered per
+  // `endpoint|model` so flipping between endpoints (or swapping the model on one) doesn't re-detect. A missing
+  // key means "nothing asked yet" — the UI falls back to the universally-accepted levels until an answer lands.
+  // An entry may also be a bare effort list, which `parseReasoningCapability` loads as a record with those
+  // levels. Bounded so heavy testers don't grow it without limit; the oldest entry is dropped past the cap.
   const REASONING_CACHE_CAP = 30;
-  const reasoningSupportSig = `${activeEndpointUrl}|${activeModelName}`;
-  const [reasoningSupportCache, setReasoningSupportCache] = usePersistentState<Record<string, ReasoningEffortField[]>>(
+  const reasoningCapabilitySig = `${activeEndpointUrl}|${activeModelName}`;
+  const [reasoningCapabilityCache, setReasoningCapabilityCache] = usePersistentState<Record<string, ReasoningCapability>>(
     `${APP_ID}_reasoningSupport`, {}, {
-      parse: (r) => { try { const o = JSON.parse(r); return o && typeof o === 'object' && !Array.isArray(o) && Object.values(o).every((v) => Array.isArray(v)) ? o : {}; } catch { return {}; } },
+      parse: (r) => {
+        try {
+          const o: unknown = JSON.parse(r);
+          if (!o || typeof o !== 'object' || Array.isArray(o)) return {};
+          const out: Record<string, ReasoningCapability> = {};
+          for (const [sig, raw] of Object.entries(o as Record<string, unknown>)) {
+            const record = parseReasoningCapability(raw);
+            if (record) out[sig] = record;
+          }
+          return out;
+        } catch { return {}; }
+      },
       serialize: (v) => JSON.stringify(v),
     });
-  const supportedReasoningEfforts = reasoningSupportCache[reasoningSupportSig] ?? null;
+  const reasoningCapability = reasoningCapabilityCache[reasoningCapabilitySig] ?? null;
 
-  const detectReasoningEfforts = useCallback(async () => {
-    const sig = `${activeEndpointUrl}|${activeModelName}`;
-    // `detectSupportedReasoningEfforts` first consults LM Studio's native capability list, so a non-reasoning
-    // model resolves to `[]` (→ hide the control, send no reasoning_effort) without a warning-triggering probe.
-    const efforts = await detectSupportedReasoningEfforts(activeEndpointUrl, activeApiToken, activeModelName);
-    if (!efforts) return;
-    setReasoningSupportCache((prev) => {
-      const next = { ...prev, [sig]: efforts };
+  /** One record into the cache, dropping the oldest entry once the cache is over its cap. */
+  const storeCapability = useCallback(
+    (cache: Record<string, ReasoningCapability>, sig: string, record: ReasoningCapability) => {
+      const next = { ...cache, [sig]: record };
       const keys = Object.keys(next);
       if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
       return next;
-    });
-  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
+    }, []);
+
+  const cacheReasoningCapability = useCallback((sig: string, record: ReasoningCapability) => {
+    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, record));
+  }, [setReasoningCapabilityCache, storeCapability]);
+
+  const resolveActiveCapability = useCallback(async () => {
+    const sig = `${activeEndpointUrl}|${activeModelName}`;
+    // `resolveReasoningCapability` asks LM Studio's native capability list first, so a non-reasoning model
+    // answers without a warning-triggering effort probe.
+    const record = await resolveReasoningCapability(activeEndpointUrl, activeApiToken, activeModelName);
+    if (!record) return;
+    cacheReasoningCapability(sig, record);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability]);
 
 
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
@@ -744,39 +765,36 @@ function useProvideSettings() {
   // Probe the endpoint's accepted reasoning levels only once reasoning is actually engaged and we have no
   // cached list yet; debounced so editing the URL doesn't fire per keystroke.
   useEffect(() => {
-    if (!reasoningEngaged || supportedReasoningEfforts !== null) return;
-    const id = setTimeout(() => { void detectReasoningEfforts(); }, 1200);
+    if (!reasoningEngaged || reasoningCapability !== null) return;
+    const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
     return () => clearTimeout(id);
-  }, [reasoningEngaged, supportedReasoningEfforts, detectReasoningEfforts]);
+  }, [reasoningEngaged, reasoningCapability, resolveActiveCapability]);
 
   // The reasoning-capability check hits LM Studio's native model list — a side-effect-free GET that logs no
   // warning — so unlike the effort probe it runs eagerly on every endpoint/model change AND overrides the
-  // write-once cache: a model the backend lists as non-reasoning is forced to `[]` (hide the control, send no
-  // reasoning_effort) even if an earlier probe cached levels for it; a model listed as reasoning clears a
-  // wrongly-cached `[]` so levels re-probe. Inconclusive (non-LM-Studio / unlisted / unreachable) leaves the
-  // cache untouched, so plain OpenAI endpoints keep the effort-probe behavior.
+  // write-once cache: a model the backend lists as non-reasoning is forced to a non-reasoning record (hide the
+  // control, send no reasoning_effort) even if an earlier probe cached levels for it; a model listed as
+  // reasoning clears a wrongly-cached non-reasoning record so the levels resolve again. Inconclusive
+  // (non-LM-Studio / unlisted / unreachable) leaves the cache untouched, so plain OpenAI endpoints keep the
+  // effort-probe behavior.
   useEffect(() => {
     const sig = `${activeEndpointUrl}|${activeModelName}`;
     let cancelled = false;
     const id = setTimeout(async () => {
       const capable = await detectReasoningCapability(activeEndpointUrl, activeApiToken, activeModelName);
       if (cancelled || capable === null) return;
-      setReasoningSupportCache((prev) => {
-        const current = prev[sig];
-        const cachedEmpty = Array.isArray(current) && current.length === 0;
+      setReasoningCapabilityCache((prev) => {
+        const ruledOut = reasoningRuledOut(prev[sig]);
         if (!capable) {
-          if (cachedEmpty) return prev; // already marked non-reasoning
-          const next = { ...prev, [sig]: [] as ReasoningEffortField[] };
-          const keys = Object.keys(next);
-          if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
-          return next;
+          if (ruledOut) return prev; // already marked non-reasoning
+          return storeCapability(prev, sig, nonReasoningCapability('native'));
         }
-        if (cachedEmpty) { const next = { ...prev }; delete next[sig]; return next; } // reasoning after all → re-probe levels
+        if (ruledOut) { const next = { ...prev }; delete next[sig]; return next; } // reasoning after all → resolve again
         return prev;
       });
     }, 1200);
     return () => { cancelled = true; clearTimeout(id); };
-  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningSupportCache]);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, setReasoningCapabilityCache, storeCapability]);
   const verbatimMap = useMemo(() => activeVerbatim(effectiveStore), [effectiveStore]);
   const globalForSampler = useCallback(
     (sampler: PromptSampler) => (sampler === 'temperature' ? genTemperature : genRepetitionPenalty),
@@ -1029,7 +1047,7 @@ function useProvideSettings() {
     /** Display name of the preset this resolved to, whether pinned or followed. */
     presetName: string;
     contextWindow: number;
-    supportedReasoningEfforts: ReasoningEffortField[] | null;
+    reasoning: ReasoningCapability;
   } => {
     const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, {
       activeId: textPresetStore.activeId,
@@ -1042,8 +1060,14 @@ function useProvideSettings() {
       : resolved.presetId === DEFAULT_TEXT_PRESET_ID
         ? 'Default'
         : textPresetStore.presets.find((p) => p.id === resolved.presetId)?.name ?? 'Default';
+    // The bundled engine always takes a token budget, whatever detection says about the rest of the record.
+    const withEngineBudget = (record: ReasoningCapability | null): ReasoningCapability => {
+      const base = record ?? UNKNOWN_REASONING_CAPABILITY;
+      if (!resolved.localEngine) return base;
+      return { ...base, budget: true, sources: { ...base.sources, budget: 'engine' } };
+    };
     if (resolved.presetId === null) {
-      return { ...resolved, url, presetName, contextWindow, supportedReasoningEfforts };
+      return { ...resolved, url, presetName, contextWindow, reasoning: withEngineBudget(reasoningCapability) };
     }
     const sig = endpointSignature(url, resolved.model);
     // Probe a routed target's real window once per signature. Fire-and-forget: this turn uses the preset's
@@ -1061,15 +1085,10 @@ function useProvideSettings() {
           });
         }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
       }
-      if (reasoningSupportCache[sig] === undefined) {
-        void detectSupportedReasoningEfforts(url, resolved.apiToken, resolved.model).then((efforts) => {
-          if (!efforts) return;
-          setReasoningSupportCache((prev) => {
-            const next = { ...prev, [sig]: efforts };
-            const keys = Object.keys(next);
-            if (keys.length > REASONING_CACHE_CAP) delete next[keys[0]];
-            return next;
-          });
+      if (reasoningCapabilityCache[sig] === undefined) {
+        void resolveReasoningCapability(url, resolved.apiToken, resolved.model).then((record) => {
+          if (!record) return;
+          cacheReasoningCapability(sig, record);
         }).catch(() => { /* same: capability probes fail quietly, the request itself reports */ });
       }
     }
@@ -1081,12 +1100,12 @@ function useProvideSettings() {
       contextWindow: resolved.localEngine
         ? localContextSize
         : resolved.contextWindowOverride ?? routedContextCache[sig] ?? DEFAULT_CONTEXT_WINDOW,
-      supportedReasoningEfforts: reasoningSupportCache[sig] ?? null,
+      reasoning: withEngineBudget(reasoningCapabilityCache[sig] ?? null),
     };
   }, [
     promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
-    contextWindow, supportedReasoningEfforts, routedContextCache, reasoningSupportCache, localContextSize,
-    localMaxTokens, engineState.modelId, activeTextEndpointPresetName, setRoutedContextCache, setReasoningSupportCache,
+    contextWindow, reasoningCapability, routedContextCache, reasoningCapabilityCache, localContextSize,
+    localMaxTokens, engineState.modelId, activeTextEndpointPresetName, setRoutedContextCache, cacheReasoningCapability,
   ]);
 
   /**
@@ -1418,7 +1437,7 @@ function useProvideSettings() {
     reasoningEffort,
     nativeReasoning,
     setNativeReasoning,
-    supportedReasoningEfforts,
+    reasoningCapability,
     reasoningEngaged,
     promptReasoning,
     promptReasoningSettings,

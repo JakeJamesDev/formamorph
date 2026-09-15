@@ -6,15 +6,15 @@ import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_P
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 
-// The provider probes endpoints for reasoning support; keep the network out of it. `detectSupported…` is
-// the one routing calls lazily, so it stays a spy the cases below assert against.
+// The provider resolves each endpoint's reasoning capability; keep the network out of it.
+// `resolveReasoningCapability` is the one routing calls lazily, so it stays a spy the cases below assert against.
 const detectEfforts = vi.fn().mockResolvedValue(null);
 vi.mock('@/lib/reasoningEffort', async () => {
   const actual = await vi.importActual<typeof import('@/lib/reasoningEffort')>('@/lib/reasoningEffort');
   return {
     ...actual,
     detectReasoningCapability: vi.fn().mockResolvedValue(null),
-    detectSupportedReasoningEfforts: (...args: unknown[]) => detectEfforts(...args),
+    resolveReasoningCapability: (...args: unknown[]) => detectEfforts(...args),
   };
 });
 
@@ -229,6 +229,33 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
   });
 });
 
+describe('SettingsContext: the cached reasoning capability', () => {
+  const CAPABILITY_KEY = 'FORMAMORPH_reasoningSupport';
+
+  beforeEach(() => {
+    localStorage.clear();
+    detectEfforts.mockClear();
+    seedEndpoints();
+    seedPromptPresets();
+  });
+
+  it('loads an entry cached as a bare effort list, so an update re-detects nothing', async () => {
+    // What the cache held before the record existed: the accepted literals and nothing else.
+    localStorage.setItem(CAPABILITY_KEY, JSON.stringify({ 'http://big.test/v1/chat/completions|big-24b': ['none', 'low', 'high'] }));
+
+    const { result } = renderHook(() => useSettings(), { wrapper });
+
+    const cached = result.current.resolveEndpointForKind('narration').reasoning;
+    expect(cached.levels).toEqual(['none', 'low', 'high']);
+    expect(cached.reasons).toBeNull();
+    expect(cached.budget).toBeNull();
+    // A loaded entry is an answer, so nothing re-resolves for that target.
+    act(() => { result.current.setNativeReasoning({ enabled: true, level: 'high' }); });
+    await waitFor(() => expect(result.current.reasoningEngaged).toBe(true));
+    expect(detectEfforts.mock.calls.some((c) => String(c[0]).includes('big.test'))).toBe(false);
+  });
+});
+
 describe('SettingsContext: endpoint sampler overrides', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -349,8 +376,12 @@ describe('SettingsContext: the bundled engine as an endpoint', () => {
     const summary = result.current.resolveEndpointForKind('summary');
     expect(summary.localEngine).toBe(true);
     expect(summary.url).toContain('8977');
-    // Everything else still goes to the active endpoint.
-    expect(result.current.resolveEndpointForKind('narration').localEngine).toBe(false);
+    // The engine always takes a token budget, so its record says so whatever detection found.
+    expect(summary.reasoning.budget).toBe(true);
+    // Everything else still goes to the active endpoint, where the budget question is nobody's answer yet.
+    const narration = result.current.resolveEndpointForKind('narration');
+    expect(narration.localEngine).toBe(false);
+    expect(narration.reasoning.budget).toBeNull();
   });
 
   it('stops wanting the engine once nothing references it', () => {
