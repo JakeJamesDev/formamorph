@@ -188,7 +188,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: gradle
+      # The action's default package list includes `tools`, which Google no longer serves; the runner
+      # image already ships cmdline-tools, so only platform-tools is requested.
       - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - run: npm ci
       # Releases ship the alternate avatar. The tracked default stays on the Pages dev build and local dev.
       - name: Swap in the release avatar
