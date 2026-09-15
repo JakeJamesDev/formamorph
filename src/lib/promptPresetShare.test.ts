@@ -10,7 +10,7 @@ const values = { systemPrompt: 'You are the narrator — vivid, tight.', choices
 const base = {
   name: 'My Pack', style: 'markdown' as const, values,
   samplers: { statUpdates: { temperature: { custom: true, value: 0.2 } } },
-  reasoning: { narration: 'high' as const },
+  reasoning: { narration: { enabled: true, level: 'high' as const } },
   reasoningBudget: { narration: 30, choices: 0 },
   verbatim: { narration: 5 },
 };
@@ -19,7 +19,7 @@ describe('share round-trip', () => {
   it('JSON: build → serialize → parse recovers the preset', () => {
     const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, APP)), APP);
     expect(r.ok).toBe(true);
-    expect(r.preset).toMatchObject({ name: 'My Pack', style: 'markdown', reasoning: { narration: 'high' }, reasoningBudget: { narration: 30, choices: 0 }, verbatim: { narration: 5 } });
+    expect(r.preset).toMatchObject({ name: 'My Pack', style: 'markdown', reasoning: { narration: { enabled: true, level: 'high' } }, reasoningBudget: { narration: 30, choices: 0 }, verbatim: { narration: 5 } });
     expect(r.preset!.values.systemPrompt).toBe(values.systemPrompt);
     expect(r.warnings).toEqual([]);
   });
@@ -83,11 +83,22 @@ describe('sanitize / compat', () => {
     expect(r.warnings.some((w) => /newer format/.test(w))).toBe(true);
   });
 
+  it('reads the plain-string reasoning an older export carried, folding none into the switch', () => {
+    const shared = buildSharedPreset(base, APP);
+    const legacy = JSON.stringify({ ...shared, reasoning: { narration: 'high', choices: 'none', summary: 'global' } });
+    const r = parseSharedJson(legacy, APP);
+    expect(r.preset!.reasoning).toEqual({
+      narration: { enabled: true, level: 'high' },
+      choices: { enabled: false, level: 'global' },
+      summary: { enabled: true, level: 'global' },
+    });
+  });
+
   it('drops malformed tuning entries', () => {
     const shared = buildSharedPreset(base, APP);
     const bad = JSON.stringify({ ...shared, reasoning: { narration: 42 }, verbatim: { narration: 'five' } });
     const r = parseSharedJson(bad, APP);
-    expect(r.preset!.reasoning).toBeUndefined(); // 42 is not a string
+    expect(r.preset!.reasoning).toBeUndefined(); // 42 is neither a setting nor a legacy level
     expect(r.preset!.verbatim).toBeUndefined(); // 'five' is not a number
   });
 

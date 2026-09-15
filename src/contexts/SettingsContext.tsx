@@ -48,7 +48,7 @@ import {
   activeSamplers, activeReasoning, activeReasoningBudget, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset,
-  type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset,
+  type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
 import { resolvePinnedPreset } from '../lib/worldPromptPreset';
@@ -61,7 +61,11 @@ import {
 } from '../lib/promptEndpoints';
 import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
-import { detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, type ReasoningEffortField, type PromptReasoning } from '../lib/reasoningEffort';
+import {
+  detectSupportedReasoningEfforts, detectReasoningCapability, isReasoningEngaged, parseReasoningSetting,
+  parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
+  type ReasoningEffortField, type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting,
+} from '../lib/reasoningEffort';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
@@ -224,7 +228,12 @@ function migratePromptTuning() {
   const rawStore = localStorage.getItem(`${APP_ID}_promptPresets`);
   const store = rawStore ? presetStoreCodec.parse(rawStore) : emptyStore;
   const samplers = readJson<PromptSamplerMap>('promptSamplers', {});
-  const reasoning = readJson<Record<string, PromptReasoning>>('promptReasoning', {});
+  // Written as plain strings before the switch existed; each folds into the switch-plus-level shape.
+  const reasoning: ReasoningMap = {};
+  for (const [kind, raw] of Object.entries(readJson<Record<string, unknown>>('promptReasoning', {}))) {
+    const setting = parsePromptReasoningSetting(raw);
+    if (setting) reasoning[kind] = setting;
+  }
   // Only carry verbatim values the user actually changed from the shipped default.
   const verbatimDefs: [string, AIRequestType, number][] = [
     ['narrationVerbatimTurns', 'narration', 3], ['thinkingVerbatimTurns', 'thinking', 1],
@@ -623,11 +632,17 @@ function useProvideSettings() {
     parse: (r) => (r === 'precall' || r === 'inline' || r === 'staged' ? r : 'off'),
     serialize: (v) => v,
   });
-  const REASONING_VALUES = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
-  const [reasoningEffort, setReasoningEffort] = usePersistentState<ReasoningEffort>(`${APP_ID}_reasoningEffort`, 'auto', {
-    parse: (r) => (REASONING_VALUES.includes(r) ? (r as ReasoningEffort) : 'auto'),
-    serialize: (v) => v,
+  // Same key as the plain-string form it replaces; the parser reads both, so the value migrates on first write.
+  const [nativeReasoning, setNativeReasoning] = usePersistentState<ReasoningSetting>(`${APP_ID}_reasoningEffort`, DEFAULT_REASONING_SETTING, {
+    parse: (r) => {
+      let raw: unknown = r;
+      try { raw = JSON.parse(r); } catch { /* a plain level string, read as-is */ }
+      return parseReasoningSetting(raw) ?? DEFAULT_REASONING_SETTING;
+    },
+    serialize: (v) => JSON.stringify(v),
   });
+  /** The request layer's view of the switch: the level while on, `none` while off. */
+  const reasoningEffort: ReasoningEffort = resolveReasoningSetting(nativeReasoning);
   // The 15 editable prompt strings live in named presets (one localStorage key). Each keeps its original
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
@@ -703,7 +718,12 @@ function useProvideSettings() {
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
   const promptSamplers = useMemo(() => activeSamplers(effectiveStore), [effectiveStore]);
-  const promptReasoning = useMemo(() => activeReasoning(effectiveStore), [effectiveStore]);
+  const promptReasoningSettings = useMemo(() => activeReasoning(effectiveStore), [effectiveStore]);
+  /** Each stored prompt setting resolved for the request layer (`none` while switched off). */
+  const promptReasoning = useMemo(
+    () => Object.fromEntries(Object.entries(promptReasoningSettings).map(([k, s]) => [k, resolvePromptReasoningSetting(s)])) as Record<string, PromptReasoning>,
+    [promptReasoningSettings],
+  );
   const promptReasoningBudget = useMemo(() => activeReasoningBudget(effectiveStore), [effectiveStore]);
   const promptEndpoints = useMemo(() => activePromptEndpoints(effectiveStore), [effectiveStore]);
   const setPromptEndpoint = useCallback(
@@ -775,7 +795,7 @@ function useProvideSettings() {
       [kind]: { ...prev[kind], [sampler]: { custom: prev[kind]?.[sampler]?.custom ?? true, value } },
     })));
   }, [setPresetStore]);
-  const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoning) => {
+  const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoningSetting) => {
     setPresetStore((s) => updateReasoning(s, kind, value));
   }, [setPresetStore]);
   const setPromptReasoningBudget = useCallback((kind: AIRequestType, value: number) => {
@@ -824,7 +844,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoning, reasoningBudget: promptReasoningBudget, verbatim: verbatimMap }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, verbatim: verbatimMap }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const style = imported.style;
     const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
@@ -1396,10 +1416,12 @@ function useProvideSettings() {
     thinkingMode,
     setThinkingMode,
     reasoningEffort,
-    setReasoningEffort,
+    nativeReasoning,
+    setNativeReasoning,
     supportedReasoningEfforts,
     reasoningEngaged,
     promptReasoning,
+    promptReasoningSettings,
     setPromptReasoning,
     promptReasoningBudget,
     setPromptReasoningBudget,

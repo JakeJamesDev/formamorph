@@ -2,12 +2,12 @@ import type { Codec } from './usePersistentState';
 import type { AIRequestType } from '@/types';
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
-import type { PromptReasoning } from './reasoningEffort';
+import { parsePromptReasoningSetting, type PromptReasoningSetting } from './reasoningEffort';
 
 /** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
 export type VerbatimMap = Partial<Record<AIRequestType, number>>;
-/** Per-request reasoning overrides carried on a preset; a missing kind uses its shipped default. */
-export type ReasoningMap = Record<string, PromptReasoning>;
+/** Per-request reasoning settings carried on a preset; a missing kind uses its shipped default. */
+export type ReasoningMap = Record<string, PromptReasoningSetting>;
 /** Per-request reasoning-budget overrides (percent of max output; local engine only). A missing kind uses
  *  its shipped default. */
 export type ReasoningBudgetMap = Partial<Record<AIRequestType, number>>;
@@ -95,13 +95,38 @@ export const presetStoreCodec: Codec<PromptPresetStore> = {
     try {
       const parsed = JSON.parse(raw) as Partial<PromptPresetStore>;
       if (!parsed || typeof parsed.activeId !== 'string' || !Array.isArray(parsed.presets)) return emptyStore;
-      return { activeId: parsed.activeId, presets: parsed.presets as PromptPreset[] };
+      return { activeId: parsed.activeId, presets: (parsed.presets as PromptPreset[]).map(migratePresetReasoning) };
     } catch {
       return emptyStore;
     }
   },
   serialize: (v) => JSON.stringify(v),
 };
+
+/**
+ * Brings a stored preset's reasoning tuning to the switch-plus-level shape. Older presets hold a plain string
+ * per kind, and a 0% budget used to be the local engine's only "off": both fold into the switch, and the 0%
+ * entry is dropped so the slider shows a real strength when the prompt is switched back on. Unreadable
+ * entries are dropped rather than guessed.
+ */
+export function migratePresetReasoning(preset: PromptPreset): PromptPreset {
+  const reasoning: ReasoningMap = {};
+  for (const [kind, raw] of Object.entries(preset.reasoning ?? {})) {
+    const setting = parsePromptReasoningSetting(raw);
+    if (setting) reasoning[kind] = setting;
+  }
+  const reasoningBudget: ReasoningBudgetMap = {};
+  for (const [kind, pct] of Object.entries(preset.reasoningBudget ?? {})) {
+    if (typeof pct !== 'number') continue;
+    if (pct > 0) { reasoningBudget[kind as AIRequestType] = pct; continue; }
+    reasoning[kind] = { enabled: false, level: reasoning[kind]?.level ?? 'global' };
+  }
+  return {
+    ...preset,
+    ...(preset.reasoning !== undefined || Object.keys(reasoning).length ? { reasoning } : {}),
+    ...(preset.reasoningBudget !== undefined ? { reasoningBudget } : {}),
+  };
+}
 
 /** A built-in preset is active when the id is one of the built-ins, or when it's a ghost id (no matching
  *  user preset) — the same defensive fallback the single-Default logic used. Built-ins are read-only. */
@@ -222,8 +247,8 @@ export function updateSamplers(store: PromptPresetStore, fn: (m: PromptSamplerMa
   return patchActivePreset(store, (p) => ({ ...p, samplers: fn(p.samplers ?? {}) }));
 }
 
-/** Set one kind's reasoning choice on the active preset. No-op under a built-in. */
-export function updateReasoning(store: PromptPresetStore, kind: AIRequestType, value: PromptReasoning): PromptPresetStore {
+/** Set one kind's reasoning setting on the active preset. No-op under a built-in. */
+export function updateReasoning(store: PromptPresetStore, kind: AIRequestType, value: PromptReasoningSetting): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, reasoning: { ...(p.reasoning ?? {}), [kind]: value } }));
 }
 

@@ -147,9 +147,9 @@ An aid for world authoring and debugging.`,
   },
   nativeReasoning: {
     label: 'Native Reasoning',
-    description: 'Sets how hard reasoning models think per request.',
+    description: 'Sets whether reasoning models think, and how hard.',
     // The caveat that used to close all eight effort levels, said once for the whole control.
-    info: 'Some models think privately before they answer. This sets how much effort they spend. Models without native reasoning ignore it.',
+    info: 'Some models think privately before they answer. Off stops that. On sets how much effort they spend, and **Model Default** sends no hint. Every prompt set to **Global** follows this. Models without native reasoning ignore it.',
   },
 
   // ── Output · Memory ─────────────────────────────────────────────────────────
@@ -489,13 +489,13 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
   reasoningBudget: {
     label: 'Reasoning Budget',
-    description: 'Sets the share of output tokens spent on reasoning.',
-    info: '0% means this prompt does no reasoning at all.',
+    description: 'Sets the share of output tokens this prompt spends on reasoning.',
+    info: 'Off means this prompt does no reasoning. The share is kept while off.',
   },
   promptNativeReasoning: {
     label: 'Native Reasoning',
-    description: 'Overrides the global reasoning effort for this prompt.',
-    info: '**Global** follows Settings → Output → Native Reasoning. Only applies to models with native reasoning.',
+    description: 'Sets whether this prompt reasons, and how hard.',
+    info: 'Off means this prompt does no reasoning. **Global** follows Settings → Output → Native Reasoning, its switch included. **Model Default** sends no hint. Only applies to models with native reasoning.',
   },
   promptEndpoint: {
     label: 'Endpoint',
@@ -642,8 +642,8 @@ export const SETTINGS_OPTIONS = {
  * it lives once in the row's `ⓘ` rather than closing all eight of these.
  */
 export const REASONING_EFFORT_HELP = {
-  auto: 'No hint sent — the endpoint decides.',
-  none: 'Disables native reasoning.',
+  auto: 'Sends no hint, so the model decides.',
+  none: 'No native reasoning.',
   minimal: 'Minimal effort.',
   low: 'Low effort.',
   medium: 'Medium effort.',

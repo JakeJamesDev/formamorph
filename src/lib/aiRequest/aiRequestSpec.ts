@@ -146,6 +146,8 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const maxTokens = call.maxTokensOverride ?? target.maxTokens;
   const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target);
   const externalOverrides = target.samplerOverrides;
+  // One resolved choice drives both engines: the effort hint outside, the on/off of the token budget inside.
+  const effort = resolvePromptReasoning(requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode);
 
   return {
     model: target.model,
@@ -162,12 +164,9 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     ...(temperature.value !== undefined && { temperature: temperature.value }),
     ...(repetitionPenalty.value !== undefined && { repetition_penalty: repetitionPenalty.value, repeat_penalty: repetitionPenalty.value }),
     ...(localEngine
-      ? reasoningBudgetBody(snapshot.thinkingMode, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
+      ? reasoningBudgetBody(effort, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
       : snapshot.reasoningEngaged
-        ? reasoningEffortBody(
-            resolvePromptReasoning(requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode),
-            target.supportedReasoningEfforts,
-          )
+        ? reasoningEffortBody(effort, target.supportedReasoningEfforts)
         : {}),
     // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
