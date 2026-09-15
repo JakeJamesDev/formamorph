@@ -68,7 +68,9 @@ import {
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
   type ReasoningEffortField,
 } from '../lib/reasoningEffort';
-import { observeReply, observationAnswer, type ReasoningObservation } from '../lib/reasoningObservation';
+import {
+  observeReply, observationAnswer, observationMayCorrect, type ReasoningObservation,
+} from '../lib/reasoningObservation';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
@@ -647,9 +649,7 @@ function useProvideSettings() {
   // keep the effect's own dependency changing.
   const resolvedSignatures = useRef(new Set<string>());
 
-  // What each endpoint-and-model pair's most recent reply showed. A ref, so recording one re-renders nothing;
-  // `reasoningObserved` bumps only when the answer itself changes, which is the one case the record is
-  // resolved again for.
+  // What each endpoint-and-model pair's last answering reply showed. A ref, so recording one re-renders nothing.
   const reasoningObservationsRef = useRef<Record<string, ReasoningObservation>>({});
   const [reasoningObserved, setReasoningObserved] = useState(0);
 
@@ -666,8 +666,12 @@ function useProvideSettings() {
     const sig = endpointSignature(target.url, target.model);
     const observation = observeReply(reasoningText, content, effort);
     const before = observationAnswer(reasoningObservationsRef.current[sig]);
+    const answer = observationAnswer(observation);
+    // A reply that settles nothing never erases one that did. A turn fires several calls at once and the
+    // bookkeeping ones ship switched off, so the last reply in is routinely the least informative one.
+    if (answer === null && before !== null) return;
     reasoningObservationsRef.current[sig] = observation;
-    if (observationAnswer(observation) !== before) setReasoningObserved((n) => n + 1);
+    if (answer !== before) setReasoningObserved((n) => n + 1);
   }, []);
 
   const resolveActiveCapability = useCallback(async () => {
@@ -808,30 +812,28 @@ function useProvideSettings() {
     return () => clearTimeout(id);
   }, [reasoningEngaged, reasoningCapability, resolveActiveCapability]);
 
-  // A reply that carried reasoning, or came back bare although the call asked for a positive effort, re-runs
-  // the chain with that observation in hand, so the Native Reasoning controls follow what the player can see
-  // happening without a reload. It runs once per signature and answer, and never against a record an
-  // advertisement or the catalog already settled — those outrank one reply.
+  // A reply that settled the reasons question re-runs the chain with that observation in hand, so the Native
+  // Reasoning controls follow what the player can see happening without a reload. Once per signature and
+  // answer, and only where a reply is allowed to correct the source that answered.
   const observedSignatures = useRef(new Set<string>());
   useEffect(() => {
     if (!reasoningEngaged) return;
     const sig = reasoningCapabilitySig;
     const observation = reasoningObservationsRef.current[sig];
     const answer = observationAnswer(observation);
-    if (answer === null) return;
-    if (reasoningCapability && reasoningCapability.reasons !== null) return;
+    if (answer === null || !observationMayCorrect(reasoningCapability)) return;
     const key = `${sig}|${answer}`;
     if (observedSignatures.current.has(key)) return;
     observedSignatures.current.add(key);
-    let cancelled = false;
+    const controller = new AbortController();
     void resolveReasoningCapability(
       { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
       fetch,
-      { observation },
+      { observation, signal: controller.signal },
     ).then((record) => {
-      if (record && !cancelled) cacheReasoningCapability(sig, record);
+      if (record && !controller.signal.aborted) cacheReasoningCapability(sig, record);
     }).catch(() => { /* an unreachable endpoint surfaces as a request failure, not here */ });
-    return () => { cancelled = true; };
+    return () => controller.abort();
   }, [
     reasoningObserved, reasoningEngaged, reasoningCapabilitySig, reasoningCapability,
     activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability,

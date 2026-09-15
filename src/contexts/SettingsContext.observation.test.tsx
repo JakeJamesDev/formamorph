@@ -105,19 +105,59 @@ describe('a reply teaches the capability record', () => {
     expect(view.result.current.reasoningCapability?.sources.reasons).toBe('observed');
   });
 
-  it('leaves the record alone when a bare reply carried no positive effort', async () => {
+  // The negative half of this pair only means something next to the positive half: the same provider, the
+  // same call, one reply that settles nothing and one that settles it. If the provider were dead the second
+  // assertion would fail, so the first cannot pass by the pipeline never running.
+  it('learns nothing from a bare reply under none, and still learns from the next answering reply', async () => {
     const view = await engagedSettings();
     await act(async () => {
       view.result.current.noteReasoningReply(
-        { url: `${ENDPOINT}/chat/completions`, model: MODEL },
-        '',
-        'You open the door.',
-        'none',
+        { url: `${ENDPOINT}/chat/completions`, model: MODEL }, '', 'You open the door.', 'none',
       );
     });
-    // Nothing to learn, so nothing is stored for this signature.
     await act(async () => { await Promise.resolve(); });
     expect(view.result.current.reasoningCapability?.reasons ?? null).toBeNull();
+
+    await act(async () => {
+      view.result.current.noteReasoningReply(
+        { url: `${ENDPOINT}/chat/completions`, model: MODEL }, 'Thinking.', 'You open the door.', 'none',
+      );
+    });
+    await waitFor(() => expect(view.result.current.reasoningCapability?.reasons).toBe(true));
+  });
+
+  // One turn fires narration and the bookkeeping calls at once, and the bookkeeping prompts ship switched
+  // off. Their bare replies land last and settle nothing, so they must not bury what narration showed.
+  it('keeps what an answering reply showed when a later call in the same turn answers nothing', async () => {
+    const view = await engagedSettings();
+    const target = { url: `${ENDPOINT}/chat/completions`, model: MODEL };
+    await act(async () => {
+      view.result.current.noteReasoningReply(target, 'The player wants the door opened.', 'You open the door.', 'high');
+      view.result.current.noteReasoningReply(target, '', '{"stats":[]}', 'none');
+      view.result.current.noteReasoningReply(target, '', 'Kitchen', 'none');
+    });
+    await waitFor(() => expect(view.result.current.reasoningCapability?.reasons).toBe(true));
+  });
+
+  it('corrects an answer the probe guessed, and leaves one an advertisement gave alone', async () => {
+    for (const [source, expected] of [['probe', true], ['native', false]] as const) {
+      localStorage.setItem('FORMAMORPH_reasoningSupport', JSON.stringify({
+        [SIG]: { reasons: false, levels: [], budget: null, sources: { reasons: source, levels: source } },
+      }));
+      const view = await engagedSettings();
+      await act(async () => {
+        view.result.current.noteReasoningReply(
+          { url: `${ENDPOINT}/chat/completions`, model: MODEL }, 'Thinking.', 'You open the door.', 'high',
+        );
+      });
+      if (expected) {
+        await waitFor(() => expect(view.result.current.reasoningCapability?.reasons).toBe(true));
+      } else {
+        await act(async () => { await Promise.resolve(); });
+        expect(view.result.current.reasoningCapability?.reasons).toBe(false);
+      }
+      view.unmount();
+    }
   });
 
   it('writes the answer under the endpoint and model that replied', async () => {

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { observeReply, observationAnswer, replyCarriedReasoning } from './reasoningObservation';
+import {
+  observeReply, observationAnswer, observationMayCorrect, replyCarriedReasoning,
+} from './reasoningObservation';
+import type { ReasoningCapability, ReasoningCapabilitySource } from './reasoningEffort';
 
 describe('replyCarriedReasoning', () => {
   it('sees the stream reasoning field', () => {
@@ -64,5 +67,23 @@ describe('observationAnswer', () => {
   it('leaves an absent observation unanswered', () => {
     expect(observationAnswer(null)).toBeNull();
     expect(observationAnswer(undefined)).toBeNull();
+  });
+});
+
+describe('observationMayCorrect', () => {
+  const answeredBy = (source: ReasoningCapabilitySource): ReasoningCapability =>
+    ({ reasons: false, levels: [], budget: null, sources: { reasons: source } });
+
+  it('opens a record nothing has answered', () => {
+    expect(observationMayCorrect(null)).toBe(true);
+    expect(observationMayCorrect({ reasons: null, levels: null, budget: null, sources: {} })).toBe(true);
+  });
+
+  it.each(['probe', 'cache', 'observed'] as const)('corrects an answer the %s source gave', (source) => {
+    expect(observationMayCorrect(answeredBy(source))).toBe(true);
+  });
+
+  it.each(['native', 'catalog', 'engine'] as const)('leaves an answer the %s source gave alone', (source) => {
+    expect(observationMayCorrect(answeredBy(source))).toBe(false);
   });
 });
