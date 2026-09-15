@@ -317,6 +317,69 @@ describe('a source never contradicts itself', () => {
   });
 });
 
+describe('what the replies already showed', () => {
+  const saw = { sawReasoning: true, effort: 'high' } as const;
+  const bare = { sawReasoning: false, effort: 'high' } as const;
+
+  it('marks a model whose reply carried reasoning as reasoning, with no completion sent', async () => {
+    const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: saw });
+    expect(record?.reasons).toBe(true);
+    expect(record?.sources.reasons).toBe('observed');
+    expect(probeCount(calls)).toBe(0);
+  });
+
+  // Seeing a scratchpad says the model thinks. It never says which strengths the endpoint takes.
+  it('answers the reasons question alone', async () => {
+    const { doFetch } = backend({});
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: saw });
+    expect(record?.levels).toBeNull();
+    expect(record?.budget).toBeNull();
+  });
+
+  it('rules a model out when a reply came back bare under a positive effort', async () => {
+    const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: bare });
+    expect(record).toMatchObject({ reasons: false, levels: [] });
+    expect(record?.sources.reasons).toBe('observed');
+    expect(probeCount(calls)).toBe(0);
+  });
+
+  it.each([
+    ['none', { sawReasoning: false, effort: 'none' } as const],
+    ['Model Default', { sawReasoning: false, effort: null } as const],
+  ])('leaves a bare reply under %s to the probe, since neither asked the model to think', async (_name, observation) => {
+    const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation });
+    expect(record?.reasons).toBeNull();
+    expect(record?.sources.levels).toBe('probe');
+    expect(probeCount(calls)).toBe(1);
+  });
+
+  it.each([
+    ['a native yes', { [OLLAMA]: { status: 200, body: { capabilities: ['thinking'] } } }, true, bare],
+    ['a native no', { [OLLAMA]: { status: 200, body: { capabilities: ['vision'] } } }, false, saw],
+  ])('never lets one reply override %s', async (_name, answers, expected, observation) => {
+    const { doFetch } = backend(answers as Record<string, Answer>);
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation });
+    expect(record?.reasons).toBe(expected);
+    expect(record?.sources.reasons).toBe('native');
+  });
+
+  // llama.cpp names the strengths its template honors but never whether the model thinks, so the
+  // observation fills that gap without touching the levels the server reported.
+  it('fills the gap a source left open, keeping that source’s levels', async () => {
+    const { doFetch } = backend({
+      [PROPS]: { status: 200, body: { chat_template_caps: { supports_reasoning_effort: true } } },
+    });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: saw });
+    expect(record?.reasons).toBe(true);
+    expect(record?.sources.reasons).toBe('observed');
+    expect(record?.levels).toEqual([...SAFE_REASONING_EFFORTS]);
+    expect(record?.sources.levels).toBe('native');
+  });
+});
+
 describe('the single probe', () => {
   it('rules a model out when the endpoint rejects the none literal', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 400, body: {} } });

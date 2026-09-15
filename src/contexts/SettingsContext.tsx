@@ -66,7 +66,9 @@ import {
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
   parseReasoningCapability, reasoningNeedsResolve, UNKNOWN_REASONING_CAPABILITY,
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
+  type ReasoningEffortField,
 } from '../lib/reasoningEffort';
+import { observeReply, observationAnswer, type ReasoningObservation } from '../lib/reasoningObservation';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
@@ -645,12 +647,37 @@ function useProvideSettings() {
   // keep the effect's own dependency changing.
   const resolvedSignatures = useRef(new Set<string>());
 
+  // What each endpoint-and-model pair's most recent reply showed. A ref, so recording one re-renders nothing;
+  // `reasoningObserved` bumps only when the answer itself changes, which is the one case the record is
+  // resolved again for.
+  const reasoningObservationsRef = useRef<Record<string, ReasoningObservation>>({});
+  const [reasoningObserved, setReasoningObserved] = useState(0);
+
+  /**
+   * Records what one reply showed about its model's reasoning, keyed by the endpoint and model that answered.
+   * Both shapes count: the stream's own reasoning field, and an inline think block in the content.
+   */
+  const noteReasoningReply = useCallback((
+    target: { url: string; model: string },
+    reasoningText: string,
+    content: string,
+    effort: ReasoningEffortField | null,
+  ) => {
+    const sig = endpointSignature(target.url, target.model);
+    const observation = observeReply(reasoningText, content, effort);
+    const before = observationAnswer(reasoningObservationsRef.current[sig]);
+    reasoningObservationsRef.current[sig] = observation;
+    if (observationAnswer(observation) !== before) setReasoningObserved((n) => n + 1);
+  }, []);
+
   const resolveActiveCapability = useCallback(async () => {
     const sig = `${activeEndpointUrl}|${activeModelName}`;
     if (resolvedSignatures.current.has(sig)) return;
     resolvedSignatures.current.add(sig);
     const record = await resolveReasoningCapability(
       { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
+      fetch,
+      { observation: reasoningObservationsRef.current[sig] },
     );
     // A resolve that answered nothing is not an answer. Release the signature so a server that was down
     // during the debounce is asked again, rather than staying unresolved for the rest of the session.
@@ -780,6 +807,35 @@ function useProvideSettings() {
     const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
     return () => clearTimeout(id);
   }, [reasoningEngaged, reasoningCapability, resolveActiveCapability]);
+
+  // A reply that carried reasoning, or came back bare although the call asked for a positive effort, re-runs
+  // the chain with that observation in hand, so the Native Reasoning controls follow what the player can see
+  // happening without a reload. It runs once per signature and answer, and never against a record an
+  // advertisement or the catalog already settled — those outrank one reply.
+  const observedSignatures = useRef(new Set<string>());
+  useEffect(() => {
+    if (!reasoningEngaged) return;
+    const sig = reasoningCapabilitySig;
+    const observation = reasoningObservationsRef.current[sig];
+    const answer = observationAnswer(observation);
+    if (answer === null) return;
+    if (reasoningCapability && reasoningCapability.reasons !== null) return;
+    const key = `${sig}|${answer}`;
+    if (observedSignatures.current.has(key)) return;
+    observedSignatures.current.add(key);
+    let cancelled = false;
+    void resolveReasoningCapability(
+      { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
+      fetch,
+      { observation },
+    ).then((record) => {
+      if (record && !cancelled) cacheReasoningCapability(sig, record);
+    }).catch(() => { /* an unreachable endpoint surfaces as a request failure, not here */ });
+    return () => { cancelled = true; };
+  }, [
+    reasoningObserved, reasoningEngaged, reasoningCapabilitySig, reasoningCapability,
+    activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability,
+  ]);
 
   const verbatimMap = useMemo(() => activeVerbatim(effectiveStore), [effectiveStore]);
   const globalForSampler = useCallback(
@@ -1073,7 +1129,11 @@ function useProvideSettings() {
       }
       if (reasoningNeedsResolve(reasoningCapabilityCache[sig]) && !resolvedSignatures.current.has(sig)) {
         resolvedSignatures.current.add(sig);
-        void resolveReasoningCapability({ url, token: resolved.apiToken, model: resolved.model }).then((record) => {
+        void resolveReasoningCapability(
+          { url, token: resolved.apiToken, model: resolved.model },
+          fetch,
+          { observation: reasoningObservationsRef.current[sig] },
+        ).then((record) => {
           if (!record) { resolvedSignatures.current.delete(sig); return; }
           cacheReasoningCapability(sig, record);
         }).catch(() => {
@@ -1430,6 +1490,7 @@ function useProvideSettings() {
     setNativeReasoning,
     reasoningCapability,
     reasoningEngaged,
+    noteReasoningReply,
     promptReasoning,
     promptReasoningSettings,
     setPromptReasoning,
