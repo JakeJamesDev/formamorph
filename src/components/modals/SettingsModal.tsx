@@ -262,7 +262,7 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
 
 /**
  * The strength half of a Native Reasoning control: a dropdown of the levels the endpoint accepts, or the
- * budget slider on the built-in engine, which caps the thought segment by tokens rather than taking a hint.
+ * budget slider on a target that caps the thought segment by tokens — the built-in engine and LM Studio.
  * Inert while the switch beside it is off, but still showing the remembered value.
  */
 type ReasoningStrength<L extends string> =
@@ -312,13 +312,13 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
   );
 }
 
-/** A prompt's Native Reasoning control: its switch, then Global or its own level (or its budget on the
- *  built-in engine). Global follows Settings → Output → Native Reasoning, switch included. */
+/** A prompt's Native Reasoning control: its switch, then Global or its own level (or its budget on a target
+ *  that takes one). Global follows Settings → Output → Native Reasoning, switch included. */
 function PromptReasoningField({ setting, onChange, options, budget, disabled }: {
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
-  /** The budget percent and its setter when the prompt runs on the built-in engine; absent otherwise. */
+  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
   budget: { value: number; set: (v: number) => void } | null;
   disabled?: boolean;
 }) {
@@ -1224,8 +1224,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     };
   });
   // Per-prompt Native Reasoning control, hidden where the call is force-suppressed (Inline narration) and on
-  // an endpoint probed as non-reasoning. Its switch is shared by both engines; the strength beside it is the
-  // token budget on the local engine and the coarse effort level elsewhere.
+  // an endpoint probed as non-reasoning. Its switch is shared by every target; the strength beside it is the
+  // token budget wherever the record says the target takes one, and the coarse effort level elsewhere. The
+  // effort still goes out beside a budget, from the stored level — the Output row is its visible control.
   // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
   // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
   const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
@@ -1235,7 +1236,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
         onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
         options: promptReasoningLevelOptions(promptReasoningCapability),
-        budget: promptLocalEngine
+        budget: promptReasoningCapability.budget
           ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
           : null,
       }

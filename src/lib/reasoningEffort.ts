@@ -400,7 +400,8 @@ async function probeEffortLevels(
  * (`detectReasoningCapability`): a model listed as non-reasoning answers every question at once, with no
  * effort probe sent — LM Studio would otherwise return HTTP 200 and a server-side warning on every literal.
  * Otherwise the effort probe fills the levels, and a model the list calls reasoning keeps that answer even
- * when the probe only narrows the levels.
+ * when the probe only narrows the levels. That same list answers the budget question: only LM Studio serves
+ * it, and LM Studio takes a token budget for a reasoning model.
  *
  * Returns `null` when nothing answered conclusively, so a caller keeps its fallback and its cache entry
  * rather than storing a wrong record.
@@ -417,5 +418,13 @@ export async function resolveReasoningCapability(
   if (!levels) return null;
   const probed = reasoningCapabilityFromLevels(levels, 'probe');
   if (native !== true) return probed;
-  return { ...probed, reasons: true, sources: { ...probed.sources, reasons: 'native' } };
+  // Only LM Studio serves that native list, and its chat-completions endpoint takes `thinking_budget_tokens`
+  // for a reasoning model — so the same answer settles the budget question. A model the list calls
+  // non-reasoning returns above with the budget left unanswered, and never takes the field.
+  return {
+    ...probed,
+    reasons: true,
+    budget: true,
+    sources: { ...probed.sources, reasons: 'native', budget: 'native' },
+  };
 }

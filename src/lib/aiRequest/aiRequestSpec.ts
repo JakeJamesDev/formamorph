@@ -2,7 +2,7 @@ import type { AIRequestType, ChatMessage } from '@/types';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  reasoningBudgetBody, reasoningEffortBody, resolvePromptReasoning,
+  reasoningBudgetBody, reasoningEffortBody, reasoningRuledOut, resolvePromptReasoning,
   type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
@@ -133,9 +133,10 @@ function resolveSamplers(
  * Builds the complete chat-completions body for one call, engine split included.
  *
  * The built-in engine takes its own sampler trio; an external endpoint keeps its own. The capability record
- * decides the reasoning field: a target that takes a token budget is capped by one, and every other target
- * gets the coarse effort hint instead — and only when reasoning is engaged, so a plain endpoint is never sent
- * a field it rejects. The penalty ships under both spellings: `repetition_penalty` for
+ * decides the reasoning fields, and the two are independent. A target that takes a token budget is capped by
+ * one, unless the record rules native reasoning out. The coarse effort hint rides beside the cap on an
+ * external target whose record lists the literal, and only when reasoning is engaged, so a plain endpoint is
+ * never sent a field it rejects. The penalty ships under both spellings: `repetition_penalty` for
  * vLLM-family servers and the built-in engine, `repeat_penalty` for LM Studio, which ignores the other.
  */
 export function buildRequestBody(snapshot: AiSettingsSnapshot, call: AiCall): AiRequestBody {
@@ -165,11 +166,12 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
         }),
     ...(temperature.value !== undefined && { temperature: temperature.value }),
     ...(repetitionPenalty.value !== undefined && { repetition_penalty: repetitionPenalty.value, repeat_penalty: repetitionPenalty.value }),
-    ...(target.reasoning.budget
+    ...(target.reasoning.budget && !reasoningRuledOut(target.reasoning)
       ? reasoningBudgetBody(effort, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
-      : snapshot.reasoningEngaged
-        ? reasoningEffortBody(effort, target.reasoning)
-        : {}),
+      : {}),
+    // The bundled engine caps by tokens and ignores the hint, so it never receives one — not even once
+    // something answers the levels question for the endpoint whose record it shares.
+    ...(snapshot.reasoningEngaged && !localEngine ? reasoningEffortBody(effort, target.reasoning) : {}),
     // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
   };

@@ -337,11 +337,34 @@ describe('resolveReasoningCapability', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     expect(await resolveReasoningCapability(URL_, '', 'meromero')).toEqual({
-      reasons: true, levels: ['none', 'low', 'high'], budget: null, sources: { reasons: 'native', levels: 'probe' },
+      reasons: true, levels: ['none', 'low', 'high'], budget: true,
+      sources: { reasons: 'native', levels: 'probe', budget: 'native' },
     });
   });
 
-  it('leaves the budget question unanswered, whichever source spoke', async () => {
+  it('takes a token budget when the native list calls the model reasoning', async () => {
+    const fetchMock = vi.fn(async (u: string) =>
+      (u.includes('/api/v1/models')
+        ? nativeList([{ key: 'meromero', capabilities: { reasoning: {} } }])
+        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const record = await resolveReasoningCapability(URL_, '', 'meromero');
+    expect(record?.budget).toBe(true);
+    expect(record?.sources.budget).toBe('native');
+  });
+
+  it('never takes a budget on a model the native list calls non-reasoning', async () => {
+    const fetchMock = vi.fn(async (u: string) =>
+      (u.includes('/api/v1/models')
+        ? nativeList([{ key: 'cydonia', capabilities: {} }])
+        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await resolveReasoningCapability(URL_, '', 'cydonia'))?.budget).not.toBe(true);
+  });
+
+  it('leaves the budget question unanswered when only the probe spoke', async () => {
     probeOnly(() => 200);
     expect((await resolveReasoningCapability(URL_, '', 'plain'))?.budget).toBeNull();
   });
