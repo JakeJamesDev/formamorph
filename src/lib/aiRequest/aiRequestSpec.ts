@@ -2,8 +2,8 @@ import type { AIRequestType, ChatMessage } from '@/types';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  reasoningBudgetTokens, reasoningEffortValue, reasoningRuledOut, resolvePromptReasoning,
-  type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
+  reasoningBudgetTokens, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning,
+  type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, type ReasoningBodyFields, type ReasoningWrite } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
@@ -35,6 +35,8 @@ export interface AiSettingsSnapshot {
   /** True when reasoning is engaged anywhere; false suppresses `reasoning_effort` on external endpoints. */
   reasoningEngaged: boolean;
   promptReasoning: Record<string, PromptReasoning>;
+  /** The switches and strengths as stored, read only where the endpoint refuses a switched-off request. */
+  keptReasoning?: KeptReasoningSettings;
   promptReasoningBudget: Partial<Record<AIRequestType, number>>;
   promptSamplers: PromptSamplerMap;
   genTemperature: number;
@@ -156,10 +158,14 @@ function capFor(call: AiCall, target: AiEndpointTarget): number | undefined {
  * What one call says about reasoning, before the dialect spells it. One resolved choice drives both halves:
  * the effort literal and the on/off of the token budget. The literal is withheld while reasoning is engaged
  * nowhere, so an endpoint that never had a reasoning user is sent nothing at all, and a record that rules the
- * model out licenses no off signal either.
+ * model out licenses no off signal either. Where the target refuses off, a switched-off prompt carries the
+ * strength it kept, which is what its locked switch reads.
  */
 function resolveReasoningWrite(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): ReasoningWrite {
-  const effort = resolvePromptReasoning(call.requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode);
+  const effort = resolveRequestReasoning(
+    call.requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode,
+    target.reasoning, snapshot.keptReasoning,
+  );
   const reasons = !reasoningRuledOut(target.reasoning);
   const maxTokens = capFor(call, target);
   return {

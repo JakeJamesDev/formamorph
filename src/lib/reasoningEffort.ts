@@ -4,7 +4,9 @@ import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
 import { observationAnswer, type ReasoningObservation } from '@/lib/reasoningObservation';
 import { deriveModelsUrls } from '@/lib/contextLength';
 import { loadReasoningCatalog, catalogSaysReasons, type ReasoningCatalogLoader } from '@/lib/reasoningCatalog';
-import { isReasoningDialect, type ReasoningDialect } from '@/lib/reasoningDialect';
+import {
+  isReasoningDialect, reasoningDialectTakesLevel, reasoningOffRejected, type ReasoningDialect,
+} from '@/lib/reasoningDialect';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
  *  deliberately absent — it isn't a wire value; the UI's "Default" maps to sending nothing. */
@@ -25,10 +27,10 @@ export type ReasoningCapabilitySource = 'native' | 'catalog' | 'observed' | 'pro
 
 const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = ['native', 'catalog', 'observed', 'probe', 'engine', 'cache'];
 
-/** The four questions a capability record answers. */
-export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect';
+/** The five questions a capability record answers. */
+export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed';
 
-const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect'];
+const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect', 'offAllowed'];
 
 /**
  * What the app knows about one endpoint-and-model pair's native reasoning. Every reader asks this record:
@@ -38,24 +40,31 @@ const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels',
 export interface ReasoningCapability {
   /** Whether the model reasons at all. */
   readonly reasons: boolean | null;
-  /** The effort literals the endpoint accepts. An empty list means it accepts none. */
+  /** The effort literals the endpoint accepts. An empty list means it accepts none, which rules the model
+   *  out unless `reasons` says otherwise: a model that reasons but exposes no strength lists none either. */
   readonly levels: readonly ReasoningEffortField[] | null;
   /** Whether the endpoint takes a reasoning token budget. */
   readonly budget: boolean | null;
   /** Which spelling of the reasoning fields the endpoint takes. `unknown` is the unanswered form. */
   readonly dialect: ReasoningDialect;
+  /** Whether this model accepts a switched-off request. `false` locks the switch on. Where no source has
+   *  answered, the dialect's own row decides. */
+  readonly offAllowed: boolean | null;
   /** Where each answer came from. */
   readonly sources: Partial<Record<ReasoningQuestion, ReasoningCapabilitySource>>;
 }
 
 /** The record for a target nothing has answered for yet. */
 export const UNKNOWN_REASONING_CAPABILITY: ReasoningCapability = {
-  reasons: null, levels: null, budget: null, dialect: 'unknown', sources: {},
+  reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: {},
 };
 
 /** The record for a model one source rules out: it reasons not at all, so it accepts no effort literal. */
 export function nonReasoningCapability(source: ReasoningCapabilitySource): ReasoningCapability {
-  return { reasons: false, levels: [], budget: null, dialect: 'unknown', sources: { reasons: source, levels: source } };
+  return {
+    reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null,
+    sources: { reasons: source, levels: source },
+  };
 }
 
 /** Stamps a source's own dialect onto every record it returns, answered questions and ruled-out ones alike. */
@@ -74,16 +83,35 @@ export function reasoningCapabilityFromLevels(
   source: ReasoningCapabilitySource,
 ): ReasoningCapability {
   if (levels.length === 0) return nonReasoningCapability(source);
-  return { reasons: null, levels, budget: null, dialect: 'unknown', sources: { levels: source } };
+  return { reasons: null, levels, budget: null, dialect: 'unknown', offAllowed: null, sources: { levels: source } };
 }
 
 /**
  * True when the record rules native reasoning out: the model is known not to reason, or the endpoint accepts
- * no effort literal at all. Both hide the Native Reasoning controls behind the short note. An unknown record
- * is not ruled out, so the controls keep showing until something answers.
+ * no effort literal and nothing has called the model a reasoning one. Both hide the Native Reasoning controls
+ * behind the short note. An unknown record is not ruled out, so the controls keep showing until something
+ * answers. A source that names the model a reasoner and lists no strength is describing a model that thinks
+ * on its own terms, which keeps its switch and its budget slider and loses only the dropdown.
  */
 export function reasoningRuledOut(capability: ReasoningCapability | null | undefined): boolean {
-  return capability?.reasons === false || capability?.levels?.length === 0;
+  if (capability?.reasons === false) return true;
+  return capability?.levels?.length === 0 && capability.reasons !== true;
+}
+
+/** True where the strength dropdown is worth showing: the dialect carries an effort literal, and no source
+ *  has said this model exposes no strength to pick. */
+export function reasoningLevelControl(capability: ReasoningCapability): boolean {
+  return reasoningDialectTakesLevel(capability.dialect) && capability.levels?.length !== 0;
+}
+
+/**
+ * True where the endpoint refuses a switched-off request, so the switch reads checked and locked. The
+ * record's own answer wins, since it knows the model; the dialect's row decides for the endpoints whose
+ * whole API refuses off.
+ */
+export function reasoningOffRefused(capability: ReasoningCapability | null | undefined): boolean {
+  if (typeof capability?.offAllowed === 'boolean') return !capability.offAllowed;
+  return reasoningOffRejected(capability?.dialect ?? 'unknown');
 }
 
 /**
@@ -95,11 +123,14 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
   const isLevel = (v: unknown): v is ReasoningEffortField => REASONING_CANDIDATES.includes(v as ReasoningEffortField);
   if (Array.isArray(raw)) {
     return raw.every(isLevel)
-      ? { reasons: null, levels: raw as ReasoningEffortField[], budget: null, dialect: 'unknown', sources: { levels: 'cache' } }
+      ? {
+          reasons: null, levels: raw as ReasoningEffortField[], budget: null, dialect: 'unknown',
+          offAllowed: null, sources: { levels: 'cache' },
+        }
       : null;
   }
   if (!raw || typeof raw !== 'object') return null;
-  const { reasons, levels, budget, dialect, sources } = raw as Record<string, unknown>;
+  const { reasons, levels, budget, dialect, offAllowed, sources } = raw as Record<string, unknown>;
   const isTriState = (v: unknown) => v === null || typeof v === 'boolean';
   if (!isTriState(reasons) || !isTriState(budget)) return null;
   if (levels !== null && !(Array.isArray(levels) && levels.every(isLevel))) return null;
@@ -108,6 +139,8 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
     levels: levels as ReasoningEffortField[] | null,
     budget: budget as boolean | null,
     dialect: isReasoningDialect(dialect) ? dialect : 'unknown',
+    // A record stored before this answer existed carries none, and the dialect's row decides for it.
+    offAllowed: typeof offAllowed === 'boolean' ? offAllowed : null,
     sources: parseCapabilitySources(sources),
   };
 }
@@ -279,6 +312,47 @@ export function resolvePromptReasoning(
   if (nativeReasoningSuppressed(mode, kind)) return 'none';
   const pref = prefs[kind] ?? defaultPromptReasoning(kind);
   return pref === 'global' ? globalEffort : pref;
+}
+
+/** The switch-and-strength settings a request reads when the endpoint refuses off. Both are optional: a
+ *  caller with nothing stored falls back to the shipped ones. */
+export interface KeptReasoningSettings {
+  /** Each prompt's own switch and strength, as Settings stores them. */
+  readonly prompts?: Record<string, PromptReasoningSetting>;
+  /** The endpoint-wide switch and strength, which a prompt set to Global follows. */
+  readonly global?: ReasoningSetting;
+}
+
+/**
+ * The strength a prompt keeps while its switch is off. Both switches are ignored, since this is read only
+ * where the endpoint refuses off and both switches therefore render checked and locked.
+ */
+export function keptReasoningLevel(
+  kind: AIRequestType,
+  kept: KeptReasoningSettings,
+): ReasoningEffort {
+  const level = (kept.prompts?.[kind] ?? defaultPromptReasoningSetting(kind)).level;
+  return level === 'global' ? (kept.global ?? DEFAULT_REASONING_SETTING).level : level;
+}
+
+/**
+ * The effort one request carries, with the endpoint's refusal of off folded in. A prompt switched off on an
+ * endpoint that refuses off sends the strength it kept instead, since its switch reads as checked and locked
+ * and the model reasons whatever the request says. Inline narration still resolves to `none`: that mode
+ * suppresses the call's own scratchpad wherever it can, and an endpoint that refuses off simply ignores it.
+ */
+export function resolveRequestReasoning(
+  kind: AIRequestType,
+  prefs: Record<string, PromptReasoning>,
+  globalEffort: ReasoningEffort,
+  mode: ThinkingMode,
+  capability: ReasoningCapability | null | undefined,
+  kept: KeptReasoningSettings = {},
+): ReasoningEffort {
+  const choice = resolvePromptReasoning(kind, prefs, globalEffort, mode);
+  if (choice !== 'none') return choice;
+  if (nativeReasoningSuppressed(mode, kind) || !reasoningOffRefused(capability)) return choice;
+  return keptReasoningLevel(kind, kept);
 }
 
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */
@@ -454,6 +528,7 @@ const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
     reasons: true,
     levels,
     budget: true,
+    offAllowed: null,
     sources: { reasons: 'native', budget: 'native', ...(levels ? { levels: 'native' as const } : {}) },
   }, 'lmstudio', 'native');
 };
@@ -474,7 +549,7 @@ const ollamaSource: NativeSource = async (target, doFetch, signal) => {
   const capabilities = body?.capabilities;
   if (!Array.isArray(capabilities)) return null;
   if (!capabilities.includes('thinking')) return nonReasoningCapability('native');
-  return { reasons: true, levels: null, budget: null, dialect: 'unknown', sources: { reasons: 'native' } };
+  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'native' } };
 };
 
 /**
@@ -497,6 +572,7 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
     levels: honored ? [...SAFE_REASONING_EFFORTS] : [],
     budget: null,
     dialect: 'unknown',
+    offAllowed: null,
     sources: { levels: 'native' },
   };
 };
@@ -505,10 +581,42 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
 const GATEWAY_REASONING_PARAMS: readonly string[] = ['reasoning', 'reasoning_effort', 'include_reasoning'];
 
 /**
+ * What one OpenRouter models-list entry says. Only OpenRouter publishes a `reasoning` object, so the object
+ * names the dialect by existing, and its own fields answer the strengths, the token budget, and whether the
+ * model may be switched off at all.
+ *
+ * The strengths read as OpenRouter documents them: a list names the literals it accepts, `null` accepts every
+ * gateway effort, and an omitted field means the model exposes no strength to pick — an empty list, not an
+ * unanswered question, so the dropdown goes rather than the whole control.
+ *
+ * Only an omitted field says that. A list that arrives with entries and ends up empty leaves the question
+ * unanswered instead, which keeps the safe fallback. Both ways of emptying it mean the same thing: the
+ * advertisement named strengths, and none of them survived. A mandatory model's list loses `none`, which it
+ * rejects, and a list may also name literals this app does not know.
+ */
+function openRouterCapability(reasoning: Record<string, unknown>): ReasoningCapability {
+  const { supported_efforts: efforts, supports_max_tokens: budget, mandatory } = reasoning;
+  const named = Array.isArray(efforts) ? efforts : efforts === null ? [...REASONING_CANDIDATES] : [];
+  const offAllowed = mandatory !== true;
+  const accepted = dedupeLevels(named.filter(isEffortField)).filter((l) => offAllowed || l !== 'none');
+  const levels = named.length > 0 ? orUnknown(accepted) : accepted;
+  return {
+    reasons: true,
+    levels,
+    budget: budget === true,
+    dialect: 'openrouter',
+    offAllowed,
+    sources: {
+      reasons: 'native', budget: 'native', dialect: 'native', offAllowed: 'native',
+      ...(levels ? { levels: 'native' as const } : {}),
+    },
+  };
+}
+
+/**
  * An OpenAI-shaped model list, which several backends serve. An entry may carry a `reasoning` object, which
- * is present only for a reasoning model and whose `supported_efforts` name the strengths the gateway
- * accepts; a `mandatory` model rejects `none`, so that literal is dropped and switching off omits the field
- * instead. An entry with only a `supported_parameters` list answers the reasons question alone.
+ * only OpenRouter publishes and only for a reasoning model, so it names that dialect and answers four
+ * questions at once. An entry with only a `supported_parameters` list answers the reasons question alone.
  *
  * An entry carrying `max_model_len` is vLLM or Aphrodite, the same key the context-length lookup reads for
  * them. That names the dialect and nothing else: whether the server runs a reasoning parser, and so whether
@@ -525,24 +633,12 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
   if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
 
   const reasoning = (entry as { reasoning?: unknown }).reasoning;
-  if (reasoning && typeof reasoning === 'object') {
-    const { supported_efforts: efforts, mandatory } = reasoning as Record<string, unknown>;
-    let levels = Array.isArray(efforts) ? dedupeLevels(efforts.filter(isEffortField)) : null;
-    if (levels && mandatory === true) levels = levels.filter((l) => l !== 'none');
-    levels = levels && orUnknown(levels);
-    return {
-      reasons: true,
-      levels,
-      budget: null,
-      dialect: 'unknown',
-      sources: { reasons: 'native', ...(levels ? { levels: 'native' as const } : {}) },
-    };
-  }
+  if (reasoning && typeof reasoning === 'object') return openRouterCapability(reasoning as Record<string, unknown>);
 
   const params = (entry as { supported_parameters?: unknown }).supported_parameters;
   if (Array.isArray(params)) {
     return params.some((p) => GATEWAY_REASONING_PARAMS.includes(String(p)))
-      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', sources: { reasons: 'native' } }
+      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'native' } }
       : nonReasoningCapability('native');
   }
 
@@ -582,7 +678,10 @@ async function probeNoneLiteral(
     await res.text().catch(() => undefined);
     if (res.status === 400) return nonReasoningCapability('probe');
     if (res.status === 200) {
-      return { reasons: null, levels: [...SAFE_REASONING_EFFORTS], budget: null, dialect: 'unknown', sources: { levels: 'probe' } };
+      return {
+        reasons: null, levels: [...SAFE_REASONING_EFFORTS], budget: null, dialect: 'unknown',
+        offAllowed: null, sources: { levels: 'probe' },
+      };
     }
     return null; // auth/5xx/other → inconclusive
   } catch {
@@ -621,7 +720,9 @@ export async function resolveReasoningCapability(
   // silence is never a no: the catalog holds only the ids that reason, so a miss falls through to the
   // sources below. A failed load says nothing and costs the chain nothing.
   if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), target.model)) {
-    const listed: ReasoningCapability = { reasons: true, levels: null, budget: null, dialect: 'unknown', sources: { reasons: 'catalog' } };
+    const listed: ReasoningCapability = {
+      reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'catalog' },
+    };
     return gathered ? mergeReasoningCapability(listed, gathered) : listed;
   }
   // What the replies already showed, which costs no request at all. It is asked only once no advertisement
@@ -644,7 +745,7 @@ function observedCapability(observation: ReasoningObservation | null | undefined
   const answer = observationAnswer(observation);
   if (answer === null) return null;
   if (!answer) return nonReasoningCapability('observed');
-  return { reasons: true, levels: null, budget: null, dialect: 'unknown', sources: { reasons: 'observed' } };
+  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'observed' } };
 }
 
 /**
@@ -667,12 +768,13 @@ export function mergeReasoningCapability(
   fresh: ReasoningCapability,
 ): ReasoningCapability {
   if (!stored) return fresh;
-  const pick = <K extends 'reasons' | 'levels' | 'budget'>(question: K): ReasoningCapability[K] =>
+  const pick = <K extends 'reasons' | 'levels' | 'budget' | 'offAllowed'>(question: K): ReasoningCapability[K] =>
     (fresh[question] !== null ? fresh[question] : stored[question]);
   return {
     reasons: pick('reasons'),
     levels: pick('levels'),
     budget: pick('budget'),
+    offAllowed: pick('offAllowed'),
     // `unknown` is the dialect's unanswered form, so it keeps whatever the stored record named.
     dialect: fresh.dialect !== 'unknown' ? fresh.dialect : stored.dialect,
     sources: { ...stored.sources, ...fresh.sources },

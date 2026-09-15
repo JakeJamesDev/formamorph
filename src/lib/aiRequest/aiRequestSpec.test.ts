@@ -409,7 +409,8 @@ describe('reasoning split — budget where the record says, effort everywhere el
 
   it('omits the effort on a model the record says does not reason, even where levels are listed', () => {
     const nonReasoning: ReasoningCapability = {
-      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', sources: { reasons: 'native' },
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null,
+      sources: { reasons: 'native' },
     };
     const snap = snapshot(external({ reasoning: nonReasoning }), { reasoningEngaged: true, reasoningEffort: 'high' });
     expect(buildRequestBody(snap, call())).not.toHaveProperty('reasoning_effort');
@@ -585,7 +586,7 @@ describe('dialects — one spelling per row', () => {
   it('stays silent on a model the record rules out, off spelling or not', () => {
     for (const dialect of ['vllm', 'anthropic', 'moonshot-k2', 'unknown'] as const) {
       const ruledOut = speaking(dialect, {
-        reasoning: { reasons: false, levels: [], budget: true, dialect, sources: { reasons: 'native' } },
+        reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, sources: { reasons: 'native' } },
       });
       expect(speaks(ruledOut, { promptReasoning: { narration: 'none' } })).toEqual({});
     }
@@ -640,5 +641,67 @@ describe('dialects — one spelling per row', () => {
     expect(speaks(speaking('unknown'), { promptReasoning: { narration: 'none' } }))
       .toEqual({ thinking_budget_tokens: 0, reasoning_effort: 'none' });
     expect(external().reasoning.dialect).toBe('unknown');
+  });
+
+  /**
+   * OpenRouter answers four questions per model, so two targets on the same gateway take different fields.
+   * Each case here states one of those answers and reads the body the model would receive.
+   */
+  describe('openrouter — the model list decides which fields go out', () => {
+    const onOpenRouter = (record: Partial<ReasoningCapability>, over: Partial<AiEndpointTarget> = {}) =>
+      speaking('openrouter', {
+        reasoning: {
+          ...UNKNOWN_REASONING_CAPABILITY, reasons: true, dialect: 'openrouter', offAllowed: true, ...record,
+        },
+        ...over,
+      });
+
+    // supports_max_tokens true with no efforts listed: the budget is the only control the model exposes.
+    it('sends the budget alone where the model takes one and lists no effort', () => {
+      expect(speaks(onOpenRouter({ levels: [], budget: true }))).toEqual({ reasoning: { max_tokens: 400 } });
+    });
+
+    // Efforts listed and supports_max_tokens omitted: the strength is the only control.
+    it('sends the effort alone where the model lists efforts and takes no budget', () => {
+      expect(speaks(onOpenRouter({ levels: ['none', 'low', 'high'], budget: false })))
+        .toEqual({ reasoning: { effort: 'high' } });
+    });
+
+    // The docs allow both in one request, and a model that advertises both gets both.
+    it('sends both where the model advertises both', () => {
+      expect(speaks(onOpenRouter({ levels: ['none', 'low', 'high'], budget: true })))
+        .toEqual({ reasoning: { max_tokens: 400, effort: 'high' } });
+    });
+
+    it('spells a switched-off prompt as the none effort, and drops the budget beside it', () => {
+      expect(speaks(onOpenRouter({ levels: ['none', 'low', 'high'], budget: true }), { promptReasoning: { narration: 'none' } }))
+        .toEqual({ reasoning: { effort: 'none' } });
+    });
+
+    /**
+     * A mandatory model rejects `none`, so its switch renders checked and locked and the request carries the
+     * strength that switch reads rather than an off field the model refuses.
+     */
+    it('sends the kept strength instead of an off field on a mandatory model', () => {
+      const mandatory = onOpenRouter({ levels: ['low', 'high'], budget: true, offAllowed: false });
+      const body = speaks(mandatory, {
+        promptReasoning: { narration: 'none' },
+        keptReasoning: { prompts: { narration: { enabled: false, level: 'low' } } },
+      });
+      expect(body).toEqual({ reasoning: { max_tokens: 400, effort: 'low' } });
+    });
+
+    it('sends no off field on a mandatory model even with no kept strength to fall back on', () => {
+      const mandatory = onOpenRouter({ levels: ['low', 'high'], budget: true, offAllowed: false });
+      // Model Default is what an unset prompt keeps, so the budget goes out and no effort does.
+      expect(speaks(mandatory, { promptReasoning: { narration: 'none' } })).toEqual({ reasoning: { max_tokens: 400 } });
+    });
+
+    // The record's answer overrides the dialect row in both directions, so a model OpenRouter calls optional
+    // may be switched off even though another model on the same dialect may not.
+    it('lets a model the list calls optional switch off', () => {
+      const optional = onOpenRouter({ levels: ['none', 'low', 'high'], budget: false, offAllowed: true });
+      expect(speaks(optional, { promptReasoning: { narration: 'none' } })).toEqual({ reasoning: { effort: 'none' } });
+    });
   });
 });

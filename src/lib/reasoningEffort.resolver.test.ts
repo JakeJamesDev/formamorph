@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  resolveReasoningCapability, mergeReasoningCapability, SAFE_REASONING_EFFORTS,
+  resolveReasoningCapability, mergeReasoningCapability, reasoningRuledOut,
+  SAFE_REASONING_EFFORTS, REASONING_CANDIDATES,
   type ReasoningCapability,
 } from './reasoningEffort';
 import { resetProbeMemo } from './probeMemo';
@@ -222,13 +223,95 @@ describe('gateway model list', () => {
     expect(record?.sources.levels).toBe('probe');
   });
 
-  it('leaves the dialect unknown on a gateway list, which says nothing about the spelling', async () => {
+  // Only OpenRouter publishes a reasoning object on its model list, so carrying one names the dialect.
+  it('names the openrouter dialect from an entry carrying a reasoning object', async () => {
     const { doFetch } = backend({
       [OPENAI]: entry({ reasoning: { mandatory: false, supported_efforts: ['high', 'low', 'none'] } }),
     });
     const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(record?.dialect).toBe('openrouter');
+    expect(record?.sources.dialect).toBe('native');
+  });
+
+  it('leaves the dialect unknown on a plain OpenAI list, which says nothing about the spelling', async () => {
+    const { doFetch } = backend({ [OPENAI]: entry({ supported_parameters: ['temperature', 'reasoning_effort'] }) });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
     expect(record?.dialect).toBe('unknown');
     expect(record?.sources.dialect).toBeUndefined();
+  });
+});
+
+/**
+ * One OpenRouter models-list entry per case, in the shapes its own list serves. The field meanings are
+ * OpenRouter's, read from its reasoning-tokens guide on 2026-09-15: a `supported_efforts` list names the
+ * accepted literals, `null` accepts every gateway effort, an omitted field exposes no strength at all,
+ * `supports_max_tokens` turns the budget on, and `mandatory` forbids switching reasoning off.
+ */
+describe('OpenRouter model list', () => {
+  const listing = (reasoning: Record<string, unknown>) =>
+    ({ status: 200 as const, body: { data: [{ id: 'm', reasoning }] } });
+
+  const resolve = async (reasoning: Record<string, unknown>) => {
+    const { doFetch, calls } = backend({ [OPENAI]: listing(reasoning) });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(probeCount(calls)).toBe(0); // the list answered, so nothing is asked of the model
+    return record;
+  };
+
+  it('takes the listed efforts as the levels, in the order the list gives them', async () => {
+    const record = await resolve({ mandatory: false, supported_efforts: ['max', 'high', 'low', 'none'] });
+    expect(record?.levels).toEqual(['max', 'high', 'low', 'none']);
+    expect(record?.sources.levels).toBe('native');
+  });
+
+  // OpenRouter documents null as "every gateway effort", which is the whole ladder the app knows.
+  it('offers every effort the app knows when the list leaves the efforts null', async () => {
+    const record = await resolve({ mandatory: false, supported_efforts: null });
+    expect(record?.levels).toEqual([...REASONING_CANDIDATES]);
+  });
+
+  // An omitted field is a real answer, not a gap: the model reasons on its own terms and exposes no
+  // strength, so the dropdown goes while the switch and any budget slider stay.
+  it('lists no level at all when the entry names no efforts', async () => {
+    const record = await resolve({ mandatory: false, supports_max_tokens: true });
+    expect(record?.levels).toEqual([]);
+    expect(record?.reasons).toBe(true);
+    expect(reasoningRuledOut(record)).toBe(false);
+  });
+
+  it('takes the budget answer from supports_max_tokens', async () => {
+    const takes = await resolve({ mandatory: false, supports_max_tokens: true, supported_efforts: ['high', 'low'] });
+    expect(takes?.budget).toBe(true);
+    expect(takes?.sources.budget).toBe('native');
+    const skips = await resolve({ mandatory: false, supported_efforts: ['high', 'low'] });
+    expect(skips?.budget).toBe(false);
+  });
+
+  it('takes the off answer from mandatory', async () => {
+    const optional = await resolve({ mandatory: false, supported_efforts: ['high', 'none'] });
+    expect(optional?.offAllowed).toBe(true);
+    expect(optional?.sources.offAllowed).toBe('native');
+    const always = await resolve({ mandatory: true, supported_efforts: ['high', 'none'] });
+    expect(always?.offAllowed).toBe(false);
+  });
+
+  // A list of literals this app does not know is an answer it cannot read, not an answer of "no strength".
+  // The safe fallback stands, exactly as it does for a mandatory list of nothing but `none`.
+  it('leaves the levels unanswered when the list names nothing the app knows', async () => {
+    const record = await resolve({ mandatory: false, supported_efforts: ['ludicrous', 'plaid'] });
+    expect(record?.levels).toBeNull();
+    expect(record?.reasons).toBe(true);
+  });
+
+  it('drops the none literal from a mandatory model, which rejects it', async () => {
+    const record = await resolve({ mandatory: true, supported_efforts: ['high', 'low', 'none'] });
+    expect(record?.levels).toEqual(['high', 'low']);
+  });
+
+  // The whole ladder minus `none`, since a mandatory model rejects that one literal.
+  it('drops none from the null-efforts ladder too', async () => {
+    const record = await resolve({ mandatory: true, supported_efforts: null });
+    expect(record?.levels).toEqual(REASONING_CANDIDATES.filter((l) => l !== 'none'));
   });
 });
 
@@ -486,6 +569,7 @@ describe('merging a fresh answer onto a stored record', () => {
     levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
     budget: null,
     dialect: 'unknown',
+    offAllowed: null,
     sources: { levels: 'cache' },
   };
 
@@ -501,14 +585,14 @@ describe('merging a fresh answer onto a stored record', () => {
   });
 
   it('keeps a stored answer the fresh record does not carry', () => {
-    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
-    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', sources: {} };
+    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: {} };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(stored);
   });
 
   it('takes every fresh answer over the stored one', () => {
-    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', sources: { reasons: 'probe', levels: 'probe' } };
-    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'probe', levels: 'probe' } };
+    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', offAllowed: true, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(fresh);
   });
 });
