@@ -434,6 +434,7 @@ const GameViewer = ({
     thinkingMode,
     reasoningEffort,
     reasoningEngaged,
+    noteReasoningReply,
     promptReasoning,
     promptReasoningBudget,
     thinkingPrompt,
@@ -2843,6 +2844,9 @@ const GameViewer = ({
       // Show the raw output (including any <think> block) in the AI-context viewer, but return the
       // cleaned text so reasoning never reaches the narration, TTS, choices/stats/location, or history.
       const rawContent = content.trim();
+      // Teach the capability record what this reply showed. Every request type counts, so a model is judged
+      // on whatever it answered most recently rather than on narration alone.
+      noteReasoningReply(spec.target, reasoningText, rawContent, spec.body.reasoning_effort ?? null);
       let finalContent = stripReasoning(content).trim();
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
       if (requestType === "narration") {
