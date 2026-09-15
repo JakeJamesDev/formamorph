@@ -168,12 +168,15 @@ function resolveReasoningWrite(snapshot: AiSettingsSnapshot, call: AiCall, targe
   );
   const reasons = !reasoningRuledOut(target.reasoning);
   const maxTokens = capFor(call, target);
+  // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
+  const eligible = snapshot.reasoningEngaged && reasons;
   return {
     budget: target.reasoning.budget === true && reasons
       ? reasoningBudgetTokens(effort, call.requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
       : null,
     level: snapshot.reasoningEngaged ? reasoningEffortValue(effort, target.reasoning) : null,
-    off: snapshot.reasoningEngaged && effort === 'none' && reasons,
+    off: eligible && effort === 'none',
+    eligible,
     ...(maxTokens !== undefined && { maxTokens }),
   };
 }

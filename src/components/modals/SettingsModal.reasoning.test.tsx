@@ -229,3 +229,85 @@ describe('a vLLM server before and after a reply proves it separates its reasoni
     expect(strengthDropdown()).toHaveLength(1);
   });
 });
+
+/**
+ * The records the endpoint identity source writes for Anthropic and Google. Each generation gets a different
+ * pair of controls, and the record alone decides which, so these cases seed one record per generation and
+ * read the prompt's Options tab.
+ */
+describe('an Anthropic or Google model, named from the endpoint host', () => {
+  beforeEach(() => localStorage.clear());
+
+  /** What `reasoningIdentityAnswer` proves, as `identitySource` stamps it onto the record. */
+  const identified = (over: Partial<ReasoningCapability>): ReasoningCapability => ({
+    reasons: true, levels: [], budget: false, dialect: 'anthropic-adaptive', offAllowed: null,
+    sources: { reasons: 'identity', budget: 'identity', dialect: 'identity', levels: 'identity' },
+    ...over,
+  });
+
+  /** The strength dropdown, which is the only combobox carrying a level word in this field. */
+  const strengthDropdown = () =>
+    screen.queryAllByRole('combobox').find((c) => /Global|Model Default|Low|Medium|High/.test(c.textContent ?? ''));
+
+  // The endpoint documents `reasoning_effort` as ignored, so offering a strength would promise nothing.
+  it('shows the budget slider and no strength dropdown on a Claude model that takes a budget', () => {
+    seedCapability(identified({ dialect: 'anthropic-budget', budget: true }));
+    openNarrationOptions();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    expect(strengthDropdown()).toBeUndefined();
+  });
+
+  // Claude 4.7 and later reject a manual budget, so the switch is the whole control.
+  it('shows neither control beside the switch on a Claude model that decides its own depth', () => {
+    seedCapability(identified({ dialect: 'anthropic-adaptive' }));
+    openNarrationOptions();
+    expect(screen.getAllByRole('checkbox', { name: 'Native Reasoning' })).toHaveLength(1);
+    expect(screen.queryByText('Reasoning Budget')).toBeNull();
+    expect(strengthDropdown()).toBeUndefined();
+  });
+
+  it('shows both controls on a Gemini 2.5 model, which spells strength as a budget', () => {
+    seedCapability(identified({
+      dialect: 'google-2.5', budget: true, levels: ['minimal', 'low', 'medium', 'high'],
+    }));
+    openNarrationOptions();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    expect(strengthDropdown()).toBeTruthy();
+  });
+
+  it('shows the strength dropdown and no slider on a Gemini 3 model, which takes a level', () => {
+    seedCapability(identified({ dialect: 'google-3', levels: ['low', 'medium', 'high'] }));
+    openNarrationOptions();
+    expect(screen.queryByText('Reasoning Budget')).toBeNull();
+    expect(strengthDropdown()).toBeTruthy();
+  });
+
+  // Gemini 3 cannot stop thinking, so the switch says so rather than sending a field the model refuses.
+  it('locks the switch on a Gemini 3 model, with the note saying why', () => {
+    seedCapability(identified({ dialect: 'google-3', levels: ['low', 'medium', 'high'] }));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.getAttribute('data-state')).toBe('checked');
+    expect(box.disabled).toBe(true);
+    expect(screen.getByText(REASONING_NOTES.always)).toBeTruthy();
+  });
+
+  // Fable and Mythos reject a switched-off request, which only the record knows; the dialect row allows off.
+  it('locks the switch on a Claude line that refuses off, though its dialect row allows it', () => {
+    seedCapability(identified({ dialect: 'anthropic-adaptive', offAllowed: false }));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.disabled).toBe(true);
+    expect(screen.getByText(REASONING_NOTES.always)).toBeTruthy();
+  });
+
+  it('keeps the switch clickable on a Claude model that accepts off', () => {
+    seedCapability(identified({ dialect: 'anthropic-adaptive' }));
+    openNarrationOptions();
+    makeEditable();
+    expect((screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement).disabled)
+      .toBe(false);
+  });
+});

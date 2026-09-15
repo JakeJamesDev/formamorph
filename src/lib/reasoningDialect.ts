@@ -7,7 +7,7 @@ import type { ReasoningEffortField } from '@/lib/reasoningEffort';
  */
 export const REASONING_DIALECTS = [
   'unknown', 'engine', 'openai', 'lmstudio', 'vllm', 'openrouter',
-  'anthropic', 'google-2.5', 'google-3', 'moonshot-k3', 'moonshot-k2',
+  'anthropic-budget', 'anthropic-adaptive', 'google-2.5', 'google-3', 'moonshot-k3', 'moonshot-k2',
 ] as const;
 
 export type ReasoningDialect = (typeof REASONING_DIALECTS)[number];
@@ -39,6 +39,11 @@ export interface DialectSpelling {
   readonly budgetPath?: readonly string[];
   /** Fields written beside a budget, such as Anthropic's `thinking.type`. */
   readonly budgetWith?: readonly FieldWrite[];
+  /** The smallest budget the endpoint accepts. A smaller one is raised to it, and a request whose cap leaves
+   *  no room for it sends no budget at all rather than one the endpoint rejects. */
+  readonly budgetMin?: number;
+  /** What this dialect says for "reasoning is on" where it has no budget and no level to say it with. */
+  readonly on?: readonly FieldWrite[];
   /** Where the effort literal goes. Absent where the dialect sends no level. */
   readonly levelPath?: readonly string[];
   /** The token budget this dialect substitutes for each level, where it spells strength as a budget rather
@@ -68,7 +73,9 @@ const THINKING_DISABLED: readonly FieldWrite[] = [{ path: ['thinking', 'type'], 
  * Sources, read live on 2026-09-15 and 2026-09-16: vLLM's reasoning-outputs guide (`thinking_token_budget`);
  * OpenRouter's reasoning-tokens guide (`reasoning.effort`, `reasoning.max_tokens`, `effort: none` to
  * disable); Anthropic's OpenAI SDK compatibility page (`thinking.type`, `thinking.budget_tokens`, and
- * `reasoning_effort` listed as ignored); Google's OpenAI compatibility page (`google.thinking_config`, with
+ * `reasoning_effort` listed as ignored) and its extended-thinking page (the 1,024-token floor, the
+ * under-cap rule, and the 400 that `type: enabled` returns on Claude 4.7 and later); Google's OpenAI
+ * compatibility page (`google.thinking_config`, with
  * `thinking_budget` on 2.5 and `thinking_level` on 3.x, and the documented budget per effort); Kimi's chat
  * API reference (k3 takes `reasoning_effort` and always thinks, k2.6 switches with `thinking.type`).
  */
@@ -91,10 +98,19 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
     levelPath: ['reasoning', 'effort'],
     noBudgetWhenOff: true,
   },
-  anthropic: {
+  // Claude 4.6 and earlier, whose only thinking mode is a manual budget. The API rejects a budget under
+  // 1,024 tokens and one that is not under the reply's own cap, so both bounds are row properties.
+  'anthropic-budget': {
     budgetPath: ['thinking', 'budget_tokens'],
     budgetWith: [{ path: ['thinking', 'type'], value: 'enabled', label: 'Reasoning' }],
     budgetUnderCap: true,
+    budgetMin: 1024,
+    off: THINKING_DISABLED,
+  },
+  // Claude 4.7 and later, Claude 5 included, reject `thinking.type: enabled` with a 400. Claude decides the
+  // depth itself, so the switch is the whole control and neither a budget nor an effort literal goes out.
+  'anthropic-adaptive': {
+    on: [{ path: ['thinking', 'type'], value: 'adaptive', label: 'Reasoning' }],
     off: THINKING_DISABLED,
   },
   // 2.5 spells strength as a budget, so the level maps onto the same field the slider writes. Google rejects
@@ -116,7 +132,7 @@ export interface ReasoningBodyFields {
   thinking_token_budget?: number;
   reasoning_effort?: ReasoningEffortField;
   reasoning?: { effort?: ReasoningEffortField; max_tokens?: number };
-  thinking?: { type?: 'enabled' | 'disabled'; budget_tokens?: number };
+  thinking?: { type?: 'enabled' | 'adaptive' | 'disabled'; budget_tokens?: number };
   google?: { thinking_config?: { thinking_budget?: number; thinking_level?: string } };
 }
 
@@ -129,6 +145,10 @@ export interface ReasoningWrite {
   /** True when the resolved choice is off, reasoning is engaged, and the record has not ruled the model out.
    *  Only then may a dialect spell off in a field of its own. */
   readonly off: boolean;
+  /** True where reasoning is engaged somewhere and the record has not ruled the model out, so this target
+   *  may be told about reasoning at all. A switched-off request is eligible too: `off` is what it says.
+   *  A dialect with neither a budget nor a level has nothing else to write an on request from. */
+  readonly eligible: boolean;
   /** The request's output cap, for the dialects that keep the budget under it. */
   readonly maxTokens?: number;
 }
@@ -182,8 +202,9 @@ function readPath(body: unknown, path: readonly string[]): string | number | und
  *
  * A dialect that rejects off sends nothing at all for a switched-off prompt, since the only thing it could
  * send is a field the endpoint refuses. A dialect that names its own off field sends that alone: those
- * endpoints reject a budget beside it. Everything else sends the budget and the level its row names, and a
- * row that takes no zero budget drops the budget while off.
+ * endpoints reject a budget beside it. A dialect whose only control is the switch says so in its `on` field.
+ * Everything else sends the budget and the level its row names, and a row that takes no zero budget drops
+ * the budget while off.
  */
 export function reasoningDialectBody(dialect: ReasoningDialect, write: ReasoningWrite): ReasoningBodyFields {
   const spelling = DIALECT_SPELLINGS[dialect];
@@ -199,14 +220,21 @@ export function reasoningDialectBody(dialect: ReasoningDialect, write: Reasoning
     }
   }
 
+  if (spelling.on) {
+    if (write.eligible) for (const field of spelling.on) writePath(body, field.path, field.value);
+    return typed();
+  }
+
   let budgetWritten = false;
   if (write.budget !== null && spelling.budgetPath && !(write.off && spelling.noBudgetWhenOff)) {
-    const cap = spelling.budgetUnderCap && write.maxTokens !== undefined
-      ? Math.max(0, Math.min(write.budget, write.maxTokens - 1))
-      : write.budget;
-    writePath(body, spelling.budgetPath, cap);
-    for (const field of spelling.budgetWith ?? []) writePath(body, field.path, field.value);
-    budgetWritten = true;
+    const floor = spelling.budgetMin ?? 0;
+    const ceiling = spelling.budgetUnderCap && write.maxTokens !== undefined ? write.maxTokens - 1 : Infinity;
+    // A cap with no room for the smallest budget the endpoint takes leaves nothing valid to send.
+    if (ceiling >= floor) {
+      writePath(body, spelling.budgetPath, Math.min(Math.max(write.budget, floor), ceiling));
+      for (const field of spelling.budgetWith ?? []) writePath(body, field.path, field.value);
+      budgetWritten = true;
+    }
   }
 
   if (write.level !== null) {
@@ -240,6 +268,7 @@ export function reasoningWireFields(dialect: ReasoningDialect, body: ReasoningBo
     ...(spelling.levelPath ? [{ label: 'Effort' as const, path: spelling.levelPath }] : []),
     ...(spelling.budgetPath ? [{ label: 'Budget' as const, path: spelling.budgetPath }] : []),
     ...(spelling.budgetWith ?? []).map((f) => ({ label: f.label, path: f.path })),
+    ...(spelling.on ?? []).map((f) => ({ label: f.label, path: f.path })),
     ...(spelling.off ?? []).map((f) => ({ label: f.label, path: f.path })),
   ];
   const fields: ReasoningWireField[] = [];
