@@ -225,7 +225,7 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
     const routedProbes = fetchContextLength.mock.calls.filter((c) => String(c[0]).includes('new.test'));
     expect(routedProbes).toHaveLength(1);
     // The capability probe rides the same lazy path, keyed to the routed target.
-    expect(detectEfforts.mock.calls.some((c) => String(c[0]).includes('new.test'))).toBe(true);
+    expect(detectEfforts.mock.calls.some((c) => String((c[0] as { url?: string })?.url).includes('new.test'))).toBe(true);
   });
 });
 
@@ -252,7 +252,7 @@ describe('SettingsContext: the cached reasoning capability', () => {
     // A loaded entry is an answer, so nothing re-resolves for that target.
     act(() => { result.current.setNativeReasoning({ enabled: true, level: 'high' }); });
     await waitFor(() => expect(result.current.reasoningEngaged).toBe(true));
-    expect(detectEfforts.mock.calls.some((c) => String(c[0]).includes('big.test'))).toBe(false);
+    expect(detectEfforts.mock.calls.some((c) => String((c[0] as { url?: string })?.url).includes('big.test'))).toBe(false);
   });
 });
 

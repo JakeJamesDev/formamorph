@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, detectReasoningCapability, resolveReasoningCapability, type ReasoningCapability, type ReasoningEffortField } from './reasoningEffort';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, type ReasoningCapability, type ReasoningEffortField } from './reasoningEffort';
 import { resetProbeMemo } from '@/lib/probeMemo';
 import type { AIRequestType } from '@/types';
 
@@ -250,143 +250,47 @@ describe('isReasoningEngaged', () => {
   });
 });
 
-describe('detectReasoningCapability (LM Studio native /api/v1/models)', () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  const stubFetch = (impl: (url: string) => { ok: boolean; json?: () => Promise<unknown> }) =>
-    vi.stubGlobal('fetch', vi.fn(async (u: string) => impl(u) as unknown as Response));
-
-  const list = (models: unknown[]) => ({ ok: true, json: async () => ({ models }) });
-
-  it('returns false when the model is listed without a reasoning capability', async () => {
-    stubFetch(() => list([{ key: 'cydonia-24b', capabilities: { vision: false, trained_for_tool_use: false } }]));
-    expect(await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'cydonia-24b')).toBe(false);
-  });
-
-  it('returns true when the model exposes a reasoning capability object', async () => {
-    stubFetch(() => list([{ key: 'g4-meromero-31b', capabilities: { reasoning: { allowed_options: ['off', 'on'], default: 'on' } } }]));
-    expect(await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'g4-meromero-31b')).toBe(true);
-  });
-
-  it('hits the origin-derived native path, not the configured completions URL', async () => {
-    const fetchMock = vi.fn(async () => list([{ key: 'm', capabilities: {} }]) as unknown as Response);
-    vi.stubGlobal('fetch', fetchMock);
-    await detectReasoningCapability('http://localhost:1234/v1/chat/completions', '', 'm');
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:1234/api/v1/models', expect.anything());
-  });
-
-  it('falls back to the loaded model when the configured name is unmatched (e.g. "default")', async () => {
-    stubFetch(() => list([
-      { key: 'cydonia-24b@q4_k_m', loaded_instances: [{ id: 'cydonia-24b@q4_k_m' }], capabilities: { vision: false } },
-      { key: 'g4-meromero-31b', loaded_instances: [], capabilities: { reasoning: { allowed_options: ['off', 'on'], default: 'on' } } },
-    ]));
-    // "default" matches no key → resolves to the loaded (Cydonia) entry, which has no reasoning capability.
-    expect(await detectReasoningCapability('http://127.0.0.1:1234/v1/chat/completions', '', 'default')).toBe(false);
-  });
-
-  it('is inconclusive (null) when the model is absent, the shape is foreign, or the endpoint errors', async () => {
-    stubFetch(() => list([{ key: 'other', capabilities: {} }]));
-    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'missing')).toBeNull();
-    stubFetch(() => ({ ok: true, json: async () => ({ data: [] }) })); // OpenAI shape, not native
-    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'm')).toBeNull();
-    stubFetch(() => ({ ok: false })); // 404 on non-LM-Studio backends
-    expect(await detectReasoningCapability('http://x/v1/chat/completions', '', 'm')).toBeNull();
-    expect(await detectReasoningCapability('not a url', '', 'm')).toBeNull();
-  });
-
-});
-
-describe('resolveReasoningCapability', () => {
-  // The native list's absence is remembered per origin, so each case starts from a clean memo.
+describe('resolveReasoningCapability: the budget answer', () => {
+  // Each source's own shape is covered in reasoningCapability.test.ts. These cases guard one contract:
+  // which answers settle the budget question, since the request builder and the Options tab both read it.
   beforeEach(() => resetProbeMemo());
-  afterEach(() => vi.unstubAllGlobals());
 
-  const URL_ = 'http://localhost:1234/v1/chat/completions';
-  const nativeList = (models: unknown[]) => ({ ok: true, json: async () => ({ models }) });
-  /** A backend with no native capability list, answering each effort probe by the status this returns. */
-  const probeOnly = (status: (effort: string) => number) => {
-    const fetchMock = vi.fn(async (u: string, init?: { body?: string }) => {
-      if (u.includes('/api/v1/models')) return { ok: false, status: 404 } as unknown as Response;
-      const effort = String(JSON.parse(init?.body ?? '{}').reasoning_effort);
-      return { ok: true, status: status(effort), text: async () => '' } as unknown as Response;
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    return fetchMock;
-  };
+  const TARGET = { url: 'http://localhost:1234/v1/chat/completions', token: '', model: 'meromero' };
+  const NATIVE_LIST = 'http://localhost:1234/api/v1/models';
 
-  it('answers every question from the native list when it calls the model non-reasoning, sending no probe', async () => {
-    const fetchMock = vi.fn(async (u: string) =>
-      (u.includes('/api/v1/models')
-        ? nativeList([{ key: 'cydonia', capabilities: {} }])
-        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    expect(await resolveReasoningCapability(URL_, '', 'cydonia')).toEqual({
-      reasons: false, levels: [], budget: null, sources: { reasons: 'native', levels: 'native' },
-    });
-    // Only the capability GET fired — no POST probe reached the completions URL.
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:1234/api/v1/models', expect.anything());
-  });
-
-  it('credits the native list for the reasons answer and the probe for the levels it narrowed', async () => {
-    const fetchMock = vi.fn(async (u: string, init?: { body?: string }) => {
-      if (u.includes('/api/v1/models')) return nativeList([{ key: 'meromero', capabilities: { reasoning: {} } }]) as unknown as Response;
-      const effort = String(JSON.parse(init?.body ?? '{}').reasoning_effort);
-      return { ok: true, status: ['none', 'low', 'high'].includes(effort) ? 200 : 400, text: async () => '' } as unknown as Response;
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    expect(await resolveReasoningCapability(URL_, '', 'meromero')).toEqual({
-      reasons: true, levels: ['none', 'low', 'high'], budget: true,
-      sources: { reasons: 'native', levels: 'probe', budget: 'native' },
-    });
-  });
+  /** LM Studio answering its native list with one model, and 404ing every other advertisement path. */
+  const lmStudio = (models: unknown[]) => vi.fn(async (u: string) => (
+    u === NATIVE_LIST
+      ? { ok: true, status: 200, json: async () => ({ models }), text: async () => '' }
+      : { ok: false, status: 404, json: async () => ({}), text: async () => '' }
+  ) as unknown as Response);
 
   it('takes a token budget when the native list calls the model reasoning', async () => {
-    const fetchMock = vi.fn(async (u: string) =>
-      (u.includes('/api/v1/models')
-        ? nativeList([{ key: 'meromero', capabilities: { reasoning: {} } }])
-        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    const record = await resolveReasoningCapability(URL_, '', 'meromero');
+    const record = await resolveReasoningCapability(TARGET, lmStudio([{ key: 'meromero', capabilities: { reasoning: {} } }]));
     expect(record?.budget).toBe(true);
     expect(record?.sources.budget).toBe('native');
   });
 
   it('never takes a budget on a model the native list calls non-reasoning', async () => {
-    const fetchMock = vi.fn(async (u: string) =>
-      (u.includes('/api/v1/models')
-        ? nativeList([{ key: 'cydonia', capabilities: {} }])
-        : { ok: true, status: 200, text: async () => '' }) as unknown as Response,
-    );
-    vi.stubGlobal('fetch', fetchMock);
-    expect((await resolveReasoningCapability(URL_, '', 'cydonia'))?.budget).not.toBe(true);
+    const record = await resolveReasoningCapability({ ...TARGET, model: 'cydonia' }, lmStudio([{ key: 'cydonia', capabilities: {} }]));
+    expect(record?.budget).not.toBe(true);
+  });
+
+  it('answers every question from the native list when it calls the model non-reasoning, sending no probe', async () => {
+    const doFetch = lmStudio([{ key: 'cydonia', capabilities: {} }]);
+    expect(await resolveReasoningCapability({ ...TARGET, model: 'cydonia' }, doFetch)).toEqual({
+      reasons: false, levels: [], budget: null, sources: { reasons: 'native', levels: 'native' },
+    });
+    // Only the capability GET fired — no POST probe reached the completions URL.
+    expect(doFetch.mock.calls.filter(([u]) => u === TARGET.url)).toHaveLength(0);
   });
 
   it('leaves the budget question unanswered when only the probe spoke', async () => {
-    probeOnly(() => 200);
-    expect((await resolveReasoningCapability(URL_, '', 'plain'))?.budget).toBeNull();
-  });
-
-  it('marks a model non-reasoning when the endpoint rejects even `none`, without probing the rest', async () => {
-    const fetchMock = probeOnly(() => 400);
-    expect(await resolveReasoningCapability(URL_, '', 'plain')).toEqual({
-      reasons: false, levels: [], budget: null, sources: { reasons: 'probe', levels: 'probe' },
-    });
-    // The native GET plus the single `none` probe: the other six literals were never sent.
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it('keeps the reasons question open when the probe only narrows the levels', async () => {
-    probeOnly((e) => (['none', 'low', 'medium', 'high'].includes(e) ? 200 : 400));
-    expect(await resolveReasoningCapability(URL_, '', 'plain')).toEqual({
-      reasons: null, levels: ['none', 'low', 'medium', 'high'], budget: null, sources: { levels: 'probe' },
-    });
-  });
-
-  it('returns null when nothing answered, so the caller keeps its fallback and caches nothing', async () => {
-    probeOnly(() => 500);
-    expect(await resolveReasoningCapability(URL_, '', 'plain')).toBeNull();
+    const doFetch = vi.fn(async (u: string) => (
+      u === TARGET.url
+        ? { ok: true, status: 200, json: async () => ({}), text: async () => '' }
+        : { ok: false, status: 404, json: async () => ({}), text: async () => '' }
+    ) as unknown as Response);
+    expect((await resolveReasoningCapability({ ...TARGET, model: 'plain' }, doFetch))?.budget).toBeNull();
   });
 });
