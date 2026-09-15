@@ -53,6 +53,9 @@ export interface DialectSpelling {
   readonly offRejected?: true;
   /** Set where the budget must sit below the request's output cap. */
   readonly budgetUnderCap?: true;
+  /** Set where nothing the endpoint publishes says whether it separates reasoning at all, so both controls
+   *  wait for one reply to prove it. Until then the record's budget answer stays unanswered. */
+  readonly controlsNeedProof?: true;
 }
 
 const EFFORT_PATH = ['reasoning_effort'] as const;
@@ -78,7 +81,11 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
   openai: { levelPath: EFFORT_PATH },
   lmstudio: { budgetPath: ['thinking_budget_tokens'], levelPath: EFFORT_PATH },
   // Both carry `none` themselves, so off rides the ordinary level write. Neither takes a zero budget.
-  vllm: { budgetPath: ['thinking_token_budget'], levelPath: EFFORT_PATH, noBudgetWhenOff: true },
+  // A vLLM server separates its reasoning only when its operator started one with a reasoning parser, and no
+  // model list says so, so this row shows nothing until a reply proves it.
+  vllm: {
+    budgetPath: ['thinking_token_budget'], levelPath: EFFORT_PATH, noBudgetWhenOff: true, controlsNeedProof: true,
+  },
   openrouter: {
     budgetPath: ['reasoning', 'max_tokens'],
     levelPath: ['reasoning', 'effort'],
@@ -129,6 +136,14 @@ export interface ReasoningWrite {
 /** True where the dialect rejects a switched-off request, so the switch is shown checked and locked. */
 export function reasoningOffRejected(dialect: ReasoningDialect): boolean {
   return DIALECT_SPELLINGS[dialect].offRejected === true;
+}
+
+/**
+ * True where the dialect publishes nothing about its own reasoning, so both controls wait until one reply
+ * shows a separate reasoning field. The record's budget answer carries that proof.
+ */
+export function reasoningDialectNeedsProof(dialect: ReasoningDialect): boolean {
+  return DIALECT_SPELLINGS[dialect].controlsNeedProof === true;
 }
 
 /** True where the dialect names a field for the token budget, so the budget slider is worth showing. */
