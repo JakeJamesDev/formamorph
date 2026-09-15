@@ -1,7 +1,9 @@
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { AIRequestType } from '@/types';
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+import { observationAnswer, type ReasoningObservation } from '@/lib/reasoningObservation';
 import { deriveModelsUrls } from '@/lib/contextLength';
+import { loadReasoningCatalog, catalogSaysReasons, type ReasoningCatalogLoader } from '@/lib/reasoningCatalog';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
  *  deliberately absent — it isn't a wire value; the UI's "Default" maps to sending nothing. */
@@ -18,9 +20,9 @@ export const REASONING_CANDIDATES: readonly ReasoningEffortField[] = [
 export const SAFE_REASONING_EFFORTS: readonly ReasoningEffortField[] = ['none', 'low', 'medium', 'high'];
 
 /** Which source answered one question in a capability record, so a wrong answer can be traced back. */
-export type ReasoningCapabilitySource = 'native' | 'probe' | 'engine' | 'cache';
+export type ReasoningCapabilitySource = 'native' | 'catalog' | 'observed' | 'probe' | 'engine' | 'cache';
 
-const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = ['native', 'probe', 'engine', 'cache'];
+const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = ['native', 'catalog', 'observed', 'probe', 'engine', 'cache'];
 
 /** The three questions a capability record answers. */
 export type ReasoningQuestion = 'reasons' | 'levels' | 'budget';
@@ -310,6 +312,15 @@ export interface ReasoningTarget {
 /** The fetch a resolve uses. Injected so every backend shape is tested without a server. */
 export type ResolverFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
+/** What a resolve knows beyond the endpoint itself. */
+export interface ReasoningResolveContext {
+  /** What this target's most recent reply showed, recorded by the settings context. */
+  readonly observation?: ReasoningObservation | null;
+  /** Loads the public model catalog. Injected so a test names its own catalog and reaches no network. */
+  readonly loadCatalog?: ReasoningCatalogLoader;
+  readonly signal?: AbortSignal;
+}
+
 /** Asks one advertisement endpoint, returning the record it proves or `null` to try the next source. */
 type NativeSource = (
   target: ReasoningTarget,
@@ -536,7 +547,8 @@ async function probeNoneLiteral(
 /**
  * Resolves one endpoint-and-model pair's capability record. It walks the advertisement sources in order and
  * returns the first that answers, so a backend that publishes its own capabilities is never sent a test
- * completion. Only when none of them answers does it send the single probe.
+ * completion. Next it matches the model id against the public catalog, then reads what the replies already
+ * showed. Only when none of those answers does it send the single probe.
  *
  * Returns `null` when nothing answered conclusively, so a caller keeps its fallback and its cache entry
  * rather than storing a wrong record.
@@ -544,8 +556,9 @@ async function probeNoneLiteral(
 export async function resolveReasoningCapability(
   target: ReasoningTarget,
   doFetch: ResolverFetch = fetch,
-  signal?: AbortSignal,
+  context: ReasoningResolveContext = {},
 ): Promise<ReasoningCapability | null> {
+  const { observation, loadCatalog = loadReasoningCatalog, signal } = context;
   if (!originOf(target.url)) return null; // a half-typed endpoint gets no request at all
   let gathered: ReasoningCapability | null = null;
   for (const source of NATIVE_SOURCES) {
@@ -557,10 +570,35 @@ export async function resolveReasoningCapability(
     // model thinks (llama.cpp) leaves the question open, so the next source still gets to answer it.
     if (gathered.reasons !== null) return gathered;
   }
+  // A well-known model id, so a catalog-listed model is known to reason before the first turn. The catalog
+  // answers the reasons question alone; the levels and budget stay as the advertisements left them. Its
+  // silence is never a no: the catalog holds only the ids that reason, so a miss falls through to the
+  // sources below. A failed load says nothing and costs the chain nothing.
+  if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch, signal), target.model)) {
+    const listed: ReasoningCapability = { reasons: true, levels: null, budget: null, sources: { reasons: 'catalog' } };
+    return gathered ? mergeReasoningCapability(gathered, listed) : listed;
+  }
+  // What the replies already showed, which costs no request at all. It is asked only once no advertisement
+  // named an answer, so a native yes or no is never overridden by what one reply happened to look like.
+  const observed = observedCapability(observation);
+  if (observed) return gathered ? mergeReasoningCapability(observed, gathered) : observed;
   const probed = await probeNoneLiteral(target, doFetch, signal);
   if (!probed) return gathered;
   // An advertisement outranks the probe, which only learns whether the field parses.
   return gathered ? mergeReasoningCapability(probed, gathered) : probed;
+}
+
+/**
+ * The record one observation proves, or `null` when it proves nothing. A reply that showed reasoning answers
+ * the reasons question alone: seeing a scratchpad says the model thinks, never which strengths the endpoint
+ * takes. A reply that came back bare although the call asked for a positive effort rules the model out, and
+ * a ruled-out model accepts no effort literal.
+ */
+function observedCapability(observation: ReasoningObservation | null | undefined): ReasoningCapability | null {
+  const answer = observationAnswer(observation);
+  if (answer === null) return null;
+  if (!answer) return nonReasoningCapability('observed');
+  return { reasons: true, levels: null, budget: null, sources: { reasons: 'observed' } };
 }
 
 /**
