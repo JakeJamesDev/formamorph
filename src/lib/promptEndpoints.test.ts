@@ -170,18 +170,38 @@ describe('toDebugEndpoint', () => {
   };
 
   it('never carries the API token into the exported debug shape', () => {
-    const debug = toDebugEndpoint(target);
+    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' });
     expect(JSON.stringify(debug)).not.toContain('sk-super-secret-value');
-    expect(Object.keys(debug).sort()).toEqual(['model', 'preset', 'routed', 'url']);
+    expect(Object.keys(debug).sort())
+      .toEqual(['budgetTokens', 'model', 'preset', 'reasoningEffort', 'routed', 'url']);
+  });
+
+  it('records the reasoning fields the request carried, so the viewer can show what was sent', () => {
+    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' });
+    expect(debug.budgetTokens).toBe(400);
+    expect(debug.reasoningEffort).toBe('high');
+  });
+
+  it('keeps a zero budget, which is how a switched-off prompt reads', () => {
+    expect(toDebugEndpoint(target, { thinking_budget_tokens: 0, reasoning_effort: 'none' }).budgetTokens).toBe(0);
+  });
+
+  it('leaves out a field the request did not carry', () => {
+    const effortOnly = toDebugEndpoint(target, { reasoning_effort: 'low' });
+    expect(effortOnly.reasoningEffort).toBe('low');
+    expect('budgetTokens' in effortOnly).toBe(false);
+    const neither = toDebugEndpoint(target, {});
+    expect('reasoningEffort' in neither).toBe(false);
+    expect('budgetTokens' in neither).toBe(false);
   });
 
   it('marks a pinned prompt as routed and an unpinned one as not', () => {
-    expect(toDebugEndpoint(target).routed).toBe(true);
-    expect(toDebugEndpoint({ ...target, presetId: null }).routed).toBe(false);
+    expect(toDebugEndpoint(target, {}).routed).toBe(true);
+    expect(toDebugEndpoint({ ...target, presetId: null }, {}).routed).toBe(false);
   });
 
   it('records the preset name and model the request actually used', () => {
-    const debug = toDebugEndpoint(target);
+    const debug = toDebugEndpoint(target, {});
     expect(debug.preset).toBe('Cydonia 24B');
     expect(debug.model).toBe('cydonia');
     expect(debug.url).toBe(target.url);

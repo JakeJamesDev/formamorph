@@ -140,6 +140,7 @@ import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/stat
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
 import { resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
+import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
 import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags } from "../lib/sceneImages";
@@ -2660,7 +2661,7 @@ const GameViewer = ({
             // The sidecar indexes the messages the caller stated; the wire list prepends the system
             // message, which `toAnatomyBlocks` accounts for when the viewer lines the two up.
             anatomy,
-            endpoint: toDebugEndpoint(target),
+            endpoint: toDebugEndpoint(target, spec.body),
           },
         ],
       };
@@ -4839,6 +4840,7 @@ const GameViewer = ({
                                         </span>
                                       </Tip>
                                     )}
+                                    {req.endpoint && <ReasoningChip endpoint={req.endpoint} />}
                                   </span>
                                   {groupOpen ? (
                                     <ChevronDown className="h-4 w-4 flex-shrink-0" />
