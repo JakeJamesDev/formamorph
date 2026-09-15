@@ -312,33 +312,67 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
   );
 }
 
-/** A prompt's Native Reasoning control: its switch, then Global or its own level (or its budget on a target
- *  that takes one). Global follows Settings → Output → Native Reasoning, switch included. */
-function PromptReasoningField({ setting, onChange, options, budget, disabled }: {
+/**
+ * A prompt's Native Reasoning control: its switch, then Global or its own level, and on a target that takes a
+ * token budget the Reasoning Budget slider under it. Both go out on the wire there, so both are shown; the one
+ * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
+ * engine ignores the effort field, so it shows the slider alone (`level` false).
+ */
+function PromptReasoningField({ setting, onChange, options, budget, level, disabled }: {
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
   /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
   budget: { value: number; set: (v: number) => void } | null;
+  /** Whether the target honors the effort level, so the dropdown is worth showing. */
+  level: boolean;
   disabled?: boolean;
 }) {
-  const copy = budget ? SETTINGS_COPY.reasoningBudget : SETTINGS_COPY.promptNativeReasoning;
+  const inert = disabled || !setting.enabled;
+  const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
+    kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
+  };
+  const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
+    ? { kind: 'budget', value: budget.value, onChange: budget.set }
+    : null;
+  const lead = level ? SETTINGS_COPY.promptNativeReasoning : SETTINGS_COPY.reasoningBudget;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
-        <label htmlFor="promptReasoning" className="text-label">{copy.label}</label>
-        <HintInfo>{copy.info}</HintInfo>
+        <label htmlFor="promptReasoning" className="text-label">{lead.label}</label>
+        <HintInfo>{lead.info}</HintInfo>
       </div>
-      <span className="text-helper text-muted-foreground">{copy.description}</span>
+      <span className="text-helper text-muted-foreground">{lead.description}</span>
       <ReasoningSwitch
         id="promptReasoning"
         enabled={setting.enabled}
         onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
         disabled={disabled}
-        strength={budget
-          ? { kind: 'budget', value: budget.value, onChange: budget.set }
-          : { kind: 'level', value: setting.level, options, onChange: (level) => onChange({ ...setting, level }) }}
+        strength={level ? levelStrength : (budgetStrength ?? levelStrength)}
       />
+      {level && budgetStrength && (
+        <div className="mt-2 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
+            <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
+          </div>
+          <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
+          {/* Same switch as above: the row only carries the slider, indented past the checkbox column. */}
+          <div className="flex items-center gap-3 pl-7">
+            <Slider
+              className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
+              value={[budgetStrength.value]}
+              min={MIN_REASONING_BUDGET_PCT}
+              max={100}
+              step={5}
+              disabled={inert}
+              onValueChange={(v) => budgetStrength.onChange(v[0])}
+              aria-label={SETTINGS_COPY.reasoningBudget.label}
+            />
+            <span className="w-12 text-right text-label tabular-nums">{budgetStrength.value}%</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1235,10 +1269,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     ? {
         setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
         onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
-        options: promptReasoningLevelOptions(promptReasoningCapability),
+        options: promptReasoningLevelOptions(promptReasoningCapability, (promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind)).level),
         budget: promptReasoningCapability.budget
           ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
           : null,
+        // The built-in engine ignores reasoning_effort, so its dropdown would be inert; every other target sends it.
+        level: !promptLocalEngine,
       }
     : null;
 
@@ -1670,7 +1706,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       strength={{
                         kind: 'level',
                         value: nativeReasoning.level,
-                        options: reasoningLevelOptions(reasoningCapability),
+                        options: reasoningLevelOptions(reasoningCapability, nativeReasoning.level),
                         onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
                       }}
                     />
