@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { streamAiRequest, AiStreamError, ABORTED_FINISH_REASON, type AiStreamEvent } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 const spec: AiRequestSpec = {
   url: 'http://localhost:1234/v1/chat/completions',
@@ -15,7 +16,7 @@ const spec: AiRequestSpec = {
     maxTokens: 64,
     localEngine: false,
     samplerOverrides: defaultEndpointSamplerOverrides(),
-    supportedReasoningEfforts: null,
+    reasoning: UNKNOWN_REASONING_CAPABILITY,
   },
   requestType: 'narration',
   samplerSources: {},

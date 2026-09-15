@@ -8,13 +8,104 @@ export type ReasoningEffortField = Exclude<ReasoningEffort, 'auto'>;
 
 /** Every effort literal the app knows to probe for, in canonical display order (least → most thinking).
  *  Different backends accept different subsets (e.g. cloud takes `minimal`, Ollama takes `max`), so the
- *  actual tabs shown are whichever of these the active endpoint returns 200 for — see `detectSupportedReasoningEfforts`. */
+ *  actual tabs shown are whichever of these the active endpoint returns 200 for — see `resolveReasoningCapability`. */
 export const REASONING_CANDIDATES: readonly ReasoningEffortField[] = [
   'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
 ];
 
 /** Universal fallback shown before detection runs (or when it can't) — accepted by every backend tested. */
 export const SAFE_REASONING_EFFORTS: readonly ReasoningEffortField[] = ['none', 'low', 'medium', 'high'];
+
+/** Which source answered one question in a capability record, so a wrong answer can be traced back. */
+export type ReasoningCapabilitySource = 'native' | 'probe' | 'engine' | 'cache';
+
+const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = ['native', 'probe', 'engine', 'cache'];
+
+/** The three questions a capability record answers. */
+export type ReasoningQuestion = 'reasons' | 'levels' | 'budget';
+
+const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget'];
+
+/**
+ * What the app knows about one endpoint-and-model pair's native reasoning. Every reader asks this record:
+ * the request builder and the Native Reasoning controls. A `null` answer means not yet known, which reads
+ * as "keep the safe fallback and keep the controls showing".
+ */
+export interface ReasoningCapability {
+  /** Whether the model reasons at all. */
+  readonly reasons: boolean | null;
+  /** The effort literals the endpoint accepts. An empty list means it accepts none. */
+  readonly levels: readonly ReasoningEffortField[] | null;
+  /** Whether the endpoint takes a reasoning token budget. */
+  readonly budget: boolean | null;
+  /** Where each answer came from. */
+  readonly sources: Partial<Record<ReasoningQuestion, ReasoningCapabilitySource>>;
+}
+
+/** The record for a target nothing has answered for yet. */
+export const UNKNOWN_REASONING_CAPABILITY: ReasoningCapability = {
+  reasons: null, levels: null, budget: null, sources: {},
+};
+
+/** The record for a model one source rules out: it reasons not at all, so it accepts no effort literal. */
+export function nonReasoningCapability(source: ReasoningCapabilitySource): ReasoningCapability {
+  return { reasons: false, levels: [], budget: null, sources: { reasons: source, levels: source } };
+}
+
+/** A record built from an accepted-levels answer. An empty list is conclusive: the endpoint takes no effort
+ *  literal at all, so the model does not reason. */
+export function reasoningCapabilityFromLevels(
+  levels: readonly ReasoningEffortField[],
+  source: ReasoningCapabilitySource,
+): ReasoningCapability {
+  if (levels.length === 0) return nonReasoningCapability(source);
+  return { reasons: null, levels, budget: null, sources: { levels: source } };
+}
+
+/**
+ * True when the record rules native reasoning out: the model is known not to reason, or the endpoint accepts
+ * no effort literal at all. Both hide the Native Reasoning controls behind the short note. An unknown record
+ * is not ruled out, so the controls keep showing until something answers.
+ */
+export function reasoningRuledOut(capability: ReasoningCapability | null | undefined): boolean {
+  return capability?.reasons === false || capability?.levels?.length === 0;
+}
+
+/**
+ * Reads a stored capability record. A cache entry may also be a bare effort list, which loads as those
+ * levels with the other two answers unknown, so an update re-detects nothing. Anything else is `null`.
+ */
+export function parseReasoningCapability(raw: unknown): ReasoningCapability | null {
+  const isLevel = (v: unknown): v is ReasoningEffortField => REASONING_CANDIDATES.includes(v as ReasoningEffortField);
+  if (Array.isArray(raw)) {
+    return raw.every(isLevel)
+      ? { reasons: null, levels: raw as ReasoningEffortField[], budget: null, sources: { levels: 'cache' } }
+      : null;
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const { reasons, levels, budget, sources } = raw as Record<string, unknown>;
+  const isTriState = (v: unknown) => v === null || typeof v === 'boolean';
+  if (!isTriState(reasons) || !isTriState(budget)) return null;
+  if (levels !== null && !(Array.isArray(levels) && levels.every(isLevel))) return null;
+  return {
+    reasons: reasons as boolean | null,
+    levels: levels as ReasoningEffortField[] | null,
+    budget: budget as boolean | null,
+    sources: parseCapabilitySources(sources),
+  };
+}
+
+/** Keeps only the question-and-source pairs the record knows, so a stored oddity never types as a source. */
+function parseCapabilitySources(raw: unknown): ReasoningCapability['sources'] {
+  if (!raw || typeof raw !== 'object') return {};
+  const stored = raw as Record<string, unknown>;
+  const out: ReasoningCapability['sources'] = {};
+  for (const question of CAPABILITY_QUESTIONS) {
+    const source = stored[question];
+    if (CAPABILITY_SOURCES.includes(source as ReasoningCapabilitySource)) out[question] = source as ReasoningCapabilitySource;
+  }
+  return out;
+}
 
 /** A prompt's resolved reasoning choice: `global` inherits the endpoint-wide level (Settings → Output →
  *  Native Reasoning); otherwise it's an explicit level, `auto` included (Model Default, send no hint). `none`
@@ -95,21 +186,21 @@ export function defaultPromptReasoningSetting(kind: AIRequestType): PromptReason
   return LOW_REASONING_KINDS.includes(kind) ? { enabled: true, level: 'low' } : { enabled: false, level: 'global' };
 }
 
-/** Dropdown options for the endpoint-wide strength: Model Default first, then each level the endpoint accepts.
- *  Unknown support (`null`/undefined) falls back to the universally accepted levels. */
+/** Dropdown options for the endpoint-wide strength: Model Default first, then each level the record says the
+ *  endpoint accepts. An unanswered levels question falls back to the universally accepted levels. */
 export function reasoningLevelOptions(
-  supported: readonly ReasoningEffortField[] | null | undefined,
+  capability: ReasoningCapability | null | undefined,
 ): { value: ReasoningLevel; label: string }[] {
-  const levels = supported ?? SAFE_REASONING_EFFORTS;
+  const levels = capability?.levels ?? SAFE_REASONING_EFFORTS;
   const accepted = REASONING_LEVELS.filter((v) => v === 'auto' || levels.includes(v));
   return accepted.map((v) => ({ value: v, label: REASONING_LEVEL_LABELS[v] }));
 }
 
 /** Dropdown options for a prompt's strength: Global first, then the endpoint-wide list. */
 export function promptReasoningLevelOptions(
-  supported: readonly ReasoningEffortField[] | null | undefined,
+  capability: ReasoningCapability | null | undefined,
 ): { value: PromptReasoningLevel; label: string }[] {
-  return [{ value: 'global', label: REASONING_LEVEL_LABELS.global }, ...reasoningLevelOptions(supported)];
+  return [{ value: 'global', label: REASONING_LEVEL_LABELS.global }, ...reasoningLevelOptions(capability)];
 }
 
 /**
@@ -192,19 +283,19 @@ export function reasoningBudgetBody(
  * Builds the `reasoning_effort` slice of a request body, spread into the body so an empty result adds no field.
  * `auto` omits the field (send nothing → endpoint default); any level maps to itself.
  *
- * The field is sent ONLY when `supported` is a non-empty list that includes the value — i.e. we've probed the
- * active endpoint and confirmed it accepts that literal. An unknown (`null`/`undefined`, not yet probed) or a
- * conclusively non-reasoning endpoint (`[]`) sends nothing, so a backend that rejects even `none` (e.g. LM Studio
- * on a non-reasoning model) is never hit with the field. A reasoning-capable endpoint gets the hint once its
- * probe caches. A no-op on models without native reasoning.
+ * The field is sent ONLY when the record lists that literal among the levels the endpoint accepts, and never
+ * to a model the record says does not reason. An unanswered levels question sends nothing too, so a backend
+ * that rejects even `none` (e.g. LM Studio on a non-reasoning model) is never hit with the field before
+ * something answers for it.
  */
 export function reasoningEffortBody(
   effort: ReasoningEffort,
-  supported?: readonly ReasoningEffortField[] | null,
+  capability?: ReasoningCapability | null,
 ): { reasoning_effort?: ReasoningEffortField } {
   const value: ReasoningEffortField | null = effort === 'auto' ? null : effort;
   if (value === null) return {};
-  if (!supported || !supported.includes(value)) return {};
+  if (reasoningRuledOut(capability)) return {};
+  if (!capability?.levels?.includes(value)) return {};
   return { reasoning_effort: value };
 }
 
@@ -261,12 +352,10 @@ export async function detectReasoningCapability(
  * the endpoint rejects even `none` (a conclusively non-reasoning model), or `null` if the probe is inconclusive
  * (network/auth/5xx on any candidate) so callers keep their fallback rather than narrowing to a wrong set.
  *
- * First consults `detectReasoningCapability` (LM Studio's native model list): a positively non-reasoning model
- * returns `[]` immediately, without sending any `reasoning_effort` probe — LM Studio would otherwise 200-and-warn
- * on every one. Otherwise `none` is probed first and short-circuits: if the backend rejects it, the model exposes
- * no reasoning fields, so we return `[]` without sending the other six candidates.
+ * `none` is probed first and short-circuits: if the backend rejects it, the model exposes no reasoning fields,
+ * so the other six candidates are never sent.
  */
-export async function detectSupportedReasoningEfforts(
+async function probeEffortLevels(
   url: string,
   token: string,
   model: string,
@@ -296,9 +385,6 @@ export async function detectSupportedReasoningEfforts(
     }
   };
 
-  const capability = await detectReasoningCapability(url, token, model, signal);
-  if (capability === false) return []; // backend advertises this model as non-reasoning
-
   const noneAccepted = await probe('none');
   if (noneAccepted === null) return null; // inconclusive → keep fallback
   if (noneAccepted === false) return []; // rejects `none` → non-reasoning; skip the rest
@@ -307,4 +393,29 @@ export async function detectSupportedReasoningEfforts(
   const results = await Promise.all(rest.map(probe));
   if (results.some((r) => r === null)) return null; // couldn't cleanly classify → keep fallback
   return ['none', ...rest.filter((_, i) => results[i])];
+}
+
+/**
+ * Resolves one endpoint-and-model pair's capability record. It asks the backend's own capability list first
+ * (`detectReasoningCapability`): a model listed as non-reasoning answers every question at once, with no
+ * effort probe sent — LM Studio would otherwise return HTTP 200 and a server-side warning on every literal.
+ * Otherwise the effort probe fills the levels, and a model the list calls reasoning keeps that answer even
+ * when the probe only narrows the levels.
+ *
+ * Returns `null` when nothing answered conclusively, so a caller keeps its fallback and its cache entry
+ * rather than storing a wrong record.
+ */
+export async function resolveReasoningCapability(
+  url: string,
+  token: string,
+  model: string,
+  signal?: AbortSignal,
+): Promise<ReasoningCapability | null> {
+  const native = await detectReasoningCapability(url, token, model, signal);
+  if (native === false) return nonReasoningCapability('native');
+  const levels = await probeEffortLevels(url, token, model, signal);
+  if (!levels) return null;
+  const probed = reasoningCapabilityFromLevels(levels, 'probe');
+  if (native !== true) return probed;
+  return { ...probed, reasons: true, sources: { ...probed.sources, reasons: 'native' } };
 }

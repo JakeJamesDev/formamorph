@@ -4,6 +4,7 @@ import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { AiStreamError } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 import { surfaceRejectedEndpointOverride } from './rejectedOverrideNotice';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 const toastError = vi.hoisted(() => vi.fn());
 
@@ -14,7 +15,7 @@ const spec: AiRequestSpec = {
   body: { model: 'test-model', messages: [{ role: 'user', content: 'Continue.' }], stream: true, top_p: 0.83 },
   target: {
     endpointId: 'rejected', url: 'https://example.test/v1/chat/completions', apiToken: '', model: 'test-model',
-    maxTokens: 512, localEngine: false, samplerOverrides: defaultEndpointSamplerOverrides(), supportedReasoningEfforts: null,
+    maxTokens: 512, localEngine: false, samplerOverrides: defaultEndpointSamplerOverrides(), reasoning: UNKNOWN_REASONING_CAPABILITY,
   },
   requestType: 'narration', samplerSources: { topP: 'endpoint' },
 };

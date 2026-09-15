@@ -8,11 +8,12 @@ import { buildAiRequestSpec, type AiCall, type AiEndpointTarget, type AiSettings
 import { streamAiRequest, type AiStreamEvent } from '@/lib/aiRequest/aiStream';
 import { rejectedEndpointOverride } from '@/lib/aiRequest/rejectedOverride';
 import { lengthGuidance, outputReserve } from '@/lib/outputLength';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 vi.mock('@/lib/reasoningEffort', async () => ({
   ...await vi.importActual<typeof import('@/lib/reasoningEffort')>('@/lib/reasoningEffort'),
   detectReasoningCapability: vi.fn().mockResolvedValue(null),
-  detectSupportedReasoningEfforts: vi.fn().mockResolvedValue(null),
+  resolveReasoningCapability: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@/lib/contextLength', async () => ({
   ...await vi.importActual<typeof import('@/lib/contextLength')>('@/lib/contextLength'),
@@ -44,7 +45,7 @@ function specFromPersisted(id: string): ReturnType<typeof buildAiRequestSpec> {
   const target: AiEndpointTarget = {
     endpointId: id, url: `${endpoint.endpoint}/chat/completions`, apiToken: endpoint.apiToken, model: endpoint.model,
     maxTokens: endpoint.maxOutputOverride.enabled ? endpoint.maxOutputOverride.value : undefined,
-    localEngine: false, samplerOverrides: endpoint.samplerOverrides, supportedReasoningEfforts: null,
+    localEngine: false, samplerOverrides: endpoint.samplerOverrides, reasoning: UNKNOWN_REASONING_CAPABILITY,
   };
   const snapshot: AiSettingsSnapshot = {
     resolveTarget: () => target, thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false,

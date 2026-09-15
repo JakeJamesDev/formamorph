@@ -3,6 +3,7 @@ import { streamAiRequest } from './aiStream';
 import type { AiRequestSpec } from './aiRequestSpec';
 import { rejectedEndpointOverride } from './rejectedOverride';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import { UNKNOWN_REASONING_CAPABILITY } from '@/lib/reasoningEffort';
 
 function specFor(parameter: string, source: 'endpoint' | 'prompt' = 'endpoint'): AiRequestSpec {
   const samplerOverrides = defaultEndpointSamplerOverrides();
@@ -26,7 +27,7 @@ function specFor(parameter: string, source: 'endpoint' | 'prompt' = 'endpoint'):
     body,
     target: {
       endpointId: 'failed-target', url: 'https://example.test/v1/chat/completions', apiToken: '', model: 'test-model',
-      maxTokens: 400, localEngine: false, samplerOverrides, supportedReasoningEfforts: null,
+      maxTokens: 400, localEngine: false, samplerOverrides, reasoning: UNKNOWN_REASONING_CAPABILITY,
     },
     requestType: 'narration',
     samplerSources,
