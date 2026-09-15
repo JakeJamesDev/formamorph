@@ -574,9 +574,9 @@ export async function resolveReasoningCapability(
   // answers the reasons question alone; the levels and budget stay as the advertisements left them. Its
   // silence is never a no: the catalog holds only the ids that reason, so a miss falls through to the
   // sources below. A failed load says nothing and costs the chain nothing.
-  if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch, signal), target.model)) {
+  if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), target.model)) {
     const listed: ReasoningCapability = { reasons: true, levels: null, budget: null, sources: { reasons: 'catalog' } };
-    return gathered ? mergeReasoningCapability(gathered, listed) : listed;
+    return gathered ? mergeReasoningCapability(listed, gathered) : listed;
   }
   // What the replies already showed, which costs no request at all. It is asked only once no advertisement
   // named an answer, so a native yes or no is never overridden by what one reply happened to look like.

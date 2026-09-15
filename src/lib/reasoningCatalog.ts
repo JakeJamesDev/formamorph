@@ -19,11 +19,12 @@ export type ReasoningCatalog = ReadonlySet<string>;
 /** The fetch a load uses. Matches the resolver's, so the catalog rides the same injected fetch. */
 type CatalogFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
-/** Loads the catalog. The resolver takes this, so a test never reaches the network. */
-export type ReasoningCatalogLoader = (
-  doFetch: CatalogFetch,
-  signal?: AbortSignal,
-) => Promise<ReasoningCatalog | null>;
+/**
+ * Loads the catalog. The resolver takes this, so a test never reaches the network. It takes no abort
+ * signal: one session shares one load, so letting any single resolve cancel it would strand every other
+ * endpoint on a `null` the memo then keeps for the rest of the session.
+ */
+export type ReasoningCatalogLoader = (doFetch: CatalogFetch) => Promise<ReasoningCatalog | null>;
 
 /** One stored catalog with the time it was fetched. */
 interface StoredCatalog {
@@ -83,9 +84,10 @@ function readStoredCatalog(): ReasoningCatalog | null {
   return new Set(ids);
 }
 
-async function fetchCatalog(doFetch: CatalogFetch, signal?: AbortSignal): Promise<ReasoningCatalog | null> {
+async function fetchCatalog(doFetch: CatalogFetch): Promise<ReasoningCatalog | null> {
   try {
-    const res = await doFetch(REASONING_CATALOG_URL, { signal });
+    // No auth header: the catalog is a public file, and the endpoint's token is never its business.
+    const res = await doFetch(REASONING_CATALOG_URL);
     if (!res.ok) return null;
     const catalog = parseReasoningCatalog(await res.json());
     if (catalog) writeStorageJson('local', REASONING_CATALOG_STORAGE_KEY, { at: Date.now(), ids: [...catalog] });
@@ -100,8 +102,8 @@ async function fetchCatalog(doFetch: CatalogFetch, signal?: AbortSignal): Promis
  * session shares. A failed load answers `null` and is not stored, so the next session asks again. The first
  * caller's fetch serves every later one, since the catalog is the same public file whoever asks for it.
  */
-export const loadReasoningCatalog: ReasoningCatalogLoader = (doFetch, signal) => {
-  pending ??= (async () => readStoredCatalog() ?? await fetchCatalog(doFetch, signal))();
+export const loadReasoningCatalog: ReasoningCatalogLoader = (doFetch) => {
+  pending ??= (async () => readStoredCatalog() ?? await fetchCatalog(doFetch))();
   return pending;
 };
 
