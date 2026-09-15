@@ -745,4 +745,52 @@ describe('dialects — one spelling per row', () => {
       expect(speaks(optional, { promptReasoning: { narration: 'none' } })).toEqual({ reasoning: { effort: 'none' } });
     });
   });
+
+  /**
+   * Moonshot spells thinking two ways, and the model id picks which. These cases build the records the
+   * identity source produces, so they read as what a player on each Kimi model would actually send.
+   */
+  describe('moonshot — the model id decides the spelling and the switch', () => {
+    const onKimi = (record: Partial<ReasoningCapability>, dialect: ReasoningDialect) =>
+      speaking(dialect, {
+        reasoning: { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, budget: false, dialect, ...record },
+      });
+
+    /** k3: three rungs, no `none`, and no budget field to put a cap in. */
+    const k3 = () => onKimi({ levels: ['low', 'high', 'max'] }, 'moonshot-k3');
+    /** A k2 model, which takes no effort field at all. `offAllowed` is what separates k2.6 from the rest. */
+    const k2 = (offAllowed: boolean) => onKimi({ levels: [], offAllowed }, 'moonshot-k2');
+
+    it('sends the strength alone on k3, since the endpoint takes no budget', () => {
+      expect(speaks(k3())).toEqual({ reasoning_effort: 'high' });
+    });
+
+    // k3 always reasons, so there is no off field to send and a zero budget would be refused too.
+    it('sends nothing at all when a prompt is switched off on k3', () => {
+      expect(speaks(k3(), { promptReasoning: { narration: 'none' } })).toEqual({});
+    });
+
+    it('switches k2.6 off through the thinking object, which is the only spelling it takes', () => {
+      expect(speaks(k2(true), { promptReasoning: { narration: 'none' } }))
+        .toEqual({ thinking: { type: 'disabled' } });
+    });
+
+    /**
+     * The case the record answers and the dialect row cannot: k2-thinking and k2.7-code share k2.6's
+     * spelling but error on `disabled`. A switched-off prompt there must send no thinking object at all,
+     * even though the row beside it names one.
+     */
+    it('sends no thinking object on a k2 model that errors on disabled', () => {
+      expect(speaks(k2(false), { promptReasoning: { narration: 'none' } })).toEqual({});
+    });
+
+    // The locked switch reads as on, and a kept strength must not leak out as an effort field either: no k2
+    // model takes one.
+    it('sends no effort field on a refuse-off k2 model even with a strength kept', () => {
+      expect(speaks(k2(false), {
+        promptReasoning: { narration: 'none' },
+        keptReasoning: { prompts: { narration: { enabled: false, level: 'low' } } },
+      })).toEqual({});
+    });
+  });
 });
