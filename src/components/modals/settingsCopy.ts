@@ -636,6 +636,16 @@ export const SETTINGS_OPTIONS = {
 } as const satisfies Record<string, readonly SettingOptionCopy[]>;
 
 /**
+ * The two short notes a Native Reasoning control shows in place of, or under, its switch. Which one applies
+ * is the capability record's answer: a model that cannot reason, or an endpoint that refuses to switch
+ * reasoning off.
+ */
+export const REASONING_NOTES = {
+  never: 'This model doesn’t support reasoning, so there’s nothing to configure.',
+  always: 'This model always reasons, so it can’t be switched off.',
+} as const;
+
+/**
  * Help for the native-reasoning levels, keyed by value rather than listed as options: which levels appear
  * is decided per endpoint by `reasoningTabs`, which owns their short tab labels. Held to the same rules as
  * an option's `help`. The caveat that any of this needs a reasoning model is a property of the control, so

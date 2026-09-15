@@ -11,10 +11,11 @@ import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
+import { reasoningDialectTakesBudget, reasoningDialectTakesLevel, reasoningOffRejected } from '@/lib/reasoningDialect';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -273,18 +274,28 @@ type ReasoningStrength<L extends string> =
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
  * and engine share; what sits beside it depends on the engine. `id` labels the switch for assistive tech.
  */
-function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, strength, disabled }: {
+function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, strength, disabled, lockedOn }: {
   id: string;
   enabled: boolean;
   onEnabledChange: (on: boolean) => void;
   strength: ReasoningStrength<L>;
   disabled?: boolean;
+  /** The endpoint refuses to switch reasoning off, so the switch reads checked and takes no clicks. The
+   *  strength beside it stays live, and applies on every prompt whose own switch is on. A prompt left off
+   *  sends no level at all, so the model spends its own default there. */
+  lockedOn?: boolean;
 }) {
-  const inert = disabled || !enabled;
+  const inert = disabled || !(enabled || lockedOn);
   return (
     <div className="flex items-center gap-3">
       <span className="flex h-9 shrink-0 items-center">
-        <Checkbox id={id} checked={enabled} disabled={disabled} onCheckedChange={(c) => onEnabledChange(c === true)} aria-label={SETTINGS_COPY.nativeReasoning.label} />
+        <Checkbox
+          id={id}
+          checked={lockedOn || enabled}
+          disabled={disabled || lockedOn}
+          onCheckedChange={(c) => onEnabledChange(c === true)}
+          aria-label={SETTINGS_COPY.nativeReasoning.label}
+        />
       </span>
       {strength.kind === 'level' ? (
         <Select value={strength.value} onValueChange={(v) => strength.onChange(v as L)} disabled={inert}>
@@ -318,7 +329,7 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
  * engine ignores the effort field, so it shows the slider alone (`level` false).
  */
-function PromptReasoningField({ setting, onChange, options, budget, level, disabled }: {
+function PromptReasoningField({ setting, onChange, options, budget, level, lockedOn, disabled }: {
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
@@ -326,9 +337,11 @@ function PromptReasoningField({ setting, onChange, options, budget, level, disab
   budget: { value: number; set: (v: number) => void } | null;
   /** Whether the target honors the effort level, so the dropdown is worth showing. */
   level: boolean;
+  /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
+  lockedOn?: boolean;
   disabled?: boolean;
 }) {
-  const inert = disabled || !setting.enabled;
+  const inert = disabled || !(setting.enabled || lockedOn);
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
@@ -348,8 +361,10 @@ function PromptReasoningField({ setting, onChange, options, budget, level, disab
         enabled={setting.enabled}
         onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
         disabled={disabled}
+        lockedOn={lockedOn}
         strength={level ? levelStrength : (budgetStrength ?? levelStrength)}
       />
+      {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
       {level && budgetStrength && (
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
@@ -1264,17 +1279,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
   // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
   const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
+  // The Output row reads the ACTIVE endpoint's record, which is a different target from the one a pinned
+  // prompt resolves to.
+  const activeReasoningAlwaysOn = reasoningOffRejected(reasoningCapability?.dialect ?? 'unknown');
   const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind) && (promptLocalEngine || !noNativeReasoning);
   const reasoningControl = reasoningApplicable
     ? {
         setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
         onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
         options: promptReasoningLevelOptions(promptReasoningCapability, (promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind)).level),
-        budget: promptReasoningCapability.budget
+        lockedOn: reasoningOffRejected(promptReasoningCapability.dialect),
+        // Both halves follow the dialect's row: the slider where it names a budget field and the record says
+        // the endpoint takes one, the dropdown where it carries an effort literal. The built-in engine's row
+        // names no level field, so its dropdown would be inert and is not drawn.
+        budget: promptReasoningCapability.budget && reasoningDialectTakesBudget(promptReasoningCapability.dialect)
           ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
           : null,
-        // The built-in engine ignores reasoning_effort, so its dropdown would be inert; every other target sends it.
-        level: !promptLocalEngine,
+        level: reasoningDialectTakesLevel(promptReasoningCapability.dialect),
       }
     : null;
 
@@ -1690,7 +1711,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {advanced && noNativeReasoning && (
                 <SubGroup>
                 <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
-                  <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
+                  <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
                 </Row>
                 </SubGroup>
               )}
@@ -1703,6 +1724,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       id="nativeReasoning"
                       enabled={nativeReasoning.enabled}
                       onEnabledChange={(enabled) => setNativeReasoning({ ...nativeReasoning, enabled })}
+                      lockedOn={activeReasoningAlwaysOn}
                       strength={{
                         kind: 'level',
                         value: nativeReasoning.level,
@@ -1710,7 +1732,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                         onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
                       }}
                     />
-                    <p className="mt-2 text-helper text-muted-foreground">{REASONING_EFFORT_HELP[reasoningEffort]}</p>
+                    <p className="mt-2 text-helper text-muted-foreground">
+                      {activeReasoningAlwaysOn ? REASONING_NOTES.always : REASONING_EFFORT_HELP[reasoningEffort]}
+                    </p>
                   </div>
                 </Row>
                 </SubGroup>

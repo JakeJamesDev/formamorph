@@ -376,12 +376,15 @@ describe('SettingsContext: the bundled engine as an endpoint', () => {
     const summary = result.current.resolveEndpointForKind('summary');
     expect(summary.localEngine).toBe(true);
     expect(summary.url).toContain('8977');
-    // The engine always takes a token budget, so its record says so whatever detection found.
+    // The engine always takes a token budget and always spells it its own way, whatever detection found.
     expect(summary.reasoning.budget).toBe(true);
-    // Everything else still goes to the active endpoint, where the budget question is nobody's answer yet.
+    expect(summary.reasoning.dialect).toBe('engine');
+    expect(summary.reasoning.sources.dialect).toBe('engine');
+    // Everything else still goes to the active endpoint, where neither question is anybody's answer yet.
     const narration = result.current.resolveEndpointForKind('narration');
     expect(narration.localEngine).toBe(false);
     expect(narration.reasoning.budget).toBeNull();
+    expect(narration.reasoning.dialect).toBe('unknown');
   });
 
   it('stops wanting the engine once nothing references it', () => {

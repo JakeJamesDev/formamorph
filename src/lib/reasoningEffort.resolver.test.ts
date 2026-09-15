@@ -192,6 +192,77 @@ describe('gateway model list', () => {
     const record = await resolveReasoningCapability(TARGET, doFetch);
     expect(record).toBeNull();
   });
+
+  // vLLM and Aphrodite publish `max_model_len` on each entry, the key the context-length lookup already
+  // reads for them. It names the dialect and nothing else: the reasoning parser is a server-side option no
+  // list advertises, so the budget question stays open and the chain carries on.
+  it('names the vllm dialect from an entry carrying max_model_len', async () => {
+    const { doFetch } = backend({ [OPENAI]: entry({ max_model_len: 10750 }) });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(record?.dialect).toBe('vllm');
+    expect(record?.sources.dialect).toBe('native');
+    expect(record?.budget).toBeNull();
+  });
+
+  it('reads the Aphrodite shape as vllm too, entry extras and all', async () => {
+    const { doFetch } = backend({
+      [OPENAI]: entry({ root: 'm', parent: null, permission: [{ id: 'p' }], max_model_len: 10750, owned_by: 'aphrodite' }),
+    });
+    expect((await resolveReasoningCapability(TARGET, doFetch))?.dialect).toBe('vllm');
+  });
+
+  it('keeps the vllm dialect while a later source answers the reasons question', async () => {
+    const { doFetch } = backend({
+      [OPENAI]: entry({ max_model_len: 10750 }),
+      [COMPLETIONS]: { status: 200, body: {} },
+    });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(record?.dialect).toBe('vllm');
+    expect(record?.levels).toEqual([...SAFE_REASONING_EFFORTS]);
+    expect(record?.sources.levels).toBe('probe');
+  });
+
+  it('leaves the dialect unknown on a gateway list, which says nothing about the spelling', async () => {
+    const { doFetch } = backend({
+      [OPENAI]: entry({ reasoning: { mandatory: false, supported_efforts: ['high', 'low', 'none'] } }),
+    });
+    const record = await resolveReasoningCapability(TARGET, doFetch);
+    expect(record?.dialect).toBe('unknown');
+    expect(record?.sources.dialect).toBeUndefined();
+  });
+});
+
+describe('the dialect each existing source names', () => {
+  it('marks LM Studio from its native list, on a reasoning model and on one that does not reason', async () => {
+    const reasoning = backend({
+      [LM_STUDIO]: { status: 200, body: { models: [{ key: 'm', capabilities: { reasoning: { allowed_options: ['off', 'high'] } } }] } },
+    });
+    const listed = await resolveReasoningCapability(TARGET, reasoning.doFetch);
+    expect(listed?.dialect).toBe('lmstudio');
+    expect(listed?.sources.dialect).toBe('native');
+
+    resetProbeMemo();
+    const plain = backend({ [LM_STUDIO]: { status: 200, body: { models: [{ key: 'm', capabilities: { vision: false } }] } } });
+    const ruledOut = await resolveReasoningCapability(TARGET, plain.doFetch);
+    expect(ruledOut).toMatchObject({ reasons: false, dialect: 'lmstudio' });
+  });
+
+  it('leaves Ollama and llama.cpp unknown, since neither names a spelling', async () => {
+    const ollama = backend({ [OLLAMA]: { status: 200, body: { capabilities: ['completion', 'thinking'] } } });
+    expect((await resolveReasoningCapability(TARGET, ollama.doFetch))?.dialect).toBe('unknown');
+
+    resetProbeMemo();
+    const llama = backend({
+      [PROPS]: { status: 200, body: { chat_template_caps: { supports_reasoning_effort: true } } },
+      [COMPLETIONS]: { status: 200, body: {} },
+    });
+    expect((await resolveReasoningCapability(TARGET, llama.doFetch))?.dialect).toBe('unknown');
+  });
+
+  it('leaves the dialect unknown when only the probe answered', async () => {
+    const { doFetch } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
+    expect((await resolveReasoningCapability(TARGET, doFetch))?.dialect).toBe('unknown');
+  });
 });
 
 describe('source identification', () => {
@@ -414,6 +485,7 @@ describe('merging a fresh answer onto a stored record', () => {
     reasons: null,
     levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
     budget: null,
+    dialect: 'unknown',
     sources: { levels: 'cache' },
   };
 
@@ -429,14 +501,14 @@ describe('merging a fresh answer onto a stored record', () => {
   });
 
   it('keeps a stored answer the fresh record does not carry', () => {
-    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, sources: { reasons: 'native', levels: 'native', budget: 'native' } };
-    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, sources: {} };
+    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', sources: {} };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(stored);
   });
 
   it('takes every fresh answer over the stored one', () => {
-    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, sources: { reasons: 'probe', levels: 'probe' } };
-    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, sources: { reasons: 'native', levels: 'native', budget: 'native' } };
+    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', sources: { reasons: 'probe', levels: 'probe' } };
+    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(fresh);
   });
 });

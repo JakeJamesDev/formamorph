@@ -1104,11 +1104,17 @@ function useProvideSettings() {
       : resolved.presetId === DEFAULT_TEXT_PRESET_ID
         ? 'Default'
         : textPresetStore.presets.find((p) => p.id === resolved.presetId)?.name ?? 'Default';
-    // The bundled engine always takes a token budget, whatever detection says about the rest of the record.
+    // The bundled engine always takes a token budget and always spells it its own way, whatever detection
+    // says about the rest of the record it shares with the active endpoint.
     const withEngineBudget = (record: ReasoningCapability | null): ReasoningCapability => {
       const base = record ?? UNKNOWN_REASONING_CAPABILITY;
       if (!resolved.localEngine) return base;
-      return { ...base, budget: true, sources: { ...base.sources, budget: 'engine' } };
+      return {
+        ...base,
+        budget: true,
+        dialect: 'engine',
+        sources: { ...base.sources, budget: 'engine', dialect: 'engine' },
+      };
     };
     if (resolved.presetId === null) {
       return { ...resolved, url, presetName, contextWindow, reasoning: withEngineBudget(reasoningCapability) };

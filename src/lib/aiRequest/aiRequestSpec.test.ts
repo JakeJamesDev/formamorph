@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildAiRequestSpec, buildRequestBody,
-  type AiCall, type AiEndpointTarget, type AiSettingsSnapshot,
+  type AiCall, type AiEndpointTarget, type AiRequestBody, type AiSettingsSnapshot,
 } from './aiRequestSpec';
+import type { ReasoningDialect } from '@/lib/reasoningDialect';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import {
   reasoningCapabilityFromLevels, UNKNOWN_REASONING_CAPABILITY,
@@ -24,8 +25,8 @@ const localEngine = (over: Partial<AiEndpointTarget> = {}): AiEndpointTarget => 
   maxTokens: 1000,
   localEngine: true,
   samplerOverrides: defaultEndpointSamplerOverrides(),
-  // The bundled engine always takes a token budget; nothing has answered the other two questions.
-  reasoning: { ...UNKNOWN_REASONING_CAPABILITY, budget: true, sources: { budget: 'engine' } },
+  // The bundled engine always takes a token budget and names its own dialect; nothing has answered the rest.
+  reasoning: { ...UNKNOWN_REASONING_CAPABILITY, budget: true, dialect: 'engine', sources: { budget: 'engine', dialect: 'engine' } },
   ...over,
 });
 
@@ -299,7 +300,7 @@ describe('reasoning split — budget where the record says, effort everywhere el
     // The engine shares the active endpoint's record, so a probe against that endpoint can fill in levels.
     // The engine ignores the hint and caps by tokens, so the levels must not put one on the wire.
     const engineWithLevels = localEngine({
-      reasoning: { ...accepts('none', 'low', 'high'), reasons: true, budget: true },
+      reasoning: { ...accepts('none', 'low', 'high'), reasons: true, budget: true, dialect: 'engine' },
     });
     const snap = snapshot(engineWithLevels, {
       reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { narration: 40 },
@@ -408,7 +409,7 @@ describe('reasoning split — budget where the record says, effort everywhere el
 
   it('omits the effort on a model the record says does not reason, even where levels are listed', () => {
     const nonReasoning: ReasoningCapability = {
-      reasons: false, levels: ['none', 'low', 'high'], budget: null, sources: { reasons: 'native' },
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', sources: { reasons: 'native' },
     };
     const snap = snapshot(external({ reasoning: nonReasoning }), { reasoningEngaged: true, reasoningEffort: 'high' });
     expect(buildRequestBody(snap, call())).not.toHaveProperty('reasoning_effort');
@@ -509,5 +510,135 @@ describe('the whole spec', () => {
     const snap = snapshot(external(), { resolveTarget: () => { calls += 1; return external(); } });
     buildAiRequestSpec(snap, call());
     expect(calls).toBe(1);
+  });
+});
+
+/**
+ * One row of the dialect table per case. The same resolved choice — the same percent, the same level, the
+ * same switch — goes out under whichever keys the target's dialect names, so these read as "what would this
+ * endpoint receive".
+ */
+describe('dialects — one spelling per row', () => {
+  /** The reasoning slice of a built body, so a case asserts the whole slice rather than one key of it. */
+  const reasoningSlice = (body: AiRequestBody): Record<string, unknown> => {
+    const { model: _m, messages: _msg, stream: _s, max_tokens: _mt, stop: _stop, ...rest } = body;
+    return rest;
+  };
+
+  /** A target that reasons and takes a budget, differing from the next only in the dialect on its record. */
+  const speaking = (dialect: ReasoningDialect, over: Partial<AiEndpointTarget> = {}): AiEndpointTarget =>
+    external({
+      maxTokens: 1000,
+      reasoning: { ...accepts('none', 'low', 'medium', 'high'), reasons: true, budget: true, dialect },
+      ...over,
+    });
+
+  const speaks = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = {}) =>
+    reasoningSlice(buildRequestBody(
+      snapshot(target, { reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { narration: 40 }, ...over }),
+      call(),
+    ));
+
+  it.each([
+    ['unknown', { thinking_budget_tokens: 400, reasoning_effort: 'high' }],
+    ['engine', { thinking_budget_tokens: 400 }],
+    ['openai', { reasoning_effort: 'high' }],
+    ['lmstudio', { thinking_budget_tokens: 400, reasoning_effort: 'high' }],
+    ['vllm', { thinking_token_budget: 400, reasoning_effort: 'high' }],
+    ['openrouter', { reasoning: { max_tokens: 400, effort: 'high' } }],
+    ['anthropic', { thinking: { budget_tokens: 400, type: 'enabled' } }],
+    ['google-2.5', { google: { thinking_config: { thinking_budget: 400 } } }],
+    ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }],
+    ['moonshot-k3', { reasoning_effort: 'high' }],
+    ['moonshot-k2', {}],
+  ] as const)('spells a 40%% budget at High the %s way', (dialect, expected) => {
+    expect(speaks(speaking(dialect))).toEqual(expected);
+  });
+
+  it.each([
+    ['unknown', { thinking_budget_tokens: 0, reasoning_effort: 'none' }],
+    ['engine', { thinking_budget_tokens: 0 }],
+    ['openai', { reasoning_effort: 'none' }],
+    ['lmstudio', { thinking_budget_tokens: 0, reasoning_effort: 'none' }],
+    ['vllm', { reasoning_effort: 'none' }],
+    ['openrouter', { reasoning: { effort: 'none' } }],
+    ['anthropic', { thinking: { type: 'disabled' } }],
+    ['google-2.5', { reasoning_effort: 'none' }],
+    ['google-3', {}],
+    ['moonshot-k3', {}],
+    ['moonshot-k2', { thinking: { type: 'disabled' } }],
+  ] as const)('spells a switched-off prompt the %s way', (dialect, expected) => {
+    expect(speaks(speaking(dialect), { promptReasoning: { narration: 'none' } })).toEqual(expected);
+  });
+
+  /**
+   * A dialect names the spelling; the record still says whether the field may be sent at all. A vLLM server
+   * is marked from its model list before anything has answered the levels question, and the hosted Default
+   * is one of those, so a switched-off prompt there must stay silent rather than post `reasoning_effort`.
+   */
+  it('stays silent on a dialect whose record has not cleared the none literal', () => {
+    const unanswered = speaking('vllm', { reasoning: { ...UNKNOWN_REASONING_CAPABILITY, dialect: 'vllm' } });
+    expect(speaks(unanswered, { promptReasoning: { narration: 'none' } })).toEqual({});
+    expect(speaks(unanswered)).toEqual({});
+  });
+
+  it('stays silent on a model the record rules out, off spelling or not', () => {
+    for (const dialect of ['vllm', 'anthropic', 'moonshot-k2', 'unknown'] as const) {
+      const ruledOut = speaking(dialect, {
+        reasoning: { reasons: false, levels: [], budget: true, dialect, sources: { reasons: 'native' } },
+      });
+      expect(speaks(ruledOut, { promptReasoning: { narration: 'none' } })).toEqual({});
+    }
+  });
+
+  it('sends nothing at all where the dialect rejects off, rather than a field the model refuses', () => {
+    for (const dialect of ['google-3', 'moonshot-k3'] as const) {
+      expect(speaks(speaking(dialect), { promptReasoning: { narration: 'none' } })).toEqual({});
+    }
+  });
+
+  it('keeps the Anthropic budget one token under the output cap it would otherwise exceed', () => {
+    const tight = speaking('anthropic', { maxTokens: 300 });
+    // 100% of 300 would be the whole cap, which the endpoint rejects.
+    expect(speaks(tight, { promptReasoningBudget: { narration: 100 } }))
+      .toEqual({ thinking: { budget_tokens: 299, type: 'enabled' } });
+    // A budget already under the cap is sent as it stands.
+    expect(speaks(tight, { promptReasoningBudget: { narration: 50 } }))
+      .toEqual({ thinking: { budget_tokens: 150, type: 'enabled' } });
+  });
+
+  it('leaves every other dialect free to spend the whole cap', () => {
+    expect(speaks(speaking('lmstudio', { maxTokens: 300 }), { promptReasoningBudget: { narration: 100 } }))
+      .toEqual({ thinking_budget_tokens: 300, reasoning_effort: 'high' });
+  });
+
+  it('maps a Google 2.5 level onto the documented thinking budget where no budget of the player\'s went out', () => {
+    const noBudget = speaking('google-2.5', {
+      reasoning: { ...accepts('none', 'low', 'medium', 'high'), reasons: true, budget: null, dialect: 'google-2.5' },
+    });
+    expect(speaks(noBudget, { reasoningEffort: 'low' })).toEqual({ google: { thinking_config: { thinking_budget: 1024 } } });
+    expect(speaks(noBudget, { reasoningEffort: 'medium' })).toEqual({ google: { thinking_config: { thinking_budget: 8192 } } });
+    expect(speaks(noBudget)).toEqual({ google: { thinking_config: { thinking_budget: 24576 } } });
+  });
+
+  it.each([
+    ['openai', { reasoning_effort: 'high' }],
+    ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }],
+    ['moonshot-k3', { reasoning_effort: 'high' }],
+    ['moonshot-k2', {}],
+  ] as const)('sends %s no budget at all, since its row names no field for one', (dialect, expected) => {
+    expect(speaks(speaking(dialect))).toEqual(expected);
+  });
+
+  /**
+   * The compatibility contract. Every case outside this block builds its target from `external()`, whose
+   * record names no dialect, so the whole suite already pins the unknown row's body; this states its keys
+   * outright so the row is never edited by accident.
+   */
+  it('keeps the unknown row spelling the plain fields, which is what every unnamed endpoint receives', () => {
+    expect(speaks(speaking('unknown'))).toEqual({ thinking_budget_tokens: 400, reasoning_effort: 'high' });
+    expect(speaks(speaking('unknown'), { promptReasoning: { narration: 'none' } }))
+      .toEqual({ thinking_budget_tokens: 0, reasoning_effort: 'none' });
+    expect(external().reasoning.dialect).toBe('unknown');
   });
 });

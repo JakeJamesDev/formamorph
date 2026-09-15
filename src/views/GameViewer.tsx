@@ -2662,7 +2662,7 @@ const GameViewer = ({
             // The sidecar indexes the messages the caller stated; the wire list prepends the system
             // message, which `toAnatomyBlocks` accounts for when the viewer lines the two up.
             anatomy,
-            endpoint: toDebugEndpoint(target, spec.body),
+            endpoint: toDebugEndpoint(target, spec.body, spec.target.reasoning.dialect),
           },
         ],
       };
@@ -2846,7 +2846,7 @@ const GameViewer = ({
       const rawContent = content.trim();
       // Teach the capability record what this reply showed. Every request type counts, so a model is judged
       // on whatever it answered most recently rather than on narration alone.
-      noteReasoningReply(spec.target, reasoningText, rawContent, spec.body.reasoning_effort ?? null);
+      noteReasoningReply(spec.target, reasoningText, rawContent, spec.reasoningLevel ?? null);
       let finalContent = stripReasoning(content).trim();
       // On a mid-sentence truncation (hit the token cap), trim back to the last complete sentence.
       if (requestType === "narration") {
