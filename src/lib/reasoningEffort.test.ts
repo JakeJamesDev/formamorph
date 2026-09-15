@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, SAFE_REASONING_EFFORTS, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
+import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
 import type { AIRequestType } from '@/types';
 
 const ALL_KINDS: AIRequestType[] = [
@@ -55,26 +55,6 @@ describe('nativeReasoningSuppressed', () => {
   });
 });
 
-describe('reasoningTabs', () => {
-  it('always leads with Default, then the supported levels in canonical order', () => {
-    const tabs = reasoningTabs(['high', 'none', 'low']); // out of order in
-    expect(tabs.map((t) => t.value)).toEqual(['auto', 'none', 'low', 'high']);
-    expect(tabs[0].label).toBe('Default');
-  });
-
-  it('falls back to the universal safe levels when support is unknown', () => {
-    const tabs = reasoningTabs(null);
-    expect(tabs.map((t) => t.value)).toEqual(['auto', ...SAFE_REASONING_EFFORTS]);
-  });
-
-  it('surfaces backend-specific levels (minimal, xhigh, max) when the endpoint accepts them', () => {
-    const cloud = reasoningTabs(['none', 'minimal', 'low', 'medium', 'high']);
-    expect(cloud.map((t) => t.value)).toContain('minimal');
-    const ollama = reasoningTabs(['none', 'low', 'medium', 'high', 'max']);
-    expect(ollama.map((t) => t.label)).toContain('Max');
-  });
-});
-
 describe('per-prompt reasoning', () => {
   it('ships tiered defaults: narration Global, planning and memory passes Low, parsers and choices None', () => {
     expect(defaultPromptReasoning('narration')).toBe('global');
@@ -86,11 +66,23 @@ describe('per-prompt reasoning', () => {
     }
   });
 
-  it('leads the prompt tabs with Global, then the supported levels (no Default)', () => {
-    const tabs = reasoningPromptTabs(['none', 'low', 'high']);
-    expect(tabs[0]).toEqual({ value: 'global', label: 'Global' });
-    expect(tabs.map((t) => t.value)).not.toContain('auto');
-    expect(tabs.map((t) => t.value)).toEqual(['global', 'none', 'low', 'high']);
+  it('ships the switch shape: narration on at Global, tiers on at Low, the rest off remembering Global', () => {
+    expect(defaultPromptReasoningSetting('narration')).toEqual({ enabled: true, level: 'global' });
+    expect(defaultPromptReasoningSetting('director')).toEqual({ enabled: true, level: 'low' });
+    expect(defaultPromptReasoningSetting('choices')).toEqual({ enabled: false, level: 'global' });
+  });
+
+  it('lists a prompt\'s strengths as Global, Model Default, then the accepted levels in order, never none', () => {
+    const opts = promptReasoningLevelOptions(['high', 'none', 'low']); // out of order in
+    expect(opts.map((o) => o.value)).toEqual(['global', 'auto', 'low', 'high']);
+    expect(opts.map((o) => o.label)).toEqual(['Global', 'Model Default', 'Low', 'High']);
+    expect(promptReasoningLevelOptions(null).map((o) => o.value)).toEqual(['global', 'auto', 'low', 'medium', 'high']); // safe fallback
+  });
+
+  it('lists the endpoint-wide strengths with full-word labels for backend-specific levels', () => {
+    const cloud = reasoningLevelOptions(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+    expect(cloud.map((o) => o.label)).toEqual(['Model Default', 'Minimal', 'Low', 'Medium', 'High', 'Extra High', 'Max']);
+    expect(cloud.map((o) => o.value)).not.toContain('none');
   });
 
   it('resolves Global to the endpoint-wide effort, explicit choices to themselves', () => {
@@ -116,43 +108,59 @@ describe('per-prompt reasoning', () => {
 });
 
 describe('reasoning budget (local engine)', () => {
-  it('ships narration at 40%, the planning and memory passes at 25%, the rest at 0%', () => {
+  it('ships narration at 40% and every other prompt at 25%; the switch, not the %, decides off', () => {
     expect(defaultReasoningBudgetPct('narration')).toBe(40);
-    for (const kind of ['thinking', 'director', 'character', 'storyboard', 'summary', 'diary'] as const) {
-      expect(defaultReasoningBudgetPct(kind)).toBe(25);
-    }
-    expect(defaultReasoningBudgetPct('choices')).toBe(0);
-    expect(defaultReasoningBudgetPct('statUpdates')).toBe(0);
+    for (const kind of ALL_KINDS.filter((k) => k !== 'narration')) expect(defaultReasoningBudgetPct(kind)).toBe(25);
   });
 
-  it('resolves every kind to its stored/default %, clamped', () => {
+  it('resolves every kind to its stored/default %, clamped to the slider floor and 100', () => {
     expect(resolveReasoningBudgetPct('narration', {})).toBe(40);
     expect(resolveReasoningBudgetPct('narration', { narration: 20 })).toBe(20);
-    expect(resolveReasoningBudgetPct('choices', {})).toBe(0);
     expect(resolveReasoningBudgetPct('choices', { choices: 30 })).toBe(30);
     expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(90);
-    expect(resolveReasoningBudgetPct('statUpdates', { statUpdates: -5 })).toBe(0); // clamp low
+    expect(resolveReasoningBudgetPct('statUpdates', { statUpdates: 0 })).toBe(MIN_REASONING_BUDGET_PCT); // clamp low
     expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(100); // clamp high
   });
 
-  it('converts the % to a token cap against max output', () => {
-    expect(reasoningBudgetBody('off', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 }); // 40% of 500
-    expect(reasoningBudgetBody('off', 'narration', { narration: 20 }, 500)).toEqual({ thinking_budget_tokens: 100 });
-    expect(reasoningBudgetBody('off', 'choices', {}, 500)).toEqual({ thinking_budget_tokens: 0 }); // choices off by default
-    expect(reasoningBudgetBody('off', 'choices', { choices: 30 }, 400)).toEqual({ thinking_budget_tokens: 120 });
-    expect(reasoningBudgetBody('off', 'summary', { summary: 50 }, 500)).toEqual({ thinking_budget_tokens: 250 });
-    expect(reasoningBudgetBody('off', 'director', {}, 400)).toEqual({ thinking_budget_tokens: 100 }); // 25% tier
+  it('converts the % to a token cap against max output for any resolved level', () => {
+    expect(reasoningBudgetBody('auto', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 }); // 40% of 500
+    expect(reasoningBudgetBody('high', 'narration', { narration: 20 }, 500)).toEqual({ thinking_budget_tokens: 100 });
+    expect(reasoningBudgetBody('low', 'choices', { choices: 30 }, 400)).toEqual({ thinking_budget_tokens: 120 });
+    expect(reasoningBudgetBody('low', 'director', {}, 400)).toEqual({ thinking_budget_tokens: 100 }); // 25% default
   });
 
-  it('keeps each pass its own budget under the guided modes', () => {
-    expect(reasoningBudgetBody('staged', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 });
-    expect(reasoningBudgetBody('staged', 'director', {}, 400)).toEqual({ thinking_budget_tokens: 100 });
-    expect(reasoningBudgetBody('precall', 'thinking', { thinking: 50 }, 400)).toEqual({ thinking_budget_tokens: 200 });
-    expect(reasoningBudgetBody('inline', 'summary', {}, 400)).toEqual({ thinking_budget_tokens: 100 });
+  it('sends 0 when the resolved choice is none, whatever % is stored', () => {
+    expect(reasoningBudgetBody('none', 'narration', { narration: 40 }, 500)).toEqual({ thinking_budget_tokens: 0 });
+    expect(reasoningBudgetBody('none', 'choices', {}, 500)).toEqual({ thinking_budget_tokens: 0 });
+  });
+});
+
+describe('reasoning settings (switch + strength)', () => {
+  it('resolves to the level while on and to none while off', () => {
+    expect(resolveReasoningSetting({ enabled: true, level: 'high' })).toBe('high');
+    expect(resolveReasoningSetting({ enabled: true, level: 'auto' })).toBe('auto');
+    expect(resolveReasoningSetting({ enabled: false, level: 'high' })).toBe('none');
+    expect(resolvePromptReasoningSetting({ enabled: true, level: 'global' })).toBe('global');
+    expect(resolvePromptReasoningSetting({ enabled: false, level: 'global' })).toBe('none');
   });
 
-  it('forces 0 on Inline narration (local engine ignores reasoning_effort, so this is how it suppresses)', () => {
-    expect(reasoningBudgetBody('inline', 'narration', { narration: 40 }, 500)).toEqual({ thinking_budget_tokens: 0 });
+  it('reads the current object and rejects a malformed one', () => {
+    expect(parseReasoningSetting({ enabled: false, level: 'medium' })).toEqual({ enabled: false, level: 'medium' });
+    expect(parseReasoningSetting({ enabled: 'yes', level: 'medium' })).toBeNull();
+    expect(parseReasoningSetting({ enabled: true, level: 'none' })).toBeNull(); // none is the switch, not a level
+    expect(parseReasoningSetting({ enabled: true, level: 'global' })).toBeNull(); // global is prompt-only
+    expect(parsePromptReasoningSetting({ enabled: true, level: 'global' })).toEqual({ enabled: true, level: 'global' });
+    expect(parsePromptReasoningSetting(42)).toBeNull();
+  });
+
+  it('folds the plain string written before the switch existed: none → off, a level → on at that level', () => {
+    expect(parseReasoningSetting('none')).toEqual({ enabled: false, level: 'auto' });
+    expect(parseReasoningSetting('auto')).toEqual({ enabled: true, level: 'auto' });
+    expect(parseReasoningSetting('xhigh')).toEqual({ enabled: true, level: 'xhigh' });
+    expect(parseReasoningSetting('bogus')).toBeNull();
+    expect(parsePromptReasoningSetting('none')).toEqual({ enabled: false, level: 'global' });
+    expect(parsePromptReasoningSetting('global')).toEqual({ enabled: true, level: 'global' });
+    expect(parsePromptReasoningSetting('low')).toEqual({ enabled: true, level: 'low' });
   });
 });
 

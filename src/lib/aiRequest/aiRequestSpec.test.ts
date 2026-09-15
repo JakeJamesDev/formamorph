@@ -218,6 +218,11 @@ describe('reasoning split — budget on the engine, effort outside it', () => {
     expect(buildRequestBody(snap, call({ maxTokensOverride: 200 }))).toMatchObject({ thinking_budget_tokens: 100 });
   });
 
+  it('zeroes the engine budget for a Global prompt when the endpoint-wide switch is off', () => {
+    const snap = snapshot(localEngine(), { reasoningEffort: 'none', promptReasoning: { narration: 'global' }, promptReasoningBudget: { narration: 40 } });
+    expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 0 });
+  });
+
   it('zeroes the engine budget for Inline narration, which writes its own <think> block', () => {
     const snap = snapshot(localEngine(), { thinkingMode: 'inline', promptReasoningBudget: { narration: 40 } });
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 0 });

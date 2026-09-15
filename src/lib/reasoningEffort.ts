@@ -16,33 +16,101 @@ export const REASONING_CANDIDATES: readonly ReasoningEffortField[] = [
 /** Universal fallback shown before detection runs (or when it can't) — accepted by every backend tested. */
 export const SAFE_REASONING_EFFORTS: readonly ReasoningEffortField[] = ['none', 'low', 'medium', 'high'];
 
-/** Short tab labels; `auto` renders as "Default" (send nothing). */
-const REASONING_LABELS: Record<ReasoningEffort, string> = {
-  auto: 'Default', none: 'None', minimal: 'Min', low: 'Low', medium: 'Med', high: 'High', xhigh: 'XHigh', max: 'Max',
+/** A prompt's resolved reasoning choice: `global` inherits the endpoint-wide level (Settings → Output →
+ *  Native Reasoning); otherwise it's an explicit level, `auto` included (Model Default, send no hint). `none`
+ *  is the resolved form of a switched-off setting. */
+export type PromptReasoning = 'global' | ReasoningEffort;
+
+/** A strength the control can pick while on. `auto` is Model Default: send no hint, the endpoint decides. */
+export type ReasoningLevel = 'auto' | Exclude<ReasoningEffortField, 'none'>;
+/** A prompt's strength while on: its own level, or `global` to follow the endpoint-wide setting. */
+export type PromptReasoningLevel = 'global' | ReasoningLevel;
+
+/** The stored shape of the endpoint-wide Native Reasoning control: an on/off switch plus the strength, which
+ *  is kept while off so switching back on restores it. */
+export interface ReasoningSetting { enabled: boolean; level: ReasoningLevel }
+/** The stored shape of one prompt's Native Reasoning control. Same switch-plus-strength as the global one. */
+export interface PromptReasoningSetting { enabled: boolean; level: PromptReasoningLevel }
+
+/** Shipped endpoint-wide setting: on, Model Default. */
+export const DEFAULT_REASONING_SETTING: ReasoningSetting = { enabled: true, level: 'auto' };
+
+const REASONING_LEVELS: readonly ReasoningLevel[] = ['auto', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+
+/** Full-word strength labels for the dropdowns, where a short tab label no longer has to fit. */
+const REASONING_LEVEL_LABELS: Record<PromptReasoningLevel, string> = {
+  global: 'Global', auto: 'Model Default', minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Extra High', max: 'Max',
 };
 
-/**
- * The tabs to render for the Native Reasoning control: always "Default" (omit the field) first, then each
- * supported level in canonical order. Pass the endpoint's detected set, or `null`/undefined before detection
- * completes to fall back to the universally-accepted levels.
- */
-export function reasoningTabs(
-  supported: readonly ReasoningEffortField[] | null | undefined,
-): { value: ReasoningEffort; label: string }[] {
-  const levels = supported ?? SAFE_REASONING_EFFORTS;
-  const ordered = REASONING_CANDIDATES.filter((v) => levels.includes(v));
-  return [{ value: 'auto' as ReasoningEffort, label: REASONING_LABELS.auto }, ...ordered.map((v) => ({ value: v, label: REASONING_LABELS[v] }))];
+/** The switch-off form of a setting, as the request layer reads it. */
+export function resolveReasoningSetting(setting: ReasoningSetting): ReasoningEffort {
+  return setting.enabled ? setting.level : 'none';
 }
 
-/** A prompt's per-prompt reasoning choice: `global` inherits the endpoint-wide level (Settings → Output → Reasoning →
- *  Native Reasoning); otherwise it's an explicit level. Every prompt kind exposes this in its Options tab. */
-export type PromptReasoning = 'global' | ReasoningEffortField;
+/** A prompt setting's resolved choice: its level while on, `none` while off. */
+export function resolvePromptReasoningSetting(setting: PromptReasoningSetting): PromptReasoning {
+  return setting.enabled ? setting.level : 'none';
+}
+
+/**
+ * Reads a stored endpoint-wide setting. Accepts the current object and the earlier plain string (`auto`, `none`,
+ * or a level), so a value written before the switch existed still loads: `none` becomes off at Model Default,
+ * a level becomes on at that level. Anything else is `null`.
+ */
+export function parseReasoningSetting(raw: unknown): ReasoningSetting | null {
+  if (typeof raw === 'string') {
+    if (raw === 'none') return { enabled: false, level: 'auto' };
+    return REASONING_LEVELS.includes(raw as ReasoningLevel) ? { enabled: true, level: raw as ReasoningLevel } : null;
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const { enabled, level } = raw as { enabled?: unknown; level?: unknown };
+  if (typeof enabled !== 'boolean' || !REASONING_LEVELS.includes(level as ReasoningLevel)) return null;
+  return { enabled, level: level as ReasoningLevel };
+}
+
+/** Reads a stored prompt setting, string or object, on the same terms as `parseReasoningSetting`. A plain
+ *  `none` becomes off at Global. */
+export function parsePromptReasoningSetting(raw: unknown): PromptReasoningSetting | null {
+  const isLevel = (v: unknown): v is PromptReasoningLevel => v === 'global' || REASONING_LEVELS.includes(v as ReasoningLevel);
+  if (typeof raw === 'string') {
+    if (raw === 'none') return { enabled: false, level: 'global' };
+    return isLevel(raw) ? { enabled: true, level: raw } : null;
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const { enabled, level } = raw as { enabled?: unknown; level?: unknown };
+  if (typeof enabled !== 'boolean' || !isLevel(level)) return null;
+  return { enabled, level };
+}
 
 /** Prompts whose shipped default is a small amount of native reasoning: the planning passes and the memory
- *  passes weigh several facts at once, so cheap thinking helps them. Parsers and choices ship at `none`. */
+ *  passes weigh several facts at once, so cheap thinking helps them. Parsers and choices ship switched off. */
 const LOW_REASONING_KINDS: readonly AIRequestType[] = [
   'thinking', 'director', 'character', 'storyboard', 'summary', 'diary',
 ];
+
+/** Shipped setting per prompt: narration on at Global, planning and memory passes on at Low, parsers and
+ *  choices off (remembering Global for when they're switched on). */
+export function defaultPromptReasoningSetting(kind: AIRequestType): PromptReasoningSetting {
+  if (kind === 'narration') return { enabled: true, level: 'global' };
+  return LOW_REASONING_KINDS.includes(kind) ? { enabled: true, level: 'low' } : { enabled: false, level: 'global' };
+}
+
+/** Dropdown options for the endpoint-wide strength: Model Default first, then each level the endpoint accepts.
+ *  Unknown support (`null`/undefined) falls back to the universally accepted levels. */
+export function reasoningLevelOptions(
+  supported: readonly ReasoningEffortField[] | null | undefined,
+): { value: ReasoningLevel; label: string }[] {
+  const levels = supported ?? SAFE_REASONING_EFFORTS;
+  const accepted = REASONING_LEVELS.filter((v) => v === 'auto' || levels.includes(v));
+  return accepted.map((v) => ({ value: v, label: REASONING_LEVEL_LABELS[v] }));
+}
+
+/** Dropdown options for a prompt's strength: Global first, then the endpoint-wide list. */
+export function promptReasoningLevelOptions(
+  supported: readonly ReasoningEffortField[] | null | undefined,
+): { value: PromptReasoningLevel; label: string }[] {
+  return [{ value: 'global', label: REASONING_LEVEL_LABELS.global }, ...reasoningLevelOptions(supported)];
+}
 
 /**
  * Inline mode's narration call writes its own `<think>` block in the same completion, so native reasoning stays
@@ -66,19 +134,9 @@ export function isReasoningEngaged(
   return mode !== 'off' || globalEffort !== 'auto' || Object.values(promptReasoning).some(positive);
 }
 
-/** Shipped default per prompt: narration follows the global level, planning and memory passes think a little,
- *  parsers and choices suppress reasoning. */
+/** Shipped resolved choice per prompt — `defaultPromptReasoningSetting` as the request layer reads it. */
 export function defaultPromptReasoning(kind: AIRequestType): PromptReasoning {
-  if (kind === 'narration') return 'global';
-  return LOW_REASONING_KINDS.includes(kind) ? 'low' : 'none';
-}
-
-/** Tabs for a prompt's reasoning control: `Global` first, then the endpoint's supported levels (incl. `none`). */
-export function reasoningPromptTabs(
-  supported: readonly ReasoningEffortField[] | null | undefined,
-): { value: PromptReasoning; label: string }[] {
-  const levels = reasoningTabs(supported).slice(1); // drop the "Default" (omit) entry — "Global" replaces it here
-  return [{ value: 'global', label: 'Global' }, ...levels.map((l) => ({ value: l.value as PromptReasoning, label: l.label }))];
+  return resolvePromptReasoningSetting(defaultPromptReasoningSetting(kind));
 }
 
 /**
@@ -97,32 +155,36 @@ export function resolvePromptReasoning(
   return pref === 'global' ? globalEffort : pref;
 }
 
-/** Shipped default reasoning budget (percent of max output) per prompt: narration 40%, the planning and memory
- *  passes 25%, parsers and choices 0%. Mirrors the effort tiers in `defaultPromptReasoning`. */
+/** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */
+export const MIN_REASONING_BUDGET_PCT = 5;
+
+/** Shipped reasoning budget (percent of max output) per prompt: narration 40%, everything else 25%. The budget
+ *  is a strength, kept while a prompt is switched off; whether it applies at all is the prompt's switch. */
 export function defaultReasoningBudgetPct(kind: AIRequestType): number {
-  if (kind === 'narration') return 40;
-  return LOW_REASONING_KINDS.includes(kind) ? 25 : 0;
+  return kind === 'narration' ? 40 : 25;
 }
 
-/** The effective budget percent for a request: the stored value or the shipped default, clamped to 0–100. */
+/** The budget percent a prompt would spend while on: the stored value or the shipped default, clamped to the
+ *  slider's range. */
 export function resolveReasoningBudgetPct(kind: AIRequestType, budgets: Partial<Record<AIRequestType, number>>): number {
   const pct = budgets[kind] ?? defaultReasoningBudgetPct(kind);
-  return Math.max(0, Math.min(100, pct));
+  return Math.max(MIN_REASONING_BUDGET_PCT, Math.min(100, pct));
 }
 
 /**
  * Builds the `thinking_budget_tokens` slice of a request body — the LOCAL-engine reasoning cap (node-llama-cpp
- * `budgets.thoughtTokens`), sent only when the local engine is active. Inline narration forces 0 (the local
- * engine ignores `reasoning_effort`, so this is how it's suppressed there); every other request sends
- * `round(pct% × maxTokens)`. Always returns the field on the local engine, so `0` cleanly means "off".
+ * `budgets.thoughtTokens`), sent only when the local engine is active. `effort` is the prompt's resolved choice
+ * from `resolvePromptReasoning`: `none` (switched off, a Global prompt under a switched-off global, or Inline
+ * narration) sends 0, since the local engine ignores `reasoning_effort` and this is how it's suppressed there.
+ * Anything else sends `round(pct% × maxTokens)`. Always returns the field, so `0` cleanly means "off".
  */
 export function reasoningBudgetBody(
-  mode: ThinkingMode,
+  effort: ReasoningEffort,
   kind: AIRequestType,
   budgets: Partial<Record<AIRequestType, number>>,
   maxTokens: number,
 ): { thinking_budget_tokens: number } {
-  const pct = nativeReasoningSuppressed(mode, kind) ? 0 : resolveReasoningBudgetPct(kind, budgets);
+  const pct = effort === 'none' ? 0 : resolveReasoningBudgetPct(kind, budgets);
   return { thinking_budget_tokens: Math.round((pct / 100) * maxTokens) };
 }
 

@@ -1,6 +1,7 @@
 import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
 import type { AIRequestType } from '@/types';
+import { parsePromptReasoningSetting } from './reasoningEffort';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
  *  to the shared shape; the source app version is stamped separately for the older/newer import warning. */
@@ -159,11 +160,15 @@ function sanitizeSamplers(raw: unknown): PromptSamplerMap | undefined {
   return Object.keys(out).length ? out : undefined;
 }
 
-/** Keep only string-valued reasoning entries. */
+/** Keep only readable reasoning entries: the switch-plus-level object, or the plain string an older export
+ *  carried, which folds into that shape. */
 function sanitizeReasoning(raw: unknown): ReasoningMap | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const out: ReasoningMap = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'string') out[k] = v as ReasoningMap[string];
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const setting = parsePromptReasoningSetting(v);
+    if (setting) out[k] = setting;
+  }
   return Object.keys(out).length ? out : undefined;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useSettings, type ThinkingMode, type ReasoningEffort, type ParagraphLimit } from '@/contexts/SettingsContext';
+import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
@@ -14,7 +14,7 @@ import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwit
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, nativeReasoningSuppressed, type PromptReasoning } from '@/lib/reasoningEffort';
+import { reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -260,66 +260,85 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
   );
 }
 
-/** A prompt's Native Reasoning override: `Global | None | <levels>`. `Global` follows the endpoint-wide level;
- *  the rest override this prompt alone. */
-function PromptReasoningField({ value, options, onChange, disabled }: {
-  value: PromptReasoning;
-  options: { value: PromptReasoning; label: string }[];
-  onChange: (v: PromptReasoning) => void;
+/**
+ * The strength half of a Native Reasoning control: a dropdown of the levels the endpoint accepts, or the
+ * budget slider on the built-in engine, which caps the thought segment by tokens rather than taking a hint.
+ * Inert while the switch beside it is off, but still showing the remembered value.
+ */
+type ReasoningStrength<L extends string> =
+  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
+  | { kind: 'budget'; value: number; onChange: (v: number) => void };
+
+/**
+ * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
+ * and engine share; what sits beside it depends on the engine. `id` labels the switch for assistive tech.
+ */
+function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, strength, disabled }: {
+  id: string;
+  enabled: boolean;
+  onEnabledChange: (on: boolean) => void;
+  strength: ReasoningStrength<L>;
   disabled?: boolean;
 }) {
+  const inert = disabled || !enabled;
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
-        <label className="text-label">{SETTINGS_COPY.promptNativeReasoning.label}</label>
-        <HintInfo>{SETTINGS_COPY.promptNativeReasoning.info}</HintInfo>
-      </div>
-      <span className="text-helper text-muted-foreground">{SETTINGS_COPY.promptNativeReasoning.description}</span>
-      <ToggleGroup
-        type="single"
-        value={value}
-        // A single ToggleGroup clears its value when the active item is clicked again; the override always
-        // has a level (Global included), so an empty result is ignored rather than stored.
-        onValueChange={(v) => { if (v) onChange(v as PromptReasoning); }}
-        className="grid w-full"
-        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
-      >
-        {options.map((t) => (
-          <ToggleGroupItem key={t.value} value={t.value} disabled={disabled}>{t.label}</ToggleGroupItem>
-        ))}
-      </ToggleGroup>
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 shrink-0 items-center">
+        <Checkbox id={id} checked={enabled} disabled={disabled} onCheckedChange={(c) => onEnabledChange(c === true)} aria-label={SETTINGS_COPY.nativeReasoning.label} />
+      </span>
+      {strength.kind === 'level' ? (
+        <Select value={strength.value} onValueChange={(v) => strength.onChange(v as L)} disabled={inert}>
+          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {strength.options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : (
+        <>
+          {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
+          <Slider
+            className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
+            value={[strength.value]}
+            min={MIN_REASONING_BUDGET_PCT}
+            max={100}
+            step={5}
+            disabled={inert}
+            onValueChange={(v) => strength.onChange(v[0])}
+          />
+          <span className="w-12 text-right text-label tabular-nums">{strength.value}%</span>
+        </>
+      )}
     </div>
   );
 }
 
-/** A prompt's Native Reasoning BUDGET (local engine only): a % of Max Output Tokens the model may spend on its
- *  thought segment. 0% = no reasoning on this prompt; higher caps it. Replaces the effort control on the local
- *  engine, which budgets the thought segment directly rather than taking a coarse effort hint. */
-function PromptReasoningBudgetField({ value, onChange, disabled }: {
-  value: number;
-  onChange: (v: number) => void;
+/** A prompt's Native Reasoning control: its switch, then Global or its own level (or its budget on the
+ *  built-in engine). Global follows Settings → Output → Native Reasoning, switch included. */
+function PromptReasoningField({ setting, onChange, options, budget, disabled }: {
+  setting: PromptReasoningSetting;
+  onChange: (v: PromptReasoningSetting) => void;
+  options: { value: PromptReasoningSetting['level']; label: string }[];
+  /** The budget percent and its setter when the prompt runs on the built-in engine; absent otherwise. */
+  budget: { value: number; set: (v: number) => void } | null;
   disabled?: boolean;
 }) {
+  const copy = budget ? SETTINGS_COPY.reasoningBudget : SETTINGS_COPY.promptNativeReasoning;
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <label className="text-label">{SETTINGS_COPY.reasoningBudget.label}</label>
-        <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
-        <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <label htmlFor="promptReasoning" className="text-label">{copy.label}</label>
+        <HintInfo>{copy.info}</HintInfo>
       </div>
-      {/* pl-2.5 for the thumb's overhang at 0 — see SamplerControl. */}
-      <div className="flex items-center gap-3 pl-2.5">
-        <Slider
-          className={`flex-grow${disabled ? ' opacity-60' : ''}`}
-          value={[value]}
-          min={0}
-          max={100}
-          step={5}
-          disabled={disabled}
-          onValueChange={(v) => onChange(v[0])}
-        />
-        <span className="w-28 text-right text-label tabular-nums">{value === 0 ? <span className="text-muted-foreground not-italic">No reasoning</span> : `${value}%`}</span>
-      </div>
+      <span className="text-helper text-muted-foreground">{copy.description}</span>
+      <ReasoningSwitch
+        id="promptReasoning"
+        enabled={setting.enabled}
+        onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
+        disabled={disabled}
+        strength={budget
+          ? { kind: 'budget', value: budget.value, onChange: budget.set }
+          : { kind: 'level', value: setting.level, options, onChange: (level) => onChange({ ...setting, level }) }}
+      />
     </div>
   );
 }
@@ -328,11 +347,10 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
  *  them), the per-prompt Native Reasoning override (the effort level on external endpoints, or the token budget
  *  on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, samplers, disabled, readOnlyReason, onRequestEdit }: {
+function PromptOptionsPanel({ endpoint, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
   endpoint: React.ComponentProps<typeof PromptEndpointField>;
   verbatim: { value: number; set: (n: number) => void } | null;
-  reasoning: { value: PromptReasoning; options: { value: PromptReasoning; label: string }[]; set: (v: PromptReasoning) => void } | null;
-  reasoningBudget: { value: number; set: (v: number) => void } | null;
+  reasoning: Omit<React.ComponentProps<typeof PromptReasoningField>, 'disabled'> | null;
   samplers: SamplerControlProps[];
   disabled: boolean;
   /** What is read-only, named in the notice. Absent on an editable preset. */
@@ -353,8 +371,7 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, sa
       <div className="space-y-5 py-3">
         <PromptEndpointField {...endpoint} disabled={disabled} />
         {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
-        {reasoning && <PromptReasoningField value={reasoning.value} options={reasoning.options} onChange={reasoning.set} disabled={disabled} />}
-        {reasoningBudget && <PromptReasoningBudgetField value={reasoningBudget.value} onChange={reasoningBudget.set} disabled={disabled} />}
+        {reasoning && <PromptReasoningField {...reasoning} disabled={disabled} />}
         {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
       </div>
     </>
@@ -561,9 +578,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     activeCharacterLimit,
     setActiveCharacterLimit,
     reasoningEffort,
-    setReasoningEffort,
+    nativeReasoning,
+    setNativeReasoning,
     supportedReasoningEfforts,
-    promptReasoning,
+    promptReasoningSettings,
     setPromptReasoning,
     promptReasoningBudget,
     setPromptReasoningBudget,
@@ -1205,24 +1223,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       onValueChange: (value: number) => setEndpointSamplerValue(key, value),
     };
   });
-  // Per-prompt Native Reasoning override, hidden only where the call is force-suppressed (Inline narration).
-  // Engine-split: the local engine caps the thought segment by a token budget; external endpoints take the
-  // coarse effort level. Exactly one shows per engine (the other is inert there).
+  // Per-prompt Native Reasoning control, hidden where the call is force-suppressed (Inline narration) and on
+  // an endpoint probed as non-reasoning. Its switch is shared by both engines; the strength beside it is the
+  // token budget on the local engine and the coarse effort level elsewhere.
   // A probed-but-empty support list means the active endpoint rejects every reasoning_effort literal (even
   // `none`) — a conclusively non-reasoning model. `null`/undefined = not yet probed, so keep showing controls.
   const reasoningUnsupported = Array.isArray(promptReasoningEfforts) && promptReasoningEfforts.length === 0;
-  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind);
-  const reasoningControl = reasoningApplicable && !promptLocalEngine && !reasoningUnsupported
+  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind) && (promptLocalEngine || !reasoningUnsupported);
+  const reasoningControl = reasoningApplicable
     ? {
-        value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
-        options: reasoningPromptTabs(promptReasoningEfforts),
-        set: (v: PromptReasoning) => setPromptReasoning(activeKind, v),
-      }
-    : null;
-  const reasoningBudgetControl = reasoningApplicable && promptLocalEngine
-    ? {
-        value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind),
-        set: (v: number) => setPromptReasoningBudget(activeKind, v),
+        setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
+        onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
+        options: promptReasoningLevelOptions(promptReasoningEfforts),
+        budget: promptLocalEngine
+          ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
+          : null,
       }
     : null;
 
@@ -1642,28 +1657,27 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
                 </SubGroup>
               )}
-              {advanced && !reasoningUnsupported && (() => {
-                const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
-                return (
-                  <SubGroup>
-                  <Row top {...optionRowCopy('nativeReasoning')}>
-                    <div>
-                      <OptionSwitcher value={reasoningEffort} onChange={(v) => setReasoningEffort(v as ReasoningEffort)} options={reasoningOptions} />
-                      <div className="grid mt-2">
-                        {reasoningOptions.map((o) => (
-                          <p
-                            key={o.value}
-                            className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === reasoningEffort ? '' : ' invisible'}`}
-                          >
-                            {REASONING_EFFORT_HELP[o.value]}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  </Row>
-                  </SubGroup>
-                );
-              })()}
+              {advanced && !reasoningUnsupported && (
+                <SubGroup>
+                <Row top htmlFor="nativeReasoning" {...optionRowCopy('nativeReasoning')}>
+                  {/* Stacks the selected level's help under the control, so the label pins to the first line. */}
+                  <div data-row-stacked>
+                    <ReasoningSwitch
+                      id="nativeReasoning"
+                      enabled={nativeReasoning.enabled}
+                      onEnabledChange={(enabled) => setNativeReasoning({ ...nativeReasoning, enabled })}
+                      strength={{
+                        kind: 'level',
+                        value: nativeReasoning.level,
+                        options: reasoningLevelOptions(supportedReasoningEfforts),
+                        onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
+                      }}
+                    />
+                    <p className="mt-2 text-helper text-muted-foreground">{REASONING_EFFORT_HELP[reasoningEffort]}</p>
+                  </div>
+                </Row>
+                </SubGroup>
+              )}
               </Section>
 
               {advanced && (<>
@@ -2490,7 +2504,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     endpoint={endpointControl}
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
-                    reasoningBudget={reasoningBudgetControl}
                     samplers={samplerControls}
                     disabled={activePresetIsBuiltIn}
                     readOnlyReason={readOnlyReason}
