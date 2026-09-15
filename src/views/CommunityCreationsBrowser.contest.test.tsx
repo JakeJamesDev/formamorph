@@ -24,6 +24,8 @@ vi.mock('@/services/WorldStorageService', () => ({
     // The details modal fetches these on open; a missing one rejects in an effect and fails the run
     // as an unhandled error even while every assertion passes.
     fetchListingDetails: vi.fn(async () => null),
+    fetchDependencies: vi.fn(async () => []),
+    fetchAddons: vi.fn(async () => []),
   },
   CONTEST_PLACED: 'CONTEST_PLACED',
 }));
