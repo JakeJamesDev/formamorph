@@ -547,7 +547,8 @@ describe('dialects — one spelling per row', () => {
     ['lmstudio', { thinking_budget_tokens: 400, reasoning_effort: 'high' }],
     ['vllm', { thinking_token_budget: 400, reasoning_effort: 'high' }],
     ['openrouter', { reasoning: { max_tokens: 400, effort: 'high' } }],
-    ['anthropic', { thinking: { budget_tokens: 400, type: 'enabled' } }],
+    // The adaptive row has no budget and no level to carry, so its whole message is that thinking is on.
+    ['anthropic-adaptive', { thinking: { type: 'adaptive' } }],
     ['google-2.5', { google: { thinking_config: { thinking_budget: 400 } } }],
     ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }],
     ['moonshot-k3', { reasoning_effort: 'high' }],
@@ -563,7 +564,8 @@ describe('dialects — one spelling per row', () => {
     ['lmstudio', { thinking_budget_tokens: 0, reasoning_effort: 'none' }],
     ['vllm', { reasoning_effort: 'none' }],
     ['openrouter', { reasoning: { effort: 'none' } }],
-    ['anthropic', { thinking: { type: 'disabled' } }],
+    ['anthropic-budget', { thinking: { type: 'disabled' } }],
+    ['anthropic-adaptive', { thinking: { type: 'disabled' } }],
     ['google-2.5', { reasoning_effort: 'none' }],
     ['google-3', {}],
     ['moonshot-k3', {}],
@@ -602,7 +604,7 @@ describe('dialects — one spelling per row', () => {
   });
 
   it('stays silent on a model the record rules out, off spelling or not', () => {
-    for (const dialect of ['vllm', 'anthropic', 'moonshot-k2', 'unknown'] as const) {
+    for (const dialect of ['vllm', 'anthropic-budget', 'anthropic-adaptive', 'moonshot-k2', 'unknown'] as const) {
       const ruledOut = speaking(dialect, {
         reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, sources: { reasons: 'native' } },
       });
@@ -616,14 +618,35 @@ describe('dialects — one spelling per row', () => {
     }
   });
 
+  it('spells a 40% budget the anthropic-budget way, between the two bounds the API sets', () => {
+    expect(speaks(speaking('anthropic-budget', { maxTokens: 8000 })))
+      .toEqual({ thinking: { budget_tokens: 3200, type: 'enabled' } });
+  });
+
   it('keeps the Anthropic budget one token under the output cap it would otherwise exceed', () => {
-    const tight = speaking('anthropic', { maxTokens: 300 });
-    // 100% of 300 would be the whole cap, which the endpoint rejects.
+    const tight = speaking('anthropic-budget', { maxTokens: 4000 });
+    // 100% of 4,000 would be the whole cap, which the endpoint rejects.
     expect(speaks(tight, { promptReasoningBudget: { narration: 100 } }))
-      .toEqual({ thinking: { budget_tokens: 299, type: 'enabled' } });
-    // A budget already under the cap is sent as it stands.
+      .toEqual({ thinking: { budget_tokens: 3999, type: 'enabled' } });
+    // A budget already between the bounds is sent as it stands.
     expect(speaks(tight, { promptReasoningBudget: { narration: 50 } }))
-      .toEqual({ thinking: { budget_tokens: 150, type: 'enabled' } });
+      .toEqual({ thinking: { budget_tokens: 2000, type: 'enabled' } });
+  });
+
+  /**
+   * The API rejects a thinking budget under 1,024 tokens as well as one that is not under the cap, so the
+   * slider's own percent is raised to that floor. A cap too small to hold the floor leaves no budget the
+   * endpoint would accept, and a request with no thinking object beats one that comes back 400.
+   */
+  it('raises a small Anthropic budget to the API floor, and sends none where the cap has no room', () => {
+    const roomy = speaking('anthropic-budget', { maxTokens: 8000 });
+    // 5% of 8,000 is 400, under the floor.
+    expect(speaks(roomy, { promptReasoningBudget: { narration: 5 } }))
+      .toEqual({ thinking: { budget_tokens: 1024, type: 'enabled' } });
+
+    // A 1,000-token cap cannot hold a 1,024-token floor plus a reply, so nothing goes out.
+    expect(speaks(speaking('anthropic-budget', { maxTokens: 1000 }), { promptReasoningBudget: { narration: 100 } }))
+      .toEqual({});
   });
 
   it('leaves every other dialect free to spend the whole cap', () => {

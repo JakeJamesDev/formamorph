@@ -8,6 +8,7 @@ import {
   isReasoningDialect, reasoningDialectNeedsProof, reasoningDialectTakesLevel, reasoningOffRejected,
   type ReasoningDialect,
 } from '@/lib/reasoningDialect';
+import { reasoningIdentityAnswer } from '@/lib/reasoningIdentity';
 
 /** The `reasoning_effort` values a chat-completions endpoint may accept as a passthrough hint. `auto` is
  *  deliberately absent — it isn't a wire value; the UI's "Default" maps to sending nothing. */
@@ -24,9 +25,11 @@ export const REASONING_CANDIDATES: readonly ReasoningEffortField[] = [
 export const SAFE_REASONING_EFFORTS: readonly ReasoningEffortField[] = ['none', 'low', 'medium', 'high'];
 
 /** Which source answered one question in a capability record, so a wrong answer can be traced back. */
-export type ReasoningCapabilitySource = 'native' | 'catalog' | 'observed' | 'probe' | 'engine' | 'cache';
+export type ReasoningCapabilitySource = 'identity' | 'native' | 'catalog' | 'observed' | 'probe' | 'engine' | 'cache';
 
-const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = ['native', 'catalog', 'observed', 'probe', 'engine', 'cache'];
+const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = [
+  'identity', 'native', 'catalog', 'observed', 'probe', 'engine', 'cache',
+];
 
 /** The five questions a capability record answers. */
 export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed';
@@ -665,8 +668,33 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
   return null;
 };
 
+/**
+ * What the endpoint's own address proves. A first-party API's host names its dialect outright, and its model
+ * id names the generation within it, so this source reads the target and sends no request at all. It answers
+ * only for the hosts the identity table claims, and leaves every other endpoint to the sources below.
+ */
+const identitySource: NativeSource = async (target) => {
+  const answer = reasoningIdentityAnswer(target.url, target.model);
+  if (!answer) return null;
+  const from = 'identity' as const;
+  return {
+    reasons: answer.reasons,
+    levels: answer.levels,
+    budget: answer.budget,
+    dialect: answer.dialect,
+    offAllowed: answer.offAllowed ?? null,
+    sources: {
+      reasons: from, budget: from, dialect: from,
+      ...(answer.levels === null ? {} : { levels: from }),
+      ...(answer.offAllowed === undefined ? {} : { offAllowed: from }),
+    },
+  };
+};
+
 /** The advertisement sources, cheapest and most specific first. Each is tried only until one answers. */
-const NATIVE_SOURCES: readonly NativeSource[] = [lmStudioSource, ollamaSource, llamaCppSource, modelListSource];
+const NATIVE_SOURCES: readonly NativeSource[] = [
+  identitySource, lmStudioSource, ollamaSource, llamaCppSource, modelListSource,
+];
 
 /**
  * The one completion a resolve may send, and only when nothing advertised. It asks for the `none` literal:

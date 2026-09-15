@@ -278,7 +278,8 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
   id: string;
   enabled: boolean;
   onEnabledChange: (on: boolean) => void;
-  strength: ReasoningStrength<L>;
+  /** Absent where the target takes neither a level nor a budget, so the switch is the whole control. */
+  strength: ReasoningStrength<L> | null;
   disabled?: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and takes no clicks. The
    *  strength beside it stays live, and applies on every prompt whose own switch is on. A prompt left off
@@ -297,14 +298,15 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
           aria-label={SETTINGS_COPY.nativeReasoning.label}
         />
       </span>
-      {strength.kind === 'level' ? (
+      {strength?.kind === 'level' && (
         <Select value={strength.value} onValueChange={(v) => strength.onChange(v as L)} disabled={inert}>
           <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
           <SelectContent>
             {strength.options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
-      ) : (
+      )}
+      {strength?.kind === 'budget' && (
         <>
           {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
           <Slider
@@ -349,7 +351,9 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
   const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
     ? { kind: 'budget', value: budget.value, onChange: budget.set }
     : null;
-  const lead = level ? SETTINGS_COPY.promptNativeReasoning : SETTINGS_COPY.reasoningBudget;
+  // The field is named for what it actually offers: the budget where that is the only strength, and the
+  // switch's own name where the target takes a level, or takes neither and the switch stands alone.
+  const lead = level || !budgetStrength ? SETTINGS_COPY.promptNativeReasoning : SETTINGS_COPY.reasoningBudget;
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
@@ -363,7 +367,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
         onEnabledChange={(enabled) => onChange({ ...setting, enabled })}
         disabled={disabled}
         lockedOn={lockedOn}
-        strength={level ? levelStrength : (budgetStrength ?? levelStrength)}
+        strength={level ? levelStrength : budgetStrength}
       />
       {lockedOn && <p className="text-helper text-muted-foreground">{REASONING_NOTES.always}</p>}
       {level && budgetStrength && (
