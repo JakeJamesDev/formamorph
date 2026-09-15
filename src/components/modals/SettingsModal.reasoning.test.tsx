@@ -57,11 +57,14 @@ const openNarrationOptions = () => {
 describe('the prompt Options strength follows the capability record', () => {
   beforeEach(() => localStorage.clear());
 
-  it('offers the budget slider on a target that caps thinking by tokens', () => {
+  it('offers the level dropdown and the budget slider together on a target that caps thinking by tokens', () => {
     seedCapability(takesBudget);
     openNarrationOptions();
+    expect(screen.getByText('Native Reasoning')).toBeTruthy();
     expect(screen.getByText('Reasoning Budget')).toBeTruthy();
-    expect(screen.queryByText('Native Reasoning')).toBeNull();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    // One switch governs both: there is a single checkbox in the field.
+    expect(screen.getAllByRole('checkbox', { name: 'Native Reasoning' })).toHaveLength(1);
   });
 
   it('offers the strength dropdown on a target whose budget question is unanswered', () => {

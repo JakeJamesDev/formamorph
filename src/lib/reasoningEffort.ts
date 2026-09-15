@@ -189,21 +189,28 @@ export function defaultPromptReasoningSetting(kind: AIRequestType): PromptReason
   return LOW_REASONING_KINDS.includes(kind) ? { enabled: true, level: 'low' } : { enabled: false, level: 'global' };
 }
 
-/** Dropdown options for the endpoint-wide strength: Model Default first, then each level the record says the
- *  endpoint accepts. An unanswered levels question falls back to the universally accepted levels. */
+/**
+ * Dropdown options for the endpoint-wide strength: Model Default first, then each level the record says the
+ * endpoint accepts. An unanswered levels question falls back to the universally accepted levels. The current
+ * pick stays listed even when the record no longer accepts it, so the dropdown never renders blank; the wire
+ * guard still omits a level the endpoint does not take.
+ */
 export function reasoningLevelOptions(
   capability: ReasoningCapability | null | undefined,
+  current?: ReasoningLevel,
 ): { value: ReasoningLevel; label: string }[] {
   const levels = capability?.levels ?? SAFE_REASONING_EFFORTS;
-  const accepted = REASONING_LEVELS.filter((v) => v === 'auto' || levels.includes(v));
+  const accepted = REASONING_LEVELS.filter((v) => v === 'auto' || v === current || levels.includes(v));
   return accepted.map((v) => ({ value: v, label: REASONING_LEVEL_LABELS[v] }));
 }
 
-/** Dropdown options for a prompt's strength: Global first, then the endpoint-wide list. */
+/** Dropdown options for a prompt's strength: Global first, then the endpoint-wide list, the current pick kept. */
 export function promptReasoningLevelOptions(
   capability: ReasoningCapability | null | undefined,
+  current?: PromptReasoningLevel,
 ): { value: PromptReasoningLevel; label: string }[] {
-  return [{ value: 'global', label: REASONING_LEVEL_LABELS.global }, ...reasoningLevelOptions(capability)];
+  const level = current === 'global' ? undefined : current;
+  return [{ value: 'global', label: REASONING_LEVEL_LABELS.global }, ...reasoningLevelOptions(capability, level)];
 }
 
 /**

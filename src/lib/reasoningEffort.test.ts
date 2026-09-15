@@ -147,6 +147,14 @@ describe('per-prompt reasoning', () => {
     expect(promptReasoningLevelOptions(null).map((o) => o.value)).toEqual(['global', 'auto', 'low', 'medium', 'high']); // safe fallback
   });
 
+  it('keeps the current pick listed when the record no longer accepts it, so the dropdown never renders blank', () => {
+    const onOff = accepts('none'); // LM Studio's on/off models: nothing graded
+    expect(promptReasoningLevelOptions(onOff, 'low').map((o) => o.value)).toEqual(['global', 'auto', 'low']);
+    expect(promptReasoningLevelOptions(onOff, 'global').map((o) => o.value)).toEqual(['global', 'auto']);
+    expect(reasoningLevelOptions(onOff, 'high').map((o) => o.value)).toEqual(['auto', 'high']);
+    expect(reasoningLevelOptions(onOff, 'auto').map((o) => o.value)).toEqual(['auto']);
+  });
+
   it('lists the endpoint-wide strengths with full-word labels for backend-specific levels', () => {
     const cloud = reasoningLevelOptions(accepts('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'));
     expect(cloud.map((o) => o.label)).toEqual(['Model Default', 'Minimal', 'Low', 'Medium', 'High', 'Extra High', 'Max']);
