@@ -4,37 +4,11 @@ import {
   type ReasoningCapability,
 } from './reasoningEffort';
 import { resetProbeMemo } from './probeMemo';
-
-// One endpoint-and-model pair, reused so each case differs only in what the backend answers.
-const TARGET = { url: 'http://host.example/v1/chat/completions', token: 't', model: 'm' };
-
-const LM_STUDIO = 'http://host.example/api/v1/models';
-const OLLAMA = 'http://host.example/api/show';
-const PROPS = 'http://host.example/props';
-const OPENAI = 'http://host.example/v1/models';
-const COMPLETIONS = TARGET.url;
-
-type Answer = { status: number; body?: unknown };
-
-/** A fetch that answers only the URLs a case names; everything else 404s, as a real backend would. */
-function backend(answers: Record<string, Answer>) {
-  const calls: { url: string; method: string }[] = [];
-  const doFetch = async (url: string, init?: RequestInit) => {
-    calls.push({ url, method: init?.method ?? 'GET' });
-    const answer = answers[url] ?? { status: 404, body: {} };
-    return {
-      ok: answer.status >= 200 && answer.status < 300,
-      status: answer.status,
-      json: async () => answer.body ?? {},
-      text: async () => JSON.stringify(answer.body ?? {}),
-      // Only the four members the resolver reads; the rest of Response never comes into it.
-    } as Response;
-  };
-  return { doFetch, calls };
-}
-
-/** How many completions a resolve sent — the number the ticket caps at one. */
-const probeCount = (calls: { url: string }[]) => calls.filter((c) => c.url === COMPLETIONS).length;
+import {
+  reasoningBackend as backend, probeCount, REASONING_TARGET as TARGET,
+  LM_STUDIO_URL as LM_STUDIO, OLLAMA_URL as OLLAMA, PROPS_URL as PROPS, OPENAI_URL as OPENAI,
+  COMPLETIONS_URL as COMPLETIONS, type BackendAnswer as Answer,
+} from '@/test/reasoningBackend';
 
 beforeEach(() => resetProbeMemo());
 
