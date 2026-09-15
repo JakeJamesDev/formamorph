@@ -165,8 +165,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
       ? reasoningBudgetBody(snapshot.thinkingMode, requestType, snapshot.promptReasoningBudget, maxTokens ?? 0)
       : snapshot.reasoningEngaged
         ? reasoningEffortBody(
-            snapshot.thinkingMode,
-            resolvePromptReasoning(requestType, snapshot.promptReasoning, snapshot.reasoningEffort),
+            resolvePromptReasoning(requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode),
             target.supportedReasoningEfforts,
           )
         : {}),

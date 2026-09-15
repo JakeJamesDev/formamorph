@@ -1,50 +1,57 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, SAFE_REASONING_EFFORTS, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
+import { reasoningEffortBody, reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, resolvePromptReasoning, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, SAFE_REASONING_EFFORTS, detectReasoningCapability, detectSupportedReasoningEfforts } from './reasoningEffort';
+import type { AIRequestType } from '@/types';
+
+const ALL_KINDS: AIRequestType[] = [
+  'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
+  'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
+];
 
 describe('reasoningEffortBody', () => {
   const all = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
 
-  it('sends the hint verbatim under Native mode for every non-auto level the endpoint accepts', () => {
-    expect(reasoningEffortBody('off', 'none', all)).toEqual({ reasoning_effort: 'none' });
-    expect(reasoningEffortBody('off', 'low', all)).toEqual({ reasoning_effort: 'low' });
-    expect(reasoningEffortBody('off', 'medium', all)).toEqual({ reasoning_effort: 'medium' });
-    expect(reasoningEffortBody('off', 'high', all)).toEqual({ reasoning_effort: 'high' });
-    expect(reasoningEffortBody('off', 'max', all)).toEqual({ reasoning_effort: 'max' });
+  it('sends the hint verbatim for every non-auto level the endpoint accepts', () => {
+    expect(reasoningEffortBody('none', all)).toEqual({ reasoning_effort: 'none' });
+    expect(reasoningEffortBody('low', all)).toEqual({ reasoning_effort: 'low' });
+    expect(reasoningEffortBody('medium', all)).toEqual({ reasoning_effort: 'medium' });
+    expect(reasoningEffortBody('high', all)).toEqual({ reasoning_effort: 'high' });
+    expect(reasoningEffortBody('max', all)).toEqual({ reasoning_effort: 'max' });
   });
 
   it('omits the field for auto (send nothing → endpoint default)', () => {
-    expect(reasoningEffortBody('off', 'auto', all)).toEqual({});
-    expect('reasoning_effort' in reasoningEffortBody('off', 'auto', all)).toBe(false);
-  });
-
-  it('forces none in guided modes to suppress native reasoning fighting the guided step', () => {
-    for (const mode of ['precall', 'inline', 'staged'] as const) {
-      expect(reasoningEffortBody(mode, 'high', all)).toEqual({ reasoning_effort: 'none' });
-      expect(reasoningEffortBody(mode, 'auto', all)).toEqual({ reasoning_effort: 'none' });
-    }
-  });
-
-  it('omits none on a guided-mode request when the endpoint does not accept it (no 400)', () => {
-    expect(reasoningEffortBody('inline', 'high', [])).toEqual({});
-    expect(reasoningEffortBody('staged', 'low', ['low', 'medium', 'high'])).toEqual({});
+    expect(reasoningEffortBody('auto', all)).toEqual({});
+    expect('reasoning_effort' in reasoningEffortBody('auto', all)).toBe(false);
   });
 
   it('omits a value the active endpoint does not accept (a stale selection cannot 400 a turn)', () => {
     // Ollama-like: accepts max, not minimal.
     const ollama = ['none', 'low', 'medium', 'high', 'max'] as const;
-    expect(reasoningEffortBody('off', 'minimal', ollama)).toEqual({});
-    expect(reasoningEffortBody('off', 'max', ollama)).toEqual({ reasoning_effort: 'max' });
+    expect(reasoningEffortBody('minimal', ollama)).toEqual({});
+    expect(reasoningEffortBody('max', ollama)).toEqual({ reasoning_effort: 'max' });
+    expect(reasoningEffortBody('none', ['low', 'medium', 'high'])).toEqual({});
   });
 
   it('sends nothing until support is confirmed — unknown (null/undefined) omits the field', () => {
-    expect(reasoningEffortBody('off', 'low', null)).toEqual({});
-    expect(reasoningEffortBody('off', 'low')).toEqual({});
-    expect(reasoningEffortBody('inline', 'high', null)).toEqual({});
+    expect(reasoningEffortBody('low', null)).toEqual({});
+    expect(reasoningEffortBody('low')).toEqual({});
   });
 
   it('sends nothing to a conclusively non-reasoning endpoint (empty support), even none', () => {
-    expect(reasoningEffortBody('off', 'none', [])).toEqual({});
-    expect(reasoningEffortBody('inline', 'high', [])).toEqual({});
+    expect(reasoningEffortBody('none', [])).toEqual({});
+    expect(reasoningEffortBody('high', [])).toEqual({});
+  });
+});
+
+describe('nativeReasoningSuppressed', () => {
+  it('suppresses only the narration call under Inline mode, which writes its own <think> block', () => {
+    expect(nativeReasoningSuppressed('inline', 'narration')).toBe(true);
+  });
+
+  it('leaves every other kind under Inline, and every kind under the other modes, to its own choice', () => {
+    for (const kind of ALL_KINDS.filter((k) => k !== 'narration')) expect(nativeReasoningSuppressed('inline', kind)).toBe(false);
+    for (const mode of ['off', 'precall', 'staged'] as const) {
+      for (const kind of ALL_KINDS) expect(nativeReasoningSuppressed(mode, kind)).toBe(false);
+    }
   });
 });
 
@@ -69,10 +76,14 @@ describe('reasoningTabs', () => {
 });
 
 describe('per-prompt reasoning', () => {
-  it('ships narration as Global and everything else as None', () => {
+  it('ships tiered defaults: narration Global, planning and memory passes Low, parsers and choices None', () => {
     expect(defaultPromptReasoning('narration')).toBe('global');
-    expect(defaultPromptReasoning('choices')).toBe('none');
-    expect(defaultPromptReasoning('summary')).toBe('none');
+    for (const kind of ['thinking', 'director', 'character', 'storyboard', 'summary', 'diary'] as const) {
+      expect(defaultPromptReasoning(kind)).toBe('low');
+    }
+    for (const kind of ['choices', 'statUpdates', 'locationChange', 'milestoneSelect', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags'] as const) {
+      expect(defaultPromptReasoning(kind)).toBe('none');
+    }
   });
 
   it('leads the prompt tabs with Global, then the supported levels (no Default)', () => {
@@ -83,50 +94,70 @@ describe('per-prompt reasoning', () => {
   });
 
   it('resolves Global to the endpoint-wide effort, explicit choices to themselves', () => {
-    expect(resolvePromptReasoning('narration', {}, 'high')).toBe('high'); // default global → follows global
-    expect(resolvePromptReasoning('narration', { narration: 'low' }, 'high')).toBe('low'); // override wins
-    expect(resolvePromptReasoning('choices', {}, 'high')).toBe('none'); // default none, ignores global
-    expect(resolvePromptReasoning('choices', { choices: 'global' }, 'medium')).toBe('medium');
+    expect(resolvePromptReasoning('narration', {}, 'high', 'off')).toBe('high'); // default global → follows global
+    expect(resolvePromptReasoning('narration', { narration: 'low' }, 'high', 'off')).toBe('low'); // override wins
+    expect(resolvePromptReasoning('choices', {}, 'high', 'off')).toBe('none'); // default none, ignores global
+    expect(resolvePromptReasoning('choices', { choices: 'global' }, 'medium', 'off')).toBe('medium');
   });
 
-  it('forces uncontrolled prompts to none regardless of stored prefs or global', () => {
-    expect(resolvePromptReasoning('summary', { summary: 'high' }, 'high')).toBe('none');
-    expect(resolvePromptReasoning('statUpdates', {}, 'high')).toBe('none');
+  it('honors a stored level on every kind, in every mode', () => {
+    for (const mode of ['off', 'precall', 'staged', 'inline'] as const) {
+      expect(resolvePromptReasoning('summary', { summary: 'high' }, 'low', mode)).toBe('high');
+      expect(resolvePromptReasoning('statUpdates', { statUpdates: 'global' }, 'medium', mode)).toBe('medium');
+      expect(resolvePromptReasoning('director', {}, 'high', mode)).toBe('low'); // shipped tier
+    }
+  });
+
+  it('resolves Inline narration to none whatever is stored or set globally', () => {
+    expect(resolvePromptReasoning('narration', { narration: 'high' }, 'high', 'inline')).toBe('none');
+    expect(resolvePromptReasoning('narration', {}, 'max', 'inline')).toBe('none');
+    expect(resolvePromptReasoning('narration', { narration: 'high' }, 'high', 'staged')).toBe('high');
   });
 });
 
 describe('reasoning budget (local engine)', () => {
-  it('ships narration at 40% and everything else at 0%', () => {
+  it('ships narration at 40%, the planning and memory passes at 25%, the rest at 0%', () => {
     expect(defaultReasoningBudgetPct('narration')).toBe(40);
+    for (const kind of ['thinking', 'director', 'character', 'storyboard', 'summary', 'diary'] as const) {
+      expect(defaultReasoningBudgetPct(kind)).toBe(25);
+    }
     expect(defaultReasoningBudgetPct('choices')).toBe(0);
-    expect(defaultReasoningBudgetPct('summary')).toBe(0);
+    expect(defaultReasoningBudgetPct('statUpdates')).toBe(0);
   });
 
-  it('resolves a controlled prompt to its stored/default %, others to 0, clamped', () => {
+  it('resolves every kind to its stored/default %, clamped', () => {
     expect(resolveReasoningBudgetPct('narration', {})).toBe(40);
     expect(resolveReasoningBudgetPct('narration', { narration: 20 })).toBe(20);
     expect(resolveReasoningBudgetPct('choices', {})).toBe(0);
     expect(resolveReasoningBudgetPct('choices', { choices: 30 })).toBe(30);
-    expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(0); // uncontrolled → 0
-    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(100); // clamp
+    expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(90);
+    expect(resolveReasoningBudgetPct('statUpdates', { statUpdates: -5 })).toBe(0); // clamp low
+    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(100); // clamp high
   });
 
-  it('converts the % to a token cap against max output under Native mode', () => {
+  it('converts the % to a token cap against max output', () => {
     expect(reasoningBudgetBody('off', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 }); // 40% of 500
     expect(reasoningBudgetBody('off', 'narration', { narration: 20 }, 500)).toEqual({ thinking_budget_tokens: 100 });
     expect(reasoningBudgetBody('off', 'choices', {}, 500)).toEqual({ thinking_budget_tokens: 0 }); // choices off by default
     expect(reasoningBudgetBody('off', 'choices', { choices: 30 }, 400)).toEqual({ thinking_budget_tokens: 120 });
-    expect(reasoningBudgetBody('off', 'summary', { summary: 50 }, 500)).toEqual({ thinking_budget_tokens: 0 }); // uncontrolled
+    expect(reasoningBudgetBody('off', 'summary', { summary: 50 }, 500)).toEqual({ thinking_budget_tokens: 250 });
+    expect(reasoningBudgetBody('off', 'director', {}, 400)).toEqual({ thinking_budget_tokens: 100 }); // 25% tier
   });
 
-  it('forces 0 in guided modes (local engine ignores reasoning_effort, so this is how they suppress)', () => {
+  it('keeps each pass its own budget under the guided modes', () => {
+    expect(reasoningBudgetBody('staged', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 200 });
+    expect(reasoningBudgetBody('staged', 'director', {}, 400)).toEqual({ thinking_budget_tokens: 100 });
+    expect(reasoningBudgetBody('precall', 'thinking', { thinking: 50 }, 400)).toEqual({ thinking_budget_tokens: 200 });
+    expect(reasoningBudgetBody('inline', 'summary', {}, 400)).toEqual({ thinking_budget_tokens: 100 });
+  });
+
+  it('forces 0 on Inline narration (local engine ignores reasoning_effort, so this is how it suppresses)', () => {
     expect(reasoningBudgetBody('inline', 'narration', { narration: 40 }, 500)).toEqual({ thinking_budget_tokens: 0 });
-    expect(reasoningBudgetBody('staged', 'narration', {}, 500)).toEqual({ thinking_budget_tokens: 0 });
   });
 });
 
 describe('isReasoningEngaged', () => {
-  it('is false for the default off/auto setup with default per-prompt reasoning', () => {
+  it('is false for the off/auto setup when no prompt carries a positive level', () => {
     expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
     expect(isReasoningEngaged('off', 'auto', {})).toBe(false);
   });

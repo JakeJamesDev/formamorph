@@ -218,18 +218,21 @@ describe('reasoning split — budget on the engine, effort outside it', () => {
     expect(buildRequestBody(snap, call({ maxTokensOverride: 200 }))).toMatchObject({ thinking_budget_tokens: 100 });
   });
 
-  it.each([
-    ['inline', 'inline'],
-    ['precall', 'precall'],
-    ['staged', 'staged'],
-  ] as const)('zeroes the engine budget under the guided %s mode, which drives its own thinking', (_n, thinkingMode) => {
-    const snap = snapshot(localEngine(), { thinkingMode, promptReasoningBudget: { narration: 40 } });
+  it('zeroes the engine budget for Inline narration, which writes its own <think> block', () => {
+    const snap = snapshot(localEngine(), { thinkingMode: 'inline', promptReasoningBudget: { narration: 40 } });
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 0 });
   });
 
-  it('zeroes the budget for an uncontrolled prompt', () => {
-    const snap = snapshot(localEngine(), { promptReasoningBudget: { narration: 40 } });
-    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ thinking_budget_tokens: 0 });
+  it.each([['precall'], ['staged']] as const)('keeps narration its budget under the %s mode', (thinkingMode) => {
+    const snap = snapshot(localEngine(), { thinkingMode, promptReasoningBudget: { narration: 40 } });
+    expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 400 });
+  });
+
+  it('budgets every prompt from its stored value or shipped tier', () => {
+    const snap = snapshot(localEngine(), { promptReasoningBudget: { narration: 40, summary: 10 } });
+    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ thinking_budget_tokens: 100 });
+    expect(buildRequestBody(snap, call({ requestType: 'director' }))).toMatchObject({ thinking_budget_tokens: 250 });
+    expect(buildRequestBody(snap, call({ requestType: 'statUpdates' }))).toMatchObject({ thinking_budget_tokens: 0 });
   });
 
   it('sends the global effort on an external endpoint that accepts it', () => {
@@ -258,13 +261,13 @@ describe('reasoning split — budget on the engine, effort outside it', () => {
     expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none' });
   });
 
-  // A stored level for a prompt with no reasoning control (only narration and choices have one) is ignored
-  // rather than followed — otherwise a stale preference would quietly turn reasoning on for an extraction.
-  it('hardwires an uncontrolled prompt to none even when a level is stored for it', () => {
+  it('follows a stored level on any prompt, and the shipped tier where none is stored', () => {
     const snap = snapshot(external(), {
-      reasoningEngaged: true, reasoningEffort: 'high', promptReasoning: { summary: 'high' },
+      reasoningEngaged: true, reasoningEffort: 'high', promptReasoning: { summary: 'medium' },
     });
-    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ reasoning_effort: 'none' });
+    expect(buildRequestBody(snap, call({ requestType: 'summary' }))).toMatchObject({ reasoning_effort: 'medium' });
+    expect(buildRequestBody(snap, call({ requestType: 'director' }))).toMatchObject({ reasoning_effort: 'low' });
+    expect(buildRequestBody(snap, call({ requestType: 'statUpdates' }))).toMatchObject({ reasoning_effort: 'none' });
   });
 
   it('omits the effort entirely when reasoning is engaged nowhere', () => {
@@ -287,9 +290,16 @@ describe('reasoning split — budget on the engine, effort outside it', () => {
     expect(buildRequestBody(snap, call())).not.toHaveProperty('reasoning_effort');
   });
 
-  it('forces none under a guided mode so a native model does not fight the guided step', () => {
-    const snap = snapshot(external(), { thinkingMode: 'precall', reasoningEngaged: true, reasoningEffort: 'high' });
+  it('forces none on Inline narration so the native scratchpad does not double the inline <think> block', () => {
+    const snap = snapshot(external(), { thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'high' });
     expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'none' });
+  });
+
+  it('keeps narration its level under the planning modes, which run separate passes', () => {
+    for (const thinkingMode of ['precall', 'staged'] as const) {
+      const snap = snapshot(external(), { thinkingMode, reasoningEngaged: true, reasoningEffort: 'high' });
+      expect(buildRequestBody(snap, call())).toMatchObject({ reasoning_effort: 'high' });
+    }
   });
 });
 

@@ -6,10 +6,10 @@ import type { PromptReasoning } from './reasoningEffort';
 
 /** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
 export type VerbatimMap = Partial<Record<AIRequestType, number>>;
-/** Per-request reasoning overrides carried on a preset (narration/choices only are user-editable). */
+/** Per-request reasoning overrides carried on a preset; a missing kind uses its shipped default. */
 export type ReasoningMap = Record<string, PromptReasoning>;
 /** Per-request reasoning-budget overrides (percent of max output; local engine only). A missing kind uses
- *  its shipped default. Narration/choices only are user-editable. */
+ *  its shipped default. */
 export type ReasoningBudgetMap = Partial<Record<AIRequestType, number>>;
 
 /** The editable prompt-text values a preset captures: the system-prompt bodies + user-message

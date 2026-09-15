@@ -14,7 +14,7 @@ import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwit
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, REASONING_CONTROL_KINDS, type PromptReasoning } from '@/lib/reasoningEffort';
+import { reasoningTabs, reasoningPromptTabs, defaultPromptReasoning, defaultReasoningBudgetPct, nativeReasoningSuppressed, type PromptReasoning } from '@/lib/reasoningEffort';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -260,8 +260,8 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
   );
 }
 
-/** A prompt's Native Reasoning override: `Global | None | <levels>`, shown only for narration/choices under
- *  Native mode. `Global` follows the endpoint-wide level; the rest override this prompt alone. */
+/** A prompt's Native Reasoning override: `Global | None | <levels>`. `Global` follows the endpoint-wide level;
+ *  the rest override this prompt alone. */
 function PromptReasoningField({ value, options, onChange, disabled }: {
   value: PromptReasoning;
   options: { value: PromptReasoning; label: string }[];
@@ -325,8 +325,8 @@ function PromptReasoningBudgetField({ value, onChange, disabled }: {
 }
 
 /** The per-prompt Options sub-tab: the verbatim-turns control (only when digests are on and the prompt uses
- *  them), the per-prompt Native Reasoning override (narration/choices under Native only — the effort level on
- *  external endpoints, or the token budget on the local engine), plus one override row per tunable sampler.
+ *  them), the per-prompt Native Reasoning override (the effort level on external endpoints, or the token budget
+ *  on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
 function PromptOptionsPanel({ endpoint, verbatim, reasoning, reasoningBudget, samplers, disabled, readOnlyReason, onRequestEdit }: {
   endpoint: React.ComponentProps<typeof PromptEndpointField>;
@@ -1205,14 +1205,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       onValueChange: (value: number) => setEndpointSamplerValue(key, value),
     };
   });
-  // Per-prompt Native Reasoning override — only for the controllable prompts and only under Native mode
-  // (guided modes force no reasoning, so an override there is meaningless). Engine-split: the local engine
-  // caps the thought segment by a token budget; external endpoints take the coarse effort level. Exactly one
-  // shows per engine (the other is inert there).
+  // Per-prompt Native Reasoning override, hidden only where the call is force-suppressed (Inline narration).
+  // Engine-split: the local engine caps the thought segment by a token budget; external endpoints take the
+  // coarse effort level. Exactly one shows per engine (the other is inert there).
   // A probed-but-empty support list means the active endpoint rejects every reasoning_effort literal (even
   // `none`) — a conclusively non-reasoning model. `null`/undefined = not yet probed, so keep showing controls.
   const reasoningUnsupported = Array.isArray(promptReasoningEfforts) && promptReasoningEfforts.length === 0;
-  const reasoningApplicable = thinkingMode === 'off' && REASONING_CONTROL_KINDS.includes(activeKind);
+  const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind);
   const reasoningControl = reasoningApplicable && !promptLocalEngine && !reasoningUnsupported
     ? {
         value: promptReasoning[activeKind] ?? defaultPromptReasoning(activeKind),
@@ -1634,16 +1633,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Row>
                 </SubGroup>
               )}
-              {/* Native mode passes reasoning_effort straight through; shown only there since the guided modes drive
-                  their own thinking. The levels are whichever the active endpoint accepts (detected on connect). */}
-              {advanced && thinkingMode === 'off' && reasoningUnsupported && (
+              {/* The endpoint-wide effort every prompt set to Global follows, in every Thinking mode. The levels
+                  are whichever the active endpoint accepts (detected on connect). */}
+              {advanced && reasoningUnsupported && (
                 <SubGroup>
                 <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
                   <p className="pt-2 text-helper text-muted-foreground">This model doesn&apos;t support reasoning, so there&apos;s nothing to configure.</p>
                 </Row>
                 </SubGroup>
               )}
-              {advanced && thinkingMode === 'off' && !reasoningUnsupported && (() => {
+              {advanced && !reasoningUnsupported && (() => {
                 const reasoningOptions = reasoningTabs(supportedReasoningEfforts);
                 return (
                   <SubGroup>
