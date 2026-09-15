@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, type ReasoningCapability, type ReasoningEffortField } from './reasoningEffort';
+import { reasoningEffortBody, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetBody, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, type ReasoningCapability, type ReasoningEffortField, type PromptReasoning } from './reasoningEffort';
 import { resetProbeMemo } from '@/lib/probeMemo';
 import type { AIRequestType } from '@/types';
 
@@ -233,20 +233,24 @@ describe('reasoning settings (switch + strength)', () => {
 });
 
 describe('isReasoningEngaged', () => {
-  it('is false for the off/auto setup when no prompt carries a positive level', () => {
-    expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
-    expect(isReasoningEngaged('off', 'auto', {})).toBe(false);
+  const everyKindOff = Object.fromEntries(ALL_KINDS.map((k) => [k, 'none'])) as Record<string, PromptReasoning>;
+
+  it('is true out of the box: nothing stored, yet the shipped tiers switch several prompts on', () => {
+    expect(isReasoningEngaged('off', 'auto', {})).toBe(true);
   });
-  it('is true when a Thinking mode is active', () => {
-    expect(isReasoningEngaged('staged', 'auto', {})).toBe(true);
-    expect(isReasoningEngaged('inline', 'auto', {})).toBe(true);
+  it('is false only when every prompt resolves to none', () => {
+    expect(isReasoningEngaged('off', 'auto', everyKindOff)).toBe(false);
+    // Narration at Global follows a switched-off endpoint-wide setting, so it counts as none too.
+    expect(isReasoningEngaged('off', 'none', { ...everyKindOff, narration: 'global' })).toBe(false);
   });
-  it('is true when a global native effort is chosen', () => {
-    expect(isReasoningEngaged('off', 'high', {})).toBe(true);
+  it('is true when a Thinking mode is active, whatever the prompts say', () => {
+    expect(isReasoningEngaged('staged', 'none', everyKindOff)).toBe(true);
+    expect(isReasoningEngaged('inline', 'none', everyKindOff)).toBe(true);
   });
-  it('is true when a per-prompt positive level is set, but not for global/none', () => {
-    expect(isReasoningEngaged('off', 'auto', { narration: 'high' })).toBe(true);
-    expect(isReasoningEngaged('off', 'auto', { narration: 'global', choices: 'none' })).toBe(false);
+  it('is true when one prompt follows a positive endpoint-wide level, or carries its own', () => {
+    expect(isReasoningEngaged('off', 'high', { ...everyKindOff, narration: 'global' })).toBe(true);
+    expect(isReasoningEngaged('off', 'none', { ...everyKindOff, summary: 'low' })).toBe(true);
+    expect(isReasoningEngaged('off', 'none', { ...everyKindOff, summary: 'auto' })).toBe(true); // Model Default lets it reason
   });
 });
 

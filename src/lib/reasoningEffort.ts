@@ -214,18 +214,29 @@ export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestTyp
   return mode === 'inline' && kind === 'narration';
 }
 
+/** Every request kind, for checks that must consider a prompt's shipped default when nothing is stored for it. */
+const ALL_REQUEST_KINDS = [
+  'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
+  'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
+] as const satisfies readonly AIRequestType[];
+// Fails to compile when a kind is added to the union but not to the list above.
+type _EveryKindListed = Exclude<AIRequestType, (typeof ALL_REQUEST_KINDS)[number]> extends never ? true : never;
+const _everyKindListed: _EveryKindListed = true;
+void _everyKindListed;
+
 /**
- * True when reasoning is engaged somewhere: a Thinking mode, a global native effort level, or a per-prompt
- * positive level (the shipped defaults include several). When false, callers send no `reasoning_effort` at all
- * and skip the support probe.
+ * True when the app would let a model reason on some call: a Thinking mode, or any prompt whose effective
+ * choice (its stored setting, or its shipped default) is not `none` once the endpoint-wide level is folded in.
+ * When false, callers send no reasoning field at all and skip capability resolution. Read from the effective
+ * choice, not the stored map, since the shipped tiers switch several prompts on without storing anything.
  */
 export function isReasoningEngaged(
   mode: ThinkingMode,
   globalEffort: ReasoningEffort,
   promptReasoning: Record<string, PromptReasoning>,
 ): boolean {
-  const positive = (v: PromptReasoning) => v !== 'global' && v !== 'none';
-  return mode !== 'off' || globalEffort !== 'auto' || Object.values(promptReasoning).some(positive);
+  return mode !== 'off'
+    || ALL_REQUEST_KINDS.some((kind) => resolvePromptReasoning(kind, promptReasoning, globalEffort, mode) !== 'none');
 }
 
 /** Shipped resolved choice per prompt — `defaultPromptReasoningSetting` as the request layer reads it. */
