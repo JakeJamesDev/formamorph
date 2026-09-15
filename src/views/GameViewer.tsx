@@ -436,6 +436,8 @@ const GameViewer = ({
     reasoningEngaged,
     noteReasoningReply,
     promptReasoning,
+    promptReasoningSettings,
+    nativeReasoning,
     promptReasoningBudget,
     thinkingPrompt,
     memoryDigests,
@@ -2622,6 +2624,8 @@ const GameViewer = ({
       reasoningEffort,
       reasoningEngaged,
       promptReasoning,
+      // The stored switches and strengths, which the spec layer reads only on an endpoint that refuses off.
+      keptReasoning: { prompts: promptReasoningSettings, global: nativeReasoning },
       promptReasoningBudget,
       promptSamplers,
       genTemperature,

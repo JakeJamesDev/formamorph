@@ -14,8 +14,8 @@ import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwit
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
-import { reasoningDialectTakesBudget, reasoningDialectTakesLevel, reasoningOffRejected } from '@/lib/reasoningDialect';
+import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
+import { reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
@@ -315,6 +315,7 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
             step={5}
             disabled={inert}
             onValueChange={(v) => strength.onChange(v[0])}
+            aria-label={SETTINGS_COPY.reasoningBudget.label}
           />
           <span className="w-12 text-right text-label tabular-nums">{strength.value}%</span>
         </>
@@ -1281,21 +1282,22 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
   // The Output row reads the ACTIVE endpoint's record, which is a different target from the one a pinned
   // prompt resolves to.
-  const activeReasoningAlwaysOn = reasoningOffRejected(reasoningCapability?.dialect ?? 'unknown');
+  const activeReasoningAlwaysOn = reasoningOffRefused(reasoningCapability);
   const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind) && (promptLocalEngine || !noNativeReasoning);
   const reasoningControl = reasoningApplicable
     ? {
         setting: promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind),
         onChange: (v: PromptReasoningSetting) => setPromptReasoning(activeKind, v),
         options: promptReasoningLevelOptions(promptReasoningCapability, (promptReasoningSettings[activeKind] ?? defaultPromptReasoningSetting(activeKind)).level),
-        lockedOn: reasoningOffRejected(promptReasoningCapability.dialect),
+        lockedOn: reasoningOffRefused(promptReasoningCapability),
         // Both halves follow the dialect's row: the slider where it names a budget field and the record says
-        // the endpoint takes one, the dropdown where it carries an effort literal. The built-in engine's row
-        // names no level field, so its dropdown would be inert and is not drawn.
+        // the endpoint takes one, the dropdown where it carries an effort literal and the record lists a
+        // strength to pick. The built-in engine's row names no level field, so its dropdown would be inert
+        // and is not drawn.
         budget: promptReasoningCapability.budget && reasoningDialectTakesBudget(promptReasoningCapability.dialect)
           ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
           : null,
-        level: reasoningDialectTakesLevel(promptReasoningCapability.dialect),
+        level: reasoningLevelControl(promptReasoningCapability),
       }
     : null;
 

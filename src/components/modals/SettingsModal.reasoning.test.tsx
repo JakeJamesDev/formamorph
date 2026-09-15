@@ -35,16 +35,16 @@ const seedCapability = (record: ReasoningCapability) =>
 const levels = ['none', 'low', 'medium', 'high'] as const;
 /** A reasoning model on LM Studio: its native list answered the reasons and budget questions. */
 const takesBudget: ReasoningCapability = {
-  reasons: true, levels: [...levels], budget: true, dialect: 'lmstudio',
+  reasons: true, levels: [...levels], budget: true, dialect: 'lmstudio', offAllowed: null,
   sources: { reasons: 'native', levels: 'probe', budget: 'native' },
 };
 /** A plain OpenAI-compatible endpoint: the probe narrowed the levels and nothing answered the budget. */
 const effortOnly: ReasoningCapability = {
-  reasons: null, levels: [...levels], budget: null, dialect: 'unknown', sources: { levels: 'probe' },
+  reasons: null, levels: [...levels], budget: null, dialect: 'unknown', offAllowed: null, sources: { levels: 'probe' },
 };
 /** A model whose endpoint refuses to switch reasoning off, such as Kimi k3. */
 const alwaysReasons: ReasoningCapability = {
-  reasons: true, levels: ['low', 'high', 'max'], budget: null, dialect: 'moonshot-k3',
+  reasons: true, levels: ['low', 'high', 'max'], budget: null, dialect: 'moonshot-k3', offAllowed: null,
   sources: { reasons: 'native', levels: 'native', dialect: 'native' },
 };
 
@@ -124,5 +124,73 @@ describe('a model that always reasons', () => {
     const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
     expect(box.disabled).toBe(false);
     expect(screen.queryByText(REASONING_NOTES.always)).toBeNull();
+  });
+});
+
+/**
+ * On OpenRouter the same gateway serves models with different controls, and the record decides which. These
+ * cases seed the record one OpenRouter models-list entry would leave behind.
+ */
+describe('an OpenRouter model', () => {
+  beforeEach(() => localStorage.clear());
+
+  const openRouter = (over: Partial<ReasoningCapability>): ReasoningCapability => ({
+    reasons: true, levels: [...levels], budget: false, dialect: 'openrouter', offAllowed: true,
+    sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native', offAllowed: 'native' },
+    ...over,
+  });
+
+  // supports_max_tokens true: the model takes a token budget, so the slider is worth showing.
+  it('shows the budget slider where the model takes a token budget', () => {
+    seedCapability(openRouter({ budget: true }));
+    openNarrationOptions();
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+  });
+
+  it('hides the budget slider where the model takes none', () => {
+    seedCapability(openRouter({}));
+    openNarrationOptions();
+    expect(screen.queryByText('Reasoning Budget')).toBeNull();
+  });
+
+  // An entry naming no efforts leaves the levels empty, which is an answer: there is no strength to pick.
+  // The model still reasons, so the switch and the slider stay.
+  it('hides the strength dropdown where the model exposes no effort, keeping the switch and the slider', () => {
+    seedCapability(openRouter({ levels: [], budget: true }));
+    openNarrationOptions();
+    expect(screen.getAllByRole('checkbox', { name: 'Native Reasoning' })).toHaveLength(1);
+    expect(screen.getByRole('slider', { name: 'Reasoning Budget' })).toBeTruthy();
+    expect(screen.queryAllByRole('combobox').filter((c) => c.textContent?.includes('Global'))).toHaveLength(0);
+  });
+
+  // OpenRouter's ladders have gaps: this one names Max, High and Low and skips Medium.
+  it('lists the efforts the model named, and no others', () => {
+    seedCapability(openRouter({ levels: ['max', 'high', 'low'] }));
+    openNarrationOptions();
+    makeEditable();
+    const strength = screen.getAllByRole('combobox').find((c) => c.textContent?.includes('Global'))!;
+    // Radix opens a Select from the keyboard; a click needs pointer capture, which jsdom has not got.
+    fireEvent.keyDown(strength, { key: 'Enter' });
+    const offered = screen.getAllByRole('option').map((o) => o.textContent);
+    expect(offered).toEqual(['Global', 'Model Default', 'Low', 'High', 'Max']);
+  });
+
+  // mandatory true: the model rejects a switched-off request, so its switch reads checked and locked.
+  it('locks the switch on a mandatory model', () => {
+    seedCapability(openRouter({ offAllowed: false, levels: ['high', 'low'] }));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.getAttribute('data-state')).toBe('checked');
+    expect(box.disabled).toBe(true);
+    expect(screen.getByText(REASONING_NOTES.always)).toBeTruthy();
+  });
+
+  it('leaves the switch clickable on a model the list calls optional', () => {
+    seedCapability(openRouter({ offAllowed: true }));
+    openNarrationOptions();
+    makeEditable();
+    const box = screen.getAllByRole('checkbox', { name: 'Native Reasoning' })[0] as HTMLButtonElement;
+    expect(box.disabled).toBe(false);
   });
 });
