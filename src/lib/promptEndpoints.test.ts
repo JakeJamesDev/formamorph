@@ -170,38 +170,56 @@ describe('toDebugEndpoint', () => {
   };
 
   it('never carries the API token into the exported debug shape', () => {
-    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' });
+    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' }, 'lmstudio');
     expect(JSON.stringify(debug)).not.toContain('sk-super-secret-value');
     expect(Object.keys(debug).sort())
-      .toEqual(['budgetTokens', 'model', 'preset', 'reasoningEffort', 'routed', 'url']);
+      .toEqual(['model', 'preset', 'reasoningFields', 'routed', 'url']);
   });
 
   it('records the reasoning fields the request carried, so the viewer can show what was sent', () => {
-    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' });
-    expect(debug.budgetTokens).toBe(400);
-    expect(debug.reasoningEffort).toBe('high');
+    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 400, reasoning_effort: 'high' }, 'lmstudio');
+    expect(debug.reasoningFields).toEqual([
+      { label: 'Effort', name: 'reasoning_effort', value: 'high' },
+      { label: 'Budget', name: 'thinking_budget_tokens', value: 400 },
+    ]);
   });
 
   it('keeps a zero budget, which is how a switched-off prompt reads', () => {
-    expect(toDebugEndpoint(target, { thinking_budget_tokens: 0, reasoning_effort: 'none' }).budgetTokens).toBe(0);
+    const debug = toDebugEndpoint(target, { thinking_budget_tokens: 0, reasoning_effort: 'none' }, 'lmstudio');
+    expect(debug.reasoningFields).toContainEqual({ label: 'Budget', name: 'thinking_budget_tokens', value: 0 });
   });
 
   it('leaves out a field the request did not carry', () => {
-    const effortOnly = toDebugEndpoint(target, { reasoning_effort: 'low' });
-    expect(effortOnly.reasoningEffort).toBe('low');
-    expect('budgetTokens' in effortOnly).toBe(false);
-    const neither = toDebugEndpoint(target, {});
-    expect('reasoningEffort' in neither).toBe(false);
-    expect('budgetTokens' in neither).toBe(false);
+    const effortOnly = toDebugEndpoint(target, { reasoning_effort: 'low' }, 'lmstudio');
+    expect(effortOnly.reasoningFields).toEqual([{ label: 'Effort', name: 'reasoning_effort', value: 'low' }]);
+    expect(toDebugEndpoint(target, {}, 'lmstudio').reasoningFields).toEqual([]);
+  });
+
+  // One case per dialect: the viewer names the key the endpoint received, whichever key that is.
+  it.each([
+    ['unknown', { thinking_budget_tokens: 400, reasoning_effort: 'high' as const }, ['reasoning_effort', 'thinking_budget_tokens']],
+    ['engine', { thinking_budget_tokens: 400 }, ['thinking_budget_tokens']],
+    ['openai', { reasoning_effort: 'high' as const }, ['reasoning_effort']],
+    ['lmstudio', { thinking_budget_tokens: 400, reasoning_effort: 'high' as const }, ['reasoning_effort', 'thinking_budget_tokens']],
+    ['vllm', { thinking_token_budget: 400, reasoning_effort: 'high' as const }, ['reasoning_effort', 'thinking_token_budget']],
+    ['openrouter', { reasoning: { effort: 'high' as const, max_tokens: 400 } }, ['reasoning.effort', 'reasoning.max_tokens']],
+    ['anthropic', { thinking: { type: 'enabled' as const, budget_tokens: 400 } }, ['thinking.budget_tokens', 'thinking.type']],
+    ['google-2.5', { google: { thinking_config: { thinking_budget: 8192 } } }, ['google.thinking_config.thinking_budget']],
+    ['google-3', { google: { thinking_config: { thinking_level: 'high' } } }, ['google.thinking_config.thinking_level']],
+    ['moonshot-k3', { reasoning_effort: 'max' as const }, ['reasoning_effort']],
+    ['moonshot-k2', { thinking: { type: 'disabled' as const } }, ['thinking.type']],
+  ] as const)('names the keys the %s dialect writes', (dialect, body, names) => {
+    const debug = toDebugEndpoint(target, body, dialect);
+    expect(debug.reasoningFields.map((f) => f.name)).toEqual(names);
   });
 
   it('marks a pinned prompt as routed and an unpinned one as not', () => {
-    expect(toDebugEndpoint(target, {}).routed).toBe(true);
-    expect(toDebugEndpoint({ ...target, presetId: null }, {}).routed).toBe(false);
+    expect(toDebugEndpoint(target, {}, 'unknown').routed).toBe(true);
+    expect(toDebugEndpoint({ ...target, presetId: null }, {}, 'unknown').routed).toBe(false);
   });
 
   it('records the preset name and model the request actually used', () => {
-    const debug = toDebugEndpoint(target, {});
+    const debug = toDebugEndpoint(target, {}, 'unknown');
     expect(debug.preset).toBe('Cydonia 24B');
     expect(debug.model).toBe('cydonia');
     expect(debug.url).toBe(target.url);

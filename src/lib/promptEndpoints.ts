@@ -5,8 +5,10 @@ import {
   type TextEndpointPresetStore, type TextEndpointValues,
 } from './textEndpointPresets';
 import type { EndpointSamplerOverrides } from './endpointSamplers';
-import type { AiRequestBody } from './aiRequest/aiRequestSpec';
-import type { ReasoningEffortField } from './reasoningEffort';
+import {
+  reasoningWireFields,
+  type ReasoningBodyFields, type ReasoningDialect, type ReasoningWireField,
+} from './reasoningDialect';
 
 /**
  * Which text-endpoint preset each prompt kind sends to, keyed by request type. A kind with no entry
@@ -139,11 +141,9 @@ export interface DebugEndpointInfo {
   routed: boolean;
   model: string;
   url: string;
-  /** The effort hint the request carried. Absent where it sent none. */
-  reasoningEffort?: ReasoningEffortField;
-  /** The thinking cap the request carried, in tokens. Absent where it sent none; `0` is a switched-off
-   *  prompt, which is a different thing from sending nothing. */
-  budgetTokens?: number;
+  /** The reasoning fields the request carried, in the spelling the endpoint received. Empty where it sent
+   *  none. A `0` budget is a switched-off prompt, which is a different thing from sending nothing. */
+  reasoningFields: ReasoningWireField[];
 }
 
 /**
@@ -151,8 +151,8 @@ export interface DebugEndpointInfo {
  * and deliberately drops the token: the viewer exports this structure as JSON for bug reports, so the
  * omission is the point of the function rather than an accident of the call site.
  *
- * The reasoning fields are read off the wire body rather than resolved a second time, so the viewer reports
- * what the request actually carried.
+ * The reasoning fields are read back out of the wire body through the dialect that wrote them, rather than
+ * resolved a second time, so the viewer reports what the request actually carried and under which key.
  */
 export function toDebugEndpoint(
   target: {
@@ -162,15 +162,15 @@ export function toDebugEndpoint(
     url: string;
     apiToken: string;
   },
-  body: Pick<AiRequestBody, 'reasoning_effort' | 'thinking_budget_tokens'>,
+  body: ReasoningBodyFields,
+  dialect: ReasoningDialect,
 ): DebugEndpointInfo {
   return {
     preset: target.presetName,
     routed: target.presetId !== null,
     model: target.model,
     url: target.url,
-    ...(body.reasoning_effort !== undefined && { reasoningEffort: body.reasoning_effort }),
-    ...(body.thinking_budget_tokens !== undefined && { budgetTokens: body.thinking_budget_tokens }),
+    reasoningFields: reasoningWireFields(dialect, body),
   };
 }
 
