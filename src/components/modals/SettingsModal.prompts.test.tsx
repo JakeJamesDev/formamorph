@@ -60,8 +60,11 @@ const railRow = (name: string) => screen.getAllByRole('button', { name }).at(-1)
 /** The hub draws the whole request, so its two region hints are what says it is on screen. */
 const onHub = () => screen.queryByText('one block, sent first, sets the rules') !== null;
 
-/** The System editor is the only surface that shows the prompt's one-line description. */
-const onSystemEditor = () => screen.queryByText(/Writes the story itself/) !== null;
+/** The open surface is the sub-row marked current; the hub marks none, since it is not an editor. */
+const onSystemEditor = () => railRow(SURFACE_LABELS.system).getAttribute('aria-current') === 'true';
+
+/** The prompt's one-line description, the same text on every surface. */
+const describesPrompt = () => screen.queryByText(/Writes the story itself/) !== null;
 
 function EnableTemperatureOverride() {
   const { setEndpointSamplerEnabled } = useSettings();
@@ -142,6 +145,19 @@ describe('Settings → Prompts landing', () => {
     fireEvent.click(railRow('Narration'));
     expect(onHub()).toBe(true);
     expect(onSystemEditor()).toBe(false);
+  });
+
+  it('heads the hub, the editors and the options with what the prompt does', () => {
+    openPrompts();
+    expect(onHub()).toBe(true);
+    expect(describesPrompt()).toBe(true);
+
+    fireEvent.click(railRow(SURFACE_LABELS.system));
+    expect(describesPrompt()).toBe(true);
+
+    fireEvent.click(railRow(SURFACE_LABELS.options));
+    expect(onSystemEditor()).toBe(false);
+    expect(describesPrompt()).toBe(true);
   });
 });
 

@@ -258,10 +258,9 @@ const passById = (id: TurnPassId): TurnPassRecord => {
   return record;
 };
 
-/** What each fan-out hub says above the one request it draws, so the repetition is understood rather than
- *  scrolled through. */
-const FANOUT_CAPTION = `One request like this is sent per character in the scene. This one is ${FIXTURE_SUBJECT.name}.`;
-const DISCOVER_CAPTION = `One request like this is sent per new character the story names. This one is ${FIXTURE_SUBJECT.name}.`;
+/** What a fan-out hub says above the one request it draws: which subject the example is. When the request
+ *  is sent, and how often, is the prompt description's job, shown over every surface. */
+const EXAMPLE_CAPTION = `This example is ${FIXTURE_SUBJECT.name}.`;
 
 /** Which pass each prompt's hub draws, beyond the two that decide for themselves. */
 const HUB_PASS: Record<string, TurnPassId> = {
@@ -279,11 +278,9 @@ const HUB_PASS: Record<string, TurnPassId> = {
 };
 
 const CAPTIONS: Record<string, string> = {
-  character: FANOUT_CAPTION,
-  discover: DISCOVER_CAPTION,
-  diary: FANOUT_CAPTION,
-  timeopening: 'Sent once, on the opening turn only — what it settles dates every memory after it.',
-  milestone: 'Sent between turns, never during one, whenever condensed turns age into long-term memory.',
+  character: EXAMPLE_CAPTION,
+  discover: EXAMPLE_CAPTION,
+  diary: EXAMPLE_CAPTION,
 };
 
 /** The location prompt drives two different requests; which one a turn sends is the detection mode's call,
