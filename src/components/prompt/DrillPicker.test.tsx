@@ -107,7 +107,7 @@ describe('DrillPicker — what a level offers', () => {
     const user = userEvent.setup();
     render(<Harness token={encodePlaceholderToken({ id: 'molly', mode: 'world', placementId: 'p1', path: [{ kind: 'val', ref: 'asian' }] })} />);
     await openPicker(user, 'Molly › isAsian');
-    expect(within(picker()).getByText('1 plain value — not addressable.')).toBeInTheDocument();
+    expect(within(picker()).getByText("1 plain value you can't address")).toBeInTheDocument();
   });
 
   it('filters the level it is on', async () => {

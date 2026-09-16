@@ -74,27 +74,28 @@ export const PROMPT_LABELS: Record<PromptTab, string> = {
 
 /**
  * One line per prompt, saying what job it does in the turn — shown above the editor, where it is read
- * before the prompt rather than after it.
+ * before the prompt rather than after it. Written to the Writing Guide's help-line test: verb-first,
+ * "you" for the player, no period on one sentence.
  *
  * Deliberately no "only used when X is on" clauses: a prompt whose feature is off never reaches the list
  * (see `visibleGroups`), so the caveat only ever appeared on prompts it wasn't true of.
  */
 export const PROMPT_DESCRIPTIONS: Record<string, string> = {
-  narration: 'Writes the story itself — the prose the player reads each turn.',
-  thinking: 'Plans the turn before it is written: who is present, and what happens next.',
-  choices: "Offers the player their options, written in the player's own voice.",
-  statupdates: 'Reads what happened and records which stats it moved.',
-  location: "Decides whether the player's action takes them somewhere new.",
-  summary: 'Condenses an older turn into one line the storyteller can still read later.',
-  milestone: 'Between turns, decides which condensed turns stay in long-term memory.',
-  diary: 'Each character present records a private, first-person note on the turn.',
-  timepassed: 'Measures how much in-world time a turn took.',
-  timeopening: 'Reads the opening scene once, to settle what time of day the story starts.',
-  scenetags: "Tags what is happening in a scene image — the action only, since the characters' looks and the setting come from their own tags.",
-  director: 'Sets the stage for the turn: who is here, and what each of them is doing.',
-  character: 'One character states, in the first person, what they want this turn.',
-  discover: 'Writes a lasting note for each new character the story names, and rewrites it on request.',
-  storyboard: "Reconciles every character's intentions into a single plan for the turn.",
+  narration: 'Writes the story itself, the prose you read each turn',
+  thinking: "Plans the turn before it's written: who's present, and what happens next",
+  choices: 'Offers your options for the turn, written in your own voice',
+  statupdates: 'Reads what happened and records which stats it moved',
+  location: 'Decides whether your action takes you somewhere new',
+  summary: 'Condenses an older turn into one line the storyteller can still read later',
+  milestone: 'Decides, between turns, which condensed turns stay in long-term memory',
+  diary: "Records each present character's private, first-person note on the turn",
+  timepassed: 'Measures how much in-world time a turn took',
+  timeopening: 'Reads the opening scene once to decide what time of day the story starts',
+  scenetags: "Tags only the action in a scene image. The characters' looks and the setting come from their own tags.",
+  director: "Describes the scene for the turn: who's here, and what each of them is doing",
+  character: 'States what one character wants this turn, in the first person',
+  discover: 'Writes a lasting note for each new character the story names, and rewrites it on request',
+  storyboard: "Reconciles every character's intentions into a single plan for the turn",
 };
 
 /** Which editor of the selected prompt is on show. Null is the Anatomy hub: the prompt selected with no

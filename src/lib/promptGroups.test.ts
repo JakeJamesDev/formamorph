@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PROMPT_GROUPS, visibleGroups, allGroupedTabs, PROMPT_DESCRIPTIONS, PROMPT_TAB_REQUESTS, isPromptTab } from './promptGroups';
 import { computePromptTabAvailability } from './promptTabAvailability';
+import { sentenceShapeViolation } from '@/test/copyShape';
 
 const everyFeature = {
   choicesEnabled: true, statUpdatesEnabled: true, locationChangeEnabled: true,
@@ -90,6 +91,16 @@ describe('PROMPT_DESCRIPTIONS', () => {
       expect(text.length, tab).toBeLessThanOrEqual(140);
       expect(text, tab).not.toContain(String.fromCharCode(10));
     }
+  });
+
+  it('drops the period on a one-sentence description and keeps it on a longer one', () => {
+    // The same period rule the settings copy follows: the line heads an editor the way a caption heads a
+    // control, so a lone sentence carries no period.
+    const bad = Object.entries(PROMPT_DESCRIPTIONS).flatMap(([tab, text]) => {
+      const why = sentenceShapeViolation(text);
+      return why ? [`${tab}: ${text} (${why})`] : [];
+    });
+    expect(bad).toEqual([]);
   });
 
   it('drops the "only used when X is on" caveat', () => {

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { sentenceShapeViolation } from '@/test/copyShape';
 import {
   tilePieces,
   trimEndTiled,
@@ -213,5 +214,13 @@ describe('label vocabulary', () => {
     for (const key of Object.keys(CONTEXT_LABELS) as (keyof typeof CONTEXT_LABELS)[]) {
       expect(CONTEXT_HINTS[key].length).toBeGreaterThan(CONTEXT_LABELS[key].length);
     }
+  });
+
+  it('keeps every hint to one unpunctuated sentence, so a jump tooltip can add its own after a period', () => {
+    const bad = Object.entries(CONTEXT_HINTS).flatMap(([key, hint]) => {
+      const why = sentenceShapeViolation(hint);
+      return why || /\.$/.test(hint) ? [`${key}: ${hint}`] : [];
+    });
+    expect(bad).toEqual([]);
   });
 });

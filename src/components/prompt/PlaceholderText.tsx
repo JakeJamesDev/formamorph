@@ -11,7 +11,7 @@ import type { Placeholder } from '@/types';
 /** A chip that resolves to nothing because something it points at is gone — its own placeholder, or a part
  *  its path drills through. The author's label rides along: it is what is left to say what the chip was for. */
 const MissingChip = ({ label, className }: { label?: string; className?: string }) => (
-  <Tip tip="This placeholder no longer exists — it will resolve to nothing" labelsChild={false}>
+  <Tip tip="This placeholder no longer exists and resolves to nothing" labelsChild={false}>
     <span className={cn('mx-0.5 rounded px-1 text-[0.85em] ring-1 ring-destructive/50 text-destructive', className)}>
       {label ? `? ${label}` : '?'}
     </span>

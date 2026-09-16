@@ -319,7 +319,7 @@ describe('ChipTypeahead — making a placeholder that is not there yet', () => {
     await user.keyboard('Freckles');
     await waitFor(() => expect(offered()).toEqual([]));
     expect(screen.queryByText(/New Placeholder/)).not.toBeInTheDocument();
-    expect(screen.getByText('Nothing matches.')).toBeInTheDocument();
+    expect(screen.getByText('Nothing matches')).toBeInTheDocument();
   });
 });
 
