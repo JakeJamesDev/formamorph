@@ -1,6 +1,6 @@
 import type { AIRequestType } from '@/types';
 import type { AnatomySource, ContextLabel } from './requestAnatomy';
-import type { PromptSurface, PromptTab } from './promptGroups';
+import { PROMPT_TAB_REQUESTS, type PromptSurface, type PromptTab } from './promptGroups';
 
 /**
  * Where a highlighted run in a Request Anatomy goes when it is clicked: the prompt it belongs to, the
@@ -13,21 +13,9 @@ import type { PromptSurface, PromptTab } from './promptGroups';
 
 /** Which prompt in the Settings rail owns each kind of request. A request with no editor surface at all —
  *  the discovery pass, the milestone selector — is absent, so a run on one has nowhere to go. */
-export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, PromptTab>> = {
-  narration: 'narration',
-  thinking: 'thinking',
-  director: 'director',
-  character: 'character',
-  storyboard: 'storyboard',
-  choices: 'choices',
-  statUpdates: 'statupdates',
-  locationChange: 'location',
-  summary: 'summary',
-  diary: 'diary',
-  timePassed: 'timepassed',
-  openingTime: 'timeopening',
-  sceneTags: 'scenetags',
-};
+export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, PromptTab>> = Object.fromEntries(
+  (Object.entries(PROMPT_TAB_REQUESTS) as [PromptTab, AIRequestType][]).map(([tab, type]) => [type, tab]),
+);
 
 /** The conditional narration lines the Messages view stacks, each its own field there. */
 export type MessageField = 'recap' | 'now' | 'recall' | 'direction';

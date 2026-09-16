@@ -1,3 +1,5 @@
+import type { AIRequestType } from '@/types';
+
 /**
  * How the prompt list is grouped in Settings → Prompts' rail. Thirteen flat tabs wrapped into three rows
  * and told the reader nothing about what each prompt is for; grouped by the job they do, the list reads as
@@ -26,6 +28,27 @@ export type PromptTab =
   | 'statupdates' | 'location' | 'timepassed' | 'timeopening'
   | 'summary' | 'diary'
   | 'scenetags';
+
+/** Which request each tab tunes: its samplers, endpoint pin and reasoning rows read and write this type. */
+export const PROMPT_TAB_REQUESTS: Record<PromptTab, AIRequestType> = {
+  narration: 'narration',
+  thinking: 'thinking',
+  director: 'director',
+  character: 'character',
+  storyboard: 'storyboard',
+  choices: 'choices',
+  statupdates: 'statUpdates',
+  location: 'locationChange',
+  timepassed: 'timePassed',
+  timeopening: 'openingTime',
+  summary: 'summary',
+  diary: 'diary',
+  scenetags: 'sceneTags',
+};
+
+export function isPromptTab(tab: string): tab is PromptTab {
+  return Object.hasOwn(PROMPT_TAB_REQUESTS, tab);
+}
 
 /** What each prompt is called wherever it is named: the rail's own row, and a jump that says where it
  *  goes. */
