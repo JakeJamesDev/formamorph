@@ -162,14 +162,14 @@ export const summaryUserMessage = (template: string, action: string, narration: 
 const headedBlock = (header: string, text: string): string => (text.trim() ? `${header}\n${text}` : '');
 
 /**
- * The character note's user message. Blank lines left by an empty block collapse, and the end is trimmed,
- * so a rewrite with nothing later sends exactly what a first note sends.
+ * The character note's user message. Blank lines left by an empty block collapse, and both ends are
+ * trimmed, so a rewrite with nothing later sends exactly what a first note sends.
  */
 const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPassage: string): TiledRuns =>
-  trimEndTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
+  trimTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
     template,
     {
-      '<CHARACTER NAME>': subject.name,
+      '<CHARACTER NAME>': subject.name.trim(),
       '<FIRST PASSAGE>': headedBlock(DISCOVER_PASSAGE_LABEL, firstPassage),
       '<LATER MATERIAL>': headedBlock(DISCOVER_LATER_LABEL, (subject.laterMaterial ?? []).join('\n\n')),
     },

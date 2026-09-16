@@ -11,7 +11,7 @@ import { entityIdsAtAny } from '@/lib/entityPresence';
  *  a small model often parrots these back into its output. */
 export const DISCOVER_NAME_LABEL = 'Character name:';
 export const DISCOVER_PASSAGE_LABEL = 'The passage they first appeared in:';
-export const DISCOVER_LATER_LABEL = 'What the story showed of them later:';
+export const DISCOVER_LATER_LABEL = 'What the story has shown of them since:';
 
 /**
  * Pure helpers for "runtime characters" (Slice 2): promoting a director-invented ad-hoc character that
