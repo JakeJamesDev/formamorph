@@ -2636,10 +2636,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
               <div className="flex flex-1 min-w-0 min-h-0 flex-col gap-2">
 
-              {/* What this prompt is for — only over the System editor, which is the prompt it describes;
-                  the other surfaces have their own content and get the row back. Above rather than beneath:
-                  at the bottom of a full-height editor it sat below the fold. */}
-              {promptView === 'system' && (
+              {/* What this prompt is for, over every surface, so the first thing seen names the prompt's job.
+                  The hub draws the same line itself, beside its own controls. Above rather than beneath: at
+                  the bottom of a full-height editor it sat below the fold. */}
+              {!showingHub && (
                 <p className="flex-shrink-0 text-helper text-muted-foreground">
                   {PROMPT_DESCRIPTIONS[activePromptTab]}
                 </p>
@@ -2663,6 +2663,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               {showingHub && (
                 <RequestAnatomyPanel
                   tab={activePromptTab}
+                  description={PROMPT_DESCRIPTIONS[activePromptTab]}
                   prompts={hubPrompts}
                   values={effectivePreviewValues}
                   settings={hubSettings}

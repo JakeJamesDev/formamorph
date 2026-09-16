@@ -63,7 +63,7 @@ function Harness({ settings, tab, onJump, fullscreen }: {
   const [mode, setMode] = useState<AnatomyViewMode>('chips');
   return (
     <RequestAnatomyPanel
-      tab={tab} prompts={PROMPTS} values={VALUES} settings={settings}
+      tab={tab} description="What this prompt does." prompts={PROMPTS} values={VALUES} settings={settings}
       mode={mode} onModeChange={setMode} onJump={onJump}
       fullscreen={fullscreen} onRequestFullscreen={fullscreen === undefined ? undefined : () => {}}
     />
@@ -101,9 +101,11 @@ const modeTab = (label: 'Chips' | 'Preview') => screen.getByRole('tab', { name: 
 const showMode = (label: 'Chips' | 'Preview') => fireEvent.mouseDown(modeTab(label));
 
 describe('RequestAnatomyPanel header', () => {
-  it('says the one thing worth saying, with no toolbar of condition toggles', () => {
+  it('heads the hub with what the prompt does, with no toolbar of condition toggles', () => {
     show();
-    expect(screen.getByText(/each blank shown as the chip that fills it/)).toBeInTheDocument();
+    expect(screen.getByText('What this prompt does.')).toBeInTheDocument();
+    // How to read the view lives behind the ⓘ, not on the line.
+    expect(screen.queryByText(/each blank shown as the chip that fills it/)).toBeNull();
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 
@@ -113,10 +115,9 @@ describe('RequestAnatomyPanel header', () => {
     expect(modeTab('Preview')).toHaveAttribute('data-state', 'inactive');
   });
 
-  it('flips to the resolved request and back, and says which it is showing', () => {
+  it('flips to the resolved request and back', () => {
     show();
     showMode('Preview');
-    expect(screen.getByText(/as the AI receives it/)).toBeInTheDocument();
     expect(modeTab('Preview')).toHaveAttribute('data-state', 'active');
     showMode('Chips');
     expect(modeTab('Chips')).toHaveAttribute('data-state', 'active');
@@ -164,7 +165,7 @@ describe('RequestAnatomyPanel header', () => {
     const onFs = vi.fn();
     render(
       <RequestAnatomyPanel
-        tab="narration" prompts={PROMPTS} values={VALUES} settings={SETTINGS}
+        tab="narration" description="What this prompt does." prompts={PROMPTS} values={VALUES} settings={SETTINGS}
         mode="chips" onModeChange={() => {}}
         onJump={() => {}} fullscreen={false} onRequestFullscreen={onFs}
       />,
@@ -204,10 +205,10 @@ describe('RequestAnatomyPanel preview', () => {
     }
   });
 
-  it('captions the fan-out hubs as one request per character', () => {
+  it('captions the fan-out hubs with the example subject', () => {
     for (const tab of ['character', 'diary']) {
       show({}, tab);
-      expect(screen.getByText(/per character in the scene/)).toBeInTheDocument();
+      expect(screen.getByText('This example is Wren.')).toBeInTheDocument();
       cleanup();
     }
   });

@@ -428,20 +428,19 @@ describe('the location hub follows the detection mode', () => {
 });
 
 describe('the fan-out hubs', () => {
-  it('draws one example subject and says so, rather than repeating the cast', () => {
+  it('draws one example subject and names it, rather than repeating the cast', () => {
     for (const tab of ['character', 'diary']) {
       const requests = hub(tab);
       expect(requests).toHaveLength(1);
-      expect(requests[0].caption).toContain('per character');
-      expect(requests[0].caption).toContain('Wren');
+      expect(requests[0].caption).toBe('This example is Wren.');
       expect(requests[0].blocks.map((b) => b.content).join('')).toContain('Wren');
     }
   });
 
-  it('draws one character note and says it is sent per new character', () => {
+  it('draws one character note and names its subject', () => {
     const requests = hub('discover');
     expect(requests.map((r) => r.type)).toEqual(['discoverEntity']);
-    expect(requests[0].caption).toContain('per new character');
+    expect(requests[0].caption).toBe('This example is Wren.');
     const user = requests[0].blocks[requests[0].blocks.length - 1];
     expect(user.content).toContain('Wren');
     expect(user.runs.some((r) => r.chip === '<FIRST PASSAGE>')).toBe(true);
@@ -449,10 +448,11 @@ describe('the fan-out hubs', () => {
 });
 
 describe('the milestone selector hub', () => {
-  it('draws a between-turns request over a kept list and a fresh list, with the reply format appended', () => {
+  it('draws a request over a kept list and a fresh list, with the reply format appended and no caption', () => {
     const requests = hub('milestone');
     expect(requests.map((r) => r.type)).toEqual(['milestoneSelect']);
-    expect(requests[0].caption).toContain('between turns');
+    // When it is sent is the description's line; a caption here would say it twice.
+    expect(requests[0].caption).toBeUndefined();
     const user = requests[0].blocks[requests[0].blocks.length - 1];
     expect(user.content).toMatch(/^Moments already in memory, oldest first:\n1\. .+\n\nNew moments to judge:\n2\. .+\n3\. .+\n\nReply with three lines:/);
     expect(user.runs.map((r) => r.chip ?? r.contextLabel)).toEqual(

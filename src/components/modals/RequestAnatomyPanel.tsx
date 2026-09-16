@@ -35,6 +35,7 @@ const ANATOMY_RUN_SELECTOR = `[${ANATOMY_RUN_ATTR}]`;
 
 export function RequestAnatomyPanel({
   tab,
+  description,
   prompts,
   values,
   settings,
@@ -46,6 +47,8 @@ export function RequestAnatomyPanel({
 }: {
   /** Which prompt's hub this is — one of the rail's own ids. */
   tab: string;
+  /** What the prompt is for, the same line the editors show, so landing here names the prompt's job. */
+  description: string;
   prompts: AnatomyPreviewPrompts;
   values: Record<string, string>;
   settings: AnatomyPreviewSettings;
@@ -173,23 +176,15 @@ export function RequestAnatomyPanel({
 
   return (
     <div ref={measureRef} className="flex flex-1 min-h-0 flex-col">
-      {/* A description line like the System editor's, not a toolbar: one sentence, the fuller legend
-          behind the ⓘ, and the panel's own controls at the far end. */}
+      {/* The prompt's own description line, the same one the editors show, not a toolbar: what this prompt
+          does, how to read the view behind the ⓘ, and the panel's own controls at the far end. */}
       <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">
-        <p className="text-helper text-muted-foreground">
-          {split
-            ? 'Your template on the left, and the request it produces on the right. Click a chip to see it in its editor.'
-            : mode === 'chips'
-              ? 'Your text, with each blank shown as the chip that fills it. Click a chip to see it in its editor.'
-              : 'The whole request as the AI receives it. Highlighted text is yours. Click it to open its editor.'}
-        </p>
+        <p className="text-helper text-muted-foreground">{description}</p>
         <HintInfo>
-          {`${requests.length > 1 ? 'The requests' : 'The request'} this prompt is part of, drawn from an example playthrough under your current settings.\n\n` +
-            '- **Chips** shows the request as your template: every value collapses to the chip behind it.\n' +
-            '- **Preview** shows the same request resolved, exactly as the AI receives it.\n' +
-            '- **Highlighted text** is your own — click it to open the field it comes from.\n' +
-            '- **A dashed chip** is a block the app assembled; where another prompt wrote it, clicking opens that prompt.\n' +
-            '- **A message that is missing** is one your settings never send.'}
+          {'This is the request the app sends with your current settings.\n\n' +
+            '- The **Chips** tab shows your template, with each value replaced by its chip. Dashed chips are parts the app fills in. Click one to open its prompt.\n' +
+            '- The **Preview** tab shows the full text of the request. The highlighted parts are text you typed. Click one to open the editor you typed it in.\n' +
+            '- If a setting is off, its message is not sent.'}
         </HintInfo>
         <div className="ml-auto flex items-center gap-1">
           {canSplit && (
