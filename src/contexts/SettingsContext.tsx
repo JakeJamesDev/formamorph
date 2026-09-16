@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt } from '../components/game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import type { ImageProviderId } from '../lib/imageGen';
@@ -207,6 +207,8 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
   locationChangeUserPrompt: defaultLocationChangeUserPrompt,
   summaryUserPrompt: defaultSummaryUserPrompt,
+  milestoneSelectPrompt: defaultMilestoneSelectPrompt,
+  milestoneSelectUserPrompt: defaultMilestoneSelectUserPrompt,
   nowLinePrompt: defaultNowLinePrompt,
   timePassedPrompt: defaultTimePassedPrompt,
   timePassedUserPrompt: defaultTimePassedUserPrompt,
@@ -214,6 +216,8 @@ const PROMPT_TEXT_DEFAULTS: PromptValues = {
   openingTimeUserPrompt: defaultOpeningTimeUserPrompt,
   sceneTagsPrompt: defaultSceneTagsPrompt,
   sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
+  discoverEntityPrompt: defaultDiscoverEntityPrompt,
+  discoverEntityUserPrompt: defaultDiscoverEntityUserPrompt,
 };
 
 /** Each read-only built-in preset's values, its section style applied to the canonical text (markdown =
@@ -754,7 +758,8 @@ function useProvideSettings() {
     systemPrompt, narrationUserPrompt, recapUserPrompt, rehydrateUserPrompt, oocDirectivePrompt, choicesPrompt, statUpdatesPrompt, locationChangePromptText, thinkingPrompt, summaryPrompt,
     diaryPrompt, directorPrompt, directorUserPrompt, characterPrompt, storyboardPrompt,
     choicesUserPrompt, statUpdatesUserPrompt, locationChangeUserPrompt, summaryUserPrompt, nowLinePrompt, timePassedPrompt, timePassedUserPrompt,
-    openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
+    openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
+    milestoneSelectPrompt, milestoneSelectUserPrompt,
   } = promptValues;
   const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
   const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
@@ -775,6 +780,8 @@ function useProvideSettings() {
   const setStatUpdatesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
   const setLocationChangeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
   const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
+  const setMilestoneSelectPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'milestoneSelectPrompt', v));
+  const setMilestoneSelectUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'milestoneSelectUserPrompt', v));
   const setNowLinePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'nowLinePrompt', v));
   const setTimePassedPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedPrompt', v));
   const setTimePassedUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
@@ -782,6 +789,8 @@ function useProvideSettings() {
   const setOpeningTimeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'openingTimeUserPrompt', v));
   const setSceneTagsPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsPrompt', v));
   const setSceneTagsUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
+  const setDiscoverEntityPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'discoverEntityPrompt', v));
+  const setDiscoverEntityUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'discoverEntityUserPrompt', v));
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
@@ -1553,6 +1562,10 @@ function useProvideSettings() {
     setStatUpdatesUserPrompt,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
+    milestoneSelectPrompt,
+    setMilestoneSelectPrompt,
+    milestoneSelectUserPrompt,
+    setMilestoneSelectUserPrompt,
     summaryUserPrompt,
     nowLinePrompt,
     setNowLinePrompt,
@@ -1568,6 +1581,10 @@ function useProvideSettings() {
     setSceneTagsPrompt,
     sceneTagsUserPrompt,
     setSceneTagsUserPrompt,
+    discoverEntityPrompt,
+    setDiscoverEntityPrompt,
+    discoverEntityUserPrompt,
+    setDiscoverEntityUserPrompt,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,

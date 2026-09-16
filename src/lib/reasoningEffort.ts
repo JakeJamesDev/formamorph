@@ -246,7 +246,7 @@ export function parsePromptReasoningSetting(raw: unknown): PromptReasoningSettin
 /** Prompts whose shipped default is a small amount of native reasoning: the planning passes and the memory
  *  passes weigh several facts at once, so cheap thinking helps them. Parsers and choices ship switched off. */
 const LOW_REASONING_KINDS: readonly AIRequestType[] = [
-  'thinking', 'director', 'character', 'storyboard', 'summary', 'diary',
+  'thinking', 'director', 'character', 'storyboard', 'summary', 'milestoneSelect', 'diary',
 ];
 
 /** Shipped setting per prompt: narration on at Global, planning and memory passes on at Low, parsers and

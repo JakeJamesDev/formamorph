@@ -4,7 +4,7 @@ import { computePromptTabAvailability } from './promptTabAvailability';
 
 const everyFeature = {
   choicesEnabled: true, statUpdatesEnabled: true, locationChangeEnabled: true,
-  memoryDigests: true, characterDiaries: true, aiClock: true, sceneImages: true,
+  memoryDigests: true, characterDiaries: true, describeCharacters: true, aiClock: true, sceneImages: true,
 };
 
 /**

@@ -1,8 +1,7 @@
-import type { ChatMessage } from '@/types';
 import type { TurnPassRecord, TurnPassRequest, TurnPlanInput, TurnMaterial, TurnPassSubject } from './turnPlan';
 import { renderPromptTemplate, renderPromptTemplateRuns, promptTemplatePieces } from '@/lib/promptTemplate';
 import {
-  tilePieces, trimEndTiled,
+  tilePieces, trimEndTiled, trimTiled, collapseBlankLines,
   type AnatomyPiece, type ContextLabel, type TiledRuns,
 } from '@/lib/requestAnatomy';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
@@ -19,7 +18,10 @@ import { matchLocationResponse } from '@/lib/locationMatch';
 import { parseChoices } from '@/lib/choices';
 import { parseStatUpdates } from '@/lib/statChanges';
 import { parseTimeDelta, parseOpeningDaypart } from '@/lib/gameClock';
-import { cleanDiscoveredDescription, DISCOVER_NAME_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
+import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from '@/lib/runtimeCharacters';
+import {
+  milestoneMomentValues, milestoneReplyFormat, parseIncrementalMilestoneReply, type IncrementalVerdict,
+} from '@/lib/milestoneMemory';
 import {
   hasOocDirective,
   stripOocDirectives,
@@ -56,6 +58,8 @@ export const TURN_PASS_CAPS = {
   sceneTags: 120,
   /** A handful of short options; room for the last one on a verbose model. */
   choices: 256,
+  /** Three short number lines. */
+  milestoneSelect: 300,
 } as const;
 
 /** One stat line (a name, a sign and a number) per live stat, plus slack for a stray word. */
@@ -113,8 +117,6 @@ const isOpening = (input: TurnPlanInput): boolean => !input.isGameStarted;
 export const effectiveActionFor = (input: TurnPlanInput): string =>
   isOpening(input) ? 'START GAME' : input.action;
 
-const user = (content: string): ChatMessage[] => [{ role: 'user', content }];
-
 /**
  * The four assemblies a pass shares with a caller that asks the same thing outside a turn — the idle
  * drainers, which work on a turn that has already been stored, and the standalone re-rolls. Those callers
@@ -156,9 +158,23 @@ export const summaryUserTiled = (template: string, action: string, narration: st
 export const summaryUserMessage = (template: string, action: string, narration: string): string =>
   summaryUserTiled(template, action, narration).content;
 
-/** The discovery pass's user message: who to describe, and the passage they appeared in. */
-export const discoverUserMessage = (name: string, narration: string): string =>
-  `${DISCOVER_NAME_LABEL} ${name}\n\n${DISCOVER_PASSAGE_LABEL}\n${narration}`;
+/** A headed block chip's value: its header over the text, or nothing at all. */
+const headedBlock = (header: string, text: string): string => (text.trim() ? `${header}\n${text}` : '');
+
+/**
+ * The character note's user message. Blank lines left by an empty block collapse, and the end is trimmed,
+ * so a rewrite with nothing later sends exactly what a first note sends.
+ */
+const discoverUserTiled = (template: string, subject: TurnPassSubject, firstPassage: string): TiledRuns =>
+  trimEndTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
+    template,
+    {
+      '<CHARACTER NAME>': subject.name,
+      '<FIRST PASSAGE>': headedBlock(DISCOVER_PASSAGE_LABEL, firstPassage),
+      '<LATER MATERIAL>': headedBlock(DISCOVER_LATER_LABEL, (subject.laterMaterial ?? []).join('\n\n')),
+    },
+    { source: 'user-template', tokens: { '<FIRST PASSAGE>': 'narration' } },
+  ))));
 
 /**
  * A foreground post-narration request's label behavior. Dispatched together, the batch shows one steady
@@ -521,10 +537,10 @@ const diaryPass: TurnPassRecord<string> = {
 };
 
 /**
- * A lasting description for a participant the narration invented. The prompt is not a preset surface, so
- * it is sent as authored rather than rendered.
+ * A lasting description for a participant the narration invented. The idle drainer and the player's
+ * rewrite build theirs here too; a rewrite adds the subject's later material.
  */
-const discoverEntityPass: TurnPassRecord<string> = {
+export const discoverEntityPass: TurnPassRecord<string> = {
   id: 'discoverEntity',
   type: 'discoverEntity',
   stage: 'postNarration',
@@ -532,13 +548,11 @@ const discoverEntityPass: TurnPassRecord<string> = {
   isDue: (input) => input.settings.describeCharacters && input.settings.concurrentTurnRequests,
   buildRequest: (input, material) => {
     const subject = subjectOf(material);
-    return {
-      type: 'discoverEntity',
-      systemPrompt: input.prompts.discoverEntity,
-      messages: user(discoverUserMessage(subject.name, material.narration)),
-      maxTokens: TURN_PASS_CAPS.discoverEntity,
-      ...silentOn(material),
-    };
+    return labeledRequest(
+      { type: 'discoverEntity', maxTokens: TURN_PASS_CAPS.discoverEntity, ...silentOn(material) },
+      systemTiled(input.prompts.discoverEntity, material.ctx),
+      discoverUserTiled(input.prompts.discoverEntityUser, subject, material.narration),
+    );
   },
   parseResponse: (raw, material) => cleanDiscoveredDescription(raw, subjectOf(material).name),
 };
@@ -570,6 +584,49 @@ export const sceneTagsPass: TurnPassRecord<string> = {
     ),
   ),
   parseResponse: (raw) => raw,
+};
+
+const milestoneOf = (material: TurnMaterial): { kept: string[]; fresh: string[] } => {
+  if (!material.milestone) throw new Error('the milestone selector needs its kept and fresh lists');
+  return material.milestone;
+};
+
+/**
+ * Which older digests stay in long-term memory. The reply format rides after the template, out of the
+ * author's reach, because the parser depends on it.
+ *
+ * A pass record for its request assembly, not for the turn runner: the view runs the selector between
+ * turns, so it is absent from {@link TURN_PASSES}.
+ */
+export const milestoneSelectPass: TurnPassRecord<IncrementalVerdict | null> = {
+  id: 'milestoneSelect',
+  type: 'milestoneSelect',
+  stage: 'postNarration',
+  fanOut: false,
+  isDue: (input) => input.settings.memoryDigests,
+  buildRequest: (input, material) => {
+    const { kept, fresh } = milestoneOf(material);
+    // An empty kept list leaves blank lines behind; they collapse, as the character note's do.
+    const template = trimTiled(tilePieces(collapseBlankLines(promptTemplatePieces(
+      input.prompts.milestoneSelectUser,
+      milestoneMomentValues(kept, fresh),
+      { source: 'user-template', tokens: { '<REMEMBERED MOMENTS>': 'condensed', '<NEW MOMENTS>': 'condensed' } },
+    ))));
+    const format = milestoneReplyFormat(kept.length > 0);
+    const end = template.content.length;
+    return labeledRequest(
+      { type: 'milestoneSelect', maxTokens: TURN_PASS_CAPS.milestoneSelect, ...silentOn(material) },
+      systemTiled(input.prompts.milestoneSelect, material.baseCtx),
+      {
+        content: template.content + format,
+        runs: [...template.runs, { start: end, end: end + format.length, contextLabel: 'reply-format' }],
+      },
+    );
+  },
+  parseResponse: (raw, material) => {
+    const { kept, fresh } = milestoneOf(material);
+    return parseIncrementalMilestoneReply(raw, kept.length, fresh.length);
+  },
 };
 
 /**

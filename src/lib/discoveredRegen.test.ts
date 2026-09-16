@@ -6,15 +6,11 @@ import {
   capChronological,
   selectSemanticAppearances,
   buildRegenContext,
-  buildRegenUserMessage,
-  REGEN_FIRST_LABEL,
-  REGEN_SINCE_LABEL,
-  REGEN_LABELS,
   REGEN_MAX_PASSAGES,
   REGEN_MAX_CHARS,
   type AppearanceTurn,
 } from './discoveredRegen';
-import { cleanDiscoveredDescription, DISCOVER_NAME_LABEL } from './runtimeCharacters';
+import { cleanDiscoveredDescription, DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from './runtimeCharacters';
 import { vectorKey } from './memoryRelevance';
 import type { ChatMessage } from '@/types';
 
@@ -210,47 +206,22 @@ describe('buildRegenContext', () => {
   });
 });
 
-describe('buildRegenUserMessage', () => {
-  it('labels the name, the first passage, and the later material', () => {
-    const message = buildRegenUserMessage('Grey Mouse', {
-      source: 'prose', firstPassage: 'She stepped from the reeds.', supplemental: ['She stole the tin.', 'She ran.'],
-    });
-    expect(message).toBe(
-      `${DISCOVER_NAME_LABEL} Grey Mouse\n\n` +
-      `${REGEN_FIRST_LABEL}\nShe stepped from the reeds.\n\n` +
-      `${REGEN_SINCE_LABEL}\nShe stole the tin.\n\nShe ran.`,
-    );
-  });
-
-  it('omits the since section entirely when there is no later material', () => {
-    const message = buildRegenUserMessage('Grey Mouse', { source: 'prose', firstPassage: 'Intro.', supplemental: [] });
-    expect(message).not.toContain(REGEN_SINCE_LABEL);
-    expect(message).toContain(REGEN_FIRST_LABEL);
-  });
-
-  it('omits the first-passage section when that turn is gone', () => {
-    const message = buildRegenUserMessage('Grey Mouse', { source: 'prose', firstPassage: '', supplemental: ['Later.'] });
-    expect(message).not.toContain(REGEN_FIRST_LABEL);
-    expect(message).toContain(REGEN_SINCE_LABEL);
-  });
-});
-
-describe('cleanDiscoveredDescription with the regen labels', () => {
+describe('cleanDiscoveredDescription with the rewrite labels', () => {
   it('cuts a parroted regen label and everything after it', () => {
-    const raw = `A wiry scavenger who trusts nobody.\n\n${REGEN_SINCE_LABEL}\nShe stole the tin and ran.`;
-    expect(cleanDiscoveredDescription(raw, 'Grey Mouse', REGEN_LABELS)).toBe('A wiry scavenger who trusts nobody.');
+    const raw = `A wiry scavenger who trusts nobody.\n\n${DISCOVER_LATER_LABEL}\nShe stole the tin and ran.`;
+    expect(cleanDiscoveredDescription(raw, 'Grey Mouse')).toBe('A wiry scavenger who trusts nobody.');
   });
 
   it('cuts the first-passage label too', () => {
-    const raw = `A wiry scavenger.\n${REGEN_FIRST_LABEL}\nShe stepped from the reeds.`;
-    expect(cleanDiscoveredDescription(raw, 'Grey Mouse', REGEN_LABELS)).toBe('A wiry scavenger.');
+    const raw = `A wiry scavenger.\n${DISCOVER_PASSAGE_LABEL}\nShe stepped from the reeds.`;
+    expect(cleanDiscoveredDescription(raw, 'Grey Mouse')).toBe('A wiry scavenger.');
   });
 
   it('leaves a clean description untouched', () => {
-    expect(cleanDiscoveredDescription('A wiry scavenger.', 'Grey Mouse', REGEN_LABELS)).toBe('A wiry scavenger.');
+    expect(cleanDiscoveredDescription('A wiry scavenger.', 'Grey Mouse')).toBe('A wiry scavenger.');
   });
 
   it('strips a leading bare "Name:" echo', () => {
-    expect(cleanDiscoveredDescription('Grey Mouse: A wiry scavenger.', 'Grey Mouse', REGEN_LABELS)).toBe('A wiry scavenger.');
+    expect(cleanDiscoveredDescription('Grey Mouse: A wiry scavenger.', 'Grey Mouse')).toBe('A wiry scavenger.');
   });
 });

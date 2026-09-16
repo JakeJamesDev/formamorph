@@ -28,7 +28,8 @@ export type TurnPassId =
   | 'openingTime'
   | 'diary'
   | 'discoverEntity'
-  | 'sceneTags';
+  | 'sceneTags'
+  | 'milestoneSelect';
 
 /** Where a pass sits relative to the narration. Passes run in stage order, then in plan order. */
 export type TurnStage = 'preNarration' | 'planning' | 'narration' | 'postNarration';
@@ -76,12 +77,15 @@ export interface TurnPrompts {
   statUpdatesUser: string;
   summary: string;
   summaryUser: string;
+  milestoneSelect: string;
+  milestoneSelectUser: string;
   timePassed: string;
   timePassedUser: string;
   openingTime: string;
   openingTimeUser: string;
   diary: string;
   discoverEntity: string;
+  discoverEntityUser: string;
   sceneTags: string;
   sceneTagsUser: string;
 }
@@ -110,6 +114,9 @@ export interface TurnPassSubject {
   entity?: Entity;
   /** The character's own diary entries, oldest first, as the motivation pass is fed them. */
   diary?: string[];
+  /** What the story showed of a noted character after their first passage, oldest first. Only a rewrite
+   *  of the note carries it. */
+  laterMaterial?: string[];
 }
 
 /**
@@ -167,6 +174,8 @@ export interface TurnMaterial {
   subjects?: Partial<Record<TurnPassId, TurnPassSubject[]>>;
   /** The being this request is about, for a fan-out pass. */
   subject?: TurnPassSubject;
+  /** The milestone selector's digests, oldest first: the ones memory already keeps, then the ones to judge. */
+  milestone?: { kept: string[]; fresh: string[] };
 }
 
 /** The four values a turn knows before any pass has answered. Everything else is derived mid-run. */

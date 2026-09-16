@@ -353,6 +353,7 @@ const SYSTEM_TEMPLATE: Record<string, string> = {
   storyboard: 'storyboard', choices: 'choices', statupdates: 'statUpdates',
   location: 'locationChange', summary: 'summary', diary: 'diary',
   timepassed: 'timePassed', timeopening: 'openingTime', scenetags: 'sceneTags',
+  discover: 'discoverEntity', milestone: 'milestoneSelect',
 };
 
 /** The same prompts with one template swapped for a marker that still carries a chip, so both the authored
@@ -435,6 +436,28 @@ describe('the fan-out hubs', () => {
       expect(requests[0].caption).toContain('Wren');
       expect(requests[0].blocks.map((b) => b.content).join('')).toContain('Wren');
     }
+  });
+
+  it('draws one character note and says it is sent per new character', () => {
+    const requests = hub('discover');
+    expect(requests.map((r) => r.type)).toEqual(['discoverEntity']);
+    expect(requests[0].caption).toContain('per new character');
+    const user = requests[0].blocks[requests[0].blocks.length - 1];
+    expect(user.content).toContain('Wren');
+    expect(user.runs.some((r) => r.chip === '<FIRST PASSAGE>')).toBe(true);
+  });
+});
+
+describe('the milestone selector hub', () => {
+  it('draws a between-turns request over a kept list and a fresh list, with the reply format appended', () => {
+    const requests = hub('milestone');
+    expect(requests.map((r) => r.type)).toEqual(['milestoneSelect']);
+    expect(requests[0].caption).toContain('between turns');
+    const user = requests[0].blocks[requests[0].blocks.length - 1];
+    expect(user.content).toMatch(/^Moments already in memory, oldest first:\n1\. .+\n\nNew moments to judge:\n2\. .+\n3\. .+\n\nReply with three lines:/);
+    expect(user.runs.map((r) => r.chip ?? r.contextLabel)).toEqual(
+      expect.arrayContaining(['<REMEMBERED MOMENTS>', '<NEW MOMENTS>', 'reply-format']),
+    );
   });
 });
 

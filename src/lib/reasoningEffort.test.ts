@@ -189,10 +189,10 @@ describe('a request on an endpoint that refuses off', () => {
 describe('per-prompt reasoning', () => {
   it('ships tiered defaults: narration Global, planning and memory passes Low, parsers and choices None', () => {
     expect(defaultPromptReasoning('narration')).toBe('global');
-    for (const kind of ['thinking', 'director', 'character', 'storyboard', 'summary', 'diary'] as const) {
+    for (const kind of ['thinking', 'director', 'character', 'storyboard', 'summary', 'milestoneSelect', 'diary'] as const) {
       expect(defaultPromptReasoning(kind)).toBe('low');
     }
-    for (const kind of ['choices', 'statUpdates', 'locationChange', 'milestoneSelect', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags'] as const) {
+    for (const kind of ['choices', 'statUpdates', 'locationChange', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags'] as const) {
       expect(defaultPromptReasoning(kind)).toBe('none');
     }
   });

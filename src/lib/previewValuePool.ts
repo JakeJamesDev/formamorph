@@ -3,6 +3,8 @@ import { restyle } from './sectionStyle';
 import { type SectionStyle } from './promptPresets';
 import { markdownGuidance, activeCharacterGuidance } from '@/components/game/GamePrompts';
 import { languageDirective, type LanguageSurface } from './languages';
+import { DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from './runtimeCharacters';
+import { milestoneMomentValues } from './milestoneMemory';
 import {
   ALL_PROMPT_VARIABLES,
   variableVariantIds,
@@ -52,7 +54,19 @@ export const SAMPLE_TURN = {
   },
 };
 
+/** The digests the milestone selector judges between turns: one memory already keeps, two just aged in. */
+export const SAMPLE_MOMENTS = {
+  kept: ['In the tide pools the traveler found an oilcloth packet holding a map marked by Harrow.'],
+  fresh: [
+    "Wren recognized Harrow's hand on the map and said he had been gone from his stall a month.",
+    'Wren said Harrow crosses at the causeway and has not returned from this ebb.',
+  ],
+};
+
 const NOTES = `Traveler is looking for the person who sold them a false map.`;
+
+/** What a rewrite of the singled-out character's note adds: a later turn she took part in. */
+const SAMPLE_LATER = 'Wren kept the lamp lit past midnight and asked nothing about the map.';
 
 const TIME = 'Day 3, evening';
 
@@ -188,6 +202,15 @@ function sampleFor(variable: PromptVariable, variantId: string | null): string {
     case '<IN FRAME>':
       // Joined the way the scene-tags pass joins the real cast.
       return SAMPLE_TURN.sceneCast.join(', ');
+    // Headed the way the character-note pass heads them.
+    case '<FIRST PASSAGE>':
+      return `${DISCOVER_PASSAGE_LABEL}\n${SAMPLE_TURN.narration}`;
+    case '<LATER MATERIAL>':
+      return `${DISCOVER_LATER_LABEL}\n${SAMPLE_LATER}`;
+    // Headed and numbered the way the milestone selector sends them.
+    case '<REMEMBERED MOMENTS>':
+    case '<NEW MOMENTS>':
+      return milestoneMomentValues(SAMPLE_MOMENTS.kept, SAMPLE_MOMENTS.fresh)[variable.token];
     case '<SUBJECT>':
       return 'a weathered lamp-keeper on a stone shore';
     default:

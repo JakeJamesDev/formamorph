@@ -12,7 +12,7 @@
 //   node milestone-select-probe.mjs [--runs 3] [--model gemma4-e4b-cloud] [--prompt base] [--fixture milestone-fixture.json] [--verbose]
 //
 // --mode incremental (T4): replays each story one digest at a time through the SHIPPED incremental
-// prompt (defaultMilestoneIncrementalPrompt, grabbed from GamePrompts.ts) — the selector sees its own
+// prompt (defaultMilestoneSelectPrompt, grabbed from GamePrompts.ts) — the selector sees its own
 // accumulated kept list as context and judges only the new arrival, mirroring the app's write-time
 // verdict flow (no pins, no oldest-always-kept rule: this measures the selector, not resolve). The
 // END state is scored against the same labels — a superseded setup (labeled drop) must be KEPT when
@@ -305,8 +305,8 @@ function parseKeep(reply, count) {
 if (MODE === "incremental") {
   const REPO_ROOT = path.resolve(HARNESS_DIR, "../../..");
   const promptsSrc = await readFile(path.join(REPO_ROOT, "src/components/game/GamePrompts.ts"), "utf8");
-  const at = promptsSrc.indexOf("defaultMilestoneIncrementalPrompt = `");
-  if (at === -1) throw new Error("missing defaultMilestoneIncrementalPrompt");
+  const at = promptsSrc.indexOf("defaultMilestoneSelectPrompt = `");
+  if (at === -1) throw new Error("missing defaultMilestoneSelectPrompt");
   const from = promptsSrc.indexOf("`", at) + 1;
   const SHIPPED_INC = promptsSrc.slice(from, promptsSrc.indexOf("`;", from));
 

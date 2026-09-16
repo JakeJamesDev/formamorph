@@ -35,16 +35,9 @@ describe('resolvePromptJump', () => {
     expect(resolvePromptJump('recap', 'summary')).toEqual({ tab: 'narration', surface: 'messages', field: 'recap' });
   });
 
-  it('resolves nothing for a call with no editor behind it', () => {
-    for (const type of ['discoverEntity', 'milestoneSelect'] as AIRequestType[]) {
-      for (const source of SOURCES) {
-        const target = resolvePromptJump(source, type);
-        // The stacked narration lines still resolve — they belong to the Narration prompt, not this call.
-        expect(target === null || target.tab === 'narration').toBe(true);
-      }
-    }
-    expect(resolvePromptJump('system-template', 'discoverEntity')).toBeNull();
-    expect(resolvePromptJump('user-template', 'milestoneSelect')).toBeNull();
+  it('sends the discovery pass and the milestone selector to their own tabs', () => {
+    expect(resolvePromptJump('system-template', 'discoverEntity')).toEqual({ tab: 'discover', surface: 'system' });
+    expect(resolvePromptJump('user-template', 'milestoneSelect')).toEqual({ tab: 'milestone', surface: 'user' });
   });
 
   it('resolves every source on every mapped request to a prompt the rail lists', () => {
@@ -74,8 +67,10 @@ describe('resolveChipJump', () => {
     });
   });
 
-  it('resolves nothing where the run own editor resolves nothing', () => {
-    expect(resolveChipJump('system-template', 'discoverEntity', '<NOTES>')).toBeNull();
+  it('lands on the milestone selector list chip', () => {
+    expect(resolveChipJump('user-template', 'milestoneSelect', '<NEW MOMENTS>')).toEqual({
+      tab: 'milestone', surface: 'user', chip: '<NEW MOMENTS>',
+    });
   });
 });
 

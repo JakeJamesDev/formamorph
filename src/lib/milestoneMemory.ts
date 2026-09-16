@@ -17,12 +17,6 @@ export const MILESTONE_RECENT_BAND = 0;
  *  force-removes a kept one. Persisted in the save envelope. */
 export type MemoryPinMap = Record<string, 'keep' | 'drop'>;
 
-/** The user message for the milestoneSelect request: the numbered digest list, oldest first. */
-export function buildMilestoneUserMessage(digests: string[]): string {
-  const list = digests.map((d, i) => `${i + 1}. ${d}`).join('\n');
-  return `The story's remembered moments, oldest first:\n${list}\n\nReply with only the numbers to keep, comma-separated.`;
-}
-
 /**
  * Incremental selection (T4): verdicts are decided once, when a digest ages in, and never re-voted.
  * The selector sees the already-kept memories as numbered context and judges only the new arrivals;
@@ -30,16 +24,26 @@ export function buildMilestoneUserMessage(digests: string[]): string {
  * whole-list flip-flop by construction and shrinks the recurring request to the new entries.
  */
 
-/** The incremental user message: kept memories as context (1..K), then the new arrivals to judge
- *  (K+1..K+N), numbered continuously so a reply index is unambiguous. With no kept context (first
- *  run, or everything so far dropped) only the new list and the Keep line are asked for. */
-export function buildIncrementalMilestoneUserMessage(keptOld: string[], fresh: string[]): string {
-  const oldList = keptOld.map((d, i) => `${i + 1}. ${d}`).join('\n');
-  const freshList = fresh.map((d, i) => `${keptOld.length + i + 1}. ${d}`).join('\n');
-  if (keptOld.length === 0) {
-    return `New moments to judge, oldest first:\n${freshList}\n\nReply with one line:\nKeep: the numbers worth remembering, comma-separated, or "none".`;
+const numbered = (items: string[], from: number): string =>
+  items.map((text, i) => `${from + i + 1}. ${text}`).join('\n');
+
+/** The selector's two list chips. Both lists are numbered as one, kept first, so a reply index is
+ *  unambiguous; each chip carries its own header, and the kept one is empty on a first run. */
+export function milestoneMomentValues(kept: string[], fresh: string[]): Record<string, string> {
+  const freshHeader = kept.length ? 'New moments to judge:' : 'New moments to judge, oldest first:';
+  return {
+    '<REMEMBERED MOMENTS>': kept.length ? `Moments already in memory, oldest first:\n${numbered(kept, 0)}` : '',
+    '<NEW MOMENTS>': `${freshHeader}\n${numbered(fresh, kept.length)}`,
+  };
+}
+
+/** The reply lines {@link parseIncrementalMilestoneReply} reads, appended after the selector's user
+ *  template. With no kept context (first run, or everything so far dropped) only the Keep line is asked for. */
+export function milestoneReplyFormat(hasKept: boolean): string {
+  if (!hasKept) {
+    return `\n\nReply with one line:\nKeep: the numbers worth remembering, comma-separated, or "none".`;
   }
-  return `Moments already in memory, oldest first:\n${oldList}\n\nNew moments to judge:\n${freshList}\n\nReply with three lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".\nWeight: each kept number with its weight, like "<number>=<weight>", comma-separated, or "none".`;
+  return `\n\nReply with three lines:\nKeep: the numbers of the NEW moments worth remembering, comma-separated, or "none".\nForget: the numbers of already-kept moments whose outcome a new moment now carries, or "none".\nWeight: each kept number with its weight, like "<number>=<weight>", comma-separated, or "none".`;
 }
 
 /** One incremental verdict: zero-based indices into the fresh list to keep, and zero-based indices

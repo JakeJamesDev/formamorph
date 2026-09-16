@@ -1,7 +1,7 @@
 import type { AIRequestType, ChatMessage, Entity } from '@/types';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
-import { narrationPass, sceneTagsPass, TURN_PASSES } from './turnPipeline/turnPasses';
+import { milestoneSelectPass, narrationPass, sceneTagsPass, TURN_PASSES } from './turnPipeline/turnPasses';
 import {
   emptyTurnMaterial,
   type TurnMaterial, type TurnPassId, type TurnPassRecord, type TurnPlanInput, type TurnPrompts,
@@ -13,7 +13,7 @@ import { buildStamper, hoursByPosition } from './gameClock';
 import type { SectionStyle } from './promptPresets';
 import { outputReserve, type ParagraphLimit } from './outputLength';
 import { toAnatomyBlocks, type AnatomyBlock } from './requestAnatomy';
-import { SAMPLE_TURN } from './previewValuePool';
+import { SAMPLE_MOMENTS, SAMPLE_TURN } from './previewValuePool';
 
 /**
  * The Anatomy hub shown in Settings → Prompts the moment a prompt is selected: the whole request that
@@ -238,6 +238,7 @@ function previewMaterial(values: Record<string, string>, action: string, planner
     overflow: FIXTURE_OVERFLOW,
     sceneCast: FIXTURE_SCENE_CAST,
     subject: FIXTURE_SUBJECT,
+    milestone: SAMPLE_MOMENTS,
   };
 }
 
@@ -260,12 +261,14 @@ const passById = (id: TurnPassId): TurnPassRecord => {
 /** What each fan-out hub says above the one request it draws, so the repetition is understood rather than
  *  scrolled through. */
 const FANOUT_CAPTION = `One request like this is sent per character in the scene. This one is ${FIXTURE_SUBJECT.name}.`;
+const DISCOVER_CAPTION = `One request like this is sent per new character the story names. This one is ${FIXTURE_SUBJECT.name}.`;
 
 /** Which pass each prompt's hub draws, beyond the two that decide for themselves. */
 const HUB_PASS: Record<string, TurnPassId> = {
   thinking: 'thinking',
   director: 'director',
   character: 'character',
+  discover: 'discoverEntity',
   storyboard: 'storyboard',
   choices: 'choices',
   statupdates: 'statUpdates',
@@ -277,8 +280,10 @@ const HUB_PASS: Record<string, TurnPassId> = {
 
 const CAPTIONS: Record<string, string> = {
   character: FANOUT_CAPTION,
+  discover: DISCOVER_CAPTION,
   diary: FANOUT_CAPTION,
   timeopening: 'Sent once, on the opening turn only — what it settles dates every memory after it.',
+  milestone: 'Sent between turns, never during one, whenever condensed turns age into long-term memory.',
 };
 
 /** The location prompt drives two different requests; which one a turn sends is the detection mode's call,
@@ -327,6 +332,7 @@ export function buildAnatomyHub(
       .map(({ id, caption }) => draw(passById(id), caption));
   }
   if (tab === 'scenetags') return [draw(sceneTagsPass)];
+  if (tab === 'milestone') return [draw(milestoneSelectPass, CAPTIONS.milestone)];
   const id = HUB_PASS[tab];
   return id ? [draw(passById(id), CAPTIONS[tab])] : [];
 }

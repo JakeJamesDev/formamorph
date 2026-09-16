@@ -15,18 +15,18 @@ export interface PromptGroup {
 }
 
 export const PROMPT_GROUPS: PromptGroup[] = [
-  { label: 'Story', tabs: ['narration', 'thinking', 'director', 'character', 'storyboard', 'choices'] },
+  { label: 'Story', tabs: ['narration', 'thinking', 'director', 'character', 'discover', 'storyboard', 'choices'] },
   { label: 'Trackers', tabs: ['statupdates', 'location', 'timepassed', 'timeopening'] },
-  { label: 'Memory', tabs: ['summary', 'diary'] },
+  { label: 'Memory', tabs: ['summary', 'milestone', 'diary'] },
   { label: 'Images', tabs: ['scenetags'] },
 ];
 
 /** Every prompt the Settings rail can select — the `promptTab` ids. A jump target names one of these, so
  *  a map keyed by it is total and a lookup needs no fallback. */
 export type PromptTab =
-  | 'narration' | 'thinking' | 'director' | 'character' | 'storyboard' | 'choices'
+  | 'narration' | 'thinking' | 'director' | 'character' | 'discover' | 'storyboard' | 'choices'
   | 'statupdates' | 'location' | 'timepassed' | 'timeopening'
-  | 'summary' | 'diary'
+  | 'summary' | 'milestone' | 'diary'
   | 'scenetags';
 
 /** Which request each tab tunes: its samplers, endpoint pin and reasoning rows read and write this type. */
@@ -35,6 +35,7 @@ export const PROMPT_TAB_REQUESTS: Record<PromptTab, AIRequestType> = {
   thinking: 'thinking',
   director: 'director',
   character: 'character',
+  discover: 'discoverEntity',
   storyboard: 'storyboard',
   choices: 'choices',
   statupdates: 'statUpdates',
@@ -42,6 +43,7 @@ export const PROMPT_TAB_REQUESTS: Record<PromptTab, AIRequestType> = {
   timepassed: 'timePassed',
   timeopening: 'openingTime',
   summary: 'summary',
+  milestone: 'milestoneSelect',
   diary: 'diary',
   scenetags: 'sceneTags',
 };
@@ -59,12 +61,14 @@ export const PROMPT_LABELS: Record<PromptTab, string> = {
   statupdates: 'Stat Updates',
   location: 'Location Change',
   summary: 'Summaries',
+  milestone: 'Milestone Select',
   timepassed: 'Clock',
   timeopening: 'Opening',
   scenetags: 'Scene Tags',
   diary: 'Diary',
   director: 'Director',
   character: 'Character',
+  discover: 'Discover Entity',
   storyboard: 'Storyboard',
 };
 
@@ -82,12 +86,14 @@ export const PROMPT_DESCRIPTIONS: Record<string, string> = {
   statupdates: 'Reads what happened and records which stats it moved.',
   location: "Decides whether the player's action takes them somewhere new.",
   summary: 'Condenses an older turn into one line the storyteller can still read later.',
+  milestone: 'Between turns, decides which condensed turns stay in long-term memory.',
   diary: 'Each character present records a private, first-person note on the turn.',
   timepassed: 'Measures how much in-world time a turn took.',
   timeopening: 'Reads the opening scene once, to settle what time of day the story starts.',
   scenetags: "Tags what is happening in a scene image — the action only, since the characters' looks and the setting come from their own tags.",
   director: 'Sets the stage for the turn: who is here, and what each of them is doing.',
   character: 'One character states, in the first person, what they want this turn.',
+  discover: 'Writes a lasting note for each new character the story names, and rewrites it on request.',
   storyboard: "Reconciles every character's intentions into a single plan for the turn.",
 };
 

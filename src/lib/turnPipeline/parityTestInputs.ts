@@ -7,13 +7,14 @@ import type { AIRequestType } from '@/types';
 import {
   defaultChoicesPrompt, defaultChoicesUserPrompt,
   defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt,
-  defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt,
+  defaultCharacterPrompt, defaultStoryboardPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt,
   defaultSceneTagsPrompt, defaultSceneTagsUserPrompt,
   defaultLocationChangePrompt, defaultLocationChangeUserPrompt,
   defaultNarrationUserPrompt, defaultOocDirectivePrompt,
   defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, OPENING_SCENE_CUE,
   defaultStatUpdatesPrompt, defaultStatUpdatesUserPrompt,
   defaultSummaryPrompt, defaultSummaryUserPrompt,
+  defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt,
   defaultThinkingPrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt,
 } from '@/components/game/GamePrompts';
 
@@ -65,12 +66,15 @@ export const PARITY_PROMPTS: TurnPrompts = {
   statUpdatesUser: defaultStatUpdatesUserPrompt,
   summary: defaultSummaryPrompt,
   summaryUser: defaultSummaryUserPrompt,
+  milestoneSelect: defaultMilestoneSelectPrompt,
+  milestoneSelectUser: defaultMilestoneSelectUserPrompt,
   timePassed: defaultTimePassedPrompt,
   timePassedUser: defaultTimePassedUserPrompt,
   openingTime: defaultOpeningTimePrompt,
   openingTimeUser: defaultOpeningTimeUserPrompt,
   diary: defaultDiaryPrompt,
   discoverEntity: defaultDiscoverEntityPrompt,
+  discoverEntityUser: defaultDiscoverEntityUserPrompt,
   // The recording is of a turn, and the scene-tag pass is dispatched by the scene-image flow instead, so
   // these carry the shipped defaults for completeness rather than because the capture used them.
   sceneTags: defaultSceneTagsPrompt,

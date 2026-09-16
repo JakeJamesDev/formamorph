@@ -16,7 +16,8 @@ export const MAX_OUTPUT_STEP = 8;
 
 /** The prompts that show a Max Output row. Each has a shipped cap in the pass cap table. */
 export const MAX_OUTPUT_KINDS = [
-  'thinking', 'director', 'character', 'storyboard', 'summary', 'diary', 'choices', 'sceneTags',
+  'thinking', 'director', 'character', 'storyboard', 'summary', 'diary', 'choices', 'sceneTags', 'discoverEntity',
+  'milestoneSelect',
 ] as const satisfies readonly (AIRequestType & keyof typeof TURN_PASS_CAPS)[];
 
 export type MaxOutputKind = (typeof MAX_OUTPUT_KINDS)[number];

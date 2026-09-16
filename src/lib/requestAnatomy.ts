@@ -41,7 +41,8 @@ export type ContextLabel =
   | 'character-brief'
   | 'diary-brief'
   | 'intents'
-  | 'scene-cast';
+  | 'scene-cast'
+  | 'reply-format';
 
 /**
  * One run of a message's content. `source` is the editor whose field the run came out of — the text itself
@@ -144,6 +145,20 @@ export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
   return { content, runs };
 }
 
+/** Pieces with every run of three or more newlines cut to two, counted across piece boundaries, so a block
+ *  chip that renders nothing leaves one blank line rather than two. */
+export function collapseBlankLines(pieces: AnatomyPiece[]): AnatomyPiece[] {
+  let newlines = 0;
+  return pieces.map((piece) => {
+    let text = '';
+    for (const ch of piece.text) {
+      newlines = ch === '\n' ? newlines + 1 : 0;
+      if (newlines <= 2) text += ch;
+    }
+    return { ...piece, text };
+  });
+}
+
 /** Drop trailing whitespace from a tiled result, clamping the runs to what survives (the same `trimEnd`
  *  the narration system prompt applies after rendering). */
 export function trimEndTiled(tiled: TiledRuns): TiledRuns {
@@ -158,6 +173,19 @@ export function trimEndTiled(tiled: TiledRuns): TiledRuns {
     runs.push({ ...run, end: Math.min(run.end, content.length) });
   }
   return { content, runs };
+}
+
+/** {@link trimEndTiled} at both ends. A run the trim erases is dropped; a zero-width run stays, at the start. */
+export function trimTiled(tiled: TiledRuns): TiledRuns {
+  const trimmed = trimEndTiled(tiled);
+  const cut = trimmed.content.length - trimmed.content.trimStart().length;
+  if (cut === 0) return trimmed;
+  const runs: AnatomyRun[] = [];
+  for (const run of trimmed.runs) {
+    if (run.end > run.start && run.end <= cut) continue;
+    runs.push({ ...run, start: Math.max(0, run.start - cut), end: Math.max(0, run.end - cut) });
+  }
+  return { content: trimmed.content.slice(cut), runs };
 }
 
 /** Whether `runs` cover `content` exactly — ordered, gapless, non-overlapping, ending at the end. The
@@ -233,6 +261,7 @@ export const CONTEXT_LABELS: Record<ContextLabel, string> = {
   'diary-brief': 'Diary Brief',
   intents: 'Intents',
   'scene-cast': 'Scene Cast',
+  'reply-format': 'Reply Format',
 };
 
 /** What each assembled run is, in the player's own words — the chip's tooltip. */
@@ -250,4 +279,5 @@ export const CONTEXT_HINTS: Record<ContextLabel, string> = {
   'diary-brief': 'who is writing, and the turn they are writing about',
   intents: 'what each character said they want this turn',
   'scene-cast': 'who is in frame for this picture',
+  'reply-format': 'the reply lines the app reads the answer from',
 };
