@@ -534,6 +534,14 @@ describe('the whole spec', () => {
       .toMatchObject({ max_tokens: 1000, thinking_budget_tokens: 500 });
   });
 
+  it('gives Choices a budget from its shipped cap on an endpoint with no Max Output', () => {
+    const snap = snapshot(lmStudioReasoning({ maxTokens: undefined }), {
+      reasoningEngaged: true, promptReasoning: { choices: 'high' }, promptReasoningBudget: { choices: 25 },
+    });
+    expect(buildRequestBody(snap, call({ requestType: 'choices', maxTokensOverride: 256 })))
+      .toMatchObject({ max_tokens: 256, thinking_budget_tokens: 64 });
+  });
+
   it('routes each kind to its own resolved target', () => {
     const snap = snapshot(external(), {
       resolveTarget: (kind) => (kind === 'summary' ? external({ model: 'small-1b', url: 'https://small.example/v1/chat/completions' }) : external()),

@@ -6,6 +6,7 @@ import {
   type AnatomyPiece, type ContextLabel, type TiledRuns,
 } from '@/lib/requestAnatomy';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { estimateTokens } from '@/lib/memoryUtils';
 import {
   buildCharacterUserMessage,
   buildDiaryUserMessage,
@@ -32,9 +33,9 @@ import {
  */
 
 /**
- * Output caps per pass. The narration takes the request type's own default (null); every other pass pins
- * its own — sized for the verbose small tier (Rocinante 12B) so a cast list or an intent completes rather
- * than truncating mid-word; a cut cast member is lost from the whole turn.
+ * Output caps per pass. The narration takes the request type's own default (null); the stat and location
+ * passes size theirs from the world (below). The rest are sized for the verbose small tier (Rocinante 12B)
+ * so a cast list or an intent completes rather than truncating mid-word.
  */
 export const TURN_PASS_CAPS = {
   director: 320,
@@ -53,7 +54,16 @@ export const TURN_PASS_CAPS = {
   discoverEntity: 200,
   /** One line of tags: enough for a rich action line, not for prose. */
   sceneTags: 120,
+  /** A handful of short options; room for the last one on a verbose model. */
+  choices: 256,
 } as const;
+
+/** One stat line (a name, a sign and a number) per live stat, plus slack for a stray word. */
+export const statUpdatesCap = (statCount: number): number => 16 * statCount + 16;
+
+/** The longest destination name the reply may echo, plus slack for quoting or a NONE. */
+export const locationChangeCap = (destinations: readonly string[]): number =>
+  estimateTokens(Math.max(0, ...destinations.map((name) => name.length))) + 8;
 
 /** What `<IN FRAME>` renders to when the turn put nobody in the picture. */
 export const SCENE_TAGS_EMPTY_CAST = 'nobody - an empty scene';
@@ -191,7 +201,7 @@ const locationAutoPass: TurnPassRecord<string | null> = {
   // Rendered against the pre-move context: no narration exists yet, and the move it decides is what
   // scopes every later pass.
   buildRequest: (input, material) => labeledRequest(
-    { type: 'locationChange', maxTokens: null, silent: false, quiet: false },
+    { type: 'locationChange', maxTokens: locationChangeCap(material.destinations), silent: false, quiet: false },
     systemTiled(input.prompts.locationChange, material.baseCtx),
     userTiled(input.prompts.locationChangeUser, { '<PLAYER ACTION>': material.action }),
   ),
@@ -212,7 +222,7 @@ const locationSuggestPass: TurnPassRecord<string | null> = {
     input.locationCount > 1 &&
     input.prompts.locationChange !== '',
   buildRequest: (input, material) => labeledRequest(
-    { type: 'locationChange', maxTokens: null, silent: false, quiet: quietInBatch(input) },
+    { type: 'locationChange', maxTokens: locationChangeCap(material.destinations), silent: false, quiet: quietInBatch(input) },
     systemTiled(input.prompts.locationChange, material.ctx),
     userTiled(input.prompts.locationChangeUser, {
       '<PLAYER ACTION>': material.action,
@@ -392,7 +402,7 @@ const choicesPass: TurnPassRecord<string[]> = {
   fanOut: false,
   isDue: (input) => input.settings.choicesEnabled,
   buildRequest: (input, material) => labeledRequest(
-    { type: 'choices', maxTokens: null, silent: false, quiet: quietInBatch(input) },
+    { type: 'choices', maxTokens: TURN_PASS_CAPS.choices, silent: false, quiet: quietInBatch(input) },
     choicesSystemTiled(input.prompts.choices, input.settings.language, {
       ...material.ctx,
       ...material.sceneEntityTokens,
@@ -414,7 +424,13 @@ const statUpdatesPass: TurnPassRecord<ReturnType<typeof parseStatUpdates>> = {
   // A world with no live stats would only get hallucinated stat names that match nothing.
   isDue: (input) => input.settings.statUpdatesEnabled && input.settings.statCount > 0,
   buildRequest: (input, material) => labeledRequest(
-    { type: 'statUpdates', maxTokens: null, silent: false, quiet: quietInBatch(input), statRequest: material.statRequest },
+    {
+      type: 'statUpdates',
+      maxTokens: statUpdatesCap(input.settings.statCount),
+      silent: false,
+      quiet: quietInBatch(input),
+      statRequest: material.statRequest,
+    },
     systemTiled(input.prompts.statUpdates, { ...material.ctx, ...material.statRequest?.context }),
     userTiled(input.prompts.statUpdatesUser, {
       '<PLAYER ACTION>': material.effectiveAction,
