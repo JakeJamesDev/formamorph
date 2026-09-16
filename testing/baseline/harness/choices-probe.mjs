@@ -4,6 +4,8 @@
 // headings/lead-in/commentary, never bordering on prose. Reports leaks and verbosity per case, prints the
 // raw options to read. Defaults to the FieryLion default endpoint.
 //
+// A reply that hits --max is "cut": the cap stopped it, so its last option may be lost.
+//
 // Usage:  node choices-probe.mjs [--endpoint URL] [--model default] [--runs 2] [--max 320] [--only ford]
 
 import { readFile } from "node:fs/promises";
@@ -114,7 +116,11 @@ async function call(sys, user) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const j = await res.json();
-  return (j.choices?.[0]?.message?.content ?? "").trim();
+  return {
+    content: (j.choices?.[0]?.message?.content ?? "").trim(),
+    cut: j.choices?.[0]?.finish_reason === "length",
+    tokens: j.usage?.completion_tokens ?? 0,
+  };
 }
 
 // Contract checks per line.
@@ -139,14 +145,16 @@ console.log(`Contract: 3-5 lines · each ONE first-person sentence · no bullets
 await call(renderSys(pick[0]), "warm up").catch(() => {});
 
 const T = { runs: 0, options: 0, leaks: 0, nonFP: 0, multiSent: 0, longOpt: 0, badCount: 0, maxWords: 0,
-  qAnswers: 0, qRuns: 0, npVerbal: 0, npRuns: 0 };
+  qAnswers: 0, qRuns: 0, npVerbal: 0, npRuns: 0, cut: 0, maxTokens: 0 };
 for (const c of pick) {
   console.log(`\n######## ${c.name}`);
   for (let r = 0; r < runs; r++) {
-    let out, err = null;
-    try { out = await call(renderSys(c), renderUser(c)); } catch (e) { err = String(e.message || e); }
+    let out, reply, err = null;
+    try { reply = await call(renderSys(c), renderUser(c)); out = reply.content; } catch (e) { err = String(e.message || e); }
     T.runs++;
     if (err) { console.log(`  #${r + 1} ERROR: ${err}`); continue; }
+    if (reply.cut) T.cut++;
+    if (reply.tokens > T.maxTokens) T.maxTokens = reply.tokens;
     const lines = out.split("\n").map((l) => l.trim()).filter(Boolean);
     T.options += lines.length;
     let leaks = 0, nonFP = 0, multi = 0, long = 0;
@@ -175,9 +183,10 @@ for (const c of pick) {
     const answers = lines.filter((l) => SPEAKS.test(l) && !DEFLECT.test(l)).length;
     if (isQ) { T.qAnswers += answers; T.qRuns++; } else { T.npVerbal += speaks; T.npRuns++; }
     const verbalNote = isQ ? `answer ${answers}` : `verbal ${speaks} (want 0)`;
-    console.log(`  #${r + 1} ${lines.length} opts${countOk ? "" : " (COUNT!)"} · leaks ${leaks} · multi-sent ${multi} · >25w ${long} · ${verbalNote}`);
+    console.log(`  #${r + 1} ${lines.length} opts${countOk ? "" : " (COUNT!)"} · ${reply.tokens} tok${reply.cut ? " (CUT!)" : ""} · leaks ${leaks} · multi-sent ${multi} · >25w ${long} · ${verbalNote}`);
     for (const row of rows) console.log(`      ${SPEAKS.test(row.l) ? "🗣" : "  "}[${String(row.w).padStart(2)}w${row.flags.length ? " " + row.flags.join(",") : ""}] ${row.l}`);
   }
 }
 console.log(`\n==== ${T.runs} runs · ${(T.options / T.runs).toFixed(1)} opts/run · bad-count ${T.badCount} · leaks ${T.leaks} · non-1st-person ${T.nonFP} · multi-sentence ${T.multiSent} · >25w ${T.longOpt} · longest ${T.maxWords}w ====`);
+console.log(`==== cap ${maxTokens} · cut ${T.cut}/${T.runs} runs · longest reply ${T.maxTokens} tok ====`);
 console.log(`==== verbal-answer axis · question scenes: ${T.qRuns ? (T.qAnswers / T.qRuns).toFixed(1) : "-"} answers/run (want >=1) · non-question scenes: ${T.npRuns ? (T.npVerbal / T.npRuns).toFixed(1) : "-"} verbal/run (false-positive guard, want ~0) ====`);

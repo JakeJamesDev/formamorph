@@ -100,6 +100,7 @@ import {
   TURN_PASS_CAPS,
   choicesSystemPrompt,
   statUpdatesSystemPrompt,
+  statUpdatesCap,
   summaryUserMessage,
   discoverUserMessage,
   sceneTagsPass,
@@ -3204,6 +3205,7 @@ const GameViewer = ({
       systemPrompt: choicesSystemPrompt(resolvedChoicesPrompt, language, { ...ctx, ...sceneEntityTokens }),
       messages: [{ role: "user", content: renderPromptTemplate(choicesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "choices",
+      maxTokens: TURN_PASS_CAPS.choices,
       signal,
       quiet,
     });
@@ -3220,6 +3222,7 @@ const GameViewer = ({
       statRequest: snapshot,
       messages: [{ role: "user", content: renderPromptTemplate(statUpdatesUserPrompt, { "<PLAYER ACTION>": action, "<NARRATION>": narration }) }],
       type: "statUpdates",
+      maxTokens: statUpdatesCap(activeStats.length),
       signal,
       quiet,
     });

@@ -135,10 +135,15 @@ describe('the Max Output row', () => {
 
   it('shows on the capped prompts and on no other', () => {
     openOptions('director');
-    const withRow = ['director', 'character', 'storyboard', 'summary', 'diary', 'scenetags'] as const;
-    const withoutRow = ['narration', 'choices', 'statupdates', 'location', 'timepassed', 'timeopening'] as const;
+    const withRow = ['director', 'character', 'storyboard', 'summary', 'diary', 'choices', 'scenetags'] as const;
+    const withoutRow = ['narration', 'statupdates', 'location', 'timepassed', 'timeopening'] as const;
     for (const tab of withRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(true); }
     for (const tab of withoutRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(false); }
+  });
+
+  it('reads Auto with the shipped 256 on Choices', () => {
+    openOptions('choices');
+    expect(within(maxOutputRow().row).getByText('Auto · 256 tok')).toBeTruthy();
   });
 
   it('shows on the precall planner', () => {

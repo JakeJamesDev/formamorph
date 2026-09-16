@@ -67,7 +67,6 @@ describe('turn pass requests', () => {
       // Rendered before the move, so it reads the location the turn began in.
       expect(request.systemPrompt).toBe('ROUTER CURRENT-LOCATION');
       expect(request.messages).toEqual([{ role: 'user', content: 'Action: I read the notices.' }]);
-      expect(request.maxTokens).toBeNull();
       expect(request.silent).toBe(false);
     });
 
@@ -302,6 +301,24 @@ describe('turn pass requests', () => {
       expect(build('timePassed').maxTokens).toBe(TURN_PASS_CAPS.timePassed);
       expect(build('openingTime', {}, { isGameStarted: false }).maxTokens).toBe(TURN_PASS_CAPS.openingTime);
       expect(build('diary', { subject: { name: 'Bram' } }).maxTokens).toBe(TURN_PASS_CAPS.diary);
+    });
+
+    it('caps the choices at 256 tokens', () => {
+      expect(build('choices').maxTokens).toBe(256);
+    });
+
+    it('sizes the stat cap from the world’s stat count', () => {
+      expect(build('statUpdates', {}, {}, { statCount: 1 }).maxTokens).toBe(32);
+      expect(build('statUpdates', {}, {}, { statCount: 6 }).maxTokens).toBe(112);
+    });
+
+    it('sizes the location cap from the longest destination name', () => {
+      for (const id of ['locationAuto', 'locationSuggest'] as const) {
+        // 'Pier' estimates to 1 token; the long name is 44 characters, so 11.
+        expect([id, build(id, { destinations: ['Pier'] }).maxTokens]).toEqual([id, 9]);
+        expect([id, build(id, { destinations: ['Pier', 'The Drowned Chapel Beyond The Southern Marsh'] }).maxTokens])
+          .toEqual([id, 19]);
+      }
     });
   });
 

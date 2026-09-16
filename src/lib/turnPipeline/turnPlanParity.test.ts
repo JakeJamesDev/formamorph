@@ -6,7 +6,7 @@ import type { ChatMessage } from '@/types';
 import { planDirective } from '@/components/game/GamePrompts';
 import {
   fixture, PARITY_PROMPTS as PROMPTS, PASS_ID_BY_TYPE, DRAINER_TYPES,
-  recordedPasses, inputFor, narrationOf,
+  recordedPasses, inputFor, narrationOf, expectedCap, PARITY_DESTINATIONS,
 } from './parityTestInputs';
 
 /**
@@ -50,7 +50,7 @@ const materialFor = (index: number, over: Partial<TurnMaterial> = {}): TurnMater
     ctx: {},
     baseCtx: {},
     sceneEntityTokens: {},
-    destinations: [],
+    destinations: PARITY_DESTINATIONS,
     narrationSystemPrompt: narrationOf(turn).systemPrompt,
     narrationSystemPromptRuns: [],
     historyRuns: [],
@@ -145,7 +145,7 @@ describe('turn plan parity with the recorded run', () => {
         }),
       );
       expect([id, built.type], `${id} request type`).toEqual([id, request.type]);
-      expect([id, built.maxTokens], `${id} cap`).toEqual([id, request.maxTokens]);
+      expect([id, built.maxTokens], `${id} cap`).toEqual([id, expectedCap(request)]);
       expect([id, built.silent], `${id} silent flag`).toEqual([id, request.silent]);
       expect([id, built.attachTurnId ?? null], `${id} attached turn`).toEqual([id, request.attachTurnId]);
       const template = templateById[id];

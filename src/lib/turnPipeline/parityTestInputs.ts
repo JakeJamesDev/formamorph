@@ -95,6 +95,23 @@ export const PASS_ID_BY_TYPE: Partial<Record<AIRequestType, TurnPassId>> = {
 /** Recorded types the parity comparisons deliberately leave out. */
 export const DRAINER_TYPES: AIRequestType[] = ['milestoneSelect'];
 
+/** The dock's destinations, as every recorded router prompt lists them. */
+export const PARITY_DESTINATIONS = ['Far Bank', 'The Common Green'];
+
+/**
+ * Caps the passes gained after the recording, which holds null for them: choices' shipped 256, 16 per
+ * stat for the run's 3 stats plus 16, and 'The Common Green' (4 tokens) plus 8.
+ */
+const CAPS_SINCE_RECORDING: Partial<Record<AIRequestType, number>> = {
+  choices: 256,
+  statUpdates: 64,
+  locationChange: 12,
+};
+
+/** The cap a replayed request must carry: the recorded one, or the one added since. */
+export const expectedCap = (request: ParityRequestRecord): number | null =>
+  request.maxTokens ?? CAPS_SINCE_RECORDING[request.type] ?? null;
+
 /** The recorded turn's requests that are turn passes, in dispatch order. */
 export const recordedPasses = (turn: ParityTurnRecord): { id: TurnPassId; request: ParityRequestRecord }[] =>
   turn.requests
