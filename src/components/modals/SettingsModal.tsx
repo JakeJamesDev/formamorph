@@ -160,7 +160,7 @@ function SamplerControl({ id, label, hint, info, custom, value, defaultValue, fa
           disabled={disabled || !custom}
           onValueChange={(v) => onValueChange(v[0])}
         />
-        <span className="w-28 text-right text-label tabular-nums">
+        <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">
           {custom || !omitsWhenOff ? shown.toFixed(2) : <span className="text-muted-foreground not-italic">{fallbackLabel}</span>}
         </span>
       </div>
@@ -198,7 +198,7 @@ function MaxOutputControl({ custom, value, shipped, disabled, onCustomChange, on
           onValueChange={(v) => onValueChange(v[0])}
           aria-label={SETTINGS_COPY.promptMaxOutput.label}
         />
-        <span className="w-28 text-right text-label tabular-nums">{custom ? `${shown} tok` : `Auto · ${shown} tok`}</span>
+        <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{custom ? `${shown} tok` : `Auto · ${shown} tok`}</span>
       </div>
     </div>
   );
@@ -353,7 +353,7 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
             onValueChange={(v) => strength.onChange(v[0])}
             aria-label={SETTINGS_COPY.reasoningBudget.label}
           />
-          <span className="w-28 text-right text-label tabular-nums">{budgetReadout(strength.value, strength.tokens)}</span>
+          <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(strength.value, strength.tokens)}</span>
         </>
       )}
     </div>
@@ -411,10 +411,10 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
             <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
           </div>
           <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
-          {/* Same switch as above: the row only carries the slider, indented past the checkbox column. */}
-          <div className="flex items-center gap-3 pl-7">
+          {/* Same switch as above: the row only carries the slider, flush with every other track. */}
+          <div className="flex items-center gap-3 pl-2.5">
             <Slider
-              className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
+              className={`flex-grow${inert ? ' opacity-60' : ''}`}
               value={[budgetStrength.value]}
               min={MIN_REASONING_BUDGET_PCT}
               max={100}
@@ -423,7 +423,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
               onValueChange={(v) => budgetStrength.onChange(v[0])}
               aria-label={SETTINGS_COPY.reasoningBudget.label}
             />
-            <span className="w-28 text-right text-label tabular-nums">{budgetReadout(budgetStrength.value, budgetStrength.tokens)}</span>
+            <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(budgetStrength.value, budgetStrength.tokens)}</span>
           </div>
         </div>
       )}
