@@ -181,10 +181,10 @@ export function RequestAnatomyPanel({
       <div className="mb-2 flex flex-shrink-0 items-center gap-1.5">
         <p className="text-helper text-muted-foreground">{description}</p>
         <HintInfo>
-          {'This is the request the app sends with your current settings.\n\n' +
-            '- The **Chips** tab shows your template, with each value replaced by its chip. Dashed chips are parts the app fills in. Click one to open its prompt.\n' +
+          {'The request sent with your current settings.\n\n' +
+            '- The **Chips** tab shows your template, with each value replaced by its chip. Dashed chips are parts filled in for you. Click one to open its prompt.\n' +
             '- The **Preview** tab shows the full text of the request. The highlighted parts are text you typed. Click one to open the editor you typed it in.\n' +
-            '- If a setting is off, its message is not sent.'}
+            '- Messages from settings that are off aren\'t sent'}
         </HintInfo>
         <div className="ml-auto flex items-center gap-1">
           {canSplit && (

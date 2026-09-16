@@ -265,8 +265,8 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
         <label className="text-label">{SETTINGS_COPY.promptEndpoint.label}</label>
         {/* Which endpoint this prompt is actually pinned to varies; the description above it does not. */}
         <HintInfo>{value === null
-          ? 'Goes wherever AI Endpoints is pointed. Switch endpoints there and this prompt follows.'
-          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere.`}</HintInfo>
+          ? 'Follows the endpoint picked on the **AI Endpoints** tab. Switch endpoints there and this prompt follows.'
+          : `Always goes to ${presets.find((p) => p.id === value)?.name ?? 'this endpoint'}, even when you switch endpoints elsewhere`}</HintInfo>
       </div>
       <span className="text-helper text-muted-foreground">{SETTINGS_COPY.promptEndpoint.description}</span>
       <Select
@@ -2361,7 +2361,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   top
                   htmlFor="imageWorkflow"
                   {...rowCopy('imageWorkflow')}
-                  info={<HintInfo>{`Tokens Formamorph fills in:
+                  info={<HintInfo>{`Tokens filled in for you:
 
 \`%prompt%\` \`%negative%\` \`%ckpt%\` \`%width%\` \`%height%\` \`%steps%\` \`%cfg%\` \`%seed%\` \`%sampler%\``}</HintInfo>}
                 >
