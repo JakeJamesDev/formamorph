@@ -324,7 +324,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
           );
         })}
         {!items.length && !createName && (
-          <div className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches.</div>
+          <div className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches</div>
         )}
       </div>
       {createName && (

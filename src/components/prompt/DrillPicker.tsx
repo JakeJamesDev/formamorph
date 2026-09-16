@@ -184,7 +184,7 @@ const DrillPicker = ({ vocab, token, onPick }: {
         {!!slots.length && (
           <div>
             <p className="px-1.5 text-meta font-medium">Slots</p>
-            <p className="px-1.5 text-meta text-muted-foreground">Reached through whichever value rolls.</p>
+            <p className="px-1.5 text-meta text-muted-foreground">Reached through whichever value rolls</p>
             {slots.map((slot) => (
               <PickerRow
                 key={slot.token}
@@ -196,19 +196,19 @@ const DrillPicker = ({ vocab, token, onPick }: {
           </div>
         )}
         {!rows.length && !slots.length && !newName && (
-          <p className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches.</p>
+          <p className="px-1.5 py-1 text-helper text-muted-foreground">Nothing matches</p>
         )}
       </div>
       {!!structure?.plain && (
         <p className="px-1.5 text-meta text-muted-foreground">
-          {structure.plain === 1 ? '1 plain value' : `${structure.plain} plain values`} — not addressable.
+          {structure.plain === 1 ? '1 plain value' : `${structure.plain} plain values`} you can&apos;t address
         </p>
       )}
       {blocked && (
         <div data-testid="drill-picker-owned" className="space-y-1 rounded border border-border p-1.5">
           <p className="flex items-center gap-1 text-meta text-muted-foreground">
             <Lock className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate">{blocked.label} belongs to another placeholder.</span>
+            <span className="truncate">{blocked.label} belongs to another placeholder</span>
           </p>
           <div className="flex gap-1">
             <Button type="button" size="sm" className="h-6 px-2 text-helper" onClick={promote}>

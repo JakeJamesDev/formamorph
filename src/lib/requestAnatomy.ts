@@ -264,20 +264,21 @@ export const CONTEXT_LABELS: Record<ContextLabel, string> = {
   'reply-format': 'Reply Format',
 };
 
-/** What each assembled run is, in the player's own words — the chip's tooltip. */
+/** What each assembled run is, in the player's own words — the chip's tooltip. One sentence each, so a
+ *  jump tooltip can add its own sentence after a period. */
 export const CONTEXT_HINTS: Record<ContextLabel, string> = {
-  condensed: 'older turns, condensed by Memory Summaries',
-  notes: 'your own memory notes, as you wrote them',
-  recalled: 'the turn Scene Recall brought back, word-for-word',
-  'past-action': 'your action on a recent turn',
-  'past-narration': 'the narration that answered it, word-for-word',
-  action: 'your action, as you typed it',
-  'mode-directive': 'the instruction your Thinking mode adds',
-  'turn-plan': 'the plan this turn was given before it was written',
-  narration: 'the narration this turn produced',
-  'character-brief': 'who this character is, what they remember, and where the scene left them',
-  'diary-brief': 'who is writing, and the turn they are writing about',
-  intents: 'what each character said they want this turn',
-  'scene-cast': 'who is in frame for this picture',
-  'reply-format': 'the reply lines the app reads the answer from',
+  condensed: 'Older turns, condensed by Memory Summaries',
+  notes: 'Your own memory notes, as you wrote them',
+  recalled: 'The turn Scene Recall brought back, word for word',
+  'past-action': 'Your action on a recent turn',
+  'past-narration': 'The narration that answered it, word for word',
+  action: 'Your action, as you typed it',
+  'mode-directive': 'The instruction your Thinking mode adds',
+  'turn-plan': 'The plan this turn was given before it was written',
+  narration: 'The narration this turn produced',
+  'character-brief': 'Who this character is, what they remember, and where the scene left them',
+  'diary-brief': "Who's writing, and the turn they're writing about",
+  intents: 'What each character said they want this turn',
+  'scene-cast': "Who's in frame for this picture",
+  'reply-format': 'The reply lines the answer is read from',
 };

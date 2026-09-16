@@ -152,7 +152,7 @@ export function RequestAnatomyPanel({
     >
       {requests.length === 0 ? (
         <p className="text-helper text-muted-foreground">
-          Your current settings never send this request, so there is nothing to draw.
+          Your current settings never send this request, so there&apos;s nothing to show
         </p>
       ) : (
         <div className="flex flex-col gap-4">
