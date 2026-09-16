@@ -410,20 +410,24 @@ describe('the location hub follows the detection mode', () => {
     return {
       keys: requests.map((r) => r.key),
       narration: requests[0].blocks.some((b) => b.runs.some((r) => r.contextLabel === 'narration')),
+      caption: requests[0].caption,
     };
   };
 
   it('draws only the pre-narration request when the mode resolves the move up front', () => {
-    const { keys, narration } = narrationIn('location', true);
+    const { keys, narration, caption } = narrationIn('location', true);
     expect(keys).toEqual(['locationAuto']);
     // It runs before the story is written, so the narration chip has nothing to fill it with.
     expect(narration).toBe(false);
+    // The caption says when the pass is sent, since the description above it can't: that depends on the mode.
+    expect(caption).toBe('Sent before the narration. The move applies first, so the whole turn runs in the new place.');
   });
 
   it('draws only the post-narration request when the mode offers the move instead', () => {
-    const { keys, narration } = narrationIn('location', false);
+    const { keys, narration, caption } = narrationIn('location', false);
     expect(keys).toEqual(['locationSuggest']);
     expect(narration).toBe(true);
+    expect(caption).toBe('Sent after the narration. The move is offered, and you choose whether to take it.');
   });
 });
 

@@ -17,6 +17,19 @@ const LOWERCASE_WORDS = new Set([
 const MAX_DESCRIPTION_WORDS = 12;
 
 /**
+ * The period rule for a line beside a control: one sentence carries no period; two or more sentences end
+ * with one. A sentence boundary is terminal punctuation followed by a space, which is also what a reader
+ * takes for one. Returns the reason a line fails, or null.
+ */
+function sentenceShapeViolation(text: string): string | null {
+  const line = text.trim();
+  const multi = /[.!?]['’”)]?\s/.test(line);
+  if (multi && !/[.!?]$/.test(line)) return 'several sentences but no final period';
+  if (!multi && /\.$/.test(line)) return 'one sentence with a period';
+  return null;
+}
+
+/**
  * Title Case by shape rather than by allowlist: a word passes if its first letter is a capital, which
  * lets `AI`, `URL`, `Top-p`, `CFG` and `Qwen3` through without naming any of them. Parentheticals are
  * unit qualifiers (`(tokens)`, `(W × H)`), not title words, so they are dropped first.
@@ -55,11 +68,13 @@ describe('settings copy', () => {
     expect(entries.filter(([, c]) => !c.description.trim()).map(([k]) => k)).toEqual([]);
   });
 
-  it('keeps every description to one sentence that ends with a period', () => {
-    // R2 — the interior check catches a description that grew a second sentence.
-    const bad = entries.filter(([, c]) =>
-      !c.description.endsWith('.') || c.description.slice(0, -1).includes('. '));
-    expect(bad.map(([k, c]) => `${k}: ${c.description}`)).toEqual([]);
+  it('drops the period on a one-sentence description and keeps it on a longer one', () => {
+    // R2 — the line beside a control reads like a label's caption, so a lone sentence carries no period.
+    const bad = entries.flatMap(([k, c]) => {
+      const why = sentenceShapeViolation(c.description);
+      return why ? [`${k}: ${c.description} (${why})`] : [];
+    });
+    expect(bad).toEqual([]);
   });
 
   it('keeps every description within one line of the description column', () => {
@@ -91,12 +106,11 @@ describe('settings copy', () => {
 
   it('says when every narration message is sent, in one line', () => {
     // The message fields are runtime-conditional riders, so visibility alone can't say when one is sent —
-    // each carries a `sentWhen`, held to the same one-sentence, one-line ceiling as a description.
+    // each carries a `sentWhen`, held to the same period rule and one-line ceiling as a description.
     const messages = entries.filter(([k]) => k.endsWith('Message'));
     expect(messages.filter(([, c]) => !c.sentWhen?.trim()).map(([k]) => k)).toEqual([]);
     const bad = messages.filter(([, c]) =>
-      !c.sentWhen!.endsWith('.')
-      || c.sentWhen!.slice(0, -1).includes('. ')
+      sentenceShapeViolation(c.sentWhen!)
       || c.sentWhen!.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
     expect(bad.map(([k, c]) => `${k}: ${c.sentWhen}`)).toEqual([]);
   });
@@ -109,10 +123,9 @@ describe('settings copy', () => {
 
   it('holds every option help to the description rules', () => {
     // R2 again — an option's help replaces the row description on these rows, so it is read in the same
-    // slot and must survive the same one-sentence, one-line ceiling.
+    // slot and must survive the same period rule and one-line ceiling.
     const bad = helps.filter(([, help]) =>
-      !help.endsWith('.')
-      || help.slice(0, -1).includes('. ')
+      sentenceShapeViolation(help)
       || help.trim().split(/\s+/).length > MAX_DESCRIPTION_WORDS);
     expect(bad.map(([k, help]) => `${k}: ${help}`)).toEqual([]);
   });

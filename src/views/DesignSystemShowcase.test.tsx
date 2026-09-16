@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
+import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
 
 const renderShowcase = () => render(
   <ThemeProvider storageKey="design-system-test-theme">
@@ -68,7 +69,8 @@ describe('settings design reference', () => {
 
     const displayReference = screen.getByRole('region', { name: 'Display Reference' });
     await user.click(within(displayReference).getByRole('button', { name: 'More info' }));
-    expect(await screen.findByText(/sets the app’s light or dark color scheme/i)).toBeInTheDocument();
+    // The popover carries the production description, read from the table so a copy edit can't strand this.
+    expect(await screen.findByText(SETTINGS_COPY.theme.description)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
   });
 

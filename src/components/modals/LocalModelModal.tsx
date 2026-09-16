@@ -347,7 +347,7 @@ function SearchLocations({ locations, onChange, onChangeDownloadDir, autoLoad, o
         <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-center gap-x-4 gap-y-2">
           <RowLabel
             className="mb-2 sm:mb-0"
-            info={<HintInfo>{'Models found in this folder are **read-only**.\n\n- They can be loaded like any other model\n- They are never deleted from here — they belong to whichever app downloaded them\n- Downloads always land in your download folder, not this one'}</HintInfo>}
+            info={<HintInfo>{'Models in this folder are **read-only**.\n\n- You can load them like any other model\n- They\'re never deleted from here, since they belong to whichever app downloaded them\n- Downloads always go to your download folder, not this one'}</HintInfo>}
           >
             Folder
           </RowLabel>

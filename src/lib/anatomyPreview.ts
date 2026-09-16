@@ -286,8 +286,8 @@ const CAPTIONS: Record<string, string> = {
 /** The location prompt drives two different requests; which one a turn sends is the detection mode's call,
  *  so the hub asks the passes themselves rather than restating the rule. */
 const LOCATION_PASSES: { id: TurnPassId; caption: string }[] = [
-  { id: 'locationAuto', caption: 'Sent before the narration — the move is resolved up front, and the whole turn then runs in the new place.' },
-  { id: 'locationSuggest', caption: 'Sent after the narration — the move is offered, and yours to take.' },
+  { id: 'locationAuto', caption: 'Sent before the narration. The move applies first, so the whole turn runs in the new place.' },
+  { id: 'locationSuggest', caption: 'Sent after the narration. The move is offered, and you choose whether to take it.' },
 ];
 
 /**
