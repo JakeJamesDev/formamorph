@@ -73,7 +73,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     if (f) ingest(await f.text());
   };
 
-  const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.verbatim));
+  const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.maxOutput || parsed.preset.verbatim));
   const collision = parsed?.ok ? existingUserNames.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase()) : undefined;
   const canAdd = !!(parsed?.ok && name.trim());
   const submit = () => {
@@ -111,7 +111,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
             {hasTuning && (
               <label className="flex items-start gap-2">
                 <Checkbox checked={includeTuning} onCheckedChange={(c) => setIncludeTuning(c === true)} className="mt-0.5 shrink-0" />
-                <span className="text-meta text-muted-foreground">Include the preset&apos;s tuning (per-prompt samplers, reasoning, and verbatim turns). Uncheck to import the prompt text only.</span>
+                <span className="text-meta text-muted-foreground">Include the preset&apos;s tuning (per-prompt samplers, reasoning, max output, and verbatim turns). Uncheck to import the prompt text only.</span>
               </label>
             )}
             {collision && (

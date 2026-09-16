@@ -115,3 +115,97 @@ describe('the Scene Tags Options panel tunes Scene Tags', () => {
     expect(budgetValue()).toBe(sceneBudget);
   });
 });
+
+/** The Max Output row: its checkbox, slider, and the readout beside the slider. */
+const maxOutputRow = () => {
+  const box = screen.getByRole('checkbox', { name: SETTINGS_COPY.promptMaxOutput.label });
+  const row = box.closest('.space-y-2') as HTMLElement;
+  return { box, row, slider: within(row).getByRole('slider', { name: SETTINGS_COPY.promptMaxOutput.label }) };
+};
+const hasMaxOutputRow = () => screen.queryByRole('checkbox', { name: SETTINGS_COPY.promptMaxOutput.label }) !== null;
+
+describe('the Max Output row', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    // Staged mode, diaries and the clock put every prompt tab on the rail except Planning.
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'staged');
+    localStorage.setItem('FORMAMORPH_characterDiaries', 'true');
+    localStorage.setItem('FORMAMORPH_aiClock', 'true');
+  });
+
+  it('shows on the capped prompts and on no other', () => {
+    openOptions('director');
+    const withRow = ['director', 'character', 'storyboard', 'summary', 'diary', 'scenetags'] as const;
+    const withoutRow = ['narration', 'choices', 'statupdates', 'location', 'timepassed', 'timeopening'] as const;
+    for (const tab of withRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(true); }
+    for (const tab of withoutRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(false); }
+  });
+
+  it('shows on the precall planner', () => {
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'precall');
+    openOptions('thinking');
+    expect(within(maxOutputRow().row).getByText('Auto · 256 tok')).toBeTruthy();
+  });
+
+  it('reads Auto with the shipped cap, pinned and dimmed, while off', () => {
+    openOptions('summary');
+    const { box, row, slider } = maxOutputRow();
+    expect(box.getAttribute('data-state')).toBe('unchecked');
+    expect(within(row).getByText('Auto · 200 tok')).toBeTruthy();
+    expect(slider.getAttribute('aria-valuenow')).toBe('200');
+    expect(slider.getAttribute('data-disabled')).not.toBeNull();
+  });
+
+  it('sets a custom cap when on, and keeps it across a toggle', () => {
+    openOptions('summary');
+    makeEditable();
+    fireEvent.click(maxOutputRow().box);
+    fireEvent.keyDown(maxOutputRow().slider, { key: 'ArrowRight' });
+    expect(within(maxOutputRow().row).getByText('208 tok')).toBeTruthy();
+
+    fireEvent.click(maxOutputRow().box);
+    expect(within(maxOutputRow().row).getByText('Auto · 200 tok')).toBeTruthy();
+    fireEvent.click(maxOutputRow().box);
+    expect(within(maxOutputRow().row).getByText('208 tok')).toBeTruthy();
+  });
+
+  it('keeps one prompt’s cap off another prompt', () => {
+    openOptions('summary');
+    makeEditable();
+    fireEvent.click(maxOutputRow().box);
+    switchTo('diary');
+    expect(maxOutputRow().box.getAttribute('data-state')).toBe('unchecked');
+    expect(within(maxOutputRow().row).getByText('Auto · 80 tok')).toBeTruthy();
+  });
+
+  it('locks under a built-in preset and shows the read-only notice', () => {
+    openOptions('summary');
+    expect(maxOutputRow().box.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByText(/is read-only/)).toBeTruthy();
+  });
+
+  it('drives the Reasoning Budget token readout, shipped cap when off and custom when on', () => {
+    seedTakesBudget();
+    openOptions('summary');
+    expect(screen.getByText('25% · 50 tok')).toBeTruthy();
+
+    makeEditable();
+    fireEvent.click(maxOutputRow().box);
+    fireEvent.keyDown(maxOutputRow().slider, { key: 'ArrowRight' });
+    expect(screen.getByText('25% · 52 tok')).toBeTruthy();
+
+    fireEvent.click(maxOutputRow().box);
+    expect(screen.getByText('25% · 50 tok')).toBeTruthy();
+  });
+
+  it('shows the token result where the budget is the only strength', () => {
+    // No effort levels, so the budget slider stands in the switch's row with no dropdown.
+    localStorage.setItem(
+      'FORMAMORPH_reasoningSupport',
+      JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [] } }),
+    );
+    openOptions('diary');
+    expect(screen.queryByRole('combobox', { name: /Native Reasoning/ })).toBeNull();
+    expect(screen.getByText('25% · 20 tok')).toBeTruthy();
+  });
+});

@@ -2,6 +2,7 @@ import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMa
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
 import type { AIRequestType } from '@/types';
 import { parsePromptReasoningSetting } from './reasoningEffort';
+import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
  *  to the shared shape; the source app version is stamped separately for the older/newer import warning. */
@@ -21,6 +22,7 @@ export interface SharedPreset {
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
+  maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
 }
 
@@ -32,6 +34,7 @@ export interface ImportedPreset {
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
+  maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
 }
 
@@ -47,7 +50,7 @@ export interface ParseResult {
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
  *  values/tuning by the caller before export. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; verbatim?: VerbatimMap },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap },
   appVersion: string,
 ): SharedPreset {
   return {
@@ -60,6 +63,7 @@ export function buildSharedPreset(
     ...(input.samplers && Object.keys(input.samplers).length ? { samplers: input.samplers } : {}),
     ...(input.reasoning && Object.keys(input.reasoning).length ? { reasoning: input.reasoning } : {}),
     ...(input.reasoningBudget && Object.keys(input.reasoningBudget).length ? { reasoningBudget: input.reasoningBudget } : {}),
+    ...(input.maxOutput && Object.keys(input.maxOutput).length ? { maxOutput: input.maxOutput } : {}),
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
   };
 }
@@ -130,6 +134,8 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (reasoning) preset.reasoning = reasoning;
   const reasoningBudget = sanitizeReasoningBudget(o.reasoningBudget);
   if (reasoningBudget) preset.reasoningBudget = reasoningBudget;
+  const maxOutput = sanitizeMaxOutput(o.maxOutput);
+  if (maxOutput) preset.maxOutput = maxOutput;
   const verbatim = sanitizeVerbatim(o.verbatim);
   if (verbatim) preset.verbatim = verbatim;
 

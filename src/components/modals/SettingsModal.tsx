@@ -51,6 +51,7 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, 
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
+import { isMaxOutputKind, passCap, resolvedMaxOutput, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -167,6 +168,42 @@ function SamplerControl({ id, label, hint, info, custom, value, defaultValue, fa
   );
 }
 
+/** A prompt's Max Output row. Off reads Auto with the shipped cap; on, the slider sets the cap in tokens. */
+interface MaxOutputControlProps {
+  custom: boolean;
+  value: number;
+  shipped: number;
+  disabled?: boolean;
+  onCustomChange: (custom: boolean) => void;
+  onValueChange: (value: number) => void;
+}
+function MaxOutputControl({ custom, value, shipped, disabled, onCustomChange, onValueChange }: MaxOutputControlProps) {
+  const shown = custom ? value : shipped;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Checkbox id="promptMaxOutput" checked={custom} disabled={disabled} onCheckedChange={(c) => onCustomChange(c === true)} />
+        <label htmlFor="promptMaxOutput" className="text-label">{SETTINGS_COPY.promptMaxOutput.label}</label>
+        <span className="hidden sm:inline text-helper text-muted-foreground">{SETTINGS_COPY.promptMaxOutput.description}</span>
+      </div>
+      {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
+      <div className="flex items-center gap-3 pl-2.5">
+        <Slider
+          className={`flex-grow${custom && !disabled ? '' : ' opacity-60'}`}
+          value={[shown]}
+          min={MAX_OUTPUT_MIN}
+          max={MAX_OUTPUT_MAX}
+          step={MAX_OUTPUT_STEP}
+          disabled={disabled || !custom}
+          onValueChange={(v) => onValueChange(v[0])}
+          aria-label={SETTINGS_COPY.promptMaxOutput.label}
+        />
+        <span className="w-28 text-right text-label tabular-nums">{custom ? `${shown} tok` : `Auto · ${shown} tok`}</span>
+      </div>
+    </div>
+  );
+}
+
 /** Sentinel for the Use Active Endpoint row — Radix Select cannot hold an empty-string value, and "unpinned" is
  *  stored as an absent map entry rather than an id. */
 const FOLLOW_ACTIVE = '__follow__';
@@ -260,7 +297,12 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
  */
 type ReasoningStrength<L extends string> =
   | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
-  | { kind: 'budget'; value: number; onChange: (v: number) => void };
+  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void };
+
+/** The budget readout: the percent, and its token result when the prompt's cap is known. */
+function budgetReadout(pct: number, tokens: number | undefined): string {
+  return tokens === undefined ? `${pct}%` : `${pct}% · ${tokens} tok`;
+}
 
 /**
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
@@ -311,7 +353,7 @@ function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, stren
             onValueChange={(v) => strength.onChange(v[0])}
             aria-label={SETTINGS_COPY.reasoningBudget.label}
           />
-          <span className="w-12 text-right text-label tabular-nums">{strength.value}%</span>
+          <span className="w-28 text-right text-label tabular-nums">{budgetReadout(strength.value, strength.tokens)}</span>
         </>
       )}
     </div>
@@ -329,7 +371,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
   /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
-  budget: { value: number; set: (v: number) => void } | null;
+  budget: { value: number; set: (v: number) => void; tokens?: number } | null;
   /** Whether the target honors the effort level, so the dropdown is worth showing. */
   level: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
@@ -341,7 +383,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
   const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
-    ? { kind: 'budget', value: budget.value, onChange: budget.set }
+    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set }
     : null;
   // The field is named for what it actually offers: the budget where that is the only strength, and the
   // switch's own name where the target takes a level, or takes neither and the switch stands alone.
@@ -381,7 +423,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
               onValueChange={(v) => budgetStrength.onChange(v[0])}
               aria-label={SETTINGS_COPY.reasoningBudget.label}
             />
-            <span className="w-12 text-right text-label tabular-nums">{budgetStrength.value}%</span>
+            <span className="w-28 text-right text-label tabular-nums">{budgetReadout(budgetStrength.value, budgetStrength.tokens)}</span>
           </div>
         </div>
       )}
@@ -393,8 +435,10 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
  *  them), the per-prompt Native Reasoning override (the effort level on external endpoints, or the token budget
  *  on the local engine), plus one override row per tunable sampler.
  *  `disabled` locks every control when the active prompt preset is built-in (Default/Simple). */
-function PromptOptionsPanel({ endpoint, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
+function PromptOptionsPanel({ endpoint, maxOutput, verbatim, reasoning, samplers, disabled, readOnlyReason, onRequestEdit }: {
   endpoint: React.ComponentProps<typeof PromptEndpointField>;
+  /** Absent on a prompt without a Max Output row. */
+  maxOutput: Omit<MaxOutputControlProps, 'disabled'> | null;
   verbatim: { value: number; set: (n: number) => void } | null;
   reasoning: Omit<React.ComponentProps<typeof PromptReasoningField>, 'disabled'> | null;
   samplers: SamplerControlProps[];
@@ -416,6 +460,7 @@ function PromptOptionsPanel({ endpoint, verbatim, reasoning, samplers, disabled,
           it no longer narrows the whole panel; the scroll frame supplies the right-hand gutter. */}
       <div className="space-y-5 py-3">
         <PromptEndpointField {...endpoint} disabled={disabled} />
+        {maxOutput && <MaxOutputControl {...maxOutput} disabled={disabled} />}
         {verbatim && <VerbatimTurnsField id="promptVerbatim" value={verbatim.value} onChange={verbatim.set} disabled={disabled} />}
         {reasoning && <PromptReasoningField {...reasoning} disabled={disabled} />}
         {samplers.map((s) => <SamplerControl key={s.id} {...s} disabled={disabled} />)}
@@ -631,6 +676,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setPromptReasoning,
     promptReasoningBudget,
     setPromptReasoningBudget,
+    promptMaxOutput,
+    setPromptMaxOutputCustom,
+    setPromptMaxOutputValue,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,
@@ -1220,6 +1268,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       enabled: promptTarget.presetId !== null,
     },
   };
+  // The cap this prompt sends, which the Max Output row and the budget readout both read.
+  const maxOutputControl = isMaxOutputKind(activeKind)
+    ? {
+        custom: promptMaxOutput[activeKind]?.custom ?? false,
+        value: promptMaxOutput[activeKind]?.value ?? shippedMaxOutput(activeKind),
+        shipped: shippedMaxOutput(activeKind),
+        onCustomChange: (c: boolean) => setPromptMaxOutputCustom(activeKind, c),
+        onValueChange: (v: number) => setPromptMaxOutputValue(activeKind, v),
+      }
+    : null;
+  const budgetCap = isMaxOutputKind(activeKind)
+    ? resolvedMaxOutput(promptMaxOutput, activeKind)
+    : passCap(activeKind) ?? promptTarget.maxTokens;
+  const budgetPct = promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind);
   const samplerControls: SamplerControlProps[] = [
     {
       id: 'customTemp',
@@ -1298,7 +1360,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
         // strength to pick. The built-in engine's row names no level field, so its dropdown would be inert
         // and is not drawn.
         budget: promptReasoningCapability.budget && reasoningDialectTakesBudget(promptReasoningCapability.dialect)
-          ? { value: promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind), set: (v: number) => setPromptReasoningBudget(activeKind, v) }
+          ? {
+              value: budgetPct,
+              set: (v: number) => setPromptReasoningBudget(activeKind, v),
+              ...(budgetCap !== undefined && { tokens: Math.round((budgetPct / 100) * budgetCap) }),
+            }
           : null,
         level: reasoningLevelControl(promptReasoningCapability),
       }
@@ -2568,6 +2634,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 <ScrollArea className="mt-4 flex-1 min-h-0">
                   <PromptOptionsPanel
                     endpoint={endpointControl}
+                    maxOutput={maxOutputControl}
                     verbatim={verbatimApplicable ? activeVerbatimEntry : null}
                     reasoning={reasoningControl}
                     samplers={samplerControls}

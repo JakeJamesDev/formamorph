@@ -54,6 +54,7 @@ const snapshot = (target: AiEndpointTarget, over: Partial<AiSettingsSnapshot> = 
   promptReasoning: {},
   promptReasoningBudget: {},
   promptSamplers: {},
+  promptMaxOutput: {},
   genTemperature: 0.9,
   genRepetitionPenalty: 1.1,
   genTopP: 0.95,
@@ -496,6 +497,41 @@ describe('the whole spec', () => {
     const internal = buildAiRequestSpec(inactive, call({ maxTokensOverride: 120 }));
     expect(internal.body.max_tokens).toBe(120);
     expect(internal.maxTokensSource).toBe('internal');
+  });
+
+  it('sends a prompt’s custom Max Output in place of the pass cap, labeled internal', () => {
+    const snap = snapshot(external(), { promptMaxOutput: { summary: { custom: true, value: 480 } } });
+    const spec = buildAiRequestSpec(snap, call({ requestType: 'summary', maxTokensOverride: 200 }));
+    expect(spec.body.max_tokens).toBe(480);
+    expect(spec.maxTokensSource).toBe('internal');
+  });
+
+  it('labels a custom Max Output internal even where the call carries no cap of its own', () => {
+    const snap = snapshot(external({ maxTokens: undefined }), { promptMaxOutput: { diary: { custom: true, value: 64 } } });
+    const spec = buildAiRequestSpec(snap, call({ requestType: 'diary' }));
+    expect(spec.body.max_tokens).toBe(64);
+    expect(spec.maxTokensSource).toBe('internal');
+  });
+
+  it('sends the pass cap while the Max Output row is off, whatever value it keeps', () => {
+    const snap = snapshot(external(), { promptMaxOutput: { summary: { custom: false, value: 480 } } });
+    expect(buildRequestBody(snap, call({ requestType: 'summary', maxTokensOverride: 200 })).max_tokens).toBe(200);
+  });
+
+  it('ignores a Max Output entry on a prompt that has no row', () => {
+    const snap = snapshot(external(), { promptMaxOutput: { narration: { custom: true, value: 64 } } });
+    const spec = buildAiRequestSpec(snap, call());
+    expect(spec.body.max_tokens).toBe(800);
+    expect(spec.maxTokensSource).toBe('endpoint');
+  });
+
+  it('scales the reasoning budget from the custom Max Output', () => {
+    const snap = snapshot(lmStudioReasoning(), {
+      promptReasoningBudget: { thinking: 50 },
+      promptMaxOutput: { thinking: { custom: true, value: 1000 } },
+    });
+    expect(buildRequestBody(snap, call({ requestType: 'thinking', maxTokensOverride: 256 })))
+      .toMatchObject({ max_tokens: 1000, thinking_budget_tokens: 500 });
   });
 
   it('routes each kind to its own resolved target', () => {

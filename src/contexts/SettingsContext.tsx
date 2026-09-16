@@ -45,12 +45,13 @@ import {
 import {
   emptyStore, presetStoreCodec, activeValues, isBuiltInActive, activeStyle, BUILTIN_PRESETS,
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
-  activeSamplers, activeReasoning, activeReasoningBudget, activeVerbatim, activePromptEndpoints,
-  updateSamplers, updateReasoning, updateReasoningBudget, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
+  activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
+  updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset,
   type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
+import { clampMaxOutput, isMaxOutputKind, shippedMaxOutput } from '../lib/promptMaxOutput';
 import { resolvePinnedPreset } from '../lib/worldPromptPreset';
 import { buildStyledValues } from '../lib/sectionStyle';
 import { defaultPromptSampler, type PromptSamplerMap, type PromptSampler } from '../lib/promptSamplers';
@@ -792,6 +793,7 @@ function useProvideSettings() {
     [promptReasoningSettings],
   );
   const promptReasoningBudget = useMemo(() => activeReasoningBudget(effectiveStore), [effectiveStore]);
+  const promptMaxOutput = useMemo(() => activeMaxOutput(effectiveStore), [effectiveStore]);
   const promptEndpoints = useMemo(() => activePromptEndpoints(effectiveStore), [effectiveStore]);
   const setPromptEndpoint = useCallback(
     (kind: AIRequestType, id: string | null) =>
@@ -873,6 +875,19 @@ function useProvideSettings() {
   const setPromptReasoningBudget = useCallback((kind: AIRequestType, value: number) => {
     setPresetStore((s) => updateReasoningBudget(s, kind, value));
   }, [setPresetStore]);
+  // The custom value is seeded from the shipped cap, so switching the row on starts where Auto was.
+  const setPromptMaxOutputCustom = useCallback((kind: AIRequestType, custom: boolean) => {
+    if (!isMaxOutputKind(kind)) return;
+    setPresetStore((s) => updateMaxOutput(s, (prev) => ({
+      ...prev, [kind]: { custom, value: prev[kind]?.value ?? shippedMaxOutput(kind) },
+    })));
+  }, [setPresetStore]);
+  const setPromptMaxOutputValue = useCallback((kind: AIRequestType, value: number) => {
+    if (!isMaxOutputKind(kind)) return;
+    setPresetStore((s) => updateMaxOutput(s, (prev) => ({
+      ...prev, [kind]: { custom: prev[kind]?.custom ?? true, value: clampMaxOutput(value) },
+    })));
+  }, [setPresetStore]);
 
   // Preset management (Settings → Prompts selector).
   const activePresetId = effectiveStore.activeId;
@@ -916,7 +931,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, verbatim: verbatimMap }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const style = imported.style;
     const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
@@ -925,6 +940,7 @@ function useProvideSettings() {
       ...(opts.includeTuning && imported.samplers ? { samplers: imported.samplers } : {}),
       ...(opts.includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
       ...(opts.includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
+      ...(opts.includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
       ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     };
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
@@ -1514,6 +1530,9 @@ function useProvideSettings() {
     setPromptReasoning,
     promptReasoningBudget,
     setPromptReasoningBudget,
+    promptMaxOutput,
+    setPromptMaxOutputCustom,
+    setPromptMaxOutputValue,
     thinkingPrompt,
     setThinkingPrompt,
     summaryPrompt,

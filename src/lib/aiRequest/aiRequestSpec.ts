@@ -8,6 +8,7 @@ import {
 import { reasoningDialectBody, type ReasoningBodyFields, type ReasoningWrite } from '@/lib/reasoningDialect';
 import { resolvePromptSampler, type PromptSamplerMap } from '@/lib/promptSamplers';
 import type { EndpointSampler, EndpointSamplerOverrides } from '@/lib/endpointSamplers';
+import { customMaxOutput, type PromptMaxOutputMap } from '@/lib/promptMaxOutput';
 
 /** Everything about the endpoint one call resolved to. The probe/cache state producing it stays outside. */
 export interface AiEndpointTarget {
@@ -39,6 +40,8 @@ export interface AiSettingsSnapshot {
   keptReasoning?: KeptReasoningSettings;
   promptReasoningBudget: Partial<Record<AIRequestType, number>>;
   promptSamplers: PromptSamplerMap;
+  /** The active preset's Max Output rows; an entry that is on replaces the call's own cap. */
+  promptMaxOutput: PromptMaxOutputMap;
   genTemperature: number;
   genRepetitionPenalty: number;
   genTopP: number;
@@ -149,9 +152,14 @@ export function buildRequestBody(snapshot: AiSettingsSnapshot, call: AiCall): Ai
   return bodyForTarget(snapshot, call, snapshot.resolveTarget(call.requestType));
 }
 
-/** The output cap one call resolves to: its own override, or the target's. */
-function capFor(call: AiCall, target: AiEndpointTarget): number | undefined {
-  return call.maxTokensOverride ?? target.maxTokens;
+/** The output cap one call resolves to: the prompt's custom row, the call's own cap, or the target's. */
+function capFor(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): number | undefined {
+  return internalCapFor(snapshot, call) ?? target.maxTokens;
+}
+
+/** The cap Formamorph sets for this call, or `null` where the call follows the endpoint's own. */
+function internalCapFor(snapshot: AiSettingsSnapshot, call: AiCall): number | null {
+  return customMaxOutput(snapshot.promptMaxOutput, call.requestType) ?? call.maxTokensOverride ?? null;
 }
 
 /**
@@ -167,7 +175,7 @@ function resolveReasoningWrite(snapshot: AiSettingsSnapshot, call: AiCall, targe
     target.reasoning, snapshot.keptReasoning,
   );
   const reasons = !reasoningRuledOut(target.reasoning);
-  const maxTokens = capFor(call, target);
+  const maxTokens = capFor(snapshot, call, target);
   // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
   const eligible = snapshot.reasoningEngaged && reasons;
   return {
@@ -184,7 +192,7 @@ function resolveReasoningWrite(snapshot: AiSettingsSnapshot, call: AiCall, targe
 function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): AiRequestBody {
   const { requestType } = call;
   const localEngine = target.localEngine;
-  const maxTokens = capFor(call, target);
+  const maxTokens = capFor(snapshot, call, target);
   const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target);
   const externalOverrides = target.samplerOverrides;
 
@@ -230,7 +238,7 @@ export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): 
     target,
     requestType: call.requestType,
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
-    ...(call.maxTokensOverride !== null && call.maxTokensOverride !== undefined
+    ...(internalCapFor(snapshot, call) !== null
       ? { maxTokensSource: 'internal' as const }
       : target.maxTokens !== undefined
         ? { maxTokensSource: target.localEngine ? 'local-engine' as const : 'endpoint' as const }

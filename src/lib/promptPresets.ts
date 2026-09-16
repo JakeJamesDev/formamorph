@@ -2,6 +2,7 @@ import type { Codec } from './usePersistentState';
 import type { AIRequestType } from '@/types';
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
+import type { PromptMaxOutputMap } from './promptMaxOutput';
 import { parsePromptReasoningSetting, type PromptReasoningSetting } from './reasoningEffort';
 
 /** Per-request verbatim-turn overrides carried on a preset; a missing kind uses its shipped default. */
@@ -62,6 +63,7 @@ export interface PromptPreset {
   samplers?: PromptSamplerMap;
   reasoning?: ReasoningMap;
   reasoningBudget?: ReasoningBudgetMap;
+  maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
   /** Per-prompt endpoint routing. Preset-scoped like the tuning above, but deliberately excluded from
    *  sharing: it names endpoint presets, whose ids mean nothing on another machine. */
@@ -236,6 +238,12 @@ export function activeReasoningBudget(store: PromptPresetStore): ReasoningBudget
   return store.presets.find((p) => p.id === store.activeId)?.reasoningBudget ?? {};
 }
 
+/** The active preset's Max Output overrides (empty for a built-in). */
+export function activeMaxOutput(store: PromptPresetStore): PromptMaxOutputMap {
+  if (isBuiltInActive(store)) return {};
+  return store.presets.find((p) => p.id === store.activeId)?.maxOutput ?? {};
+}
+
 /** Apply a patch to the active user preset; no-op under a built-in. */
 function patchActivePreset(store: PromptPresetStore, patch: (p: PromptPreset) => PromptPreset): PromptPresetStore {
   if (isBuiltInActive(store)) return store;
@@ -265,6 +273,11 @@ export function updatePromptEndpoints(store: PromptPresetStore, fn: (m: PromptEn
 /** Set one kind's reasoning-budget percent on the active preset. No-op under a built-in. */
 export function updateReasoningBudget(store: PromptPresetStore, kind: AIRequestType, value: number): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, reasoningBudget: { ...(p.reasoningBudget ?? {}), [kind]: value } }));
+}
+
+/** Replace the active preset's Max Output map via a transform. No-op under a built-in. */
+export function updateMaxOutput(store: PromptPresetStore, fn: (m: PromptMaxOutputMap) => PromptMaxOutputMap): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, maxOutput: fn(p.maxOutput ?? {}) }));
 }
 
 /** One-time migration: fold the (previously global) tuning onto every user preset that lacks it, so switching

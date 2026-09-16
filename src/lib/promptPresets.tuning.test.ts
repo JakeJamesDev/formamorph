@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  activeSamplers, activeReasoning, activeVerbatim,
+  activeSamplers, activeReasoning, activeVerbatim, activeMaxOutput, updateMaxOutput,
   updateSamplers, updateReasoning, updateVerbatim, foldTuningIntoUserPresets, presetStoreCodec,
   type PromptPresetStore, type PromptValues,
 } from './promptPresets';
@@ -95,5 +95,32 @@ describe('foldTuningIntoUserPresets (migration)', () => {
   it('is a no-op when all categories are empty', () => {
     const store = userStore();
     expect(foldTuningIntoUserPresets(store, {}, {}, {})).toBe(store);
+  });
+});
+
+describe('preset-scoped Max Output', () => {
+  const summaryCap = { summary: { custom: true, value: 320 } };
+
+  it('persists on the active user preset through the store codec', () => {
+    const store = updateMaxOutput(userStore(), () => summaryCap);
+    const reloaded = presetStoreCodec.parse(presetStoreCodec.serialize(store));
+    expect(activeMaxOutput(reloaded)).toEqual(summaryCap);
+  });
+
+  it('reads empty under a built-in, and its writer leaves a built-in untouched', () => {
+    // A stored entry under a built-in id still resolves to the shipped caps.
+    const shadowed: PromptPresetStore = { activeId: 'simple', presets: [{ id: 'simple', name: 'Simple', values: V, maxOutput: summaryCap }] };
+    expect(activeMaxOutput(shadowed)).toEqual({});
+    expect(updateMaxOutput(builtin, () => summaryCap)).toBe(builtin);
+  });
+
+  it('patches only the active preset', () => {
+    const store: PromptPresetStore = {
+      activeId: 'u2',
+      presets: [{ id: 'u1', name: 'U1', values: V }, { id: 'u2', name: 'U2', values: V }],
+    };
+    const next = updateMaxOutput(store, () => summaryCap);
+    expect(next.presets[0].maxOutput).toBeUndefined();
+    expect(next.presets[1].maxOutput).toEqual(summaryCap);
   });
 });

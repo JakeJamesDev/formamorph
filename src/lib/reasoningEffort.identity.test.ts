@@ -102,7 +102,7 @@ describe('a resolved target reaches the wire in its own dialect', () => {
     return reasoningSlice(buildRequestBody({
       resolveTarget: () => target,
       thinkingMode: 'off', reasoningEffort: 'high', reasoningEngaged: true,
-      promptReasoning: {}, promptReasoningBudget: { narration: 40 }, promptSamplers: {},
+      promptReasoning: {}, promptReasoningBudget: { narration: 40 }, promptSamplers: {}, promptMaxOutput: {},
       genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
       paragraphLimit: 'none', disableThinking: false,
     }, { systemPrompt: 'You narrate.', messages: [{ role: 'user', content: 'go north' }], requestType: 'narration' }));
