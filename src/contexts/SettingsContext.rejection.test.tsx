@@ -49,7 +49,7 @@ function specFromPersisted(id: string): ReturnType<typeof buildAiRequestSpec> {
   };
   const snapshot: AiSettingsSnapshot = {
     resolveTarget: () => target, thinkingMode: 'off', reasoningEffort: 'auto', reasoningEngaged: false,
-    promptReasoning: {}, promptReasoningBudget: {}, promptSamplers: {}, genTemperature: 0.7,
+    promptReasoning: {}, promptReasoningBudget: {}, promptSamplers: {}, promptMaxOutput: {}, genTemperature: 0.7,
     genRepetitionPenalty: 1.1, genTopP: 0.9, genTopK: 40, genMinP: 0.05,
     paragraphLimit: 'auto', disableThinking: false,
   };

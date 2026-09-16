@@ -118,6 +118,51 @@ describe('sanitize / compat', () => {
   });
 });
 
+describe('Max Output in a shared preset', () => {
+  const caps = { thinking: { custom: true, value: 512 }, diary: { custom: false, value: 64 } };
+
+  it('round-trips the map', () => {
+    const r = parseSharedCode(serializeSharedCode(buildSharedPreset({ ...base, maxOutput: caps }, APP)), APP);
+    expect(r.preset!.maxOutput).toEqual(caps);
+  });
+
+  it('keeps a shipped cap that sits off the slider step, such as Storyboard’s 300', () => {
+    const storyboard = { storyboard: { custom: true, value: 300 } };
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset({ ...base, maxOutput: storyboard }, APP)), APP);
+    expect(r.preset!.maxOutput).toEqual(storyboard);
+  });
+
+  it('omits the map when it is empty', () => {
+    expect(buildSharedPreset({ ...base, maxOutput: {} }, APP)).not.toHaveProperty('maxOutput');
+  });
+
+  it('imports an older preset without the map as all Auto', () => {
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, APP)), APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.maxOutput).toBeUndefined();
+  });
+
+  it('drops malformed entries, keeps the rest, and clamps to the slider range', () => {
+    const crafted = JSON.stringify({
+      ...buildSharedPreset(base, APP),
+      maxOutput: {
+        thinking: { custom: true, value: 99999 },
+        director: { custom: 'yes', value: 300 },
+        character: { custom: true, value: 'big' },
+        storyboard: { custom: true, value: 2 },
+        narration: { custom: true, value: 64 },
+        summary: 64,
+      },
+    });
+    const r = parseSharedJson(crafted, APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.maxOutput).toEqual({
+      thinking: { custom: true, value: 2048 },
+      storyboard: { custom: true, value: 8 },
+    });
+  });
+});
+
 // Per-prompt endpoint routing is stored globally, outside the preset store, precisely so a shared preset
 // never carries endpoint ids (or tokens) that mean nothing — or something wrong — on another machine.
 describe('endpoint routing is never shared', () => {

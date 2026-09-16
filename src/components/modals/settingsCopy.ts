@@ -501,6 +501,10 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
     label: 'Endpoint',
     description: 'Routes this prompt to a specific endpoint.',
   },
+  promptMaxOutput: {
+    label: 'Max Output',
+    description: 'Overrides how many tokens this prompt may write.',
+  },
 
   // ── Prompts · Narration messages ────────────────────────────────────────────
   recapMessage: {
