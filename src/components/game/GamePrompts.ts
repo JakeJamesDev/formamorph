@@ -303,31 +303,11 @@ export const defaultSummaryPrompt = `You are recording what one turn of an inter
 - State only what this turn establishes; do not carry in earlier events or summarize the whole story.
 - If the turn settled nothing worth carrying, output exactly: nothing notable`;
 
-// The milestone selector (requestType 'milestoneSelect'): runs silently between turns over the old-band
-// digests and outputs which entries stay in long-term memory. Selection, never rewriting — code assembles
-// the survivors verbatim, and a malformed reply falls back to keep-everything. The worked example is
-// load-bearing (instruction wording alone left the player's stated goal dropped 3/3 on both test tiers)
-// and is deliberately PLACEHOLDER-FORM: concrete example stories get pattern-matched against real play
-// and against probe fixtures, inflating both. This is the 'genericex' probe arm — cloud 0.97 / Cydonia
-// 0.95 must-recall on the de-correlated fixture; known trade-off: Cydonia keeps a standing-pretense
-// entry only under the concrete-example arm ('stateful7', 1.00). The example holds ~two lessons max —
-// a third keep ('genericex2') broke the cloud gate. History: milestone-select-probe.mjs arm comments +
-// docs-internal/designs/milestone-memory/design.md.
-export const defaultMilestonePrompt = `You are the memory keeper of an interactive story. You are given the story's remembered moments as a numbered list, oldest first. Keep an entry only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement, small talk, and any moment whose outcome a later entry already carries. When unsure whether something still matters, let it go.
-
-Example of the reasoning, with placeholder entries standing for any story:
-1. <the player travels from one place to another>
-2. <the player states who they are and what they mean to accomplish>
-3. <the player promises a character they will do some task>
-4. <idle small talk with a passerby>
-5. <the player completes the promised task, and the character acknowledges it>
-Correct reply: 2, 5
-Entry 2 is the player's stated errand - the story steers by it, so it stays. Entry 5 carries entry 3's outcome - the fulfilled promise replaces the promise itself, so the ending is kept and the setup is dropped. Entries 1 and 4 are passing moments no one would mention again.
-
-Reply with only the numbers to keep, comma-separated.`;
-
-// The incremental milestone selector (T4): judges only NEWLY-AGED digests against the already-kept
-// list, so old verdicts never flip-flop — an old memory changes state only via an explicit Forget.
+// The milestone selector (requestType 'milestoneSelect'): runs silently between turns and judges only
+// NEWLY-AGED digests against the already-kept list, so old verdicts never flip-flop — an old memory
+// changes state only via an explicit Forget. Selection, never rewriting: code assembles the survivors
+// verbatim, and a malformed reply keeps every new entry. The worked examples are PLACEHOLDER-FORM:
+// concrete example stories get pattern-matched against real play and probe fixtures.
 // The pairing protocol is load-bearing: a Forget must cite WHICH kept new moment replaces the old
 // one ("Forget: 2 replaced by 4"), and the parser voids uncited forgets — prompt wording alone let
 // the model forget an old entry nearly every batch (probe arms 'shipped' 0.38 / 'restraint' 0.53
@@ -335,7 +315,7 @@ Reply with only the numbers to keep, comma-separated.`;
 // (none/none) teaches that most batches forget nothing; 'paired2's extra strictness clauses
 // REGRESSED closure keeps (0.80) — don't re-add them. Probe: milestone-select-probe.mjs --mode
 // incremental; keep its parser mirror in sync with lib/milestoneMemory.
-export const defaultMilestoneIncrementalPrompt = `You are the memory keeper of an interactive story. You are given the moments already in memory, then the new moments to judge. Keep a new moment only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement and small talk. When unsure whether a new moment still matters, let it go.
+export const defaultMilestoneSelectPrompt = `You are the memory keeper of an interactive story. You are given the moments already in memory, then the new moments to judge. Keep a new moment only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement and small talk. When unsure whether a new moment still matters, let it go.
 
 The already-kept moments are settled: never list them under Keep, and never forget one because it is old, already used, or quiet. A kept moment may be forgotten only when a NEW moment you are keeping carries its outcome - the promise now fulfilled, the debt now repaid - and then you must say which: "Forget: 2 replaced by 4". Most of the time nothing is replaced: reply "Forget: none".
 
@@ -366,6 +346,12 @@ Every moment you keep also carries a weight: 3 when the story turns on it, 2 whe
 
 Reply with the Keep line, the Forget line, then the Weight line.`;
 
+// The selector's user message. Each chip carries its own header and numbering; code appends the reply
+// format the parser reads, so no edit here can break it.
+export const defaultMilestoneSelectUserPrompt = `<REMEMBERED MOMENTS>
+
+<NEW MOMENTS>`;
+
 // The character-diary pass: run once per participating character as turns age out, to record that
 // character's own first-person memory of the turn. Identity + narration arrive in the user message
 // (buildDiaryUserMessage); this system prompt is the generic diarist framing.
@@ -384,29 +370,24 @@ export const defaultDiaryPrompt = `You ARE one character in an interactive rolep
 - No headings, labels, or lists. Just one or two sentences.
 - If there is nothing worth recording, your entire reply is exactly: nothing notable (never appended to an entry).`;
 
-// The runtime-character "discover" pass (requestType 'discoverEntity'): run once, silently, when the
-// narration introduces a character the world never defined, to mint a durable third-person description
-// so that character keeps a stable identity on later turns. The name + narration arrive in the user
-// message; this is extraction from what was shown, not invention.
-export const defaultDiscoverEntityPrompt = `You are writing a lasting reference note for a character who just appeared in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name and the passage they appeared in.
+// The runtime-character note (requestType 'discoverEntity'): written silently when the narration names a
+// character the world never defined, and again when the player asks for a rewrite. Extraction from what
+// was shown, not invention. The later material rides only on a rewrite, and outranks the first passage.
+export const defaultDiscoverEntityPrompt = `You are writing the lasting reference note for a character in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name, the passage they first appeared in, and - when the story has shown more of them since - what it showed later.
 
-Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition - drawn from what the passage shows or clearly implies. Capture the lasting character rather than the single moment: their standing traits, not the exact pose or action they happen to be caught in this turn.
-
-Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the passage does not support.
-
-Output only the description - no name heading, label, or preamble.`;
-
-// The player-triggered rewrite of a discovered character's note (same 'discoverEntity' request type).
-// Mirrors the discover prompt's constraints so both descriptions read alike, and adds the one thing that
-// differs: later material may be present, and it outranks the first impression where they disagree.
-// Deliberately not a settings-editable preset - it has no player-facing knob and no export surface.
-export const defaultRegenEntityPrompt = `You are rewriting the lasting reference note for a character in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name, the passage they first appeared in, and - when the story has shown more of them since - what happened afterward.
-
-Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition. Capture the lasting character rather than any single moment: their standing traits, not the pose or action they happen to be caught in. Where the later material revises the first impression, follow the later material; where it only adds, fold the addition in.
+Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition - drawn from what the material shows or clearly implies. Capture the lasting character rather than any single moment: their standing traits, not the pose or action they happen to be caught in. Where the later material revises the first impression, follow the later material; where it only adds, fold the addition in.
 
 Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the material does not support.
 
 Output only the description - no name heading, label, or preamble.`;
+
+// The note's user message. Both block chips render their own header or nothing, so a first note and a
+// rewrite share this template.
+export const defaultDiscoverEntityUserPrompt = `Character name: <CHARACTER NAME>
+
+<FIRST PASSAGE>
+
+<LATER MATERIAL>`;
 
 // The recap's closing "where things stand" line, appended to the recap reply (never the system prompt) and
 // riding only while a digest band exists. The recap alone is all past tense; without a stated present, models

@@ -59,7 +59,7 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
+import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
 import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXED_BASES, type InvokeMeta } from '@/lib/imageGen/invokeai';
@@ -708,6 +708,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     locationChangeUserPrompt,
     setLocationChangeUserPrompt,
     summaryUserPrompt,
+    milestoneSelectPrompt,
+    setMilestoneSelectPrompt,
+    milestoneSelectUserPrompt,
+    setMilestoneSelectUserPrompt,
     nowLinePrompt,
     setNowLinePrompt,
     timePassedPrompt,
@@ -722,6 +726,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     setSceneTagsPrompt,
     sceneTagsUserPrompt,
     setSceneTagsUserPrompt,
+    discoverEntityPrompt,
+    setDiscoverEntityPrompt,
+    discoverEntityUserPrompt,
+    setDiscoverEntityUserPrompt,
     sceneImageAuto,
     setSceneImageAuto,
     setSummaryUserPrompt,
@@ -1025,19 +1033,21 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     statupdates: { label: PROMPT_LABELS.statupdates, reset: () => setStatUpdatesPrompt(defaultStatUpdatesPrompt) },
     location: { label: PROMPT_LABELS.location, reset: () => setLocationChangePromptText(defaultLocationChangePrompt) },
     summary: { label: PROMPT_LABELS.summary, reset: () => setSummaryPrompt(defaultSummaryPrompt) },
+    milestone: { label: PROMPT_LABELS.milestone, reset: () => setMilestoneSelectPrompt(defaultMilestoneSelectPrompt) },
     timepassed: { label: PROMPT_LABELS.timepassed, reset: () => setTimePassedPrompt(defaultTimePassedPrompt) },
     timeopening: { label: PROMPT_LABELS.timeopening, reset: () => setOpeningTimePrompt(defaultOpeningTimePrompt) },
     scenetags: { label: PROMPT_LABELS.scenetags, reset: () => setSceneTagsPrompt(defaultSceneTagsPrompt) },
     diary: { label: PROMPT_LABELS.diary, reset: () => setDiaryPrompt(defaultDiaryPrompt) },
     director: { label: PROMPT_LABELS.director, reset: () => setDirectorPrompt(defaultDirectorPrompt) },
     character: { label: PROMPT_LABELS.character, reset: () => setCharacterPrompt(defaultCharacterPrompt) },
+    discover: { label: PROMPT_LABELS.discover, reset: () => setDiscoverEntityPrompt(defaultDiscoverEntityPrompt) },
     storyboard: { label: PROMPT_LABELS.storyboard, reset: () => setStoryboardPrompt(defaultStoryboardPrompt) },
   };
   // Each prompt tab only exists while its prompt is enabled (toggled in Generation → System Prompts, or
   // its governing setting for Thinking/Summary). If the open tab is no longer available (disabled since,
   // or on reopen), fall back to Narration so the panel isn't blank.
   const promptAvailable = computePromptTabAvailability({
-    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, aiClock,
+    thinkingMode, choicesEnabled, statUpdatesEnabled, locationChangeEnabled, memoryDigests, characterDiaries, describeCharacters, aiClock,
     sceneImages: !imageGenDisabled,
   });
   const activePromptTab = promptAvailable[promptTab] ? promptTab : 'narration';
@@ -1095,10 +1105,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     statupdates: { value: statUpdatesUserPrompt, set: setStatUpdatesUserPrompt, reset: () => setStatUpdatesUserPrompt(defaultStatUpdatesUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.statupdates ?? [] },
     location: { value: locationChangeUserPrompt, set: setLocationChangeUserPrompt, reset: () => setLocationChangeUserPrompt(defaultLocationChangeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.location ?? [] },
     summary: { value: summaryUserPrompt, set: setSummaryUserPrompt, reset: () => setSummaryUserPrompt(defaultSummaryUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.summary ?? [] },
+    milestone: { value: milestoneSelectUserPrompt, set: setMilestoneSelectUserPrompt, reset: () => setMilestoneSelectUserPrompt(defaultMilestoneSelectUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.milestone ?? [] },
     timepassed: { value: timePassedUserPrompt, set: setTimePassedUserPrompt, reset: () => setTimePassedUserPrompt(defaultTimePassedUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timepassed ?? [] },
     timeopening: { value: openingTimeUserPrompt, set: setOpeningTimeUserPrompt, reset: () => setOpeningTimeUserPrompt(defaultOpeningTimeUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.timeopening ?? [] },
     director: { value: directorUserPrompt, set: setDirectorUserPrompt, reset: () => setDirectorUserPrompt(defaultDirectorUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.director ?? [] },
     scenetags: { value: sceneTagsUserPrompt, set: setSceneTagsUserPrompt, reset: () => setSceneTagsUserPrompt(defaultSceneTagsUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.scenetags ?? [] },
+    discover: { value: discoverEntityUserPrompt, set: setDiscoverEntityUserPrompt, reset: () => setDiscoverEntityUserPrompt(defaultDiscoverEntityUserPrompt), variables: PROMPT_KIND_USER_VARIABLES.discover ?? [] },
   };
   const activeUserPrompt = userPrompts[activePromptTab];
   const showingUser = promptView === 'user' && !!activeUserPrompt;
@@ -1183,16 +1195,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       storyboard: storyboardPrompt,
       narrationUser: narrationUserPrompt,
       oocDirective: oocDirectivePrompt,
-      // The hub draws a mid-story turn, so the opening cue and the discovery prompt are along for the
-      // shape only — neither is an editor surface, and no hub renders either.
+      // The hub draws a mid-story turn, so the opening cue is along for the shape only.
       openingCue: OPENING_SCENE_CUE,
-      discoverEntity: defaultDiscoverEntityPrompt,
+      discoverEntity: discoverEntityPrompt,
+      discoverEntityUser: discoverEntityUserPrompt,
       choices: choicesPrompt,
       choicesUser: choicesUserPrompt,
       statUpdates: statUpdatesPrompt,
       statUpdatesUser: statUpdatesUserPrompt,
       summary: summaryPrompt,
       summaryUser: summaryUserPrompt,
+      milestoneSelect: milestoneSelectPrompt,
+      milestoneSelectUser: milestoneSelectUserPrompt,
       timePassed: timePassedPrompt,
       timePassedUser: timePassedUserPrompt,
       openingTime: openingTimePrompt,
@@ -1208,6 +1222,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     choicesPrompt, choicesUserPrompt, statUpdatesPrompt, statUpdatesUserPrompt,
     summaryPrompt, summaryUserPrompt, timePassedPrompt, timePassedUserPrompt,
     openingTimePrompt, openingTimeUserPrompt, diaryPrompt, sceneTagsPrompt, sceneTagsUserPrompt,
+    discoverEntityPrompt, discoverEntityUserPrompt, milestoneSelectPrompt, milestoneSelectUserPrompt,
   ]);
 
   // Which editors the open prompt actually has — the rail lists exactly these under it.
@@ -2807,6 +2822,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </TabsContent>
               )}
 
+              {memoryDigests && (
+                <TabsContent value="milestone" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? milestoneSelectUserPrompt : milestoneSelectPrompt}
+                    onChange={showingUser ? setMilestoneSelectUserPrompt : setMilestoneSelectPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.milestone ?? []) : PROMPT_KIND_VARIABLES.milestone}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={promptsMorph.toggle}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                </TabsContent>
+              )}
+
               {aiClock && (
                 <TabsContent value="timepassed" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
                   <PromptField
@@ -2898,6 +2930,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     value={characterPrompt}
                     onChange={setCharacterPrompt}
                     variables={PROMPT_KIND_VARIABLES.character}
+                    previewValues={effectivePreviewValues}
+                    sampleData={usingSampleValues}
+                    readOnlyReason={readOnlyReason}
+                    onRequestEdit={duplicateForEditing}
+                    fullscreen={promptsFullscreen}
+                    onRequestFullscreen={promptsMorph.toggle}
+                    readOnly={activePresetIsBuiltIn}
+                  />
+                </TabsContent>
+              )}
+
+              {describeCharacters && (
+                <TabsContent value="discover" className="mt-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-1">
+                  <PromptField
+                    value={showingUser ? discoverEntityUserPrompt : discoverEntityPrompt}
+                    onChange={showingUser ? setDiscoverEntityUserPrompt : setDiscoverEntityPrompt}
+                    variables={showingUser ? (PROMPT_KIND_USER_VARIABLES.discover ?? []) : PROMPT_KIND_VARIABLES.discover}
                     previewValues={effectivePreviewValues}
                     sampleData={usingSampleValues}
                     readOnlyReason={readOnlyReason}

@@ -11,8 +11,8 @@ import { PROMPT_TAB_REQUESTS, type PromptSurface, type PromptTab } from './promp
  * editor belongs to comes from the request's own type.
  */
 
-/** Which prompt in the Settings rail owns each kind of request. A request with no editor surface at all —
- *  the discovery pass, the milestone selector — is absent, so a run on one has nowhere to go. */
+/** Which prompt in the Settings rail owns each kind of request. A request with no tab is absent, so a run
+ *  on one has nowhere to go. */
 export const PROMPT_TAB_FOR_REQUEST: Partial<Record<AIRequestType, PromptTab>> = Object.fromEntries(
   (Object.entries(PROMPT_TAB_REQUESTS) as [PromptTab, AIRequestType][]).map(([tab, type]) => [type, tab]),
 );

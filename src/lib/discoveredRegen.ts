@@ -2,20 +2,13 @@ import type { ChatMessage } from '@/types';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { vectorKey, cosineSimilarity } from '@/lib/memoryRelevance';
-import { DISCOVER_NAME_LABEL } from '@/lib/runtimeCharacters';
 
 /**
  * Rebuilding a runtime-discovered character's description from everything the story has shown of them
  * since, rather than the single passage that introduced them (see runtimeCharacters.ts for how that
  * first description is made). Pure and deterministic: the caller supplies the history, the diary tail
- * and any embeddings, and gets back the exact user message to send.
+ * and any embeddings, and gets back the material the character-note pass renders.
  */
-
-/** Labels the regen user message uses; the name label is shared with discovery. Passed to
- *  `cleanDiscoveredDescription` so an echoed label is cut from the response the same way. */
-export const REGEN_FIRST_LABEL = 'The passage they first appeared in:';
-export const REGEN_SINCE_LABEL = 'What the story has shown of them since:';
-export const REGEN_LABELS = [REGEN_FIRST_LABEL, REGEN_SINCE_LABEL];
 
 /** Most supplemental passages one regen carries, on top of the first-appearance passage. */
 export const REGEN_MAX_PASSAGES = 8;
@@ -182,15 +175,4 @@ function supplementalFor(tier: RegenSource, appearances: AppearanceTurn[], input
     case 'prose':
       return capChronological(appearances, (t) => t.narration).map((t) => t.narration);
   }
-}
-
-/**
- * The user message for a regeneration. The "since" section is omitted entirely when the character has
- * no later appearances, leaving exactly the original discovery message shape — a bare retry.
- */
-export function buildRegenUserMessage(name: string, context: RegenContext): string {
-  const parts = [`${DISCOVER_NAME_LABEL} ${name.trim()}`];
-  if (context.firstPassage) parts.push(`${REGEN_FIRST_LABEL}\n${context.firstPassage}`);
-  if (context.supplemental.length > 0) parts.push(`${REGEN_SINCE_LABEL}\n${context.supplemental.join('\n\n')}`);
-  return parts.join('\n\n');
 }

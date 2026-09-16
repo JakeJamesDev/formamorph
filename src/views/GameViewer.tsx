@@ -60,12 +60,7 @@ import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
 import { setLiveReasoning, getLiveReasoning } from "../lib/reasoningStreamStore";
-import {
-  activeCharacterGuidance,
-  defaultDiscoverEntityPrompt,
-  defaultRegenEntityPrompt,
-  defaultMilestoneIncrementalPrompt,
-} from "../components/game/GamePrompts";
+import { activeCharacterGuidance } from "../components/game/GamePrompts";
 import {
   buildDiaryUserMessage,
   buildStagedPlan,
@@ -79,7 +74,7 @@ import {
 import { selectRelevantDiary } from "../lib/semanticDiary";
 import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entityIdsAt } from "../lib/entityPresence";
-import { selectRegenSource, buildRegenContext, buildRegenUserMessage, REGEN_LABELS } from "../lib/discoveredRegen";
+import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
 import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
@@ -102,7 +97,8 @@ import {
   statUpdatesSystemPrompt,
   statUpdatesCap,
   summaryUserMessage,
-  discoverUserMessage,
+  discoverEntityPass,
+  milestoneSelectPass,
   sceneTagsPass,
 } from "../lib/turnPipeline/turnPasses";
 import { buildNarrationPrompt, type DictionaryDebug } from "../lib/turnPipeline/narrationPrompt";
@@ -121,7 +117,7 @@ import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
 import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
-import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, buildIncrementalMilestoneUserMessage, parseIncrementalMilestoneReply, applyIncrementalVerdict } from "../lib/milestoneMemory";
+import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
@@ -252,8 +248,6 @@ const activeUnderTraits = (
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
 const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
-// The milestone selector replies with a comma-separated index list; sized for long histories.
-const MILESTONE_SELECT_MAX_TOKENS = 300;
 
 // Every Stats chip token (base + all piece/format combos), so buildContextValues can render each. The pieces
 // (Values/Status/Meaning) are decoded per token and handed to buildStatContext; ids mirror encodeVariant.
@@ -261,7 +255,6 @@ const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
 const STATS_TOKENS = ['<STATS DESCRIPTION>', ...variableVariantIds(STATS_VARIABLE).map((id) => withVariant('<STATS DESCRIPTION>', id))];
 
 const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
-const DISCOVER_MAX_TOKENS = TURN_PASS_CAPS.discoverEntity;
 
 /**
  * One AI call's arguments. A turn pass's own `TurnPassRequest` already has this shape, so the pipeline's
@@ -475,10 +468,14 @@ const GameViewer = ({
     statUpdatesUserPrompt,
     locationChangeUserPrompt,
     summaryUserPrompt,
+    milestoneSelectPrompt,
+    milestoneSelectUserPrompt,
     // Scene images: the tag pass's prompts and the toggles. The provider config itself is read off
     // `settings` by buildImageRequest, not destructured here.
     sceneTagsPrompt,
     sceneTagsUserPrompt,
+    discoverEntityPrompt,
+    discoverEntityUserPrompt,
     sceneImageAuto,
     imageTagPrompt,
     imageGenDisabled,
@@ -1706,19 +1703,21 @@ const GameViewer = ({
     statUpdatesUser: statUpdatesUserPrompt,
     summary: summaryPrompt,
     summaryUser: summaryUserPrompt,
+    milestoneSelect: milestoneSelectPrompt,
+    milestoneSelectUser: milestoneSelectUserPrompt,
     timePassed: timePassedPrompt,
     timePassedUser: timePassedUserPrompt,
     openingTime: openingTimePrompt,
     openingTimeUser: openingTimeUserPrompt,
     diary: diaryPrompt,
-    // Not a preset surface, so the pass sends it as authored.
-    discoverEntity: defaultDiscoverEntityPrompt,
+    discoverEntity: discoverEntityPrompt,
+    discoverEntityUser: discoverEntityUserPrompt,
     sceneTags: sceneTagsPrompt,
     sceneTagsUser: sceneTagsUserPrompt,
   });
 
   /** The plan input a pass dispatched outside a turn builds its request from — the scene-tag pass, which
-   *  the scene-image flow drives on a turn already stored. */
+   *  the scene-image flow drives on a turn already stored, and the character-note drainer and rewrite. */
   const standalonePassInput = (): TurnPlanInput => ({
     action: "",
     isGameStarted: true,
@@ -1728,6 +1727,40 @@ const GameViewer = ({
     settings: turnSettings(),
     prompts: turnPrompts(),
   });
+
+  /** The character-note request for one character, attached to the turn that introduced them. The drainer
+   *  sends a first note; the rewrite adds what the story showed of them later. */
+  const buildDiscoverRequest = (args: {
+    name: string;
+    turnId: string | undefined;
+    firstPassage: string;
+    laterMaterial?: string[];
+  }) => ({
+    ...discoverEntityPass.buildRequest(standalonePassInput(), {
+      ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId: args.turnId ?? "", baseCtx: {}, destinations: [] }),
+      ctx: buildContextValues(),
+      narration: args.firstPassage,
+      subject: { name: args.name, laterMaterial: args.laterMaterial },
+    }),
+    attachTurnId: args.turnId,
+  });
+  const buildDiscoverRequestRef = useRef(buildDiscoverRequest);
+  buildDiscoverRequestRef.current = buildDiscoverRequest;
+
+  /** The milestone selector's request over the kept and fresh digests, and the reply parser numbered to
+   *  match, attached to the latest turn. */
+  const buildMilestoneSelect = (kept: string[], fresh: string[], turnId: string | undefined) => {
+    const material = {
+      ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId: turnId ?? "", baseCtx: buildContextValues(), destinations: [] }),
+      milestone: { kept, fresh },
+    };
+    return {
+      request: { ...milestoneSelectPass.buildRequest(standalonePassInput(), material), attachTurnId: turnId },
+      parse: (reply: string) => milestoneSelectPass.parseResponse(reply, material),
+    };
+  };
+  const buildMilestoneSelectRef = useRef(buildMilestoneSelect);
+  buildMilestoneSelectRef.current = buildMilestoneSelect;
 
   /** The settings-derived booleans this turn's shape depends on. */
   const turnSettings = (): TurnSettings => ({
@@ -3314,25 +3347,18 @@ const GameViewer = ({
     const attachTurnId = turns[turns.length - 1]?.turnId;
     const stableSelection = selection;
 
+    const { request, parse } = buildMilestoneSelectRef.current(
+      shownOld.map((t) => (t.summary ?? "").trim()),
+      freshCands.map((t) => (t.summary ?? "").trim()),
+      attachTurnId,
+    );
+
     milestoneDrainingRef.current = true;
     setMilestoneActive(true);
     (async () => {
       try {
-        const reply = await makeAIRequestRef.current({
-          systemPrompt: defaultMilestoneIncrementalPrompt,
-          messages: [{
-            role: "user",
-            content: buildIncrementalMilestoneUserMessage(
-              shownOld.map((t) => (t.summary ?? "").trim()),
-              freshCands.map((t) => (t.summary ?? "").trim()),
-            ),
-          }],
-          type: "milestoneSelect",
-          maxTokens: MILESTONE_SELECT_MAX_TOKENS,
-          silent: true,
-          attachTurnId,
-        });
-        const verdict = parseIncrementalMilestoneReply((reply ?? "").trim(), shownOld.length, freshCands.length);
+        const reply = await makeAIRequestRef.current(request);
+        const verdict = parse((reply ?? "").trim());
         // Write-time importance: the selector rates a moment once, as it ages in, and the rating rides
         // the turn from then on. Unrated keeps stay unrated (neutral), never zero.
         if (verdict && verdict.weights.size > 0) {
@@ -3520,14 +3546,9 @@ const GameViewer = ({
     setDiscoverActive(true);
     (async () => {
       try {
-        const description = await makeAIRequestRef.current({
-          systemPrompt: defaultDiscoverEntityPrompt,
-          messages: [{ role: "user", content: discoverUserMessage(due.name, due.narration) }],
-          type: "discoverEntity",
-          maxTokens: DISCOVER_MAX_TOKENS,
-          silent: true,
-          attachTurnId: due.turnId, // so the viewer shows it under the turn that introduced the character
-        });
+        const description = await makeAIRequestRef.current(
+          buildDiscoverRequestRef.current({ name: due.name, turnId: due.turnId, firstPassage: due.narration }),
+        );
         // Small models parrot the prompt labels and get token-capped mid-word — sanitize before storing.
         const cleaned = cleanDiscoveredDescription(description ?? "", due.name);
         if (!cleaned) return; // no usable description — leave it due, retry on a later idle tick
@@ -3603,16 +3624,16 @@ const GameViewer = ({
     });
 
     const response = await makeAIRequestRef.current({
-      systemPrompt: defaultRegenEntityPrompt,
-      messages: [{ role: "user", content: buildRegenUserMessage(name, context) }],
-      type: "discoverEntity",
-      maxTokens: DISCOVER_MAX_TOKENS,
+      ...buildDiscoverRequestRef.current({
+        name,
+        turnId: record?.sourceTurnId,
+        firstPassage: context.firstPassage,
+        laterMaterial: context.supplemental,
+      }),
       signal,
-      silent: true,
-      attachTurnId: record?.sourceTurnId,
     });
     if (signal.aborted) return null;
-    return cleanDiscoveredDescription(response ?? "", name, REGEN_LABELS) || null;
+    return cleanDiscoveredDescription(response ?? "", name) || null;
   }, [discoveredEntities, semanticMemory, characterDiaries, memoryDigests, fullMessageHistory]);
 
   const handleSendAction = () => {

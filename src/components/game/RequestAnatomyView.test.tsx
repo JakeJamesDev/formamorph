@@ -396,11 +396,14 @@ describe('RequestAnatomyView jumps', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('resolves nothing to click on a call with no editor behind it', () => {
-    render(<RequestAnatomyView blocks={BLOCKS} mode="resolved" type="discoverEntity" onJump={() => {}} />);
-    // The two stacked narration lines still belong to the Narration prompt; the system template does not.
-    expect(screen.queryByRole('button', { name: /You are the narrator/ })).toBeNull();
-    expect(screen.getByRole('button', { name: /Recap the story so far/ })).toBeInTheDocument();
+  it('sends the discovery pass and the milestone selector to their own tabs', () => {
+    for (const [type, tab] of [['discoverEntity', 'discover'], ['milestoneSelect', 'milestone']] as const) {
+      const jumps: unknown[] = [];
+      const { unmount } = render(<RequestAnatomyView blocks={BLOCKS} mode="resolved" type={type} onJump={(t) => jumps.push(t)} />);
+      fireEvent.click(screen.getByRole('button', { name: /You are the narrator/ }));
+      expect(jumps).toEqual([{ tab, surface: 'system' }]);
+      unmount();
+    }
   });
 });
 

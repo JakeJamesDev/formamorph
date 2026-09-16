@@ -70,6 +70,28 @@ describe('sanitize / compat', () => {
     expect(r.warnings.some((w) => /ignored/.test(w))).toBe(true);
   });
 
+  it('carries the milestone selector texts through a share', () => {
+    const withMilestone = {
+      ...base,
+      values: { ...values, milestoneSelectPrompt: 'Keep what matters.', milestoneSelectUserPrompt: 'Judge: <NEW MOMENTS>' } as PromptValues,
+    };
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset(withMilestone, APP)), APP);
+    expect(r.warnings).toEqual([]);
+    expect(r.preset!.values.milestoneSelectPrompt).toBe('Keep what matters.');
+    expect(r.preset!.values.milestoneSelectUserPrompt).toBe('Judge: <NEW MOMENTS>');
+  });
+
+  it('carries the character note texts through a share', () => {
+    const withNote = {
+      ...base,
+      values: { ...values, discoverEntityPrompt: 'Note who they are.', discoverEntityUserPrompt: 'Who: <CHARACTER NAME>' } as PromptValues,
+    };
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset(withNote, APP)), APP);
+    expect(r.warnings).toEqual([]);
+    expect(r.preset!.values.discoverEntityPrompt).toBe('Note who they are.');
+    expect(r.preset!.values.discoverEntityUserPrompt).toBe('Who: <CHARACTER NAME>');
+  });
+
   it('warns on a different source app version but still imports', () => {
     const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, '2.0.3')), '2.1.0');
     expect(r.ok).toBe(true);

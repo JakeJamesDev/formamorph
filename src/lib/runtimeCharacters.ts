@@ -7,10 +7,11 @@ import { escapeRegExp } from '@/lib/utils';
 import { sameCharacterName } from '@/lib/entityMatch';
 import { entityIdsAtAny } from '@/lib/entityPresence';
 
-/** Labels in the discover-entity user message. Exported so the request builder and the response
- *  cleaner share one source of truth — a small model often parrots these back into its output. */
+/** Labels in the character-note user message. Shared by the request builder and the response cleaner —
+ *  a small model often parrots these back into its output. */
 export const DISCOVER_NAME_LABEL = 'Character name:';
-export const DISCOVER_PASSAGE_LABEL = 'The passage they appeared in:';
+export const DISCOVER_PASSAGE_LABEL = 'The passage they first appeared in:';
+export const DISCOVER_LATER_LABEL = 'What the story showed of them later:';
 
 /**
  * Pure helpers for "runtime characters" (Slice 2): promoting a director-invented ad-hoc character that
@@ -77,9 +78,8 @@ export function materializeDiscoveredEntity(name: string, aiDescription: string,
  * mid-word — so drop reasoning blocks, cut anything from an echoed label onward, strip a leading
  * "<name>:" / "Character name:" prefix, and trim a dangling final fragment to the last full sentence.
  * Returns '' when nothing usable remains (caller leaves the character due and retries).
- * `extraLabels` covers callers whose message carries additional sections (the regeneration path).
  */
-export function cleanDiscoveredDescription(raw: string, name: string, extraLabels: string[] = []): string {
+export function cleanDiscoveredDescription(raw: string, name: string): string {
   let out = stripReasoning(raw || '');
   // Strip a leading "Character name: Name" / "Name:" echo FIRST. The label cut below truncates from
   // wherever a label appears, so a leading one would cut at index 0 and discard the whole reply.
@@ -87,7 +87,7 @@ export function cleanDiscoveredDescription(raw: string, name: string, extraLabel
     .replace(new RegExp(`^\\s*${escapeRegExp(DISCOVER_NAME_LABEL)}\\s*${escapeRegExp(name.trim())}\\s*`, 'i'), '')
     .replace(new RegExp(`^\\s*${escapeRegExp(name.trim())}\\s*:\\s*`, 'i'), '');
   // Cut from the first echoed scaffold label onward (the model repeating the prompt structure).
-  for (const label of [...extraLabels, DISCOVER_PASSAGE_LABEL, DISCOVER_NAME_LABEL]) {
+  for (const label of [DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL, DISCOVER_NAME_LABEL]) {
     const at = out.indexOf(label);
     if (at !== -1) out = out.slice(0, at);
   }

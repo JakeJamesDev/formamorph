@@ -142,7 +142,7 @@ describe('cleanDiscoveredDescription', () => {
   it('cuts an echoed prompt-scaffold tail (the Thorne leak)', () => {
     const raw =
       "Thorne stands at his full imposing height, his greatsword held with casual confidence.\n\n" +
-      "The passage they appeared in:\nAldric crouches low, fingers splayed. \"It's mechanical. Some kind of";
+      "The passage they first appeared in:\nAldric crouches low, fingers splayed. \"It's mechanical. Some kind of";
     expect(cleanDiscoveredDescription(raw, 'Thorne')).toBe(
       'Thorne stands at his full imposing height, his greatsword held with casual confidence.',
     );
@@ -171,7 +171,7 @@ describe('cleanDiscoveredDescription', () => {
   });
 
   it('still cuts a "Character name:" echo that comes AFTER the description', () => {
-    const raw = 'A quiet healer with steady hands.\n\nCharacter name: Mira\nThe passage they appeared in: ...';
+    const raw = 'A quiet healer with steady hands.\n\nCharacter name: Mira\nThe passage they first appeared in: ...';
     expect(cleanDiscoveredDescription(raw, 'Mira')).toBe('A quiet healer with steady hands.');
   });
 
@@ -189,7 +189,7 @@ describe('cleanDiscoveredDescription', () => {
   });
 
   it('returns empty when nothing usable remains', () => {
-    expect(cleanDiscoveredDescription('The passage they appeared in:\nsomething', 'X')).toBe('');
+    expect(cleanDiscoveredDescription('The passage they first appeared in:\nsomething', 'X')).toBe('');
     expect(cleanDiscoveredDescription('   ', 'X')).toBe('');
   });
 });

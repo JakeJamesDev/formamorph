@@ -135,7 +135,7 @@ describe('the Max Output row', () => {
 
   it('shows on the capped prompts and on no other', () => {
     openOptions('director');
-    const withRow = ['director', 'character', 'storyboard', 'summary', 'diary', 'choices', 'scenetags'] as const;
+    const withRow = ['director', 'character', 'discover', 'storyboard', 'summary', 'milestone', 'diary', 'choices', 'scenetags'] as const;
     const withoutRow = ['narration', 'statupdates', 'location', 'timepassed', 'timeopening'] as const;
     for (const tab of withRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(true); }
     for (const tab of withoutRow) { switchTo(tab); expect(hasMaxOutputRow(), tab).toBe(false); }
@@ -144,6 +144,17 @@ describe('the Max Output row', () => {
   it('reads Auto with the shipped 256 on Choices', () => {
     openOptions('choices');
     expect(within(maxOutputRow().row).getByText('Auto · 256 tok')).toBeTruthy();
+  });
+
+  it('reads Auto with the shipped 300 on Milestone Select', () => {
+    openOptions('milestone');
+    expect(within(maxOutputRow().row).getByText('Auto · 300 tok')).toBeTruthy();
+  });
+
+  it('reads Auto with the shipped 200 on Discover Entity', () => {
+    localStorage.setItem('FORMAMORPH_describeCharacters', 'true');
+    openOptions('discover');
+    expect(within(maxOutputRow().row).getByText('Auto · 200 tok')).toBeTruthy();
   });
 
   it('shows on the precall planner', () => {
@@ -212,5 +223,63 @@ describe('the Max Output row', () => {
     openOptions('diary');
     expect(screen.queryByRole('combobox', { name: /Native Reasoning/ })).toBeNull();
     expect(screen.getByText('25% · 20 tok')).toBeTruthy();
+  });
+});
+
+describe('the Milestone Select tab', () => {
+  beforeEach(() => localStorage.clear());
+
+  const openSurface = (surface: string) =>
+    fireEvent.click(screen.getAllByRole('button', { name: surface }).at(-1)!);
+
+  it('sits in Memory between Summaries and Diary, with both editors and their chips', () => {
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'staged');
+    localStorage.setItem('FORMAMORPH_characterDiaries', 'true');
+    openOptions('milestone');
+    const rail = screen.getAllByRole('button').map((b) => b.textContent);
+    const at = (label: string) => rail.findIndex((t) => t === label);
+    expect(at(PROMPT_LABELS.summary)).toBeLessThan(at(PROMPT_LABELS.milestone));
+    expect(at(PROMPT_LABELS.milestone)).toBeLessThan(at(PROMPT_LABELS.diary));
+
+    openSurface(SURFACE_LABELS.system);
+    expect(screen.getAllByText(/You are the memory keeper of an interactive story/).length).toBeGreaterThan(0);
+    openSurface(SURFACE_LABELS.user);
+    expect(screen.getAllByText('Remembered Moments').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('New Moments').length).toBeGreaterThan(0);
+  });
+
+  it('is absent when memory digests are off', () => {
+    localStorage.setItem('FORMAMORPH_memoryDigests', 'false');
+    openOptions('narration');
+    expect(screen.queryAllByRole('button', { name: PROMPT_LABELS.milestone })).toHaveLength(0);
+  });
+});
+
+describe('the Discover Entity tab', () => {
+  beforeEach(() => localStorage.clear());
+
+  const openSurface = (surface: string) =>
+    fireEvent.click(screen.getAllByRole('button', { name: surface }).at(-1)!);
+
+  it('sits in Story right after Character, with both editors and their chips', () => {
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'staged');
+    localStorage.setItem('FORMAMORPH_describeCharacters', 'true');
+    openOptions('discover');
+    const rail = screen.getAllByRole('button').map((b) => b.textContent);
+    const at = (label: string) => rail.findIndex((t) => t === label);
+    expect(at(PROMPT_LABELS.discover)).toBe(at(PROMPT_LABELS.character) + 1);
+
+    openSurface(SURFACE_LABELS.system);
+    expect(screen.getAllByText(/lasting reference note for a character/).length).toBeGreaterThan(0);
+    openSurface(SURFACE_LABELS.user);
+    for (const chip of ['Character', 'First Passage', 'Later Material']) {
+      expect(screen.getAllByText(chip).length, chip).toBeGreaterThan(0);
+    }
+  });
+
+  it('is absent when describe-characters is off', () => {
+    localStorage.setItem('FORMAMORPH_describeCharacters', 'false');
+    openOptions('narration');
+    expect(screen.queryAllByRole('button', { name: PROMPT_LABELS.discover })).toHaveLength(0);
   });
 });

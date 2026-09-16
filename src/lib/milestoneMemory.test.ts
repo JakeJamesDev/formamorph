@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   MILESTONE_RECENT_BAND,
-  buildMilestoneUserMessage,
   parseMilestoneReply,
-  buildIncrementalMilestoneUserMessage,
   parseIncrementalMilestoneReply,
   applyIncrementalVerdict,
   milestoneCandidates,
@@ -132,27 +130,6 @@ describe('buildBandedHistory milestone filtering', () => {
     const { counts } = buildBandedHistory({ ...args, turns: list, milestoneDrop: new Set() });
     expect(counts.turnsSelectedOut).toBe(0);
     expect(buildBandedHistory({ ...args, turns: list }).counts.turnsSelectedOut).toBe(0);
-  });
-});
-
-describe('buildMilestoneUserMessage', () => {
-  it('numbers the digests oldest first', () => {
-    expect(buildMilestoneUserMessage(['a', 'b'])).toContain('1. a\n2. b');
-  });
-});
-
-describe('buildIncrementalMilestoneUserMessage', () => {
-  it('numbers kept context and new arrivals continuously', () => {
-    const msg = buildIncrementalMilestoneUserMessage(['old a', 'old b'], ['new c']);
-    expect(msg).toContain('1. old a\n2. old b');
-    expect(msg).toContain('3. new c');
-    expect(msg).toContain('Forget:');
-  });
-
-  it('asks only for the Keep line when nothing is kept yet', () => {
-    const msg = buildIncrementalMilestoneUserMessage([], ['new a', 'new b']);
-    expect(msg).toContain('1. new a\n2. new b');
-    expect(msg).not.toContain('Forget:');
   });
 });
 

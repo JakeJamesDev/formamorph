@@ -45,7 +45,7 @@ export interface PromptVariable {
 }
 
 /** Every prompt editor maps to one of these kinds (mirrors the Settings → Output → Turn Extras toggles). */
-export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags';
+export type PromptKind = 'narration' | 'thinking' | 'choices' | 'statupdates' | 'location' | 'summary' | 'milestone' | 'diary' | 'director' | 'character' | 'storyboard' | 'timepassed' | 'timeopening' | 'scenetags' | 'discover';
 
 const SUMMARY_VARIANT: PromptVariant = {
   id: 'summary',
@@ -160,6 +160,15 @@ const TIME: PromptVariable = { token: '<TIME>', label: 'Time', color: HIGHLIGHT_
 // those people and no others. A value token like <NARRATION> — never a context block.
 const IN_FRAME: PromptVariable = { token: '<IN FRAME>', label: 'In Frame', color: HIGHLIGHT_PALETTE[8] };
 
+// Character-note pass only: two headed blocks, each rendering its own header or nothing. The later
+// material is empty on a first note, so a first note and a rewrite share one template.
+const FIRST_PASSAGE: PromptVariable = { token: '<FIRST PASSAGE>', label: 'First Passage', color: HIGHLIGHT_PALETTE[10] };
+const LATER_MATERIAL: PromptVariable = { token: '<LATER MATERIAL>', label: 'Later Material', color: HIGHLIGHT_PALETTE[12] };
+
+// Milestone selector only: two headed, numbered digest lists. The remembered list is empty on a first run.
+const REMEMBERED_MOMENTS: PromptVariable = { token: '<REMEMBERED MOMENTS>', label: 'Remembered Moments', color: HIGHLIGHT_PALETTE[11] };
+const NEW_MOMENTS: PromptVariable = { token: '<NEW MOMENTS>', label: 'New Moments', color: HIGHLIGHT_PALETTE[15] };
+
 // The AI Language setting, as the directive the prompt actually carries (lib/languages `languageDirective`).
 // Placement is the author's: the default templates put it last, where recency makes a small model honor it,
 // and an author who knows their model better can move it. Renders nothing at all for English or a blank
@@ -173,7 +182,7 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
   WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
-  TIME, IN_FRAME, LANGUAGE,
+  TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
@@ -189,6 +198,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   statupdates: [...CONTEXT_VARS],
   location: [...CONTEXT_VARS],
   summary: [...CONTEXT_VARS],
+  milestone: [...CONTEXT_VARS],
   diary: [...CONTEXT_VARS],
   director: [...CONTEXT_VARS, ACTIVE_CHARACTER],
   character: [CHARACTER, ...CONTEXT_VARS],
@@ -196,6 +206,7 @@ export const PROMPT_KIND_VARIABLES: Record<PromptKind, PromptVariable[]> = {
   timepassed: [...CONTEXT_VARS],
   timeopening: [...CONTEXT_VARS],
   scenetags: [...CONTEXT_VARS],
+  discover: [...CONTEXT_VARS],
 };
 
 /** Variables offered by the editable user-message templates (the per-turn runtime values the code
@@ -207,6 +218,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   statupdates: [PLAYER_ACTION, NARRATION],
   location: [PLAYER_ACTION, NARRATION],
   summary: [PLAYER_ACTION, NARRATION],
+  milestone: [REMEMBERED_MOMENTS, NEW_MOMENTS],
   director: [PLAYER_ACTION, NARRATION],
   timepassed: [PLAYER_ACTION, NARRATION],
   // The opening pass runs on turn one, where the player's action is "start the game" — only the narration
@@ -215,6 +227,7 @@ export const PROMPT_KIND_USER_VARIABLES: Partial<Record<PromptKind, PromptVariab
   // The tag pass reads the prose of this turn and who the composer put in frame. The player's action is
   // deliberately absent: what was attempted is not what the picture shows.
   scenetags: [NARRATION, IN_FRAME],
+  discover: [CHARACTER, FIRST_PASSAGE, LATER_MATERIAL],
 };
 
 const VAR_BY_BASE = new Map(ALL_PROMPT_VARIABLES.map((v) => [v.token, v]));
