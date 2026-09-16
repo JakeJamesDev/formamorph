@@ -21,7 +21,7 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
-import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, type PromptSurface } from '@/lib/promptGroups';
+import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
 import { revealEditorChip } from '@/lib/editorFieldFocus';
 import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
@@ -51,7 +51,6 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, 
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
-import type { AIRequestType } from '@/types';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -112,13 +111,6 @@ function VerbatimTurnsField({ id, value, onChange, disabled }: { id: string; val
     </div>
   );
 }
-
-// The prompt sub-tab keys map to their `AIRequestType` for per-prompt temperature lookup.
-const TAB_TO_REQUEST: Record<string, AIRequestType> = {
-  narration: 'narration', thinking: 'thinking', choices: 'choices', statupdates: 'statUpdates',
-  location: 'locationChange', summary: 'summary', diary: 'diary', director: 'director',
-  character: 'character', storyboard: 'storyboard', timepassed: 'timePassed', timeopening: 'openingTime',
-};
 
 /** One custom-sampler override row: a checkbox that enables the override, a slider, and a value readout that
  *  shows the resolved endpoint state while off when the sampler is omitted (a non-pinned prompt on a custom endpoint).
@@ -1203,7 +1195,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Per-prompt samplers for the active tab. Off shows the kind's default (read-only); on shows the stored
   // custom value (seeded to the default on first enable). A default of `undefined` means the prompt omits the
   // sampler (a non-pinned prompt on a custom endpoint) — the panel names its endpoint state.
-  const activeKind = TAB_TO_REQUEST[activePromptTab] ?? 'narration';
+  const activeKind = isPromptTab(activePromptTab) ? PROMPT_TAB_REQUESTS[activePromptTab] : 'narration';
   const activeSamplers = promptSamplers[activeKind];
   // Endpoint routing for this prompt. A pin naming a preset that no longer exists shows as Use Active Endpoint —
   // the same thing it actually resolves to at request time.

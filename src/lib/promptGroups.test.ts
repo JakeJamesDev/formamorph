@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROMPT_GROUPS, visibleGroups, allGroupedTabs, PROMPT_DESCRIPTIONS } from './promptGroups';
+import { PROMPT_GROUPS, visibleGroups, allGroupedTabs, PROMPT_DESCRIPTIONS, PROMPT_TAB_REQUESTS, isPromptTab } from './promptGroups';
 import { computePromptTabAvailability } from './promptTabAvailability';
 
 const everyFeature = {
@@ -39,6 +39,18 @@ describe('PROMPT_GROUPS', () => {
 
   it('opens on Narration, the prompt that carries the story', () => {
     expect(PROMPT_GROUPS[0].tabs[0]).toBe('narration');
+  });
+});
+
+describe('PROMPT_TAB_REQUESTS', () => {
+  it('names a request type for every grouped tab, so no tab tunes another prompt', () => {
+    const unmapped = allGroupedTabs().filter((t) => !isPromptTab(t));
+    expect(unmapped).toEqual([]);
+  });
+
+  it('names a distinct request type per tab, so a jump from a request has one tab to land on', () => {
+    const types = Object.values(PROMPT_TAB_REQUESTS);
+    expect(types.length).toBe(new Set(types).size);
   });
 });
 
