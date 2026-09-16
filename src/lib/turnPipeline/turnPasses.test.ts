@@ -358,7 +358,7 @@ describe('turn pass requests', () => {
 
     it('strips the discovery labels back off the description', () => {
       const cleaned = pass('discoverEntity').parseResponse(
-        'Character name: Ferryman\nA weathered man of few words.\n\nWhat the story showed of them later:\nHe rowed.',
+        'Character name: Ferryman\nA weathered man of few words.\n\nWhat the story has shown of them since:\nHe rowed.',
         material({ subject: { name: 'Ferryman' } }),
       );
       expect(cleaned).toBe('A weathered man of few words.');
@@ -378,11 +378,11 @@ describe('turn pass requests', () => {
       );
     });
 
-    it('adds what the story showed of them later on a rewrite', () => {
+    it('adds what the story has shown of them since on a rewrite', () => {
       const later = { subject: { ...ferryman, laterMaterial: ['He rowed them over.', 'He said nothing.'] } };
       expect(lastMessage('discoverEntity', later)).toBe(
         'Note: Ferryman\n\nThe passage they first appeared in:\nThe notices are damp and half-illegible.\n\n' +
-        'What the story showed of them later:\nHe rowed them over.\n\nHe said nothing.',
+        'What the story has shown of them since:\nHe rowed them over.\n\nHe said nothing.',
       );
     });
 
@@ -396,10 +396,16 @@ describe('turn pass requests', () => {
       expect(rewrite).toBe('Note: Ferryman');
     });
 
+    it('sends no leading blank lines when a template opens on an empty block', () => {
+      const opensOnBlock = { prompts: { ...TEST_PROMPTS, discoverEntityUser: '<FIRST PASSAGE>\n\n<LATER MATERIAL>' } };
+      const message = lastMessage('discoverEntity', { narration: '', subject: { name: ' Ferryman ', laterMaterial: ['He rowed.'] } }, opensOnBlock);
+      expect(message).toBe('What the story has shown of them since:\nHe rowed.');
+    });
+
     it('drops the passage section when that turn is gone', () => {
       const orphan = { narration: '', subject: { ...ferryman, laterMaterial: ['He rowed.'] } };
       const message = lastMessage('discoverEntity', orphan);
-      expect(message).toBe('Note: Ferryman\n\nWhat the story showed of them later:\nHe rowed.');
+      expect(message).toBe('Note: Ferryman\n\nWhat the story has shown of them since:\nHe rowed.');
     });
   });
 

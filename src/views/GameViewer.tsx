@@ -1729,7 +1729,7 @@ const GameViewer = ({
   });
 
   /** The character-note request for one character, attached to the turn that introduced them. The drainer
-   *  sends a first note; the rewrite adds what the story showed of them later. */
+   *  sends a first note; the rewrite adds what the story has shown of them since. */
   const buildDiscoverRequest = (args: {
     name: string;
     turnId: string | undefined;

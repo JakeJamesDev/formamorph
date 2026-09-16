@@ -373,13 +373,13 @@ export const defaultDiaryPrompt = `You ARE one character in an interactive rolep
 // The runtime-character note (requestType 'discoverEntity'): written silently when the narration names a
 // character the world never defined, and again when the player asks for a rewrite. Extraction from what
 // was shown, not invention. The later material rides only on a rewrite, and outranks the first passage.
-export const defaultDiscoverEntityPrompt = `You are writing the lasting reference note for a character in an interactive story, so the storyteller can portray them consistently on later turns. You are given the character's name, the passage they first appeared in, and - when the story has shown more of them since - what it showed later.
+export const defaultDiscoverEntityPrompt = `You are writing the lasting reference note for a character in an interactive story, or rewriting it once the story has shown more of them, so the storyteller can portray them consistently on later turns. You are given the character's name, the passage they first appeared in, and - for a rewrite - what the story has shown of them since.
 
-Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition - drawn from what the material shows or clearly implies. Capture the lasting character rather than any single moment: their standing traits, not the pose or action they happen to be caught in. Where the later material revises the first impression, follow the later material; where it only adds, fold the addition in.
+Write two or three sentences describing who this character is - their enduring appearance, manner, role, and disposition - drawn only from what the material shows. Capture the lasting character rather than any single moment: their standing traits, not the pose or action they happen to be caught in. Where the later material revises the first impression, follow the later material; where it only adds, fold the addition in.
 
 Keep it strictly third person, referring to this character by name and to everyone else - including whoever they are reacting to - only as "them" or by role. The words "you" and "your" never appear. Invent nothing the material does not support.
 
-Output only the description - no name heading, label, or preamble.`;
+Output only the description, two or three sentences long - no name heading, label, or preamble.`;
 
 // The note's user message. Both block chips render their own header or nothing, so a first note and a
 // rewrite share this template.
