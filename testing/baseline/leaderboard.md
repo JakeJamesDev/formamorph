@@ -12,9 +12,9 @@ prompt arm; don't act on it. Method: [GATE-PROBE.md](GATE-PROBE.md).
 
 | Model | Tier | Obj | Spread | Seeds | Restraint | StatDir | Format | LocAcc | Refusals | Screened |
 |---|---|---|---|---|---|---|---|---|---|---|
-| meromero-31b-q4 | A | 84 | 77–88 | 3 | 56 | 100 | 100 | 100% | 0 | 2026-07-18 |
 | meromero-31b | A | 77 | — | 1 | 33 | 100 | 100 | 100% | 0 | 2026-07-17 |
 | gemma31b-heretic | A | 77 | — | 1 | 33 | 100 | 100 | 100% | 0 | 2026-07-17 |
+| meromero-31b-q4 | A | 72 | 62–77 | 3 | 33 | 83 | 100 | 100% | 0 | 2026-09-17 |
 | styletune-v2-26b-a4b | B | 69 | 65–77 | 3 | 11 | 100 | 100 | 100% | 0 | 2026-07-18 |
 | meromero-26b | B | 65 | — | 1 | 0 | 100 | 100 | 100% | 0 | 2026-07-17 |
 | cydonia-24b-v43-q6 | B | 65 | 65–65 | 2 | 0 | 100 | 100 | 100% | 0 | 2026-07-17 |
@@ -22,6 +22,7 @@ prompt arm; don't act on it. Method: [GATE-PROBE.md](GATE-PROBE.md).
 | gemma31b-heretic-q4 | B | 65 | 65–65 | 3 | 0 | 100 | 100 | 100% | 0 | 2026-07-18 |
 | hauhau-gemma4-12b | B | 65 | 65–65 | 3 | 0 | 100 | 100 | 100% | 0 | 2026-07-18 |
 | gemma4-e4b-heretic | B | 65 | 65–65 | 3 | 0 | 100 | 100 | 100% | 0 | 2026-07-18 |
+| meromero-v2-31b-q4 | B | 65 | 65–65 | 3 | 0 | 100 | 100 | 100% | 0 | 2026-09-17 |
 | anubis-mini-8b | B | 60 | 58–65 | 3 | 0 | 100 | 87 | 93% | 0 | 2026-07-17 |
 | cydonia-24b-v43-q4 | B | 60 | 50–65 | 3 | 0 | 83 | 100 | 100% | 0 | 2026-07-17 |
 | meromero-26b-a4b-q4 | B | 60 | 50–65 | 3 | 0 | 83 | 100 | 100% | 0 | 2026-07-18 |

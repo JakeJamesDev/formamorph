@@ -1,18 +1,5 @@
 [
   {
-    "model": "meromero-31b-q4",
-    "date": "2026-07-18",
-    "tier": "A",
-    "objective": 84,
-    "seeds": 3,
-    "spread": "77–88",
-    "restraint": 56,
-    "statDir": 100,
-    "format": 100,
-    "locAcc": 100,
-    "refusals": 0
-  },
-  {
     "model": "meromero-31b",
     "date": "2026-07-17",
     "tier": "A",
@@ -30,6 +17,19 @@
     "objective": 77,
     "restraint": 33,
     "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "meromero-31b-q4",
+    "date": "2026-09-17",
+    "tier": "A",
+    "objective": 72,
+    "seeds": 3,
+    "spread": "62–77",
+    "restraint": 33,
+    "statDir": 83,
     "format": 100,
     "locAcc": 100,
     "refusals": 0
@@ -113,6 +113,19 @@
   {
     "model": "gemma4-e4b-heretic",
     "date": "2026-07-18",
+    "tier": "B",
+    "objective": 65,
+    "seeds": 3,
+    "spread": "65–65",
+    "restraint": 0,
+    "statDir": 100,
+    "format": 100,
+    "locAcc": 100,
+    "refusals": 0
+  },
+  {
+    "model": "meromero-v2-31b-q4",
+    "date": "2026-09-17",
     "tier": "B",
     "objective": 65,
     "seeds": 3,

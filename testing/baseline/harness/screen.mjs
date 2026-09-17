@@ -57,6 +57,11 @@ function newestDumps(after = 0, count = 1) {
   if (picked.length < count) {
     throw new Error(`asked for ${count} seeds but only ${picked.length} dump(s) exist for ${model}`);
   }
+  // Seeds of one screen land within hours; a wider span means a failed run left the set padded with old dumps.
+  const days = picked.map((f) => path.basename(f).match(/(\d{4}-\d{2}-\d{2})T/)?.[1]);
+  if (new Set(days).size > 1) {
+    throw new Error(`the newest ${count} dumps for ${model} span ${[...new Set(days)].join(", ")} — a run failed; not mixing seeds across days`);
+  }
   return picked;
 }
 
