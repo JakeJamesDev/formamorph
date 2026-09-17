@@ -154,7 +154,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
           onCheckedChange={(c) => handleChange('isDefault', c === true)}
         />
         <span>Enabled by Default</span>
-        <Hint as="span">Selected when a new game starts.</Hint>
+        <Hint as="span">Selected when a new game starts</Hint>
       </label>
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
@@ -162,7 +162,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
           onCheckedChange={(c) => handleChange('playerToggle', c === true)}
         />
         <span>Player Can Toggle In-Game</span>
-        <Hint as="span">The player can turn it on or off from the Traits tab during play.</Hint>
+        <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
       </label>
     </>
   );

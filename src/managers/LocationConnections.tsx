@@ -65,8 +65,8 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
     <div className="space-y-2">
       <Label className="block">Connections</Label>
       <Hint>
-        A Connection is the travel rule for a pair of locations. Without one, a location still connects to
-        its parent, its children, and its siblings.
+        Sets the travel rule for a pair of locations. Without one, a location still connects to its parent,
+        its children, and its siblings.
       </Hint>
       {views.map(({ connection, partnerId, direction }) => {
         const Icon = DIRECTION_ICONS[direction];

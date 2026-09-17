@@ -151,7 +151,7 @@ describe('the World Editor Overview columns', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     const box = await screen.findByRole('checkbox', { name: /3D Player Avatar/ });
     const row = box.closest('div');
-    expect(within(row as HTMLElement).getByText('The player can customize it.')).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByText('The player can customize it')).toBeInTheDocument();
   });
 });
 

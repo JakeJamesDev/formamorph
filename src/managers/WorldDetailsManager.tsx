@@ -216,8 +216,8 @@ const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | nu
               <>
                 {cueEnabled
                   ? 'Pre-fills the player’s input box when they start this world. They can still edit it before they send it.'
-                  : 'Not applied until you switch this one on — players start on the standard cue.'}
-                {storedCue === undefined && ' This is the standard cue, and follows it until you edit it here.'}
+                  : 'Not applied until you switch this one on. Players start on the standard cue.'}
+                {storedCue === undefined && ' Shows the standard cue and follows it until you edit it here.'}
               </>
             )}
             onReset={storedCue === undefined ? undefined : () => setResetKind('opening')}
@@ -255,8 +255,8 @@ const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | nu
                 <>
                   {enabled
                     ? `Replaces the player's ${label} prompt while they play this world. They can decline it from the world's details window.`
-                    : `Not applied until you switch this one on — players use their own ${label} prompt.`}
-                  {stored === undefined && ` This is your current ${label} prompt, and follows it until you edit it here.`}
+                    : `Not applied until you switch this one on. Players use their own ${label} prompt.`}
+                  {stored === undefined && ` Shows your current ${label} prompt and follows it until you edit it here.`}
                 </>
               )}
               onReset={stored === undefined ? undefined : () => setResetKind(kind)}
@@ -313,7 +313,7 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
       {/* Both are shown once a playthrough's rolls exist, so placeholders resolve in either. Each tab's
           guidance is a hint above its field, where a resizable field cannot push it out of view. */}
       <TabsContent value="introduction" className="space-y-2">
-        <Hint>Shown before the player makes any setup choices.</Hint>
+        <Hint>Shown before the player makes any setup choices</Hint>
         <PlaceholderField
           value={worldOverview.introReadme ?? ''}
           onChange={(introReadme) => updateWorldOverview({ introReadme })}
@@ -324,7 +324,7 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
         />
       </TabsContent>
       <TabsContent value="gameplay" className="space-y-2">
-        <Hint>Shown when the player enters the world.</Hint>
+        <Hint>Shown when the player enters the world</Hint>
         <PlaceholderField
           value={worldOverview.readme ?? ''}
           onChange={(readme) => updateWorldOverview({ readme })}

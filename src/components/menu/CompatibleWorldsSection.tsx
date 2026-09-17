@@ -49,7 +49,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
           <p className="text-meta text-muted-foreground">
             {unlisted
               ? `Unlisted hides this ${noun} from Community Creations. Players receive it only inside a world that requires it.`
-              : `Public lists this ${noun} in Community Creations.`}
+              : `Public lists this ${noun} in Community Creations`}
           </p>
         </div>
       </div>
@@ -59,9 +59,9 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
         {/* One line, not two: the empty state already says what the list would have held. */}
         <p className="text-meta text-muted-foreground">
           {unlisted
-            ? `An unlisted ${noun} cannot be an add-on.`
+            ? `An unlisted ${noun} can't be an add-on`
             : rows.length === 0
-              ? `No world has a linked copy of this ${noun} and a listing of its own.`
+              ? `No world has a linked copy of this ${noun} and a listing of its own`
               : `Each world here has a linked copy of this ${noun} and its own listing. The world's author reviews each offer.`}
         </p>
 
@@ -90,7 +90,7 @@ export function CompatibleWorldsSection({ visibility, onVisibilityChange, rows, 
                     <Label htmlFor={boxId} className="block truncate">{row.name}</Label>
                     <p className="text-meta text-muted-foreground">
                       {row.linked
-                        ? (row.reviewState ? REVIEW_LABELS[row.reviewState] : 'Not offered yet.')
+                        ? (row.reviewState ? REVIEW_LABELS[row.reviewState] : 'Not offered yet')
                         : 'Pending removal. This world no longer has a linked copy.'}
                     </p>
                   </div>

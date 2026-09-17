@@ -72,7 +72,7 @@ const StatRow = ({ stat }: { stat: OpeningStat }) => {
       {stat.uncovered && (
         <p className="mt-0.5 flex items-start gap-1 text-meta text-warning">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" aria-hidden />
-          Starts above every descriptor band — the AI is told no status until the value drops.
+          Starts above every descriptor band. The AI is told no status until the value drops.
         </p>
       )}
     </div>
@@ -188,7 +188,7 @@ export function OpeningInstrument({ data, onReroll }: OpeningInstrumentProps) {
   if (!data.location) {
     return (
       <p className="text-meta text-muted-foreground">
-        This world has no locations yet, so a fresh game has nowhere to start.
+        This world has no locations yet, so a fresh game has nowhere to start
       </p>
     );
   }
@@ -202,16 +202,16 @@ export function OpeningInstrument({ data, onReroll }: OpeningInstrumentProps) {
           </p>
           <p className="text-meta text-muted-foreground">
             Starts at {data.locationName}
-            {data.startPool > 1 && ` — one of ${data.startPool} possible starts, picked at random in play`}.
+            {data.startPool > 1 && `, one of ${data.startPool} possible starts picked at random in play`}
           </p>
         </div>
 
         <SectionHeading
           label="Stats at Game Start"
-          note="scrub to test the bands — it never edits the world"
+          note="scrub to test the bands without editing the world"
         />
         {data.stats.length === 0 ? (
-          <p className="text-meta text-muted-foreground">No stats are live at game start.</p>
+          <p className="text-meta text-muted-foreground">No stats are live at game start</p>
         ) : (
           <div className="space-y-1">
             {data.stats.map((stat) => (
@@ -227,7 +227,7 @@ export function OpeningInstrument({ data, onReroll }: OpeningInstrumentProps) {
 
         <SectionHeading label="Active Traits" note={data.pcName ? 'defaults plus the lens PC' : 'the defaults'} />
         {data.traits.length === 0 ? (
-          <p className="text-meta text-muted-foreground">No traits are active at game start.</p>
+          <p className="text-meta text-muted-foreground">No traits are active at game start</p>
         ) : (
           <div className="space-y-1">
             {data.traits.map((trait) => <TraitRow key={trait.id} trait={trait} />)}
@@ -247,7 +247,7 @@ export function OpeningInstrument({ data, onReroll }: OpeningInstrumentProps) {
           )}
         </div>
         {data.rolls.length === 0 ? (
-          <p className="text-meta text-muted-foreground">Nothing rolls here — no Wildcard chips in this world.</p>
+          <p className="text-meta text-muted-foreground">No Wildcard chips in this world, so nothing rolls</p>
         ) : (
           <div className="space-y-1">
             {data.rolls.map((group) => <RollRow key={group.placeholderId} group={group} />)}
@@ -271,8 +271,8 @@ export function OpeningInstrument({ data, onReroll }: OpeningInstrumentProps) {
         </div>
         <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
           <Sparkles className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-          Assembled with the shipped default prompts and settings — custom prompt presets are a global
-          setting the editor can’t read.
+          Assembled with the shipped default prompts and settings. Custom prompt presets are a global
+          setting and aren’t read here.
         </p>
       </div>
     </ScrollArea>

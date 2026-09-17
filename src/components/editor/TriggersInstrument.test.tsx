@@ -133,7 +133,7 @@ describe('TriggersInstrument', () => {
 
   it('says so plainly when a world has no dictionary at all', () => {
     renderTriggers(world(), 'Maren watches the tide.');
-    expect(screen.getByText('This world has no dictionary entries.')).toBeInTheDocument();
+    expect(screen.getByText('This world has no dictionary entries')).toBeInTheDocument();
   });
 });
 
@@ -190,7 +190,7 @@ describe('TriggersInstrument rendered context', () => {
     renderTriggers(lore, 'A quiet morning.');
     expect(screen.getByRole('button', { name: /Rendered Context/ }).textContent).toMatch(/~0 tokens/);
     await userEvent.click(screen.getByRole('button', { name: /Rendered Context/ }));
-    expect(screen.getByText('Nothing fired, so no entry’s text is injected.')).toBeInTheDocument();
+    expect(screen.getByText('Nothing fired, so no entry’s text is injected')).toBeInTheDocument();
   });
 });
 
@@ -365,7 +365,7 @@ describe('TriggersInstrument — the semantic toggle', () => {
     renderScored([[beacon, 0.6], [tides, 0.1]]);
     const row = screen.getByText('Old Beacon').closest('div[class*="rounded-md"]') as HTMLElement;
     expect(within(row).getByText('Semantic')).toBeInTheDocument();
-    expect(within(row).getByText('Fired on meaning alone — no keyword matched.')).toBeInTheDocument();
+    expect(within(row).getByText('Fired on meaning alone. No keyword matched.')).toBeInTheDocument();
   });
 
   it('leaves a keyword firing labeled as one even when its meaning also scores', () => {
@@ -399,7 +399,7 @@ describe('TriggersInstrument — the semantic toggle', () => {
       semanticOn: true,
     });
     const row = screen.getByText('Riptides').closest('div[class*="rounded-md"]') as HTMLElement;
-    expect(within(row).getByText('Fired on meaning alone — no keyword matched.')).toBeInTheDocument();
+    expect(within(row).getByText('Fired on meaning alone. No keyword matched.')).toBeInTheDocument();
     expect(within(row).getByText(/appears only inside “riptides”/)).toBeInTheDocument();
   });
 

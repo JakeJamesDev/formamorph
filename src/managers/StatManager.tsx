@@ -31,9 +31,9 @@ import { StatDescriptorsSection, type DescriptorFieldValue } from './StatDescrip
 import { statPanelTabsFor, statTabForField, type StatPanelTab } from '@/views/statPanelTabs';
 import type { FocusFieldHint, Stat, StatDescriptor, StatType, ThresholdUnit } from "@/types";
 
-const AVAILABILITY_INFO = `**Enabled** — the stat is active. Off keeps it inactive until a trait enables it. An inactive stat is not shown to the player or sent to the AI, and its Regen and Code do not run.
+export const AVAILABILITY_INFO = `**Enabled** keeps the stat active. Uncheck it and the stat stays inactive until a trait enables it. An inactive stat isn't shown to the player or sent to the AI, and its Regen and Code don't run.
 
-**Hidden** — the stat is not shown to the player. It is still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
+**Hidden** hides the stat from the player. It's still sent to the AI, and its Regen and Code run. Use it for dice rolls, cooldowns, and other bookkeeping.`;
 
 /** The stat being edited — a loose, partial Stat while fields are filled in. */
 type EditingStat = Partial<Stat>;
@@ -298,7 +298,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           </div>
           <div className="space-y-2">
             <Label>Body Sliders</Label>
-            <Hint>Body sliders bound to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
+            <Hint>Binds body sliders to this stat. Its value between Min and Max sets each slider&apos;s position.</Hint>
             <MultiSelect
               key={stat.id}
               options={morphGroups}
@@ -320,7 +320,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
             <HintInfo>{AVAILABILITY_INFO}</HintInfo>
           </div>
           {/* The line decides; the ⓘ defines. Two paragraphs here cost the panel a screen. */}
-          <Hint>Enabled makes the stat active. Hidden hides it from the player only.</Hint>
+          <Hint>Enabled keeps the stat active. Hidden hides it from the player only.</Hint>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex items-center space-x-2 cursor-pointer">
               <Checkbox
@@ -342,7 +342,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       {advanced && (
         <div className="space-y-2">
           <Label>Prevent AI Changes</Label>
-          <Hint>Stop the AI from changing this stat in a given direction.</Hint>
+          <Hint>Stops the AI from changing this stat in one direction</Hint>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex items-center space-x-2 cursor-pointer">
               <Checkbox
@@ -406,7 +406,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
         <HelpButton topicId="worldEditor.statCode" className="h-6 w-6" />
       </div>
 
-      <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait.</Hint>
+      <Hint>Code can set this stat&apos;s value, Min, Max, or Regen, pin a placeholder, or switch a trait</Hint>
       <Hint>Turn order: Before the AI, AI stat changes, Regen, After the AI. An empty box is skipped.</Hint>
 
       <StatCodeBox

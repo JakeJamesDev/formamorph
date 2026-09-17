@@ -7,9 +7,9 @@ import { Link2 } from 'lucide-react';
 
 /** What each row says about its source, beyond the kind. */
 const STATE_LINES: Record<LinkedContentRow['state'], string> = {
-  published: 'Already published.',
-  unpublished: 'Will publish with this world.',
-  unavailable: 'This source is not in your library. It cannot be required.',
+  published: 'Already published',
+  unpublished: 'Will publish with this world',
+  unavailable: "Not in your library, so it can't be required",
 };
 
 /**
@@ -38,7 +38,7 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
           <p className="text-label font-medium">Linked Content</p>
           <p className="text-meta text-muted-foreground">
             A player who downloads this world also downloads and links each required source. Content you
-            do not require is included in the world with no source to follow.
+            don&apos;t require is included in the world with no source to follow.
           </p>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function LinkedContentSection({ rows, onChange, disabled }: {
                   <p className="text-meta text-muted-foreground">
                     {row.visibility === 'unlisted'
                       ? 'Unlisted keeps this out of Community Creations. It still downloads with this world.'
-                      : 'Public lists this in Community Creations on its own.'}
+                      : 'Public lists this in Community Creations on its own'}
                   </p>
                 </div>
               )}

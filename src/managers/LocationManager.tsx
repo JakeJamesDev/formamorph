@@ -34,11 +34,11 @@ import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
  */
 /** The long form behind the Starting Location ⓘ. The row has no room for a line, so the label decides and
  *  the popover defines. */
-const STARTING_INFO = `**Starting Location** marks where a new game may begin.
+export const STARTING_INFO = `**Starting Location** marks where a new game can begin
 
-- With one, every new game starts there.
-- With several, the player picks one, or the game picks at random.
-- With none, any location can be the start.`;
+- With one, every new game starts there
+- With several, the player picks one, or the game picks at random
+- With none, any location can be the start`;
 
 const LocationManager = ({ location, tab, onTabChange, focusField }: {
   location: GameLocation;
@@ -142,7 +142,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
                 onChange={(s) => handleChange('aiSummary', s)}
               />
             )}
-            hint="A one-line version for where the full description is too long. Keep it brief."
+            hint="Replaces the full description in prompt slots too small for it. Keep it brief."
             value={editingLocation.aiSummary || ''}
             onChange={(v) => handleChange('aiSummary', v)}
             placeholders={placeholders}

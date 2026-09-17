@@ -109,6 +109,6 @@ describe('the library dictionary editor’s entry panel', () => {
     // The modal opens with the book itself selected, so this is the panel an author lands on.
     open();
     expect(panelStrip()).toBeNull();
-    expect(screen.getByPlaceholderText('Notes for you. Not injected into the prompt.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toBeInTheDocument();
   });
 });

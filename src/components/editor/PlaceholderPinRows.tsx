@@ -66,7 +66,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
             </Button>
           </div>
           {excludeId && pin.placeholderId === excludeId ? (
-            <p className="text-meta text-destructive pl-1">A value cannot pin its own placeholder.</p>
+            <p className="text-meta text-destructive pl-1">A value can&apos;t pin its own placeholder</p>
           ) : (
             <PinConflictNote world={world} placeholderId={pin.placeholderId} source={source} onOpenTrait={onOpenTrait} />
           )}

@@ -172,7 +172,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         lead: parentRowIds.has(node.id) ? 'chevron' : 'spacer',
         collapseLabels: ['Expand nested placeholders', 'Collapse nested placeholders'],
         icon: shared ? (
-          <Tip tip={`Shared — open ${placeholder.name}`} labelsChild={false}>
+          <Tip tip={`Shared, opens ${placeholder.name}`} labelsChild={false}>
             <button
               type="button"
               aria-label={`Open ${placeholder.name}`}

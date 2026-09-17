@@ -362,9 +362,9 @@ describe('PlaceholderManager — kind', () => {
   describe('the state line', () => {
     it('reads Variable at one value, whichever kind is declared', () => {
       const { rerender } = render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
-      expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
+      expect(screen.getByText('A Variable, so it always resolves to its one value')).toBeInTheDocument();
       rerender(<PlaceholderManager placeholder={ph({ values: phValues(['Red']), roll: false })} />);
-      expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
+      expect(screen.getByText('A Variable, so it always resolves to its one value')).toBeInTheDocument();
     });
 
     // A one-value Variable whose value nests wildcards is not a constant: the chips roll, so the line says
@@ -380,33 +380,33 @@ describe('PlaceholderManager — kind', () => {
         <PlaceholderManager placeholder={ph({ values: phValues([`The ${chip('adj')} ${chip('noun')}`]) })} />,
       );
       expect(screen.getByText(
-        'A Variable: its one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.',
+        'A Variable whose one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.',
       )).toBeInTheDocument();
       rerender(<PlaceholderManager placeholder={ph({ values: phValues([`King ${chip('king')}`]) })} />);
-      expect(screen.getByText('A Variable: always resolves to its one value.')).toBeInTheDocument();
+      expect(screen.getByText('A Variable, so it always resolves to its one value')).toBeInTheDocument();
       siblings = [];
     });
 
     it('counts the values a Wildcard picks between', () => {
       render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']) })} />);
-      expect(screen.getByText('Picks one of 3 values.')).toBeInTheDocument();
+      expect(screen.getByText('Picks one of 3 values')).toBeInTheDocument();
     });
 
     it('counts the values an Object shows together', () => {
       render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Blue', 'Green']), roll: false })} />);
-      expect(screen.getByText('Shows all 3 values.')).toBeInTheDocument();
+      expect(screen.getByText('Shows all 3 values')).toBeInTheDocument();
     });
 
     it('says an empty placeholder resolves to nothing', () => {
       render(<PlaceholderManager placeholder={ph({ values: [] })} />);
-      expect(screen.getByText('No values yet — this resolves to nothing.')).toBeInTheDocument();
+      expect(screen.getByText('No values yet, so this resolves to nothing')).toBeInTheDocument();
     });
 
     it('follows the selector as it is pressed', () => {
       render(<PlaceholderManager placeholder={ph()} />);
-      expect(screen.getByText('Picks one of 2 values.')).toBeInTheDocument();
+      expect(screen.getByText('Picks one of 2 values')).toBeInTheDocument();
       pickKind('Object');
-      expect(screen.getByText('Shows all 2 values.')).toBeInTheDocument();
+      expect(screen.getByText('Shows all 2 values')).toBeInTheDocument();
     });
   });
 });
@@ -857,7 +857,7 @@ describe('PlaceholderManager — value pins', () => {
   it('refuses a pin on the value’s own placeholder: not offered, and noted where one is stored', async () => {
     render(<PlaceholderManager placeholder={pinned([{ placeholderId: 'p1', value: 'Blue' }])} />);
     await userEvent.click(pinButton('Red'));
-    expect(screen.getByText('A value cannot pin its own placeholder.')).toBeInTheDocument();
+    expect(screen.getByText("A value can't pin its own placeholder")).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Select placeholder' }));
     expect(screen.getAllByTestId('placeholder-section-row').map((r) => r.textContent)).toEqual(['Weather']);
   });

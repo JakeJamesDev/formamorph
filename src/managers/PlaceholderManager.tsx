@@ -41,14 +41,14 @@ type PlaceholderKind = 'wildcard' | 'object';
 
 // The brief line under the selector decides; this defines. Kept out of the state line so a Wildcard's own
 // row reads as one short sentence.
-const KIND_INFO = `**Wildcard** randomizes — one of its values is picked, and every chip of it shows that pick.
+export const KIND_INFO = `**Wildcard** randomizes. One of its values is picked, and every chip of it shows that pick.
 
-**Object** holds — all of its values apply, joined together wherever it is placed.
+**Object** holds. All of its values apply, joined together wherever it's placed.
 
-- With one value the two coincide: it is a **Variable**, and always resolves to that value.
-- A Variable whose one value holds Wildcard chips is a template: it rolls those chips, and picks World or Unique like a Wildcard.
-- A chip that can roll chooses **World** (one pick shared everywhere) or **Unique** (its own).
-- A value that is exactly one chip nests that placeholder under this one, addressable as \`Owner › Name\`.`;
+- With one value the two coincide. It's a **Variable**, and always resolves to that value.
+- A Variable whose one value holds Wildcard chips is a template. It rolls those chips, and picks World or Unique like a Wildcard.
+- A chip that can roll chooses **World** (one pick shared everywhere) or **Unique** (its own)
+- A value that is exactly one chip nests that placeholder under this one, addressable as \`Owner › Name\``;
 
 /** One multiline box: its text as typed, under an id of its own so a box survives being emptied, renamed,
  *  or collapsed — none of which the value string it holds could key. */
@@ -178,14 +178,14 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   );
   const state =
     count === 0
-      ? 'No values yet — this resolves to nothing.'
+      ? 'No values yet, so this resolves to nothing'
       : rollingVariable
-        ? 'A Variable: its one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.'
+        ? 'A Variable whose one value is a template. It rolls its chips, and picks World or Unique like a Wildcard.'
         : count === 1
-          ? 'A Variable: always resolves to its one value.'
+          ? 'A Variable, so it always resolves to its one value'
           : kind === 'wildcard'
-          ? `Picks one of ${count} values.`
-          : `Shows all ${count} values.`;
+          ? `Picks one of ${count} values`
+          : `Shows all ${count} values`;
 
   // The world behind the editor, when there is one: what a value's pin rows read rivals from. The library's
   // editors mount this with no world, and there the pins still write but no note can name a rival.
@@ -334,7 +334,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           />
           <p className="text-meta text-muted-foreground">
             {(chances[byText.get(openValue)?.id ?? ''] ?? 0) === 0
-              ? 'Benched — never rolled, but kept in the list.'
+              ? 'Benched, so it never rolls but stays in the list'
               : `Rolls ${pct(openValue)} of the time. Weights are relative: 2 is twice as likely as 1.`}
           </p>
         </>
@@ -348,8 +348,8 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
         <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
           Shared row. The name, the kind and the values come from the original.{' '}
           {kind === 'object'
-            ? 'An Object applies every value and never draws, so there is nothing to weigh here.'
-            : 'The draw weights are this row’s own — benching a value here changes nothing anywhere else.'}
+            ? "An Object applies every value and never draws, so there's nothing to weigh here."
+            : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
         </p>
       )}
       <div className="space-y-2">
@@ -530,7 +530,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
             // A value that is only a chip is a part of this placeholder, so it reads as the part it names
             // rather than as what that part will become.
             lonePlaceholderAsPath
-            placeholder="e.g. Red — press Enter for each"
+            placeholder="e.g. Red, then Enter for each"
             // Toggles, like the placeholder chips' own pop-out: without this, clicking the open chip
             // re-opened it and the only way out was clicking somewhere else entirely.
             onChipClick={weighable ? (v) => {
@@ -697,7 +697,7 @@ const MultilineValues = ({
                 ownerId={ownerId}
                 markdown
                 ariaLabel={`Value ${i + 1}`}
-                placeholder="Value text — markdown supported"
+                placeholder="Value text, markdown supported"
               />
             </div>
           )}

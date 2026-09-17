@@ -58,7 +58,7 @@ const PlaceholderEditor = () => {
               share={selection.share}
             />
           ) : (
-            <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one.</p>
+            <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one</p>
           )}
         </div>
       }
