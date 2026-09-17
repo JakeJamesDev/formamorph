@@ -259,7 +259,7 @@ export function LikersDialog({
         {rows.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <Tip
-              tip="Reads the network record behind these likes. Every check is written to the admin log."
+              tip="Groups these likes by the network address they came from"
               labelsChild={false}
             >
               <Button variant="outline" size="sm" onClick={() => void runAudit()} disabled={isAuditing}>
