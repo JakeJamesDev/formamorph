@@ -1,8 +1,7 @@
-import {
-  $getRoot, $getSelection, $getSelectionSlotFrame, $getSlot, $isElementNode, type NodeKey,
-} from 'lexical';
+import { $getRoot, $isElementNode, type NodeKey } from 'lexical';
 import { $isVariableNode, type VariableNode } from './VariableNode';
-import { VALUE_SLOT, type OpenValueView } from './openValueContext';
+import { type OpenValueView } from './openValueContext';
+import { $caretChip } from './openValueNodes';
 
 /** The field's own chips: a chip inside an open value stays a chip. */
 export function $fieldChips(): VariableNode[] {
@@ -12,9 +11,7 @@ export function $fieldChips(): VariableNode[] {
 
 /** The key of the field chip whose value holds the caret, or null. */
 export function $caretChipKey(): NodeKey | null {
-  const frame = $getSelectionSlotFrame($getSelection());
-  if (!frame) return null;
-  return $fieldChips().find((chip) => $getSlot(chip, VALUE_SLOT)?.is(frame))?.getKey() ?? null;
+  return $caretChip()?.getKey() ?? null;
 }
 
 /**

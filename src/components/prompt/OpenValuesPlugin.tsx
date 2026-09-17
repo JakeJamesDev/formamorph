@@ -1,27 +1,21 @@
 import { useEffect, useRef } from 'react';
 import {
-  $createParagraphNode, $getSlot, $removeSlot, $setSlot, HISTORIC_TAG, HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG,
+  $createParagraphNode, $getNodeByKey, $getSlot, $removeSlot, $setSlot, HISTORIC_TAG, HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG,
   type EditorState, type NodeKey, type UpdateTag,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
-import { appendSegments, serializeNode } from './promptFieldState';
-import { $isValueBoxNode, ValueBoxNode, type VariableNode } from './VariableNode';
+import { appendSegments } from './promptFieldState';
+import { $isVariableNode, ValueBoxNode, type VariableNode } from './VariableNode';
 import { VALUE_SLOT, type OpenValueView } from './openValueContext';
 import { $caretChipKey, $fieldChips, $mirrorChipKeys } from './openValueCopies';
+import { $ejectEdges, $openValueText } from './openValueNodes';
 
 /** Token → the text each chip should show. */
 type WantedText = (token: string) => string;
 
 /** One value text this field wrote: what the store held before, and what it was sent. */
 interface OwnWrite { from: string; to: string }
-
-/** The text an open chip's slot holds, or null when it holds none. */
-function $openValueText(chip: VariableNode): string | null {
-  const box = $getSlot(chip, VALUE_SLOT);
-  if (!$isValueBoxNode(box)) return null;
-  return box.getChildren().map(serializeNode).join('\n');
-}
 
 function $fillOpenValue(chip: VariableNode, text: string, parse: ChipVocabulary['parse']): void {
   const para = $createParagraphNode();
@@ -43,6 +37,11 @@ function $sync(active: boolean, wanted: WantedText, parse: ChipVocabulary['parse
   const caret = $caretChipKey();
   for (const chip of $fieldChips()) {
     if ($chipInSync(chip, active, wanted, caretKey)) continue;
+    // Pending whitespace goes to the field before its value is replaced or closed.
+    if (chip.isExpanded()) {
+      $ejectEdges(chip);
+      if ($chipInSync(chip, active, wanted, caretKey)) continue;
+    }
     // Replacing the value under the caret would strand the selection, so the caret exits past the chip.
     if (chip.getKey() === caret) chip.selectNext(0, 0);
     if (!active) {
@@ -54,6 +53,9 @@ function $sync(active: boolean, wanted: WantedText, parse: ChipVocabulary['parse
     $fillOpenValue(chip, wanted(chip.getToken()), parse);
   }
 }
+
+/** Names which value a chip opens on, apart from that value's text. Empty when nothing is open. */
+const openValueIdentity = (open: OpenValueView | undefined): string => open?.valueKey ?? open?.label ?? '';
 
 /** A chip whose open value changed between two states: its key and token, and its text before and after. */
 interface ValueEdit { key: NodeKey; token: string; before: string; after: string }
@@ -84,6 +86,7 @@ export function OpenValuesPlugin({ active, values, parse }: {
 }) {
   const [editor] = useLexicalComposerContext();
   const ownWrites = useRef(new Map<string, OwnWrite>());
+  const openedValues = useRef(new Map<string, string>());
   useEffect(() => {
     const writes = ownWrites.current;
     // A write shows until the store answers with new text for that token.
@@ -104,7 +107,17 @@ export function OpenValuesPlugin({ active, values, parse }: {
       const tag: UpdateTag[] = focused ? [HISTORY_MERGE_TAG] : [HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG];
       editor.update(() => $sync(active, wanted, parse, spareCaret ? $caretChipKey() : null), { tag });
     };
-    resync({ spareCaret: true });
+    // A chevron step or a reroll opens another value, which refills the value under the caret too.
+    const opened = openedValues.current;
+    const switched = editor.getEditorState().read(() => {
+      const key = $caretChipKey();
+      const chip = key === null ? null : $getNodeByKey(key);
+      const token = $isVariableNode(chip) ? chip.getToken() : null;
+      return token !== null && opened.has(token) && opened.get(token) !== openValueIdentity(values[token]);
+    });
+    opened.clear();
+    for (const [token, open] of Object.entries(values)) opened.set(token, openValueIdentity(open));
+    resync({ spareCaret: !switched });
     const unregister = editor.registerUpdateListener(({ editorState, prevEditorState, tags }) => {
       const edits = active ? valueEdits(prevEditorState, editorState) : [];
       const mirrors = edits.length ? editorState.read(() => $mirrorChipKeys(values)) : new Set<NodeKey>();
