@@ -381,9 +381,13 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
     };
     mount();
     window.addEventListener('resize', clamp);
+    // Another chip's decorator re-renders through React after Lexical's commit, so the text reflows after
+    // the update listener has already run. Measure again once that render has landed.
+    const later = () => { clamp(); setTimeout(clamp, 0); };
     const off = mergeRegister(
       editor.registerMutationListener(ChipNode, (m) => { if (m.get(nodeKey) === 'updated') mount(); }),
-      editor.registerUpdateListener(clamp),
+      editor.registerUpdateListener(later),
+      editor.registerDecoratorListener(later),
     );
     return () => { off(); window.removeEventListener('resize', clamp); };
   }, [editor, nodeKey]);
