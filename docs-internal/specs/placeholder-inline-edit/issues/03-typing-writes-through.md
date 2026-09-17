@@ -1,6 +1,7 @@
 # 03: Typing Writes Through to the Placeholder
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 5c4c62bf
 Blocked by: 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

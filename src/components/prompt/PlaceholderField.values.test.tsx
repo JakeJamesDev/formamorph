@@ -27,6 +27,8 @@ const WORLD = [town, hair, look];
 
 const tab = (name: string) => screen.queryByRole('tab', { name });
 const openValues = () => Array.from(document.querySelectorAll<HTMLElement>('[data-open-value]'));
+// Lexical sets the value island's property, which jsdom does not reflect to the attribute.
+const slotEditable = () => openValues()[0].querySelector<HTMLElement>('[data-lexical-slot]')?.contentEditable;
 const valueText = (el: HTMLElement) => el.querySelector('[data-open-value-text]')?.textContent ?? '';
 
 function field(value: string, props: { placeholders?: Placeholder[]; onChange?: (v: string) => void } = {}) {
@@ -115,10 +117,22 @@ describe('the Values tab content', () => {
     expect(screen.getByRole('textbox').textContent).toBe('Welcome to Town.');
   });
 
-  it('accepts no typing', async () => {
+  it('takes typing in the field text and in each open value', async () => {
     render(field(`Welcome to ${tok('town', 'p1')}.`));
     await userEvent.click(tab('Values')!);
+    expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'true');
+    expect(slotEditable()).toBe('true');
+  });
+
+  it('takes no typing anywhere on a read-only field', async () => {
+    render(
+      <EditorPreviewRollsProvider>
+        <PlaceholderField value={`Welcome to ${tok('town', 'p1')}.`} onChange={() => {}} placeholders={WORLD} readOnly />
+      </EditorPreviewRollsProvider>,
+    );
+    await userEvent.click(tab('Values')!);
     expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'false');
+    expect(slotEditable()).toBe('false');
   });
 });
 

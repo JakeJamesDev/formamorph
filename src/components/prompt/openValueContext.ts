@@ -12,6 +12,8 @@ export interface OpenValueView {
   label: string;
   /** Open the previous (-1) or next (1) value. Absent when there is no other value to open. */
   step?: (direction: StepDirection) => void;
+  /** Store new text for the open value. Absent when the value is on no list or nothing can be written. */
+  write?: (text: string) => void;
 }
 
 /** Token → the value its chip opens on, for the Values tab. */

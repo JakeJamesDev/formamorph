@@ -821,8 +821,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     },
   } : {};
 
-  // Nothing to type into: read-only, the values are open, or the preview pane is the one showing.
-  const editingDisabled = readOnly || valuesOpen || (!split && showTabs && tab !== 'edit');
+  // Nothing to type into: read-only, or the preview pane is the one showing.
+  const editingDisabled = readOnly || (!split && showTabs && tab === 'preview');
 
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
@@ -830,7 +830,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     <div className="flex items-center gap-1 flex-shrink-0">
       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
         {label && !markdown && <Label className="leading-none">{label}</Label>}
-        {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
+        {/* Markdown actions address the field's flat text, which a caret inside an open value is not in. */}
+        {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled || valuesOpen} />}
         {/* With a shared palette the per-field row would repeat the same chips above every field on the
             panel — the whole reason the palette was hoisted out. */}
         {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!editingDisabled} />}
@@ -1001,11 +1002,11 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         )}
         <SeededHistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
-        <EditablePlugin readOnly={readOnly || valuesOpen} />
+        <EditablePlugin readOnly={readOnly} />
         <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} />
         <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
         <CaretFollowPlugin onCaret={followCaret} />
-        {insertTrigger && !readOnly && !valuesOpen && (
+        {insertTrigger && !readOnly && (
           <>
             <ChipTypeaheadPlugin trigger={insertTrigger} vocab={vocab} />
             <ChipInsertTargetPlugin vocab={vocab} ownerId={insertOwnerId} />

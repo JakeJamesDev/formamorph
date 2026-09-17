@@ -1,5 +1,7 @@
 import { useContext, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { mountSlotContainer, type NodeKey } from 'lexical';
+import {
+  $getNodeByKey, $getSelection, $getSelectionSlotFrame, $getSlot, mountSlotContainer, type NodeKey,
+} from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
@@ -23,7 +25,18 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
 
   // A refill reparks the container, so it mounts again after every update. Mounting in place is a no-op.
   useLayoutEffect(() => {
-    const mount = () => { if (target.current) mountSlotContainer(editor, nodeKey, VALUE_SLOT, target.current); };
+    const holdsCaret = () => editor.getEditorState().read(() => {
+      const frame = $getSelectionSlotFrame($getSelection());
+      const chip = $getNodeByKey(nodeKey);
+      return !!frame && !!chip && !!$getSlot(chip, VALUE_SLOT)?.is(frame);
+    });
+    const mount = () => {
+      if (!target.current) return;
+      mountSlotContainer(editor, nodeKey, VALUE_SLOT, target.current);
+      // A moved island loses focus; it takes it back itself, since focusing the editor root misses it.
+      const island = target.current.querySelector<HTMLElement>('[data-lexical-slot]');
+      if (island && document.activeElement === document.body && holdsCaret()) island.focus();
+    };
     mount();
     return editor.registerUpdateListener(mount);
   }, [editor, nodeKey]);

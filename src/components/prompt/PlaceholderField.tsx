@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, directChipTargets, placeholderIsChoice } from '@/lib/placeholders';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
+import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { OpenValueView, StepDirection } from './openValueContext';
@@ -60,7 +61,25 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
   // An Object draws nothing, so the value its chip opens on is this field's own, by token.
   const [objectIndexByToken, setObjectIndexByToken] = useState<Record<string, number>>({});
+  // A value edit goes through the same store a chip rename does. Writes made since the store last rendered
+  // build on each other, so two writes in one tick never drop the first.
+  const store = usePlaceholderStoreOptional();
+  const storeRef = useRef(store);
+  const unrendered = useRef(new Map<string, Placeholder>());
+  if (storeRef.current?.placeholders !== store?.placeholders) unrendered.current.clear();
+  storeRef.current = store;
+  const canWrite = !!store && !readOnly;
+  const writeValue = useCallback((placeholderId: string, valueId: string, text: string) => {
+    const bound = storeRef.current;
+    const ph = unrendered.current.get(placeholderId) ?? bound?.placeholders.find((p) => p.id === placeholderId);
+    if (!bound || !ph) return;
+    const next = { ...ph, values: ph.values.map((v) => (v.id === valueId ? { ...v, text } : v)) };
+    unrendered.current.set(placeholderId, next);
+    bound.updatePlaceholder(next);
+  }, []);
   const openValues = useMemo(() => {
+    const writer = (placeholderId: string, valueId: string | undefined) =>
+      (canWrite && valueId ? { write: (text: string) => writeValue(placeholderId, valueId, text) } : {});
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
     for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
@@ -70,7 +89,11 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       // A pin decides the value, so a step would write a roll nothing reads.
       if (!ph || !placement || values.length < 2 || open.pinned) {
         const index = values.findIndex((v) => v.id === open.valueId);
-        out[token] = { text: open.text, label: openValueLabel(values, index, open.pinned) };
+        out[token] = {
+          text: open.text,
+          label: openValueLabel(values, index, open.pinned),
+          ...writer(open.placeholderId, values[index]?.id),
+        };
         continue;
       }
       if (!placeholderIsChoice(ph)) {
@@ -78,6 +101,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
         out[token] = {
           text: values[index].text,
           label: openValueLabel(values, index),
+          ...writer(ph.id, values[index].id),
           step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
         };
         continue;
@@ -90,13 +114,14 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       out[token] = {
         text: open.text,
         label: openValueLabel(values, index),
+        ...writer(ph.id, values[index]?.id),
         ...(rolled && {
           step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
         }),
       };
     }
     return out;
-  }, [rolls, value, placeholders, objectIndexByToken]);
+  }, [rolls, value, placeholders, objectIndexByToken, canWrite, writeValue]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],
