@@ -1,6 +1,7 @@
 # 04: Chevrons as Directed Rerolls
 
-Status: ready-for-agent
+Status: in-progress
+Base: e4385de4
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

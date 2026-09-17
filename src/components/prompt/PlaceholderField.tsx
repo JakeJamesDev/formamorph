@@ -1,19 +1,22 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { directChipTargets } from '@/lib/placeholders';
+import { decodePlaceholderToken, directChipTargets, placeholderIsChoice } from '@/lib/placeholders';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { OpenValueView } from './openValueContext';
 
 /** The header's name for an open value: its place in the list, or what it is when it is on no list. */
-function openValueLabel(values: Placeholder['values'] | undefined, valueId: string | undefined): string {
-  const index = valueId ? (values ?? []).findIndex((v) => v.id === valueId) : -1;
-  if (index >= 0) return `Value ${index + 1}`;
+function openValueLabel(values: Placeholder['values'] | undefined, index: number): string {
+  if (index >= 0) return `Value ${index + 1} · ${index + 1}/${values?.length ?? 0}`;
   return values?.length ? 'Pinned' : 'No Values';
 }
+
+/** The value `direction` steps to from `index`, wrapping. Off the list, a step enters it at either end. */
+const stepIndex = (index: number, direction: -1 | 1, count: number): number =>
+  index < 0 ? (direction === 1 ? 0 : count - 1) : (index + direction + count) % count;
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
@@ -55,14 +58,37 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   const rolls = useEditorPreviewRolls();
   // Re-read on every reroll: the store's identity carries its version.
   const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
+  // An Object draws nothing, so the value its chip opens on is this field's own, by token.
+  const [objectOpen, setObjectOpen] = useState<Record<string, number>>({});
   const openValues = useMemo(() => {
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
     for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
-      out[token] = { text: open.text, label: openValueLabel(byId.get(open.placeholderId)?.values, open.valueId) };
+      const ph = byId.get(open.placeholderId);
+      const values = ph?.values ?? [];
+      const placement = decodePlaceholderToken(token);
+      // A chip that drills opens on a value its own placement does not roll, so it has no step.
+      const own = placement?.id === open.placeholderId && !placement.path?.length;
+      if (own && ph && values.length > 1 && !placeholderIsChoice(ph)) {
+        const index = (objectOpen[token] ?? 0) % values.length;
+        out[token] = {
+          text: values[index].text,
+          label: openValueLabel(values, index),
+          step: (direction) => setObjectOpen((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
+        };
+        continue;
+      }
+      const index = open.valueId ? values.findIndex((v) => v.id === open.valueId) : -1;
+      out[token] = {
+        text: open.text,
+        label: openValueLabel(values, index),
+        ...(own && placement && values.length > 1 && {
+          step: (direction: -1 | 1) => rolls.setRoll(placement, values[stepIndex(index, direction, values.length)].id),
+        }),
+      };
     }
     return out;
-  }, [rolls, value, placeholders]);
+  }, [rolls, value, placeholders, objectOpen]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],

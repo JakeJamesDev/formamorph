@@ -1,6 +1,7 @@
-import { useContext, useLayoutEffect, useRef } from 'react';
+import { useContext, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { mountSlotContainer, type NodeKey } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import { tintMarkStyle } from '@/lib/previewTint';
 import { OpenValuesContext, VALUE_SLOT } from './openValueContext';
@@ -9,7 +10,8 @@ import { OpenValuesContext, VALUE_SLOT } from './openValueContext';
 const SLOT_TARGET_CLASS = '[&>*]:inline [&>*>*]:inline [&>*>*>*]:inline';
 
 /**
- * A chip open on the Values tab: a header naming the placeholder and the open value, then the value itself.
+ * A chip open on the Values tab: a header naming the placeholder and the open value, with a chevron each way
+ * when there is another value to open, then the value itself.
  * The value lives in the node's named slot, which Lexical renders apart and this chip mounts in place.
  */
 export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
@@ -31,11 +33,26 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
       className="rounded px-0.5 [box-decoration-break:clone] [-webkit-box-decoration-break:clone]"
       style={tintMarkStyle(vocab.color(token))}
     >
-      <span contentEditable={false} className="mr-1 select-none whitespace-nowrap text-meta font-medium text-muted-foreground">
+      {/* mousedown is swallowed so a chevron click never moves the editor's caret. */}
+      <span
+        contentEditable={false}
+        onMouseDown={(e) => e.preventDefault()}
+        className="mr-1 inline-flex select-none items-center gap-0.5 whitespace-nowrap text-meta font-medium text-muted-foreground"
+      >
+        {open?.step && <StepButton label="Previous value" onClick={() => open.step?.(-1)}><ChevronLeft className="h-3 w-3" /></StepButton>}
         {vocab.label(token)}
         {open?.label && <span className="font-normal"> · {open.label}</span>}
+        {open?.step && <StepButton label="Next value" onClick={() => open.step?.(1)}><ChevronRight className="h-3 w-3" /></StepButton>}
       </span>
       <span ref={target} data-open-value-text className={SLOT_TARGET_CLASS} />
     </span>
+  );
+}
+
+function StepButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className="rounded hover:bg-accent hover:text-foreground">
+      {children}
+    </button>
   );
 }
