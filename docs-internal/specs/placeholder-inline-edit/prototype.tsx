@@ -402,28 +402,38 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
       }
       if (!lines.length) return;
       for (const ln of lines) { ln.l -= PX; ln.r += PX; ln.t -= PY; ln.b += PY; }
-      for (let i = 1; i < lines.length; i++) { const mid = (lines[i - 1].b + lines[i].t) / 2; lines[i - 1].b = mid; lines[i].t = mid; }
-      const pts: [number, number][] = [];
-      for (const ln of lines) pts.push([ln.r, ln.t], [ln.r, ln.b]);
-      for (let i = lines.length - 1; i >= 0; i--) pts.push([lines[i].l, lines[i].b], [lines[i].l, lines[i].t]);
-      // Drop repeated and collinear points so every remaining vertex is a real corner.
-      const clean: [number, number][] = [];
-      for (const p of pts) { const q = clean[clean.length - 1]; if (!q || q[0] !== p[0] || q[1] !== p[1]) clean.push(p); }
-      const corners = clean.filter((p, i) => { const a = clean[(i + clean.length - 1) % clean.length]; const b = clean[(i + 1) % clean.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
-      const minX = Math.min(...corners.map((p) => p[0])), minY = Math.min(...corners.map((p) => p[1]));
-      const maxX = Math.max(...corners.map((p) => p[0])), maxY = Math.max(...corners.map((p) => p[1]));
-      // Rounded corners: each corner is cut short by r on both sides and bridged with a quadratic curve.
-      let d = '';
-      const n = corners.length;
-      for (let i = 0; i < n; i++) {
-        const a = corners[(i + n - 1) % n], p = corners[i], b = corners[(i + 1) % n];
-        const r = Math.min(R, Math.hypot(p[0] - a[0], p[1] - a[1]) / 2, Math.hypot(b[0] - p[0], b[1] - p[1]) / 2);
-        const inn: [number, number] = [p[0] + Math.sign(a[0] - p[0]) * r, p[1] + Math.sign(a[1] - p[1]) * r];
-        const out: [number, number] = [p[0] + Math.sign(b[0] - p[0]) * r, p[1] + Math.sign(b[1] - p[1]) * r];
-        const f = (x: number, y: number) => `${(x - minX + 1).toFixed(1)} ${(y - minY + 1).toFixed(1)}`;
-        d += (i ? `L ${f(...inn)} ` : `M ${f(...inn)} `) + `Q ${f(...p)} ${f(...out)} `;
+      // One shape only where there is a shape to draw: consecutive lines join when they overlap enough
+      // horizontally for a corner; otherwise the value is drawn as separate pieces.
+      const groups: (typeof lines)[] = [];
+      for (const ln of lines) {
+        const g = groups[groups.length - 1];
+        const prev = g?.[g.length - 1];
+        if (prev && Math.min(prev.r, ln.r) - Math.max(prev.l, ln.l) >= 2 * R + 2) g.push(ln); else groups.push([ln]);
       }
-      d += 'Z';
+      for (const g of groups) for (let i = 1; i < g.length; i++) { const mid = (g[i - 1].b + g[i].t) / 2; g[i - 1].b = mid; g[i].t = mid; }
+      const minX = Math.min(...lines.map((l) => l.l)), minY = Math.min(...lines.map((l) => l.t));
+      const maxX = Math.max(...lines.map((l) => l.r)), maxY = Math.max(...lines.map((l) => l.b));
+      const f = (x: number, y: number) => `${(x - minX + 1).toFixed(1)} ${(y - minY + 1).toFixed(1)}`;
+      let d = '';
+      for (const g of groups) {
+        const pts: [number, number][] = [];
+        for (const ln of g) pts.push([ln.r, ln.t], [ln.r, ln.b]);
+        for (let i = g.length - 1; i >= 0; i--) pts.push([g[i].l, g[i].b], [g[i].l, g[i].t]);
+        // Drop repeated and collinear points so every remaining vertex is a real corner.
+        const clean: [number, number][] = [];
+        for (const p of pts) { const q = clean[clean.length - 1]; if (!q || q[0] !== p[0] || q[1] !== p[1]) clean.push(p); }
+        const corners = clean.filter((p, i) => { const a = clean[(i + clean.length - 1) % clean.length]; const b = clean[(i + 1) % clean.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
+        // Rounded corners: each corner is cut short by r on both sides and bridged with a quadratic curve.
+        const n = corners.length;
+        for (let i = 0; i < n; i++) {
+          const a = corners[(i + n - 1) % n], p = corners[i], b = corners[(i + 1) % n];
+          const r = Math.min(R, Math.hypot(p[0] - a[0], p[1] - a[1]) / 2, Math.hypot(b[0] - p[0], b[1] - p[1]) / 2);
+          const inn: [number, number] = [p[0] + Math.sign(a[0] - p[0]) * r, p[1] + Math.sign(a[1] - p[1]) * r];
+          const out: [number, number] = [p[0] + Math.sign(b[0] - p[0]) * r, p[1] + Math.sign(b[1] - p[1]) * r];
+          d += (i ? `L ${f(...inn)} ` : `M ${f(...inn)} `) + `Q ${f(...p)} ${f(...out)} `;
+        }
+        d += 'Z ';
+      }
       const first = chrome.getClientRects()[0];
       svg.style.left = `${minX - first.left - 1}px`; svg.style.top = `${minY - first.top - 1}px`;
       svg.setAttribute('width', `${maxX - minX + 2}`); svg.setAttribute('height', `${maxY - minY + 2}`);
