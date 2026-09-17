@@ -244,10 +244,17 @@ function $fillRegion(region: RegionNode, text: string) {
   region.splice(0, region.getChildrenSize(), [new RegionHeadNode(), ...(body.length ? body : [$createTextNode('')])]);
 }
 
+// Both collapses park the caret right after the chip first: removing the node the selection sits in
+// leaves Lexical with a lost selection, and the whole update rolls back.
 function $collapse(region: RegionNode) {
-  region.replace($createChipNode(region.getId()));
+  const chip = $createChipNode(region.getId());
+  region.replace(chip);
+  chip.selectNext(0, 0);
 }
 function $collapseChip(chip: ChipNode) {
+  const sel = $getSelection();
+  const frame = $getSelectionSlotFrame(sel);
+  if (frame && $getSlot(chip, SLOT)?.is(frame)) chip.selectNext(0, 0);
   $removeSlot(chip, SLOT);
   chip.setExpanded(false);
 }
