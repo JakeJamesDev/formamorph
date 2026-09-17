@@ -512,6 +512,10 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
     };
     mount();
     window.addEventListener('resize', clamp);
+    // A chevron changes the header's label, and React paints that after the editor's listeners have run,
+    // so the pass would measure the old width. Re-run it whenever the header's own size changes.
+    const ro = new ResizeObserver(() => { const root = editor.getRootElement(); if (root) layoutHeads(root); });
+    if (head.current) ro.observe(head.current);
     // Another chip's decorator re-renders through React after Lexical's commit, so the text reflows after
     // the update listener has already run. Measure again once that render has landed.
     const later = () => { clamp(); setTimeout(clamp, 0); };
@@ -520,7 +524,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
       editor.registerUpdateListener(later),
       editor.registerDecoratorListener(later),
     );
-    return () => { off(); window.removeEventListener('resize', clamp); };
+    return () => { off(); ro.disconnect(); window.removeEventListener('resize', clamp); };
   }, [editor, nodeKey]);
   // "Inside" follows the editor's selection, not DOM focus: :focus-within needs the document to hold system
   // focus. A focus leaving the editor clears it; the next selection inside sets it again.
