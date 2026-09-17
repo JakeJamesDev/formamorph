@@ -387,7 +387,18 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   const head = useRef<HTMLSpanElement>(null);
   const shape = useRef<SVGSVGElement>(null);
   useLayoutEffect(() => {
-    const mount = () => { if (target.current) mountSlotContainer(editor, nodeKey, SLOT, target.current); clamp(); };
+    const mount = () => {
+      if (!target.current) return;
+      mountSlotContainer(editor, nodeKey, SLOT, target.current);
+      // Moving the container into the chrome blurs a caret that was already in it; put the focus back.
+      const island = target.current.querySelector<HTMLElement>('[data-lexical-slot]');
+      const inThisSlot = editor.getEditorState().read(() => { const chip = $getNodeByKey(nodeKey); const frame = $getSelectionSlotFrame($getSelection()); return $isChipNode(chip) && !!frame && !!$getSlot(chip, SLOT)?.is(frame); });
+      // Only when focus was lost to the body or is elsewhere in this editor: never steal it from another control.
+      const active = document.activeElement;
+      const lost = !active || active === document.body || !!editor.getRootElement()?.contains(active);
+      if (island && inThisSlot && lost && active !== island) island.focus();
+      clamp();
+    };
     // One outline around every line fragment of the value: the fragments are measured, padded, made to meet
     // vertically, and traced as a single rounded polygon in an SVG placed over the chrome's first fragment.
     const draw = () => {
@@ -475,10 +486,28 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
     );
     return () => { off(); window.removeEventListener('resize', clamp); };
   }, [editor, nodeKey]);
-  useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => {
-    const chip = $getNodeByKey(nodeKey);
-    if ($isChipNode(chip)) setSlotState(chip.getSlotIndex());
-  })), [editor, nodeKey]);
+  // "Inside" follows the editor's selection, not DOM focus: :focus-within needs the document to hold system
+  // focus. A focus leaving the editor clears it; the next selection inside sets it again.
+  const [isInside, setIsInside] = useState(false);
+  useEffect(() => {
+    const read = () => editor.getEditorState().read(() => {
+      const chip = $getNodeByKey(nodeKey);
+      if (!$isChipNode(chip)) return;
+      setSlotState(chip.getSlotIndex());
+      const frame = $getSelectionSlotFrame($getSelection());
+      const focused = !!editor.getRootElement()?.contains(document.activeElement);
+      setIsInside(focused && !!frame && !!$getSlot(chip, SLOT)?.is(frame));
+    });
+    read();
+    const root = editor.getRootElement();
+    const out = (e: FocusEvent) => { if (!(e.relatedTarget instanceof Node && root?.contains(e.relatedTarget))) setIsInside(false); };
+    root?.addEventListener('focusout', out);
+    root?.addEventListener('focusin', read);
+    return mergeRegister(
+      editor.registerUpdateListener(read),
+      () => { root?.removeEventListener('focusout', out); root?.removeEventListener('focusin', read); },
+    );
+  }, [editor, nodeKey]);
   const ph = store.placeholders.find((p) => p.id === id);
   if (!ph) return null;
   const slots = slotsOf(ph);
@@ -497,7 +526,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   });
   const stop = (e: MouseEvent) => e.preventDefault();
   return (
-    <span className={`slot-chrome slot-chrome-${OptionsRef.current.treatment}`} style={{ '--accent': COLORS[id] } as CSSProperties}>
+    <span className={`slot-chrome slot-chrome-${OptionsRef.current.treatment}${isInside ? ' is-inside' : ''}`} style={{ '--accent': COLORS[id] } as CSSProperties}>
       <span ref={head} className="region-head" onMouseDown={stop}>
         <button type="button" onClick={() => step(-1)} disabled={slots.length < 2} aria-label="Previous"><ChevronLeft size={12} /></button>
         <span className="region-name">{ph.name}</span>
@@ -602,7 +631,7 @@ function SyncPlugin({ onChange }: { onChange: (text: string) => void }) {
         if (!chip.isExpanded()) continue;
         if (hasFocus && frame && $getSlot(chip, SLOT)?.is(frame)) continue;
         const w = want(chip.getId(), chip.getSlotIndex());
-        if ($slotText(chip) !== w) $fillSlot(chip, w);
+        if ($slotText(chip) !== w) { $fillSlot(chip, w); storeRef.current.log(`refilled ${chip.getId()} from the store (focus ${hasFocus ? 'in editor' : 'elsewhere'})`); }
       }
     });
   }, [editor, store.placeholders]);
@@ -749,7 +778,7 @@ function SlotEdgePlugin() {
     const root = editor.getRootElement();
     const onFocusOut = (e: FocusEvent) => {
       if (root && e.relatedTarget instanceof Node && root.contains(e.relatedTarget)) return;
-      if (inside.current) eject(inside.current, 'blur');
+      if (inside.current) { eject(inside.current, 'blur'); inside.current = null; }
     };
     root?.addEventListener('focusout', onFocusOut);
     return mergeRegister(
