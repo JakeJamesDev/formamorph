@@ -10,8 +10,8 @@
 
 import { Compartment, EditorState, RangeSetBuilder, StateEffect, type Extension } from '@codemirror/state';
 import {
-  EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars, drawSelection,
-  rectangularSelection, crosshairCursor, tooltips, Decoration, ViewPlugin,
+  EditorView, keymap, lineNumbers, placeholder as placeholderExt, highlightSpecialChars,
+  tooltips, Decoration, ViewPlugin,
   type DecorationSet, type ViewUpdate,
 } from '@codemirror/view';
 import {
@@ -80,9 +80,6 @@ const editorTheme = EditorView.theme({
     borderLeftColor: 'hsl(var(--border))',
   },
   '.cm-line': { padding: '0 0.75rem' },
-  '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'hsl(var(--foreground))' },
-  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection':
-    { backgroundColor: 'hsl(var(--primary) / 0.35)' },
   '.cm-gutters': {
     backgroundColor: 'transparent',
     color: 'hsl(var(--muted-foreground))',
@@ -310,9 +307,6 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
       extensions: [
         history(),
         highlightSpecialChars(),
-        drawSelection(),
-        rectangularSelection(),
-        crosshairCursor(),
         indentOnInput(),
         bracketMatching(),
         indentUnit.of('  '),
