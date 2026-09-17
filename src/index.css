@@ -896,3 +896,58 @@ b {
 [data-editor-dragging] {
   pointer-events: none;
 }
+
+/* Open values on a field's Values tab. `OpenValueLayoutPlugin` seats each header and traces each outline;
+   `--chip` is the placeholder's identity color, and `data-caret` marks the value that holds the caret. */
+[data-open-value] {
+  --chip: hsl(var(--muted));
+  --chip-ink: hsl(var(--foreground));
+  /* One radius for the header and the outline, which the layout pass reads back in pixels. */
+  --open-value-radius: calc(var(--radius) - 3px);
+  position: relative;
+}
+/* End padding one pixel wider than the outline's standoff, so the outline stays in the value's own space. */
+[data-open-value-text] {
+  padding: 0 4px;
+}
+/* An empty inline, never an inline-block, which would allow a break: it grows the first line upward. */
+[data-open-value-text]::before {
+  content: '';
+  display: inline;
+  line-height: 2.35em;
+  vertical-align: 0.85em;
+}
+[data-open-value-shape] {
+  position: absolute;
+  pointer-events: none;
+  overflow: visible;
+}
+/* The line takes a share of the foreground, so one rule reads in both themes. The fill stays translucent,
+   because the outline paints over the value's own text. */
+[data-open-value-shape] path {
+  fill: color-mix(in oklab, var(--chip) 18%, transparent);
+  stroke: color-mix(in oklab, var(--chip) 65%, hsl(var(--foreground)));
+  stroke-width: 1;
+}
+/* Black ink on the chip's own color, as the collapsed pills carry; a chip with no color of its own keeps
+   the muted surface and its own foreground. */
+[data-open-value-header] {
+  position: absolute;
+  z-index: 1;
+  white-space: nowrap;
+  border-radius: var(--open-value-radius) var(--open-value-radius) 0 0;
+  background: var(--chip);
+  color: var(--chip-ink);
+}
+[data-open-value][data-caret] > [data-open-value-shape] path {
+  fill: color-mix(in oklab, var(--chip) 28%, transparent);
+  stroke: color-mix(in oklab, var(--chip) 85%, hsl(var(--foreground)));
+  stroke-width: 2;
+}
+[data-open-value][data-caret] > [data-open-value-header] {
+  box-shadow: 0 0 0 1px var(--chip);
+  filter: brightness(1.12);
+}
+[data-open-value][data-caret] [data-lexical-slot] {
+  caret-color: var(--chip);
+}

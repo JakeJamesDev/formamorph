@@ -1,6 +1,7 @@
 # 07: Floating Header and Traced Outline
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 2530b8df
 Blocked by: 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -38,14 +39,22 @@ every line of a wrapped value.
 
 ## Acceptance criteria
 
-- [ ] A one-line value shows a tab header above it and one rounded outline.
-- [ ] A value that wraps across three lines shows one contiguous outline.
-- [ ] A wrap whose lines do not overlap horizontally shows two shapes.
-- [ ] The caret's value shows the full header; every other open value shows the compact one with a hover title.
-- [ ] Two headers on one line never overlap, including after a chevron step to a longer label.
-- [ ] No header leaves the editor's box at the left or right edge.
-- [ ] The line above a value is never covered, and the spacer adds no wrap point.
-- [ ] Closing or changing one value redraws the other values' outlines.
-- [ ] Verified in light and dark themes and with reduced motion, from static frames.
-- [ ] Playwright covers header seating, compaction, slide and push, and the outline split.
-- [ ] Changelog In-Progress entry added. Four gates green.
+- [x] A one-line value shows a tab header above it and one rounded outline.
+- [x] A value that wraps across three lines shows one contiguous outline.
+- [x] A wrap whose lines do not overlap horizontally shows two shapes.
+- [x] The caret's value shows the full header; every other open value shows the compact one with a hover title.
+- [x] Two headers on one line never overlap, including after a chevron step to a longer label.
+- [x] No header leaves the editor's box at the left or right edge.
+- [x] The line above a value is never covered, and the spacer adds no wrap point.
+- [x] Closing or changing one value redraws the other values' outlines.
+- [x] Verified in light and dark themes and with reduced motion, from static frames.
+- [x] Playwright covers header seating, compaction, slide and push, and the outline split.
+- [x] Changelog In-Progress entry added. Four gates green.
+
+## Handover
+
+The visual pass still needs the user's approval in app context, mobile form included, which is the one
+line of "What to build" this ticket cannot close on its own. Everything else is built and evidenced:
+22 Playwright cases (desktop and mobile) and 19 unit cases on the geometry module, with both suites
+mutation-checked. The changelog lines for this ticket sit in commit b57fa434, swept in with a neighboring
+session's work on the shared file.
