@@ -4,6 +4,7 @@ import {
   $isElementNode,
   COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
+  type NodeKey,
 } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
@@ -43,7 +44,7 @@ import { VariableNode, ValueBoxNode, $createVariableNode, PromptDragContext } fr
 import { OpenValuesPlugin } from './OpenValuesPlugin';
 import { ValueEdgesPlugin } from './ValueEdgesPlugin';
 import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
-import { OpenValuesContext, type OpenValueView } from './openValueContext';
+import { EditValueContext, OpenValuesContext, type EditValueRelay, type OpenValueView } from './openValueContext';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
@@ -615,6 +616,19 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // Radix hands back a plain string; every trigger here carries a FieldTab value.
   const selectTab = (next: string) => setTab(next as FieldTab);
 
+  // "Edit Value" in a chip's flyout: the tab switches here, and the chip's own value answers once it opens.
+  // Only the Edit tab offers it, where every chip is a closed pill of the field's own. On the Values tab the
+  // field's chips are open and carry no flyout, and the only chips left with one sit inside an open value,
+  // where the item would point at a value that never opens. The tab closing drops a pending ask with it.
+  const [askedChip, setAskedChip] = useState<NodeKey | null>(null);
+  const settleEditValue = useCallback(() => setAskedChip(null), []);
+  const editValue = useMemo<EditValueRelay>(() => ({
+    ask: valuesEnabled && !valuesOpen && !readOnly ? (chip) => { setTab('values'); setAskedChip(chip); } : null,
+    asked: askedChip,
+    settle: settleEditValue,
+  }), [valuesEnabled, valuesOpen, readOnly, askedChip, settleEditValue]);
+  useEffect(() => { if (!valuesOpen) setAskedChip(null); }, [valuesOpen]);
+
   // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
   // back to tabs and mobile never reaches the split threshold — no breakpoint to keep in sync.
   const [measureRef, containerWidth] = useContainerWidth();
@@ -979,6 +993,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocab}>
       <OpenValuesContext.Provider value={openValues ?? NO_OPEN_VALUES}>
+      <EditValueContext.Provider value={editValue}>
       <PromptDragContext.Provider value={dragKey}>
         {/* A real (nested) dialog rather than a hand-rolled overlay: most of these fields live inside the
             Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
@@ -1017,6 +1032,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           </>
         )}
       </PromptDragContext.Provider>
+      </EditValueContext.Provider>
       </OpenValuesContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>

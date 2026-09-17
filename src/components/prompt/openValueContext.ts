@@ -1,4 +1,5 @@
 import { createContext } from 'react';
+import type { NodeKey } from 'lexical';
 
 /** The slot an open chip keeps its value in. */
 export const VALUE_SLOT = 'value';
@@ -20,3 +21,21 @@ export interface OpenValueView {
 
 /** Token → the value its chip opens on, for the Values tab. */
 export const OpenValuesContext = createContext<Record<string, OpenValueView>>({});
+
+/**
+ * The "Edit Value" path from a chip's flyout to its open value. The flyout asks, the Values tab opens, and
+ * the value that answers takes the caret and settles the ask. A request outlives one render because the
+ * value it names does not exist yet when the flyout makes it.
+ */
+export interface EditValueRelay {
+  /** Asks for a chip's value. Absent where the field has no value to edit, which hides the flyout item. */
+  ask: ((chip: NodeKey) => void) | null;
+  /** The chip an ask named, while it waits for a value to answer. */
+  asked: NodeKey | null;
+  /** Answered: the caret has landed. */
+  settle: () => void;
+}
+
+const NO_EDIT_VALUE: EditValueRelay = { ask: null, asked: null, settle: () => {} };
+
+export const EditValueContext = createContext<EditValueRelay>(NO_EDIT_VALUE);

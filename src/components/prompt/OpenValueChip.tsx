@@ -7,8 +7,10 @@ import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { Tip } from '@/components/ui/tooltip';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
-import { OpenValuesContext, VALUE_SLOT } from './openValueContext';
-import { $openValueReadOnly } from './openValueCopies';
+import { $isVariableNode } from './VariableNode';
+import { EditValueContext, OpenValuesContext, VALUE_SLOT } from './openValueContext';
+import { $editableCopyKey, $openValueReadOnly } from './openValueCopies';
+import { $valueBox } from './openValueNodes';
 
 // Lexical parks the slot container, its value box and the box's paragraph as blocks; a value reads inline.
 const SLOT_TARGET_CLASS = '[&>*]:inline [&>*>*]:inline [&>*>*>*]:inline';
@@ -23,6 +25,7 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
   const [editor] = useLexicalComposerContext();
   const vocab = useContext(ChipVocabularyContext);
   const values = useContext(OpenValuesContext);
+  const { asked, settle } = useContext(EditValueContext);
   const open = values[token];
   const target = useRef<HTMLSpanElement>(null);
   const step = open?.step;
@@ -30,6 +33,8 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
   const [readOnly, setReadOnly] = useState<'field' | 'value' | null>(null);
   // From the editor's selection, since `:focus-within` fails while the document itself lacks focus.
   const [caret, setCaret] = useState(false);
+  // The last "Edit Value" ask this value answered.
+  const answered = useRef<NodeKey | null>(null);
 
   // A refill reparks the container, so it mounts again after every update. Mounting in place is a no-op.
   useLayoutEffect(() => {
@@ -50,6 +55,26 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
       if (island) island.contentEditable = String(!locked);
       setReadOnly(!locked ? null : editable ? 'value' : 'field');
       setCaret(!locked && holdsCaret() && !!editor.getRootElement()?.contains(document.activeElement));
+      if (!locked && island) answerEditValue(island);
+    };
+    /**
+     * "Edit Value" in a chip's flyout is answered here, once the value it asked for exists to take the
+     * caret. A mirror's ask is answered by the copy that edits the value, so only one caret ever lands.
+     * Focusing the island re-enters `mount` through the editor's own `focusin`, and `settle` only reaches
+     * this closure on the next render, so the answered key is held here to keep the answer to one.
+     */
+    const answerEditValue = (island: HTMLElement) => {
+      if (asked === null || answered.current === asked) return;
+      if (editor.getEditorState().read(() => $editableCopyKey(asked, values)) !== nodeKey) return;
+      answered.current = asked;
+      settle();
+      // The island is its own editing host, so it is focused by name rather than through the selection
+      // Lexical is about to reconcile, which reaches it only while nothing else holds the keyboard.
+      island.focus();
+      editor.update(() => {
+        const chip = $getNodeByKey(nodeKey);
+        if ($isVariableNode(chip)) $valueBox(chip)?.selectEnd();
+      });
     };
     // Focus moving within the editor is not a blur.
     const onFocusOut = (e: FocusEvent) => {
@@ -66,7 +91,7 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
       root?.removeEventListener('focusin', mount);
       root?.removeEventListener('focusout', onFocusOut);
     };
-  }, [editor, nodeKey, token, values]);
+  }, [editor, nodeKey, token, values, asked, settle]);
 
   const color = vocab.color(token);
 

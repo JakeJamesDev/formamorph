@@ -1,6 +1,7 @@
 # 08: "Edit Value" in the Chip Flyout
 
-Status: ready-for-agent
+Status: in-progress
+Base: 98811e10
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
