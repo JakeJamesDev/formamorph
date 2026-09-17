@@ -322,10 +322,26 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   const [slot, setSlotState] = useState(0);
   // Mount after every commit that touches this chip: the container is parked hidden in the host DOM until
   // something reveals it, and a reconcile may re-park it.
+  const head = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
-    const mount = () => { if (target.current) mountSlotContainer(editor, nodeKey, SLOT, target.current); };
+    const mount = () => { if (target.current) mountSlotContainer(editor, nodeKey, SLOT, target.current); clamp(); };
+    // A floating header is anchored to the value's first fragment, which can sit anywhere on the line. Keep
+    // it inside the editor's box: shift it left when it would run past the right edge, right past the left.
+    const clamp = () => {
+      const el = head.current; const root = editor.getRootElement();
+      if (!el || !root) return;
+      el.style.transform = '';
+      const h = el.getBoundingClientRect(); const r = root.getBoundingClientRect();
+      const over = Math.max(0, h.right - (r.right - 4)); const under = Math.max(0, (r.left + 4) - h.left);
+      if (over || under) el.style.transform = `translateX(${under - over}px)`;
+    };
     mount();
-    return editor.registerMutationListener(ChipNode, (m) => { if (m.get(nodeKey) === 'updated') mount(); });
+    window.addEventListener('resize', clamp);
+    const off = mergeRegister(
+      editor.registerMutationListener(ChipNode, (m) => { if (m.get(nodeKey) === 'updated') mount(); }),
+      editor.registerUpdateListener(clamp),
+    );
+    return () => { off(); window.removeEventListener('resize', clamp); };
   }, [editor, nodeKey]);
   useEffect(() => editor.registerUpdateListener(({ editorState }) => editorState.read(() => {
     const chip = $getNodeByKey(nodeKey);
@@ -349,7 +365,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   const stop = (e: MouseEvent) => e.preventDefault();
   return (
     <span className={`slot-chrome slot-chrome-${OptionsRef.current.treatment}`} style={{ '--accent': COLORS[id] } as CSSProperties}>
-      <span className="region-head" onMouseDown={stop}>
+      <span ref={head} className="region-head" onMouseDown={stop}>
         <button type="button" onClick={() => step(-1)} disabled={slots.length < 2} aria-label="Previous"><ChevronLeft size={12} /></button>
         <span className="region-name">{ph.name}</span>
         <span className="region-slot">{slots[slot]?.label} · {slot + 1}/{slots.length}</span>
