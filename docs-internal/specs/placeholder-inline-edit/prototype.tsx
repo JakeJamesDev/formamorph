@@ -15,9 +15,9 @@ import {
   DecoratorNode, ElementNode, $applyNodeReplacement, $createLineBreakNode, $createParagraphNode,
   $createTextNode, $getNodeByKey, $getRoot, $getSelection, $isRangeSelection, $isTextNode,
   $isLineBreakNode, $isElementNode, $nodesOfType,
-  $setSlot, $getSlot, $removeSlot, $getSelectionSlotFrame, mountSlotContainer,
+  $setSlot, $getSlot, $removeSlot, $getSelectionSlotFrame, $getSlotHost, mountSlotContainer,
   COMMAND_PRIORITY_HIGH, DELETE_CHARACTER_COMMAND, KEY_ENTER_COMMAND, INSERT_LINE_BREAK_COMMAND,
-  INSERT_PARAGRAPH_COMMAND, PASTE_COMMAND, COPY_COMMAND,
+  INSERT_PARAGRAPH_COMMAND, PASTE_COMMAND, COPY_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND,
   type LexicalEditor, type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode,
   type Spread, type RangeSelection,
 } from 'lexical';
@@ -63,7 +63,6 @@ function withSlot(ph: Placeholder, slot: number, text: string): Placeholder {
 interface Options {
   /** boxed / ownline / underline expand into an inline RegionNode; slot keeps the chip and opens a named slot (Lexical 0.50). */
   treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-float' | 'slot-float-v' | 'slot-float-vh' | 'slot-float-shape' | 'slot-stack' | 'slot-block';
-  edgeTyping: 'outside' | 'inside';
   boundaryDelete: 'block' | 'collapse';
   enterInRegion: 'linebreak' | 'block';
 }
@@ -74,7 +73,7 @@ interface Store {
 }
 const StoreContext = createContext<Store>({ placeholders: [], setSlot: () => {}, log: () => {} });
 // Node classes cannot read React context, so the options they consult live here.
-const OptionsRef: { current: Options } = { current: { treatment: 'boxed', edgeTyping: 'outside', boundaryDelete: 'block', enterInRegion: 'linebreak' } };
+const OptionsRef: { current: Options } = { current: { treatment: 'slot-float', boundaryDelete: 'block', enterInRegion: 'linebreak' } };
 
 /* ───────────────────────────── nodes ───────────────────────────── */
 
@@ -166,9 +165,9 @@ class RegionNode extends ElementNode {
   exportJSON(): SerializedRegion { return { ...super.exportJSON(), type: 'proto-region', version: 1, id: this.__id, slot: this.__slot }; }
   isInline() { return true; }
   canBeEmpty() { return false; }
-  // The MarkNode pattern: false pushes edge typing outside the region; true keeps it inside.
-  canInsertTextBefore() { return OptionsRef.current.edgeTyping === 'inside'; }
-  canInsertTextAfter() { return OptionsRef.current.edgeTyping === 'inside'; }
+  // Edge typing stays inside the region; the slot path owns the exit rule now.
+  canInsertTextBefore() { return true; }
+  canInsertTextAfter() { return true; }
   // Copying a region yields its text, not a second live region.
   excludeFromCopy(destination: 'clone' | 'html') { return destination !== 'clone'; }
   insertNewAfter(_s: RangeSelection, restore = true) {
@@ -251,7 +250,70 @@ function $collapse(region: RegionNode) {
   region.replace(chip);
   chip.selectNext(0, 0);
 }
+/** The first and last text nodes of a slot value, whichever shape it has. */
+function $slotEnds(chip: ChipNode): { first: LexicalNode | null; last: LexicalNode | null; value: ElementNode } | null {
+  const v = $getSlot(chip, SLOT);
+  if (!v || !$isElementNode(v)) return null;
+  const firstBlock = $isSlotBoxNode(v) ? v.getFirstChild() : v;
+  const lastBlock = $isSlotBoxNode(v) ? v.getLastChild() : v;
+  return {
+    value: v,
+    first: $isElementNode(firstBlock) ? firstBlock.getFirstChild() : null,
+    last: $isElementNode(lastBlock) ? lastBlock.getLastChild() : null,
+  };
+}
+
+/** Whitespace at either end of a value is a pending exit. Ejecting moves it out of the value and into the
+ *  field beside the chip: leading before, trailing after. Returns the text nodes it wrote, for the caret. */
+function $ejectWhitespace(chip: ChipNode): { before: LexicalNode | null; after: LexicalNode | null } {
+  const ends = $slotEnds(chip);
+  const out = { before: null as LexicalNode | null, after: null as LexicalNode | null };
+  if (!ends) return out;
+  const { first, last } = ends;
+  if ($isTextNode(last)) {
+    const text = last.getTextContent();
+    const trail = text.match(/[ \t]+$/)?.[0] ?? '';
+    if (trail) {
+      last.setTextContent(text.slice(0, -trail.length));
+      out.after = $createTextNode(trail);
+      chip.insertAfter(out.after);
+    }
+  }
+  if ($isTextNode(first) && first.isAttached()) {
+    const text = first.getTextContent();
+    const lead = text.match(/^[ \t]+/)?.[0] ?? '';
+    if (lead) {
+      first.setTextContent(text.slice(lead.length));
+      out.before = $createTextNode(lead);
+      chip.insertBefore(out.before);
+    }
+  }
+  return out;
+}
+
+/** Is a collapsed selection at the very start / very end of this chip's value? */
+function $slotEdge(chip: ChipNode, sel: RangeSelection): { atStart: boolean; atEnd: boolean } {
+  const ends = $slotEnds(chip);
+  if (!ends || !sel.isCollapsed()) return { atStart: false, atEnd: false };
+  const node = sel.anchor.getNode();
+  const off = sel.anchor.offset;
+  if ($isElementNode(node)) {
+    // Element-level point, e.g. an empty value: both edges at once.
+    const size = node.getChildrenSize();
+    return { atStart: off === 0, atEnd: off >= size };
+  }
+  // A caret anywhere inside the leading or trailing whitespace run counts as being at that edge, so a space
+  // just typed at the start is left with one ArrowLeft, the same as a space at the end with one ArrowRight.
+  const text = node.getTextContent();
+  const lead = text.match(/^[ \t]*/)?.[0].length ?? 0;
+  const trail = text.match(/[ \t]*$/)?.[0].length ?? 0;
+  const atStart = !!ends.first && node.is(ends.first) && off <= lead;
+  const atEnd = !!ends.last && node.is(ends.last) && off >= text.length - trail;
+  return { atStart, atEnd };
+}
+
 function $collapseChip(chip: ChipNode) {
+  $ejectWhitespace(chip);
   const sel = $getSelection();
   const frame = $getSelectionSlotFrame(sel);
   if (frame && $getSlot(chip, SLOT)?.is(frame)) chip.selectNext(0, 0);
@@ -402,6 +464,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
     const chip = $getNodeByKey(nodeKey);
     if (!$isChipNode(chip)) return;
     const next = (chip.getSlotIndex() + d + slots.length) % slots.length;
+    $ejectWhitespace(chip);
     chip.setSlotIndex(next);
     $fillSlot(chip, slots[next].text).selectEnd();
     store.log(`${ph.name} → ${slots[next].label}`);
@@ -590,6 +653,98 @@ function BoundaryPlugin({ singleLine }: { singleLine: boolean }) {
   return null;
 }
 
+/**
+ * The edges of an expanded value. Lexical keeps the caret inside a slot like an input, so leaving is ours:
+ * ArrowRight at the end and ArrowLeft at the start step out, ejecting pending whitespace on the way, with the
+ * caret landing beyond what was ejected. From outside, an arrow into an expanded chip steps into its value.
+ * Any other way the caret leaves a value (click, blur, chevron, collapse) ejects too.
+ */
+function SlotEdgePlugin() {
+  const [editor] = useLexicalComposerContext();
+  const store = useContext(StoreContext);
+  // The chip whose value held the caret at the last commit, so a caret that has left it can be noticed.
+  const inside = useRef<NodeKey | null>(null);
+  useEffect(() => {
+    const chipOfFrame = (sel: ReturnType<typeof $getSelection>): ChipNode | null => {
+      const frame = $getSelectionSlotFrame(sel);
+      const host = frame && $getSlotHost(frame);
+      return $isChipNode(host) ? host : null;
+    };
+    const eject = (key: NodeKey, why: string) => editor.update(() => {
+      const chip = $getNodeByKey(key);
+      if (!$isChipNode(chip) || !chip.isExpanded()) return;
+      const { before, after } = $ejectWhitespace(chip);
+      if (before || after) store.log(`ejected whitespace (${why})`);
+    });
+    const exit = (dir: 'left' | 'right') => {
+      const sel = $getSelection();
+      if (!$isRangeSelection(sel) || !sel.isCollapsed()) return false;
+      const chip = chipOfFrame(sel);
+      if (chip) {
+        const { atStart, atEnd } = $slotEdge(chip, sel);
+        if (dir === 'right' && atEnd) {
+          const { after } = $ejectWhitespace(chip);
+          if (after) after.selectEnd(); else chip.selectNext(0, 0);
+          store.log(`exit right${after ? ', space ejected' : ''}`);
+          return true;
+        }
+        if (dir === 'left' && atStart) {
+          const { before } = $ejectWhitespace(chip);
+          if (before) before.select(0, 0); else chip.selectPrevious();
+          store.log(`exit left${before ? ', space ejected' : ''}`);
+          return true;
+        }
+        return false;
+      }
+      // Outside: an arrow toward an expanded chip steps into its value.
+      const node = sel.anchor.getNode();
+      let target: LexicalNode | null = null;
+      if ($isTextNode(node)) {
+        if (dir === 'right' && sel.anchor.offset === node.getTextContentSize()) target = node.getNextSibling();
+        if (dir === 'left' && sel.anchor.offset === 0) target = node.getPreviousSibling();
+      } else if ($isElementNode(node)) {
+        target = dir === 'right' ? node.getChildAtIndex(sel.anchor.offset) : node.getChildAtIndex(sel.anchor.offset - 1);
+      }
+      if (!$isChipNode(target) || !target.isExpanded()) return false;
+      const ends = $slotEnds(target);
+      if (!ends) return false;
+      if (dir === 'right') ends.value.selectStart(); else ends.value.selectEnd();
+      const key = target.getKey();
+      setTimeout(() => {
+        const island = editor.getElementByKey(key)?.querySelector<HTMLElement>('[data-lexical-slot]');
+        island?.focus();
+        editor.update(() => {
+          const c = $getNodeByKey(key);
+          const e = $isChipNode(c) ? $slotEnds(c) : null;
+          if (e) { if (dir === 'right') e.value.selectStart(); else e.value.selectEnd(); }
+        });
+      }, 0);
+      store.log(`enter ${dir === 'right' ? 'from the left' : 'from the right'}`);
+      return true;
+    };
+    // A slot container is its own focus target; its blur does not reach the root's blur listener, but
+    // focusout bubbles. Focus moving to somewhere still inside the editor is not a blur.
+    const root = editor.getRootElement();
+    const onFocusOut = (e: FocusEvent) => {
+      if (root && e.relatedTarget instanceof Node && root.contains(e.relatedTarget)) return;
+      if (inside.current) eject(inside.current, 'blur');
+    };
+    root?.addEventListener('focusout', onFocusOut);
+    return mergeRegister(
+      () => root?.removeEventListener('focusout', onFocusOut),
+      editor.registerCommand(KEY_ARROW_RIGHT_COMMAND, (e) => { if (exit('right')) { e.preventDefault(); return true; } return false; }, COMMAND_PRIORITY_HIGH),
+      editor.registerCommand(KEY_ARROW_LEFT_COMMAND, (e) => { if (exit('left')) { e.preventDefault(); return true; } return false; }, COMMAND_PRIORITY_HIGH),
+      editor.registerUpdateListener(({ editorState }) => {
+        const now = editorState.read(() => chipOfFrame($getSelection())?.getKey() ?? null);
+        const was = inside.current;
+        inside.current = now;
+        if (was && was !== now) eject(was, 'caret left');
+      }),
+    );
+  }, [editor, store]);
+  return null;
+}
+
 /** Lets the page's scenario buttons expand the first chip of a placeholder in a named field. */
 const expanders: Record<string, (id: string) => void> = {};
 function ExpandHook({ name }: { name: string }) {
@@ -629,6 +784,7 @@ function Field({ label, initial, singleLine, onChange }: { label: string; initia
         <HistoryPlugin />
         <SyncPlugin onChange={onChange} />
         <BoundaryPlugin singleLine={singleLine} />
+        <SlotEdgePlugin />
         <ExpandHook name={label} />
       </LexicalComposer>
     </div>
@@ -645,7 +801,7 @@ const SCENARIOS: { title: string; watch: string; steps: { label: string; run?: (
     watch: 'Use ‹ › in the header. Values 1–3 come first, then the pin from Trait › Northern. An edit on the pin must land on the pin, not on a value.',
     steps: [{ label: 'Expand Hair', run: () => expanders.Description?.('hair') }] },
   { title: '3 · Boundaries',
-    watch: 'Caret at the very start of the box: Backspace must not eat the header or the text before the box. Caret at the very end: Delete must not eat the text after. Type at the left edge: does the letter land inside or outside (toggle edgeTyping)? Select from outside into the box and press Delete (toggle boundaryDelete).',
+    watch: 'Caret at the very start of the box: Backspace must not eat the header or the text before the box. Caret at the very end: Delete must not eat the text after. Type a space then a letter: both stay inside. Type a space then ArrowRight: the space moves out after the chip and the caret follows it. Same with a space then a click elsewhere. ArrowLeft from just after the chip steps back into the value.',
     steps: [{ label: 'Expand Mood', run: () => expanders.Description?.('mood') }] },
   { title: '4 · Multiline value in a one-line field',
     watch: 'Expand Hair in the Name field, press Enter inside the box. Does the one-line field survive a line break inside the region? Compare the enterInRegion toggle.',
@@ -690,7 +846,6 @@ function App() {
       </p>
       <div className="options">
         {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-float', 'slot-float-v', 'slot-float-vh', 'slot-float-shape', 'slot-stack', 'slot-block'])}
-        {opt('edgeTyping', ['outside', 'inside'])}
         {opt('boundaryDelete', ['block', 'collapse'])}
         {opt('enterInRegion', ['linebreak', 'block'])}
         <button type="button" className="reset" onClick={reset}>Reset everything</button>
