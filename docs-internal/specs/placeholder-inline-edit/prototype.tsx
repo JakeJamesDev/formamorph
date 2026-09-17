@@ -356,6 +356,45 @@ function focusChip(editor: LexicalEditor, chipKey: NodeKey) {
   });
 }
 
+/**
+ * One pass over every floating header in an editor. Each header is seated by its own chip first; this pass
+ * then keeps them inside the editor, keeps them off each other, and shapes their bottom corners: square where
+ * the value's first line runs beneath the corner, rounded where nothing is beneath it.
+ */
+function layoutHeads(root: HTMLElement) {
+  const heads = [...root.querySelectorAll<HTMLElement>('.region-head')];
+  const R = root.getBoundingClientRect();
+  for (const h of heads) { h.style.transform = ''; h.classList.remove('is-compact'); }
+  const rect = (h: HTMLElement) => h.getBoundingClientRect();
+  const shift = (h: HTMLElement, dx: number) => { const m = /translateX\(([-\d.]+)px\)/.exec(h.style.transform); h.style.transform = `translateX(${(m ? parseFloat(m[1]) : 0) + dx}px)`; };
+  const clamp = (h: HTMLElement) => {
+    const r = rect(h);
+    const over = Math.max(0, r.right - (R.right - 4)); const under = Math.max(0, (R.left + 4) - r.left);
+    if (over || under) shift(h, under - over);
+  };
+  heads.forEach(clamp);
+  // Overlaps on one line: compact the left one, then the right one, then push the left one away.
+  const sameLine = (a: DOMRect, b: DOMRect) => a.top < b.bottom && b.top < a.bottom;
+  const sorted = [...heads].sort((a, b) => rect(a).left - rect(b).left);
+  for (let i = 1; i < sorted.length; i++) {
+    const left = sorted[i - 1], right = sorted[i];
+    const overlap = () => { const a = rect(left), b = rect(right); return sameLine(a, b) ? a.right - b.left : 0; };
+    if (overlap() <= 0) continue;
+    left.classList.add('is-compact'); clamp(left);
+    if (overlap() <= 0) continue;
+    right.classList.add('is-compact'); clamp(right);
+    const o = overlap();
+    if (o > 0) { const room = rect(left).left - (R.left + 4); shift(left, -Math.min(o + 2, Math.max(0, room))); }
+  }
+  // Corners, from the header's final place against its first line (written by the chip's draw).
+  for (const h of heads) {
+    if (h.dataset.l == null) continue;
+    const r = rect(h); const l = parseFloat(h.dataset.l), rr = parseFloat(h.dataset.r);
+    h.style.borderBottomLeftRadius = r.left < l - 0.5 ? '5px' : '0';
+    h.style.borderBottomRightRadius = r.right > rr + 0.5 ? '5px' : '0';
+  }
+}
+
 /* ───────────────────────────── chip + head UI ───────────────────────────── */
 
 function Chip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
@@ -457,22 +496,19 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
       // where the header overhangs a first line narrower than itself.
       const el = head.current;
       if (el) {
+        el.style.transform = '';
         const hr = el.getBoundingClientRect();
         el.style.top = `${lines[0].t - first.top - hr.height + 1}px`;
         el.style.left = `${lines[0].l - first.left}px`;
-        el.style.borderBottomRightRadius = lines[0].l + hr.width <= lines[0].r + 0.5 ? '0' : '5px';
+        // The first line's edges, for the header pass to shape the bottom corners against.
+        el.dataset.l = String(lines[0].l); el.dataset.r = String(lines[0].r);
       }
     };
-    // A floating header is anchored to the value's first fragment, which can sit anywhere on the line. Keep
-    // it inside the editor's box: shift it left when it would run past the right edge, right past the left.
+    // Seat this chip's header, then run the editor-wide header pass (clamping, overlaps, corners).
     const clamp = () => {
-      const el = head.current; const root = editor.getRootElement();
-      if (!el || !root) return;
-      el.style.transform = '';
-      const h = el.getBoundingClientRect(); const r = root.getBoundingClientRect();
-      const over = Math.max(0, h.right - (r.right - 4)); const under = Math.max(0, (r.left + 4) - h.left);
-      if (over || under) el.style.transform = `translateX(${under - over}px)`;
       draw();
+      const root = editor.getRootElement();
+      if (root) layoutHeads(root);
     };
     mount();
     window.addEventListener('resize', clamp);
