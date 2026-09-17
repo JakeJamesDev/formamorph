@@ -1,12 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
-  $createParagraphNode, $getRoot, $getSlot, $isElementNode, $removeSlot, $setSlot, HISTORY_MERGE_TAG,
+  $createParagraphNode, $getRoot, $getSelection, $getSelectionSlotFrame, $getSlot, $isElementNode,
+  $removeSlot, $setSlot, HISTORIC_TAG, HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG,
+  type EditorState, type NodeKey, type UpdateTag,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { appendSegments, serializeNode } from './promptFieldState';
 import { $isValueBoxNode, $isVariableNode, ValueBoxNode, type VariableNode } from './VariableNode';
 import { VALUE_SLOT, type OpenValueView } from './openValueContext';
+
+/** Token → the text each chip should show. */
+type WantedText = (token: string) => string;
+
+/** One value text this field wrote: what the store held before, and what it was sent. */
+interface OwnWrite { from: string; to: string }
 
 /** The text an open chip's slot holds, or null when it holds none. */
 function $openValueText(chip: VariableNode): string | null {
@@ -29,30 +37,58 @@ function $fieldChips(): VariableNode[] {
   return $isElementNode(para) ? para.getChildren().filter($isVariableNode) : [];
 }
 
-/** Whether every field chip is open on its value (`active`) or closed with no slot (not `active`). */
-function $inSync(active: boolean, values: Record<string, OpenValueView>): boolean {
-  return $fieldChips().every((chip) => (active
-    ? chip.isExpanded() && $openValueText(chip) === (values[chip.getToken()]?.text ?? '')
-    : !chip.isExpanded() && !$getSlot(chip, VALUE_SLOT)));
+/** The key of the field chip whose value holds the caret, or null. */
+function $caretChipKey(): NodeKey | null {
+  const frame = $getSelectionSlotFrame($getSelection());
+  if (!frame) return null;
+  return $fieldChips().find((chip) => $getSlot(chip, VALUE_SLOT)?.is(frame))?.getKey() ?? null;
 }
 
-function $sync(active: boolean, values: Record<string, OpenValueView>, parse: ChipVocabulary['parse']): void {
+/** Whether a chip matches what `$sync` makes of it. The value under `caretKey` is left as typed. */
+function $chipInSync(chip: VariableNode, active: boolean, wanted: WantedText, caretKey: NodeKey | null): boolean {
+  if (!active) return !chip.isExpanded() && !$getSlot(chip, VALUE_SLOT);
+  if (!chip.isExpanded()) return false;
+  if (chip.getKey() === caretKey) return $openValueText(chip) !== null;
+  return $openValueText(chip) === wanted(chip.getToken());
+}
+
+function $sync(active: boolean, wanted: WantedText, parse: ChipVocabulary['parse'], caretKey: NodeKey | null): void {
+  const caret = $caretChipKey();
   for (const chip of $fieldChips()) {
+    if ($chipInSync(chip, active, wanted, caretKey)) continue;
+    // Replacing the value under the caret would strand the selection, so the caret exits past the chip.
+    if (chip.getKey() === caret) chip.selectNext(0, 0);
     if (!active) {
-      if (chip.isExpanded()) chip.setExpanded(false);
+      chip.setExpanded(false);
       if ($getSlot(chip, VALUE_SLOT)) $removeSlot(chip, VALUE_SLOT);
       continue;
     }
-    const text = values[chip.getToken()]?.text ?? '';
-    if (!chip.isExpanded()) chip.setExpanded(true);
-    if ($openValueText(chip) !== text) $fillOpenValue(chip, text, parse);
+    chip.setExpanded(true);
+    $fillOpenValue(chip, wanted(chip.getToken()), parse);
   }
+}
+
+/** A chip whose open value changed between two states: its token, and its text before and after. */
+interface ValueEdit { token: string; before: string; after: string }
+
+function valueEdits(prev: EditorState, next: EditorState): ValueEdit[] {
+  const before = new Map(prev.read(() => $fieldChips().map((chip) => [chip.getKey(), $openValueText(chip)])));
+  return next.read(() => $fieldChips().flatMap((chip) => {
+    const was = before.get(chip.getKey());
+    const text = $openValueText(chip);
+    // A value that just opened was filled, not typed.
+    return text !== null && was != null && text !== was ? [{ token: chip.getToken(), before: was, after: text }] : [];
+  }));
 }
 
 /**
  * Opens every chip of the field on its value while `active`, and closes them otherwise. The field's token
  * string never changes, and the work merges into the current history entry, so undo never walks it.
  * Re-checks after every update, which catches a rebuilt value and an undo to a closed state alike.
+ *
+ * An edit inside a value writes the trimmed text through the value's `write`. Undo and redo write only over
+ * a value this field wrote, so they never revert an edit made elsewhere. A value that holds the caret keeps
+ * what the author typed; it refills from `values` once the caret or the focus leaves.
  */
 export function OpenValuesPlugin({ active, values, parse }: {
   active: boolean;
@@ -60,13 +96,54 @@ export function OpenValuesPlugin({ active, values, parse }: {
   parse: ChipVocabulary['parse'];
 }) {
   const [editor] = useLexicalComposerContext();
+  const ownWrites = useRef(new Map<string, OwnWrite>());
   useEffect(() => {
-    const check = () => {
-      if (editor.getEditorState().read(() => $inSync(active, values))) return;
-      editor.update(() => $sync(active, values, parse), { tag: HISTORY_MERGE_TAG });
+    const writes = ownWrites.current;
+    // A write shows until the store answers with new text for that token.
+    const wanted: WantedText = (token) => {
+      const text = values[token]?.text ?? '';
+      const own = writes.get(token);
+      return own && own.from === text ? own.to : text;
     };
-    check();
-    return editor.registerUpdateListener(check);
+    const root = () => editor.getRootElement();
+    const resync = ({ spareCaret }: { spareCaret: boolean }) => {
+      const inSync = editor.getEditorState().read(() => {
+        const caretKey = spareCaret ? $caretChipKey() : null;
+        return $fieldChips().every((chip) => $chipInSync(chip, active, wanted, caretKey));
+      });
+      if (inSync) return;
+      // A refill after focus has gone must not pull it back through the DOM selection.
+      const focused = !!root()?.contains(document.activeElement);
+      const tag: UpdateTag[] = focused ? [HISTORY_MERGE_TAG] : [HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG];
+      editor.update(() => $sync(active, wanted, parse, spareCaret ? $caretChipKey() : null), { tag });
+    };
+    resync({ spareCaret: true });
+    const unregister = editor.registerUpdateListener(({ editorState, prevEditorState, tags }) => {
+      for (const { token, before, after } of active ? valueEdits(prevEditorState, editorState) : []) {
+        const open = values[token];
+        const shown = wanted(token).trim();
+        const stored = after.trim();
+        if (!open?.write || stored === shown) continue;
+        if (tags.has(HISTORIC_TAG) && (before.trim() !== shown || writes.get(token)?.to !== shown)) continue;
+        open.write(stored);
+        writes.set(token, { from: values[token]?.text ?? '', to: stored });
+      }
+      resync({ spareCaret: true });
+    });
+    // A value's blur never reaches the editor's blur command, so focus leaving the editor is read here.
+    // Moving a focused value blurs it too, and its chip takes focus back in the same task.
+    const onFocusOut = () => queueMicrotask(() => {
+      if (!root()?.contains(document.activeElement)) resync({ spareCaret: false });
+    });
+    const unroot = editor.registerRootListener((next, prev) => {
+      prev?.removeEventListener('focusout', onFocusOut);
+      next?.addEventListener('focusout', onFocusOut);
+    });
+    return () => {
+      unregister();
+      unroot();
+      root()?.removeEventListener('focusout', onFocusOut);
+    };
   }, [editor, active, values, parse]);
   return null;
 }
