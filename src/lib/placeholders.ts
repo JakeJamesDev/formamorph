@@ -621,6 +621,42 @@ export function buildPlaceholderPreview(
   });
 }
 
+/** The value a chip opens on: its leaf placeholder and the raw text drawn there. No `valueId` when the text is
+ *  not one of the leaf's values (a pin typed off the list, or a placeholder with none). */
+export interface OpenPlaceholderValue {
+  placeholderId: string;
+  valueId?: string;
+  text: string;
+  /** A pin forced this value, so no roll decides it. */
+  pinned?: true;
+}
+
+/**
+ * {@link buildPlaceholderPreview}'s draw, reported as the value each chip opens on rather than what it
+ * resolves to. A choice opens on its draw, a record on its first value. A chip that names nothing is absent.
+ */
+export function drawOpenPlaceholderValues(
+  text: string,
+  placeholders: Placeholder[],
+  pick: PlaceholderPick = weightedPick,
+  store?: Pick<ResolveOptions, 'rolls' | 'setRoll'>,
+): Record<string, OpenPlaceholderValue> {
+  if (!text || !hasPlaceholders(text)) return {};
+  return drawWithValuePins({ placeholders, rolls: store?.rolls ?? {}, setRoll: store?.setRoll, pick }, (ctx) => {
+    const out: Record<string, OpenPlaceholderValue> = {};
+    const opened: OpenedRef = { current: null };
+    const walk = { ...ctx, opened };
+    TOKEN_RE.lastIndex = 0;
+    for (const m of text.matchAll(TOKEN_RE)) {
+      if (m[0] in out) continue;
+      opened.current = null;
+      resolveText(m[0], walk);
+      if (opened.current) out[m[0]] = opened.current;
+    }
+    return out;
+  });
+}
+
 /** How many walks an author draw makes to read its own pins. A walk can only lay a pin its predecessor
  *  did not through a chip a pin's text carries, so a chain this long is already an authoring oddity. */
 const DRAW_PIN_WALKS = 4;
@@ -997,6 +1033,17 @@ interface ResolveCtx {
   share?: ShareCtx;
   seen: ReadonlySet<string>;
   depth: number;
+  /** Open-value draws only: the placeholder the current chip opens on, its own or its drill target. */
+  opened?: OpenedRef;
+}
+
+type OpenedRef = { current: OpenPlaceholderValue | null };
+
+/** Record `text` as the value the current chip opens on, unless an outer level already did. */
+function noteOpened(ctx: ResolveCtx, ph: Placeholder, text: string, pinned = false): void {
+  if (!ctx.opened || ctx.opened.current) return;
+  const valueId = valueCrossing(ph, text)?.value.id;
+  ctx.opened.current = { placeholderId: ph.id, ...(valueId ? { valueId } : {}), text, ...(pinned && { pinned }) };
 }
 
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
@@ -1283,13 +1330,19 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   const pinned = pinOn(ph.id, ctx);
   // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
   // weight.
-  if (pinned != null) return valueSpans(pinned, inner);
+  if (pinned != null) {
+    noteOpened(ctx, ph, pinned, true);
+    return valueSpans(pinned, inner);
+  }
+  const values = ph.values ?? [];
+  if (!values.length) noteOpened(ctx, ph, '');
+  else if (!placeholderIsChoice(ph)) noteOpened(ctx, ph, values[0].text);
   // Every pin a trait could lay over this placeholder reads under this same context once the trait is on.
   for (const text of pinTextsFor(ph, ctx)) valueSpans(text, inner);
-  const values = ph.values ?? [];
   if (!values.length) return [];
   if (placeholderIsChoice(ph)) {
     const drawn = selectValue(ph, inner);
+    noteOpened(ctx, ph, drawn);
     return valueSpans(drawn, inner, valueCrossing(ph, drawn));
   }
   const out: PlaceholderSpan[] = [];
