@@ -117,9 +117,14 @@ editing it, so the edit reads wrong in context as often as not.
   and the open value would jump. Keying by id keeps the open value stable through its own edit.
 - An Object chip opens on its first value; chevrons walk the values in order. A Variable chip opens on its
   one value and hides the chevrons. Chevrons wrap.
-- The chevron order is the placeholder's value order. Pins are not slots: a pin forces this placeholder to
-  one of its values, and the chevrons still walk the values. A pin whose value is typed off the list has
-  no value id to edit, so it opens read-only.
+- The chevron order is the placeholder's value order. Pins are not slots.
+- **A pinned chip hides its chevrons.** A draw pin masks the roll before it is read, so a step would change
+  nothing the author sees. The chip opens on the pinned value, which is what Preview shows; a pinned Object
+  opens on the pin, not on its first value. The header marks the value as pinned. A pinned chip never
+  writes a roll. The state is read from the draw each time, so the chevrons return when the pin source
+  goes away.
+- A pin that names a value id opens editable and writes through as usual. A pin whose value is typed off
+  the list has no value id to edit, so it opens read-only.
 
 ### Writing through
 
