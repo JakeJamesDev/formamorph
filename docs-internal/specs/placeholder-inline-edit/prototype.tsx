@@ -393,7 +393,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
     const draw = () => {
       const svg = shape.current; const chrome = svg?.parentElement; const slot = target.current?.querySelector('[data-lexical-slot]');
       if (!svg || !chrome || !slot) return;
-      const PX = 6, PY = 3, R = 6;
+      const PX = 3, PY = 1, R = 5;
       const lines: { l: number; r: number; t: number; b: number }[] = [];
       for (const c of slot.getClientRects()) {
         const last = lines[lines.length - 1];
@@ -424,10 +424,12 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
         for (const p of pts) { const q = clean[clean.length - 1]; if (!q || q[0] !== p[0] || q[1] !== p[1]) clean.push(p); }
         const corners = clean.filter((p, i) => { const a = clean[(i + clean.length - 1) % clean.length]; const b = clean[(i + 1) % clean.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
         // Rounded corners: each corner is cut short by r on both sides and bridged with a quadratic curve.
+        // The top-left corner of the first piece stays square: the header tab sits on it.
         const n = corners.length;
         for (let i = 0; i < n; i++) {
           const a = corners[(i + n - 1) % n], p = corners[i], b = corners[(i + 1) % n];
-          const r = Math.min(R, Math.hypot(p[0] - a[0], p[1] - a[1]) / 2, Math.hypot(b[0] - p[0], b[1] - p[1]) / 2);
+          const flat = g === groups[0] && p[0] === g[0].l && p[1] === g[0].t;
+          const r = flat ? 0 : Math.min(R, Math.hypot(p[0] - a[0], p[1] - a[1]) / 2, Math.hypot(b[0] - p[0], b[1] - p[1]) / 2);
           const inn: [number, number] = [p[0] + Math.sign(a[0] - p[0]) * r, p[1] + Math.sign(a[1] - p[1]) * r];
           const out: [number, number] = [p[0] + Math.sign(b[0] - p[0]) * r, p[1] + Math.sign(b[1] - p[1]) * r];
           d += (i ? `L ${f(...inn)} ` : `M ${f(...inn)} `) + `Q ${f(...p)} ${f(...out)} `;
@@ -439,6 +441,16 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
       svg.setAttribute('width', `${maxX - minX + 2}`); svg.setAttribute('height', `${maxY - minY + 2}`);
       svg.setAttribute('viewBox', `0 0 ${maxX - minX + 2} ${maxY - minY + 2}`);
       svg.querySelector('path')?.setAttribute('d', d);
+      // Seat the header on the shape: its bottom edge on the first line's top edge, its left edge on the
+      // shape's left edge. Its bottom-right corner is square while the shape runs on beneath it and rounded
+      // where the header overhangs a first line narrower than itself.
+      const el = head.current;
+      if (el) {
+        const hr = el.getBoundingClientRect();
+        el.style.top = `${lines[0].t - first.top - hr.height + 1}px`;
+        el.style.left = `${lines[0].l - first.left}px`;
+        el.style.borderBottomRightRadius = lines[0].l + hr.width <= lines[0].r + 0.5 ? '0' : '5px';
+      }
     };
     // A floating header is anchored to the value's first fragment, which can sit anywhere on the line. Keep
     // it inside the editor's box: shift it left when it would run past the right edge, right past the left.
