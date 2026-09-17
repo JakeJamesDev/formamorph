@@ -62,7 +62,7 @@ function withSlot(ph: Placeholder, slot: number, text: string): Placeholder {
 
 interface Options {
   /** boxed / ownline / underline expand into an inline RegionNode; slot keeps the chip and opens a named slot (Lexical 0.50). */
-  treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-float' | 'slot-float-v' | 'slot-float-vh' | 'slot-stack' | 'slot-block';
+  treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-float' | 'slot-float-v' | 'slot-float-vh' | 'slot-float-shape' | 'slot-stack' | 'slot-block';
   edgeTyping: 'outside' | 'inside';
   boundaryDelete: 'block' | 'collapse';
   enterInRegion: 'linebreak' | 'block';
@@ -323,8 +323,51 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   // Mount after every commit that touches this chip: the container is parked hidden in the host DOM until
   // something reveals it, and a reconcile may re-park it.
   const head = useRef<HTMLSpanElement>(null);
+  const shape = useRef<SVGSVGElement>(null);
   useLayoutEffect(() => {
     const mount = () => { if (target.current) mountSlotContainer(editor, nodeKey, SLOT, target.current); clamp(); };
+    // One outline around every line fragment of the value: the fragments are measured, padded, made to meet
+    // vertically, and traced as a single rounded polygon in an SVG placed over the chrome's first fragment.
+    const draw = () => {
+      const svg = shape.current; const chrome = svg?.parentElement; const slot = target.current?.querySelector('[data-lexical-slot]');
+      if (!svg || !chrome || !slot) return;
+      const PX = 6, PY = 3, R = 6;
+      const lines: { l: number; r: number; t: number; b: number }[] = [];
+      for (const c of slot.getClientRects()) {
+        const last = lines[lines.length - 1];
+        if (last && c.top < last.b && c.bottom > last.t) { last.l = Math.min(last.l, c.left); last.r = Math.max(last.r, c.right); last.t = Math.min(last.t, c.top); last.b = Math.max(last.b, c.bottom); }
+        else lines.push({ l: c.left, r: c.right, t: c.top, b: c.bottom });
+      }
+      if (!lines.length) return;
+      for (const ln of lines) { ln.l -= PX; ln.r += PX; ln.t -= PY; ln.b += PY; }
+      for (let i = 1; i < lines.length; i++) { const mid = (lines[i - 1].b + lines[i].t) / 2; lines[i - 1].b = mid; lines[i].t = mid; }
+      const pts: [number, number][] = [];
+      for (const ln of lines) pts.push([ln.r, ln.t], [ln.r, ln.b]);
+      for (let i = lines.length - 1; i >= 0; i--) pts.push([lines[i].l, lines[i].b], [lines[i].l, lines[i].t]);
+      // Drop repeated and collinear points so every remaining vertex is a real corner.
+      const clean: [number, number][] = [];
+      for (const p of pts) { const q = clean[clean.length - 1]; if (!q || q[0] !== p[0] || q[1] !== p[1]) clean.push(p); }
+      const corners = clean.filter((p, i) => { const a = clean[(i + clean.length - 1) % clean.length]; const b = clean[(i + 1) % clean.length]; return !((a[0] === p[0] && p[0] === b[0]) || (a[1] === p[1] && p[1] === b[1])); });
+      const minX = Math.min(...corners.map((p) => p[0])), minY = Math.min(...corners.map((p) => p[1]));
+      const maxX = Math.max(...corners.map((p) => p[0])), maxY = Math.max(...corners.map((p) => p[1]));
+      // Rounded corners: each corner is cut short by r on both sides and bridged with a quadratic curve.
+      let d = '';
+      const n = corners.length;
+      for (let i = 0; i < n; i++) {
+        const a = corners[(i + n - 1) % n], p = corners[i], b = corners[(i + 1) % n];
+        const r = Math.min(R, Math.hypot(p[0] - a[0], p[1] - a[1]) / 2, Math.hypot(b[0] - p[0], b[1] - p[1]) / 2);
+        const inn: [number, number] = [p[0] + Math.sign(a[0] - p[0]) * r, p[1] + Math.sign(a[1] - p[1]) * r];
+        const out: [number, number] = [p[0] + Math.sign(b[0] - p[0]) * r, p[1] + Math.sign(b[1] - p[1]) * r];
+        const f = (x: number, y: number) => `${(x - minX + 1).toFixed(1)} ${(y - minY + 1).toFixed(1)}`;
+        d += (i ? `L ${f(...inn)} ` : `M ${f(...inn)} `) + `Q ${f(...p)} ${f(...out)} `;
+      }
+      d += 'Z';
+      const first = chrome.getClientRects()[0];
+      svg.style.left = `${minX - first.left - 1}px`; svg.style.top = `${minY - first.top - 1}px`;
+      svg.setAttribute('width', `${maxX - minX + 2}`); svg.setAttribute('height', `${maxY - minY + 2}`);
+      svg.setAttribute('viewBox', `0 0 ${maxX - minX + 2} ${maxY - minY + 2}`);
+      svg.querySelector('path')?.setAttribute('d', d);
+    };
     // A floating header is anchored to the value's first fragment, which can sit anywhere on the line. Keep
     // it inside the editor's box: shift it left when it would run past the right edge, right past the left.
     const clamp = () => {
@@ -334,6 +377,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
       const h = el.getBoundingClientRect(); const r = root.getBoundingClientRect();
       const over = Math.max(0, h.right - (r.right - 4)); const under = Math.max(0, (r.left + 4) - h.left);
       if (over || under) el.style.transform = `translateX(${under - over}px)`;
+      draw();
     };
     mount();
     window.addEventListener('resize', clamp);
@@ -373,6 +417,9 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
         <button type="button" onClick={collapse} aria-label="Collapse"><Minimize2 size={12} /></button>
       </span>
       <span ref={target} className="slot-target" />
+      {OptionsRef.current.treatment === 'slot-float-shape' && (
+        <svg ref={shape} className="slot-shape" aria-hidden><path /></svg>
+      )}
     </span>
   );
 }
@@ -638,7 +685,7 @@ function App() {
         resets the fields.
       </p>
       <div className="options">
-        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-float', 'slot-float-v', 'slot-float-vh', 'slot-stack', 'slot-block'])}
+        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-float', 'slot-float-v', 'slot-float-vh', 'slot-float-shape', 'slot-stack', 'slot-block'])}
         {opt('edgeTyping', ['outside', 'inside'])}
         {opt('boundaryDelete', ['block', 'collapse'])}
         {opt('enterInRegion', ['linebreak', 'block'])}
