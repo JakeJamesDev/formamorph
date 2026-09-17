@@ -87,6 +87,9 @@
      the outline's edge and sits just above its top. */
   /* Position and the bottom-right corner are set by measurement in the chrome after each draw. */
   .slot-chrome-slot-float-shape > .region-head { border-radius: 5px 5px 0 0; padding: 0 3px; gap: 1px; }
+  /* Layout padding at the value's two ends, one pixel wider than the outline's padding, so the outline is
+     drawn inside space the value owns and never over the neighbor's own space. */
+  .slot-chrome-slot-float-shape > .slot-target { padding: 0 4px; }
   .slot-chrome-slot-float-shape > .slot-target::before { line-height: 2.35em; vertical-align: 0.85em; }
 
   /* Treatment E — header above the value, the whole thing an inline block in the text flow. It stays on the
