@@ -62,7 +62,7 @@ function withSlot(ph: Placeholder, slot: number, text: string): Placeholder {
 
 interface Options {
   /** boxed / ownline / underline expand into an inline RegionNode; slot keeps the chip and opens a named slot (Lexical 0.50). */
-  treatment: 'boxed' | 'ownline' | 'underline' | 'slot';
+  treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-stack' | 'slot-block';
   edgeTyping: 'outside' | 'inside';
   boundaryDelete: 'block' | 'collapse';
   enterInRegion: 'linebreak' | 'block';
@@ -268,7 +268,7 @@ function $expand(chipKey: NodeKey, store: Store) {
   const ph = store.placeholders.find((p) => p.id === id);
   if (!ph) return;
   const text = slotsOf(ph)[0]?.text ?? '';
-  if (OptionsRef.current.treatment === 'slot') {
+  if (OptionsRef.current.treatment.startsWith('slot')) {
     chip.setExpanded(true).setSlotIndex(0);
     const value = $fillSlot(chip, text);
     value.selectEnd();
@@ -348,7 +348,7 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   });
   const stop = (e: MouseEvent) => e.preventDefault();
   return (
-    <span className="slot-chrome" style={{ '--accent': COLORS[id] } as CSSProperties}>
+    <span className={`slot-chrome slot-chrome-${OptionsRef.current.treatment}`} style={{ '--accent': COLORS[id] } as CSSProperties}>
       <span className="region-head" onMouseDown={stop}>
         <button type="button" onClick={() => step(-1)} disabled={slots.length < 2} aria-label="Previous"><ChevronLeft size={12} /></button>
         <span className="region-name">{ph.name}</span>
@@ -622,7 +622,7 @@ function App() {
         resets the fields.
       </p>
       <div className="options">
-        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot'])}
+        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-stack', 'slot-block'])}
         {opt('edgeTyping', ['outside', 'inside'])}
         {opt('boundaryDelete', ['block', 'collapse'])}
         {opt('enterInRegion', ['linebreak', 'block'])}
