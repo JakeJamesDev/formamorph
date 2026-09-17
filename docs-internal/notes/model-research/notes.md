@@ -4,7 +4,7 @@
 > baseline instead of re-deriving (and getting different answers each time). When asked for model info,
 > **read this first, refresh only what's stale, then update this doc** with the new numbers + date.
 
-**Last updated:** 2026-08-07 (harness debt: the engine is an endpoint preset now, so the seeded `useCustomEndpoint` flag is dead — see *Harness debt*)
+**Last updated:** 2026-09-17 (September candidate sweep; MeroMero v2 screened B/65 vs v1 re-screened A/72 — see *September 2026 refresh*)
 
 ---
 
@@ -259,6 +259,62 @@ llama.cpp — broken tool template).
 | gemma-4-E4B-heretic (cloud default) | **B/59** cloud / **B/65** local | 0 | `cooperdk/…-GPTQ-4bit` served via Aphrodite (custom-endpoint path) vs the Abiray GGUF on the engine path; local scores a touch higher/tighter — likelier the sampling path than the quant |
 
 The **restraint gradient** now reads: MeroMero-31B 56 ≫ StyleTune-26B 11 ≫ everything else 0 (incl. the 26B MeroMero MoE and the cloud default). Restraint is what separates the top two from the B/65 pack.
+
+## September 2026 refresh — new candidates and the MeroMero v2 screen
+
+### Candidate sweep (2026-09-16, live Hub + UGI CSV)
+
+Everything below is new since the July inventory or an iteration of a model we carry. UGI "none" = not on the
+board yet. Sizes are Q4_K_M; prefer bartowski or mradermacher `-i1-` repos (imatrix) — author-uploaded GGUFs
+are usually static.
+
+| Model | Author | Base | Released | Q4_K_M | UGI Writing (W/10) | Relation to inventory |
+|---|---|---|---|---|---|---|
+| G4-MeroMero-v2-31B | zerofata | Gemma-4 31B | 2026-07-31 | 18.7 GB | none | **Iteration of the No-Limit pick.** Screened below. |
+| Artemis-31B-v1.1 | TheDrummer | Gemma-4 31B | 2026-08-05 | 19.6 GB | none | Same author as Cydonia/Rocinante/Skyfall/Anubis; first Drummer dense Gemma-4 |
+| Orion-26B-A4B-v1.1 | TheDrummer | Gemma-4 26B-A4B | 2026-09-13 | 18.0 GB | none | MoE sibling of Artemis |
+| Glistening-Gem-31B-v2.1 | sophosympatheia | merge: Artemis + MeroMero v2 + Ortenzya | 2026-08-16 | 19.6 GB | none | Contains our MeroMero lineage; card admits rare fused-word artifacts |
+| Goetia-26B-A4B v1.3 (v1.6 out) | Naphula | merge of ~15 Gemma-4 26B tunes | 2026-06-19 | 17.2 GB | **47.9** think / 40.9 (9.5 / 8.2) | Top Writing score under 35B on the board |
+| Pantheon-Reasoning-26B-A4B-1.1-V2 | Gryphe | our StyleTune V2 | 2026-09-08 | 18.75 GB | none | Direct iteration on the catalog entry, adds trained reasoning |
+| Gemma-4-12B-StyleTune | Gryphe | Gemma-4 12B | 2026-06-19 | 7.9 GB | none | lm_head-only tune, 56% fewer clichés; ≤8 GB candidate |
+| Gemma4-12B-QAT-Uncensored Balanced | HauhauCS | Gemma-4 12B QAT | 2026-06-22 | 7.4 GB | none | Iteration of the ≤8 GB pick (QAT base, Balanced abliteration) |
+| Qwen3.8-27B | Qwen | new base | 2026-08-05 | 16.5 GB | none | Dominant new base; Gated DeltaNet hybrid, engine support untested |
+| Qwen3.8-27B Uncensored (HauhauCS) | HauhauCS | Qwen3.8-27B | 2026-08-17 | 17.9 GB (`Q4_K_P`) | none | 2.4M downloads; custom quant names |
+| Qwen3.8-27B-Dominatrix | allura-org | Qwen3.8-27B | 2026-08-17 | 16.8 GB | none | Same org as Anko |
+| Rocinante-XL-16B-v1 | TheDrummer | Nemo upscale | 2026-04-18 | 10.1 GB | 32.7 (2.8) | Iteration of Rocinante-X 12B; W/10 2.8 is a refusal flag |
+| Qwen3.5-9B Uncensored (HauhauCS) | HauhauCS | Qwen3.5-9B | 2026-03-04 | 5.6 GB | base 39.5 think / 33.5 | Only fresh ≤8 GB reasoning option |
+
+No new candidate from: Cydonia (v4.3 still latest), Sao10K (nothing since 2025-03), SicariusSicariiStuff
+(Persona_Maker on old bases), zerofata beyond v2, Painted Fantasy.
+
+### MeroMero v2 vs v1 — paired 3-seed screen on the current app (2026-09-17)
+
+| Model | Obj | Spread | Restraint | StatDir | Format | LocAcc |
+|---|---|---|---|---|---|---|
+| meromero-31b-q4 (v1, **re-screened today**) | A/72 | 62–77 | 33 | 83 | 100 | 100% |
+| meromero-v2-31b-q4 (i1 Q4_K_M) | B/65 | 65–65 | 0 | 100 | 100 | 100% |
+
+**v1 keeps the No-Limit pick.** v2 gives back restraint for nothing: it over-fires on every no-op seed (Vigor −1
+to −10 for tracing a door), v1 over-fires once in nine. v2 wins stat direction 100 vs 83 (one v1 miss) and is
+the steadier of the two, but restraint carries 35% of the objective.
+
+**v1's July A/84 is not reproducible on today's app** — it re-screens at A/72. The app changed under the
+screen: stat updates now ship with native reasoning off (`thinking_budget_tokens: 0`) and a Max Output cap
+sized from the stat count. Under that, **both Gemma-4 31B models spill their reasoning into the answer on
+about half of all stat calls** (5/9 no-op turns each): an empty `<think></think>`, then "The user is asking
+for stat changes…", cut off mid-sentence by the cap, with no `Stat: N` line ever reached. The app applies
+nothing from such a reply, so the *player* sees a silently skipped stat pass; the scorer counts it as a fire.
+In July, v1 reasoned in-band at length and concluded "No stats moved" — that path no longer exists at budget 0.
+This is an app finding, not a model one: **stat updates on the built-in engine with a Gemma-4 reasoning model
+are failing about half the time.** Not fixed here; it needs its own decision (budget > 0 for the stat pass, or
+a `<think>`-aware parser that tolerates the spill).
+
+Harness notes from the run: the enter dialog's **Start game** button and the contest **Got It** popup had
+broken every screen since July (fixed in `run.mjs`); a seed crashed with `__baseline` gone from the page
+(runner now logs page errors); the scorer padded a "3-seed" score with July dumps after that crash (now
+refuses cross-day sets). The engine ran on **Vulkan** (prebuilt CUDA binary incompatible), ~18 min per seed.
+`profiles.json` gained `meromero-v2-31b-q4` at `contextSize: 6144` because 8192 would not fit beside ~3.6 GB
+of desktop apps on the GPU.
 
 ### Workflow (2026-07-18): engine-only, Ollama dropped
 

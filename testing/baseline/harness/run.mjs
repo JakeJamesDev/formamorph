@@ -247,6 +247,11 @@ async function runOne(browser, cfg, model, profile) {
 
   const page = await context.newPage();
   page.setDefaultTimeout(60000);
+  // A game screen that unmounts mid-run takes __baseline with it; log the page's own account of why.
+  page.on("pageerror", (e) => console.error(`  page error: ${e.message}`));
+  page.on("crash", () => console.error("  page crashed"));
+  page.on("console", (m) => { if (m.type() === "error") console.error(`  console.error: ${m.text().slice(0, 300)}`); });
+  page.on("framenavigated", (f) => { if (f === page.mainFrame()) console.log(`  navigated: ${f.url()}`); });
   // Experimental: profile.injectThinking rewrites NARRATION requests to enable Gemma's native thought
   // channel (chat_template_kwargs) with token headroom, then strips the unmarked CoT from the response
   // before the app sees it — so the story history stays clean. Endpoint has no reasoning parser, hence
@@ -297,7 +302,8 @@ async function runOne(browser, cfg, model, profile) {
   // Each step's primary button is labeled with the NEXT step's name (Traits→Characters→Dictionaries→Start),
   // so click whichever advance label is present this iteration. Richer worlds (a character library, a
   // dictionary choice) chain more steps than Sedge's traits-only flow.
-  const ADVANCE = ["Next", "Location", "Characters", "Dictionaries", "Avatar", "Start", "Continue", "Random", "Skip"];
+  // "Got It" first: the contest popup overlays the enter dialog and must go before anything else is clickable.
+  const ADVANCE = ["Got It", "Next", "Location", "Characters", "Dictionaries", "Avatar", "Start game", "Start", "Continue", "Random", "Skip"];
   for (let i = 0; i < 24; i++) {
     if (await page.evaluate(() => Boolean(window.__baseline))) break;
     for (const name of ADVANCE) {
@@ -307,7 +313,12 @@ async function runOne(browser, cfg, model, profile) {
     await page.waitForTimeout(500);
   }
   if (!(await page.evaluate(() => Boolean(window.__baseline)))) {
-    throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)`);
+    // Name what is on screen so a new dialog in the enter flow is diagnosable from the log alone.
+    const seen = await page.evaluate(() => ({
+      buttons: [...document.querySelectorAll("button")].map((b) => b.textContent?.trim()).filter(Boolean).slice(0, 30),
+      dialogs: [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].map((d) => d.textContent?.trim().slice(0, 300)),
+    }));
+    throw new Error(`${label}: window.__baseline never registered (did the game screen mount?)\n  buttons: ${JSON.stringify(seen.buttons)}\n  dialogs: ${JSON.stringify(seen.dialogs)}`);
   }
 
   // Arm the parity recording before any turn runs, so the fixture holds the whole scripted run.
