@@ -55,8 +55,12 @@
      of the value, and a zero-width tall spacer makes the line box grow upward so the header has room and
      the line above is pushed away, never covered. */
   .slot-chrome-slot-float { position: relative; }
-  .slot-chrome-slot-float::before { content: ''; display: inline-block; width: 0; height: 2.55em; vertical-align: baseline; }
-  .slot-chrome-slot-float > .region-head { position: absolute; left: -1px; top: -1.35em; margin: 0; white-space: nowrap; border-radius: 5px 5px 5px 0; }
+  /* The spacer is an EMPTY INLINE box at the very start of the value, not an inline-block: an atomic inline
+     allows a line break after it, so it could stay on the line above while the value wrapped; an empty inline
+     with no whitespace after it cannot be separated from the value's first character. Its line-height grows
+     the line box, and the vertical-align shift puts that growth above the text. */
+  .slot-chrome-slot-float > .slot-target::before { content: ''; display: inline; line-height: 2.6em; vertical-align: 0.9em; }
+  .slot-chrome-slot-float > .region-head { position: absolute; left: -1px; top: -1.35em; margin: 0; white-space: nowrap; border-radius: 5px 5px 5px 0; z-index: 1; }
 
   /* Treatment E — header above the value, the whole thing an inline block in the text flow. It stays on the
      line where the chip was and wraps inside itself, never mid-line around the neighbors. */
