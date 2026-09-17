@@ -57,6 +57,24 @@
       "narration": "You duck into the tavern's back room, peel off your soaked coat, and sink onto the bench by the roaring hearth. Heat seeps back into your bones, and a serving girl presses a bowl of hot eel stew into your hands. Slowly the shaking stops and strength trickles back.",
       "expect": { "Warmth": "up", "Vigor": "up" },
       "allow": ["Health"]
+    },
+    {
+      "name": "noop-brush-dust",
+      "narration": "You brush the road dust from your sleeve with the back of one hand and watch it drift away on the still air. The common room hums on around you, unbothered.",
+      "expect": {},
+      "allow": []
+    },
+    {
+      "name": "noop-retie-lace",
+      "narration": "You crouch, work a stubborn knot out of your bootlace, and tie it again with a neat double loop. When you straighten up, nothing in the room has changed.",
+      "expect": {},
+      "allow": []
+    },
+    {
+      "name": "noop-trace-grain",
+      "narration": "You idly trace the grain of the cellar door's timber with one fingertip, following a dark whorl round and round while you wait. The house is quiet.",
+      "expect": {},
+      "allow": []
     }
   ]
 }
