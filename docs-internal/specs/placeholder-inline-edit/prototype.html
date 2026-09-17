@@ -51,6 +51,22 @@
   .slot-target [data-lexical-slot] { outline: none; }
   .slot-target .slot-box > p + p::before { content: '↵ '; opacity: .4; }
 
+  /* Treatment E — header above the value, the whole thing an inline block in the text flow. It stays on the
+     line where the chip was and wraps inside itself, never mid-line around the neighbors. */
+  .slot-chrome-slot-stack { display: inline-flex; flex-direction: column; align-items: flex-start; vertical-align: top; max-width: 100%; padding: 0 0 4px; margin: 2px 2px; border-radius: 6px; box-decoration-break: slice; }
+  .slot-chrome-slot-stack > .region-head { margin: 0; border-radius: 5px 5px 0 0; align-self: stretch; padding: 1px 6px; }
+  .slot-chrome-slot-stack > .slot-target { display: block; padding: 3px 6px 0; line-height: 1.5; }
+  .slot-chrome-slot-stack > .slot-target [data-lexical-slot], .slot-chrome-slot-stack > .slot-target [data-lexical-slot] > p,
+  .slot-chrome-slot-stack > .slot-target .slot-box, .slot-chrome-slot-stack > .slot-target .slot-box > p { display: block; }
+  .slot-chrome-slot-stack > .slot-target .slot-box > p + p::before { content: none; }
+  /* Treatment F — header above the value, on its own lines: the text before and after breaks around it. */
+  .slot-chrome-slot-block { display: block; margin: 6px 0; padding: 0 0 6px; border-radius: 6px; box-decoration-break: slice; }
+  .slot-chrome-slot-block > .region-head { display: flex; margin: 0; border-radius: 5px 5px 0 0; padding: 1px 8px; }
+  .slot-chrome-slot-block > .slot-target { display: block; padding: 4px 10px 0; line-height: 1.6; }
+  .slot-chrome-slot-block > .slot-target [data-lexical-slot], .slot-chrome-slot-block > .slot-target [data-lexical-slot] > p,
+  .slot-chrome-slot-block > .slot-target .slot-box, .slot-chrome-slot-block > .slot-target .slot-box > p { display: block; }
+  .slot-chrome-slot-block > .slot-target .slot-box > p + p::before { content: none; }
+
   .panel { background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 12px 14px; }
   .panel-title { font-size: 12px; color: hsl(var(--muted-foreground)); margin-bottom: 8px; }
   .ph { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
