@@ -7,6 +7,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   user_unsuspended: 'Reinstated',
   terms_reset_user: 'Terms reset',
   terms_reset_all: 'Terms reset (everyone)',
+  privacy_reset_user: 'Privacy policy reset',
+  privacy_reset_all: 'Privacy policy reset (everyone)',
   listing_deleted: 'Listing deleted',
   comment_deleted: 'Comment deleted',
   feedback_deleted: 'Feedback deleted',
@@ -28,6 +30,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   report_dismissed: 'Report dismissed',
   like_removed: 'Like removed',
   likes_cleared: 'Likes cleared',
+  account_deletion_requested: 'Deletion requested',
+  account_deletion_canceled: 'Deletion canceled',
+  account_deleted: 'Account deleted',
   signals_viewed: 'Linked accounts viewed',
 };
 
@@ -37,6 +42,8 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   user_unsuspended: 'bg-success/10 text-success',
   terms_reset_user: 'bg-warning/10 text-warning',
   terms_reset_all: 'bg-warning/10 text-warning',
+  privacy_reset_user: 'bg-warning/10 text-warning',
+  privacy_reset_all: 'bg-warning/10 text-warning',
   listing_deleted: 'bg-destructive/10 text-destructive',
   comment_deleted: 'bg-destructive/10 text-destructive',
   feedback_deleted: 'bg-destructive/10 text-destructive',
@@ -60,6 +67,9 @@ export const AUDIT_ACTION_STYLES: Record<AuditAction, string> = {
   report_dismissed: 'bg-muted text-muted-foreground',
   like_removed: 'bg-destructive/10 text-destructive',
   likes_cleared: 'bg-destructive/10 text-destructive',
+  account_deletion_requested: 'bg-warning/10 text-warning',
+  account_deletion_canceled: 'bg-success/10 text-success',
+  account_deleted: 'bg-destructive/10 text-destructive',
   // Nothing was done to anybody — somebody looked. Tinted as the neutral entry it is.
   signals_viewed: 'bg-muted text-muted-foreground',
 };
@@ -93,6 +103,9 @@ const KIND_NOUNS: Record<string, string> = {
   suggestion: 'suggestion',
 };
 
+/** The actions the clock does: a deadline passing, and the sweeper erasing an account. */
+const ACTORLESS_ACTIONS: ReadonlySet<AuditAction> = new Set(['quarantine_expired', 'account_deleted']);
+
 /**
  * Who the line names as having done it, or null when nobody chose it — a deadline passing has no actor.
  *
@@ -103,7 +116,7 @@ const KIND_NOUNS: Record<string, string> = {
  * @returns The actor's name, or null
  */
 export function auditActorName(entry: AuditEntry): string | null {
-  return entry.action === 'quarantine_expired' ? null : entry.actor.username || 'Someone';
+  return ACTORLESS_ACTIONS.has(entry.action) ? null : entry.actor.username || 'Someone';
 }
 
 /**
@@ -129,6 +142,10 @@ export function auditPredicate(entry: AuditEntry): string {
       return `asked ${target || 'an account'} to accept the terms again`;
     case 'terms_reset_all':
       return `asked everyone to accept the terms again`;
+    case 'privacy_reset_user':
+      return `asked ${target || 'an account'} to accept the privacy policy again`;
+    case 'privacy_reset_all':
+      return `asked everyone to accept the privacy policy again`;
     // Whose it was reads as a trailing `by …` rather than a possessive: usernames routinely end in `s`,
     // and `tam_reads’s comment` is a stumble in the middle of every line it appears in.
     case 'listing_deleted':
@@ -215,6 +232,14 @@ export function auditPredicate(entry: AuditEntry): string {
 
       return `cleared ${many} given by ${target || 'an account'}`;
     }
+    // Whether the content goes with the account is the snippet.
+    case 'account_deletion_requested':
+      return 'asked to delete their account';
+    case 'account_deletion_canceled':
+      return 'signed in and canceled their account deletion';
+    // The sweeper does this, so nobody is named. The account's name survives only on this row.
+    case 'account_deleted':
+      return `The account ${target || name || 'of a user'} was deleted`;
     // A look, not an act. It is logged because linkage data is the one record that says where a person
     // was, so reading it is accountable too.
     case 'signals_viewed': {

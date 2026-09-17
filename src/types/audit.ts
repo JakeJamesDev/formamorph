@@ -4,6 +4,8 @@ export const AUDIT_ACTIONS = [
   'user_unsuspended',
   'terms_reset_user',
   'terms_reset_all',
+  'privacy_reset_user',
+  'privacy_reset_all',
   'listing_deleted',
   'comment_deleted',
   'feedback_deleted',
@@ -25,6 +27,9 @@ export const AUDIT_ACTIONS = [
   'report_dismissed',
   'like_removed',
   'likes_cleared',
+  'account_deletion_requested',
+  'account_deletion_canceled',
+  'account_deleted',
   'signals_viewed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
