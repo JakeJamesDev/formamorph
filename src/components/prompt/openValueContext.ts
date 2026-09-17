@@ -7,6 +7,8 @@ export const VALUE_SLOT = 'value';
 export interface OpenValueView {
   text: string;
   label: string;
+  /** Open the previous (-1) or next (1) value. Absent when there is no other value to open. */
+  step?: (direction: -1 | 1) => void;
 }
 
 /** Token → the value its chip opens on, for the Values tab. */
