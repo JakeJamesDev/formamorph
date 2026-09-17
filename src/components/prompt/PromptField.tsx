@@ -42,6 +42,7 @@ import { resolveLayout, splitAvailable, usePromptSplitMode, useContainerWidth } 
 import { VariableNode, ValueBoxNode, $createVariableNode, PromptDragContext } from './VariableNode';
 import { OpenValuesPlugin } from './OpenValuesPlugin';
 import { ValueEdgesPlugin } from './ValueEdgesPlugin';
+import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
 import { OpenValuesContext, type OpenValueView } from './openValueContext';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
@@ -1006,6 +1007,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <EditablePlugin readOnly={readOnly} />
         <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} />
         <ValueEdgesPlugin active={valuesOpen} />
+        {valuesOpen && <OpenValueLayoutPlugin />}
         <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
         <CaretFollowPlugin onCaret={followCaret} />
         {insertTrigger && !readOnly && (
