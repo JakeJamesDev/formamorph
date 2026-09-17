@@ -62,7 +62,7 @@ function withSlot(ph: Placeholder, slot: number, text: string): Placeholder {
 
 interface Options {
   /** boxed / ownline / underline expand into an inline RegionNode; slot keeps the chip and opens a named slot (Lexical 0.50). */
-  treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-float' | 'slot-stack' | 'slot-block';
+  treatment: 'boxed' | 'ownline' | 'underline' | 'slot' | 'slot-float' | 'slot-float-v' | 'slot-float-vh' | 'slot-stack' | 'slot-block';
   edgeTyping: 'outside' | 'inside';
   boundaryDelete: 'block' | 'collapse';
   enterInRegion: 'linebreak' | 'block';
@@ -638,7 +638,7 @@ function App() {
         resets the fields.
       </p>
       <div className="options">
-        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-float', 'slot-stack', 'slot-block'])}
+        {opt('treatment', ['boxed', 'ownline', 'underline', 'slot', 'slot-float', 'slot-float-v', 'slot-float-vh', 'slot-stack', 'slot-block'])}
         {opt('edgeTyping', ['outside', 'inside'])}
         {opt('boundaryDelete', ['block', 'collapse'])}
         {opt('enterInRegion', ['linebreak', 'block'])}

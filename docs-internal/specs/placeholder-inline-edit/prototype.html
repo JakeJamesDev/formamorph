@@ -54,15 +54,23 @@
   /* Treatment G — the value stays inline exactly where the chip was; only the header lifts above the start
      of the value, and a zero-width tall spacer makes the line box grow upward so the header has room and
      the line above is pushed away, never covered. */
-  /* One shape across a wrap: `slice` draws the background and ring as a single box cut at the line break, so
-     the first fragment has an open right end and the next an open left end, instead of two closed boxes. */
-  .slot-chrome-slot-float { position: relative; -webkit-box-decoration-break: slice; box-decoration-break: slice; }
+  .slot-chrome-slot-float, .slot-chrome-slot-float-v, .slot-chrome-slot-float-vh { position: relative; }
+  /* Vertical join: enough vertical padding that a line's fragment reaches the next line's fragment, so the
+     fill is one continuous region where the two overlap. Padding on an inline paints without moving the
+     lines. The ring is dropped, because with `clone` every fragment would draw its own top and bottom edge
+     straight through the joined area. */
+  .slot-chrome-slot-float-v { box-shadow: none; padding: 7px 6px; background: color-mix(in oklab, var(--accent) 20%, transparent); }
+  /* Both: `slice` paints one box cut at the wrap (open ends, one ring around the whole), and the same
+     padding joins the fragments vertically, so the ring's top runs along the first line and its bottom
+     along the last with no edge at the seam. */
+  .slot-chrome-slot-float-vh { -webkit-box-decoration-break: slice; box-decoration-break: slice; padding: 7px 6px; }
   /* The spacer is an EMPTY INLINE box at the very start of the value, not an inline-block: an atomic inline
      allows a line break after it, so it could stay on the line above while the value wrapped; an empty inline
      with no whitespace after it cannot be separated from the value's first character. Its line-height grows
      the line box, and the vertical-align shift puts that growth above the text. */
-  .slot-chrome-slot-float > .slot-target::before { content: ''; display: inline; line-height: 2.6em; vertical-align: 0.9em; }
-  .slot-chrome-slot-float > .region-head { position: absolute; left: -1px; top: -1.35em; margin: 0; white-space: nowrap; border-radius: 5px 5px 5px 0; z-index: 1; }
+  [class*="slot-chrome-slot-float"] > .slot-target::before { content: ''; display: inline; line-height: 2.6em; vertical-align: 0.9em; }
+  [class*="slot-chrome-slot-float"] > .region-head { position: absolute; left: -1px; top: -1.35em; margin: 0; white-space: nowrap; border-radius: 5px 5px 5px 0; z-index: 1; }
+  .slot-chrome-slot-float-v > .region-head, .slot-chrome-slot-float-vh > .region-head { top: -1.6em; }
 
   /* Treatment E — header above the value, the whole thing an inline block in the text flow. It stays on the
      line where the chip was and wraps inside itself, never mid-line around the neighbors. */
