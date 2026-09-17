@@ -2,8 +2,8 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode, type DragEvent } from 'react';
 import {
-  DecoratorNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
-  type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
+  DecoratorNode, ElementNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
+  type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ChipRenameInput } from '@/components/Chip';
@@ -18,6 +18,7 @@ import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVar
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import { remintPlaceholderPlacements } from '@/lib/placeholders';
+import { OpenValueChip } from './OpenValueChip';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -328,6 +329,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
  *  token via the PromptField serializer, so untouched prompts stay byte-identical. */
 export class VariableNode extends DecoratorNode<ReactNode> {
   __token: string;
+  /** Open on the Values tab: the chip shows its value, held in its `value` slot. */
+  __expanded = false;
 
   static getType(): string { return 'variable'; }
   static clone(node: VariableNode): VariableNode { return new VariableNode(node.__token, node.__key); }
@@ -337,16 +340,24 @@ export class VariableNode extends DecoratorNode<ReactNode> {
     this.__token = token;
   }
 
+  afterCloneFrom(prev: this): void {
+    super.afterCloneFrom(prev);
+    this.__expanded = prev.__expanded;
+  }
+
   isInline(): boolean { return true; }
   getToken(): string { return this.getLatest().__token; }
   setToken(token: string): void { this.getWritable().__token = token; }
+  isExpanded(): boolean { return this.getLatest().__expanded; }
+  setExpanded(expanded: boolean): void { this.getWritable().__expanded = expanded; }
 
   createDOM(): HTMLElement {
     const span = document.createElement('span');
-    span.style.display = 'inline-block';
+    // An open value wraps with the text around it; a pill never breaks.
+    span.style.display = this.__expanded ? 'inline' : 'inline-block';
     return span;
   }
-  updateDOM(): boolean { return false; }
+  updateDOM(prev: VariableNode): boolean { return prev.__expanded !== this.__expanded; }
 
   static importJSON(serialized: SerializedVariableNode): VariableNode {
     // Only the clipboard deserializes through here (fields load via parsePlaceholderText, drags move live
@@ -359,8 +370,26 @@ export class VariableNode extends DecoratorNode<ReactNode> {
   }
 
   decorate(): ReactNode {
-    return <VariableChip nodeKey={this.__key} token={this.__token} />;
+    return this.__expanded
+      ? <OpenValueChip nodeKey={this.__key} token={this.__token} />
+      : <VariableChip nodeKey={this.__key} token={this.__token} />;
   }
+}
+
+/** An open chip's value: a shadow root, so its text is a document of its own inside the chip. */
+export class ValueBoxNode extends ElementNode {
+  static getType(): string { return 'placeholder-value-box'; }
+  static clone(node: ValueBoxNode): ValueBoxNode { return new ValueBoxNode(node.__key); }
+  static importJSON(): ValueBoxNode { return new ValueBoxNode(); }
+  exportJSON(): SerializedElementNode { return { ...super.exportJSON(), type: ValueBoxNode.getType(), version: 1 }; }
+
+  createDOM(): HTMLElement { return document.createElement('span'); }
+  updateDOM(): boolean { return false; }
+  isShadowRoot(): boolean { return true; }
+}
+
+export function $isValueBoxNode(node: LexicalNode | null | undefined): node is ValueBoxNode {
+  return node instanceof ValueBoxNode;
 }
 
 export function $createVariableNode(token: string): VariableNode {

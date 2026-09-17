@@ -39,7 +39,9 @@ import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { resolveLayout, splitAvailable, usePromptSplitMode, useContainerWidth } from '@/lib/promptLayout';
-import { VariableNode, $createVariableNode, PromptDragContext } from './VariableNode';
+import { VariableNode, ValueBoxNode, $createVariableNode, PromptDragContext } from './VariableNode';
+import { OpenValuesPlugin } from './OpenValuesPlugin';
+import { OpenValuesContext, type OpenValueView } from './openValueContext';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
@@ -440,6 +442,10 @@ function VariableToolbar({ vocab, interactive }: {
 
 // --- editor + field ---
 
+const NO_OPEN_VALUES: Record<string, OpenValueView> = {};
+
+type FieldTab = 'edit' | 'values' | 'preview';
+
 const EDITOR_CLASS =
   'h-full min-h-[160px] w-full overflow-auto rounded-md border border-input bg-background px-3 py-2 ' +
   'text-label outline-none whitespace-pre-wrap';
@@ -523,7 +529,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside, hint }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside, hint }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -531,6 +537,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   /** Override the token family (e.g. world placeholders). Defaults to the prompt vocabulary from `variables`. */
   vocabulary?: ChipVocabulary;
   previewValues?: Record<string, string>;
+  /** Token → the value each chip opens on. Given with `previewValues`, the field offers a Values tab that
+   *  shows every chip open on its value. */
+  openValues?: Record<string, OpenValueView>;
   /** Draw the chips in this field again. Given one, the chrome offers a Reroll button while the text holds
    *  a chip — placeholder fields pass it, prompt fields have nothing to redraw. */
   onReroll?: () => void;
@@ -583,7 +592,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
-  const [tab, setTab] = useState('edit');
+  const [tab, setTab] = useState<FieldTab>('edit');
   // A markdown field always has something to preview (the rendered prose); a plain chip field only earns
   // the toggle once there are values to swap in.
   const showTabs = markdown || !!previewValues;
@@ -592,11 +601,17 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // first chip is a reflow around the caret, worse than the strip idling.
   const hasChips = useMemo(() => vocab.parse(value).some((seg) => seg.type === 'variable'), [vocab, value]);
   const previewEnabled = markdown || hasChips;
-  // The value can change under an open Preview (a preset switch, a find-bar replace). If that disables
-  // Preview, land back on Edit — a disabled tab must not stay the active one.
+  // Values opens the chips in place, so it needs chips to open whatever the field's kind.
+  const valuesOffered = showTabs && !!previewValues && !!openValues;
+  const valuesEnabled = valuesOffered && hasChips;
+  // The value can change under an open tab (a preset switch, a find-bar replace). If that disables the tab,
+  // land back on Edit — a disabled tab must not stay the active one.
   useEffect(() => {
-    if (!previewEnabled && tab !== 'edit') setTab('edit');
-  }, [previewEnabled, tab]);
+    if ((tab === 'preview' && !previewEnabled) || (tab === 'values' && !valuesEnabled)) setTab('edit');
+  }, [previewEnabled, valuesEnabled, tab]);
+  const valuesOpen = tab === 'values' && valuesEnabled;
+  // Radix hands back a plain string; every trigger here carries a FieldTab value.
+  const selectTab = (next: string) => setTab(next as FieldTab);
 
   // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
   // back to tabs and mobile never reaches the split threshold — no breakpoint to keep in sync.
@@ -707,9 +722,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     let prevHeight = -1;
     let tries = 0;
     const run = () => {
-      const el = tab === 'edit' ? editScrollRef.current : previewScrollRef.current;
+      const el = tab === 'preview' ? previewScrollRef.current : editScrollRef.current;
       if (!el) { applying.current = false; return; }
-      applyAnchor(el, tab === 'edit' ? PROMPT_ANCHORS.edit : PROMPT_ANCHORS.preview, anchor);
+      applyAnchor(el, tab === 'preview' ? PROMPT_ANCHORS.preview : PROMPT_ANCHORS.edit, anchor);
       if (el.scrollHeight !== prevHeight && tries < 10) {
         prevHeight = el.scrollHeight;
         tries++;
@@ -727,7 +742,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   const initialConfig = useMemo(
     () => ({
       namespace: 'PromptField',
-      nodes: [VariableNode],
+      nodes: [VariableNode, ValueBoxNode],
       onError: (error: Error) => { throw error; },
       editable: !readOnly,
       editorState: () => buildEditorState(value, vocab.parse),
@@ -791,6 +806,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // mobile expression of the split, landing on the same content position via the shared anchor. With
   // Preview disabled the tab bar shows instead: dots would offer a position the gesture can't reach.
   const swipeable = isMobile && fullscreen && !split && showTabs && previewEnabled;
+  const swipeOrder: FieldTab[] = valuesEnabled ? ['edit', 'values', 'preview'] : ['edit', 'preview'];
   const touchX = useRef<number | null>(null);
   const swipeHandlers = swipeable ? {
     onTouchStart: (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; },
@@ -799,13 +815,14 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       const dx = e.changedTouches[0].clientX - touchX.current;
       touchX.current = null;
       if (Math.abs(dx) < 60) return;
-      const next = dx < 0 ? 'preview' : 'edit';
+      const at = swipeOrder.indexOf(tab);
+      const next = swipeOrder[Math.min(swipeOrder.length - 1, Math.max(0, at + (dx < 0 ? 1 : -1)))];
       if (next !== tab) setTab(next);
     },
   } : {};
 
-  // Nothing to type into: read-only, or the preview pane is the one showing.
-  const editingDisabled = readOnly || (!split && showTabs && tab !== 'edit');
+  // Nothing to type into: read-only, the values are open, or the preview pane is the one showing.
+  const editingDisabled = readOnly || valuesOpen || (!split && showTabs && tab !== 'edit');
 
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
@@ -816,7 +833,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled} />}
         {/* With a shared palette the per-field row would repeat the same chips above every field on the
             panel — the whole reason the palette was hoisted out. */}
-        {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!readOnly && (split || !showTabs || tab === 'edit')} />}
+        {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!editingDisabled} />}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
         {/* Contributed buttons (an AI generate, say) lead, divided from the field's own history the same
@@ -870,28 +887,45 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
 
   const panes = split ? (
     <div className="flex flex-1 min-h-0 gap-3">
-      <div className="flex-1 min-w-0 flex flex-col">{editorSurface}</div>
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Values takes Edit's seat beside the Preview. */}
+        {valuesOffered && (
+          <Tabs value={valuesOpen ? 'values' : 'edit'} onValueChange={selectTab} className="mb-2 flex-shrink-0">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="edit">Edit</TabsTrigger>
+              <TabsTrigger value="values" disabled={!valuesEnabled}>Values</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+        {editorSurface}
+      </div>
       <div className="flex-1 min-w-0 flex flex-col">{previewSurface}</div>
     </div>
   ) : showTabs ? (
-    <Tabs value={tab} onValueChange={setTab} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
+    <Tabs value={tab} onValueChange={selectTab} className={cn('flex flex-col flex-1 min-h-0', resizeClass)}>
       {swipeable ? (
         // Dots, not tab buttons: the gesture is the control, and a full-width tab bar on mobile spends
         // height the editor just got back.
         <div className="flex justify-center gap-1.5 py-1 flex-shrink-0" aria-hidden>
-          {['edit', 'preview'].map((t) => (
-            <span key={t} className={cn('h-1.5 w-1.5 rounded-full', tab === t ? 'bg-primary' : 'bg-muted-foreground/40')} />
+          {swipeOrder.map((t) => (
+            <span key={t} data-swipe-dot className={cn('h-1.5 w-1.5 rounded-full', tab === t ? 'bg-primary' : 'bg-muted-foreground/40')} />
           ))}
         </div>
       ) : (
-        <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
+        <TabsList className={cn('grid w-full flex-shrink-0', valuesOffered ? 'grid-cols-3' : 'grid-cols-2')}>
           <TabsTrigger value="edit">Edit</TabsTrigger>
+          {valuesOffered && <TabsTrigger value="values" disabled={!valuesEnabled}>Values</TabsTrigger>}
           <TabsTrigger value="preview" disabled={!previewEnabled}>Preview</TabsTrigger>
         </TabsList>
       )}
       <TabsContent value="edit" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
         {editorSurface}
       </TabsContent>
+      {valuesOffered && (
+        <TabsContent value="values" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
+          {editorSurface}
+        </TabsContent>
+      )}
       <TabsContent value="preview" className="mt-2 flex-1 min-h-0 data-[state=active]:flex flex-col" {...swipeHandlers}>
         {previewSurface}
       </TabsContent>
@@ -941,6 +975,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <ChipVocabularyContext.Provider value={vocab}>
+      <OpenValuesContext.Provider value={openValues ?? NO_OPEN_VALUES}>
       <PromptDragContext.Provider value={dragKey}>
         {/* A real (nested) dialog rather than a hand-rolled overlay: most of these fields live inside the
             Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
@@ -966,16 +1001,18 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         )}
         <SeededHistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
-        <EditablePlugin readOnly={readOnly} />
+        <EditablePlugin readOnly={readOnly || valuesOpen} />
+        <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} />
         <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
         <CaretFollowPlugin onCaret={followCaret} />
-        {insertTrigger && !readOnly && (
+        {insertTrigger && !readOnly && !valuesOpen && (
           <>
             <ChipTypeaheadPlugin trigger={insertTrigger} vocab={vocab} />
             <ChipInsertTargetPlugin vocab={vocab} ownerId={insertOwnerId} />
           </>
         )}
       </PromptDragContext.Provider>
+      </OpenValuesContext.Provider>
       </ChipVocabularyContext.Provider>
     </LexicalComposer>
   );

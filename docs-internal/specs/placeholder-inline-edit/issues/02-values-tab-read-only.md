@@ -1,6 +1,7 @@
 # 02: Values Tab With Read-Only Open Values
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 1660dfe3
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
