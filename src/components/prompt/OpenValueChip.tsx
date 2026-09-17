@@ -19,6 +19,7 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
   const vocab = useContext(ChipVocabularyContext);
   const open = useContext(OpenValuesContext)[token];
   const target = useRef<HTMLSpanElement>(null);
+  const step = open?.step;
 
   // A refill reparks the container, so it mounts again after every update. Mounting in place is a no-op.
   useLayoutEffect(() => {
@@ -39,10 +40,10 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
         onMouseDown={(e) => e.preventDefault()}
         className="mr-1 inline-flex select-none items-center gap-0.5 whitespace-nowrap text-meta font-medium text-muted-foreground"
       >
-        {open?.step && <StepButton label="Previous value" onClick={() => open.step?.(-1)}><ChevronLeft className="h-3 w-3" /></StepButton>}
+        {step && <StepButton label="Previous Value" onClick={() => step(-1)}><ChevronLeft className="h-3 w-3" /></StepButton>}
         {vocab.label(token)}
         {open?.label && <span className="font-normal"> · {open.label}</span>}
-        {open?.step && <StepButton label="Next value" onClick={() => open.step?.(1)}><ChevronRight className="h-3 w-3" /></StepButton>}
+        {step && <StepButton label="Next Value" onClick={() => step(1)}><ChevronRight className="h-3 w-3" /></StepButton>}
       </span>
       <span ref={target} data-open-value-text className={SLOT_TARGET_CLASS} />
     </span>

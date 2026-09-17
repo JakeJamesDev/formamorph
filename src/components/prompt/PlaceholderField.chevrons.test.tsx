@@ -17,13 +17,29 @@ const unique = (id: string, placementId: string) => encodePlaceholderToken({ id,
 const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge Landing', 'Marrow', 'Harrow Point']) };
 const hair: Placeholder = { id: 'hair', name: 'Hair', values: phValues(['silver']) };
 const gear: Placeholder = { id: 'gear', name: 'Gear', values: phValues(['rope', 'lamp', 'knife']), roll: false };
-const WORLD = [town, hair, gear];
+// A choice whose first value is the Town chip, so a chip can drill through it to Town.
+const region: Placeholder = { id: 'region', name: 'Region', values: phValues([world('town', 'r1'), 'the wilds']) };
+// Its first value pins Town to Marrow and Gear to lamp.
+const lord: Placeholder = {
+  id: 'lord',
+  name: 'Lord',
+  values: [
+    { id: 'v:Ash', text: 'Ash', pins: [
+      { placeholderId: 'town', value: 'Marrow', valueId: 'v:Marrow' },
+      { placeholderId: 'gear', value: 'lamp', valueId: 'v:lamp' },
+    ] },
+    { id: 'v:Bram', text: 'Bram' },
+  ],
+};
+const WORLD = [town, hair, gear, region, lord];
+const drill = (mode: 'world' | 'unique', placementId: string) =>
+  encodePlaceholderToken({ id: 'region', mode, placementId, path: [{ kind: 'val', ref: 'town' }] });
 
 const openValues = (root: HTMLElement = document.body) =>
   Array.from(root.querySelectorAll<HTMLElement>('[data-open-value]'));
 const valueText = (el: HTMLElement) => el.querySelector('[data-open-value-text]')?.textContent ?? '';
 const step = (el: HTMLElement, dir: 'Previous' | 'Next') =>
-  userEvent.click(within(el).getByRole('button', { name: `${dir} value` }));
+  userEvent.click(within(el).getByRole('button', { name: `${dir} Value` }));
 
 /** Two fields under one editor: the first on Values, the second left for the caller to read. */
 function Fields({ first, second = '' }: { first: string; second?: string }) {
@@ -101,6 +117,31 @@ describe('the Values tab chevrons', () => {
     expect(openValues(first()).map(valueText)).toEqual(['Marrow', 'Sedge Landing']);
     await openTab(second(), 'Values');
     expect(openValues(second()).map(valueText)).toEqual(['Sedge Landing']);
+  });
+
+  it('step a World drill target under its own roll, and are absent on a Unique drill', async () => {
+    render(<Fields first={`${drill('world', 'd1')} and ${drill('unique', 'd2')}`} second={`At ${world('town', 'w1')}`} />);
+    await openTab(first(), 'Values');
+    const [worldDrill, uniqueDrill] = openValues(first());
+    expect(valueText(worldDrill)).toBe('Sedge Landing');
+    expect(within(uniqueDrill).queryByRole('button')).toBeNull();
+    await step(worldDrill, 'Next');
+    expect(valueText(openValues(first())[0])).toBe('Marrow');
+    await openTab(second(), 'Preview');
+    expect(within(second()).getByTestId('prompt-preview')).toHaveTextContent('At Marrow');
+  });
+
+  it('are absent on a pinned chip, which opens on the pinned value', async () => {
+    render(<Fields first={`${world('lord', 'l1')} of ${world('town', 'p1')} with ${world('gear', 'g1')}`} />);
+    await openTab(first(), 'Values');
+    const [, pinnedTown, pinnedGear] = openValues(first());
+    expect(valueText(pinnedTown)).toBe('Marrow');
+    expect(within(pinnedTown).getByText(/Value 2 · Pinned/)).toBeInTheDocument();
+    expect(within(pinnedTown).queryByRole('button')).toBeNull();
+    expect(valueText(pinnedGear)).toBe('lamp');
+    expect(within(pinnedGear).queryByRole('button')).toBeNull();
+    await openTab(first(), 'Preview');
+    expect(within(first()).getByTestId('prompt-preview')).toHaveTextContent('Ash of Marrow with lamp');
   });
 });
 

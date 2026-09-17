@@ -6,16 +6,16 @@ import { decodePlaceholderToken, directChipTargets, placeholderIsChoice } from '
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
-import type { OpenValueView } from './openValueContext';
+import type { OpenValueView, StepDirection } from './openValueContext';
 
 /** The header's name for an open value: its place in the list, or what it is when it is on no list. */
-function openValueLabel(values: Placeholder['values'] | undefined, index: number): string {
-  if (index >= 0) return `Value ${index + 1} · ${index + 1}/${values?.length ?? 0}`;
+function openValueLabel(values: Placeholder['values'] | undefined, index: number, pinned = false): string {
+  if (index >= 0) return pinned ? `Value ${index + 1} · Pinned` : `Value ${index + 1} · ${index + 1}/${values?.length ?? 0}`;
   return values?.length ? 'Pinned' : 'No Values';
 }
 
 /** The value `direction` steps to from `index`, wrapping. Off the list, a step enters it at either end. */
-const stepIndex = (index: number, direction: -1 | 1, count: number): number =>
+const stepIndex = (index: number, direction: StepDirection, count: number): number =>
   index < 0 ? (direction === 1 ? 0 : count - 1) : (index + direction + count) % count;
 
 /**
@@ -59,7 +59,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   // Re-read on every reroll: the store's identity carries its version.
   const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
   // An Object draws nothing, so the value its chip opens on is this field's own, by token.
-  const [objectOpen, setObjectOpen] = useState<Record<string, number>>({});
+  const [objectIndexByToken, setObjectIndexByToken] = useState<Record<string, number>>({});
   const openValues = useMemo(() => {
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
@@ -67,28 +67,36 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       const ph = byId.get(open.placeholderId);
       const values = ph?.values ?? [];
       const placement = decodePlaceholderToken(token);
-      // A chip that drills opens on a value its own placement does not roll, so it has no step.
-      const own = placement?.id === open.placeholderId && !placement.path?.length;
-      if (own && ph && values.length > 1 && !placeholderIsChoice(ph)) {
-        const index = (objectOpen[token] ?? 0) % values.length;
+      // A pin decides the value, so a step would write a roll nothing reads.
+      if (!ph || !placement || values.length < 2 || open.pinned) {
+        const index = values.findIndex((v) => v.id === open.valueId);
+        out[token] = { text: open.text, label: openValueLabel(values, index, open.pinned) };
+        continue;
+      }
+      if (!placeholderIsChoice(ph)) {
+        const index = (objectIndexByToken[token] ?? 0) % values.length;
         out[token] = {
           text: values[index].text,
           label: openValueLabel(values, index),
-          step: (direction) => setObjectOpen((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
+          step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
         };
         continue;
       }
+      // A World drill target rolls under its own id; a Unique one rolls under a chain key no placement names.
+      const rolled = placement.path?.length
+        ? placement.mode === 'world' && { ...placement, id: ph.id }
+        : placement;
       const index = open.valueId ? values.findIndex((v) => v.id === open.valueId) : -1;
       out[token] = {
         text: open.text,
         label: openValueLabel(values, index),
-        ...(own && placement && values.length > 1 && {
-          step: (direction: -1 | 1) => rolls.setRoll(placement, values[stepIndex(index, direction, values.length)].id),
+        ...(rolled && {
+          step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
         }),
       };
     }
     return out;
-  }, [rolls, value, placeholders, objectOpen]);
+  }, [rolls, value, placeholders, objectIndexByToken]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],

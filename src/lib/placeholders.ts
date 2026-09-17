@@ -627,6 +627,8 @@ export interface OpenPlaceholderValue {
   placeholderId: string;
   valueId?: string;
   text: string;
+  /** A pin forced this value, so no roll decides it. */
+  pinned?: true;
 }
 
 /**
@@ -1038,10 +1040,10 @@ interface ResolveCtx {
 type OpenedRef = { current: OpenPlaceholderValue | null };
 
 /** Record `text` as the value the current chip opens on, unless an outer level already did. */
-function noteOpened(ctx: ResolveCtx, ph: Placeholder, text: string): void {
+function noteOpened(ctx: ResolveCtx, ph: Placeholder, text: string, pinned = false): void {
   if (!ctx.opened || ctx.opened.current) return;
   const valueId = valueCrossing(ph, text)?.value.id;
-  ctx.opened.current = { placeholderId: ph.id, ...(valueId ? { valueId } : {}), text };
+  ctx.opened.current = { placeholderId: ph.id, ...(valueId ? { valueId } : {}), text, ...(pinned && { pinned }) };
 }
 
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
@@ -1329,7 +1331,7 @@ function phSpans(ph: Placeholder, ctx: ResolveCtx): PlaceholderSpan[] {
   // A pin is text the author typed, not one of these values, so it crosses into nothing this row could
   // weight.
   if (pinned != null) {
-    noteOpened(ctx, ph, pinned);
+    noteOpened(ctx, ph, pinned, true);
     return valueSpans(pinned, inner);
   }
   const values = ph.values ?? [];
