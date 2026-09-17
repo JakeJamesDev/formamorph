@@ -316,6 +316,56 @@ refuses cross-day sets). The engine ran on **Vulkan** (prebuilt CUDA binary inco
 `profiles.json` gained `meromero-v2-31b-q4` at `contextSize: 6144` because 8192 would not fit beside ~3.6 GB
 of desktop apps on the GPU.
 
+### Stat-pass reasoning probe (2026-09-17) — `stat-reasoning-probe.mjs`
+
+Question: does the stat pass need native reasoning, and does a budget stop the spill above? Arms: `off` (shipped,
+budget 0), `low` (shipped Low = 25% of the 112-token cap = 28 tokens), `think` (a real budget on top of the
+cap). 11 gold cases (8 relevance + 3 gate idle turns), temp 0.2, built-in engine on Vulkan.
+
+| Model | Arm | Clean | Spill | No-op clean | Spurious | ms/call |
+|---|---|---|---|---|---|---|
+| MeroMero v1 31B | off | 79% | 3/33 | 100% | 4 | 4,579 |
+| | low (28 tok) | 82% | 1/33 | 100% | 7 | 4,801 |
+| | think 150 tok | **88%** | **0** | 100% | 4 | 12,066 |
+| | think 400 tok | 88% | 0 | 100% | 4 | 22,534 |
+| MeroMero v2 31B | off | 85% | 3/33 | 100% | 2 | 4,340 |
+| | low | 97% | 1/33 | 100% | 0 | 4,222 |
+| | think 400 | **100%** | **0** | 100% | 0 | 19,820 |
+| Cydonia 24B (8 runs) | off | 77% | 0 | 88% | 20 | 437 |
+| | think 400 | 75% | 0 | 81% | 22 | 433 |
+| Cloud E4B (5 runs) | off | 87% | 0 | 100% | 7 | 185 |
+| | low | 84% | 0 | 100% | 10 | 161 |
+
+**Findings.**
+- **The spill is idle-turn-only.** Every spilled reply on both Gemma models was a no-op case: with no room to
+  think, the model explains why nothing changed *in the answer* and the cap cuts it off. Rate here 3/33 per
+  model; in the full-turn screen it was ~5/9 on idle turns, so richer context makes it worse.
+- **A ~150-token budget removes it** and lifts clean rate on both Gemma models (v1 79→88, v2 85→100 at 400).
+  150 and 400 score the same on v1; 150 costs 2.6× stat latency (4.6 s → 12 s per call), 400 costs 5×.
+- **Shipped Low (28 tokens) is not enough** — the model fills it and still spills once in 33.
+- **Non-reasoning models are unaffected.** Cydonia off vs think is inside noise at 8 runs (77 vs 75); the
+  earlier 3-run dip was sampling. Its failures are the known belief-padding (Standing-from-morale,
+  Coin-from-social). Cloud ignores the field.
+- The remaining Gemma failures are model-level padding (Vigor on social-win, Resolve on rest) — the same
+  residual the July stat probe found, budget or not.
+
+**Effort levels — LM Studio, MeroMero v1, 2 runs (2026-09-17).** The `reasoning_effort` literal is an on/off
+switch for Gemma 4 there, not a grade: `none` thinks 0 chars; `low`, `medium` and `high` all think ~900–980
+chars, indistinguishable, and unbounded — 13 of 22 calls ran the thought into `max_tokens` and answered
+nothing (clean 50–64%). `high` with `thinking_budget_tokens: 150` beside it thinks ~600 chars, never
+truncates, 86% clean at 5.3 s/call — the same picture as the engine's 150-token arm. `none` was 91% clean
+with 0 spills in 22 calls, so LM Studio's off path may be cleaner than the engine's (3/33); not separated
+from noise at 2 runs. On the built-in engine the literal does not exist at all: node-llama-cpp 3.20 takes
+only `budgets.thoughtTokens` per request (an effort literal exists only on its gpt-oss Harmony wrapper, at
+construction), so an engine "level" can only be a budget preset. **Either way, the graded control for
+Gemma 4 is the token budget.**
+
+**The blocker is the budget model, not a number.** The app expresses a budget as a percent of the prompt's
+max output, and the thought tokens live *inside* that cap. The stat cap is `16 × stats + 16`, so no percent
+reaches 150 thought tokens on a 2- or 6-stat world. Fixing the spill means one of: a per-prompt token floor
+for the budget with the cap raised to cover it; a cap that excludes thought tokens; or a parser that reads
+stat lines after spilled prose plus a larger cap. That is a product decision — see [[stat-pass-reasoning-spill]].
+
 ### Workflow (2026-07-18): engine-only, Ollama dropped
 
 Every model — catalog and reference — now screens through the built-in engine (`llmEngine.cjs`, port 8977)
