@@ -410,6 +410,32 @@ describe('who acted, and what they were', () => {
     expect(auditPredicate(entry({ action: 'quarantine_expired' }))).toMatch(/^The quarantine ran out/);
   });
 
+  it('names nobody for an erased account, and keeps the name of the account that went', () => {
+    // The sweeper writes this with no actor. "Someone" there would invent a person.
+    const erased = entry({
+      action: 'account_deleted',
+      actor: { id: null, username: null, wasAdmin: false },
+      snippet: 'content deleted',
+    });
+    expect(auditActorName(erased)).toBeNull();
+    expect(describeAuditEntry(erased)).toBe('The account trouble was deleted');
+  });
+
+  it('reads the two ends of a deletion request as the account holder’s own acts', () => {
+    const own = { actor: { id: 'u1', username: 'trouble', wasAdmin: false }, targetUser: null };
+    expect(describeAuditEntry(entry({ action: 'account_deletion_requested', ...own })))
+      .toBe('trouble asked to delete their account');
+    expect(describeAuditEntry(entry({ action: 'account_deletion_canceled', ...own })))
+      .toBe('trouble signed in and canceled their account deletion');
+  });
+
+  it('names who was asked to accept the privacy policy again', () => {
+    expect(describeAuditEntry(entry({ action: 'privacy_reset_user' })))
+      .toBe('root-admin asked trouble to accept the privacy policy again');
+    expect(describeAuditEntry(entry({ action: 'privacy_reset_all', targetUser: null })))
+      .toBe('root-admin asked everyone to accept the privacy policy again');
+  });
+
   it('falls back to Someone for an entry whose actor has no name left', () => {
     expect(auditActorName(entry({ actor: { id: null, username: null, wasAdmin: false } }))).toBe('Someone');
   });
