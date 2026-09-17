@@ -79,7 +79,9 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   }, []);
   const openValues = useMemo(() => {
     const writer = (placeholderId: string, valueId: string | undefined) =>
-      (canWrite && valueId ? { write: (text: string) => writeValue(placeholderId, valueId, text) } : {});
+      (canWrite && valueId
+        ? { write: (text: string) => writeValue(placeholderId, valueId, text), valueKey: `${placeholderId}\n${valueId}` }
+        : {});
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
     for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
