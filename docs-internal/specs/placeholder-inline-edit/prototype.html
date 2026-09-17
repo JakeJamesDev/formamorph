@@ -54,7 +54,9 @@
   /* Treatment G — the value stays inline exactly where the chip was; only the header lifts above the start
      of the value, and a zero-width tall spacer makes the line box grow upward so the header has room and
      the line above is pushed away, never covered. */
-  .slot-chrome-slot-float { position: relative; }
+  /* One shape across a wrap: `slice` draws the background and ring as a single box cut at the line break, so
+     the first fragment has an open right end and the next an open left end, instead of two closed boxes. */
+  .slot-chrome-slot-float { position: relative; -webkit-box-decoration-break: slice; box-decoration-break: slice; }
   /* The spacer is an EMPTY INLINE box at the very start of the value, not an inline-block: an atomic inline
      allows a line break after it, so it could stay on the line above while the value wrapped; an empty inline
      with no whitespace after it cannot be separated from the value's first character. Its line-height grows
