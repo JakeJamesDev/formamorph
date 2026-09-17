@@ -121,7 +121,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
               onChange={(s) => onChange('aiSummary', s)}
             />
           )}
-          hint="A one-line version for where the full description is too long. Keep it brief."
+          hint="Replaces the full description in prompt slots too small for it. Keep it brief."
           value={value.aiSummary || ''}
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}

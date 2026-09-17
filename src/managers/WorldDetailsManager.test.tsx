@@ -228,7 +228,7 @@ describe('the live template and the freeze', () => {
     await user.click(picker('Choices'));
 
     expect(field('World choices prompt').value).toBe(PRESET_CHOICES);
-    expect(screen.getByText(/This is your current choices prompt/)).toBeInTheDocument();
+    expect(screen.getByText(/Shows your current choices prompt/)).toBeInTheDocument();
     expect(world.overview.promptOverrides?.choicesPrompt).toBeUndefined();
   });
 
@@ -462,7 +462,7 @@ describe('the opening cue panel', () => {
     await enableCue();
 
     expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
-    expect(screen.getByText(/This is the standard cue/)).toBeInTheDocument();
+    expect(screen.getByText(/Shows the standard cue/)).toBeInTheDocument();
     expect(world.overview.openingCue).toBeUndefined();
   });
 

@@ -270,7 +270,7 @@ describe('publishing a component with compatible worlds', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Unlisted' }));
 
     expect(screen.getByLabelText('Offer as add-on for Sedge Landing')).toBeDisabled();
-    expect(screen.getByText(/An unlisted dictionary cannot be an add-on\./)).toBeInTheDocument();
+    expect(screen.getByText(/An unlisted dictionary can't be an add-on/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
@@ -308,7 +308,7 @@ describe('publishing a component with compatible worlds', () => {
     view(bookPayload, 'lib-d');
 
     await userEvent.click(await screen.findByLabelText('Shared Lore (d1, 0 downloads)'));
-    await screen.findByText(/An unlisted dictionary cannot be an add-on\./);
+    await screen.findByText(/An unlisted dictionary can't be an add-on/);
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }));
 
     await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalled());

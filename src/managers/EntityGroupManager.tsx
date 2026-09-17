@@ -18,7 +18,7 @@ const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
         <Input value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
       </div>
       <p className="text-helper text-muted-foreground">
-        Groups are just folders for organizing entities in the editor. They are never sent to the AI.
+        Organizes entities in the editor only. Groups are never sent to the AI.
       </p>
     </div>
   );

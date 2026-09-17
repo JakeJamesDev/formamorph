@@ -98,7 +98,7 @@ export function PlaceholderSectionList({ rows, selectedId, onSelect, placeholder
               </button>
             </Fragment>
           ))}
-          {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders.</p>}
+          {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
         </div>
         {footer?.(() => setOpen(false))}
       </PopoverContent>

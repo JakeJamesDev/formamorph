@@ -45,7 +45,7 @@ const GroupManager = ({ group }: { group: TraitGroup }) => {
           onCheckedChange={(c) => handleChange('exclusive', c === true)}
         />
         <span>Exclusive</span>
-        <span className="text-meta text-muted-foreground">(at most one trait here; picked as radio buttons)</span>
+        <span className="text-meta text-muted-foreground">Shows as radio buttons, so the player picks at most one trait here</span>
       </label>
     </div>
   );

@@ -49,11 +49,11 @@ const BAND_FILL: Record<PublishSizeBand, string> = {
   red: 'bg-destructive',
 };
 
-const PUBLISH_SIZE_INFO = `**Publish Size** is the size of the world content that publishing sends. Publishing stops when this size is more than the publish limit.
+export const PUBLISH_SIZE_INFO = `**Publish Size** counts the bytes of world content that publishing sends. Publishing stops when it's more than the publish limit.
 
-- Embedded images, Ambient Sound, Background Music, and 3D Model files add to the Publish Size.
-- A linked image adds only its URL.
-- The file from “Export World” is larger, because “Export World” indents the file.`;
+- Embedded images, Ambient Sound, Background Music, and 3D Model files add to the Publish Size
+- A linked image adds only its URL
+- The file from **Export World** is larger, because that export indents the file`;
 
 /** The world's publish size against the world limit. The fill stops at full; the readout does not. */
 const PublishSizeBar = ({ bytes }: { bytes: number }) => {

@@ -154,7 +154,7 @@ const HighlightedText = ({ segments, selected, onSelect }: {
 const RenderedContext = ({ blocks, tokens }: { blocks: RenderedBlock[]; tokens: number }) => {
   if (blocks.length === 0) {
     // The prompt's lore section still exists — it simply comes through with nothing in it.
-    return <p className="text-meta text-muted-foreground">Nothing fired, so no entry’s text is injected.</p>;
+    return <p className="text-meta text-muted-foreground">Nothing fired, so no entry’s text is injected</p>;
   }
   return (
     <div className="space-y-1">
@@ -217,7 +217,7 @@ const SemanticToggle = ({ status, on, onChange, summary }: {
 /** Why there are no scores, in the state the toggle is in. `ready` states its coverage instead. */
 const SEMANTIC_NOTE: Record<SemanticStatus, string> = {
   checking: 'looking for embeddings…',
-  unavailable: 'no embeddings — play this world once with Semantic Lore on',
+  unavailable: 'no embeddings yet, so play this world once with Semantic Lore on',
   off: 'off, so nothing below is a semantic result',
   waiting: 'paste text above to score it',
   loading: 'embedding the text…',
@@ -284,7 +284,7 @@ const EntryRow = ({ entry, selected, historyCount, semantic, warnings, onFix, re
       {entry.fired ? (
         <p className="mt-0.5 truncate text-meta text-muted-foreground">
           {entry.reason === 'semantic'
-            ? 'Fired on meaning alone — no keyword matched.'
+            ? 'Fired on meaning alone. No keyword matched.'
             : hit
               ? `“${hit.keyword}” as “${hit.matchedText}” · ${describeHitOrigin(entry, hit, historyCount)}`
               : 'Injected on every turn'}
@@ -454,10 +454,10 @@ export function TriggersInstrument({
             note={empty ? undefined : `${report.entities.length} detected`}
           />
           {empty ? (
-            <p className="text-meta text-muted-foreground">Paste text above to see who the harness detects.</p>
+            <p className="text-meta text-muted-foreground">Paste text above to see who the harness detects</p>
           ) : report.entities.length === 0 ? (
             <p className="text-meta text-muted-foreground">
-              No entity is named in this text — nothing here puts one in the side panel.
+              No entity is named in this text, so nothing here puts one in the side panel
             </p>
           ) : (
             <div className="space-y-1">
@@ -479,20 +479,20 @@ export function TriggersInstrument({
             note={report.checked === 0 ? undefined : `${report.fired} of ${report.checked} fired`}
           />
           {report.checked === 0 ? (
-            <p className="text-meta text-muted-foreground">This world has no dictionary entries.</p>
+            <p className="text-meta text-muted-foreground">This world has no dictionary entries</p>
           ) : (
             <>
               {empty && (
                 <p className="text-meta text-muted-foreground">
                   {report.constant > 0
                     ? `${report.constant} constant ${report.constant === 1 ? 'entry injects' : 'entries inject'} on every turn, whatever the text says. The rest wait on their keywords.`
-                    : 'No entry is constant, so nothing injects until text mentions a keyword.'}
+                    : 'No entry is constant, so nothing injects until text mentions a keyword'}
                 </p>
               )}
               {!empty && report.fired === 0 && (
                 <p className="text-meta text-muted-foreground">
-                  Nothing fired. {report.checked} {report.checked === 1 ? 'entry was' : 'entries were'} checked — each
-                  says below why it stayed out.
+                  Nothing fired. {report.checked} {report.checked === 1 ? 'entry was' : 'entries were'} checked, and
+                  each says below why it stayed out.
                 </p>
               )}
               <div className="space-y-2">
@@ -530,7 +530,7 @@ export function TriggersInstrument({
       {!empty && (
         <p className="flex shrink-0 items-center gap-1 text-meta text-muted-foreground">
           <Users className="h-3 w-3 shrink-0" aria-hidden />
-          Presence reads prose, not dialogue — a name only inside quotes was mentioned, not present.
+          Presence reads prose, not dialogue. A name only inside quotes was mentioned, not present.
         </p>
       )}
     </div>

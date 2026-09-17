@@ -119,7 +119,7 @@ describe('the World Editor stat panel tabs', () => {
   it('carries both meanings of Availability on one short line, with the definitions behind the info control', async () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectStat('Warmth');
-    const help = screen.getByText(/Enabled makes the stat active/);
+    const help = screen.getByText(/Enabled keeps the stat active/);
     expect(help.textContent).toMatch(/Hidden hides it from the player only/);
     // The pair had a paragraph each before; a second line under Availability is the regression.
     expect(screen.queryByText(/Regen and Code/)).toBeNull();

@@ -18,18 +18,18 @@ import type { DictionaryEntry, FocusFieldHint, Placeholder } from '@/types';
 
 /** The long form behind the Trigger Keywords ⓘ: the chip editor's own controls, which the field does not
  *  label. The line under the chips carries only what the keywords do. */
-const KEYWORDS_INFO = `**Trigger Keywords** activate this entry. When a message contains one, the Value is injected into the prompt.
+export const KEYWORDS_INFO = `**Trigger Keywords** activate this entry. When a message contains one, the Value is injected into the prompt.
 
-- Press Enter after each keyword.
-- Tap or double-click a chip to edit it.
-- Drag a chip to reorder. Click its × to remove it.`;
+- Press Enter after each keyword
+- Tap or double-click a chip to edit it
+- Drag a chip to reorder it. Click its × to remove it.`;
 
-/** The long form behind the Activation ⓘ: one definition per switch. */
-const ACTIVATION_INFO = `**Always Inject** — the Value is injected into every prompt. No keyword match is needed.
+/** The long form behind the Activation ⓘ: one line per switch. */
+export const ACTIVATION_INFO = `**Always Inject** injects the Value into every prompt. No keyword match is needed.
 
-**Regex** — each keyword is matched as a regular expression.
+**Regex** matches each keyword as a regular expression
 
-**Recursive** — an injected Value from another entry can activate this one.`;
+**Recursive** lets a Value injected by another entry activate this one`;
 
 /** A compact labeled checkbox for the entry panel's switch rows. */
 function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
@@ -97,14 +97,14 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
   // One line for the secondary-keyword gate, per any/all × require/exclude mode, in the register's verbs.
   const secondaryHint = secondaryKeywords.length === 0
-    ? 'Optional. The entry activates only when these match too, or with Exclude, only when they do not.'
+    ? "Optional. The entry activates only when these match too, or with Exclude, only when they don't."
     : editingEntry.secondaryExclude
       ? (editingEntry.secondaryAll
-        ? 'Activates when a Trigger Keyword matches and not every Secondary Keyword matches.'
-        : 'Activates when a Trigger Keyword matches and no Secondary Keyword matches.')
+        ? 'Activates when a Trigger Keyword matches and not every Secondary Keyword matches'
+        : 'Activates when a Trigger Keyword matches and no Secondary Keyword matches')
       : (editingEntry.secondaryAll
-        ? 'Activates when a Trigger Keyword matches and every Secondary Keyword matches.'
-        : 'Activates when a Trigger Keyword matches and at least one Secondary Keyword matches.');
+        ? 'Activates when a Trigger Keyword matches and every Secondary Keyword matches'
+        : 'Activates when a Trigger Keyword matches and at least one Secondary Keyword matches');
 
   const detailsPanel = (
     <>
@@ -152,7 +152,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
           <Label>Activation</Label>
           <HintInfo>{ACTIVATION_INFO}</HintInfo>
         </div>
-        <Hint>How this entry activates and how its keywords match.</Hint>
+        <Hint>Controls when this entry activates and how its keywords match</Hint>
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           <CheckRow label="Always Inject" checked={!!editingEntry.constant} onChange={(v) => handleChange('constant', v)} />
           <CheckRow label="Regex" checked={!!editingEntry.useRegex} onChange={(v) => handleChange('useRegex', v)} />
@@ -161,7 +161,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
       </div>
       <div className="space-y-2">
         <Label>Scan Depth</Label>
-        <Hint>How many earlier messages to scan for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
+        <Hint>Sets how many earlier messages are scanned for keywords. Blank scans all of them. 0 scans only the current scene.</Hint>
         <Input type="number" min={0} value={editingEntry.scanDepth ?? ''} onChange={(e) => handleNumber('scanDepth', e.target.value)} placeholder="All history" />
       </div>
       <div className="space-y-2">

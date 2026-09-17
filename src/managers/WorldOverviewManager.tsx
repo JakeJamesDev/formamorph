@@ -174,14 +174,14 @@ const WorldOverviewManager = () => {
           onCheckedChange={(checked) => updateWorldOverview({ use3DModel: checked === true })}
         />
         <Label htmlFor="use3DModel">3D Player Avatar</Label>
-        <Hint as="span">The player can customize it.</Hint>
+        <Hint as="span">The player can customize it</Hint>
       </div>
       {/* Advanced only: a Simple-mode world keeps whatever avatar it carries and the bundled one otherwise,
           the way it keeps a prompt it does not offer to edit. */}
       {advanced && worldOverview.use3DModel && (
         <div className="space-y-2">
           <Label htmlFor="customVRM">Custom Player Avatar</Label>
-          <Hint>Overrides the default 3D player model.</Hint>
+          <Hint>Overrides the default 3D player model</Hint>
           <input
             ref={vrmInputRef}
             id="customVRM"

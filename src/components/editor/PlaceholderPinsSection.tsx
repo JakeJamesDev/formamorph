@@ -71,7 +71,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
         <HelpButton topicId="worldEditor.pinsOnPlaceholder" className="h-6 w-6" />
       </div>
       {rows.length === 0 && !draft && (
-        <p className="text-helper text-muted-foreground">Nothing pins this placeholder.</p>
+        <p className="text-helper text-muted-foreground">Nothing pins this placeholder</p>
       )}
       {rows.map((row, index) => (
         <div key={`${pinSourceKey(row.source)}:${index}`} className="space-y-1">

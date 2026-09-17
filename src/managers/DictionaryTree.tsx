@@ -228,7 +228,7 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
                 onRemove={onRemoveEntry}
               />
             ))}
-            {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here.</p>}
+            {!flat && entries.length === 0 && <p className="px-2 py-1 text-meta text-muted-foreground">Drag entries here</p>}
           </EditorRowList>
           )}
         </StableSortableContext>

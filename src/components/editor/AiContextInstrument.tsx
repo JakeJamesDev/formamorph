@@ -123,7 +123,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
   if (!data.location) {
     return (
       <p className="text-meta text-muted-foreground">
-        Pick a location in the lens above to see what the harness serves from it.
+        Pick a location in the lens above to see what the harness serves from it
       </p>
     );
   }
@@ -135,7 +135,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
         <div className="rounded-md border bg-muted/30 p-2">
           <p className="text-label font-medium">A turn from here ≈ {tokenLabel(data.totalTokens)} tokens</p>
           <p className="text-meta text-muted-foreground">
-            Every block a prompt can pull from {data.locationName}; any one prompt uses a subset of them.
+            Every block a prompt can pull from {data.locationName}. Any one prompt uses a subset of them.
           </p>
         </div>
 
@@ -149,7 +149,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
         <SectionHeading label="Destinations" note={`${data.destinations.length} offered`} />
         {data.destinations.length === 0 ? (
           <p className="text-meta text-muted-foreground">
-            Nowhere. A player who walks in here can never leave — give this location a parent, a sub-location
+            Nowhere. A player who walks in here can never leave. Give this location a parent, a sub-location
             or a connection.
           </p>
         ) : (
@@ -161,7 +161,7 @@ export function AiContextInstrument({ data }: AiContextInstrumentProps) {
         )}
         <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
           <Compass className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-          This is the whole set — anywhere not listed can never be traveled to from here. Whether a given
+          This is the whole set. Anywhere not listed can never be traveled to from here. Whether a given
           action counts as travel is the model’s judgment.
         </p>
 
