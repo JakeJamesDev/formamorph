@@ -364,7 +364,7 @@ function focusChip(editor: LexicalEditor, chipKey: NodeKey) {
 function layoutHeads(root: HTMLElement) {
   const heads = [...root.querySelectorAll<HTMLElement>('.region-head')];
   const R = root.getBoundingClientRect();
-  for (const h of heads) { h.style.transform = ''; h.classList.remove('is-compact'); }
+  for (const h of heads) h.style.transform = '';
   const rect = (h: HTMLElement) => h.getBoundingClientRect();
   const shift = (h: HTMLElement, dx: number) => { const m = /translateX\(([-\d.]+)px\)/.exec(h.style.transform); h.style.transform = `translateX(${(m ? parseFloat(m[1]) : 0) + dx}px)`; };
   const clamp = (h: HTMLElement) => {
@@ -373,16 +373,28 @@ function layoutHeads(root: HTMLElement) {
     if (over || under) shift(h, under - over);
   };
   heads.forEach(clamp);
-  // Overlaps on one line: compact the left one, then the right one, then push the left one away.
+  // Headers are compact unless their value holds the caret, so two wide headers never meet. When two still
+  // overlap on one line, one slides to the right end of its own value's first line if that end is free,
+  // the left one first; as a last resort the left one is pushed away.
   const sameLine = (a: DOMRect, b: DOMRect) => a.top < b.bottom && b.top < a.bottom;
   const sorted = [...heads].sort((a, b) => rect(a).left - rect(b).left);
+  const slideRight = (h: HTMLElement) => {
+    if (h.dataset.r == null) return false;
+    const r = rect(h); const end = Math.min(parseFloat(h.dataset.r), R.right - 4);
+    if (end - r.width < r.left + 1) return false;
+    shift(h, end - r.right);
+    return true;
+  };
   for (let i = 1; i < sorted.length; i++) {
     const left = sorted[i - 1], right = sorted[i];
     const overlap = () => { const a = rect(left), b = rect(right); return sameLine(a, b) ? a.right - b.left : 0; };
     if (overlap() <= 0) continue;
-    left.classList.add('is-compact'); clamp(left);
-    if (overlap() <= 0) continue;
-    right.classList.add('is-compact'); clamp(right);
+    const before = left.style.transform;
+    if (slideRight(left) && overlap() <= 0) continue;
+    left.style.transform = before;
+    const beforeRight = right.style.transform;
+    if (slideRight(right) && overlap() <= 0) continue;
+    right.style.transform = beforeRight;
     const o = overlap();
     if (o > 0) { const room = rect(left).left - (R.left + 4); shift(left, -Math.min(o + 2, Math.max(0, room))); }
   }
@@ -567,7 +579,8 @@ function SlotChip({ nodeKey, id }: { nodeKey: NodeKey; id: string }) {
   const stop = (e: MouseEvent) => e.preventDefault();
   return (
     <span className={`slot-chrome slot-chrome-${OptionsRef.current.treatment}${isInside ? ' is-inside' : ''}`} style={{ '--accent': COLORS[id] } as CSSProperties}>
-      <span ref={head} className="region-head" onMouseDown={stop}>
+      {/* Compact unless the caret is inside: the full label belongs to the value being worked on. */}
+      <span ref={head} className={`region-head${isInside ? '' : ' is-compact'}`} title={slots[slot]?.label} onMouseDown={stop}>
         <button type="button" onClick={() => step(-1)} disabled={slots.length < 2} aria-label="Previous"><ChevronLeft size={12} /></button>
         <span className="region-name">{ph.name}</span>
         <span className="region-slot">{slots[slot]?.label} · {slot + 1}/{slots.length}</span>
