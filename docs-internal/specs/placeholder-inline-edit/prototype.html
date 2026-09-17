@@ -36,6 +36,8 @@
   .region-head { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; color: #000; background: var(--accent); border-radius: 5px; padding: 0 4px; margin-right: 6px; line-height: 1.5; vertical-align: baseline; }
   .region-head button { display: inline-flex; padding: 1px; border-radius: 3px; } .region-head button:hover { background: rgba(0,0,0,.15); } .region-head button:disabled { opacity: .35; }
   .region-slot { font-weight: 400; opacity: .75; margin: 0 2px; }
+  /* A header that would overlap a neighbor drops its value label and keeps the name and controls. */
+  .region-head.is-compact .region-slot { display: none; }
 
   /* Treatment A — a tinted box that follows the wrapped lines. */
   .region-boxed { background: color-mix(in oklab, var(--accent) 14%, transparent); box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); border-radius: 6px; padding: 2px 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
