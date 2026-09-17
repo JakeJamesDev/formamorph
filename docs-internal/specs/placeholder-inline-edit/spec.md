@@ -23,8 +23,9 @@ editing it, so the edit reads wrong in context as often as not.
 - **Each open value carries a header** above its first line: the placeholder's name, the open value's
   label, a chevron each way, and nothing else. The header of the value that holds the caret shows
   everything. Every other header is compact: name and chevrons, label on hover.
-- **Typing inside a value edits that placeholder's value text.** The field's own text never changes on
-  this tab. Every chip of that placeholder in every field shows the new text.
+- **Typing inside a value edits that placeholder's value text.** A value edit never changes the
+  field's stored text. Every chip of that placeholder in every field shows the new text.
+- **The text between values stays editable**, as on the Edit tab.
 - **Chevrons walk the placeholder's values** and move the shared preview roll with them, so Preview and
   every other field agree.
 - **Edge typing needs no setting.** A character at either end goes into the value. Whitespace at either
@@ -94,8 +95,13 @@ editing it, so the edit reads wrong in context as often as not.
 ### Mechanism
 
 - **One Lexical editor, one text.** The Values tab is the same chip editor with every chip in expanded
-  mode. The field's stored token string never changes on this tab. This is the prototype's settled finding:
-  one editor keeps one selection and one undo stack.
+  mode. This is the prototype's settled finding: one editor keeps one selection and one undo stack.
+- **The field's own text stays editable on the Values tab.** Lexical slots take input only while the whole
+  editor is editable, and the edge-typing exits leave the caret in the field text. A value edit writes to
+  the placeholder store and never fires the field's change callback. A field-text edit fires it as on the
+  Edit tab, and the stored string stays tokens plus field text; value text never leaks into it. Whitespace
+  an exit drops outside a value is a field-text edit. A tab switch alone fires nothing. Chips can be
+  deleted or inserted here as on Edit; no new insert UI.
 - **Lexical named slots** carry each open value. The chip stays a decorator node and hosts an editable,
   shadow-isolated slot mounted into its own chrome. The chip's text content stays the token, so the
   serializer needs no change. Lexical 0.50 provides slots; the version bump is already on main.
