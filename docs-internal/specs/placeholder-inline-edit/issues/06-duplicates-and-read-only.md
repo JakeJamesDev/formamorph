@@ -1,6 +1,7 @@
 # 06: Duplicates and Read-Only Cases
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 2530b8df
 Blocked by: 03, 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

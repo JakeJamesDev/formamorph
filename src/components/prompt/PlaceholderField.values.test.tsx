@@ -5,6 +5,7 @@ import PlaceholderField from './PlaceholderField';
 import PromptField from './PromptField';
 import { anchorElements, PROMPT_ANCHORS } from './previewScrollSync';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
+import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
@@ -118,7 +119,12 @@ describe('the Values tab content', () => {
   });
 
   it('takes typing in the field text and in each open value', async () => {
-    render(field(`Welcome to ${tok('town', 'p1')}.`));
+    // A value takes typing only where a store can take its edit, as the World Editor's does.
+    render(
+      <PlaceholderStoreProvider value={placeholderStore(WORLD, () => {})}>
+        {field(`Welcome to ${tok('town', 'p1')}.`)}
+      </PlaceholderStoreProvider>,
+    );
     await userEvent.click(tab('Values')!);
     expect(screen.getByRole('textbox')).toHaveAttribute('contenteditable', 'true');
     expect(slotEditable()).toBe('true');

@@ -14,6 +14,8 @@ export interface OpenValueView {
   step?: (direction: StepDirection) => void;
   /** Store new text for the open value. Absent when the value is on no list or nothing can be written. */
   write?: (text: string) => void;
+  /** Names the value `write` stores to. Copies that share it mirror one another. */
+  valueKey?: string;
 }
 
 /** Token → the value its chip opens on, for the Values tab. */
