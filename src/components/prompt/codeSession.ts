@@ -80,6 +80,8 @@ const editorTheme = EditorView.theme({
     borderLeftColor: 'hsl(var(--border))',
   },
   '.cm-line': { padding: '0 0.75rem' },
+  // Background only: a `color` here, or no rule at all, paints every selected token one flat color.
+  '.cm-content ::selection': { backgroundColor: 'color-mix(in srgb, Highlight 40%, transparent)' },
   '.cm-gutters': {
     backgroundColor: 'transparent',
     color: 'hsl(var(--muted-foreground))',
