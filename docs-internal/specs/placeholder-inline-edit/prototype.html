@@ -68,6 +68,13 @@
      outline around all of them, placed over the value with pointer events off. */
   .slot-chrome-slot-float-shape { background: none; box-shadow: none; padding: 0; }
   .slot-shape { position: absolute; pointer-events: none; overflow: visible; }
+  /* Inside indicator: while the caret is in a value, its ring and header brighten and the fill deepens.
+     `is-inside` is set from the editor's selection, since :focus-within needs the document to hold focus. */
+  .slot-chrome.is-inside { box-shadow: 0 0 0 2px var(--accent); background: color-mix(in oklab, var(--accent) 22%, transparent); }
+  .slot-chrome-slot-float-shape.is-inside { box-shadow: none; background: none; }
+  .slot-chrome.is-inside .slot-shape path { stroke: var(--accent); stroke-width: 2; fill: color-mix(in oklab, var(--accent) 22%, transparent); }
+  .slot-chrome.is-inside > .region-head { box-shadow: 0 0 0 1px var(--accent); filter: brightness(1.12); }
+  .slot-chrome.is-inside [data-lexical-slot] { caret-color: var(--accent); }
   .slot-shape path { fill: color-mix(in oklab, var(--accent) 14%, transparent); stroke: color-mix(in oklab, var(--accent) 55%, transparent); stroke-width: 1; }
   /* The spacer is an EMPTY INLINE box at the very start of the value, not an inline-block: an atomic inline
      allows a line break after it, so it could stay on the line above while the value wrapped; an empty inline
