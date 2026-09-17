@@ -76,6 +76,9 @@
   [class*="slot-chrome-slot-float"] > .slot-target::before { content: ''; display: inline; line-height: 2.6em; vertical-align: 0.9em; }
   [class*="slot-chrome-slot-float"] > .region-head { position: absolute; left: -1px; top: -1.35em; margin: 0; white-space: nowrap; border-radius: 5px 5px 5px 0; z-index: 1; }
   .slot-chrome-slot-float-v > .region-head, .slot-chrome-slot-float-vh > .region-head { top: -1.6em; }
+  /* The traced outline is padded 6px out from the text with no chrome padding, so the header moves out to
+     the outline's edge and sits just above its top. */
+  .slot-chrome-slot-float-shape > .region-head { left: -7px; top: calc(-1.35em - 5px); }
 
   /* Treatment E — header above the value, the whole thing an inline block in the text flow. It stays on the
      line where the chip was and wraps inside itself, never mid-line around the neighbors. */
