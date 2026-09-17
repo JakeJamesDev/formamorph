@@ -6,6 +6,14 @@ import { directChipTargets } from '@/lib/placeholders';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
+import type { OpenValueView } from './openValueContext';
+
+/** The header's name for an open value: its place in the list, or what it is when it is on no list. */
+function openValueLabel(values: Placeholder['values'] | undefined, valueId: string | undefined): string {
+  const index = valueId ? (values ?? []).findIndex((v) => v.id === valueId) : -1;
+  if (index >= 0) return `Value ${index + 1}`;
+  return values?.length ? 'Pinned' : 'No Values';
+}
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
@@ -15,7 +23,8 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * A Preview tab (from `PromptField`) swaps each chip for its author-time value — Variable → its value,
  * Wildcard → a pick (World shared per placeholder, Unique per placement) — read from the editor's shared
  * preview rolls, so every field shows the same value until the toolbar's Reroll draws again. The resolved
- * text is tinted the chip's own color, like the prompt previews.
+ * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
+ * the value its Preview drew.
  */
 const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
   value: string;
@@ -46,6 +55,14 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   const rolls = useEditorPreviewRolls();
   // Re-read on every reroll: the store's identity carries its version.
   const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
+  const openValues = useMemo(() => {
+    const byId = new Map(placeholders.map((p) => [p.id, p]));
+    const out: Record<string, OpenValueView> = {};
+    for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
+      out[token] = { text: open.text, label: openValueLabel(byId.get(open.placeholderId)?.values, open.valueId) };
+    }
+    return out;
+  }, [rolls, value, placeholders]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],
@@ -60,6 +77,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       onChange={onChange}
       vocabulary={vocab}
       previewValues={hasPlaceholders ? previewValues : undefined}
+      openValues={hasPlaceholders ? openValues : undefined}
       onReroll={hasPlaceholders ? reroll : undefined}
       insertOwnerId={ownerId}
       label={label}

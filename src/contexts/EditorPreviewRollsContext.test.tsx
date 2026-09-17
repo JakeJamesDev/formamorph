@@ -38,6 +38,10 @@ function mount(inside?: (children: React.ReactNode) => React.ReactElement) {
       if (!store) throw new Error('probe never rendered');
       return store.preview(text, world);
     },
+    open: (text: string) => {
+      if (!store) throw new Error('probe never rendered');
+      return store.open(text, world);
+    },
     readWith: (text: string, placeholders: Placeholder[]) => {
       if (!store) throw new Error('probe never rendered');
       return store.preview(text, placeholders);
@@ -157,6 +161,28 @@ describe('EditorPreviewRollsProvider', () => {
     h.choose({ id: 'hair', mode: 'unique', placementId: 'u1' }, phValueId('brown'));
     expect(h.read(u)[u]).toBe('brown');
     expect(drawsDiffer(() => { h.reroll(['hair']); return h.read(u)[u]; }, 'brown')).toBe(true);
+  });
+
+  it('opens each chip on the value its Preview shows, nested chips kept raw', () => {
+    const h = mount();
+    const a = tok('hair', 'p1');
+    const u = tok('molly', 'u1', 'unique');
+    const shown = h.read(`${a} ${u}`);
+    const open = h.open(`${a} ${u}`);
+    expect(open[a]).toEqual({ placeholderId: 'hair', valueId: phValueId(shown[a]), text: shown[a] });
+    // Molly's value is a Hair chip plus a word: the open text keeps the chip, the Preview resolves it.
+    expect(open[u].placeholderId).toBe('molly');
+    expect(molly.values.map((v) => v.text)).toContain(open[u].text);
+    expect(open[u].text).toMatch(/^\{\{ph:hair:[^}]+\}\} (hair|mane)$/);
+    expect(shown[u].split(' ')[1]).toBe(open[u].text.split(' ')[1]);
+  });
+
+  it('opens a chip on the value a directed set chose', () => {
+    const h = mount();
+    const a = tok('hair', 'p1');
+    const other = h.open(a)[a].text === 'brown' ? 'black' : 'brown';
+    h.choose({ id: 'hair', mode: 'world', placementId: 'p1' }, phValueId(other));
+    expect(h.open(a)[a].valueId).toBe(phValueId(other));
   });
 
   it('never writes to the session context', () => {
