@@ -237,10 +237,11 @@ function $serializeField(): string {
 const $regionText = (r: RegionNode) => serializeChildren(r, 'token');
 
 function $fillRegion(region: RegionNode, text: string) {
-  region.clear();
-  region.append(new RegionHeadNode(), ...$parseInline(text));
-  // A region can't be empty, so an empty value still has a place to type.
-  if (region.getChildrenSize() === 1) region.append($createTextNode(''));
+  const body = $parseInline(text);
+  // One splice, never clear-then-append: `ElementNode.splice` removes an element that cannot be empty the
+  // moment its child count hits zero, so a cleared region is detached before anything is appended to it.
+  // An empty value still gets an empty text node, a place for the caret.
+  region.splice(0, region.getChildrenSize(), [new RegionHeadNode(), ...(body.length ? body : [$createTextNode('')])]);
 }
 
 function $collapse(region: RegionNode) {
