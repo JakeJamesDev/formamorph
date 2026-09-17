@@ -4,7 +4,7 @@ import { EditorPreviewRollsProvider, useEditorPreviewRolls, type EditorPreviewRo
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './PlaceholderSessionContext';
 import { encodePlaceholderToken } from '@/lib/placeholders';
-import { phValues } from '@/test/placeholderValues';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
 vi.mock('@/services/WorldStorageService', () => {
@@ -43,6 +43,9 @@ function mount(inside?: (children: React.ReactNode) => React.ReactElement) {
       return store.preview(text, placeholders);
     },
     reroll: (ids: string[]) => act(() => { store?.reroll(ids, world); }),
+    choose: (placement: Parameters<EditorPreviewRolls['setRoll']>[0], valueId: string) =>
+      act(() => { store?.setRoll(placement, valueId); }),
+    version: () => store?.version,
     session: () => session,
   };
 }
@@ -52,6 +55,14 @@ const drawsDiffer = (draw: () => string, from: string) => {
   for (let i = 0; i < 40; i++) if (draw() !== from) return true;
   return false;
 };
+
+/** `ph` with `text` re-spelled under its own id. Its weight is zero, so a redraw never lands on the new
+ *  spelling and only a kept roll can show it. */
+const respell = (ph: Placeholder, text: string): Placeholder => ({
+  ...ph,
+  values: (ph.values ?? []).map((v) => (v.text === text ? { ...v, text: `${text}ish` } : v)),
+  weights: { [phValueId(text)]: 0 },
+});
 
 describe('EditorPreviewRollsProvider', () => {
   it('returns the same value on two reads, and across two fields reading one placeholder', () => {
@@ -92,6 +103,60 @@ describe('EditorPreviewRollsProvider', () => {
     const after = h.readWith(t, [renamed, eyes, molly])[t];
     expect(['silver', 'copper']).toContain(after);
     expect(after).not.toBe(before);
+  });
+
+  it('keeps a rolled value rolled when the author re-spells it', () => {
+    const h = mount();
+    const t = tok('hair', 'p1');
+    const before = h.read(t)[t];
+    const respelled = respell(hair, before);
+    expect(h.readWith(t, [respelled, eyes, molly])[t]).toBe(`${before}ish`);
+    expect(h.readWith(tok('hair', 'p2'), [respelled, eyes, molly])[tok('hair', 'p2')]).toBe(`${before}ish`);
+  });
+
+  it('keeps a nested Unique roll through a re-spelling of the nested value', () => {
+    const h = mount();
+    const u = tok('molly', 'u1', 'unique');
+    const before = h.read(u)[u];
+    const hairText = before.replace(/ (hair|mane)$/, '');
+    const respelled = respell(hair, hairText);
+    const after = h.readWith(u, [respelled, eyes, molly])[u];
+    expect(after).toBe(before.replace(hairText, `${hairText}ish`));
+  });
+
+  it('points every World reader at the value a directed set chooses', () => {
+    const h = mount();
+    const a = tok('hair', 'p1');
+    const b = tok('hair', 'p2');
+    const other = h.read(a)[a] === 'brown' ? 'black' : 'brown';
+    const version = h.version();
+    h.choose({ id: 'hair', mode: 'world', placementId: 'p1' }, phValueId(other));
+    expect(h.version()).not.toBe(version);
+    expect(h.read(a)[a]).toBe(other);
+    expect(h.read(b)[b]).toBe(other);
+  });
+
+  it('moves only the one Unique placement a directed set names', () => {
+    const h = mount();
+    const u1 = tok('eyes', 'u1', 'unique');
+    const u2 = tok('eyes', 'u2', 'unique');
+    const w = tok('eyes', 'w1');
+    const u2Before = h.read(u2)[u2];
+    const wBefore = h.read(w)[w];
+    for (const pick of ['blue', 'green']) {
+      h.choose({ id: 'eyes', mode: 'unique', placementId: 'u1' }, phValueId(pick));
+      expect(h.read(u1)[u1]).toBe(pick);
+      expect(h.read(u2)[u2]).toBe(u2Before);
+      expect(h.read(w)[w]).toBe(wBefore);
+    }
+  });
+
+  it('rerolls a Unique placement a directed set chose', () => {
+    const h = mount();
+    const u = tok('hair', 'u1', 'unique');
+    h.choose({ id: 'hair', mode: 'unique', placementId: 'u1' }, phValueId('brown'));
+    expect(h.read(u)[u]).toBe('brown');
+    expect(drawsDiffer(() => { h.reroll(['hair']); return h.read(u)[u]; }, 'brown')).toBe(true);
   });
 
   it('never writes to the session context', () => {

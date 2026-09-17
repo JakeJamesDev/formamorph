@@ -1,6 +1,7 @@
 # 01: Rolls Keyed by Value Id, With a Directed Set
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 486f14df
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
