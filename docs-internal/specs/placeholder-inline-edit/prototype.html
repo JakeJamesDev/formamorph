@@ -54,7 +54,7 @@
   /* Treatment G — the value stays inline exactly where the chip was; only the header lifts above the start
      of the value, and a zero-width tall spacer makes the line box grow upward so the header has room and
      the line above is pushed away, never covered. */
-  .slot-chrome-slot-float, .slot-chrome-slot-float-v, .slot-chrome-slot-float-vh { position: relative; }
+  [class*="slot-chrome-slot-float"] { position: relative; }
   /* Vertical join: enough vertical padding that a line's fragment reaches the next line's fragment, so the
      fill is one continuous region where the two overlap. Padding on an inline paints without moving the
      lines. The ring is dropped, because with `clone` every fragment would draw its own top and bottom edge
@@ -64,6 +64,11 @@
      padding joins the fragments vertically, so the ring's top runs along the first line and its bottom
      along the last with no edge at the seam. */
   .slot-chrome-slot-float-vh { -webkit-box-decoration-break: slice; box-decoration-break: slice; padding: 7px 6px; }
+  /* Traced shape: the chrome paints nothing itself; an SVG measures the line fragments and draws one rounded
+     outline around all of them, placed over the value with pointer events off. */
+  .slot-chrome-slot-float-shape { background: none; box-shadow: none; padding: 0; }
+  .slot-shape { position: absolute; pointer-events: none; overflow: visible; }
+  .slot-shape path { fill: color-mix(in oklab, var(--accent) 14%, transparent); stroke: color-mix(in oklab, var(--accent) 55%, transparent); stroke-width: 1; }
   /* The spacer is an EMPTY INLINE box at the very start of the value, not an inline-block: an atomic inline
      allows a line break after it, so it could stay on the line above while the value wrapped; an empty inline
      with no whitespace after it cannot be separated from the value's first character. Its line-height grows
