@@ -23,7 +23,8 @@ export type ScrollAnchor = { seg: number; t: number } | { frac: number };
  * anchor Edit has no counterpart for, sliding every later pairing out by one.
  */
 export const PROMPT_ANCHORS = {
-  edit: '[data-lexical-decorator]',
+  // A chip inside an open value has no mark of its own in the preview.
+  edit: '[data-lexical-decorator]:not([data-lexical-decorator] *)',
   preview: `mark[${TINT_MARK_ATTR}]`,
 } as const;
 

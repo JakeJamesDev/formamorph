@@ -2,8 +2,8 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode, type DragEvent } from 'react';
 import {
-  DecoratorNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
-  type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread,
+  DecoratorNode, ElementNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
+  type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { ChipRenameInput } from '@/components/Chip';
@@ -18,6 +18,8 @@ import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVar
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import { remintPlaceholderPlacements } from '@/lib/placeholders';
+import { OpenValueChip } from './OpenValueChip';
+import { EditValueContext, OpenValuesContext } from './openValueContext';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -51,6 +53,15 @@ function AffixInput({ label, value, disabled, onChange }: {
   );
 }
 
+/** One full-width action at the foot of a chip's pop-out. */
+function FlyoutAction({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <Button type="button" variant="outline" size="sm" className="h-7 w-full text-meta" onClick={onClick}>
+      {children}
+    </Button>
+  );
+}
+
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
  *  single-click pop-out. Variables with `variants` show a segmented control to switch the chip's mode
  *  (e.g. Location → Full | Summary | List); others show a placeholder. */
@@ -58,6 +69,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const [editor] = useLexicalComposerContext();
   const dragKey = useContext(PromptDragContext);
   const vocab = useContext(ChipVocabularyContext);
+  const openValues = useContext(OpenValuesContext);
+  const { ask } = useContext(EditValueContext);
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   // The pop-out's second face. Closing it forgets the walk, so the next open starts from where the chip
@@ -82,6 +95,11 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   // A family with structure to walk can re-aim a placed chip; the static prompt variables have none, so the
   // row is simply absent there. A chip whose placeholder is gone still offers it — re-pointing it is the fix.
   const repickable = editable && known && !!vocab.structure && !!vocab.repoint;
+
+  // The one-click path to this chip's value on the Values tab. It needs a value that can be written: a
+  // prompt variable has none, and neither does a read-only field or a pin typed off the placeholder's list.
+  const editableValue = editable && !!ask && !!openValues[token]?.write;
+  const editValue = () => { setOpen(false); ask?.(nodeKey); };
 
   /** Move the chip onto what the picker settled on, keeping what the placement itself decided. */
   const repick = (picked: string) => {
@@ -274,7 +292,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 })}
               </div>
             ) : (
-              !affixes && !repickable && placementLabel == null
+              !affixes && !repickable && !editableValue && placementLabel == null
                 && <p className="text-meta text-muted-foreground">No options for this variable.</p>
             )}
             {placementLabel != null && (
@@ -304,18 +322,14 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 </div>
               </div>
             )}
-            {repickable && (
-              // The chip's own pill already reads as the whole path, so the row is the one control and no
-              // readout of where it points.
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn('h-7 w-full text-meta', (axes.length || affixes || placementLabel != null) && 'mt-4')}
-                onClick={() => setRepicking(true)}
-              >
-                Re-Pick…
-              </Button>
+            {(repickable || editableValue) && (
+              // One stack, so a further action needs no new spacing rule of its own.
+              <div className={cn('space-y-2', (axes.length || affixes || placementLabel != null) && 'mt-4')}>
+                {/* The chip's own pill already reads as the whole path, so the row is the one control and no
+                    readout of where it points. */}
+                {repickable && <FlyoutAction onClick={() => setRepicking(true)}>Re-Pick…</FlyoutAction>}
+                {editableValue && <FlyoutAction onClick={editValue}>Edit Value</FlyoutAction>}
+              </div>
             )}
           </>
         )}
@@ -328,6 +342,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
  *  token via the PromptField serializer, so untouched prompts stay byte-identical. */
 export class VariableNode extends DecoratorNode<ReactNode> {
   __token: string;
+  /** Open on the Values tab: the chip shows its value, held in its `value` slot. */
+  __expanded = false;
 
   static getType(): string { return 'variable'; }
   static clone(node: VariableNode): VariableNode { return new VariableNode(node.__token, node.__key); }
@@ -337,16 +353,24 @@ export class VariableNode extends DecoratorNode<ReactNode> {
     this.__token = token;
   }
 
+  afterCloneFrom(prev: this): void {
+    super.afterCloneFrom(prev);
+    this.__expanded = prev.__expanded;
+  }
+
   isInline(): boolean { return true; }
   getToken(): string { return this.getLatest().__token; }
   setToken(token: string): void { this.getWritable().__token = token; }
+  isExpanded(): boolean { return this.getLatest().__expanded; }
+  setExpanded(expanded: boolean): void { this.getWritable().__expanded = expanded; }
 
   createDOM(): HTMLElement {
     const span = document.createElement('span');
-    span.style.display = 'inline-block';
+    // An open value wraps with the text around it; a pill never breaks.
+    span.style.display = this.__expanded ? 'inline' : 'inline-block';
     return span;
   }
-  updateDOM(): boolean { return false; }
+  updateDOM(prev: VariableNode): boolean { return prev.__expanded !== this.__expanded; }
 
   static importJSON(serialized: SerializedVariableNode): VariableNode {
     // Only the clipboard deserializes through here (fields load via parsePlaceholderText, drags move live
@@ -359,8 +383,26 @@ export class VariableNode extends DecoratorNode<ReactNode> {
   }
 
   decorate(): ReactNode {
-    return <VariableChip nodeKey={this.__key} token={this.__token} />;
+    return this.__expanded
+      ? <OpenValueChip nodeKey={this.__key} token={this.__token} />
+      : <VariableChip nodeKey={this.__key} token={this.__token} />;
   }
+}
+
+/** An open chip's value: a shadow root, so its text is a document of its own inside the chip. */
+export class ValueBoxNode extends ElementNode {
+  static getType(): string { return 'placeholder-value-box'; }
+  static clone(node: ValueBoxNode): ValueBoxNode { return new ValueBoxNode(node.__key); }
+  static importJSON(): ValueBoxNode { return new ValueBoxNode(); }
+  exportJSON(): SerializedElementNode { return { ...super.exportJSON(), type: ValueBoxNode.getType(), version: 1 }; }
+
+  createDOM(): HTMLElement { return document.createElement('span'); }
+  updateDOM(): boolean { return false; }
+  isShadowRoot(): boolean { return true; }
+}
+
+export function $isValueBoxNode(node: LexicalNode | null | undefined): node is ValueBoxNode {
+  return node instanceof ValueBoxNode;
 }
 
 export function $createVariableNode(token: string): VariableNode {

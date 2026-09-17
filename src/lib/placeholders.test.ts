@@ -21,6 +21,7 @@ import {
   remapPlaceholderIds,
   absorbPlaceholders,
   buildPlaceholderPreview,
+  drawOpenPlaceholderValues,
   drawPlaceholderOnce,
   drawPlaceholderSpans,
   reachablePlaceholderIds,
@@ -39,6 +40,7 @@ import {
   pruneSharedWeights,
   mergePlaceholderWeights,
   readPlaceholders,
+  type OpenPlaceholderValue,
   type ResolveOptions,
 } from './placeholders';
 
@@ -1209,6 +1211,59 @@ describe('author-time Preview of structured chips', () => {
   it('is deterministic under an injected picker', () => {
     const text = `${placed('molly', 'world', 'p1')} ${placed('molly', 'unique', 'u1')} ${placed('town', 'world', 'p2')}`;
     expect(buildPlaceholderPreview(text, DEMO, first)).toEqual(buildPlaceholderPreview(text, DEMO, first));
+  });
+});
+
+// The Values tab opens each chip on one value's raw text, so it needs to know which value the Preview drew.
+describe('drawOpenPlaceholderValues', () => {
+  const ids = (out: Record<string, OpenPlaceholderValue>) =>
+    Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.valueId]));
+
+  it('opens a Wildcard chip on the value the Preview drew', () => {
+    const t = placed('eyes', 'world', 'p1');
+    const pick: PlaceholderPick = (values) => values[1].text;
+    expect(drawOpenPlaceholderValues(t, DEMO, pick)).toEqual({
+      [t]: { placeholderId: 'eyes', valueId: phValueId('hazel'), text: 'hazel' },
+    });
+  });
+
+  it('opens a Variable and an Object on their first value', () => {
+    const v = placed('black', 'world', 'p1');
+    const o = placed('isasian', 'world', 'p2');
+    const out = drawOpenPlaceholderValues(`${v} ${o}`, DEMO, first);
+    expect(out[v]).toEqual({ placeholderId: 'black', valueId: phValueId('jet black'), text: 'jet black' });
+    expect(out[o]).toEqual({ placeholderId: 'isasian', valueId: phValueId(chip('hair', val('black'))), text: chip('hair', val('black')) });
+  });
+
+  it('keeps the raw text of a value, nested chips and all', () => {
+    const t = placed('molly', 'world', 'p1');
+    expect(drawOpenPlaceholderValues(t, DEMO, first)[t].text).toBe(chip('iswhite'));
+  });
+
+  it('opens a drilled chip on the value its leaf drew', () => {
+    const t = placed('molly', 'world', 'p1', slot('Hair'));
+    // Molly → isWhite → Hair (explicit Brown) → Brown draws its first value.
+    expect(ids(drawOpenPlaceholderValues(t, DEMO, first))).toEqual({ [t]: phValueId('chestnut') });
+  });
+
+  it('reads the same rolls the Preview reads', () => {
+    const { rolls, setRoll } = collector();
+    const a = placed('eyes', 'unique', 'u1');
+    const b = placed('eyes', 'unique', 'u2');
+    const shades = ['blue', 'green'];
+    let i = 0;
+    const preview = buildPlaceholderPreview(`${a} ${b}`, DEMO, () => shades[i++], { rolls, setRoll });
+    const open = drawOpenPlaceholderValues(`${a} ${b}`, DEMO, () => 'hazel', { rolls, setRoll });
+    expect([open[a].text, open[b].text]).toEqual([preview[a], preview[b]]);
+  });
+
+  it('opens a missing or empty placeholder on nothing', () => {
+    const missing = placed('ghost', 'world', 'p1');
+    const empty: Placeholder = { id: 'empty', name: 'Empty', values: [] };
+    const e = placed('empty', 'world', 'p2');
+    const out = drawOpenPlaceholderValues(`${missing} ${e}`, [...DEMO, empty], first);
+    expect(out[missing]).toBeUndefined();
+    expect(out[e]).toEqual({ placeholderId: 'empty', text: '' });
   });
 });
 

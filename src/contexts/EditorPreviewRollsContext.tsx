@@ -1,13 +1,13 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  buildPlaceholderPreview, decodePlaceholderToken, parsePlaceholderText, reachablePlaceholderIds,
-  type PlaceholderMode,
+  buildPlaceholderPreview, decodePlaceholderToken, drawOpenPlaceholderValues, parsePlaceholderText,
+  reachablePlaceholderIds, type OpenPlaceholderValue, type PlaceholderMode, type PlaceholderToken,
 } from '@/lib/placeholders';
 import type { Placeholder, PlaceholderRolls } from '@/types';
 
 /**
  * The editor's preview rolls: one drawn value per World-mode placeholder and one per Unique placement
- * chain, the same shape a playthrough's session holds — but editor UI state only. A field's Preview reads
+ * chain, as a playthrough's session holds them — but editor UI state only, kept by value id. A field's Preview reads
  * from here rather than drawing on open, so a placeholder shows one value in every field until an author
  * rerolls it, and opening a Preview twice shows the same text twice.
  *
@@ -20,8 +20,13 @@ export interface EditorPreviewRolls {
   /** Token → value for every chip in `text`. A chip nothing has drawn yet is drawn now and kept, so the
    *  next reader — this field's next render, or another field — sees the same value. */
   preview(text: string, placeholders: Placeholder[]): Record<string, string>;
+  /** Token → the value each chip in `text` opens on, from the same rolls `preview` reads. */
+  open(text: string, placeholders: Placeholder[]): Record<string, OpenPlaceholderValue>;
   /** Redraw `ids` and every placeholder reachable through their values; every other roll stays. */
   reroll(ids: Iterable<string>, placeholders: Placeholder[]): void;
+  /** Roll `valueId` for one placement: a World placement moves every chip of its placeholder, a Unique
+   *  placement moves only itself. Nothing else is redrawn. */
+  setRoll(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>, valueId: string): void;
 }
 
 const EditorPreviewRollsContext = createContext<EditorPreviewRolls | null>(null);
@@ -29,46 +34,64 @@ const EditorPreviewRollsContext = createContext<EditorPreviewRolls | null>(null)
 /** A store bound to this component: the rolls in a ref, so a first read can draw without a re-render, and
  *  a version in state, so a reroll re-renders whoever reads the store. */
 function usePreviewRollStore(): EditorPreviewRolls {
-  const rolls = useRef<PlaceholderRolls>({});
+  // Rolls hold value ids, so a value the author re-spells stays rolled under its new text.
+  const valueIds = useRef<Partial<Record<PlaceholderMode, Record<string, string>>>>({});
   // Which placeholder each bare Unique placement id belongs to — a nested Unique key carries its own
   // placeholder's id as its last step, but a chain root is keyed by the placement id alone.
   const uniqueOwner = useRef<Record<string, string>>({});
   const [version, setVersion] = useState(0);
-  return useMemo(() => ({
-    version,
-    preview: (text, placeholders) => {
+  return useMemo((): EditorPreviewRolls => {
+    /** The live rolls as texts, less any whose value is gone, and the writer a fresh draw reports to. */
+    const storeFor = (text: string, placeholders: Placeholder[]) => {
       for (const seg of parsePlaceholderText(text)) {
         const token = seg.type === 'variable' ? decodePlaceholderToken(seg.token) : null;
         if (token?.mode === 'unique') uniqueOwner.current[token.placementId] = token.id;
       }
-      // A roll the author has since edited out of its pool is dropped before it is read, so a Preview
-      // never shows text the placeholder no longer holds.
-      const pool = new Map(placeholders.map((p) => [p.id, new Set((p.values ?? []).map((v) => v.text))]));
-      const stale = (owner: string | undefined, value: string) => {
-        const values = owner ? pool.get(owner) : undefined;
-        return !!values && !values.has(value);
-      };
-      const world = rolls.current.world ?? {};
-      for (const [id, value] of Object.entries(world)) if (stale(id, value)) delete world[id];
-      const unique = rolls.current.unique ?? {};
-      for (const [key, value] of Object.entries(unique)) if (stale(uniqueOwnerOf(key), value)) delete unique[key];
-      const setRoll = (scope: PlaceholderMode, key: string, value: string) => {
-        (rolls.current[scope] ??= {})[key] = value;
-      };
-      return buildPlaceholderPreview(text, placeholders, undefined, { rolls: rolls.current, setRoll });
-    },
-    reroll: (ids, placeholders) => {
-      const drop = reachablePlaceholderIds(ids, placeholders);
-      const world = rolls.current.world ?? {};
-      for (const id of drop) delete world[id];
-      const unique = rolls.current.unique ?? {};
-      for (const key of Object.keys(unique)) {
-        const owner = uniqueOwnerOf(key);
-        if (owner && drop.has(owner)) delete unique[key];
+      const byId = new Map(placeholders.map((p) => [p.id, p]));
+      const ownerOf = (scope: PlaceholderMode, key: string) =>
+        byId.get((scope === 'world' ? key : uniqueOwnerOf(key)) ?? '');
+      // A roll whose value the author has since removed is dropped before it is read, so a Preview never
+      // shows a value the placeholder no longer holds.
+      const rolls: PlaceholderRolls = {};
+      for (const scope of ['world', 'unique'] as const) {
+        const ids = valueIds.current[scope] ?? {};
+        const texts: Record<string, string> = (rolls[scope] = {});
+        for (const [key, valueId] of Object.entries(ids)) {
+          const owner = ownerOf(scope, key);
+          if (!owner) continue;
+          const value = owner.values?.find((v) => v.id === valueId);
+          if (value) texts[key] = value.text;
+          else delete ids[key];
+        }
       }
-      setVersion((v) => v + 1);
-    },
-  }), [version]);
+      const recordDraw = (scope: PlaceholderMode, key: string, text: string) => {
+        const value = ownerOf(scope, key)?.values?.find((v) => v.text === text);
+        if (value) (valueIds.current[scope] ??= {})[key] = value.id;
+      };
+      return { rolls, setRoll: recordDraw };
+    };
+    return {
+      version,
+      preview: (text, placeholders) => buildPlaceholderPreview(text, placeholders, undefined, storeFor(text, placeholders)),
+      open: (text, placeholders) => drawOpenPlaceholderValues(text, placeholders, undefined, storeFor(text, placeholders)),
+      reroll: (ids, placeholders) => {
+        const drop = reachablePlaceholderIds(ids, placeholders);
+        const world = valueIds.current.world ?? {};
+        for (const id of drop) delete world[id];
+        const unique = valueIds.current.unique ?? {};
+        for (const key of Object.keys(unique)) {
+          const owner = uniqueOwnerOf(key);
+          if (owner && drop.has(owner)) delete unique[key];
+        }
+        setVersion((v) => v + 1);
+      },
+      setRoll: ({ id, mode, placementId }, valueId) => {
+        if (mode === 'unique') uniqueOwner.current[placementId] = id;
+        (valueIds.current[mode] ??= {})[mode === 'world' ? id : placementId] = valueId;
+        setVersion((v) => v + 1);
+      },
+    };
+  }, [version]);
   // Hoisted so both readers share it; `useMemo` above closes over the refs, not over this.
   function uniqueOwnerOf(key: string): string | undefined {
     const slash = key.lastIndexOf('/');

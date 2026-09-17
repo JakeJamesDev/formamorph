@@ -1,11 +1,23 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { directChipTargets } from '@/lib/placeholders';
+import { decodePlaceholderToken, directChipTargets, placeholderIsChoice } from '@/lib/placeholders';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
+import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
 import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
+import type { OpenValueView, StepDirection } from './openValueContext';
+
+/** The header's name for an open value: its place in the list, or what it is when it is on no list. */
+function openValueLabel(values: Placeholder['values'] | undefined, index: number, pinned = false): string {
+  if (index >= 0) return pinned ? `Value ${index + 1} · Pinned` : `Value ${index + 1} · ${index + 1}/${values?.length ?? 0}`;
+  return values?.length ? 'Pinned' : 'No Values';
+}
+
+/** The value `direction` steps to from `index`, wrapping. Off the list, a step enters it at either end. */
+const stepIndex = (index: number, direction: StepDirection, count: number): number =>
+  index < 0 ? (direction === 1 ? 0 : count - 1) : (index + direction + count) % count;
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
@@ -15,7 +27,8 @@ import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
  * A Preview tab (from `PromptField`) swaps each chip for its author-time value — Variable → its value,
  * Wildcard → a pick (World shared per placeholder, Unique per placement) — read from the editor's shared
  * preview rolls, so every field shows the same value until the toolbar's Reroll draws again. The resolved
- * text is tinted the chip's own color, like the prompt previews.
+ * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
+ * the value its Preview drew.
  */
 const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
   value: string;
@@ -46,6 +59,71 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   const rolls = useEditorPreviewRolls();
   // Re-read on every reroll: the store's identity carries its version.
   const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
+  // An Object draws nothing, so the value its chip opens on is this field's own, by token.
+  const [objectIndexByToken, setObjectIndexByToken] = useState<Record<string, number>>({});
+  // A value edit goes through the same store a chip rename does. Writes made since the store last rendered
+  // build on each other, so two writes in one tick never drop the first.
+  const store = usePlaceholderStoreOptional();
+  const storeRef = useRef(store);
+  const unrendered = useRef(new Map<string, Placeholder>());
+  if (storeRef.current?.placeholders !== store?.placeholders) unrendered.current.clear();
+  storeRef.current = store;
+  const canWrite = !!store && !readOnly;
+  const writeValue = useCallback((placeholderId: string, valueId: string, text: string) => {
+    const bound = storeRef.current;
+    const ph = unrendered.current.get(placeholderId) ?? bound?.placeholders.find((p) => p.id === placeholderId);
+    if (!bound || !ph) return;
+    const next = { ...ph, values: ph.values.map((v) => (v.id === valueId ? { ...v, text } : v)) };
+    unrendered.current.set(placeholderId, next);
+    bound.updatePlaceholder(next);
+  }, []);
+  const openValues = useMemo(() => {
+    const writer = (placeholderId: string, valueId: string | undefined) =>
+      (canWrite && valueId
+        ? { write: (text: string) => writeValue(placeholderId, valueId, text), valueKey: `${placeholderId}\n${valueId}` }
+        : {});
+    const byId = new Map(placeholders.map((p) => [p.id, p]));
+    const out: Record<string, OpenValueView> = {};
+    for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
+      const ph = byId.get(open.placeholderId);
+      const values = ph?.values ?? [];
+      const placement = decodePlaceholderToken(token);
+      // A pin decides the value, so a step would write a roll nothing reads.
+      if (!ph || !placement || values.length < 2 || open.pinned) {
+        const index = values.findIndex((v) => v.id === open.valueId);
+        out[token] = {
+          text: open.text,
+          label: openValueLabel(values, index, open.pinned),
+          ...writer(open.placeholderId, values[index]?.id),
+        };
+        continue;
+      }
+      if (!placeholderIsChoice(ph)) {
+        const index = (objectIndexByToken[token] ?? 0) % values.length;
+        out[token] = {
+          text: values[index].text,
+          label: openValueLabel(values, index),
+          ...writer(ph.id, values[index].id),
+          step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
+        };
+        continue;
+      }
+      // A World drill target rolls under its own id; a Unique one rolls under a chain key no placement names.
+      const rolled = placement.path?.length
+        ? placement.mode === 'world' && { ...placement, id: ph.id }
+        : placement;
+      const index = open.valueId ? values.findIndex((v) => v.id === open.valueId) : -1;
+      out[token] = {
+        text: open.text,
+        label: openValueLabel(values, index),
+        ...writer(ph.id, values[index]?.id),
+        ...(rolled && {
+          step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
+        }),
+      };
+    }
+    return out;
+  }, [rolls, value, placeholders, objectIndexByToken, canWrite, writeValue]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],
@@ -60,6 +138,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       onChange={onChange}
       vocabulary={vocab}
       previewValues={hasPlaceholders ? previewValues : undefined}
+      openValues={hasPlaceholders ? openValues : undefined}
       onReroll={hasPlaceholders ? reroll : undefined}
       insertOwnerId={ownerId}
       label={label}
