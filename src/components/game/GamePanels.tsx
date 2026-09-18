@@ -14,8 +14,10 @@ import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTrait
 import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
-import { ChatNarration } from './ChatNarration';
+import { ChatNarration, type ChatBubbleTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
+import { bubbleActions } from '@/lib/bubbleActions';
+import { toast } from 'react-toastify';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -442,6 +444,12 @@ const ActionInput = ({
   );
 };
 
+// One rollback prompt for the Pages button and Chat's Rewind to Here.
+const ROLLBACK_CONFIRM = {
+  title: "Confirm Rollback",
+  description: "Are you sure you want to rollback to the previous state? This action cannot be undone.",
+};
+
 export const MiddlePanel = ({
   parseAssistantMessage,
   totalPages,
@@ -482,10 +490,12 @@ export const MiddlePanel = ({
   handlePageChange: (page: number) => void;
   handleSendAction: () => void;
   handleKeyPress: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
-  handleRollback: () => void;
-  handleRegenerate: () => void;
+  /** Rolls back to `page`, or to the viewed page. */
+  handleRollback: (page?: number) => void;
+  /** Re-generates the turn on `page`, or on the viewed page. */
+  handleRegenerate: (page?: number) => void;
   handleRegenerateChoices: () => void;
-  handleRegenerateStats: () => void;
+  handleRegenerateStats: (page?: number) => void;
   abortGeneration: () => void;
   disabled: boolean;
   /** The viewed turn's scene images, oldest first. */
@@ -502,14 +512,16 @@ export const MiddlePanel = ({
   sceneImagePreview: string | null;
   /** False when image generation is switched off app-wide — the affordance disappears with it. */
   sceneImagesAvailable: boolean;
-  onSceneImage: (tags?: string) => void;
+  /** Draws the turn on `page`, or the viewed turn. */
+  onSceneImage: (tags?: string, page?: number) => void;
   /** Re-run the tag pass alone, no image. */
-  onSceneTags: () => void;
+  onSceneTags: (page?: number) => void;
   onCancelSceneImage: () => void;
   onDeleteSceneImage: (index: number) => void;
   onTTSClick: () => void;
   onExportStory: () => void;
-  onRegenerateTTS: () => Promise<void> | void;
+  /** Synthesizes `text`, or the current text. */
+  onRegenerateTTS: (text?: string) => Promise<void> | void;
   ttsLoaded: boolean;
   ttsGenerating: boolean;
   ttsProgress: TTSProgress | null;
@@ -634,11 +646,48 @@ export const MiddlePanel = ({
     }
   }
 
+  // A Chat bubble's Edit and Rewind to Here target the bubble's own page, never the viewed one.
+  const [editTarget, setEditTarget] = useState<{ page: number; text: string } | null>(null);
+  const [rewindPage, setRewindPage] = useState<number | null>(null);
+  const actionsFor = (turn: ChatBubbleTurn) => {
+    const page = turn.index + 1;
+    return bubbleActions(
+      {
+        isLatest: turn.isLatest,
+        live: turn.live,
+        busy: isWaitingForAI,
+        hasImage: turn.hasImage,
+        canRegenStats,
+        sceneImagesAvailable,
+        sceneJob: sceneImageJob,
+        ttsLoaded,
+        ttsGenerating,
+      },
+      {
+        regenerate: () => handleRegenerate(page),
+        regenerateStats: () => handleRegenerateStats(page),
+        sceneImage: () => onSceneImage(undefined, page),
+        sceneTags: () => onSceneTags(page),
+        edit: () => { setEditTarget({ page, text: turn.text }); setIsEditMode(true); },
+        textToSpeech: onTTSClick,
+        regenerateAudio: () => { void onRegenerateTTS(turn.text); },
+        copy: () => {
+          void navigator.clipboard.writeText(turn.text).then(
+            () => toast.success('Copied'),
+            () => toast.error("Couldn't copy the text"),
+          );
+        },
+        rewind: () => setRewindPage(page),
+      },
+    );
+  };
+
   const narrationFrame = `narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`;
   // Edit stays inline; the rest folds into the overflow menu. Idle fade: `.narration-tool` in index.css.
+  // Chat keeps only the whole-story items here; the per-turn ones sit on each bubble.
   const optionsControl = (
     <div className="absolute top-2 right-2 z-10 flex gap-1">
-      <Tip tip="Edit text">
+      {!chatLayout && <Tip tip="Edit text">
         <Button
           variant="ghost"
           size="icon"
@@ -648,7 +697,7 @@ export const MiddlePanel = ({
         >
           <Pencil className="h-4 w-4" />
         </Button>
-      </Tip>
+      </Tip>}
       <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
         <Tip tip="More narration options">
           <PopoverTrigger asChild>
@@ -656,15 +705,15 @@ export const MiddlePanel = ({
               variant="ghost"
               size="icon"
               className="narration-tool h-8 w-8"
-              data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
+              data-idle={toolMenuOpen || (toolBusy && !chatLayout) ? undefined : "true"}
             >
-              {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+              {toolBusy && !chatLayout ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
             </Button>
           </PopoverTrigger>
         </Tip>
         <PopoverContent align="end" className="w-52 p-1">
           <div className="flex flex-col">
-            {sceneImagesAvailable && (
+            {sceneImagesAvailable && !chatLayout && (
               <>
                 {/* Tags first: it costs one small text request and no render, so it is the cheap way to
                     see what this turn would be drawn as before spending a picture on it. */}
@@ -688,7 +737,7 @@ export const MiddlePanel = ({
                 </Button>
               </>
             )}
-            {!hasAudio && ttsLoaded && (
+            {!hasAudio && ttsLoaded && !chatLayout && (
               <Button
                 variant="ghost"
                 className="justify-start gap-2 text-meta h-8"
@@ -699,7 +748,7 @@ export const MiddlePanel = ({
                 Regenerate Audio
               </Button>
             )}
-            {!hasAudio && (
+            {!hasAudio && !chatLayout && (
               <Button
                 variant="ghost"
                 className="justify-start gap-2 text-meta h-8"
@@ -786,6 +835,7 @@ export const MiddlePanel = ({
               {commandPreviewBlock}
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
+                actionsFor={actionsFor}
                 latestFooter={
                   <ChatChoices
                     choices={latestChoices}
@@ -873,7 +923,7 @@ export const MiddlePanel = ({
                 progress={sceneImageProgress}
                 preview={sceneImagePreview}
                 onGenerate={onSceneImage}
-                onRegenerateTags={onSceneTags}
+                onRegenerateTags={() => onSceneTags()}
                 onCancel={onCancelSceneImage}
                 onDelete={onDeleteSceneImage}
               />
@@ -931,15 +981,22 @@ export const MiddlePanel = ({
             </div>
           </ScrollArea>
           )}
+          {chatLayout && <ConfirmDialog
+            open={rewindPage !== null}
+            onOpenChange={(open) => { if (!open) setRewindPage(null); }}
+            {...ROLLBACK_CONFIRM}
+            onConfirm={() => { if (rewindPage !== null) handleRollback(rewindPage); }}
+          />}
           <EditTextModal
             isOpen={isEditMode}
-            onOpenChange={setIsEditMode}
-            text={currentPageText}
+            onOpenChange={(open) => { setIsEditMode(open); if (!open) setEditTarget(null); }}
+            text={editTarget?.text ?? currentPageText}
             onSave={(text) => {
+              const page = editTarget?.page ?? currentPage;
               // Only the most recent page drives the live gameplay text (used by TTS, etc.).
-              if (currentPage === totalPages) setGameplayText(text);
-              // Update the message in history for the current page
-              const messageIndex = (currentPage - 1) * 2 + 1; // +1 for assistant message
+              if (page === totalPages) setGameplayText(text);
+              // Update the message in history for the edited page
+              const messageIndex = (page - 1) * 2 + 1; // +1 for assistant message
               setFullMessageHistory(prev => {
                 const updatedHistory = [...prev];
                 let editedTurnId: string | undefined;
@@ -988,8 +1045,8 @@ export const MiddlePanel = ({
                 }
                 return updatedHistory;
               });
-              // Force update of displayed messages
-              setDisplayedMessages(prev => {
+              // Force update of displayed messages, which hold the viewed page only
+              if (page === currentPage) setDisplayedMessages(prev => {
                 const updatedMessages = [...prev];
                 const assistantMessageIndex = updatedMessages.findIndex(m => m.role === 'assistant');
                 if (assistantMessageIndex !== -1) {
@@ -1022,12 +1079,12 @@ export const MiddlePanel = ({
             {/* Chat has no Pager: the scroll is the one way through the turns. */}
             <div className={chatLayout ? "flex w-full justify-end" : "relative flex w-full items-center justify-center"}>
               {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-start md:justify-center" />}
-              {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. */}
+              {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. Chat
+                  puts both on the bubbles. */}
               <div className={chatLayout ? undefined : "absolute right-0"}>
-                {currentPage < totalPages ? (
+                {chatLayout ? null : currentPage < totalPages ? (
                   <ConfirmDialog
-                    title="Confirm Rollback"
-                    description="Are you sure you want to rollback to the previous state? This action cannot be undone."
+                    {...ROLLBACK_CONFIRM}
                     onConfirm={handleRollback}
                   >
                     <Button variant="outline" className="gap-1 w-32" disabled={isWaitingForAI}>
@@ -1042,7 +1099,7 @@ export const MiddlePanel = ({
                       variant="outline"
                       aria-label="Re-generate"
                       className={`gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
-                      onClick={handleRegenerate}
+                      onClick={() => handleRegenerate()}
                       disabled={isWaitingForAI}
                     >
                       <RefreshCw className="h-3 w-3" />
