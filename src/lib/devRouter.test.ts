@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { BROWSE_TABS } from './browseTabs';
-import { DEV_FIXTURES } from './devFixtures';
+import { DEV_FIXTURES, loadDevFixture } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { PROMPT_SURFACE_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -204,6 +204,19 @@ describe('dev-router coverage guard', () => {
 describe('mid-game boot fixtures', () => {
   it('registers the white-room fixture', () => {
     expect(DEV_FIXTURES).toContain('whiteRoom');
+  });
+
+  it('every registered fixture loads', async () => {
+    // The dev server serves fixture images; here each fetch answers with a tiny JPEG.
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1]);
+    vi.stubGlobal('fetch', async () => ({ ok: true, blob: async () => new Blob([jpeg], { type: 'image/jpeg' }) }));
+    try {
+      for (const name of DEV_FIXTURES) expect(await loadDevFixture(name), name).not.toBeNull();
+      const long = await loadDevFixture('thousandTurns');
+      expect(Object.values(long!.save.sceneImages!)[0][0]).toMatch(/^data:image\/jpeg;base64,/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('white-room world has a location to start in', () => {

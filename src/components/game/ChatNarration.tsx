@@ -13,6 +13,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
+import { hasNativeScrollAnchoring } from '@/lib/scrollAnchoring';
 import { ReasoningBlock } from './ReasoningBlock';
 import { BubbleActionRow } from './BubbleActionRow';
 import { BubbleMenu } from './BubbleMenu';
@@ -25,6 +26,7 @@ const ESTIMATED_TURN_PX = 400;
 const MAX_AIM_FRAMES = 30;
 // Scene images show at most this tall, as in Pages (`max-h-72`).
 const IMAGE_MAX_REM = 18;
+const NATIVE_ANCHORING = hasNativeScrollAnchoring();
 
 /** One turn of the list: the player's action (null on the opening) and the narration message, once it exists. */
 interface ChatTurn {
@@ -115,7 +117,8 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
     useFlushSync: false,
   });
   // Native scroll anchoring corrects for turns in flow; a second correction would interrupt a wheel scroll.
-  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
+  // An engine without it keeps the virtualizer's own correction.
+  if (NATIVE_ANCHORING) virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
 
   // The past turn the panels show at mount, so a switch from Pages opens on it; null follows the latest.
   const openTurn = useRef(currentPage < totalPages ? currentPage - 1 : null);
