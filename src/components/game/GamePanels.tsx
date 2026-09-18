@@ -23,8 +23,8 @@ import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, Chevro
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { CONTINUE_CHOICE } from "@/lib/choices";
-import { choiceRuns, QUOTE_CLASS } from "@/lib/quoteSegments";
+import { CONTINUE_CHOICE, choiceRuns } from "@/lib/choices";
+import { QUOTE_CLASS } from "@/lib/quoteSegments";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -863,7 +863,9 @@ export const MiddlePanel = ({
                       <span>
                         {choiceRuns(choice).map((run, i) => {
                           // A selected choice sits on the primary fill, where the dialogue color loses contrast.
-                          const text = run.quoted && !isSelected ? <span className={QUOTE_CLASS}>{run.text}</span> : run.text;
+                          const text = run.quoted
+                            ? <span className={QUOTE_CLASS} style={isSelected ? { color: 'inherit' } : undefined}>{run.text}</span>
+                            : run.text;
                           return run.bold ? <strong key={i}>{text}</strong> : <React.Fragment key={i}>{text}</React.Fragment>;
                         })}
                       </span>

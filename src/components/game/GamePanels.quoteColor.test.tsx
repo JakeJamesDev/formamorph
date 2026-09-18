@@ -105,28 +105,22 @@ describe('MiddlePanel — quote color', () => {
 
     it('shows a selected choice plain, against its filled background', () => {
       const view = renderMiddlePanel({}, { turns: withChoices(['Say "yes"', 'Say "no"']) });
+      const quoteIn = (name: RegExp) => choice(name).querySelector<HTMLElement>(`.${QUOTE_CLASS}`);
       act(() => view.gameplay().setPlayerInput('Say "yes"'));
-      expect(spans(choice(/yes/))).toEqual([]);
-      expect(spans(choice(/no/))).toEqual(['"no"']);
-    });
-
-    it('drops the hook when the setting goes off', () => {
-      const view = renderMiddlePanel({}, { turns: withChoices(['Say "yes"']) });
-      expect(document.documentElement.hasAttribute('data-quote-color')).toBe(true);
-      act(() => view.settings().setQuoteColor(false));
-      expect(document.documentElement.hasAttribute('data-quote-color')).toBe(false);
-      // Same contract as the narration: the span stays, only the rule that paints it goes.
-      expect(spans(choice(/yes/))).toEqual(['"yes"']);
+      // The span stays, so the italic setting still reaches it; only the color yields to the button's.
+      expect(quoteIn(/yes/)?.style.color).toBe('inherit');
+      expect(quoteIn(/no/)?.style.color).toBe('');
     });
   });
 
   it('paints the spans by default and drops the hook when the setting goes off', () => {
-    const view = renderMiddlePanel({}, { turns: TURNS });
+    const view = renderMiddlePanel({}, { turns: [{ ...TURNS[0], choices: ['Say "yes"'] }] });
     expect(document.documentElement.hasAttribute('data-quote-color')).toBe(true);
 
     act(() => view.settings().setQuoteColor(false));
     expect(document.documentElement.hasAttribute('data-quote-color')).toBe(false);
     // The span stays — only the rule that reads it goes away, so nothing re-renders the markdown.
     expect(spans(narration())).toEqual(['"Then we leave at dawn,"']);
+    expect(spans(screen.getByRole('button', { name: /Say "yes"/ }))).toEqual(['"yes"']);
   });
 });

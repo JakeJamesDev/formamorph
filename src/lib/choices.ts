@@ -3,6 +3,8 @@
 // (so a "- Fire..." line can't carry the dash into the chosen action) — no preamble/colon dropping,
 // quote stripping, or de-duping, which could mangle legitimately-authored choices.
 
+import { segmentQuotes, type QuoteSegment } from './quoteSegments';
+
 /** The hard-coded pseudo-choice: no AI request, it just stages this literal text in the input box.
  *  Bracketed so the OOC direction channel carries it as an authorial "keep going" instruction. */
 export const CONTINUE_CHOICE = '[Continue the Story]';
@@ -80,4 +82,24 @@ export function matchChoicesToAction(action: string, choices: readonly string[],
     if (idx >= 0) matched.add(idx);
   }
   return [...matched].sort((x, y) => x - y);
+}
+
+/** One run of choice text: its bold and quoted flags are independent, so bold can sit inside a quote. */
+export interface ChoiceRun extends QuoteSegment {
+  bold: boolean;
+}
+
+/**
+ * Split a choice into runs for the choice buttons, which are not markdown. `**` toggles bold, and a quote
+ * carries across a bold edge so one quote stays one color.
+ */
+export function choiceRuns(text: string): ChoiceRun[] {
+  const runs: ChoiceRun[] = [];
+  let open = false;
+  text.split('**').forEach((part, i) => {
+    const result = segmentQuotes(part, open);
+    open = result.open;
+    for (const segment of result.segments) runs.push({ ...segment, bold: i % 2 === 1 });
+  });
+  return runs;
 }

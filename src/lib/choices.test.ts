@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseChoices, matchChoicesToAction } from './choices';
+import { parseChoices, matchChoicesToAction, choiceRuns } from './choices';
 
 describe('parseChoices', () => {
   it('splits lines, trims, and drops empties', () => {
@@ -75,5 +75,32 @@ describe('matchChoicesToAction', () => {
     // A single shared content word is a weak match — below the default 0.5, above a lenient 0.2.
     expect(matchChoicesToAction('I wander east for a while', choices)).toEqual([]);
     expect(matchChoicesToAction('I wander east for a while', choices, 0.2)).toEqual([0]);
+  });
+});
+
+describe('choiceRuns', () => {
+  const runs = (text: string) => choiceRuns(text).map((r) => [r.text, r.bold, r.quoted]);
+
+  it('splits bold and quoted runs independently', () => {
+    expect(runs('**Shout** "I **will** go" loudly')).toEqual([
+      ['Shout', true, false],
+      [' ', false, false],
+      ['"I ', false, true],
+      ['will', true, true],
+      [' go"', false, true],
+      [' loudly', false, false],
+    ]);
+  });
+
+  it('leaves a choice with no markup as one plain run', () => {
+    expect(runs("Don't move")).toEqual([["Don't move", false, false]]);
+  });
+
+  it('runs an unclosed quote to the end of the choice', () => {
+    expect(runs('Say "wait **now**')).toEqual([
+      ['Say ', false, false],
+      ['"wait ', false, true],
+      ['now', true, true],
+    ]);
   });
 });
