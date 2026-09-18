@@ -1,6 +1,8 @@
 # 04: Shared Color Picker
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in 445443d3 + 5989976e. The picker inside a real Dialog and on touch is not verified live; ticket 05 mounts it in Settings.
+Base: 38306acb
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
