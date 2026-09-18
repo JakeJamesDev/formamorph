@@ -106,8 +106,8 @@ export function useChatPin({ scroller, virtualizer, history, gameKey, lastIndex 
     let frame = 0;
     const scheduleMeasure = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
     const onPlayerInput = (e: Event) => {
-      // A press on the content is a click; only a press on the scroller itself grabs the scrollbar.
-      if (e.type === 'pointerdown' && e.target !== el) return;
+      // A press on the content is a click; the scrollbar is a sibling of the scroller, inside its frame.
+      if (e.type === 'pointerdown' && el.contains(e.target as Node)) return;
       if (e instanceof KeyboardEvent && !SCROLL_KEYS.has(e.key)) return;
       yieldToPlayer();
     };
@@ -115,11 +115,13 @@ export function useChatPin({ scroller, virtualizer, history, gameKey, lastIndex 
     resize.observe(el);
     if (el.firstElementChild) resize.observe(el.firstElementChild);
     el.addEventListener('scroll', scheduleMeasure, { passive: true });
-    for (const type of PLAYER_SCROLL_EVENTS) el.addEventListener(type, onPlayerInput, { passive: true });
+    // The frame holds the scroller and its scrollbar, so a press on the bar reaches this listener too.
+    const frameEl = el.parentElement ?? el;
+    for (const type of PLAYER_SCROLL_EVENTS) frameEl.addEventListener(type, onPlayerInput, { passive: true });
     return () => {
       resize.disconnect();
       el.removeEventListener('scroll', scheduleMeasure);
-      for (const type of PLAYER_SCROLL_EVENTS) el.removeEventListener(type, onPlayerInput);
+      for (const type of PLAYER_SCROLL_EVENTS) frameEl.removeEventListener(type, onPlayerInput);
       cancelAnimationFrame(frame);
       cancelAnimationFrame(aimFrame.current);
       endProgrammatic();

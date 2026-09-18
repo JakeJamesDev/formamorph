@@ -851,7 +851,7 @@ export const MiddlePanel = ({
                     isSelected={(choice) => playerInput.includes(choice)}
                     choicePress={choicePress}
                     actions={choicesActions(
-                      { canRegenerate: canRegenChoices, busy: disabled || isWaitingForAI, regenerating: choicesRegenerating && isWaitingForAI },
+                      { canRegenerate: canRegenChoices, hasChoices: latestChoices.length > 0 || chatShowContinue, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
                       () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
                     )}
                   />

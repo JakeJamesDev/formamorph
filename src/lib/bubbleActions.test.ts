@@ -160,20 +160,27 @@ describe('playerBubbleActions', () => {
 describe('choicesActions', () => {
   it('offers Re-generate Choices when the choices request is on', () => {
     const run = vi.fn();
-    const actions = choicesActions({ canRegenerate: true, busy: false, regenerating: false }, run);
+    const actions = choicesActions({ canRegenerate: true, hasChoices: true, busy: false, regenerating: false }, run);
     expect(actions.map((a) => [a.label, a.section, a.disabled])).toEqual([['Re-generate Choices', 'generate', false]]);
     actions[0].run();
     expect(run).toHaveBeenCalledTimes(1);
   });
 
   it('disables it while a reply streams, and spins while the choices re-generate', () => {
-    const [action] = choicesActions({ canRegenerate: true, busy: true, regenerating: true }, vi.fn());
+    const [action] = choicesActions({ canRegenerate: true, hasChoices: true, busy: true, regenerating: true }, vi.fn());
     expect(action.disabled).toBe(true);
     expect(action.spinning).toBe(true);
   });
 
+  it('waits for an idle turn when there is no choice to show', () => {
+    const state = { canRegenerate: true, hasChoices: false, regenerating: false };
+    expect(choicesActions({ ...state, busy: true }, vi.fn())).toEqual([]);
+    expect(choicesActions({ ...state, busy: false }, vi.fn()).map((a) => a.key)).toEqual(['regenerateChoices']);
+    expect(choicesActions({ ...state, busy: true, regenerating: true }, vi.fn()).map((a) => a.key)).toEqual(['regenerateChoices']);
+  });
+
   it('offers nothing when the choices request is off', () => {
-    expect(choicesActions({ canRegenerate: false, busy: false, regenerating: false }, vi.fn())).toEqual([]);
+    expect(choicesActions({ canRegenerate: false, hasChoices: true, busy: false, regenerating: false }, vi.fn())).toEqual([]);
   });
 });
 
@@ -190,7 +197,7 @@ describe('menuSections', () => {
   it('keeps each section in its own order when the list mixes them', () => {
     const [a, b, c] = playerBubbleActions({ live: false, busy: false }, { edit: vi.fn(), copy: vi.fn() })
       .filter((x) => x.key === 'copy')
-      .concat(choicesActions({ canRegenerate: true, busy: false, regenerating: false }, vi.fn()))
+      .concat(choicesActions({ canRegenerate: true, hasChoices: true, busy: false, regenerating: false }, vi.fn()))
       .concat(bubbleActions({ ...idle, isLatest: false }, handlers()).filter((x) => x.key === 'rewind'));
     expect(menuSections([c, a, b])).toEqual([[b], [a], [c]]);
   });

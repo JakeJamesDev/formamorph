@@ -9,6 +9,7 @@ import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealC
 import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { dataUrlImageSize } from '@/lib/imageBytes';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
@@ -177,7 +178,11 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
 
   return (
     <div className="relative flex min-h-0 flex-grow flex-col">
-      <div ref={scroller} data-chat-scroller className="min-h-0 flex-grow overflow-y-auto [container-type:size] [overflow-anchor:auto]">
+      <ScrollArea
+        className="min-h-0 flex-grow"
+        viewportRef={scroller}
+        viewportProps={{ 'data-chat-scroller': '', className: '[container-type:size] [overflow-anchor:auto]' }}
+      >
         <div className="mx-auto max-w-3xl px-2">
           <div style={{ height: before, overflowAnchor: 'none' }} />
           {items.map((item) => {
@@ -253,7 +258,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
           })}
           <div style={{ height: after, overflowAnchor: 'none' }} />
         </div>
-      </div>
+      </ScrollArea>
       {showJump && (
         <button
           type="button"

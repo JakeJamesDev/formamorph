@@ -89,12 +89,16 @@ export function playerBubbleActions(
   ];
 }
 
-/** The actions of the latest turn's choices block. `canRegenerate` is false when the choices request is off. */
+/**
+ * The actions of the latest turn's choices block. `canRegenerate` is false when the choices request is off.
+ * With no choice to show, the action waits for an idle turn, so it never stands alone under a streaming reply.
+ */
 export function choicesActions(
-  state: { canRegenerate: boolean; busy: boolean; regenerating: boolean },
+  state: { canRegenerate: boolean; hasChoices: boolean; busy: boolean; regenerating: boolean },
   regenerate: () => void,
 ): BubbleAction[] {
   if (!state.canRegenerate) return [];
+  if (!state.hasChoices && state.busy && !state.regenerating) return [];
   return [{
     key: 'regenerateChoices', label: 'Re-generate Choices', icon: ListRestart, section: 'generate',
     disabled: state.busy, spinning: state.regenerating, run: regenerate,
