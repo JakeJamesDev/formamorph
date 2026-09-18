@@ -23,13 +23,15 @@ const ScrollArea = React.forwardRef<
     /** The element that actually scrolls. `ref` lands on Root, which never moves — a caller that has to
      *  read or set the scroll position needs this one. */
     viewportRef?: React.Ref<HTMLDivElement>
+    /** Extra props for the element that scrolls: classes that must sit on it, or a `data-*` hook. */
+    viewportProps?: React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Viewport> & Record<`data-${string}`, string>
     /** Overview ruler: one tick per place worth jumping to, drawn inside the scroll bar's own track.
      *  Pair with `type="always"` so the bar cannot auto-hide while the ticks matter. */
     marks?: ScrollMark[]
     /** Called with a tick's position in `marks` when it is clicked. */
     onMarkSelect?: (index: number) => void
   }
->(({ className, children, viewportRef, marks, onMarkSelect, ...props }, ref) => (
+>(({ className, children, viewportRef, viewportProps, marks, onMarkSelect, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
     className={cn("relative flex flex-col overflow-hidden", className)}
@@ -44,7 +46,10 @@ const ScrollArea = React.forwardRef<
         `[&>div]:!block` overrides Radix's inline `display:table` on the viewport's content wrapper —
         table shrink-wraps to content width, letting long rows overflow horizontally (breaking `truncate`);
         block keeps it viewport-width so children clip. We have no horizontal ScrollArea, so this is safe. */}
-    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block">
+    <ScrollAreaPrimitive.Viewport
+      {...viewportProps}
+      ref={viewportRef}
+      className={cn("w-full flex-auto min-h-0 rounded-[inherit] pr-[11px] [&>div]:!block", viewportProps?.className)}>
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar marks={marks} onMarkSelect={onMarkSelect} />
