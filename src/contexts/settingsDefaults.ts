@@ -212,3 +212,6 @@ export const DEFAULT_NARRATION_LINE_HEIGHT = 1.5;
 export const DEFAULT_QUOTE_COLOR = true;
 // Quoted speech in italic, independent of the color. Off by default: italic is a stronger change to the page.
 export const DEFAULT_QUOTE_ITALIC = false;
+// A custom quote color per mode, as `#rrggbb`. Unset (null) follows the theme's `--dialogue` token.
+export const DEFAULT_QUOTE_COLOR_LIGHT: string | null = null;
+export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;

@@ -58,3 +58,11 @@ export function hslTripleToHex(value: string): string {
   const parsed = parseHslTriple(value);
   return parsed ? hslToHex(parsed.h, parsed.s, parsed.l) : '#000000';
 }
+
+const HEX_6 = /^#?([0-9a-f]{6})$/i;
+
+/** Returns the entry as lowercase `#rrggbb`, or null when it is not a 6-digit hex color. */
+export function parseHex6(entry: string): string | null {
+  const match = HEX_6.exec(entry.trim());
+  return match ? `#${match[1].toLowerCase()}` : null;
+}

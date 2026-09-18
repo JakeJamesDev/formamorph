@@ -2,17 +2,10 @@ import * as React from "react"
 import { HexColorPicker } from "react-colorful"
 
 import { cn } from "@/lib/utils"
+import { parseHex6 } from "@/lib/hslColor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-
-const HEX_6 = /^#?([0-9a-f]{6})$/i
-
-/** Returns the entry as lowercase `#rrggbb`, or null when it is not a 6-digit hex color. */
-function parseHex6(entry: string): string | null {
-  const match = HEX_6.exec(entry.trim())
-  return match ? `#${match[1].toLowerCase()}` : null
-}
 
 export interface ColorPickerProps {
   /** The current color as `#rrggbb`. */
