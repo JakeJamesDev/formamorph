@@ -19,14 +19,15 @@ const ANNOUNCE_DELAY_MS = 600;
  * painted over the [prev, cur] region on top. `delta` is the signed change the band represents (`cur − prev`);
  * `draining` collapses last turn's band back toward the current value on submit (accent unmoved), leaving a
  * clean bar before the next turn grows. Geometry is the pure `statBarFrame`; under reduced-motion everything
- * snaps to its final state (no slide/grow, no drain band). `animKey` re-triggers the animation when the
+ * snaps to its final state (no slide/grow, no drain band), and so does `snap`. `animKey` re-triggers the animation when the
  * value+delta coincide between turns (e.g. scrolling between two past turns) — pass the page number.
  */
-const StatBar = ({ value, min, max, delta, draining, animKey }: {
+const StatBar = ({ value, min, max, delta, draining, animKey, snap }: {
   value: number; min: number; max: number; delta: number; draining: boolean;
   animKey?: string | number;
+  snap: boolean;
 }) => {
-  const reduce = usePrefersReducedMotion();
+  const reduce = usePrefersReducedMotion() || snap;
   // The band always spans the turn's previous value (`value − delta`) to its current value, whether it's
   // growing in or draining away; only the animation and the accent's motion differ.
   const frame = statBarFrame(value - delta, value, min, max);
@@ -116,6 +117,8 @@ export interface StatRowProps {
   page: number;
   /** History mode: the chip animates in, and nothing on the row can be edited. */
   isViewingPast: boolean;
+  /** Show the bar, the chip, and the band line at their final state, with no motion. */
+  snap: boolean;
   /** The live delta chip is on its way out. */
   fading: boolean;
   /** Edit mode is on and the turn is live, so the readout is typeable and the bar becomes a slider. */
@@ -137,7 +140,7 @@ export interface StatRowProps {
  * already looking at the value they are setting; reduced motion drops the flash entirely.
  */
 export const StatRow = ({
-  stat, change, barDelta, draining, page, isViewingPast, fading, editable,
+  stat, change, barDelta, draining, page, isViewingPast, snap, fading, editable,
   reserveDescriptorLine, onCommitValue,
 }: StatRowProps) => {
   const reduce = usePrefersReducedMotion();
@@ -157,11 +160,11 @@ export const StatRow = ({
   const bandId = band?.id ?? null;
   React.useEffect(() => {
     // `undefined` is the mount pass: a row has no band change to flash on its first render.
-    if (previousBand.current !== undefined && previousBand.current !== bandId && !typed.current && !reduce) {
+    if (previousBand.current !== undefined && previousBand.current !== bandId && !typed.current && !reduce && !snap) {
       setFlashKey((key) => key + 1);
     }
     previousBand.current = bandId;
-  }, [bandId, reduce]);
+  }, [bandId, reduce, snap]);
   React.useEffect(() => { typed.current = false; });
 
   // Screen readers get the band on its own, debounced: a scrub crosses several bands and should announce
@@ -183,7 +186,7 @@ export const StatRow = ({
           {shownChange && (
             <span
               key={`${page}-${change}`}
-              className={`${isViewingPast ? 'stat-delta-text-in' : (fading ? 'stat-delta-text-out' : 'stat-delta-text')} text-label ${change > 0 ? 'text-success' : 'text-destructive'}`}
+              className={`${snap ? '' : isViewingPast ? 'stat-delta-text-in' : (fading ? 'stat-delta-text-out' : 'stat-delta-text')} text-label ${change > 0 ? 'text-success' : 'text-destructive'}`}
             >
               {shownChange}
             </span>
@@ -223,6 +226,7 @@ export const StatRow = ({
           delta={barDelta}
           draining={draining}
           animKey={isViewingPast ? page : undefined}
+          snap={snap}
         />
       )}
       {(band || reserveDescriptorLine) && (
