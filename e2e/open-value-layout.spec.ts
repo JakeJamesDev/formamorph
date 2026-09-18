@@ -343,7 +343,8 @@ test('closing one value redraws the outlines of the others', async ({ page }, te
   expectClean(after);
 });
 
-test('a focused value draws the traced outline and no focus ring', async ({ page }) => {
+test('a focused value draws the traced outline and no focus ring', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'a tap on mobile opens full screen');
   const root = await openValues(page, 'Seat');
   await settle(page, root);
   const island = root.locator('[data-open-value] [data-lexical-slot]').first();
