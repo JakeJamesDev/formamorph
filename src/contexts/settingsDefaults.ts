@@ -206,3 +206,7 @@ export const NARRATION_FONT_OPTIONS = [{ value: 'global', label: 'Use Global', s
 // change); line-height 1.5 matches the base. Both apply only to the story reading pane.
 export const DEFAULT_NARRATION_SCALE = 1;
 export const DEFAULT_NARRATION_LINE_HEIGHT = 1.5;
+
+// Quoted speech in the story text takes the theme's `--dialogue` color. On by default: a new player gets
+// the benefit before finding the setting, and every theme defines the token for both modes.
+export const DEFAULT_QUOTE_COLOR = true;

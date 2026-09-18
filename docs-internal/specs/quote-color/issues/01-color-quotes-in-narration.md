@@ -1,6 +1,7 @@
 # 01: Color Quotes in Narration and the Player Echo
 
-Status: ready-for-agent
+Status: in-progress
+Base: 77ee0e9f
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

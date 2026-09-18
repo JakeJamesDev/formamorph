@@ -25,6 +25,11 @@
     letter-spacing: var(--fm-letter-spacing);
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
+    /* Quoted speech in the story text (Settings → Accessibility → Quote Color). Its own token rather
+       than a reused one: the light themes' --primary is a pastel that fails as text on a light
+       background, and --ring equals the body color in two of them. Every theme sets it for both
+       modes, at a lightness that reads against --background without competing with --foreground. */
+    --dialogue: 212 72% 40%;
     /* Card sits a step off --background so panels read as raised surfaces (lighter in dark, faintly
        tinted in light where the page is already white). Per-theme values keep the theme's hue. */
     --card: 210 40% 97%;
@@ -74,6 +79,7 @@
     color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
+    --dialogue: 205 80% 72%;
     --card: 222 40% 9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
@@ -118,6 +124,7 @@
   .light[data-theme="purple"] {
     --background: 266 40% 99%;
     --foreground: 266 45% 8%;
+    --dialogue: 266 55% 45%;
     --card: 266 30% 96%;
     --card-foreground: 266 45% 8%;
     --popover: 266 40% 99%;
@@ -138,6 +145,7 @@
   .dark[data-theme="purple"] {
     --background: 266 42% 6%;
     --foreground: 266 20% 96%;
+    --dialogue: 266 65% 78%;
     --card: 266 35% 10%;
     --card-foreground: 266 20% 96%;
     --popover: 266 42% 6%;
@@ -161,6 +169,7 @@
   .light[data-theme="graphite"] {
     --background: 220 12% 97%;
     --foreground: 220 15% 12%;
+    --dialogue: 220 26% 38%;
     --card: 220 15% 99%;
     --card-foreground: 220 15% 12%;
     --popover: 220 15% 99%;
@@ -181,6 +190,7 @@
   .dark[data-theme="graphite"] {
     --background: 220 12% 10%;
     --foreground: 220 10% 96%;
+    --dialogue: 220 20% 74%;
     --card: 220 12% 13%;
     --card-foreground: 220 10% 96%;
     --popover: 220 12% 13%;
@@ -203,6 +213,7 @@
   .light[data-theme="rose"] {
     --background: 340 40% 99%;
     --foreground: 340 30% 9%;
+    --dialogue: 340 58% 42%;
     --card: 340 30% 96%;
     --card-foreground: 340 30% 9%;
     --popover: 340 40% 99%;
@@ -223,6 +234,7 @@
   .dark[data-theme="rose"] {
     --background: 340 30% 7%;
     --foreground: 340 15% 96%;
+    --dialogue: 340 68% 76%;
     --card: 340 25% 11%;
     --card-foreground: 340 15% 96%;
     --popover: 340 30% 7%;
@@ -247,6 +259,7 @@
   .light[data-theme="monochrome"] {
     --background: 0 0% 100%;
     --foreground: 0 0% 9%;
+    --dialogue: 0 0% 38%;
     --card: 0 0% 96%;
     --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
@@ -267,6 +280,7 @@
   .dark[data-theme="monochrome"] {
     --background: 0 0% 0%;
     --foreground: 0 0% 96%;
+    --dialogue: 0 0% 72%;
     --card: 0 0% 7%;
     --card-foreground: 0 0% 96%;
     --popover: 0 0% 9%;
@@ -292,6 +306,7 @@
   .light[data-theme="highcontrast"] {
     --background: 0 0% 100%;
     --foreground: 0 0% 0%;
+    --dialogue: 240 100% 28%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
@@ -312,6 +327,7 @@
   .dark[data-theme="highcontrast"] {
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
+    --dialogue: 190 100% 72%;
     --card: 0 0% 0%;
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 0%;
@@ -335,6 +351,7 @@
   .light[data-theme="forest"] {
     --background: 158 30% 98%;
     --foreground: 158 25% 8%;
+    --dialogue: 158 55% 27%;
     --card: 158 22% 95%;
     --card-foreground: 158 25% 8%;
     --popover: 158 30% 98%;
@@ -355,6 +372,7 @@
   .dark[data-theme="forest"] {
     --background: 158 28% 6%;
     --foreground: 158 15% 96%;
+    --dialogue: 158 45% 70%;
     --card: 158 22% 10%;
     --card-foreground: 158 15% 96%;
     --popover: 158 28% 6%;
@@ -378,6 +396,7 @@
   .light[data-theme="bubblegum"] {
     --background: 330 45% 99%;
     --foreground: 330 30% 9%;
+    --dialogue: 330 65% 42%;
     --card: 330 30% 96%;
     --card-foreground: 330 30% 9%;
     --popover: 330 45% 99%;
@@ -401,6 +420,7 @@
   .dark[data-theme="bubblegum"] {
     --background: 330 40% 8%;
     --foreground: 330 25% 96%;
+    --dialogue: 330 80% 74%;
     --card: 330 34% 12%;
     --card-foreground: 330 25% 96%;
     --popover: 330 40% 8%;
@@ -512,6 +532,13 @@
      own line-height above composes the reading slider with the same value. */
   --fm-line-height: var(--narration-fm-line-height, 1);
   letter-spacing: var(--narration-fm-letter-spacing, 0em);
+}
+
+/* Quoted speech in the story text. The span is always in the narration and the player's echoed lines; the
+   root attribute the Quote Color setting writes is what paints it, so switching the setting off leaves the
+   span with nothing to read rather than re-rendering the markdown. */
+:root[data-quote-color] .dialogue-quote {
+  color: hsl(var(--dialogue));
 }
 
 /* Italic skew exaggerates a font whose true italic reads too subtle, on top of the real italic face.

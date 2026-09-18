@@ -105,6 +105,13 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
     label: 'Line Spacing',
     description: 'Sets the gap between lines of story text',
   },
+  quoteColor: {
+    label: 'Quote Color',
+    description: 'Colors quoted speech so dialogue stands out',
+    info: `Applies to the narration and your own typed lines. The color comes from your theme.
+
+Only double quotes count. Apostrophes and single quotes stay plain, so contractions keep the body color.`,
+  },
 
   // ── Display · Inspection ────────────────────────────────────────────────────
   showReasoning: {

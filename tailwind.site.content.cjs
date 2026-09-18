@@ -41,6 +41,7 @@ const COMMUNITY_FILES = [
   'src/components/WorldActionButton.tsx',
   'src/components/PlaceBadges.tsx',
   'src/lib/previewTint.ts',
+  'src/lib/rehypeQuoteSpans.ts',
   'src/components/events/EventPosterBand.tsx',
   'src/components/FullscreenShell.tsx',
   'src/components/StatusPill.tsx',

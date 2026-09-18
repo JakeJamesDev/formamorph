@@ -7,6 +7,7 @@ import remarkBreaks from 'remark-breaks';
 import remarkFlexibleMarkers from 'remark-flexible-markers';
 import { remarkSubSuper } from '@/lib/remarkSubSuper';
 import { rehypePreviewTint } from '@/lib/previewTint';
+import { rehypeQuoteSpans } from '@/lib/rehypeQuoteSpans';
 import { getRevealTiming } from '@/lib/revealTimingStore';
 import { cn } from '@/lib/utils';
 import 'streamdown/styles.css';
@@ -58,6 +59,20 @@ const REHYPE_PLUGINS = [raw, [sanitizePlugin, MARK_SCHEMA], harden] as
 const TINT_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
   [...(REHYPE_PLUGINS ?? []), rehypePreviewTint];
 
+// Same placement, same reason: the quote spans are ours, added after the sanitizer rather than allowed
+// through it, so author markdown gains nothing from them.
+const QUOTE_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
+  [...(REHYPE_PLUGINS ?? []), rehypeQuoteSpans];
+const TINT_QUOTE_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
+  [...(TINT_REHYPE_PLUGINS ?? []), rehypeQuoteSpans];
+
+/** Pick one of the four module constants. Streamdown memoizes each block on plugin-array identity, so a
+ *  fresh array per render would repaint every block on every token. */
+function rehypeSet(tinted: boolean, dialogue: boolean): ComponentProps<typeof Streamdown>['rehypePlugins'] {
+  if (tinted) return dialogue ? TINT_QUOTE_REHYPE_PLUGINS : TINT_REHYPE_PLUGINS;
+  return dialogue ? QUOTE_REHYPE_PLUGINS : REHYPE_PLUGINS;
+}
+
 const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
   table: ({ node: _node, className, children, ...props }) => (
     <div
@@ -84,9 +99,13 @@ const COMPONENTS: ComponentProps<typeof Streamdown>['components'] = {
  *
  * `tinted` turns on the author-side chip highlighting: the caller marks up resolved placeholder values and
  * they come back as chip-colored marks. Off everywhere the player reads.
+ *
+ * `dialogue` wraps quoted speech in a span the stylesheet colors. On for story text — narration and the
+ * player's own echoed lines — and off for the reasoning aside, the command preview, and every pane outside
+ * the game view.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer(
-  { text, animate = false, animation = 'fadeIn', easing, tinted = false }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean },
+  { text, animate = false, animation = 'fadeIn', easing, tinted = false, dialogue = false }: { text: string; animate?: boolean; animation?: string; easing?: string; tinted?: boolean; dialogue?: boolean },
 ) {
   // Read the current fade timing at render (a new sentence's release re-renders us via the text prop),
   // so the words just added animate at the model's current smoothed rate.
@@ -94,7 +113,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={tinted ? TINT_REHYPE_PLUGINS : REHYPE_PLUGINS}
+        rehypePlugins={rehypeSet(tinted, dialogue)}
         components={COMPONENTS}
         plugins={PLUGINS}
         controls={false}
