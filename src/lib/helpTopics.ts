@@ -11,6 +11,11 @@
 
 const WIKI_BASE = 'https://github.com/JakeJamesDev/formamorph/wiki';
 
+/** A wiki page's URL, e.g. `Connect-Your-Own-AI`. */
+export function wikiPageUrl(page: string): string {
+  return `${WIKI_BASE}/${page}`;
+}
+
 export interface HelpTopic {
   /** Dialog title. */
   title: string;
@@ -31,7 +36,7 @@ export interface HelpTopic {
 /** Full "Learn more" target for a topic, or null when no wiki page covers it yet. */
 export function helpWikiUrl(topic: HelpTopic): string | null {
   if (!topic.wikiPage) return null;
-  return `${WIKI_BASE}/${topic.wikiPage}${topic.wikiAnchor ? `#${topic.wikiAnchor}` : ''}`;
+  return `${wikiPageUrl(topic.wikiPage)}${topic.wikiAnchor ? `#${topic.wikiAnchor}` : ''}`;
 }
 
 export const HELP_TOPICS: Record<string, HelpTopic> = {

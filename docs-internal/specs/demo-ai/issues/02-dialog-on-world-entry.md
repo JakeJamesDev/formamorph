@@ -1,6 +1,8 @@
 # 02: Demo AI Dialog on World Entry
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in "Add Demo AI Dialog On World Entry". The readme also waits while Settings is open, so Connect an AI doesn't stack it.
+Base: 54d755f2
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
