@@ -58,7 +58,8 @@ export const DEFAULT_PREVIEW_DURATION = 400;
 export const DEFAULT_PREVIEW_STAGGER = 40;
 // User minimums: the rate-derived reveal is floored to these so a fast model can't blow past a readable
 // pace. 0 = no floor (unlimited). Shown user-facing as "Unlimited".
-export const DEFAULT_REVEAL_MIN_DURATION = 0;
+// 250ms keeps Move, Scale and Blur visible on a fast stream, where the rate-derived fade is a frame or two.
+export const DEFAULT_REVEAL_MIN_DURATION = 250;
 export const DEFAULT_REVEAL_MIN_STAGGER = 0;
 
 /** Any effect enabled ⇒ animate the reveal; none ⇒ fall back to the smooth crawl. */
