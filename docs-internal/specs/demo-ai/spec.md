@@ -105,7 +105,9 @@ the app says nothing.
 
 - A new pure helper answers "is this resolved endpoint the hosted Demo AI". It is true only when the preset id is the built-in default id and the endpoint URL is the hosted service URL.
 - The hosted service URL becomes its own constant, separate from the overridable default-endpoint constant. The overridable constant falls back to it. When a build overrides the default endpoint, the two differ, and the helper returns false.
-- The existing "built-in preset is active" check does not serve, because it is also true for the desktop engine and for ghost ids.
+- The existing "built-in preset is active" check does not serve by itself, because it is also true for the desktop engine.
+- A ghost active id (a stored id with no matching preset) counts as the Demo AI. It resolves to the built-in default's values and sends to the hosted URL, so the hosted model writes the narration. The rule follows what the player gets, and the name and the helper always agree.
+- A user preset that points at the hosted URL does not count. It is the player's own configuration, and it keeps the player's own name.
 - For the badge and the dialog, the helper runs on the endpoint that the narration prompt kind resolves to. Routing of other prompt kinds has no effect.
 
 ### Rename
