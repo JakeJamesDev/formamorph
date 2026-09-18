@@ -1,8 +1,8 @@
 # Placeholder Values Tab — Follow-Up Spec
 
-Status: in-progress
+Status: ready-for-human
 Base: 1bdc2b16
-Status note: five fixes found in the first hands-on pass of the shipped Values tab; parent spec is `spec.md` beside this file
+Status note: all five fixes built and reviewed (`e859440c`, `ede64f5c`); parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser, because Tab stays inside the editor and a toolbar press hands the keyboard back to the value it refilled. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
 
 Five fixes to the Values tab and the chip flyout: an off-list pin becomes editable, a header click makes
 its value active, the header becomes a pager whose controls never move, only the active value carries an
