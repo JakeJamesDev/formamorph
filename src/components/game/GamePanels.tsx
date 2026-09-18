@@ -15,6 +15,7 @@ import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration } from './ChatNarration';
+import { ChatChoices } from './ChatChoices';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -536,6 +537,8 @@ export const MiddlePanel = ({
     playerStats,
     isViewingPast,
     viewChoices: choices,
+    choices: latestChoices,
+    fullMessageHistory,
     viewSelectedChoice,
     viewContinueUsed
   } = useGameplay();
@@ -573,6 +576,17 @@ export const MiddlePanel = ({
     if (longPress.current.timer) clearTimeout(longPress.current.timer);
     longPress.current.timer = null;
   };
+  /** The press handlers of one choice button, shared by Pages and Chat. */
+  const choicePress = (choice: string) => ({
+    onClick: (e: React.MouseEvent) => {
+      if (longPress.current.fired) { longPress.current.fired = false; return; } // swallow the click after a long-press
+      if (e.ctrlKey || e.metaKey) appendChoice(choice); else setPlayerInput(choice);
+    },
+    onPointerDown: () => startLongPress(choice),
+    onPointerUp: cancelLongPress,
+    onPointerLeave: cancelLongPress,
+    onPointerCancel: cancelLongPress,
+  });
 
   // The hard-coded continue pseudo-choice. 'always' keeps it even with the choices request switched off,
   // where it stands alone. Live: shown once nothing is generating, even with zero generated choices (it's
@@ -583,6 +597,12 @@ export const MiddlePanel = ({
   const storyStarted = displayedMessages.some((m) => m.role === 'assistant');
   const continueOffered = continueChoiceMode === 'always' || (continueChoiceMode === 'on' && choicesEnabled);
   const showContinue = continueOffered && (isViewingPast ? viewContinueUsed : storyStarted && !disabled);
+
+  // Chat shows the latest turn's choices wherever the player scrolled, so it reads the live state, never the viewed page.
+  const chatShowContinue = continueOffered && fullMessageHistory.some((m) => m.role === 'assistant') && !disabled;
+  // Busy from the icon's click until the re-roll ends.
+  const [choicesRegenerating, setChoicesRegenerating] = useState(false);
+  React.useEffect(() => { if (!isWaitingForAI) setChoicesRegenerating(false); }, [isWaitingForAI]);
 
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
@@ -763,7 +783,20 @@ export const MiddlePanel = ({
             <div className={`${narrationFrame} flex flex-col`}>
               {optionsControl}
               {commandPreviewBlock}
-              <ChatNarration parseAssistantMessage={parseAssistantMessage} />
+              <ChatNarration
+                parseAssistantMessage={parseAssistantMessage}
+                latestFooter={
+                  <ChatChoices
+                    choices={latestChoices}
+                    showContinue={chatShowContinue}
+                    disabled={disabled || isWaitingForAI}
+                    isSelected={(choice) => playerInput.includes(choice)}
+                    choicePress={choicePress}
+                    onRegenerate={canRegenChoices ? () => { setChoicesRegenerating(true); handleRegenerateChoices(); } : undefined}
+                    regenerating={choicesRegenerating && isWaitingForAI}
+                  />
+                }
+              />
             </div>
           ) : (
           <ScrollArea className={narrationFrame}>
@@ -853,14 +886,7 @@ export const MiddlePanel = ({
                     <Button
                       key={index}
                       // Ctrl/Cmd+click (or a touch long-press) appends the choice as a new sentence; a plain tap replaces.
-                      onClick={(e) => {
-                        if (longPress.current.fired) { longPress.current.fired = false; return; } // swallow the click after a long-press
-                        if (e.ctrlKey || e.metaKey) appendChoice(choice); else setPlayerInput(choice);
-                      }}
-                      onPointerDown={() => startLongPress(choice)}
-                      onPointerUp={cancelLongPress}
-                      onPointerLeave={cancelLongPress}
-                      onPointerCancel={cancelLongPress}
+                      {...choicePress(choice)}
                       disabled={disabled || isViewingPast}
                       variant={isSelected ? "default" : "outline"}
                       className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
@@ -888,14 +914,7 @@ export const MiddlePanel = ({
                     <Button
                       // Same click contract as a generated choice: plain tap replaces the input, Ctrl/Cmd+click
                       // (or a long-press) appends. Never submits — the player still presses send.
-                      onClick={(e) => {
-                        if (longPress.current.fired) { longPress.current.fired = false; return; }
-                        if (e.ctrlKey || e.metaKey) appendChoice(CONTINUE_CHOICE); else setPlayerInput(CONTINUE_CHOICE);
-                      }}
-                      onPointerDown={() => startLongPress(CONTINUE_CHOICE)}
-                      onPointerUp={cancelLongPress}
-                      onPointerLeave={cancelLongPress}
-                      onPointerCancel={cancelLongPress}
+                      {...choicePress(CONTINUE_CHOICE)}
                       disabled={disabled || isViewingPast}
                       variant={continueSelected ? "default" : "outline"}
                       className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
