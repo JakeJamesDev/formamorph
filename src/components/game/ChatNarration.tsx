@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { ArrowDown } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -9,6 +10,7 @@ import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { dataUrlImageSize } from '@/lib/imageBytes';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { useChatPin } from './useChatPin';
 import { ReasoningBlock } from './ReasoningBlock';
 import type { ChatMessage } from '@/types';
 
@@ -62,7 +64,7 @@ function InlineSceneImage({ src }: { src: string }) {
  * right and the narration as a full-width block. Opens at the latest turn.
  */
 export function ChatNarration({ parseAssistantMessage }: { parseAssistantMessage: (content: string) => string }) {
-  const { fullMessageHistory, isRevealingNarration, sceneImages } = useGameplay();
+  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
@@ -115,63 +117,88 @@ export function ChatNarration({ parseAssistantMessage }: { parseAssistantMessage
   const before = items.length ? items[0].start : 0;
   const after = items.length ? virtualizer.getTotalSize() - items[items.length - 1].end : 0;
   const lastIndex = turns.length - 1;
+  const { pinnedIndex, showJump, jumpToLatest } = useChatPin({
+    scroller, virtualizer, history: fullMessageHistory, gameKey, lastIndex,
+  });
+  const streaming = isWaitingForAI || isRevealingNarration;
 
   return (
-    <div ref={scroller} data-chat-scroller className="min-h-0 flex-grow overflow-y-auto [overflow-anchor:auto]">
-      <div className="mx-auto max-w-3xl px-2">
-        <div style={{ height: before, overflowAnchor: 'none' }} />
-        {items.map((item) => {
-          const turn = turns[item.index];
-          const isLatest = item.index === lastIndex;
-          const liveReveal = isLatest && isRevealingNarration && !!turn.narration;
-          const reasoningLive = isLatest && !!liveReasoning.text;
-          const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
-          const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
-          const images = (!liveReveal && turn.turnId && sceneImages[turn.turnId]) || [];
-          return (
-            <article
-              key={item.key}
-              data-index={item.index}
-              ref={virtualizer.measureElement}
-              aria-label={`Turn ${item.index + 1}`}
-              className="flow-root py-3"
-            >
-              {turn.action !== null && (
-                // No dialogue color: the quote color loses contrast on the primary fill.
-                <div className="mb-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
-                  <MarkdownRenderer text={turn.action} />
-                </div>
-              )}
-              {(turn.narration || (showReasoning && reasoning?.text)) && (
-                <div className="rounded-lg border border-border bg-card px-3.5 py-2.5" style={revealStyle}>
-                  {showReasoning && reasoning?.text && (
-                    <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
-                  )}
-                  {turn.narration && (
-                    <div data-testid="narration">
-                      {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                      <MarkdownRenderer
-                        key={liveReveal ? 'live' : `committed:${narrationText}`}
-                        text={narrationText}
-                        animate={liveReveal && revealOn}
-                        animation={revealAnim}
-                        easing={revealEasing}
-                        dialogue
-                      />
-                    </div>
-                  )}
-                  {images.length > 0 && (
-                    <div className="mt-2.5 flex flex-col gap-2">
-                      {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
-                    </div>
-                  )}
-                </div>
-              )}
-            </article>
-          );
-        })}
-        <div style={{ height: after, overflowAnchor: 'none' }} />
+    <div className="relative flex min-h-0 flex-grow flex-col">
+      <div ref={scroller} data-chat-scroller className="min-h-0 flex-grow overflow-y-auto [container-type:size] [overflow-anchor:auto]">
+        <div className="mx-auto max-w-3xl px-2">
+          <div style={{ height: before, overflowAnchor: 'none' }} />
+          {items.map((item) => {
+            const turn = turns[item.index];
+            const isLatest = item.index === lastIndex;
+            const liveReveal = isLatest && isRevealingNarration && !!turn.narration;
+            const reasoningLive = isLatest && !!liveReasoning.text;
+            const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
+            const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
+            const images = (!liveReveal && turn.turnId && sceneImages[turn.turnId]) || [];
+            return (
+              <article
+                key={item.key}
+                data-index={item.index}
+                ref={virtualizer.measureElement}
+                aria-label={`Turn ${item.index + 1}`}
+                className="flow-root py-3"
+                style={{
+                  // The submitted turn fills the viewport, so the list is tall enough to pin its top. The unit
+                  // follows the scroller in the same layout, so a resize never clamps the pinned offset.
+                  minHeight: item.index === pinnedIndex ? '100cqh' : undefined,
+                  // A streaming turn only grows at its end; an anchor inside it would drag the view along.
+                  overflowAnchor: isLatest && streaming ? 'none' : undefined,
+                }}
+              >
+                {turn.action !== null && (
+                  // No dialogue color: the quote color loses contrast on the primary fill.
+                  <div className="mb-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
+                    <MarkdownRenderer text={turn.action} />
+                  </div>
+                )}
+                {(turn.narration || (showReasoning && reasoning?.text)) && (
+                  <div className="rounded-lg border border-border bg-card px-3.5 py-2.5" style={revealStyle}>
+                    {showReasoning && reasoning?.text && (
+                      <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
+                    )}
+                    {turn.narration && (
+                      <div data-testid="narration">
+                        {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
+                        <MarkdownRenderer
+                          key={liveReveal ? 'live' : `committed:${narrationText}`}
+                          text={narrationText}
+                          animate={liveReveal && revealOn}
+                          animation={revealAnim}
+                          easing={revealEasing}
+                          dialogue
+                        />
+                      </div>
+                    )}
+                    {images.length > 0 && (
+                      <div className="mt-2.5 flex flex-col gap-2">
+                        {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div data-content-end />
+              </article>
+            );
+          })}
+          <div style={{ height: after, overflowAnchor: 'none' }} />
+        </div>
       </div>
+      {showJump && (
+        <button
+          type="button"
+          onClick={jumpToLatest}
+          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-meta shadow-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        >
+          <ArrowDown className="h-4 w-4" aria-hidden />
+          <span>Jump to Latest</span>
+          {streaming && <span className="text-muted-foreground">· New Text Below</span>}
+        </button>
+      )}
     </div>
   );
 }
