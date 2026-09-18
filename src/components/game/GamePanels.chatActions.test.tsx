@@ -257,7 +257,7 @@ describe('Chat bubble menus', () => {
       const bubble = await actionBubble(2);
       expect(within(bubble).queryByRole('button')).toBeNull();
       rightClick(bubble);
-      expect(menuRows()).toEqual(['Copy Text']);
+      expect(menuRows()).toEqual(['Edit', 'Copy Text']);
       fireEvent.click(screen.getByRole('menuitem', { name: 'Copy Text' }));
       expect(writeText).toHaveBeenCalledWith('I step onto the pier.');
     } finally {
