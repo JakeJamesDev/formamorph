@@ -2,7 +2,7 @@
 // does. The build is the hosted one, so the built-in Default preset is the Demo AI.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRef } from 'react';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const rig = vi.hoisted(() => {
@@ -204,6 +204,29 @@ describe('DemoAINotice controls', () => {
     const link = within(screen.getByRole('dialog')).getByRole('link', { name: 'How to set up your own AI' });
     expect(link).toHaveAttribute('href', 'https://github.com/JakeJamesDev/formamorph/wiki/Connect-Your-Own-AI');
     expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('orders the actions negative first, so the shared footer puts Connect an AI on the right', () => {
+    mountNotice();
+    const actions = within(screen.getByRole('dialog')).getAllByRole('button')
+      .concat(within(screen.getByRole('dialog')).getAllByRole('link', { name: 'Get the Desktop App' }))
+      .filter((el) => el.textContent !== 'Close')
+      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+      .map((el) => el.textContent);
+    expect(actions).toEqual(['Keep Playing', 'Get the Desktop App', 'Connect an AI']);
+  });
+
+  it('puts the initial focus on Connect an AI', async () => {
+    mountNotice();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Connect an AI' })).toHaveFocus());
+  });
+
+  it('keeps the actions outside the scrolling body', () => {
+    mountNotice();
+    const body = screen.getByTestId('demo-ai-body');
+    expect(body).toContainElement(screen.getByRole('link', { name: 'How to set up your own AI' }));
+    expect(body).not.toContainElement(screen.getByRole('button', { name: 'Connect an AI' }));
+    expect(body).not.toContainElement(screen.getByRole('button', { name: 'Keep Playing' }));
   });
 
   it('opens from outside the entry path without ending an entry turn', async () => {
