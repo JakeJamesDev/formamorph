@@ -21,12 +21,15 @@ import { FieldError, Hint, Meta } from '@/components/ui/typography';
 import {
   CONTINUE_CHOICE_MODES,
   DEFAULT_FONT,
+  DEFAULT_NARRATION_LAYOUT,
   DEFAULT_THEME_COLOR,
   FONT_OPTIONS,
+  NARRATION_LAYOUTS,
   SYSTEM_FONT_STACK,
   THEME_COLORS,
   fontSizeAdjust,
   type FontChoice,
+  type NarrationLayout,
   type ThemeColor,
   type ContinueChoiceMode,
 } from '@/contexts/settingsDefaults';
@@ -94,6 +97,7 @@ function DisplayReference() {
   const [locationBackdrop, setLocationBackdrop] = useState(true);
   const [fade, setFade] = useState(40);
   const [narrationScale, setNarrationScale] = useState(100);
+  const [narrationLayout, setNarrationLayout] = useState<NarrationLayout>(DEFAULT_NARRATION_LAYOUT);
   const previewMode = themeMode === 'system' ? resolvedTheme : themeMode;
   const selectedFont = FONT_OPTIONS.find((option) => option.value === font)?.stack;
   const previewFont = selectedFont ? `${selectedFont}, ${SYSTEM_FONT_STACK}` : SYSTEM_FONT_STACK;
@@ -183,6 +187,14 @@ function DisplayReference() {
         </Section>
 
         <Section title="Narration">
+          <Row {...rowCopy('narrationLayout')}>
+            <OptionSwitcher
+              ariaLabel="Narration Layout"
+              value={narrationLayout}
+              onChange={setNarrationLayout}
+              options={NARRATION_LAYOUTS}
+            />
+          </Row>
           <Row {...rowCopy('narrationTextSize')}>
             <ValueSlider
               ariaLabel="Narration Size"

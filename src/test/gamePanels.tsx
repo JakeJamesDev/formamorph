@@ -345,6 +345,23 @@ export function renderRightPanel(
   return renderPanel(defaults, overrides, options, (props) => <RightPanel {...props} />);
 }
 
+/**
+ * Element measurement for the Chat body, which jsdom lacks: every size reads 0 there, so the virtualizer
+ * would mount no turns. The scroller reports a viewport tall enough to hold every staged turn, and each turn
+ * a fixed height. The virtualizer reads `offsetWidth`/`offsetHeight` for both. Returns the restore.
+ */
+export function stubChatLayout(): () => void {
+  const height = (el: HTMLElement) => (el.hasAttribute('data-chat-scroller') ? 100_000 : 120);
+  const realHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight');
+  const realWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get(this: HTMLElement) { return height(this); } });
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', { configurable: true, get: () => 600 });
+  return () => {
+    if (realHeight) Object.defineProperty(HTMLElement.prototype, 'offsetHeight', realHeight);
+    if (realWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', realWidth);
+  };
+}
+
 /** jsdom gaps the panels hit on mount: `matchMedia` (theme, mobile layout, reduced motion) and the endpoint
  *  probes the settings provider fires on a ~1.2s timer — a test that waits that long would otherwise reach
  *  the real network. Every probe treats a failure as "couldn't detect", so refusing them changes nothing the

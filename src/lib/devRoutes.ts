@@ -147,6 +147,9 @@ export const DEV_MODAL_TABS = {
   // GameViewer's side panel (Entities/Notes/Memory/Logs). Also not a modal: `#dev?view=gameViewer&tab=memory`.
   // The mobile-only `model` tab is deliberately not routable.
   gameViewer: ['entities', 'notes', 'memory', 'logs'],
+  // The narration panel's layout, reached with `mode=…` on the game view (`#dev?view=gameViewer&mode=chat`).
+  // It overrides the Narration Layout setting without saving it.
+  gameViewerLayout: ['pages', 'chat'],
 } as const;
 
 // Settings → Prompts exposes a second level reached via `subtab=…` (narration/thinking/choices/…). Those

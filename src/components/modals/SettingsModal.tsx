@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, NARRATION_LAYOUTS, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
 import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
@@ -667,6 +667,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     choicesEnabled,
     continueChoiceMode,
     setContinueChoiceMode,
+    narrationLayout,
+    setNarrationLayout,
     setChoicesEnabled,
     statUpdatesEnabled,
     setStatUpdatesEnabled,
@@ -1611,6 +1613,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </Section>
 
               <Section title="Narration">
+              <Row {...rowCopy('narrationLayout')}>
+                <OptionSwitcher
+                  ariaLabel="Narration Layout"
+                  value={narrationLayout}
+                  onChange={setNarrationLayout}
+                  options={NARRATION_LAYOUTS}
+                />
+              </Row>
               <Row {...rowCopy('narrationReveal')}>
                 <RevealAnimationDemoButton />
               </Row>

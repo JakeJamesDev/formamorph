@@ -71,6 +71,13 @@ export const SETTINGS_COPY = {
   },
 
   // ── Display · Narration ─────────────────────────────────────────────────────
+  narrationLayout: {
+    label: 'Narration Layout',
+    description: 'Shows one turn per page, or the whole story as a chat',
+    info: `**Pages** shows one turn at a time. Use the page buttons to read back.
+
+**Chat** shows every turn in one list that you scroll. Your actions show on the right.`,
+  },
   narrationReveal: {
     label: 'Narration Reveal',
     description: 'Sets how each sentence appears as it streams',

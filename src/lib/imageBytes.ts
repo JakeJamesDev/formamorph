@@ -68,6 +68,72 @@ export function sniffDataUrlMime(url: string): string {
   }
 }
 
+/** An image's size in pixels. */
+export interface PixelSize { width: number; height: number }
+
+// A JPEG's frame header follows its EXIF and ICC segments; 64 KB of payload covers them in practice.
+const SIZE_HEAD_BYTES = 64 * 1024;
+
+/** The first bytes of a base64 data-URL's payload, or null when it isn't base64. */
+function dataUrlHead(url: string, bytes: number): Uint8Array | null {
+  const comma = url.indexOf(',');
+  if (!url.startsWith('data:') || comma === -1 || !url.slice(0, comma).includes(';base64')) return null;
+  try {
+    const chars = Math.ceil(bytes / 3) * 4;
+    const b64 = url.slice(comma + 1, comma + 1 + chars);
+    return Uint8Array.from(atob(b64.slice(0, b64.length - (b64.length % 4))), (c) => c.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+/** Width and height from a JPEG's first frame header (SOF0–SOF15, except DHT, JPG, and DAC). */
+function jpegSize(b: Uint8Array): PixelSize | null {
+  let i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) return null;
+    const marker = b[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      return { height: (b[i + 5] << 8) | b[i + 6], width: (b[i + 7] << 8) | b[i + 8] };
+    }
+    i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+  }
+  return null;
+}
+
+/** Width and height from a WebP's first chunk: VP8 (lossy), VP8L (lossless), or VP8X (extended). */
+function webpSize(b: Uint8Array): PixelSize | null {
+  if (b.length < 30) return null;
+  const chunk = String.fromCharCode(b[12], b[13], b[14], b[15]);
+  if (chunk === 'VP8 ') return { width: ((b[27] << 8) | b[26]) & 0x3fff, height: ((b[29] << 8) | b[28]) & 0x3fff };
+  if (chunk === 'VP8L') {
+    const bits = b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24);
+    return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
+  }
+  if (chunk === 'VP8X') {
+    return { width: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1, height: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1 };
+  }
+  return null;
+}
+
+/**
+ * An image data-URL's pixel size, read from its header bytes without decoding pixels. Null for a remote
+ * URL, a truncated header, or a format other than PNG, JPEG, and WebP.
+ */
+export function dataUrlImageSize(url: string): PixelSize | null {
+  const b = dataUrlHead(url, SIZE_HEAD_BYTES);
+  if (!b || b.length < 12) return null;
+  const mime = MAGIC.find(({ test }) => test(b))?.mime;
+  if (mime === 'image/png') {
+    if (b.length < 24) return null;
+    const view = new DataView(b.buffer, b.byteOffset, b.byteLength);
+    return { width: view.getUint32(16), height: view.getUint32(20) };
+  }
+  if (mime === 'image/jpeg') return jpegSize(b);
+  if (mime === 'image/webp') return webpSize(b);
+  return null;
+}
+
 /**
  * The format an image data-URL really holds: its bytes' word when recognized, its label's otherwise.
  * Labels lie — a bundled world ships a JPEG marked `image/png` — so every decision that hinges on format
