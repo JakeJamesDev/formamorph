@@ -210,3 +210,5 @@ export const DEFAULT_NARRATION_LINE_HEIGHT = 1.5;
 // Quoted speech in the story text takes the theme's `--dialogue` color. On by default: a new player gets
 // the benefit before finding the setting, and every theme defines the token for both modes.
 export const DEFAULT_QUOTE_COLOR = true;
+// Quoted speech in italic, independent of the color. Off by default: italic is a stronger change to the page.
+export const DEFAULT_QUOTE_ITALIC = false;
