@@ -343,6 +343,18 @@ test('closing one value redraws the outlines of the others', async ({ page }, te
   expectClean(after);
 });
 
+test('a focused value draws the traced outline and no focus ring', async ({ page }) => {
+  const root = await openValues(page, 'Seat');
+  await settle(page, root);
+  const island = root.locator('[data-open-value] [data-lexical-slot]').first();
+  await island.click();
+  await expect(island).toBeFocused();
+  // The island is its own contenteditable, so without this the browser boxes it in its own focus ring: a
+  // second, rectangular shape beside the traced one.
+  await expect.poll(() => island.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
+  await expect(root.locator('[data-open-value][data-active]')).toHaveCount(1);
+});
+
 for (const theme of ['light', 'dark'] as const) {
   test(`the active value's outline stands off the editor's own surface in the ${theme} theme`, async ({ page }) => {
     const root = await openValues(page, 'Seat');

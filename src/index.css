@@ -971,7 +971,10 @@ b {
   stroke: color-mix(in oklab, var(--chip) 65%, hsl(var(--foreground)));
   stroke-width: 1;
 }
-/* The foreground, not the chip: a chip-colored caret on a chip-tinted fill has too little contrast. */
+/* The foreground, not the chip: a chip-colored caret on a chip-tinted fill has too little contrast. No
+   outline: a focused island is its own contenteditable, and the browser's focus ring would box it in a
+   second shape beside the traced one. */
 [data-open-value] [data-lexical-slot] {
   caret-color: hsl(var(--foreground));
+  outline: none;
 }
