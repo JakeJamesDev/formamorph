@@ -1,6 +1,8 @@
 # 03: Demo AI Badge in the Game View
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built at position C (narration options cluster). Open: in the Chat layout the badge covers a bubble action row while that row scrolls past the top edge.
+Base: 227d8cfb
 Blocked by: 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

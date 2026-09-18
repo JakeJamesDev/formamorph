@@ -1,6 +1,9 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { badgeVariants } from '@/components/ui/badge';
+import { Tooltip, TooltipPopup, TooltipPortal, TooltipPositioner, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 import { useSettings } from '@/contexts/SettingsContext';
 import { deviceCanRunDesktopApp } from '@/lib/desktopAppOffer';
 import { wikiPageUrl } from '@/lib/helpTopics';
@@ -107,3 +110,29 @@ export const DemoAINotice = forwardRef<DemoAINoticeHandle, DemoAINoticeProps>(fu
     </Dialog>
   );
 });
+
+/** The Demo AI status badge. It shows while narration resolves to the Demo AI, and a click opens the dialog. */
+export function DemoAIBadge({ onOpen }: { onOpen: () => void }) {
+  const { narrationIsDemoAI } = useSettings();
+  if (!narrationIsDemoAI) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button type="button" onClick={onOpen} className={cn(badgeVariants({ variant: 'secondary' }), 'shrink-0 self-center')}>
+            Demo AI
+          </button>
+        }
+      />
+      <TooltipPortal>
+        <TooltipPositioner side="bottom">
+          <TooltipPopup>
+            A small free model for trying Formamorph. For much better narration, connect a stronger AI in{' '}
+            <strong>Settings</strong>.
+            {deviceCanRunDesktopApp() && ' The desktop app can run one on your PC if your hardware allows.'}
+          </TooltipPopup>
+        </TooltipPositioner>
+      </TooltipPortal>
+    </Tooltip>
+  );
+}
