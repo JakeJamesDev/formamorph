@@ -1,10 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   presetStoreFromEnv, activeValues, isBuiltInActive, setActive, addPreset, renamePreset,
   deletePreset, resetPreset, updateValue, emptyStore, DEFAULT_TEXT_ENDPOINT_VALUES, DEFAULT_TEXT_PRESET_ID,
   updateSamplerOverride, updateMaxOutputOverride, valuesForId, textEndpointPresetCodec, type TextEndpointValues,
 } from './textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from './endpointSamplers';
+import { HOSTED_ENDPOINT } from '../contexts/settingsDefaults';
 
 const customValues: TextEndpointValues = {
   endpoint: 'https://my.host/v1',
@@ -130,5 +131,64 @@ describe('store operations', () => {
     const store = { activeId: 'p1', presets: [{ id: 'p1', name: 'Partial', values: { endpoint: 'https://x/v1' } as TextEndpointValues }] };
     expect(activeValues(store).endpoint).toBe('https://x/v1');
     expect(activeValues(store).maxOutputOverride).toEqual(DEFAULT_TEXT_ENDPOINT_VALUES.maxOutputOverride);
+  });
+});
+
+// Each case rebuilds the module under its own VITE_DEFAULT_ENDPOINT, because the name follows the build.
+describe('the Default preset name follows the hosted URL', () => {
+  const load = async (defaultEndpoint: string) => {
+    vi.resetModules();
+    vi.stubEnv('VITE_DEFAULT_ENDPOINT', defaultEndpoint);
+    return import('./textEndpointPresets');
+  };
+  const setDesktop = (on: boolean) => {
+    const w = window as unknown as { formamorphDesktop?: unknown };
+    if (on) w.formamorphDesktop = {};
+    else delete w.formamorphDesktop;
+  };
+  afterEach(() => { vi.unstubAllEnvs(); setDesktop(false); });
+
+  it('reads Demo AI in the preset list on the hosted URL', async () => {
+    const m = await load('');
+    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Demo AI' }]);
+  });
+
+  it('reads Default in the preset list when the build overrides the default endpoint', async () => {
+    const m = await load('http://localhost:1234/v1');
+    expect(m.builtinTextPresets()).toEqual([{ id: m.DEFAULT_TEXT_PRESET_ID, name: 'Default' }]);
+  });
+
+  it('treats the hosted URL written in full as the hosted build', async () => {
+    const m = await load(`${HOSTED_ENDPOINT}/chat/completions`);
+    expect(m.defaultPresetName()).toBe('Demo AI');
+  });
+
+  it('names the active preset by the same rule, ghost ids included', async () => {
+    const hosted = await load('');
+    const user = { id: 'p1', name: 'Mine', values: { ...hosted.DEFAULT_TEXT_ENDPOINT_VALUES, endpoint: HOSTED_ENDPOINT } };
+    const store = { activeId: hosted.DEFAULT_TEXT_PRESET_ID, presets: [user] };
+    expect(hosted.textPresetName(store, hosted.DEFAULT_TEXT_PRESET_ID)).toBe('Demo AI');
+    expect(hosted.textPresetName(store, 'deleted-id')).toBe('Demo AI');
+    // A user preset keeps its own name, even on the hosted URL.
+    expect(hosted.textPresetName(store, 'p1')).toBe('Mine');
+
+    const overridden = await load('http://localhost:1234/v1');
+    expect(overridden.textPresetName(store, overridden.DEFAULT_TEXT_PRESET_ID)).toBe('Default');
+    expect(overridden.textPresetName(store, 'deleted-id')).toBe('Default');
+  });
+
+  it('keeps the engine named Built-In Engine beside the Demo AI on desktop', async () => {
+    setDesktop(true);
+    const m = await load('');
+    expect(m.builtinTextPresets().map((p) => p.name)).toEqual(['Built-In Engine', 'Demo AI']);
+    expect(m.textPresetName(m.emptyStore, m.BUILTIN_ENGINE_PRESET_ID)).toBe('Built-In Engine');
+  });
+
+  it('keeps the preset id, so a stored active preset still resolves to the hosted endpoint', async () => {
+    const m = await load('');
+    const stored = m.textEndpointPresetCodec.parse(JSON.stringify({ activeId: 'default', presets: [] }));
+    expect(m.DEFAULT_TEXT_PRESET_ID).toBe('default');
+    expect(m.isBuiltInActive(stored)).toBe(true);
+    expect(m.activeValues(stored).endpoint).toBe(HOSTED_ENDPOINT);
   });
 });

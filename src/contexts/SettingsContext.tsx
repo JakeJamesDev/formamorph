@@ -15,7 +15,7 @@ import {
 } from '../lib/imageEndpointPresets';
 import {
   textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
-  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets,
+  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets, textPresetName,
   activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive,
   valuesForId as textValuesForId,
   isEngineActive as isTextEngineActive, setActive as textSetActive,
@@ -1089,9 +1089,7 @@ function useProvideSettings() {
   const textEndpointPresets = textPresetStore.presets.map((p) => ({ id: p.id, name: p.name }));
   const activeTextEndpointPresetId = textPresetStore.activeId;
   const activeTextEndpointPresetIsBuiltIn = textIsBuiltInActive;
-  const activeTextEndpointPresetName = activeTextEndpointPresetIsBuiltIn
-    ? 'Default'
-    : textPresetStore.presets.find((p) => p.id === textPresetStore.activeId)?.name ?? 'Default';
+  const activeTextEndpointPresetName = textPresetName(textPresetStore, textPresetStore.activeId);
   const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
   const addTextEndpointPreset = (name: string) => {
     const id = randomUUID();
@@ -1149,9 +1147,7 @@ function useProvideSettings() {
     const url = normalizeEndpointUrl(resolved.endpoint);
     const presetName = resolved.presetId === null
       ? activeTextEndpointPresetName
-      : resolved.presetId === DEFAULT_TEXT_PRESET_ID
-        ? 'Default'
-        : textPresetStore.presets.find((p) => p.id === resolved.presetId)?.name ?? 'Default';
+      : textPresetName(textPresetStore, resolved.presetId);
     // The bundled engine always takes a token budget and always spells it its own way, whatever detection
     // says about the rest of the record it shares with the active endpoint.
     const withEngineBudget = (record: ReasoningCapability | null): ReasoningCapability => {

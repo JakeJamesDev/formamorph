@@ -1,7 +1,8 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Codec } from './usePersistentState';
 import { isDesktop, DEFAULT_LOCAL_LLM_ENDPOINT } from '@/lib/imageGen/desktop';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '../contexts/settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, HOSTED_ENDPOINT } from '../contexts/settingsDefaults';
+import { normalizeEndpointUrl } from './endpointUrl';
 import {
   coerceEndpointSamplerOverrides,
   coerceEndpointMaxOutputOverride,
@@ -64,11 +65,29 @@ export const BUILTIN_ENGINE_VALUES: TextEndpointValues = {
   samplerOverrides: defaultEndpointSamplerOverrides(),
 };
 
+/** Whether an endpoint URL is the hosted service, in either the base or the completed spelling. */
+export function isHostedEndpoint(endpoint: string): boolean {
+  return normalizeEndpointUrl(endpoint) === normalizeEndpointUrl(HOSTED_ENDPOINT);
+}
+
+/** The Default preset's display name: the Demo AI on the hosted service, "Default" on a build that overrides it. */
+export function defaultPresetName(): string {
+  return isHostedEndpoint(DEFAULT_ENDPOINT) ? 'Demo AI' : 'Default';
+}
+
 /** The read-only presets available on this platform, in dropdown order. */
 export function builtinTextPresets(): { id: string; name: string }[] {
+  const defaultPreset = { id: DEFAULT_TEXT_PRESET_ID, name: defaultPresetName() };
   return isDesktop()
-    ? [{ id: BUILTIN_ENGINE_PRESET_ID, name: 'Built-In Engine' }, { id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }]
-    : [{ id: DEFAULT_TEXT_PRESET_ID, name: 'Default' }];
+    ? [{ id: BUILTIN_ENGINE_PRESET_ID, name: 'Built-In Engine' }, defaultPreset]
+    : [defaultPreset];
+}
+
+/** A preset's display name. A ghost id takes the Default preset's name, as it resolves to the Default values. */
+export function textPresetName(store: TextEndpointPresetStore, id: string): string {
+  return builtinTextPresets().find((b) => b.id === id)?.name
+    ?? store.presets.find((p) => p.id === id)?.name
+    ?? defaultPresetName();
 }
 
 /** Whether `id` is one of the read-only built-ins on this platform. */

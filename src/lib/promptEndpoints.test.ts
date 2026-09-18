@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   resolvePromptEndpoint, routedPresetId, isRoutableId, setPromptEndpoint,
   endpointSignature, toDebugEndpoint,
@@ -10,6 +10,7 @@ import {
   type TextEndpointPresetStore,
 } from './textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from './endpointSamplers';
+import { HOSTED_ENDPOINT } from '../contexts/settingsDefaults';
 
 const userPreset = {
   id: 'p1',
@@ -230,5 +231,83 @@ describe('toDebugEndpoint', () => {
 describe('endpointSignature', () => {
   it('matches the endpoint|model shape the capability caches key on', () => {
     expect(endpointSignature('http://x/v1', 'm')).toBe('http://x/v1|m');
+  });
+});
+
+// Each case rebuilds the modules under its own VITE_DEFAULT_ENDPOINT, because the Demo AI is a build fact.
+describe('isDemoAI', () => {
+  const load = async (defaultEndpoint: string) => {
+    vi.resetModules();
+    vi.stubEnv('VITE_DEFAULT_ENDPOINT', defaultEndpoint);
+    return { ...(await import('./promptEndpoints')), ...(await import('./textEndpointPresets')) };
+  };
+  type Modules = Awaited<ReturnType<typeof load>>;
+  const setDesktop = (on: boolean) => {
+    const w = window as unknown as { formamorphDesktop?: unknown };
+    if (on) w.formamorphDesktop = {};
+    else delete w.formamorphDesktop;
+  };
+  afterEach(() => { vi.unstubAllEnvs(); setDesktop(false); });
+
+  /** The active state the settings context builds for the store's selection. */
+  const activeFor = (m: Modules, s: TextEndpointPresetStore): ActiveEndpointState => ({
+    activeId: s.activeId,
+    values: m.activeValues(s),
+    isBuiltIn: m.isBuiltInActive(s),
+    localEngine: m.isEngineActive(s),
+    maxTokens: 512, engineMaxTokens: 512, engineModelId: '',
+  });
+  const narrationIsDemo = (m: Modules, s: TextEndpointPresetStore, map: PromptEndpointMap = {}) =>
+    m.isDemoAI(m.resolvePromptEndpoint('narration', map, s, activeFor(m, s)));
+
+  it('is true for the default preset on the hosted URL', async () => {
+    const m = await load('');
+    expect(narrationIsDemo(m, m.emptyStore)).toBe(true);
+  });
+
+  it('is false for the default preset when the build overrides the default endpoint', async () => {
+    const m = await load('http://localhost:1234/v1');
+    expect(narrationIsDemo(m, m.emptyStore)).toBe(false);
+  });
+
+  it('is false for a user preset, the hosted URL included', async () => {
+    const m = await load('');
+    const hostedCopy = { ...userPreset, id: 'hosted-copy', values: { ...userPreset.values, endpoint: HOSTED_ENDPOINT } };
+    for (const preset of [userPreset, hostedCopy]) {
+      expect(narrationIsDemo(m, { activeId: preset.id, presets: [userPreset, hostedCopy] })).toBe(false);
+      // Pinned rather than active reads the same.
+      expect(narrationIsDemo(m, { ...m.emptyStore, presets: [userPreset, hostedCopy] }, { narration: preset.id })).toBe(false);
+    }
+  });
+
+  it('is false for the desktop engine', async () => {
+    setDesktop(true);
+    const m = await load('');
+    expect(narrationIsDemo(m, { activeId: m.BUILTIN_ENGINE_PRESET_ID, presets: [] })).toBe(false);
+    expect(narrationIsDemo(m, m.emptyStore, { narration: m.BUILTIN_ENGINE_PRESET_ID })).toBe(false);
+  });
+
+  it('is false for a ghost active id', async () => {
+    const m = await load('');
+    expect(narrationIsDemo(m, { activeId: 'deleted-id', presets: [] })).toBe(false);
+  });
+
+  it('follows the routing of the kind it is asked about', async () => {
+    const m = await load('');
+    // A user preset is active and narration is pinned to the default.
+    const userActive: TextEndpointPresetStore = { activeId: userPreset.id, presets: [userPreset] };
+    const toDefault: PromptEndpointMap = { narration: m.DEFAULT_TEXT_PRESET_ID };
+    expect(narrationIsDemo(m, userActive, toDefault)).toBe(true);
+    expect(m.isDemoAI(m.resolvePromptEndpoint('summary', toDefault, userActive, activeFor(m, userActive)))).toBe(false);
+    // The default is active and narration is pinned to the user preset.
+    const defaultActive: TextEndpointPresetStore = { ...m.emptyStore, presets: [userPreset] };
+    const toUser: PromptEndpointMap = { narration: userPreset.id };
+    expect(narrationIsDemo(m, defaultActive, toUser)).toBe(false);
+    expect(m.isDemoAI(m.resolvePromptEndpoint('summary', toUser, defaultActive, activeFor(m, defaultActive)))).toBe(true);
+  });
+
+  it('keeps stored routing to the default preset id', async () => {
+    const m = await load('');
+    expect(m.routedPresetId('narration', { narration: 'default' }, m.emptyStore)).toBe('default');
   });
 });

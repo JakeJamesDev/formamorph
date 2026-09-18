@@ -9,7 +9,9 @@ import type { TravelView } from '@/lib/travelPrefs';
 // bundled engine instead; the engine is now its own preset (BUILTIN_ENGINE_PRESET_ID), so "Default" can mean
 // one thing everywhere and a desktop install can route some prompts to the engine and others to the cloud.
 // Written as a base URL (normalizeEndpointUrl completes it), matching the shape every server's docs hand out.
-export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT || 'https://api.lyonade.net/v1';
+// The hosted service is the Demo AI only while the build does not override DEFAULT_ENDPOINT.
+export const HOSTED_ENDPOINT = 'https://api.lyonade.net/v1';
+export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT || HOSTED_ENDPOINT;
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';
 export const DEFAULT_MODEL_NAME = import.meta.env.VITE_DEFAULT_MODEL_NAME || 'default';
 export const DEFAULT_MAX_TOKENS = parseInt(import.meta.env.VITE_DEFAULT_MAX_TOKENS) || 1024;
