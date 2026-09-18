@@ -629,6 +629,20 @@ export interface OpenPlaceholderValue {
   text: string;
   /** A pin forced this value, so no roll decides it. */
   pinned?: true;
+  /** The placeholder value that laid the pin — where an edit to the pin's own text is written. Author draws
+   *  only: play settles its pins before resolution, from traits and locations this never reads. */
+  pinSource?: DrawPinSource;
+}
+
+/** The placeholder value a draw-time pin was laid by. */
+export interface DrawPinSource {
+  placeholderId: string;
+  valueId: string;
+}
+
+/** A pin an author draw read off a value it drew: the text it forces, and the value that forced it. */
+interface DrawnPin extends DrawPinSource {
+  text: string;
 }
 
 /**
@@ -668,13 +682,14 @@ const DRAW_PIN_WALKS = 4;
  * which chip the text happened to put first.
  */
 function drawWithValuePins<T>(opts: ResolveOptions, walk: (ctx: ResolveCtx) => T): T {
-  const drawPins: Record<string, string> = {};
+  const drawPins: Record<string, DrawnPin> = {};
+  const texts = () => Object.fromEntries(Object.entries(drawPins).map(([id, pin]) => [id, pin.text]));
   let rolls = opts.rolls;
   for (let pass = 1; ; pass++) {
-    const before = { ...drawPins };
+    const before = texts();
     const ctx = createResolveCtx({ ...opts, rolls, drawPins });
     const out = walk(ctx);
-    if (pass >= DRAW_PIN_WALKS || sameMap(before, drawPins)) return out;
+    if (pass >= DRAW_PIN_WALKS || sameMap(before, texts())) return out;
     // The next walk reads what this one drew, so the draw is the same draw with more of it pinned.
     rolls = {
       world: { ...(rolls.world ?? {}), ...ctx.minted.world },
@@ -1022,7 +1037,7 @@ interface ResolveCtx {
   pinTexts?: Record<string, readonly string[]>;
   /** Author draws only: the pins the values drawn so far in this pass lay, under `pins`. Shared by reference
    *  across the whole walk, so a chip resolved after the pinning value reads the pinned text. */
-  drawPins?: Record<string, string>;
+  drawPins?: Record<string, DrawnPin>;
   report: (finding: PlaceholderFinding) => void;
   scope: PlaceholderMode;
   /** Placement chain keying Unique rolls; `''` under World. */
@@ -1043,7 +1058,15 @@ type OpenedRef = { current: OpenPlaceholderValue | null };
 function noteOpened(ctx: ResolveCtx, ph: Placeholder, text: string, pinned = false): void {
   if (!ctx.opened || ctx.opened.current) return;
   const valueId = valueCrossing(ph, text)?.value.id;
-  ctx.opened.current = { placeholderId: ph.id, ...(valueId ? { valueId } : {}), text, ...(pinned && { pinned }) };
+  // A caller's pin comes from a trait or a location, which no editor draw reads, so only a draw pin has a source.
+  const source = pinned ? ctx.drawPins?.[ph.id] : undefined;
+  ctx.opened.current = {
+    placeholderId: ph.id,
+    ...(valueId ? { valueId } : {}),
+    text,
+    ...(pinned && { pinned }),
+    ...(source?.text === text && { pinSource: { placeholderId: source.placeholderId, valueId: source.valueId } }),
+  };
 }
 
 /** Every structural child in a value list: its lone-chip values, paired with the placeholder each one roots
@@ -1239,7 +1262,7 @@ function rollKey(ph: Placeholder, ctx: ResolveCtx): string {
 
 /** The pin on a placeholder in this walk: the caller's, else one a value drawn earlier in the pass laid. */
 function pinOn(id: string, ctx: ResolveCtx): string | undefined {
-  return ctx.pins?.[id] ?? ctx.drawPins?.[id];
+  return ctx.pins?.[id] ?? ctx.drawPins?.[id]?.text;
 }
 
 /** In an author draw, lay the pins of a value this placeholder holds at world scope. Play never gets here:
@@ -1247,9 +1270,10 @@ function pinOn(id: string, ctx: ResolveCtx): string | undefined {
 function layDrawPins(ph: Placeholder, text: string, ctx: ResolveCtx): void {
   if (!ctx.drawPins || ctx.scope !== 'world') return;
   const value = (ph.values ?? []).find((v) => v.text === text);
-  for (const pin of value?.pins ?? []) {
+  if (!value) return;
+  for (const pin of value.pins ?? []) {
     const pinned = pinText(pin, ctx.byId);
-    if (pinned) ctx.drawPins[pin.placeholderId] = pinned;
+    if (pinned) ctx.drawPins[pin.placeholderId] = { text: pinned, placeholderId: ph.id, valueId: value.id };
   }
 }
 

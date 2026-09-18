@@ -130,11 +130,11 @@ describe('the flyout offers Edit Value', () => {
     expect(editValueItem()).toBeNull();
   });
 
-  it('not on a chip a pin holds at text that is on no value list', async () => {
+  it('on a chip a pin holds at text that is on no value list', async () => {
     render(<Field text={`${world('lord', 'p0')} of ${world('town', 'p1')}.`} />);
+    // "Anywhere" is nobody's value, but it is the pin's own text, which the value that laid it can take.
     await openFlyout('Town');
-    // The pin decides what Town shows, and "Anywhere" is nobody's value, so there is nothing to type into.
-    expect(editValueItem()).toBeNull();
+    expect(editValueItem()).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     await openFlyout('Lord');
     expect(editValueItem()).toBeInTheDocument();

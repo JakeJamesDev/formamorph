@@ -898,7 +898,7 @@ b {
 }
 
 /* Open values on a field's Values tab. `OpenValueLayoutPlugin` seats each header and traces each outline;
-   `--chip` is the placeholder's identity color, and `data-caret` marks the value that holds the caret. */
+   `--chip` is the placeholder's identity color, and `data-active` marks the value the author is in. */
 [data-open-value] {
   --chip: hsl(var(--muted));
   --chip-ink: hsl(var(--foreground));
@@ -922,12 +922,11 @@ b {
   pointer-events: none;
   overflow: visible;
 }
-/* The line takes a share of the foreground, so one rule reads in both themes. The fill stays translucent,
-   because the outline paints over the value's own text. */
+/* A field of many chips reads as text, not as boxes: only the fill says where a value starts and ends.
+   The fill stays translucent, because the shape paints over the value's own text. */
 [data-open-value-shape] path {
   fill: color-mix(in oklab, var(--chip) 18%, transparent);
-  stroke: color-mix(in oklab, var(--chip) 65%, hsl(var(--foreground)));
-  stroke-width: 1;
+  stroke: none;
 }
 /* Black ink on the chip's own color, as the collapsed pills carry; a chip with no color of its own keeps
    the muted surface and its own foreground. */
@@ -939,15 +938,13 @@ b {
   background: var(--chip);
   color: var(--chip-ink);
 }
-[data-open-value][data-caret] > [data-open-value-shape] path {
-  fill: color-mix(in oklab, var(--chip) 28%, transparent);
-  stroke: color-mix(in oklab, var(--chip) 85%, hsl(var(--foreground)));
-  stroke-width: 2;
+/* The active value adds one thin line and nothing else: the fill does not change, so activating a value
+   never shifts the color under the text. The line takes a share of the foreground, so it reads in both themes. */
+[data-open-value][data-active] > [data-open-value-shape] path {
+  stroke: color-mix(in oklab, var(--chip) 65%, hsl(var(--foreground)));
+  stroke-width: 1;
 }
-[data-open-value][data-caret] > [data-open-value-header] {
-  box-shadow: 0 0 0 1px var(--chip);
-  filter: brightness(1.12);
-}
-[data-open-value][data-caret] [data-lexical-slot] {
-  caret-color: var(--chip);
+/* The foreground, not the chip: a chip-colored caret on a chip-tinted fill has too little contrast. */
+[data-open-value] [data-lexical-slot] {
+  caret-color: hsl(var(--foreground));
 }

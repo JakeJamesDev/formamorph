@@ -38,6 +38,8 @@ const drill = (mode: 'world' | 'unique', placementId: string) =>
 const openValues = (root: HTMLElement = document.body) =>
   Array.from(root.querySelectorAll<HTMLElement>('[data-open-value]'));
 const valueText = (el: HTMLElement) => el.querySelector('[data-open-value-text]')?.textContent ?? '';
+/** The verbose label an open value's header carries — shown on the active header, kept for a tip otherwise. */
+const valueLabel = (el: HTMLElement) => el.querySelector('[data-open-value-label]')?.textContent ?? '';
 const step = (el: HTMLElement, dir: 'Previous' | 'Next') =>
   userEvent.click(within(el).getByRole('button', { name: `${dir} Value` }));
 
@@ -72,7 +74,8 @@ describe('the Values tab chevrons', () => {
 
     await step(open, 'Next');
     expect(valueText(openValues(first())[0])).toBe('Marrow');
-    expect(within(first()).getByText(/Value 2 · 2\/3/)).toBeInTheDocument();
+    expect(within(first()).getByText('Value 2 of 3')).toBeInTheDocument();
+    expect(valueLabel(openValues(first())[0])).toMatch(/Value 2/);
 
     await openTab(second(), 'Preview');
     expect(within(second()).getByTestId('prompt-preview')).toHaveTextContent('Leaving Marrow.');
@@ -136,7 +139,8 @@ describe('the Values tab chevrons', () => {
     await openTab(first(), 'Values');
     const [, pinnedTown, pinnedGear] = openValues(first());
     expect(valueText(pinnedTown)).toBe('Marrow');
-    expect(within(pinnedTown).getByText(/Value 2 · Pinned/)).toBeInTheDocument();
+    expect(within(pinnedTown).getByText(/· Pinned/)).toBeInTheDocument();
+    expect(valueLabel(pinnedTown)).toMatch(/Value 2/);
     expect(within(pinnedTown).queryByRole('button')).toBeNull();
     expect(valueText(pinnedGear)).toBe('lamp');
     expect(within(pinnedGear).queryByRole('button')).toBeNull();

@@ -243,7 +243,7 @@ test('only the value that holds the caret shows the full header', async ({ page 
   }
   const island = root.locator('[data-open-value] [data-lexical-slot]').nth(1);
   await island.click();
-  await expect(root.locator('[data-open-value][data-caret]')).toHaveCount(1);
+  await expect(root.locator('[data-open-value][data-active]')).toHaveCount(1);
   g = await settle(page, root);
   expect(g.values[0].shownLabel).toBeNull();
   expect(g.values[1].shownLabel).toMatch(/Value \d/);
@@ -317,8 +317,9 @@ test('a compact header gives its value label to a pointer', async ({ page }, tes
   test.skip(testInfo.project.name !== 'desktop', 'a tooltip needs a pointer');
   const root = await openValues(page, 'Push');
   await root.locator('[data-open-value-header]').first().hover();
-  // The label the compact header keeps out of the line is what the tip shows.
-  await expect(page.getByText(/Value \d · \d\/\d/).last()).toBeVisible();
+  // The label the compact header keeps out of the line is what the tip shows. The pager holds the position,
+  // so the label is the verbose name alone.
+  await expect(page.getByText(/^Value \d$/).last()).toBeVisible();
 });
 
 test('closing one value redraws the outlines of the others', async ({ page }, testInfo) => {
@@ -343,12 +344,14 @@ test('closing one value redraws the outlines of the others', async ({ page }, te
 });
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`the outline stands off the editor's own surface in the ${theme} theme`, async ({ page }) => {
+  test(`the active value's outline stands off the editor's own surface in the ${theme} theme`, async ({ page }) => {
     const root = await openValues(page, 'Seat');
     await page.evaluate((t) => {
       document.documentElement.classList.remove('light', 'dark');
       document.documentElement.classList.add(t);
     }, theme);
+    // Only the active value draws a line, so the header is pressed on its name to make this one active.
+    await root.locator('[data-open-value-header]').first().click({ position: { x: 4, y: 6 } });
     await settle(page, root);
     const contrast = await root.evaluate((el) => {
       // A `color-mix` is computed as `oklab(…)`, which a canvas converts to sRGB and a regex cannot.
@@ -370,7 +373,7 @@ for (const theme of ['light', 'dark'] as const) {
       // shows through it.
       return Math.abs(luminance(surface, getComputedStyle(path).stroke) - luminance(surface));
     });
-    // The outline is what says where a value starts and ends, so it cannot sit on the surface's own level.
+    // The line is what says which value the author is in, so it cannot sit on the surface's own level.
     // Measured: the shipped line reaches 0.64 in light and 0.77 in dark, and the translucent chip wash it
     // replaced reached only 0.13 and 0.21, which was invisible on a light theme.
     expect(contrast, 'the outline barely stands off the editor').toBeGreaterThan(0.4);

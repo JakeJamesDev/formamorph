@@ -1265,6 +1265,64 @@ describe('drawOpenPlaceholderValues', () => {
     expect(out[missing]).toBeUndefined();
     expect(out[e]).toEqual({ placeholderId: 'empty', text: '' });
   });
+
+  // The Values tab writes an off-list pin back to the value that laid it, so the draw has to name that value.
+  describe('on a pinned chip', () => {
+    // Lord's first value pins Town to a listed value and Ghost, which holds none, to text off any list.
+    const lord: Placeholder = {
+      id: 'lord',
+      name: 'Lord',
+      values: [
+        { id: 'v:Ash', text: 'Ash', pins: [
+          { placeholderId: 'town', value: 'Milbrook', valueId: phValueId('Milbrook') },
+          { placeholderId: 'ghost', value: 'Wisp' },
+        ] },
+        { id: 'v:Bram', text: 'Bram' },
+      ],
+    };
+    const ghost: Placeholder = { id: 'ghost', name: 'Ghost', values: [] };
+    const PINNED = [...DEMO, lord, ghost];
+    const draw = (text: string) => drawOpenPlaceholderValues(text, PINNED, first);
+
+    it('names the placeholder and value that laid the pin', () => {
+      const l = placed('lord', 'world', 'p1');
+      const t = placed('town', 'world', 'p2');
+      const out = draw(`${l} of ${t}`);
+      expect(out[t]).toEqual({
+        placeholderId: 'town',
+        valueId: phValueId('Milbrook'),
+        text: 'Milbrook',
+        pinned: true,
+        pinSource: { placeholderId: 'lord', valueId: 'v:Ash' },
+      });
+    });
+
+    it('names the source for a pin whose text is on no list', () => {
+      const l = placed('lord', 'world', 'p1');
+      const g = placed('ghost', 'world', 'p2');
+      const out = draw(`${l} and ${g}`);
+      expect(out[g]).toEqual({
+        placeholderId: 'ghost',
+        text: 'Wisp',
+        pinned: true,
+        pinSource: { placeholderId: 'lord', valueId: 'v:Ash' },
+      });
+    });
+
+    it('leaves an unpinned chip with no source', () => {
+      const t = placed('town', 'world', 'p1');
+      expect(draw(t)[t].pinSource).toBeUndefined();
+    });
+
+    it('resolves to the same text as before', () => {
+      const l = placed('lord', 'world', 'p1');
+      const g = placed('ghost', 'world', 'p2');
+      expect(buildPlaceholderPreview(`${l} and ${g}`, PINNED, first)).toEqual({
+        [l]: 'Ash',
+        [g]: 'Wisp',
+      });
+    });
+  });
 });
 
 describe('describePlaceholders on structured defs', () => {

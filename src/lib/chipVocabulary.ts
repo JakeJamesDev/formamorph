@@ -215,6 +215,14 @@ const PLACEHOLDER_MODE_AXIS: PromptVariantAxis = {
   ],
 };
 
+// Shown rather than hidden where no roll can differ per placement, so the author can tell a control that is
+// held shut from one that was never offered.
+const PLACEHOLDER_MODE_AXIS_FIXED: PromptVariantAxis = {
+  ...PLACEHOLDER_MODE_AXIS,
+  readOnly: true,
+  readOnlyHelp: 'Draws the same value everywhere, so Unique would change nothing. Unlocks once the placeholder can roll.',
+};
+
 /** Stable accent per placeholder id, so a chip keeps its color across the world — and every surface that
  *  draws one by id draws the same one. */
 export function placeholderAccent(id: string): string {
@@ -375,11 +383,13 @@ export function placeholderVocabulary(
       const d = decodePlaceholderToken(t);
       return d && byId.has(d.id) ? placeholderAccent(d.id) : undefined;
     },
-    // World | Unique only where a roll can differ per placement: a Wildcard, or anything whose values reach
-    // one. A plain Object applies every value and never draws, so the picker would change nothing.
+    // Every known placeholder chip answers the World-or-Unique question. The picker takes input only where a
+    // roll can differ per placement: a Wildcard, or anything whose values reach one. A Variable and a plain
+    // Object draw one fixed value, so theirs shows the stored mode and says why it is shut.
     axes: (t) => {
       const d = decodePlaceholderToken(t);
-      return d && placeholderRandomizes(placeholders, d.id) ? [PLACEHOLDER_MODE_AXIS] : [];
+      if (!d || !byId.has(d.id)) return [];
+      return [placeholderRandomizes(placeholders, d.id) ? PLACEHOLDER_MODE_AXIS : PLACEHOLDER_MODE_AXIS_FIXED];
     },
     selection: (t) => ({ mode: decodePlaceholderToken(t)?.mode === 'unique' ? 'unique' : null }),
     setAxis: (t, axisId, optionId) => {

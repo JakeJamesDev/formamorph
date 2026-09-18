@@ -59,10 +59,16 @@ describe('placeholderVocabulary', () => {
     expect(placeholderVocabulary([P('blank', [])]).hint?.(tok('blank', 'world'))).toBe('World · no values');
   });
 
-  it('shows the World/Unique axis only where resolving the chip can draw', () => {
-    expect(v.axes(tok('eye', 'world'))).toHaveLength(1); // 3 values → Wildcard
-    expect(v.axes(tok('king', 'world'))).toHaveLength(0); // 1 plain value → Variable, no axis
+  it('opens the World/Unique axis only where resolving the chip can draw', () => {
+    // Every known chip gets the axis; only a chip that can draw takes input through it.
+    const shut = (t: string) => v.axes(t).map((a) => !!a.readOnly);
+    expect(shut(tok('eye', 'world'))).toEqual([false]); // 3 values → Wildcard
+    expect(shut(tok('king', 'world'))).toEqual([true]); // 1 plain value → Variable, shown but shut
     expect(v.axes(tok('ghost', 'world'))).toHaveLength(0); // missing → none
+
+    const readOnlyAxis = v.axes(tok('king', 'world'))[0];
+    expect(readOnlyAxis.options.map((o) => o.label)).toEqual(['World', 'Unique']);
+    expect(readOnlyAxis.readOnlyHelp).toMatch(/Unlocks/);
 
     // A one-value Variable whose value is a template of wildcards rolls them, so it picks World or Unique.
     // An Object never draws on its own; only a wildcard somewhere under it earns the picker.
@@ -74,10 +80,11 @@ describe('placeholderVocabulary', () => {
       { ...P('board', [tok('menu', 'world'), 'Bread']), roll: false },
       { ...P('sign', [`Tonight: ${tok('board', 'world')}`, `Today: ${tok('tavern', 'world')}`]), roll: false },
     ]);
-    expect(nested.axes(tok('tavern', 'world'))).toHaveLength(1); // template of two wildcards
-    expect(nested.axes(tok('menu', 'world'))).toHaveLength(0); // two plain values, Object
-    expect(nested.axes(tok('board', 'world'))).toHaveLength(0); // nests only an Object
-    expect(nested.axes(tok('sign', 'world'))).toHaveLength(1); // reaches a wildcard two levels down
+    const nestedShut = (t: string) => nested.axes(t).map((a) => !!a.readOnly);
+    expect(nestedShut(tok('tavern', 'world'))).toEqual([false]); // template of two wildcards
+    expect(nestedShut(tok('menu', 'world'))).toEqual([true]); // two plain values, Object
+    expect(nestedShut(tok('board', 'world'))).toEqual([true]); // nests only an Object
+    expect(nestedShut(tok('sign', 'world'))).toEqual([false]); // reaches a wildcard two levels down
   });
 
   it('reflects and flips the mode', () => {

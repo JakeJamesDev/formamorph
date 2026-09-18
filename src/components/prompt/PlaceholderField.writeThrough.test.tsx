@@ -31,6 +31,8 @@ const SECOND = `Back in ${world('town', 'p2')} again.`;
 
 const openValues = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>('[data-open-value]'));
 const valueText = (el: HTMLElement) => el.querySelector('[data-open-value-text]')?.textContent ?? '';
+/** The verbose label an open value's header carries — shown on the active header, kept for a tip otherwise. */
+const valueLabel = (el: HTMLElement) => el.querySelector('[data-open-value-label]')?.textContent ?? '';
 const openTab = (root: HTMLElement, name: string) => userEvent.click(within(root).getByRole('tab', { name }));
 const first = () => screen.getByTestId('first');
 const second = () => screen.getByTestId('second');
@@ -145,7 +147,7 @@ describe('typing in an open value', () => {
     await typeInValue(editorOf(first()), 'Sedge Landings');
     const [open] = openValues(first());
     expect(valueText(open)).toBe('Sedge Landings');
-    expect(within(open).getByText(/Value 1/)).toBeInTheDocument();
+    expect(valueLabel(open)).toMatch(/Value 1/);
   });
 
   it('shows the new text in a second field on its Values and Preview tabs', async () => {

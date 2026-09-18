@@ -9,7 +9,7 @@ import { appendSegments } from './promptFieldState';
 import { $isVariableNode, ValueBoxNode, type VariableNode } from './VariableNode';
 import { VALUE_SLOT, type OpenValueView } from './openValueContext';
 import { $caretChipKey, $fieldChips, $mirrorChipKeys } from './openValueCopies';
-import { $ejectEdges, $openValueText } from './openValueNodes';
+import { $ejectEdges, $openValueText, $valueBox } from './openValueNodes';
 
 /** Token → the text each chip should show. */
 type WantedText = (token: string) => string;
@@ -33,7 +33,14 @@ function $chipInSync(chip: VariableNode, active: boolean, wanted: WantedText, ca
   return $openValueText(chip) === wanted(chip.getToken());
 }
 
-function $sync(active: boolean, wanted: WantedText, parse: ChipVocabulary['parse'], caretKey: NodeKey | null): void {
+function $sync(
+  active: boolean,
+  wanted: WantedText,
+  parse: ChipVocabulary['parse'],
+  caretKey: NodeKey | null,
+  /** The chip a step just moved: its refilled value takes the caret, so the author can type on. */
+  restore: NodeKey | null = null,
+): void {
   const caret = $caretChipKey();
   for (const chip of $fieldChips()) {
     if ($chipInSync(chip, active, wanted, caretKey)) continue;
@@ -51,11 +58,13 @@ function $sync(active: boolean, wanted: WantedText, parse: ChipVocabulary['parse
     }
     chip.setExpanded(true);
     $fillOpenValue(chip, wanted(chip.getToken()), parse);
+    if (chip.getKey() === restore) $valueBox(chip)?.selectEnd();
   }
 }
 
 /** Names which value a chip opens on, apart from that value's text. Empty when nothing is open. */
-const openValueIdentity = (open: OpenValueView | undefined): string => open?.valueKey ?? open?.label ?? '';
+const openValueIdentity = (open: OpenValueView | undefined): string =>
+  open?.valueKey ?? `${open?.label ?? ''}·${open?.mark ?? ''}`;
 
 /** A chip whose open value changed between two states: its key and token, and its text before and after. */
 interface ValueEdit { key: NodeKey; token: string; before: string; after: string }
@@ -79,10 +88,12 @@ function valueEdits(prev: EditorState, next: EditorState): ValueEdit[] {
  * a value this field wrote, so they never revert an edit made elsewhere. A value that holds the caret keeps
  * what the author typed; it refills from `values` once the caret or the focus leaves.
  */
-export function OpenValuesPlugin({ active, values, parse }: {
+export function OpenValuesPlugin({ active, values, parse, pressed }: {
   active: boolean;
   values: Record<string, OpenValueView>;
   parse: ChipVocabulary['parse'];
+  /** The chip whose header was pressed last — which value a step belongs to while no value holds the caret. */
+  pressed: NodeKey | null;
 }) {
   const [editor] = useLexicalComposerContext();
   const ownWrites = useRef(new Map<string, OwnWrite>());
@@ -96,7 +107,7 @@ export function OpenValuesPlugin({ active, values, parse }: {
       return own && own.from === text ? own.to : text;
     };
     const root = () => editor.getRootElement();
-    const resync = ({ spareCaret }: { spareCaret: boolean }) => {
+    const resync = ({ spareCaret, restore = null }: { spareCaret: boolean; restore?: NodeKey | null }) => {
       const inSync = editor.getEditorState().read(() => {
         const caretKey = spareCaret ? $caretChipKey() : null;
         return $fieldChips().every((chip) => $chipInSync(chip, active, wanted, caretKey));
@@ -105,19 +116,20 @@ export function OpenValuesPlugin({ active, values, parse }: {
       // A refill after focus has gone must not pull it back through the DOM selection.
       const focused = !!root()?.contains(document.activeElement);
       const tag: UpdateTag[] = focused ? [HISTORY_MERGE_TAG] : [HISTORY_MERGE_TAG, SKIP_DOM_SELECTION_TAG];
-      editor.update(() => $sync(active, wanted, parse, spareCaret ? $caretChipKey() : null), { tag });
+      editor.update(() => $sync(active, wanted, parse, spareCaret ? $caretChipKey() : null, restore), { tag });
     };
-    // A chevron step or a reroll opens another value, which refills the value under the caret too.
+    // A chevron step or a reroll opens another value, which refills the value under the caret too. The step
+    // belongs to the active value: the one holding the caret, else the one whose header took the last press.
     const opened = openedValues.current;
     const switched = editor.getEditorState().read(() => {
-      const key = $caretChipKey();
+      const key = $caretChipKey() ?? pressed;
       const chip = key === null ? null : $getNodeByKey(key);
       const token = $isVariableNode(chip) ? chip.getToken() : null;
-      return token !== null && opened.has(token) && opened.get(token) !== openValueIdentity(values[token]);
+      return token !== null && opened.has(token) && opened.get(token) !== openValueIdentity(values[token]) ? key : null;
     });
     opened.clear();
     for (const [token, open] of Object.entries(values)) opened.set(token, openValueIdentity(open));
-    resync({ spareCaret: !switched });
+    resync({ spareCaret: !switched, restore: switched });
     const unregister = editor.registerUpdateListener(({ editorState, prevEditorState, tags }) => {
       const edits = active ? valueEdits(prevEditorState, editorState) : [];
       const mirrors = edits.length ? editorState.read(() => $mirrorChipKeys(values)) : new Set<NodeKey>();
@@ -146,6 +158,6 @@ export function OpenValuesPlugin({ active, values, parse }: {
       unroot();
       root()?.removeEventListener('focusout', onFocusOut);
     };
-  }, [editor, active, values, parse]);
+  }, [editor, active, values, parse, pressed]);
   return null;
 }

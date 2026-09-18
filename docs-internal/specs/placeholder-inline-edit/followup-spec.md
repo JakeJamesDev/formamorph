@@ -1,6 +1,7 @@
 # Placeholder Values Tab — Follow-Up Spec
 
-Status: ready-for-agent
+Status: in-progress
+Base: 1bdc2b16
 Status note: five fixes found in the first hands-on pass of the shipped Values tab; parent spec is `spec.md` beside this file
 
 Five fixes to the Values tab and the chip flyout: an off-list pin becomes editable, a header click makes
