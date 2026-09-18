@@ -34,6 +34,7 @@ import { Settings, Plus, GripVertical, Copy, X } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from './theme-provider';
 import { hslTripleToHex, hexToHslTriple } from '@/lib/hslColor';
+import { QUOTE_CLASS } from '@/lib/quoteSegments';
 
 interface TokenDef {
   token: string;
@@ -79,6 +80,10 @@ const TOKEN_GROUPS: { title: string; tokens: TokenDef[] }[] = [
       { token: '--info-foreground', label: 'Info text' },
       { token: '--overlay', label: 'Overlay' },
     ],
+  },
+  {
+    title: 'Story text',
+    tokens: [{ token: '--dialogue', label: 'Dialogue' }],
   },
   {
     title: 'Chrome',
@@ -147,6 +152,15 @@ function PreviewPanel() {
           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt.
         </p>
       </div>
+
+      {/* Painted from the token directly, so the sample shows even with the Quote Color setting off. */}
+      <p className="narration-text">
+        Lorem ipsum dolor sit amet.{' '}
+        <span className={QUOTE_CLASS} style={{ color: 'hsl(var(--dialogue))' }}>
+          “Consectetur adipiscing elit, sed do eiusmod?”
+        </span>{' '}
+        Tempor incididunt ut labore et dolore magna aliqua.
+      </p>
 
       <Tabs defaultValue="general">
         <TabsList>
