@@ -139,7 +139,7 @@ the app says nothing.
 
 ### Wiki page
 
-- One new page in the wiki source, linked from the sidebar and from Home. Sections: local server steps for LM Studio and Ollama (install, load a model, enable CORS, paste the URL into Settings → Endpoints), hosted API services in generic terms (an OpenAI-compatible chat-completions URL and a token, no service names), and the desktop app route with the hardware caveat.
+- One new page in the wiki source, named `Connect-Your-Own-AI`, linked from the sidebar and from Home. The dialog link uses this name with the existing wiki base constant. Sections: local server steps for LM Studio and Ollama (install, load a model, enable CORS, paste the URL into Settings → Endpoints), hosted API services in generic terms (an OpenAI-compatible chat-completions URL and a token, no service names), and the desktop app route with the hardware caveat.
 - Model advice: a model tuned for roleplay or conversation, 12B or larger as a rough guide, the largest that the hardware runs well. No model names. The dialog itself carries no size number.
 - No troubleshooting section. The in-app "can't reach your AI server" checklist keeps that job.
 - Home and the Android install page change their mentions of the default or cloud endpoint to "Demo AI".
