@@ -287,8 +287,18 @@ describe('isDemoAI', () => {
     expect(narrationIsDemo(m, m.emptyStore, { narration: m.BUILTIN_ENGINE_PRESET_ID })).toBe(false);
   });
 
-  it('is false for a ghost active id', async () => {
+  // A ghost resolves to the default preset's values, so it sends to the hosted service.
+  it('is true for a ghost active id on the hosted URL, and reports the default id', async () => {
     const m = await load('');
+    const ghost: TextEndpointPresetStore = { activeId: 'deleted-id', presets: [userPreset] };
+    expect(narrationIsDemo(m, ghost)).toBe(true);
+    // A pin to a deleted preset falls back to the ghost active id as well.
+    expect(narrationIsDemo(m, ghost, { narration: 'also-deleted' })).toBe(true);
+    expect(m.resolvePromptEndpoint('narration', {}, ghost, activeFor(m, ghost)).endpointId).toBe(m.DEFAULT_TEXT_PRESET_ID);
+  });
+
+  it('is false for a ghost active id when the build overrides the default endpoint', async () => {
+    const m = await load('http://localhost:1234/v1');
     expect(narrationIsDemo(m, { activeId: 'deleted-id', presets: [] })).toBe(false);
   });
 

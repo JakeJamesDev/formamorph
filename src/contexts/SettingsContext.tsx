@@ -15,7 +15,7 @@ import {
 } from '../lib/imageEndpointPresets';
 import {
   textEndpointPresetCodec, emptyStore as emptyTextStore, presetStoreFromEnv as textPresetStoreFromEnv,
-  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets, textPresetName,
+  DEFAULT_TEXT_PRESET_ID, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, builtinTextPresets, textPresetName, canonicalPresetId, isDemoAI,
   activeValues as textActiveValues, isBuiltInActive as isTextBuiltInActive,
   valuesForId as textValuesForId,
   isEngineActive as isTextEngineActive, setActive as textSetActive,
@@ -1090,6 +1090,10 @@ function useProvideSettings() {
   const activeTextEndpointPresetId = textPresetStore.activeId;
   const activeTextEndpointPresetIsBuiltIn = textIsBuiltInActive;
   const activeTextEndpointPresetName = textPresetName(textPresetStore, textPresetStore.activeId);
+  const activeTextEndpointIsDemoAI = isDemoAI({
+    endpointId: canonicalPresetId(textPresetStore, textPresetStore.activeId),
+    endpoint: textValues.endpoint,
+  });
   const selectTextEndpointPreset = (id: string) => setTextPresetStore((s) => textSetActive(s, id));
   const addTextEndpointPreset = (name: string) => {
     const id = randomUUID();
@@ -1486,6 +1490,7 @@ function useProvideSettings() {
     activeTextEndpointPresetId,
     activeTextEndpointPresetIsBuiltIn,
     activeTextEndpointPresetName,
+    activeTextEndpointIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,
     renameTextEndpointPreset,
