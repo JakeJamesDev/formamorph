@@ -67,6 +67,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **An entity that stays in the scene stays in the Entities tab while the next reply streams.** With Thinking set to **Off** or **Inline**, each new reply rebuilt the scene list from its own first sentences, so an entity from the turn before left the tab and the side image, then came back when the text named it. The list now only gains names while a reply streams, and an entity that left the scene goes when the reply ends.
   - **The audit log reads account deletions and privacy policy resets as sentences.** A deletion request, the sign-in that cancels it, the erasure itself and the two privacy policy resets each showed as “did something the app does not recognize.” All five now read like the rest of the log, with their own label and tint in the action filter. An erased account names nobody as the actor, because the server erases it on a timer.
   - **A field's Preview keeps a placeholder's drawn value when you re-spell that value on the Placeholders tab.** Every Preview shows the same value with its new spelling, where it used to draw a different one. Removing the value still draws a new one.
   - **Selected text in a stat code field is readable.** The field tinted a selection with the theme's accent color, which left the text under it hard to read. It now uses a pale tint of your system's selection color, and the selected code keeps its syntax colors.

@@ -2804,7 +2804,7 @@ const GameViewer = ({
         if (newSentence) {
           entitySentenceCursorRef.current = completeSentences;
           const { cast: turnCast, prior } = sceneListCtxRef.current;
-          setVisibleEntities(buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior }));
+          setVisibleEntities((previous) => buildSceneList({ cast: turnCast, entities: allEntities, narrationSoFar: display, priorNarration: prior, previous }));
         }
 
         // Persist the in-progress assistant message: add it once (as soon as narration content
