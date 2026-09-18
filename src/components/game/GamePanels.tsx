@@ -55,6 +55,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { effectiveDestinations } from '@/lib/locationGraph';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
+import { useNarrationLayout, useStatsSnap } from '@/lib/useNarrationLayout';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 
@@ -1183,6 +1184,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     drainingStatChanges
   } = useGameplay();
   const { locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
+  // In Chat a scroll moves the viewed turn, so the bars snap until the next turn lands.
+  const snapStats = useStatsSnap(currentPage, totalPages, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait
@@ -1280,6 +1283,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                   draining={!isViewingPast && !heldStatChanges[key] && !!drainingStatChanges[key]}
                   page={currentPage}
                   isViewingPast={isViewingPast}
+                  snap={snapStats}
                   fading={recentStatFading}
                   editable={isEditMode && !isViewingPast}
                   reserveDescriptorLine={anyDescriptors}

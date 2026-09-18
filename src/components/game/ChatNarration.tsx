@@ -11,6 +11,8 @@ import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
 import { dataUrlImageSize } from '@/lib/imageBytes';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
+import { useReadingLine } from './useReadingLine';
+import { READING_LINE } from '@/lib/chatReadingLine';
 import { ReasoningBlock } from './ReasoningBlock';
 import type { ChatMessage } from '@/types';
 
@@ -68,7 +70,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter }: {
   parseAssistantMessage: (content: string) => string;
   latestFooter?: React.ReactNode;
 }) {
-  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages } = useGameplay();
+  const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
   const gameplayText = useGameplayText();
   const liveReasoning = useLiveReasoning();
@@ -92,37 +94,57 @@ export function ChatNarration({ parseAssistantMessage, latestFooter }: {
   // Native scroll anchoring corrects for turns in flow; a second correction would interrupt a wheel scroll.
   virtualizer.shouldAdjustScrollPositionOnItemSizeChange = () => false;
 
-  // A new game opens at the bottom, re-aimed until it holds while the turns above it measure.
+  // The past turn the panels show at mount, so a switch from Pages opens on it; null follows the latest.
+  const openTurn = useRef(currentPage < totalPages ? currentPage - 1 : null);
+  // True while the open aim runs, so the barrier does not read its scrolls.
+  const opening = useRef(false);
+
+  // A game opens at the bottom, or with a past viewed turn on the reading line, re-aimed until it holds
+  // while the turns above it measure.
   const gameKey = fullMessageHistory[1]?.content ?? null;
   useEffect(() => {
     if (gameKey === null) return;
+    const target = openTurn.current;
+    openTurn.current = null;
     let frame = 0;
     let tries = 0;
     let stable = 0;
     const aim = () => {
       const el = scroller.current;
-      if (!el) return;
-      const last = turnsRef.current.length - 1;
-      if (!el.querySelector(`[data-index="${last}"]`)) {
+      if (!el) { opening.current = false; return; }
+      const index = target ?? turnsRef.current.length - 1;
+      const turn = el.querySelector(`[data-index="${index}"]`);
+      if (!turn) {
         stable = 0;
-        virtualizer.scrollToIndex(last, { align: 'end' });
+        virtualizer.scrollToIndex(index, { align: target === null ? 'end' : 'start' });
       } else {
-        const bottom = el.scrollHeight - el.clientHeight;
-        if (Math.abs(el.scrollTop - bottom) < 2) stable += 1;
-        else { stable = 0; el.scrollTop = bottom; }
+        const max = el.scrollHeight - el.clientHeight;
+        const offset = el.scrollTop + turn.getBoundingClientRect().top - el.getBoundingClientRect().top;
+        const goal = target === null ? max : Math.min(max, Math.max(0, offset - el.clientHeight * READING_LINE));
+        if (Math.abs(el.scrollTop - goal) < 2) stable += 1;
+        else { stable = 0; el.scrollTop = goal; }
       }
       if (stable < 3 && ++tries < MAX_AIM_FRAMES) frame = requestAnimationFrame(aim);
+      else opening.current = false;
     };
+    opening.current = true;
     aim();
-    return () => cancelAnimationFrame(frame);
+    return () => { cancelAnimationFrame(frame); opening.current = false; };
   }, [gameKey, virtualizer]);
 
   const items = virtualizer.getVirtualItems();
   const before = items.length ? items[0].start : 0;
   const after = items.length ? virtualizer.getTotalSize() - items[items.length - 1].end : 0;
   const lastIndex = turns.length - 1;
-  const { pinnedIndex, showJump, jumpToLatest } = useChatPin({
+  const { pinnedIndex, showJump, jumpToLatest, isProgrammaticScroll } = useChatPin({
     scroller, virtualizer, history: fullMessageHistory, gameKey, lastIndex,
+  });
+  // The barrier writes the same page state as the Pager: the latest turn follows (null), a past one pins.
+  useReadingLine(scroller, {
+    viewedIndex: currentPage - 1,
+    latestIndex: lastIndex,
+    onViewedTurn: (index) => setUserPage(index >= lastIndex ? null : index + 1),
+    isProgrammaticScroll: () => opening.current || isProgrammaticScroll(),
   });
   const streaming = isWaitingForAI || isRevealingNarration;
 
