@@ -43,7 +43,7 @@ const PLACEHOLDERS = [town, hair, ghost];
 const sworn = { id: 'sworn', name: 'Sworn', placeholderPins: [
   { placeholderId: 'ghost', value: 'Oathshade' },
   { placeholderId: 'town', value: 'Oathhold' },
-  { placeholderId: 'hair', value: 'ash grey' },
+  { placeholderId: 'hair', value: 'ash gray' },
 ] } as unknown as Trait;
 const fen = { id: 'fen', name: 'Fen', placeholderPins: [{ placeholderId: 'ghost', value: 'Bogwisp' }] } as unknown as GameLocation;
 const hunger = {
@@ -145,8 +145,17 @@ describe('a placeholder with no values, held by pins', () => {
     expect(valueText(openValues()[0])).toBe('Oathshade');
     await typeInValue(0, 'Oathshadow');
     expect(traitWrites).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('sworn-pins').textContent).toBe('Oathshadow|Oathhold|ash grey');
+    expect(screen.getByTestId('sworn-pins').textContent).toBe('Oathshadow|Oathhold|ash gray');
     expect(screen.getByTestId('ghost-values').textContent).toBe('0');
+  });
+
+  it('keeps a trait\'s pin as an empty pin when the author clears it', async () => {
+    render(<Field text={`It is ${world('ghost', 'g1')}.`} />);
+    await openTab('Values');
+    await step(openValues()[0], 'Previous');
+    await typeInValue(0, '');
+    // Still three pins on the trait, the first one emptied rather than removed.
+    expect(screen.getByTestId('sworn-pins').textContent).toBe('|Oathhold|ash gray');
   });
 
   it('writes a location\'s pin on the location', async () => {
@@ -219,6 +228,6 @@ describe('a placeholder with values and pins', () => {
     const [open] = openValues();
     expect(within(open).getByText('Value 1 of 2')).toBeInTheDocument();
     await step(open, 'Next');
-    expect(valueText(openValues()[0])).toBe('ash grey');
+    expect(valueText(openValues()[0])).toBe('ash gray');
   });
 });

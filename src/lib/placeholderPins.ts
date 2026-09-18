@@ -378,6 +378,8 @@ interface PinSourceSpec<K extends PinSourceKind> {
   /** The world with this source's pin list rewritten. The same world when the source is not there or the
    *  change declined; otherwise only the record on the path to the list is a new object. */
   write<W extends PinEditorWorld>(world: W, source: SourceOf<K>, change: PinListChange): W;
+  /** How a rewritten world hands this kind's record back, or undefined where `writers` has no writer for it. */
+  commit(writers: PinWriters): ((next: PinEditorWorld, source: SourceOf<K>) => void) | undefined;
 }
 
 const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
@@ -409,6 +411,10 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       });
       return stats ? { ...world, stats } : world;
     },
+    commit: ({ updateStat }) => updateStat && ((next, source) => {
+      const stat = next.stats?.find((s) => s.id === source.statId);
+      if (stat) updateStat(stat);
+    }),
   },
   location: {
     label: 'Location',
@@ -432,6 +438,10 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       const locations = mapOne(world.locations, (l) => l.id === source.id, (l) => rewritten(l, 'placeholderPins', change));
       return locations ? { ...world, locations } : world;
     },
+    commit: ({ updateLocation }) => updateLocation && ((next, source) => {
+      const location = next.locations?.find((l) => l.id === source.id);
+      if (location) updateLocation(location);
+    }),
   },
   trait: {
     label: 'Trait',
@@ -458,6 +468,10 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       const traits = mapOne(world.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
       return traits ? { ...world, traits } : world;
     },
+    commit: ({ updateTrait }) => updateTrait && ((next, source) => {
+      const trait = next.traits?.find((t) => t.id === source.id);
+      if (trait) updateTrait(trait);
+    }),
   },
   value: {
     label: 'Placeholder Value',
@@ -491,6 +505,10 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       });
       return placeholders ? { ...world, placeholders } : world;
     },
+    commit: ({ updatePlaceholder }) => updatePlaceholder && ((next, source) => {
+      const ph = next.placeholders.find((p) => p.id === source.placeholderId);
+      if (ph) updatePlaceholder(ph);
+    }),
   },
 };
 
@@ -663,19 +681,12 @@ export interface PinWriters {
 
 /** Whether `writers` can hand a source of this kind back at all. */
 export function canCommitPinSource(source: PinSourceRef, writers: PinWriters): boolean {
-  return !!{ trait: writers.updateTrait, location: writers.updateLocation, descriptor: writers.updateStat,
-    value: writers.updatePlaceholder }[source.kind];
+  return !!specOf(source).commit(writers);
 }
 
 /** Hands the record `next` holds for `source` — the trait, location, stat or placeholder — to its writer. */
 export function commitPinSource(next: PinEditorWorld, source: PinSourceRef, writers: PinWriters): void {
-  const id = pinSourceOwnerId(source);
-  switch (source.kind) {
-    case 'trait': { const t = next.traits?.find((x) => x.id === id); if (t) writers.updateTrait?.(t); return; }
-    case 'location': { const l = next.locations?.find((x) => x.id === id); if (l) writers.updateLocation?.(l); return; }
-    case 'descriptor': { const s = next.stats?.find((x) => x.id === id); if (s) writers.updateStat?.(s); return; }
-    case 'value': { const p = next.placeholders.find((x) => x.id === id); if (p) writers.updatePlaceholder?.(p); return; }
-  }
+  specOf(source).commit(writers)?.(next, source);
 }
 
 /** The world with the row on `source` that reads as `pin` removed. */

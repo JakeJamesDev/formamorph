@@ -261,7 +261,8 @@ test('a press in the field text ends the active mark even where it moves no care
   await expect.poll(() => reading(root, 1).then((r) => r.active)).toBe(false);
 });
 
-test('a wrapped active value keeps one contiguous outline', async ({ page }) => {
+test('a wrapped active value keeps one contiguous outline', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'a tap on mobile opens full screen');
   const root = await openValues(page, 'Wrap');
   await root.evaluate((el) => { el.style.width = '260px'; });
   const idle = await settle(page, root);
@@ -272,10 +273,9 @@ test('a wrapped active value keeps one contiguous outline', async ({ page }) => 
   const active = await settle(page, root);
   expect(active.active).toBe(true);
   expect(active.stroke).not.toBe('none');
-  // The quieter look loses none of the shape's meaning: still one line around every row of the value. The
-  // row count is read again rather than carried over, since a tap on mobile opens the field full screen.
-  expect(active.lines, 'the active value must still wrap').toBeGreaterThan(1);
+  // The quieter look loses none of the shape's meaning: still one line around every row of the value.
   expect(active.pieces).toBe(1);
+  expect(active.lines).toBe(idle.lines);
 });
 
 for (const theme of ['light', 'dark'] as const) {

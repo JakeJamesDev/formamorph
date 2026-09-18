@@ -5,7 +5,7 @@ import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
 import {
   allPinRows, canCommitPinSource, commitPinSource, pinsTargeting, sameSource, updatePinAt,
-  type PinEditorWorld, type PinWriters,
+  type PinEditorWorld, type PinSourceRef, type PinWriters,
 } from '@/lib/placeholderPins';
 import { isPinStop, openStopIndex, placeholderStops, type PinStop, type PlaceholderStop } from '@/lib/placeholderStops';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
@@ -80,33 +80,35 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
     updateStat: game?.updateStat,
     updatePlaceholder: store?.updatePlaceholder,
   }), [game?.updateTrait, game?.updateLocation, game?.updateStat, store?.updatePlaceholder]);
-  const written = useRef<{ base: readonly unknown[]; world: PinEditorWorld } | null>(null);
-  const baseWorld = useRef<PinEditorWorld>({ placeholders: [] });
-  baseWorld.current = { traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders: store?.placeholders ?? [] };
-  const base = [game?.traits, game?.locations, game?.stats, store?.placeholders];
-  if (written.current && written.current.base.some((b, i) => b !== base[i])) written.current = null;
-  const worldNow = useCallback(() => written.current?.world ?? baseWorld.current, []);
-  const commit = useCallback((next: PinEditorWorld, source: Parameters<typeof commitPinSource>[1], w: PinWriters) => {
-    const b = baseWorld.current;
-    written.current = { base: [b.traits, b.locations, b.stats, b.placeholders], world: next };
-    commitPinSource(next, source, w);
+  const writersRef = useRef(writers);
+  writersRef.current = writers;
+  // The world as this field last wrote it, until a render brings the lists it was built from up to date.
+  const pending = useRef<{ from: readonly unknown[]; world: PinEditorWorld } | null>(null);
+  const rendered = useRef<PinEditorWorld>({ placeholders: [] });
+  rendered.current = { traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders: store?.placeholders ?? [] };
+  const listsOf = (world: PinEditorWorld) => [world.traits, world.locations, world.stats, world.placeholders];
+  const renderedLists = listsOf(rendered.current);
+  if (pending.current?.from.some((list, i) => list !== renderedLists[i])) pending.current = null;
+  const commit = useCallback((next: PinEditorWorld, source: PinSourceRef) => {
+    pending.current = { from: listsOf(rendered.current), world: next };
+    commitPinSource(next, source, writersRef.current);
   }, []);
-  const writeValue = useCallback((placeholderId: string, valueId: string, text: string, w: PinWriters) => {
-    const world = worldNow();
+  const writeValue = useCallback((placeholderId: string, valueId: string, text: string) => {
+    const world = pending.current?.world ?? rendered.current;
     const ph = world.placeholders.find((p) => p.id === placeholderId);
     if (!ph) return;
     const updated = { ...ph, values: ph.values.map((v) => (v.id === valueId ? { ...v, text } : v)) };
     const next = { ...world, placeholders: world.placeholders.map((p) => (p.id === placeholderId ? updated : p)) };
-    commit(next, { kind: 'value', placeholderId, valueId }, w);
-  }, [worldNow, commit]);
+    commit(next, { kind: 'value', placeholderId, valueId });
+  }, [commit]);
   // The pin is read again at its place on its source, so a second keystroke finds the text the first wrote.
-  const writePin = useCallback((targetId: string, stop: PinStop, text: string, w: PinWriters) => {
-    const world = worldNow();
+  const writePin = useCallback((targetId: string, stop: PinStop, text: string) => {
+    const world = pending.current?.world ?? rendered.current;
     const row = pinsTargeting(world, targetId).filter((r) => sameSource(r.source, stop.row.source))[stop.place];
     if (!row) return;
     const next = updatePinAt(world, row.source, row.pin, { ...row.pin, value: text });
-    if (next !== world) commit(next, row.source, w);
-  }, [worldNow, commit]);
+    if (next !== world) commit(next, row.source);
+  }, [commit]);
   const openValues = useMemo(() => {
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
@@ -115,36 +117,35 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       const placement = decodePlaceholderToken(token);
       if (!ph || !placement) continue;
       // A World drill target steps under its own id; a Unique one under a chain key no placement names.
-      const at = placement.path?.length
+      const stepsUnder = placement.path?.length
         ? placement.mode === 'world' ? { ...placement, id: ph.id } : null
         : placement;
       const stops = placeholderStops(ph, pinRows);
-      const { index, drawPinned } = openStopIndex(stops, open, at ? rolls.chosenStop(at) : undefined);
+      const { index, drawPinned } = openStopIndex(stops, open, stepsUnder ? rolls.chosenStop(stepsUnder) : undefined);
       const stop = stops[index];
       if (!stop) {
         out[token] = { text: open.text, label: '', mark: 'No Values' };
         continue;
       }
-      const pin = isPinStop(stop) ? stop : null;
-      const writable = !readOnly && (pin ? canCommitPinSource(pin.row.source, writers) : !!writers.updatePlaceholder);
+      const pin = isPinStop(stop);
+      const writable = !readOnly && (pin ? canCommitPinSource(stop.row.source, writers) : !!writers.updatePlaceholder);
       out[token] = {
         text: stop.text,
         label: stopLabel(stop),
         ...(drawPinned && { mark: 'Pinned' as const }),
         ...(writable && {
-          write: pin
-            ? (text: string) => writePin(ph.id, pin, text, writers)
-            : (text: string) => writeValue(ph.id, (stop as { valueId: string }).valueId, text, writers),
+          write: isPinStop(stop)
+            ? (text: string) => writePin(ph.id, stop, text)
+            : (text: string) => writeValue(ph.id, stop.valueId, text),
           // Every copy open on one stop shares its key, so they mirror.
-          valueKey: `${ph.id}
-${stop.key}`,
+          valueKey: `${ph.id}:${stop.key}`,
         }),
-        ...(at && stops.length > 1 && {
+        ...(stepsUnder && stops.length > 1 && {
           pager: {
             index,
             count: stops.length,
             unit: pin ? 'Pin' as const : 'Value' as const,
-            step: (direction: StepDirection) => rolls.choose(at, stops[stepIndex(index, direction, stops.length)].key),
+            step: (direction: StepDirection) => rolls.choose(stepsUnder, stops[stepIndex(index, direction, stops.length)].key),
           },
         }),
       };
