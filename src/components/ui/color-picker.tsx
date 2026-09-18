@@ -22,8 +22,6 @@ export interface ColorPickerProps {
   onReset?: () => void
   resetLabel?: string
   id?: string
-  disabled?: boolean
-  className?: string
   "aria-label"?: string
   "aria-describedby"?: string
 }
@@ -36,13 +34,13 @@ export function ColorPicker({
   onReset,
   resetLabel = "Reset",
   id,
-  disabled,
-  className,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
 }: ColorPickerProps) {
+  const valueId = React.useId()
   const [draft, setDraft] = React.useState(value)
   React.useEffect(() => setDraft(value), [value])
+  const revertDraft = () => setDraft(value)
 
   const commit = (hex: string) => {
     if (hex !== value) onChange(hex)
@@ -62,10 +60,10 @@ export function ColorPicker({
           id={id}
           type="button"
           variant="outline"
-          disabled={disabled}
-          aria-label={ariaLabel ? `${ariaLabel}: ${value}` : undefined}
-          aria-describedby={ariaDescribedBy}
-          className={cn("gap-2 px-3 font-mono", className)}
+          aria-label={ariaLabel}
+          // A label replaces the button text in the accessible name, so the value rides in the description.
+          aria-describedby={ariaDescribedBy ? `${valueId} ${ariaDescribedBy}` : valueId}
+          className="gap-2 px-3 font-mono"
         >
           <span
             data-color-swatch
@@ -73,7 +71,7 @@ export function ColorPicker({
             className="h-5 w-5 shrink-0 rounded-sm border border-border"
             style={{ backgroundColor: value }}
           />
-          {value}
+          <span id={valueId}>{value}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -91,12 +89,11 @@ export function ColorPicker({
             aria-label="Hex Color"
             value={draft}
             spellCheck={false}
-            maxLength={7}
             className="h-9 w-28 font-mono"
             onChange={(event) => onDraftChange(event.target.value)}
-            onBlur={() => setDraft(value)}
+            onBlur={revertDraft}
             onKeyDown={(event) => {
-              if (event.key === "Enter") setDraft(value)
+              if (event.key === "Enter") revertDraft()
             }}
           />
           {onReset && (

@@ -276,7 +276,7 @@ function StateReference() {
               options={SETTINGS_OPTIONS.paragraphLimit}
             />
           </Row>
-          <Row label="Color" htmlFor="reference-color" hint="The hex field accepts 6-digit values only.">
+          <Row label="Color" htmlFor="reference-color" hint="Accepts 6-digit hex values only">
             <ColorPicker
               id="reference-color"
               value={dialogueColor}
