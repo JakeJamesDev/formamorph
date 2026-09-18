@@ -1,6 +1,6 @@
 # 02: Pin on Submit, Streaming, and Jump to Latest
 
-Status: in-progress
+Status: ready-for-human
 Base: 6f7bd1ec
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -40,7 +40,14 @@ is off screen, a **Jump to Latest** button shows and returns the player to it.
   until that scroll lands, stalls, or the player takes over.
 - **Not changed:** 01's open-at-bottom re-aim still runs its frames after a player scroll. Ticket 03 owns
   that effect.
-- Jump to Latest also follows reduced motion. The e2e suite (`e2e/chat-pin.spec.ts`, 12 cases) ran in
-  122 s wall, about 106 s of tests; the gap is the dev server start.
-- Gates at commit: lint, build, and the tests of this unit are green. Typecheck and 5 tests fail only on
-  ticket 04's uncommitted `latestFooter` work, which waits for this commit.
+- **Player input stops a code glide.** A wheel during a smooth jump did not always cancel the browser's
+  smooth scroll, so the jump overrode the player. Player input now writes the current offset instantly, but
+  only while a code scroll is in flight. That guard is probabilistic: without the fix it failed 1 of 8 to 8 of
+  8 per batch, and with it 0 of 18.
+- **Reduced motion counts glide frames.** On mobile the action input shrinks on submit. The viewport grows
+  and the browser clamps the offset one frame before the pin. The test counts offsets between the start and
+  the landing, so a resize clamp does not count as a glide.
+- "New Text Below" shows only while the latest text ends below the viewport.
+- Jump to Latest also follows reduced motion. The e2e suite (`e2e/chat-pin.spec.ts`, 14 cases) ran on the
+  combined tree with tickets 03-05 in about 130 s wall.
+- Gates at the review follow-up: typecheck, lint, test (662 files), and build all green.
