@@ -1,10 +1,9 @@
 /**
  * Pairs double quotes in a run of text, so quoted speech can be styled apart from narration.
  *
- * The markdown path (`rehypeQuoteSpans`) and the plain-text paths both call this, which is what makes them
- * agree on where a quote starts and ends. Only double quotes pair: an apostrophe is far more often a
- * contraction or a possessive than a quotation mark, and a run opened on one would color the rest of a
- * sentence.
+ * `rehypeQuoteSpans` calls this for the markdown path. Only double quotes pair: an apostrophe is far more
+ * often a contraction or a possessive than a quotation mark, and a run opened on one would color the rest
+ * of a sentence.
  */
 
 /** One run of text, flagged as quoted speech or as narration around it. Quote marks belong to the run they
@@ -14,8 +13,7 @@ export interface QuoteSegment {
   quoted: boolean;
 }
 
-/** The class the dialogue span carries. One hook for the stylesheet, and the seam a per-speaker color
- *  would attach to. */
+/** The class the dialogue span carries. The one styling hook for quoted speech. */
 export const QUOTE_CLASS = 'dialogue-quote';
 
 const CURLY_OPEN = '“';

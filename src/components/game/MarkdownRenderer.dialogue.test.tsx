@@ -38,6 +38,21 @@ describe('dialogue quotes in the markdown renderer', () => {
     expect(spans.map((s) => s.textContent)).toEqual(['"run for the boat']);
   });
 
+  it('stops an unclosed quote at a single line break too', () => {
+    // `remarkBreaks` keeps a single newline inside the paragraph as a `<br>`, and a model that drops a
+    // closing mark writes one far more often than it writes a blank line.
+    const spans = quotes('He shouted "run for the boat\nThe dock was empty.');
+    expect(spans.map((s) => s.textContent)).toEqual(['"run for the boat']);
+  });
+
+  it('reads a quote that really does span a line break as one quote per line', () => {
+    // The cost of ending a quote at the break. The second line starts closed, so its closing mark reads
+    // as an opener and runs to the end of the line, the same way any unclosed quote does. Nothing in the
+    // text tells the two apart, and a rule that looked ahead would change a run's color as it streamed.
+    const spans = quotes('She said "hold the line\nand wait" before dawn.');
+    expect(spans.map((s) => s.textContent)).toEqual(['"hold the line', '" before dawn.']);
+  });
+
   it('starts each paragraph with no quote open', () => {
     // Without the reset the second paragraph would open colored and stay that way.
     const spans = quotes('He shouted "run\n\nShe said "walk" instead.');

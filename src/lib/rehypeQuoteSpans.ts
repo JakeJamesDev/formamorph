@@ -8,8 +8,9 @@ import { segmentQuotes, QUOTE_CLASS } from './quoteSegments';
  * `dialogue` prop get it.
  *
  * A quote carries across bold, italic and links, because those are inline: one quote stays one color even
- * when emphasis splits it into several text nodes. Each block-level element starts fresh, which is what
- * stops a quote the model never closed at the end of its paragraph. Code is left alone.
+ * when emphasis splits it into several text nodes. Each block-level element starts fresh, and so does each
+ * line break, which is what stops a quote the model never closed at the end of its line. Code is left
+ * alone.
  */
 
 /** The hast subset this walks. Only the fields actually read are declared (see remarkSubSuper). */
@@ -22,8 +23,11 @@ interface HastNode {
 }
 
 /** Elements that end a quote at their boundary. Everything else counts as inline, so an element markdown
- *  can produce that is not named here carries a quote rather than cutting it. */
-const BLOCK = new Set([
+ *  can produce that is not named here carries a quote rather than cutting it.
+ *  `br` is here although it is inline: `remarkBreaks` turns every single newline into one, and a model
+ *  that drops a closing mark would otherwise color every line after it down to the blank line. */
+const ENDS_QUOTE = new Set([
+  'br',
   'p', 'div', 'section', 'article', 'aside', 'header', 'footer', 'main', 'blockquote',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
   'ul', 'ol', 'li', 'dl', 'dt', 'dd',
@@ -62,8 +66,11 @@ function walk(node: HastNode, state: { open: boolean }): void {
     if (child.type !== 'element') continue;
     const tag = child.tagName ?? '';
     if (SKIP.has(tag)) continue;
-    if (BLOCK.has(tag)) walk(child, { open: false });
-    else walk(child, state);
+    if (!ENDS_QUOTE.has(tag)) { walk(child, state); continue; }
+    // The element ends the run it sits in and starts its own, so a `<br>` cuts the quote even though it
+    // holds nothing, and a block nested in a block does not leak a quote back out.
+    state.open = false;
+    walk(child, { open: false });
   }
   node.children = out;
 }

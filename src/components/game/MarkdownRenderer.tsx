@@ -63,13 +63,12 @@ const TINT_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
 // through it, so author markdown gains nothing from them.
 const QUOTE_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
   [...(REHYPE_PLUGINS ?? []), rehypeQuoteSpans];
-const TINT_QUOTE_REHYPE_PLUGINS: ComponentProps<typeof Streamdown>['rehypePlugins'] =
-  [...(TINT_REHYPE_PLUGINS ?? []), rehypeQuoteSpans];
 
-/** Pick one of the four module constants. Streamdown memoizes each block on plugin-array identity, so a
- *  fresh array per render would repaint every block on every token. */
-function rehypeSet(tinted: boolean, dialogue: boolean): ComponentProps<typeof Streamdown>['rehypePlugins'] {
-  if (tinted) return dialogue ? TINT_QUOTE_REHYPE_PLUGINS : TINT_REHYPE_PLUGINS;
+/** Pick one of the three module constants. Streamdown memoizes each block on plugin-array identity, so a
+ *  fresh array per render would repaint every block on every token. The two flags are alternatives — a
+ *  tinted pane is the author's preview of a field, not story text — so `tinted` wins. */
+function rehypePluginsFor(tinted: boolean, dialogue: boolean): ComponentProps<typeof Streamdown>['rehypePlugins'] {
+  if (tinted) return TINT_REHYPE_PLUGINS;
   return dialogue ? QUOTE_REHYPE_PLUGINS : REHYPE_PLUGINS;
 }
 
@@ -113,7 +112,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer(
     <div className="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6">
       <Streamdown
         remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={rehypeSet(tinted, dialogue)}
+        rehypePlugins={rehypePluginsFor(tinted, dialogue)}
         components={COMPONENTS}
         plugins={PLUGINS}
         controls={false}
