@@ -1,13 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { gotoDev, openApp } from './app';
+import { AT_BOTTOM_PX, READING_LINE } from '../src/lib/chatReadingLine';
 
 /**
  * Chat layout's reading-line barrier in a real browser: the turn on the line drives the panels. jsdom has
  * no layout, so the rule itself is unit-tested and this checks it against real turn boxes.
  */
 
-// Matches READING_LINE in src/lib/chatReadingLine.ts.
-const READING_LINE = 0.3;
 const WHEEL_STEP = 240;
 const REPLY = 'The console blinks once.';
 
@@ -35,7 +34,7 @@ async function openChat(page: Page) {
 
 /** The turn number on the reading line, whether the list is at the bottom, and the latest turn number. */
 function readingLine(page: Page) {
-  return page.evaluate((share) => {
+  return page.evaluate(([share, atBottomPx]) => {
     const scroller = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
     const box = scroller.getBoundingClientRect();
     const line = box.top + box.height * share;
@@ -47,9 +46,9 @@ function readingLine(page: Page) {
       const rect = el.getBoundingClientRect();
       if (rect.top <= line && rect.bottom > line) onLine = index + 1;
     });
-    const atBottom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= 2;
+    const atBottom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= atBottomPx;
     return { onLine, atBottom, latest };
-  }, READING_LINE);
+  }, [READING_LINE, AT_BOTTOM_PX]);
 }
 
 /** The turn the banner names, or null when it is hidden (the panels follow the latest turn). */
@@ -141,5 +140,26 @@ test.describe('Chat reading-line barrier', () => {
     // Chat opens with the viewed turn on the reading line, so the banner keeps it.
     await expect.poll(async () => (await readingLine(page)).onLine).toBe(viewed);
     expect(await bannerTurn(page)).toBe(viewed);
+  });
+
+  test('a switch to Chat keeps a viewed turn that cannot reach the reading line', async ({ page }) => {
+    // Tall enough that the second-to-last turn cannot scroll up to the line.
+    await page.setViewportSize({ width: 1280, height: 2000 });
+    await openChat(page);
+    const { latest } = await readingLine(page);
+    await switchLayout(page, 'Pages');
+    await page.getByLabel('Go to previous page').click();
+    expect(await bannerTurn(page)).toBe(latest - 1);
+    await switchLayout(page, 'Chat');
+    await page.locator('[data-chat-scroller] article').first().waitFor();
+    // The list rests at the bottom, and the panels keep the viewed turn until the player scrolls.
+    await expect.poll(async () => (await readingLine(page)).atBottom).toBe(true);
+    // Past the open aim's 30-frame limit, so any write it could cause has happened.
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      let frames = 0;
+      const tick = () => (++frames > 40 ? resolve() : requestAnimationFrame(tick));
+      requestAnimationFrame(tick);
+    }));
+    expect(await bannerTurn(page)).toBe(latest - 1);
   });
 });

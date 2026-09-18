@@ -17,8 +17,12 @@ const VIEWPORT = 1000;
 const TURN_BOXES: Record<string, [number, number]> = { 0: [-300, 100], 1: [100, 500], 2: [500, 900] };
 
 const chat = (settings: Settings) => settings.setNarrationLayout('chat');
-// The open-at-bottom aim settles within a few frames; a player scrolls after it.
-const openSettled = () => new Promise((resolve) => setTimeout(resolve, 150));
+/// The open-at-bottom aim stops within 30 frames; a player scrolls after it.
+const openSettled = () => new Promise<void>((resolve) => {
+  let frames = 0;
+  const tick = () => (++frames > 30 ? resolve() : requestAnimationFrame(tick));
+  requestAnimationFrame(tick);
+});
 
 /** Give the scroller and its turns the layout jsdom lacks, then scroll it as a player would. */
 function scrollToTurnTwo(scroller: HTMLElement) {

@@ -109,7 +109,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
 
   // The past turn the panels show at mount, so a switch from Pages opens on it; null follows the latest.
   const openTurn = useRef(currentPage < totalPages ? currentPage - 1 : null);
-  // True while the open aim runs, so the barrier does not read its scrolls.
+  // True while the open aim places the list, so the barrier drops its scrolls.
   const opening = useRef(false);
 
   // A game opens at the bottom, or with a past viewed turn on the reading line, re-aimed until it holds
@@ -157,7 +157,8 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
     viewedIndex: currentPage - 1,
     latestIndex: lastIndex,
     onViewedTurn: (index) => setUserPage(index >= lastIndex ? null : index + 1),
-    isProgrammaticScroll: () => opening.current || isProgrammaticScroll(),
+    isProgrammaticScroll,
+    isPlacing: () => opening.current,
   });
   const streaming = isWaitingForAI || isRevealingNarration;
 

@@ -1,5 +1,7 @@
 /** Where the reading line sits, as a share of the viewport height from its top. */
 export const READING_LINE = 0.3;
+/** A scroll offset within this many pixels of the end counts as the bottom. */
+export const AT_BOTTOM_PX = 2;
 
 /** A mounted turn's box, in pixels from the viewport top. */
 export interface TurnBox {
@@ -35,10 +37,9 @@ export interface PageView {
 }
 
 /**
- * Whether the stat bars snap instead of animate. In Chat a move of the viewed turn with the same page count
- * is a scroll, so the bars snap; they keep snapping until the page count changes (a submit or a rollback).
+ * Whether the stat rows snap on this render: in Chat, a move of the viewed turn with the same page count is a
+ * scroll. A submit or a rollback changes the page count, so it animates.
  */
-export function statsSnap(snapping: boolean, prev: PageView, next: PageView, chat: boolean): boolean {
-  if (!chat || next.totalPages !== prev.totalPages) return false;
-  return next.page !== prev.page || snapping;
+export function statsSnap(prev: PageView, next: PageView, chat: boolean): boolean {
+  return chat && next.page !== prev.page && next.totalPages === prev.totalPages;
 }

@@ -57,7 +57,8 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { effectiveDestinations } from '@/lib/locationGraph';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
-import { useNarrationLayout, useStatsSnap } from '@/lib/useNarrationLayout';
+import { useNarrationLayout } from '@/lib/useNarrationLayout';
+import { useStatsSnap } from '@/lib/useStatsSnap';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
 
@@ -556,11 +557,8 @@ export const MiddlePanel = ({
     viewContinueUsed
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests, narrationLayout } = useSettings();
-  // DEV: `mode=chat` or `mode=pages` on the game view overrides the setting without saving it.
-  const devRoute = useDevRoute();
-  const routeLayout = import.meta.env.DEV && (devRoute?.mode === 'chat' || devRoute?.mode === 'pages') ? devRoute.mode : null;
-  const chatLayout = (routeLayout ?? narrationLayout) === 'chat';
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const chatLayout = useNarrationLayout() === 'chat';
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -1241,8 +1239,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     drainingStatChanges
   } = useGameplay();
   const { locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
-  // In Chat a scroll moves the viewed turn, so the bars snap until the next turn lands.
-  const snapStats = useStatsSnap(currentPage, totalPages, useNarrationLayout() === 'chat');
+  // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
+  const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
   const [isEditMode, setIsEditMode] = React.useState(false);
   // The traits actually in force on the viewed turn, and the stats they leave live. A switched-off trait

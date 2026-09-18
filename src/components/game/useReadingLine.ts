@@ -1,8 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { viewedTurn, type TurnBox } from '@/lib/chatReadingLine';
-
-// A scroll offset within this many pixels of the end counts as the bottom.
-const AT_BOTTOM_PX = 2;
+import { AT_BOTTOM_PX, viewedTurn, type TurnBox } from '@/lib/chatReadingLine';
 
 interface ReadingLineOptions {
   /** The turn the panels show now, as a zero-based index. */
@@ -11,7 +8,9 @@ interface ReadingLineOptions {
   /** Called with the new viewed turn, only when it differs from `viewedIndex`. */
   onViewedTurn: (index: number) => void;
   /** True while a scroll the code started is still moving; the barrier waits for it to settle. */
-  isProgrammaticScroll?: () => boolean;
+  isProgrammaticScroll: () => boolean;
+  /** True while scrolls place the list on purpose; the barrier drops them. */
+  isPlacing: () => boolean;
 }
 
 /** The turn boxes of the mounted `[data-index]` turns, from the scroller's top edge. */
@@ -39,12 +38,12 @@ export function useReadingLine(scroller: RefObject<HTMLElement | null>, options:
       frame = 0;
       const { viewedIndex, latestIndex, onViewedTurn, isProgrammaticScroll } = latest.current;
       // Poll until a code-started scroll settles, so its passage through older turns never counts.
-      if (isProgrammaticScroll?.()) { frame = requestAnimationFrame(run); return; }
+      if (isProgrammaticScroll()) { frame = requestAnimationFrame(run); return; }
       const atBottom = el.scrollHeight - el.clientHeight - el.scrollTop <= AT_BOTTOM_PX;
       const index = viewedTurn(mountedTurns(el), { viewportHeight: el.clientHeight, atBottom, latestIndex });
       if (index !== null && index !== viewedIndex) onViewedTurn(index);
     };
-    const onScroll = () => { if (!frame) frame = requestAnimationFrame(run); };
+    const onScroll = () => { if (!frame && !latest.current.isPlacing()) frame = requestAnimationFrame(run); };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       el.removeEventListener('scroll', onScroll);

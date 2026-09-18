@@ -64,22 +64,26 @@ describe('statsSnap', () => {
   const at = (page: number, totalPages: number) => ({ page, totalPages });
 
   it('snaps when Chat moves the viewed turn and no turn is added', () => {
-    expect(statsSnap(false, at(5, 9), at(4, 9), true)).toBe(true);
+    expect(statsSnap(at(5, 9), at(4, 9), true)).toBe(true);
   });
 
-  it('keeps snapping on the renders after a scroll, until a turn is added', () => {
-    expect(statsSnap(true, at(9, 9), at(9, 9), true)).toBe(true);
+  it('snaps a scroll back to the latest turn', () => {
+    expect(statsSnap(at(4, 9), at(9, 9), true)).toBe(true);
   });
 
-  it('animates again when a submit adds a turn', () => {
-    expect(statsSnap(true, at(4, 9), at(10, 10), true)).toBe(false);
+  it('does not snap a render that keeps the viewed turn, so a stats re-generate animates', () => {
+    expect(statsSnap(at(9, 9), at(9, 9), true)).toBe(false);
   });
 
-  it('animates again when a rollback removes turns', () => {
-    expect(statsSnap(true, at(4, 9), at(4, 4), true)).toBe(false);
+  it('animates when a submit adds a turn', () => {
+    expect(statsSnap(at(4, 9), at(10, 10), true)).toBe(false);
+  });
+
+  it('animates when a rollback removes turns', () => {
+    expect(statsSnap(at(4, 9), at(4, 4), true)).toBe(false);
   });
 
   it('never snaps in Pages, where the Pager moves the viewed turn', () => {
-    expect(statsSnap(false, at(5, 9), at(4, 9), false)).toBe(false);
+    expect(statsSnap(at(5, 9), at(4, 9), false)).toBe(false);
   });
 });
