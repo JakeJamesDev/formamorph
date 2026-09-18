@@ -1,8 +1,8 @@
 # Placeholder Values Tab — Follow-Up Spec
 
-Status: in-progress
+Status: ready-for-human
 Base: 7db25536
-Status note: a sixth fix, "Pins are stops", was added 2026-09-18 after the user found a trait-pinned empty placeholder still locked; it widens the off-list pin fix and replaces the pinned-chip rule, and is not built. The first five fixes were built and reviewed (`e859440c`, `ede64f5c`); parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser, because Tab stays inside the editor and a toolbar press hands the keyboard back to the value it refilled. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
+Status note: all six fixes built and reviewed — the first five in `e859440c` and `ede64f5c`, "Pins are stops" in `e73dda38` with its review folded in after. Parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser. Story 63's discard and history are shared with the Pins section through one write path (`commitPinSource`) but have no test of their own. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
 
 Six fixes to the Values tab and the chip flyout: every pin on a placeholder is a stop the chevrons reach
 and an editable text, a header click makes its value active, the header becomes a pager whose controls

@@ -8,6 +8,9 @@ import type { PinRow } from '@/lib/placeholderPins';
 import { isPinStop, placeholderStops } from '@/lib/placeholderStops';
 import type { Placeholder, PlaceholderRolls } from '@/types';
 
+/** One placement, as far as the rolls care: which placeholder, and whether it shares its roll. */
+export type PlacementRef = Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>;
+
 /**
  * The editor's preview rolls: one drawn value per World-mode placeholder and one per Unique placement
  * chain, as a playthrough's session holds them — but editor UI state only, kept by value id. A field's Preview reads
@@ -30,15 +33,18 @@ export interface EditorPreviewRolls {
   reroll(ids: Iterable<string>, placeholders: Placeholder[]): void;
   /** Roll `valueId` for one placement: a World placement moves every chip of its placeholder, a Unique
    *  placement moves only itself. Nothing else is redrawn. */
-  setRoll(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>, valueId: string): void;
+  setRoll(placement: PlacementRef, valueId: string): void;
   /** Step one placement to a stop — a value or a pin (see `placeholderStops`). A step outranks any pin the
    *  draw lays itself, and a World step moves every chip of its placeholder. A reroll clears it. */
-  choose(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>, stopKey: string): void;
+  choose(placement: PlacementRef, stopKey: string): void;
   /** The stop a placement was stepped to, if any. */
-  chosenStop(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>): string | undefined;
+  chosenStop(placement: PlacementRef): string | undefined;
 }
 
 const EditorPreviewRollsContext = createContext<EditorPreviewRolls | null>(null);
+
+/** Where a placement's roll is filed: under the placeholder for World, under the placement for Unique. */
+const rollKeyOf = ({ id, mode, placementId }: PlacementRef): string => (mode === 'world' ? id : placementId);
 
 /** A store bound to this component: the rolls in a ref, so a first read can draw without a re-render, and
  *  a version in state, so a reroll re-renders whoever reads the store. */
@@ -95,8 +101,6 @@ function usePreviewRollStore(): EditorPreviewRolls {
       }
       return { rolls, setRoll: recordDraw, chosen };
     };
-    const keyOf = ({ id, mode, placementId }: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>) =>
-      (mode === 'world' ? id : placementId);
     return {
       version,
       preview: (text, placeholders, pinRows) =>
@@ -119,15 +123,15 @@ function usePreviewRollStore(): EditorPreviewRolls {
       },
       setRoll: ({ id, mode, placementId }, valueId) => {
         if (mode === 'unique') uniqueOwner.current[placementId] = id;
-        (valueIds.current[mode] ??= {})[mode === 'world' ? id : placementId] = valueId;
+        (valueIds.current[mode] ??= {})[rollKeyOf({ id, mode, placementId })] = valueId;
         setVersion((v) => v + 1);
       },
       choose: (placement, stopKey) => {
         if (placement.mode === 'unique') uniqueOwner.current[placement.placementId] = placement.id;
-        (chosenStops.current[placement.mode] ??= {})[keyOf(placement)] = stopKey;
+        (chosenStops.current[placement.mode] ??= {})[rollKeyOf(placement)] = stopKey;
         setVersion((v) => v + 1);
       },
-      chosenStop: (placement) => chosenStops.current[placement.mode]?.[keyOf(placement)],
+      chosenStop: (placement) => chosenStops.current[placement.mode]?.[rollKeyOf(placement)],
     };
   }, [version]);
   // Hoisted so both readers share it; `useMemo` above closes over the refs, not over this.

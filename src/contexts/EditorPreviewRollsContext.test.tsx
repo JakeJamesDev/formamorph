@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
-import { EditorPreviewRollsProvider, useEditorPreviewRolls, type EditorPreviewRolls } from './EditorPreviewRollsContext';
+import { EditorPreviewRollsProvider, useEditorPreviewRolls, type EditorPreviewRolls, type PlacementRef } from './EditorPreviewRollsContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider, usePlaceholderSession } from './PlaceholderSessionContext';
 import { encodePlaceholderToken } from '@/lib/placeholders';
@@ -201,7 +201,7 @@ describe('EditorPreviewRollsProvider', () => {
 describe('a chosen stop', () => {
   // Ash pins Eyes to text on no list, so the draw lays that pin itself.
   const lord: Placeholder = {
-    id: 'lord', name: 'Lord', values: [{ id: 'v:Ash', text: 'Ash', pins: [{ placeholderId: 'eyes', value: 'grey' }] }],
+    id: 'lord', name: 'Lord', values: [{ id: 'v:Ash', text: 'Ash', pins: [{ placeholderId: 'eyes', value: 'gray' }] }],
   };
   const PINNED = [hair, eyes, lord];
 
@@ -212,8 +212,8 @@ describe('a chosen stop', () => {
     const get = () => { if (!store) throw new Error('probe never rendered'); return store; };
     return {
       read: (text: string) => get().preview(text, PINNED),
-      choose: (placement: Parameters<EditorPreviewRolls['choose']>[0], key: string) => act(() => { get().choose(placement, key); }),
-      chosen: (placement: Parameters<EditorPreviewRolls['choose']>[0]) => get().chosenStop(placement),
+      choose: (placement: PlacementRef, key: string) => act(() => { get().choose(placement, key); }),
+      chosen: (placement: PlacementRef) => get().chosenStop(placement),
       reroll: (ids: string[]) => act(() => { get().reroll(ids, PINNED); }),
     };
   }
@@ -222,7 +222,7 @@ describe('a chosen stop', () => {
   it('outranks a pin the draw lays itself, in every field that reads the store', async () => {
     const s = mountStops();
     const text = `${tok('lord', 'l1')} ${tok('eyes', 'e1')}`;
-    expect(s.read(text)[tok('eyes', 'e1')]).toBe('grey');
+    expect(s.read(text)[tok('eyes', 'e1')]).toBe('gray');
     await s.choose(eyesWorld, `v:${phValueId('green')}`);
     expect(s.read(text)[tok('eyes', 'e1')]).toBe('green');
     // A second World chip of Eyes, as another field would place it, follows the step.
@@ -235,12 +235,12 @@ describe('a chosen stop', () => {
     expect(s.chosen(eyesWorld)).toBe(`v:${phValueId('green')}`);
     await s.reroll(['eyes']);
     expect(s.chosen(eyesWorld)).toBeUndefined();
-    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('grey');
+    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('gray');
   });
 
   it('shows nothing where the stop it names is gone', async () => {
     const s = mountStops();
     await s.choose(eyesWorld, 'v:no-such-value');
-    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('grey');
+    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('gray');
   });
 });

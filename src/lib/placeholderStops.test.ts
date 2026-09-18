@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { allPinRows, type PinEditorWorld } from './placeholderPins';
-import { openStopIndex, placeholderStops, stopKind } from './placeholderStops';
+import { isPinStop, openStopIndex, placeholderStops } from './placeholderStops';
 import { phValues } from '@/test/placeholderValues';
 import type { Placeholder, Trait, GameLocation } from '@/types';
 
@@ -28,7 +28,7 @@ const stopsOf = (ph: Placeholder) => placeholderStops(ph, allPinRows(WORLD));
 describe('placeholderStops', () => {
   it('lists the values in order, then every pin on the placeholder, strongest source kind first', () => {
     expect(stopsOf(town).map((s) => s.text)).toEqual(['Sedge Landing', 'Marrow', 'Fenmoor', 'Oathhold']);
-    expect(stopsOf(town).map(stopKind)).toEqual(['value', 'value', 'pin', 'pin']);
+    expect(stopsOf(town).map(isPinStop)).toEqual([false, false, true, true]);
   });
 
   it('folds a pin that names a listed value into that value\'s stop, so no stop repeats', () => {

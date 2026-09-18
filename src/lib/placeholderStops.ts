@@ -1,5 +1,5 @@
 import { pinSourceKey, type PinRow } from './placeholderPins';
-import type { DrawPinSource } from './placeholders';
+import type { OpenPlaceholderValue } from './placeholders';
 import type { Placeholder } from '@/types';
 
 /**
@@ -27,8 +27,6 @@ export interface PinStop {
 }
 
 export type PlaceholderStop = ValueStop | PinStop;
-
-export const stopKind = (stop: PlaceholderStop): 'value' | 'pin' => ('row' in stop ? 'pin' : 'value');
 
 export const isPinStop = (stop: PlaceholderStop): stop is PinStop => 'row' in stop;
 
@@ -61,12 +59,7 @@ export function placeholderStops(ph: Placeholder, rows: readonly PinRow[]): Plac
 }
 
 /** What the draw reported for one chip: the parts that say which stop it landed on. */
-export interface DrawnStop {
-  valueId?: string;
-  text: string;
-  pinned?: true;
-  pinSource?: DrawPinSource;
-}
+export type DrawnStop = Pick<OpenPlaceholderValue, 'valueId' | 'text' | 'pinned' | 'pinSource'>;
 
 /**
  * Which of `stops` a chip opens on, and whether a pin the draw laid itself decided it. A stop the author
