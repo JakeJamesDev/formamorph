@@ -269,5 +269,13 @@ name, a hook call, or the virtualizer's internals.
   the panel side: with a past turn viewed, the input and Send stay enabled, the send handler is called, and
   the choices are the latest turn's. The reset to follow-latest is existing GameViewer behavior that both
   layouts share; the Playwright barrier test checks that the banner clears after a submit.
+- **Ruling: TTS actions and action targets (spec session, 2026-09-18).** "Read Aloud" and "Re-generate TTS"
+  were prototype labels, not new behavior. They are the two Pages items: **Text to Speech** (opens the TTS
+  modal; row icon, headphones) and **Regenerate Audio** (synthesizes the text again; More menu; only with a
+  model loaded). Use the Pages labels, so one term names one thing in both layouts. Chat adds no new TTS
+  behavior. If the TTS path takes a turn's text without rework, past bubbles offer both items for their own
+  text; if it is tied to the latest gameplay text, only the latest bubble offers them and the ticket records
+  the gap. Every per-turn action acts on its own bubble's turn, never on the viewed turn. Re-generate
+  Narration and Re-generate Stats act on the latest turn only.
 - **Open gap: scene image controls in Chat.** Pages shows scene images with a pager, zoom, and delete. Ticket
   01 may ship a plain inline image. No ticket restores those controls yet; the user decides where they go.
