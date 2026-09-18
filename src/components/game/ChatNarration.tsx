@@ -61,9 +61,13 @@ function InlineSceneImage({ src }: { src: string }) {
 
 /**
  * The Chat body of the narration panel: every turn in one virtualized list, the action as a bubble on the
- * right and the narration as a full-width block. Opens at the latest turn.
+ * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
+ * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage }: { parseAssistantMessage: (content: string) => string }) {
+export function ChatNarration({ parseAssistantMessage, latestFooter }: {
+  parseAssistantMessage: (content: string) => string;
+  latestFooter?: React.ReactNode;
+}) {
   const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
   const gameplayText = useGameplayText();
@@ -181,6 +185,7 @@ export function ChatNarration({ parseAssistantMessage }: { parseAssistantMessage
                     )}
                   </div>
                 )}
+                {isLatest && latestFooter}
                 <div data-content-end />
               </article>
             );
