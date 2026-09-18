@@ -1,6 +1,7 @@
 # 02: Color Quotes in Choice Buttons
 
-Status: ready-for-agent
+Status: in-progress
+Base: 7e2c092e
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

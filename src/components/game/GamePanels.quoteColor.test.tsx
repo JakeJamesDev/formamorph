@@ -82,6 +82,44 @@ describe('MiddlePanel — quote color', () => {
     expect(spans(view.container)).toEqual([]);
   });
 
+  describe('choices', () => {
+    const choice = (text: RegExp) => screen.getByRole('button', { name: text });
+    const withChoices = (choices: string[]) => [{ ...TURNS[0], choices }];
+
+    it('colors quoted speech in a choice', () => {
+      renderMiddlePanel({}, { turns: withChoices(['Ask her "Where to?" and wait']) });
+      expect(spans(choice(/Ask her/))).toEqual(['"Where to?"']);
+    });
+
+    it('keeps bold next to a quote and colors a quote around bold as one', () => {
+      renderMiddlePanel({}, { turns: withChoices(['**Shout** "I **will** go" loudly']) });
+      const button = choice(/Shout/);
+      expect(button.textContent).toBe('Shout "I will go" loudly');
+      const bold = [...button.querySelectorAll('strong')];
+      expect(bold.map((s) => s.textContent)).toEqual(['Shout', 'will']);
+      expect(spans(button)).toEqual(['"I ', 'will', ' go"']);
+      // The bold word inside the quote carries the color; the one outside it does not.
+      expect(spans(bold[1])).toEqual(['will']);
+      expect(spans(bold[0])).toEqual([]);
+    });
+
+    it('shows a selected choice plain, against its filled background', () => {
+      const view = renderMiddlePanel({}, { turns: withChoices(['Say "yes"', 'Say "no"']) });
+      act(() => view.gameplay().setPlayerInput('Say "yes"'));
+      expect(spans(choice(/yes/))).toEqual([]);
+      expect(spans(choice(/no/))).toEqual(['"no"']);
+    });
+
+    it('drops the hook when the setting goes off', () => {
+      const view = renderMiddlePanel({}, { turns: withChoices(['Say "yes"']) });
+      expect(document.documentElement.hasAttribute('data-quote-color')).toBe(true);
+      act(() => view.settings().setQuoteColor(false));
+      expect(document.documentElement.hasAttribute('data-quote-color')).toBe(false);
+      // Same contract as the narration: the span stays, only the rule that paints it goes.
+      expect(spans(choice(/yes/))).toEqual(['"yes"']);
+    });
+  });
+
   it('paints the spans by default and drops the hook when the setting goes off', () => {
     const view = renderMiddlePanel({}, { turns: TURNS });
     expect(document.documentElement.hasAttribute('data-quote-color')).toBe(true);

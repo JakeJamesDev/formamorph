@@ -24,6 +24,7 @@ import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { CONTINUE_CHOICE } from "@/lib/choices";
+import { choiceRuns, QUOTE_CLASS } from "@/lib/quoteSegments";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -858,11 +859,14 @@ export const MiddlePanel = ({
                           : "border-primary hover:bg-accent hover:text-accent-foreground"
                         }`}
                     >
-                      {choice.split('**').map((part, i) =>
-                        i % 2 === 0 ?
-                          <span key={i}>{part}</span> :
-                          <strong key={i}>{part}</strong>
-                      )}
+                      {/* One inline wrapper: as separate flex items the runs would drop the spaces at their edges. */}
+                      <span>
+                        {choiceRuns(choice).map((run, i) => {
+                          // A selected choice sits on the primary fill, where the dialogue color loses contrast.
+                          const text = run.quoted && !isSelected ? <span className={QUOTE_CLASS}>{run.text}</span> : run.text;
+                          return run.bold ? <strong key={i}>{text}</strong> : <React.Fragment key={i}>{text}</React.Fragment>;
+                        })}
+                      </span>
                     </Button>
                   );
                 })}
