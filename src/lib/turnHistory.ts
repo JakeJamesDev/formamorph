@@ -48,6 +48,19 @@ export function pageAssistantIndex(page: number, messagesPerPage: number): numbe
   return page * messagesPerPage - 1;
 }
 
+/** The history with a page's player action set to `text`. The opening's action is the START GAME proxy, so
+ *  page 1, and a page with no user message, return the history unchanged. */
+export function rewriteTurnAction<M extends { role: string; content: string }>(
+  history: M[],
+  page: number,
+  text: string,
+  messagesPerPage: number,
+): M[] {
+  const index = pageAssistantIndex(page, messagesPerPage) - 1;
+  if (page < 2 || history[index]?.role !== 'user') return history;
+  return history.map((m, i) => (i === index ? { ...m, content: text } : m));
+}
+
 /** Index of the user message that follows a page's turn (the next turn's action) — used to infer which
  *  choice the player took. `page * messagesPerPage`. */
 export function pageNextActionIndex(page: number, messagesPerPage: number): number {

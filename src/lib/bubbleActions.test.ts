@@ -133,16 +133,27 @@ describe('bubbleActions', () => {
 });
 
 describe('playerBubbleActions', () => {
-  it('gives the action bubble Copy Text, as a menu-only content action', () => {
+  it('gives the action bubble Edit and Copy Text, as menu-only content actions', () => {
+    const edit = vi.fn();
     const copy = vi.fn();
-    const actions = playerBubbleActions({ live: false }, { copy });
-    expect(actions.map((a) => [a.label, a.section, a.menuOnly])).toEqual([['Copy Text', 'content', true]]);
+    const actions = playerBubbleActions({ live: false, busy: false }, { edit, copy });
+    expect(actions.map((a) => [a.label, a.section, a.menuOnly, a.disabled ?? false])).toEqual([
+      ['Edit', 'content', true, false],
+      ['Copy Text', 'content', true, false],
+    ]);
     actions[0].run();
+    actions[1].run();
+    expect(edit).toHaveBeenCalledTimes(1);
     expect(copy).toHaveBeenCalledTimes(1);
   });
 
+  it('disables Edit while a reply streams, and keeps Copy Text', () => {
+    const actions = playerBubbleActions({ live: false, busy: true }, { edit: vi.fn(), copy: vi.fn() });
+    expect(actions.map((a) => [a.key, a.disabled ?? false])).toEqual([['edit', true], ['copy', false]]);
+  });
+
   it('gives a live turn no actions', () => {
-    expect(playerBubbleActions({ live: true }, { copy: vi.fn() })).toEqual([]);
+    expect(playerBubbleActions({ live: true, busy: true }, { edit: vi.fn(), copy: vi.fn() })).toEqual([]);
   });
 });
 
@@ -177,7 +188,8 @@ describe('menuSections', () => {
   });
 
   it('keeps each section in its own order when the list mixes them', () => {
-    const [a, b, c] = playerBubbleActions({ live: false }, { copy: vi.fn() })
+    const [a, b, c] = playerBubbleActions({ live: false, busy: false }, { edit: vi.fn(), copy: vi.fn() })
+      .filter((x) => x.key === 'copy')
       .concat(choicesActions({ canRegenerate: true, busy: false, regenerating: false }, vi.fn()))
       .concat(bubbleActions({ ...idle, isLatest: false }, handlers()).filter((x) => x.key === 'rewind'));
     expect(menuSections([c, a, b])).toEqual([[b], [a], [c]]);

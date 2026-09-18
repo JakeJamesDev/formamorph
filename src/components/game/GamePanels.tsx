@@ -17,6 +17,7 @@ import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
+import { rewriteTurnAction } from '@/lib/turnHistory';
 import { toast } from 'react-toastify';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
@@ -645,7 +646,7 @@ export const MiddlePanel = ({
   }
 
   // A Chat bubble's Edit and Rewind to Here target the bubble's own page, never the viewed one.
-  const [editTarget, setEditTarget] = useState<{ page: number; text: string } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
   const copyText = (text: string) => {
     let write: Promise<void>;
@@ -675,7 +676,7 @@ export const MiddlePanel = ({
         regenerateStats: () => handleRegenerateStats(page),
         sceneImage: () => onSceneImage(undefined, page),
         sceneTags: () => onSceneTags(page),
-        edit: () => { setEditTarget({ page, text: turn.text }); setIsEditMode(true); },
+        edit: () => { setEditTarget({ kind: 'narration', page, text: turn.text }); setIsEditMode(true); },
         textToSpeech: onTTSClick,
         regenerateAudio: () => { void onRegenerateTTS(turn.text); },
         copy: () => copyText(turn.text),
@@ -838,7 +839,10 @@ export const MiddlePanel = ({
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 actionsFor={actionsFor}
-                playerActionsFor={(turn) => playerBubbleActions(turn, { copy: () => copyText(turn.text) })}
+                playerActionsFor={(turn) => playerBubbleActions({ live: turn.live, busy: isWaitingForAI }, {
+                  edit: () => { setEditTarget({ kind: 'action', page: turn.index + 1, text: turn.text }); setIsEditMode(true); },
+                  copy: () => copyText(turn.text),
+                })}
                 latestFooter={
                   <ChatChoices
                     choices={latestChoices}
@@ -998,6 +1002,11 @@ export const MiddlePanel = ({
             text={editTarget?.text ?? currentPageText}
             onSave={(text) => {
               const page = editTarget?.page ?? currentPage;
+              if (editTarget?.kind === 'action') {
+                // Rewrites only the turn's user message; the turn's memory digest stays as it is.
+                setFullMessageHistory(prev => rewriteTurnAction(prev, page, text, 2));
+                return;
+              }
               // Only the most recent page drives the live gameplay text (used by TTS, etc.).
               if (page === totalPages) setGameplayText(text);
               // Update the message in history for the edited page

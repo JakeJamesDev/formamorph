@@ -78,9 +78,15 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
 }
 
 /** The actions of the player's action bubble. It has no icon row, so every action is menu-only. */
-export function playerBubbleActions(state: { live: boolean }, h: { copy: () => void }): BubbleAction[] {
+export function playerBubbleActions(
+  state: { live: boolean; busy: boolean },
+  h: { edit: () => void; copy: () => void },
+): BubbleAction[] {
   if (state.live) return [];
-  return [{ key: 'copy', label: 'Copy Text', icon: Copy, section: 'content', menuOnly: true, run: h.copy }];
+  return [
+    { key: 'edit', label: 'Edit', icon: Pencil, section: 'content', disabled: state.busy, menuOnly: true, run: h.edit },
+    { key: 'copy', label: 'Copy Text', icon: Copy, section: 'content', menuOnly: true, run: h.copy },
+  ];
 }
 
 /** The actions of the latest turn's choices block. `canRegenerate` is false when the choices request is off. */

@@ -12,6 +12,7 @@ import {
   sliceHistoryToPage,
   pageAssistantIndex,
   pageNextActionIndex,
+  rewriteTurnAction,
 } from './turnHistory';
 
 // Stand-in for the AI-context DebugTurn — carries the flags plus an identifying field.
@@ -204,5 +205,29 @@ describe('per-turn snapshot stack stays aligned', () => {
     // On page 2 of 3, rollback restores gameStates[currentPage - 1] = the turn-2 state (4), not the
     // current turn-3 state (6). A sparse array would have returned 6 and silently done nothing.
     expect(rollbackState(states, 2)).toBe(4);
+  });
+});
+
+describe('rewriteTurnAction', () => {
+  const history = [
+    { role: 'user', content: 'START GAME' }, { role: 'assistant', content: '{"narration":"Opening."}' },
+    { role: 'user', content: 'I step onto the pier.' }, { role: 'assistant', content: '{"narration":"Boards creak."}' },
+    { role: 'user', content: 'I wave.' }, { role: 'assistant', content: '{"narration":"No wave back."}' },
+  ];
+
+  it("rewrites that turn's user message and leaves every other message as it was", () => {
+    const next = rewriteTurnAction(history, 2, 'I step onto the dock.', 2);
+    expect(next[2]).toEqual({ role: 'user', content: 'I step onto the dock.' });
+    expect(next.filter((_, i) => i !== 2)).toEqual(history.filter((_, i) => i !== 2));
+    expect(history[2].content).toBe('I step onto the pier.');
+  });
+
+  it('rewrites the latest turn', () => {
+    expect(rewriteTurnAction(history, 3, 'I bow.', 2)[4].content).toBe('I bow.');
+  });
+
+  it('leaves the opening turn and a page past the end unchanged', () => {
+    expect(rewriteTurnAction(history, 1, 'x', 2)).toBe(history);
+    expect(rewriteTurnAction(history, 4, 'x', 2)).toBe(history);
   });
 });
