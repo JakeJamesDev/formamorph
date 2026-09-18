@@ -1,6 +1,8 @@
 # 06: Dialogue Token in the Theme Preview
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in 3d9b102d and its review follow-up. The by-eye review of the 16 values is the user's step; no value changed yet.
+Base: 38306acb
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: low
