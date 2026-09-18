@@ -3,6 +3,7 @@
 - [🏠 Home](Home)
 
 **Playing**
+- [🔌 Connect Your Own AI](Connect-Your-Own-AI)
 - [📱 Install on Android](Install-on-Android)
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)

@@ -93,4 +93,4 @@ This is one thing the app does that the browser will not. Chrome now asks a publ
 
 - The **hardware back button** closes whatever is on top — a dialog, then a menu, then a full-screen editor — one layer at a time. With nothing open it asks before leaving a game or closing the app.
 - The **local engine and its model catalog** do not appear. Running a model inside the app is a desktop feature, and a phone cannot run one anyway.
-- Everything else — the cloud endpoint, Community Creations, the editor — behaves exactly as it does in the browser.
+- Everything else — the Demo AI, Community Creations, the editor — behaves exactly as it does in the browser.

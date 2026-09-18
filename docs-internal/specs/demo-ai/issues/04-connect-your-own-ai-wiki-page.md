@@ -1,6 +1,8 @@
 # 04: Connect Your Own AI Wiki Page
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: page written and reviewed; the wiki anchor and rendered look need a human check after publish
+Base: c05e7dc9
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -32,14 +34,14 @@ states them.
 
 ## Acceptance criteria
 
-- [ ] The page exists in the wiki source under the file name `Connect-Your-Own-AI`, and the sidebar and Home link to it.
-- [ ] The three route sections exist with the content in the table. The hosted section names no service. The page names no model.
-- [ ] The model advice appears once, with the 12B rough guide.
-- [ ] The desktop section states the hardware caveat. It does not say or imply that the desktop app removes hardware limits.
-- [ ] Each LM Studio and Ollama step is checked against a live source, and the response lists the sources.
-- [ ] Setting names and tab names on the page match the app's current labels.
-- [ ] The page is human-readable: short sections, tables or callouts over long prose, no version number, no reference to agent-only files.
-- [ ] The page uses "Demo AI" for the hosted endpoint and never alternates with "default", "shared", "cloud", or "free" endpoint.
-- [ ] Home and the Android install page say "Demo AI" where they name the default or cloud endpoint today.
-- [ ] Released changelog sections do not change.
-- [ ] Four gates green.
+- [x] The page exists in the wiki source under the file name `Connect-Your-Own-AI`, and the sidebar and Home link to it.
+- [x] The three route sections exist with the content in the table. The hosted section names no service. The page names no model.
+- [x] The model advice appears once, with the 12B rough guide.
+- [x] The desktop section states the hardware caveat. It does not say or imply that the desktop app removes hardware limits.
+- [x] Each LM Studio and Ollama step is checked against a live source, and the response lists the sources.
+- [x] Setting names and tab names on the page match the app's current labels.
+- [x] The page is human-readable: short sections, tables or callouts over long prose, no version number, no reference to agent-only files.
+- [x] The page uses "Demo AI" for the hosted endpoint and never alternates with "default", "shared", "cloud", or "free" endpoint.
+- [x] Home and the Android install page say "Demo AI" where they name the default or cloud endpoint today.
+- [x] Released changelog sections do not change.
+- [x] Four gates green.
