@@ -1,7 +1,7 @@
 # Placeholder Values Tab — Follow-Up Spec
 
-Status: ready-for-agent
-Base: 1bdc2b16
+Status: in-progress
+Base: 7db25536
 Status note: a sixth fix, "Pins are stops", was added 2026-09-18 after the user found a trait-pinned empty placeholder still locked; it widens the off-list pin fix and replaces the pinned-chip rule, and is not built. The first five fixes were built and reviewed (`e859440c`, `ede64f5c`); parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser, because Tab stays inside the editor and a toolbar press hands the keyboard back to the value it refilled. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
 
 Six fixes to the Values tab and the chip flyout: every pin on a placeholder is a stop the chevrons reach
@@ -177,7 +177,8 @@ An author who uses the Values tab hits six rough spots.
   and not detail. A Variable with pins, and a chip whose draw a pin decides, show the pager.
 - The counter counts values and pins together, values first. A pin stop's verbose label names its source
   in the pin row's plain-text form: "Pinned by Trait: Sworn", "Pinned by Location: Fen", "Pinned by
-  Hunger ≤ 20", "Pinned by Mood · Value 2". A draw-laid pin the author has not stepped off keeps a "Pinned"
+  Hunger ≤ 20", "Pinned by Mood = calm". The row's own label is the whole of it; no source kind gets a
+  special spelling. A draw-laid pin the author has not stepped off keeps a "Pinned"
   mark in the compact form, since it is state.
 - The counter carries an accessible name of the form "Value X of Y" on a value stop and "Pin X of Y" on a
   pin stop. The chevrons keep their names.
@@ -235,7 +236,8 @@ the field's write-through, duplicates, chevrons and edit-value tests.
 - A header press on a mirror and on a locked value makes it active with no caret; a press on another header
   moves the mark; a caret in the field text clears it.
 - The compact header holds name, pager and no verbose label; the active header adds the verbose label after
-  the right chevron. A Variable, a pinned chip and an empty placeholder show no pager.
+  the right chevron. A Variable with no pins and an empty placeholder with no pins show no pager; a
+  Variable with pins and a chip whose draw a pin decides show it.
 - The counter reads "Value X of Y" to assistive technology.
 
 **Component seam: the chip flyout.** Prior art: the variable node label and paste tests, and the edit-value
