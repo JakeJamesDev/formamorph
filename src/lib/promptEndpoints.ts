@@ -1,7 +1,7 @@
 import type { AIRequestType } from '@/types';
 import {
   DEFAULT_TEXT_PRESET_ID, BUILTIN_ENGINE_PRESET_ID, BUILTIN_ENGINE_VALUES,
-  isBuiltInPresetId, valuesForId,
+  isBuiltInPresetId, isHostedEndpoint, valuesForId,
   type TextEndpointPresetStore, type TextEndpointValues,
 } from './textEndpointPresets';
 import type { EndpointSamplerOverrides } from './endpointSamplers';
@@ -131,6 +131,11 @@ export function resolvePromptEndpoint(
     isBuiltIn: routed === DEFAULT_TEXT_PRESET_ID,
     localEngine: false,
   };
+}
+
+/** Whether a resolved endpoint is the Demo AI: the Default preset on the hosted service, never a user preset. */
+export function isDemoAI(resolved: Pick<ResolvedPromptEndpoint, 'endpointId' | 'endpoint'>): boolean {
+  return resolved.endpointId === DEFAULT_TEXT_PRESET_ID && isHostedEndpoint(resolved.endpoint);
 }
 
 /** How a request's endpoint is described in the AI-context viewer. Carries no credential by construction. */
