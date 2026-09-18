@@ -14,6 +14,8 @@ import { useChatPin } from './useChatPin';
 import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
 import { ReasoningBlock } from './ReasoningBlock';
+import { BubbleActionRow } from './BubbleActionRow';
+import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
 // A first guess at a turn's height, until it mounts and measures.
@@ -29,6 +31,15 @@ interface ChatTurn {
   narration?: ChatMessage;
   turnId?: string;
   reasoning: SavedReasoning | null;
+}
+
+/** What the panel needs to build one narration bubble's actions. `text` is the narration's markdown source. */
+export interface ChatBubbleTurn {
+  index: number;
+  isLatest: boolean;
+  live: boolean;
+  hasImage: boolean;
+  text: string;
 }
 
 /** The flat history as turns of two messages: the action, then the narration that answers it. */
@@ -66,9 +77,11 @@ function InlineSceneImage({ src }: { src: string }) {
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, latestFooter }: {
+export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor }: {
   parseAssistantMessage: (content: string) => string;
   latestFooter?: React.ReactNode;
+  /** The actions of one committed narration bubble. */
+  actionsFor?: (turn: ChatBubbleTurn) => BubbleAction[];
 }) {
   const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
@@ -205,6 +218,10 @@ export function ChatNarration({ parseAssistantMessage, latestFooter }: {
                         {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
                       </div>
                     )}
+                    {turn.narration && actionsFor && (() => {
+                      const actions = actionsFor({ index: item.index, isLatest, live: liveReveal, hasImage: images.length > 0, text: narrationText });
+                      return actions.length > 0 && <BubbleActionRow turnNumber={item.index + 1} actions={actions} />;
+                    })()}
                   </div>
                 )}
                 {isLatest && latestFooter}

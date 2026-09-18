@@ -781,9 +781,9 @@ const GameViewer = ({
     }
   };
 
-  // Refresh button: regenerate for the current text; if no model is loaded, open the modal.
-  const handleRegenerateTTS = async () => {
-    const ok = await generateTTS();
+  // Refresh button: regenerate for `text` (default: the current text); if no model is loaded, open the modal.
+  const handleRegenerateTTS = async (text?: string) => {
+    const ok = await generateTTS(text);
     if (!ok) setIsTTSModalOpen(true);
   };
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
@@ -998,9 +998,10 @@ const GameViewer = ({
     setSceneImages((prev) => pruneSceneImages(prev, rewound));
   };
 
-  const handleRollback = () => {
-    if (currentPage >= totalPages) return;
-    const targetState = rollbackState(gameStates, currentPage);
+  /** Roll back to `page` (a Chat bubble's own turn), or to the viewed page. */
+  const handleRollback = (page = currentPage) => {
+    if (page >= totalPages) return;
+    const targetState = rollbackState(gameStates, page);
     if (!targetState) return;
     // Restore the target turn's mechanical state, but keep the live narration + notes: the snapshot's frozen
     // history/notes predate any edit the player made after the turn, so re-injecting them would revert those
@@ -1010,17 +1011,17 @@ const GameViewer = ({
     // A render still in flight targets a turn this rollback discards — stop it, or its finished image
     // would land back under the dead turn id (and ride into any opted-in save, invisible and unprunable).
     cancelSceneImage();
-    rewindHistoryToPage(currentPage);
+    rewindHistoryToPage(page);
     setUserPage(null); // the rolled-back turn is now the latest — resume following it
     // Seed the live notes scratchpad from the rolled-back turn's own notes (per-turn notes live on the
     // message, and keepLiveHistory skips the snapshot's notes) so a later re-generate/action uses them.
     // A turn that froze no notes (empty at finalize, or a stopped turn) falls back to the snapshot's
     // scratchpad — same resolution the paged view uses (viewNotes).
-    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? '')?.notes ?? targetState.playerNotes ?? '');
+    setPlayerNotes(parseTurnContent(fullMessageHistory[pageAssistantIndex(page, messagesPerPage)]?.content ?? '')?.notes ?? targetState.playerNotes ?? '');
     addSystemLogEntry("Rolled back to previous game state");
     // Mark the AI-context entries for the turns this rollback discarded (those after the page we
     // rolled back to). States after the current page are kept, allowing future "redo" functionality.
-    setDebugTurns((prev) => markPrunedTurns(prev, currentPage));
+    setDebugTurns((prev) => markPrunedTurns(prev, page));
   };
 
   // Export the whole playthrough's narration as a plain-text or Markdown file (user picks the format
@@ -1086,15 +1087,16 @@ const GameViewer = ({
   }, [turnCommitNonce]);
   const [regenerateNonce, setRegenerateNonce] = useState(0);
 
-  const handleRegenerate = () => {
-    if (!canRegenerate(currentPage, totalPages)) return;
+  /** Re-generate the turn on `page`, which Chat passes as the latest page. */
+  const handleRegenerate = (page = currentPage) => {
+    if (!canRegenerate(page, totalPages)) return;
     // Re-generating the opening turn (page 1) restores the pre-game state, not a gameStates entry. On a
     // loaded save that snapshot was never captured (initialStateRef is only set during a live first turn),
     // so reconstruct a pre-opening baseline from the current state with its history emptied — re-sending
     // START GAME from there re-captures initialStateRef and regenerates the opening.
     const previousState =
-      regenerateState(gameStates, initialStateRef.current, currentPage) ??
-      (currentPage === 1 ? { ...saveCurrentGameState(), fullMessageHistory: [] } : null);
+      regenerateState(gameStates, initialStateRef.current, page) ??
+      (page === 1 ? { ...saveCurrentGameState(), fullMessageHistory: [] } : null);
     const action = lastTurnAction(fullMessageHistory);
     if (!previousState || action === null) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
@@ -1103,7 +1105,7 @@ const GameViewer = ({
     // Stop a render aimed at the turn being re-rolled: left running, it would finish into a dead turn id
     // AND overlap the re-roll's language-model request on the one GPU.
     cancelSceneImage();
-    rewindHistoryToPage(currentPage - 1);
+    rewindHistoryToPage(page - 1);
     // The notes scratchpad is left alone: regen only targets the latest page, where the live scratchpad is
     // always at least as fresh as the message's frozen notes (a stopped turn freezes none at all —
     // re-seeding from the message here wiped the player's notes).
@@ -1111,7 +1113,7 @@ const GameViewer = ({
     setDebugTurns((prev) => markRegeneratedTurn(prev));
     // Re-generating the opening (page 1) returns to the not-started state and re-fills the box with the
     // prior opening action, so the player can edit their starting action before re-submitting it.
-    if (currentPage === 1) {
+    if (page === 1) {
       setIsGameStarted(false);
       // History holds the "START GAME" proxy, so recover the player's real opening text from the ref (falling
       // back to this world's cue for a loaded save, where it was never captured this session).
@@ -1126,10 +1128,10 @@ const GameViewer = ({
 
   // Read the committed latest turn + its originating action, or null when a partial re-generate can't run
   // (busy, not on the latest page, or the turn can't be parsed).
-  const partialRegenTarget = () => {
+  const partialRegenTarget = (page = currentPage) => {
     // A running scene render blocks these too: it holds the graphics card, and unlike rollback /
     // re-generate these keep the turn, so its picture is still the correct one and must not be canceled.
-    if (isWaitingForAI || sceneImageJob !== null || !canRegenerate(currentPage, totalPages)) return null;
+    if (isWaitingForAI || sceneImageJob !== null || !canRegenerate(page, totalPages)) return null;
     const last = fullMessageHistory[fullMessageHistory.length - 1];
     if (!last || last.role !== "assistant") return null;
     const prev = parseTurnContent(last.content);
@@ -1193,10 +1195,10 @@ const GameViewer = ({
 
   // Re-roll only the stat changes for the latest turn. Deltas are applied onto the pre-turn baseline
   // (not the current, already-changed stats), so repeated re-rolls don't stack.
-  const handleRegenerateStats = () => {
-    const target = partialRegenTarget();
+  const handleRegenerateStats = (page = currentPage) => {
+    const target = partialRegenTarget(page);
     if (!target || !statUpdatesEnabled || activeStats.length === 0) return;
-    const preTurn = regenerateState(gameStates, initialStateRef.current, currentPage);
+    const preTurn = regenerateState(gameStates, initialStateRef.current, page);
     if (!preTurn?.playerStats) return;
     const { prev, action } = target;
     void runPartialRegen(async (signal) => {
@@ -3152,11 +3154,11 @@ const GameViewer = ({
   const runSceneImageRef = useRef(runSceneImage);
   runSceneImageRef.current = runSceneImage;
 
-  /** Run the pipeline against the turn the player is looking at. `tagsOnly` stops after the tag line, which
+  /** Run the pipeline against `page` (default: the turn the player is looking at). `tagsOnly` stops after the tag line, which
    *  is the cheap loop for judging the tags. Queues behind an in-flight turn rather than competing with it. */
-  const startSceneJob = (opts?: { tags?: string; tagsOnly?: boolean }) => {
+  const startSceneJob = ({ page = currentPage, ...opts }: { tags?: string; tagsOnly?: boolean; page?: number } = {}) => {
     if (imageGenDisabled || sceneImageJob) return;
-    const index = pageAssistantIndex(currentPage, messagesPerPage);
+    const index = pageAssistantIndex(page, messagesPerPage);
     const turn = parseTurnContent(fullMessageHistory[index]?.content ?? "");
     if (!turn?.turnId) {
       toast.info("There's no scene here yet.");
@@ -3178,8 +3180,8 @@ const GameViewer = ({
       signal: controller.signal,
     });
   };
-  const handleSceneImage = (tags?: string) => startSceneJob({ tags });
-  const handleSceneTags = () => startSceneJob({ tagsOnly: true });
+  const handleSceneImage = (tags?: string, page?: number) => startSceneJob({ tags, page });
+  const handleSceneTags = (page?: number) => startSceneJob({ tagsOnly: true, page });
 
   /** Stop the render in flight; the provider interrupts its server where it can. */
   const cancelSceneImage = () => {
