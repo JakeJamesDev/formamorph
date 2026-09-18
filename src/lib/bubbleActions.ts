@@ -1,6 +1,6 @@
-import { ChartColumn, Copy, Dices, Headphones, ImagePlus, Pencil, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
+import { ChartColumn, Copy, Dices, Headphones, ImagePlus, ListRestart, Pencil, RefreshCw, Undo2, type LucideIcon } from 'lucide-react';
 
-/** One action on a Chat narration bubble. The icon row and the bubble menu both render the same list. */
+/** One action on a Chat bubble. The icon row and the bubble menu both render the same list. */
 export interface BubbleAction {
   key: string;
   label: string;
@@ -75,4 +75,29 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
     actions.push({ key: 'rewind', label: 'Rewind to Here', icon: Undo2, section: 'destructive', disabled: busy, run: h.rewind });
   }
   return actions;
+}
+
+/** The actions of the player's action bubble. It has no icon row, so every action is menu-only. */
+export function playerBubbleActions(state: { live: boolean }, h: { copy: () => void }): BubbleAction[] {
+  if (state.live) return [];
+  return [{ key: 'copy', label: 'Copy Text', icon: Copy, section: 'content', menuOnly: true, run: h.copy }];
+}
+
+/** The actions of the latest turn's choices block. `canRegenerate` is false when the choices request is off. */
+export function choicesActions(
+  state: { canRegenerate: boolean; busy: boolean; regenerating: boolean },
+  regenerate: () => void,
+): BubbleAction[] {
+  if (!state.canRegenerate) return [];
+  return [{
+    key: 'regenerateChoices', label: 'Re-generate Choices', icon: ListRestart, section: 'generate',
+    disabled: state.busy, spinning: state.regenerating, run: regenerate,
+  }];
+}
+
+const SECTION_ORDER: BubbleAction['section'][] = ['generate', 'content', 'destructive'];
+
+/** The actions as menu sections: generate, content, then destructive, with the empty ones dropped. */
+export function menuSections(actions: BubbleAction[]): BubbleAction[][] {
+  return SECTION_ORDER.map((section) => actions.filter((a) => a.section === section)).filter((group) => group.length > 0);
 }

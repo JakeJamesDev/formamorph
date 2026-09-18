@@ -15,6 +15,7 @@ import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
 import { ReasoningBlock } from './ReasoningBlock';
 import { BubbleActionRow } from './BubbleActionRow';
+import { BubbleMenu } from './BubbleMenu';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
@@ -39,6 +40,13 @@ export interface ChatBubbleTurn {
   isLatest: boolean;
   live: boolean;
   hasImage: boolean;
+  text: string;
+}
+
+/** What the panel needs to build one player action bubble's actions. `text` is the action's markdown source. */
+export interface ChatPlayerTurn {
+  index: number;
+  live: boolean;
   text: string;
 }
 
@@ -77,11 +85,13 @@ function InlineSceneImage({ src }: { src: string }) {
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor }: {
+export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor }: {
   parseAssistantMessage: (content: string) => string;
   latestFooter?: React.ReactNode;
   /** The actions of one committed narration bubble. */
   actionsFor?: (turn: ChatBubbleTurn) => BubbleAction[];
+  /** The actions of one player action bubble. */
+  playerActionsFor?: (turn: ChatPlayerTurn) => BubbleAction[];
 }) {
   const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
@@ -175,6 +185,13 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
             const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
             const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
             const images = (!liveReveal && turn.turnId && sceneImages[turn.turnId]) || [];
+            const narrationActions = (turn.narration && actionsFor?.({
+              index: item.index, isLatest, live: liveReveal, hasImage: images.length > 0, text: narrationText,
+            })) || [];
+            // The turn is live from submit, before its narration exists, until the reveal ends.
+            const playerActions = (turn.action !== null && playerActionsFor?.({
+              index: item.index, live: isLatest && (liveReveal || (isWaitingForAI && !turn.narration)), text: turn.action,
+            })) || [];
             return (
               <article
                 key={item.key}
@@ -191,39 +208,40 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
                 }}
               >
                 {turn.action !== null && (
-                  // No dialogue color: the quote color loses contrast on the primary fill.
-                  <div className="mb-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
-                    <MarkdownRenderer text={turn.action} />
-                  </div>
+                  <BubbleMenu actions={playerActions}>
+                    {/* No dialogue color: the quote color loses contrast on the primary fill. */}
+                    <div data-testid="player-action" className="mb-3 ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground">
+                      <MarkdownRenderer text={turn.action} />
+                    </div>
+                  </BubbleMenu>
                 )}
                 {(turn.narration || (showReasoning && reasoning?.text)) && (
-                  <div className="rounded-lg border border-border bg-card px-3.5 py-2.5" style={revealStyle}>
-                    {showReasoning && reasoning?.text && (
-                      <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
-                    )}
-                    {turn.narration && (
-                      <div data-testid="narration">
-                        {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                        <MarkdownRenderer
-                          key={liveReveal ? 'live' : `committed:${narrationText}`}
-                          text={narrationText}
-                          animate={liveReveal && revealOn}
-                          animation={revealAnim}
-                          easing={revealEasing}
-                          dialogue
-                        />
-                      </div>
-                    )}
-                    {images.length > 0 && (
-                      <div className="mt-2.5 flex flex-col gap-2">
-                        {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
-                      </div>
-                    )}
-                    {turn.narration && actionsFor && (() => {
-                      const actions = actionsFor({ index: item.index, isLatest, live: liveReveal, hasImage: images.length > 0, text: narrationText });
-                      return actions.length > 0 && <BubbleActionRow turnNumber={item.index + 1} actions={actions} />;
-                    })()}
-                  </div>
+                  <BubbleMenu actions={narrationActions}>
+                    <div className="rounded-lg border border-border bg-card px-3.5 py-2.5" style={revealStyle}>
+                      {showReasoning && reasoning?.text && (
+                        <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
+                      )}
+                      {turn.narration && (
+                        <div data-testid="narration">
+                          {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
+                          <MarkdownRenderer
+                            key={liveReveal ? 'live' : `committed:${narrationText}`}
+                            text={narrationText}
+                            animate={liveReveal && revealOn}
+                            animation={revealAnim}
+                            easing={revealEasing}
+                            dialogue
+                          />
+                        </div>
+                      )}
+                      {images.length > 0 && (
+                        <div className="mt-2.5 flex flex-col gap-2">
+                          {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
+                        </div>
+                      )}
+                      {narrationActions.length > 0 && <BubbleActionRow turnNumber={item.index + 1} actions={narrationActions} />}
+                    </div>
+                  </BubbleMenu>
                 )}
                 {isLatest && latestFooter}
                 <div data-content-end />

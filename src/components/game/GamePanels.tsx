@@ -16,7 +16,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
-import { bubbleActions } from '@/lib/bubbleActions';
+import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { toast } from 'react-toastify';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
@@ -647,6 +647,15 @@ export const MiddlePanel = ({
   // A Chat bubble's Edit and Rewind to Here target the bubble's own page, never the viewed one.
   const [editTarget, setEditTarget] = useState<{ page: number; text: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
+  const copyText = (text: string) => {
+    let write: Promise<void>;
+    // An insecure page has no clipboard API; that failure gets the same toast.
+    try { write = navigator.clipboard.writeText(text); } catch (error) { write = Promise.reject(error); }
+    void write.then(
+      () => toast.success('Copied'),
+      () => toast.error("Couldn't copy the text"),
+    );
+  };
   const actionsFor = (turn: ChatBubbleTurn) => {
     const page = turn.index + 1;
     return bubbleActions(
@@ -669,12 +678,7 @@ export const MiddlePanel = ({
         edit: () => { setEditTarget({ page, text: turn.text }); setIsEditMode(true); },
         textToSpeech: onTTSClick,
         regenerateAudio: () => { void onRegenerateTTS(turn.text); },
-        copy: () => {
-          void navigator.clipboard.writeText(turn.text).then(
-            () => toast.success('Copied'),
-            () => toast.error("Couldn't copy the text"),
-          );
-        },
+        copy: () => copyText(turn.text),
         rewind: () => setRewindPage(page),
       },
     );
@@ -834,6 +838,7 @@ export const MiddlePanel = ({
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 actionsFor={actionsFor}
+                playerActionsFor={(turn) => playerBubbleActions(turn, { copy: () => copyText(turn.text) })}
                 latestFooter={
                   <ChatChoices
                     choices={latestChoices}
@@ -841,8 +846,10 @@ export const MiddlePanel = ({
                     disabled={disabled || isWaitingForAI}
                     isSelected={(choice) => playerInput.includes(choice)}
                     choicePress={choicePress}
-                    onRegenerate={canRegenChoices ? () => { setChoicesRegenerating(true); handleRegenerateChoices(); } : undefined}
-                    regenerating={choicesRegenerating && isWaitingForAI}
+                    actions={choicesActions(
+                      { canRegenerate: canRegenChoices, busy: disabled || isWaitingForAI, regenerating: choicesRegenerating && isWaitingForAI },
+                      () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
+                    )}
                   />
                 }
               />

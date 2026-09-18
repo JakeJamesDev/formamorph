@@ -1,9 +1,8 @@
-import React from 'react';
-import { ListRestart, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tip } from '@/components/ui/tooltip';
+import React, { useRef } from 'react';
+import type { BubbleAction } from '@/lib/bubbleActions';
 import { CONTINUE_CHOICE, choiceRuns } from '@/lib/choices';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
+import { BubbleActionButton, BubbleMenu } from './BubbleMenu';
 
 // Unsent player bubbles: dashed and light until hover, focus, or selection fill them (without the dialogue color).
 const BUBBLE = [
@@ -36,52 +35,57 @@ type ChoicePress = (choice: string) => Pick<
   'onClick' | 'onPointerDown' | 'onPointerUp' | 'onPointerLeave' | 'onPointerCancel'
 >;
 
-/** The latest turn's choices in Chat, as unsent player bubbles, with the Re-generate Choices icon under them. */
-export function ChatChoices({ choices, showContinue, disabled, isSelected, choicePress, onRegenerate, regenerating }: {
+/**
+ * The latest turn's choices in Chat, as unsent player bubbles. The block's actions show as icons under the
+ * choices and in its right-click menu.
+ */
+export function ChatChoices({ choices, showContinue, disabled, isSelected, choicePress, actions }: {
   choices: string[];
   showContinue: boolean;
   disabled: boolean;
   /** Whether the choice's text is staged in the input. */
   isSelected: (choice: string) => boolean;
   choicePress: ChoicePress;
-  /** Absent when the choices request is off. */
-  onRegenerate?: () => void;
-  regenerating: boolean;
+  actions: BubbleAction[];
 }) {
+  // A touch long press on a choice appends it, so that press never reaches the block's menu.
+  const touchPress = useRef(false);
   const all = showContinue ? [...choices, CONTINUE_CHOICE] : choices;
-  if (all.length === 0 && !onRegenerate) return null;
+  if (all.length === 0 && actions.length === 0) return null;
 
   return (
-    <div data-testid="chat-choices" className="mt-3 flex flex-col gap-2">
-      {all.map((choice, index) => (
-        <button
-          key={index}
-          type="button"
-          className={BUBBLE}
-          data-selected={isSelected(choice) ? '' : undefined}
-          disabled={disabled}
-          {...choicePress(choice)}
-        >
-          {choice === CONTINUE_CHOICE ? choice : <ChoiceText choice={choice} />}
-        </button>
-      ))}
-      {onRegenerate && (
-        <div className="flex justify-end">
-          <Tip tip="Re-generate Choices">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              aria-label="Re-generate Choices"
-              aria-busy={regenerating || undefined}
+    <BubbleMenu actions={actions} disabled={disabled}>
+      <div data-testid="chat-choices" className="mt-3 flex flex-col gap-2">
+        {all.map((choice, index) => {
+          const press = choicePress(choice);
+          return (
+            <button
+              key={index}
+              type="button"
+              className={BUBBLE}
+              data-selected={isSelected(choice) ? '' : undefined}
               disabled={disabled}
-              onClick={onRegenerate}
+              {...press}
+              onPointerDown={(event) => {
+                press.onPointerDown?.(event);
+                touchPress.current = event.pointerType !== 'mouse';
+                if (touchPress.current) event.stopPropagation();
+              }}
+              onContextMenu={(event) => {
+                if (touchPress.current) event.stopPropagation();
+                touchPress.current = false;
+              }}
             >
-              {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <ListRestart className="h-4 w-4" />}
-            </Button>
-          </Tip>
-        </div>
-      )}
-    </div>
+              {choice === CONTINUE_CHOICE ? choice : <ChoiceText choice={choice} />}
+            </button>
+          );
+        })}
+        {actions.length > 0 && (
+          <div className="flex justify-end">
+            {actions.map((action) => <BubbleActionButton key={action.key} action={action} />)}
+          </div>
+        )}
+      </div>
+    </BubbleMenu>
   );
 }

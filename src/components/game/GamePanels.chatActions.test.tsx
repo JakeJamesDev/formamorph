@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { readTurn, renderMiddlePanel, statFixture, stubChatLayout, type Settings, type TurnFixture } from '@/test/gamePanels';
 
@@ -80,11 +80,11 @@ describe('Chat bubble actions', () => {
     expect(view.props.onTTSClick).toHaveBeenCalledTimes(1);
 
     fireEvent.click(within(past).getByRole('button', { name: 'More' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Write Scene Tags' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Write Scene Tags' }));
     expect(view.props.onSceneTags).toHaveBeenCalledWith(2);
 
     fireEvent.click(within(past).getByRole('button', { name: 'More' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Regenerate Audio' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Regenerate Audio' }));
     expect(view.props.onRegenerateTTS).toHaveBeenCalledWith('Boards creak. A **gull** watches you.');
   });
 
@@ -150,5 +150,128 @@ describe('Chat bubble actions', () => {
     const menu = await screen.findByRole('dialog');
     expect(within(menu).getByRole('button', { name: /Write Scene Tags/ })).toBeTruthy();
     expect(within(menu).getByRole('button', { name: /Export Story/ })).toBeTruthy();
+  });
+});
+
+/** The narration bubble of 1-based `turn`: the card that holds its text. */
+async function narrationBubble(turn: number) {
+  const turns = await screen.findAllByRole('article');
+  return within(turns[turn - 1]).getByTestId('narration').parentElement!;
+}
+/** The action bubble of 1-based `turn`. */
+async function actionBubble(turn: number) {
+  const turns = await screen.findAllByRole('article');
+  return within(turns[turn - 1]).getByTestId('player-action');
+}
+/** The open menu's rows, with the separators as '|'. */
+function menuRows() {
+  const menu = screen.getByRole('menu');
+  return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')]
+    .map((el) => (el.getAttribute('role') === 'separator' ? '|' : el.textContent));
+}
+const rightClick = (el: HTMLElement) => fireEvent.contextMenu(el, { button: 2, clientX: 10, clientY: 10 });
+
+describe('Chat bubble menus', () => {
+  let restore: () => void;
+  beforeAll(() => { restore = stubChatLayout(); });
+  afterAll(() => restore());
+  afterEach(() => { window.getSelection()?.removeAllRanges(); });
+
+  it("lists the icon row's actions in the narration menu, with the More items as normal rows", async () => {
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, settings: chat });
+    for (const turn of [2, 3]) {
+      const icons = names(await row(turn)).filter((n) => n !== 'More');
+      rightClick(await narrationBubble(turn));
+      const rows = menuRows();
+      expect(rows.filter((r) => r !== '|').sort()).toEqual([...icons, 'Write Scene Tags', 'Regenerate Audio'].sort());
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+      await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    }
+  });
+
+  it('orders the menu generate, content, destructive, with Rewind to Here last', async () => {
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, settings: chat });
+    rightClick(await narrationBubble(2));
+    expect(menuRows()).toEqual([
+      'Generate Scene Image', 'Write Scene Tags', '|', 'Edit', 'Copy Text', 'Regenerate Audio', '|', 'Rewind to Here',
+    ]);
+  });
+
+  it("opens the same menu from the row's More icon", async () => {
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, settings: chat });
+    rightClick(await narrationBubble(3));
+    const fromRightClick = menuRows();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    fireEvent.click(within(await row(3)).getByRole('button', { name: 'More' }));
+    expect(menuRows()).toEqual(fromRightClick);
+  });
+
+  it("runs a menu row for the bubble's own turn", async () => {
+    const view = renderMiddlePanel({}, { turns: TURNS, settings: chat, page: 3 });
+    rightClick(await narrationBubble(1));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rewind to Here' }));
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Confirm' }));
+    expect(view.props.handleRollback).toHaveBeenCalledWith(1);
+  });
+
+  it('leaves a right-click on selected text to the browser', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat });
+    const bubble = await narrationBubble(2);
+    const text = within(bubble).getByText(/Boards creak/);
+    window.getSelection()!.selectAllChildren(text);
+    // The event is not prevented, so the browser shows its own menu.
+    expect(rightClick(text)).toBe(true);
+    expect(screen.queryByRole('menu')).toBeNull();
+    // A right-click off the selection, in the same bubble, still opens ours.
+    expect(rightClick(within(bubble).getByText('Turn 2'))).toBe(false);
+    expect(screen.getByRole('menu')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    // The More icon asks for the menu itself, so the selection does not block it.
+    fireEvent.click(within(bubble).getByRole('button', { name: 'More' }));
+    expect(screen.getByRole('menu')).toBeTruthy();
+    fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    // A selection elsewhere does not block this bubble's menu.
+    window.getSelection()!.selectAllChildren(await actionBubble(3));
+    expect(rightClick(bubble)).toBe(false);
+    expect(screen.getByRole('menu')).toBeTruthy();
+  });
+
+  it('gives a live turn no menu', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat, gameplayText: 'The gull', seed: (g) => g.setIsRevealingNarration(true) });
+    expect(rightClick(await narrationBubble(3))).toBe(true);
+    expect(rightClick(await actionBubble(3))).toBe(true);
+    expect(screen.queryByRole('menu')).toBeNull();
+    rightClick(await narrationBubble(2));
+    expect(screen.getByRole('menu')).toBeTruthy();
+  });
+
+  it('gives the action bubble Copy Text in a menu and no icon row', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    const real = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    try {
+      renderMiddlePanel({}, { turns: TURNS, settings: chat });
+      const bubble = await actionBubble(2);
+      expect(within(bubble).queryByRole('button')).toBeNull();
+      rightClick(bubble);
+      expect(menuRows()).toEqual(['Copy Text']);
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy Text' }));
+      expect(writeText).toHaveBeenCalledWith('I step onto the pier.');
+    } finally {
+      if (real) Object.defineProperty(navigator, 'clipboard', real);
+      else delete (navigator as { clipboard?: unknown }).clipboard;
+    }
+  });
+
+  it('offers Re-generate Choices in the choices menu', async () => {
+    const view = renderMiddlePanel({}, { turns: TURNS, settings: chat });
+    const turns = await screen.findAllByRole('article');
+    rightClick(within(turns[2]).getByTestId('chat-choices'));
+    expect(menuRows()).toEqual(['Re-generate Choices']);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Re-generate Choices' }));
+    expect(view.props.handleRegenerateChoices).toHaveBeenCalledTimes(1);
   });
 });

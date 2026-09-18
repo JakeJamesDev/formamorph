@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { bubbleActions, type BubbleActionHandlers, type BubbleState } from './bubbleActions';
+import { bubbleActions, choicesActions, menuSections, playerBubbleActions, type BubbleActionHandlers, type BubbleState } from './bubbleActions';
 
 const idle: BubbleState = {
   isLatest: true,
@@ -129,5 +129,57 @@ describe('bubbleActions', () => {
     }
     expect([...seen].sort()).toEqual(Object.keys(expected).sort());
     expect(find(idle, 'Copy Text')?.icon).toBeDefined();
+  });
+});
+
+describe('playerBubbleActions', () => {
+  it('gives the action bubble Copy Text, as a menu-only content action', () => {
+    const copy = vi.fn();
+    const actions = playerBubbleActions({ live: false }, { copy });
+    expect(actions.map((a) => [a.label, a.section, a.menuOnly])).toEqual([['Copy Text', 'content', true]]);
+    actions[0].run();
+    expect(copy).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives a live turn no actions', () => {
+    expect(playerBubbleActions({ live: true }, { copy: vi.fn() })).toEqual([]);
+  });
+});
+
+describe('choicesActions', () => {
+  it('offers Re-generate Choices when the choices request is on', () => {
+    const run = vi.fn();
+    const actions = choicesActions({ canRegenerate: true, busy: false, regenerating: false }, run);
+    expect(actions.map((a) => [a.label, a.section, a.disabled])).toEqual([['Re-generate Choices', 'generate', false]]);
+    actions[0].run();
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables it while a reply streams, and spins while the choices re-generate', () => {
+    const [action] = choicesActions({ canRegenerate: true, busy: true, regenerating: true }, vi.fn());
+    expect(action.disabled).toBe(true);
+    expect(action.spinning).toBe(true);
+  });
+
+  it('offers nothing when the choices request is off', () => {
+    expect(choicesActions({ canRegenerate: false, busy: false, regenerating: false }, vi.fn())).toEqual([]);
+  });
+});
+
+describe('menuSections', () => {
+  it('groups the actions by section in menu order and drops empty sections', () => {
+    const actions = bubbleActions({ ...idle, isLatest: false }, handlers());
+    const sections = menuSections(actions);
+    expect(sections.map((group) => group[0].section)).toEqual(['generate', 'content', 'destructive']);
+    expect(sections.flat()).toEqual(actions);
+    expect(menuSections(bubbleActions({ ...idle, sceneImagesAvailable: false }, handlers())).map((g) => g[0].section))
+      .toEqual(['generate', 'content']);
+  });
+
+  it('keeps each section in its own order when the list mixes them', () => {
+    const [a, b, c] = playerBubbleActions({ live: false }, { copy: vi.fn() })
+      .concat(choicesActions({ canRegenerate: true, busy: false, regenerating: false }, vi.fn()))
+      .concat(bubbleActions({ ...idle, isLatest: false }, handlers()).filter((x) => x.key === 'rewind'));
+    expect(menuSections([c, a, b])).toEqual([[b], [a], [c]]);
   });
 });
