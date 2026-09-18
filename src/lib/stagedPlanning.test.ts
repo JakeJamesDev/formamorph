@@ -293,6 +293,14 @@ describe('buildSceneList', () => {
     const list = buildSceneList({ cast: null, entities, narrationSoFar: 'Bram ties off the rope.', priorNarration: '' });
     expect(list).toEqual([{ name: 'Bram', revealed: true }]);
   });
+
+  it('adds to the list on screen mid-stream with no planner, so a present entity never drops out', () => {
+    const previous = [{ name: 'Maela', revealed: true }];
+    const opening = buildSceneList({ cast: null, entities, narrationSoFar: 'The rope creaks.', priorNarration: '', previous });
+    expect(opening).toEqual(previous);
+    const later = buildSceneList({ cast: null, entities, narrationSoFar: 'The rope creaks. Bram and Maela look up.', priorNarration: '', previous: opening });
+    expect(later).toEqual([{ name: 'Maela', revealed: true }, { name: 'Bram', revealed: true }]);
+  });
 });
 
 describe('user-message builders', () => {

@@ -232,10 +232,15 @@ export function buildSceneList(args: {
   entities: Entity[];
   narrationSoFar: string;
   priorNarration: string;
+  /** The list on screen, for the no-planner parse to add to. */
+  previous?: SceneEntity[];
 }): SceneEntity[] {
-  const { cast, entities, narrationSoFar, priorNarration } = args;
+  const { cast, entities, narrationSoFar, priorNarration, previous = [] } = args;
   if (!cast) {
-    return findEntityNames(stripQuotedSpeech(narrationSoFar), entities).map((name) => ({ name, revealed: true }));
+    // A partial parse only adds to the list; the end-of-narration read removes who left.
+    const kept = new Set(previous.map((se) => se.name.toLowerCase()));
+    const found = findEntityNames(stripQuotedSpeech(narrationSoFar), entities).filter((name) => !kept.has(name.toLowerCase()));
+    return [...previous, ...found.map((name) => ({ name, revealed: true }))];
   }
   const revealedIn = `${priorNarration}\n${narrationSoFar}`;
   const definedByLower = new Map(entities.map((e) => [e.name.trim().toLowerCase(), e.name]));
