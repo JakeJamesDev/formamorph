@@ -30,7 +30,7 @@ describe('ColorPicker', () => {
   it('shows the value on the swatch', () => {
     render(<Harness initial="#336699" />);
     const trigger = screen.getByRole('button', { name: /Dialogue Color/ });
-    expect(trigger).toHaveTextContent('#336699');
+    expect(trigger).toHaveAccessibleDescription('#336699');
     expect(trigger.querySelector('[data-color-swatch]')).toHaveStyle({ backgroundColor: '#336699' });
   });
 
@@ -76,6 +76,18 @@ describe('ColorPicker', () => {
     expect(screen.getByRole('textbox', { name: 'Hex Color' })).toHaveValue('#ffffff');
   });
 
+  it('commits a pasted value with surrounding spaces', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+    const field = await open(user);
+
+    await user.clear(field);
+    await user.paste(' #aa11cc ');
+
+    expect(onChange).toHaveBeenLastCalledWith('#aa11cc');
+  });
+
   it('hides reset when the caller gives no handler', async () => {
     const user = userEvent.setup();
     render(<Harness />);
@@ -108,7 +120,8 @@ describe('ColorPicker', () => {
     // react-colorful reads keyCode, which browsers set and user-event does not.
     fireEvent.keyDown(hue, { key: 'ArrowRight', keyCode: 39 });
 
-    expect(onChange).toHaveBeenCalled();
-    expect(onChange.mock.calls.at(-1)?.[0]).toMatch(/^#[0-9a-f]{6}$/);
+    const moved = onChange.mock.calls.at(-1)?.[0];
+    expect(moved).toMatch(/^#[0-9a-f]{6}$/);
+    expect(moved).not.toBe('#336699');
   });
 });
