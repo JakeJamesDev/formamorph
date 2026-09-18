@@ -20,9 +20,9 @@ Every route ends in the same place: **Settings → Endpoints → Text**.
 
 ## 🎯 Which Model to Pick
 
-- Pick a model tuned for **roleplay or conversation**. A model tuned for code or for short answers writes flat narration.
+- Pick a model tuned for **roleplay or conversation**.
 - As a rough guide, use **12B parameters or larger**.
-- Past that, use the largest model that your hardware runs well. A model that does not fit in your GPU's memory runs very slowly.
+- Past that, use the largest model that your hardware runs well. A model that does not fit in your GPU's memory runs slowly.
 
 ---
 
@@ -39,7 +39,7 @@ A local server runs the model on your own PC. Formamorph connects to it like any
 5. Turn on the **Start server** switch.
 6. Load your model with the model loader.
 
-The server address is `http://localhost:1234` unless you changed **Server Port**.
+The **Developer** tab shows the server address. It is `http://localhost:1234` when **Server Port** is `1234`.
 
 ### Ollama
 
@@ -63,7 +63,7 @@ How to set the variable depends on your system:
 2. In the **Preset** list, select **Add New Preset…** and name the preset.
 3. Paste the server address into **Endpoint URL**. Formamorph completes the rest of the path.
 4. Leave **API Token** empty.
-5. Type the model's name into **Model Name**, exactly as your server shows it. In Ollama, `ollama ls` lists the names.
+5. Type the model's name into **Model Name**, exactly as your server shows it. LM Studio calls it the model identifier. In Ollama, `ollama ls` lists the names.
 
 > 📱 **To play on another device**, such as the [Android app](Install-on-Android), the server must accept connections from your network. In LM Studio, turn on **Serve on Local Network**. In Ollama, set `OLLAMA_HOST` to `0.0.0.0:11434`. Then use your PC's network address, such as `http://192.168.…:1234`, in **Endpoint URL**.
 
@@ -73,7 +73,7 @@ How to set the variable depends on your system:
 
 ## ☁️ Use a Hosted API Service
 
-A hosted API service runs the model for you, so your own hardware does not matter. Most services charge for use.
+A hosted API service runs the model for you, so your own hardware does not matter.
 
 Formamorph works with any service that offers an **OpenAI-compatible chat-completions** endpoint. You need three things from the service:
 
@@ -86,8 +86,6 @@ Formamorph works with any service that offers an **OpenAI-compatible chat-comple
 1. Open **Settings → Endpoints → Text**.
 2. In the **Preset** list, select **Add New Preset…** and name the preset.
 3. Fill in the three fields from the table.
-
-> 🔒 Your token stays on your device.
 
 ---
 
