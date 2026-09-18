@@ -112,6 +112,11 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
 
 Only double quotes count. Apostrophes and single quotes stay plain, so contractions keep the body color.`,
   },
+  quoteItalic: {
+    label: 'Quote Italic',
+    description: 'Sets quoted speech in italic',
+    info: 'Applies to the narration, your own typed lines and the choice buttons, with or without the **Quote Color** checkbox',
+  },
 
   // ── Display · Inspection ────────────────────────────────────────────────────
   showReasoning: {

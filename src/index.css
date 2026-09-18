@@ -541,6 +541,11 @@
   color: hsl(var(--dialogue));
 }
 
+/* Real italic only, no skew: a quote is often a whole sentence, and the skew's inline-block would stop it wrapping. */
+:root[data-quote-italic] .dialogue-quote {
+  font-style: italic;
+}
+
 /* Italic skew exaggerates a font whose true italic reads too subtle, on top of the real italic face.
    A transform needs a block-ish box, and inline-block would stop long italic runs wrapping across lines —
    so the root only carries `data-italic-skew` while the slider is above 0, and at the default 0 the
