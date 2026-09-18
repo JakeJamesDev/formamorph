@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import type { ImageProviderId } from '../lib/imageGen';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
@@ -978,6 +978,11 @@ function useProvideSettings() {
     serialize: (v: ContinueChoiceMode): string => v,
   };
   const [continueChoiceMode, setContinueChoiceMode] = usePersistentState<ContinueChoiceMode>(`${APP_ID}_continueChoiceEnabled`, DEFAULT_CONTINUE_CHOICE, continueChoiceCodec);
+  const narrationLayoutCodec = {
+    parse: (r: string): NarrationLayout => (NARRATION_LAYOUTS.some((l) => l.value === r) ? (r as NarrationLayout) : DEFAULT_NARRATION_LAYOUT),
+    serialize: (v: NarrationLayout): string => v,
+  };
+  const [narrationLayout, setNarrationLayout] = usePersistentState<NarrationLayout>(`${APP_ID}_narrationLayout`, DEFAULT_NARRATION_LAYOUT, narrationLayoutCodec);
   const [statUpdatesEnabled, setStatUpdatesEnabled] = usePersistentState<boolean>(`${APP_ID}_statUpdatesEnabled`, true, boolCodec);
   const [locationChangeEnabled, setLocationChangeEnabled] = usePersistentState<boolean>(`${APP_ID}_locationChangeEnabled`, true, boolCodec);
   // When on, a detected in-scope move is applied immediately instead of prompting a "Move to X?" confirmation.
@@ -1553,6 +1558,8 @@ function useProvideSettings() {
     setChoicesEnabled,
     continueChoiceMode,
     setContinueChoiceMode,
+    narrationLayout,
+    setNarrationLayout,
     statUpdatesEnabled,
     setStatUpdatesEnabled,
     locationChangeEnabled,

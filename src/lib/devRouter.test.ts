@@ -14,6 +14,7 @@ import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
+import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import { PROFILE_TABS } from '@/components/menu/profileTabs';
 import { ADMIN_PANEL_TABS } from '@/components/menu/adminPanelTabs';
 import { POLICIES_TABS } from '@/components/menu/policiesTabs';
@@ -157,6 +158,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the game side panel tabs', () => {
     expect([...DEV_MODAL_TABS.gameViewer]).toEqual([...GAME_LEFT_PANEL_TABS]);
+  });
+
+  it('ledger lists exactly the narration layouts the game view can open in', () => {
+    expect([...DEV_MODAL_TABS.gameViewerLayout]).toEqual(NARRATION_LAYOUTS.map((l) => l.value));
   });
 
   it('ledger lists exactly the Policies sub-tabs the surface renders', () => {

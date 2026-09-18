@@ -62,13 +62,19 @@ describe('settings design reference', () => {
     await user.click(planning);
     expect(planning).toHaveAttribute('data-state', 'on');
 
+    const layout = screen.getByRole('radiogroup', { name: 'Narration Layout' });
+    const chat = within(layout).getByRole('radio', { name: 'Chat' });
+    await user.click(chat);
+    expect(chat).toHaveAttribute('data-state', 'on');
+
     const scale = screen.getByRole('slider', { name: 'Narration Size' });
     scale.focus();
     await user.keyboard('{ArrowRight}');
     expect(screen.getByText('105%')).toBeInTheDocument();
 
     const displayReference = screen.getByRole('region', { name: 'Display Reference' });
-    await user.click(within(displayReference).getByRole('button', { name: 'More info' }));
+    const appearance = within(displayReference).getByRole('heading', { name: 'Appearance' }).closest('section') as HTMLElement;
+    await user.click(within(appearance).getByRole('button', { name: 'More info' }));
     // The popover carries the production description, read from the table so a copy edit can't strand this.
     expect(await screen.findByText(SETTINGS_COPY.theme.description)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);

@@ -98,6 +98,15 @@ export const CONTINUE_CHOICE_MODES: { value: ContinueChoiceMode; label: string }
 ];
 export const DEFAULT_CONTINUE_CHOICE: ContinueChoiceMode = 'on';
 
+// How the narration panel shows the story: one turn per page, or one scrolling list of turns. A per-player
+// display preference, never part of a world or save. No VITE_DEFAULT_* override.
+export type NarrationLayout = 'pages' | 'chat';
+export const NARRATION_LAYOUTS: { value: NarrationLayout; label: string }[] = [
+  { value: 'pages', label: 'Pages' },
+  { value: 'chat', label: 'Chat' },
+];
+export const DEFAULT_NARRATION_LAYOUT: NarrationLayout = 'pages';
+
 // Locations Canvas presentation. Per-user editor preferences: they never enter a world export, so no
 // VITE_DEFAULT_* override either — nothing about a deployment should decide how one author's canvas draws.
 // Snap and the grid are both on so hand placement lines up without anyone opting in.

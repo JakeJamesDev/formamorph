@@ -32,7 +32,8 @@ export interface DevRoute {
   /** On-screen diagnostic overlay to pin over the app — `viewport` is the only one so far. */
   probe?: string;
   /** Which chrome variant to land in. `simple`/`advanced` for the World Editor and Settings; `page` for
-   *  Community Creations, which renders the browser as a full page instead of the app's modal. */
+   *  Community Creations, which renders the browser as a full page instead of the app's modal; `pages`/`chat`
+   *  for the game view's narration layout. */
   mode?: string;
   /** Open the landed-on surface in its full-screen shell, for surfaces that have one. */
   fullscreen?: string;

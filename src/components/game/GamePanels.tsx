@@ -14,6 +14,7 @@ import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTrait
 import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
+import { ChatNarration } from './ChatNarration';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,13 +55,7 @@ import { effectiveDestinations } from '@/lib/locationGraph';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 
-/** A committed turn's saved reasoning (from its assistant-message JSON), or null. */
-function parseSavedReasoning(content: string): { text: string; ms: number } | null {
-  try {
-    const r = JSON.parse(content)?.reasoning;
-    return r && typeof r.text === 'string' ? { text: r.text, ms: typeof r.ms === 'number' ? r.ms : 0 } : null;
-  } catch { return null; }
-}
+import { parseSavedReasoning } from '@/lib/savedReasoning';
 
 export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   entities: Entity[];
@@ -545,7 +540,11 @@ export const MiddlePanel = ({
     viewContinueUsed
   } = useGameplay();
   const gameplayText = useGameplayText();
-  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests } = useSettings();
+  const { ttsHighlight, choicesEnabled, setChoicesEnabled, continueChoiceMode, statUpdatesEnabled, revealSpec, revealEasing, showReasoning, memoryDigests, setMemoryDigests, narrationLayout } = useSettings();
+  // DEV: `mode=chat` or `mode=pages` on the game view overrides the setting without saving it.
+  const devRoute = useDevRoute();
+  const routeLayout = import.meta.env.DEV && (devRoute?.mode === 'chat' || devRoute?.mode === 'pages') ? devRoute.mode : null;
+  const chatLayout = (routeLayout ?? narrationLayout) === 'chat';
   const liveReasoning = useLiveReasoning();
   // Per-word reveal: any enabled effect ⇒ animate (composed keyframe + CSS vars on the container);
   // nothing enabled ⇒ smooth crawl. The keyframe name feeds Streamdown, the amounts ride as CSS vars.
@@ -614,6 +613,110 @@ export const MiddlePanel = ({
     }
   }
 
+  const narrationFrame = `narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`;
+  // Edit stays inline; the rest folds into the overflow menu. Idle fade: `.narration-tool` in index.css.
+  const optionsControl = (
+    <div className="absolute top-2 right-2 z-10 flex gap-1">
+      <Tip tip="Edit text">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="narration-tool h-8 w-8"
+          data-idle="true"
+          onClick={() => setIsEditMode(true)}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </Tip>
+      <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
+        <Tip tip="More narration options">
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="narration-tool h-8 w-8"
+              data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
+            >
+              {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+            </Button>
+          </PopoverTrigger>
+        </Tip>
+        <PopoverContent align="end" className="w-52 p-1">
+          <div className="flex flex-col">
+            {sceneImagesAvailable && (
+              <>
+                {/* Tags first: it costs one small text request and no render, so it is the cheap way to
+                    see what this turn would be drawn as before spending a picture on it. */}
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-2 text-meta h-8"
+                  onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
+                  disabled={sceneImageJob !== null || !sceneTurnId}
+                >
+                  {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
+                  Write Scene Tags
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start gap-2 text-meta h-8"
+                  onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
+                  disabled={sceneImageJob !== null || !sceneTurnId}
+                >
+                  {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                  Draw This Scene
+                </Button>
+              </>
+            )}
+            {!hasAudio && ttsLoaded && (
+              <Button
+                variant="ghost"
+                className="justify-start gap-2 text-meta h-8"
+                onClick={() => { setToolMenuOpen(false); onRegenerateTTS(); }}
+                disabled={ttsGenerating}
+              >
+                {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Regenerate Audio
+              </Button>
+            )}
+            {!hasAudio && (
+              <Button
+                variant="ghost"
+                className="justify-start gap-2 text-meta h-8"
+                onClick={() => { setToolMenuOpen(false); onTTSClick(); }}
+              >
+                <Headphones className="h-4 w-4" />
+                Text to Speech
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              className="justify-start gap-2 text-meta h-8"
+              onClick={() => { setToolMenuOpen(false); onExportStory(); }}
+            >
+              <ActionIcon.export className="h-4 w-4" />
+              Export Story
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+  const commandPreviewBlock = commandPreview && (
+      <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-meta text-muted-foreground">Markdown preview (/markdown test)</span>
+          <Tip tip="Dismiss preview">
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
+              <X className="h-4 w-4" />
+            </Button>
+          </Tip>
+        </div>
+        <div style={revealStyle}>
+          <MarkdownRenderer text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} />
+        </div>
+      </div>
+  );
+
   return (
     <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
@@ -656,109 +759,16 @@ export const MiddlePanel = ({
               </Button>
             </div>
           )}
-          <ScrollArea className={`narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`}>
-            {/* Edit stays inline as the one action about the text itself; everything else folds into the
-                overflow menu so this row can't grow back across the narration. Each button fades on its
-                own while idle — pointer devices only, see `.narration-tool` in index.css. */}
-            <div className="absolute top-2 right-2 z-10 flex gap-1">
-              <Tip tip="Edit text">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="narration-tool h-8 w-8"
-                  data-idle="true"
-                  onClick={() => setIsEditMode(true)}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </Tip>
-              <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
-                <Tip tip="More narration options">
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="narration-tool h-8 w-8"
-                      data-idle={toolMenuOpen || toolBusy ? undefined : "true"}
-                    >
-                      {toolBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
-                    </Button>
-                  </PopoverTrigger>
-                </Tip>
-                <PopoverContent align="end" className="w-52 p-1">
-                  <div className="flex flex-col">
-                    {sceneImagesAvailable && (
-                      <>
-                        {/* Tags first: it costs one small text request and no render, so it is the cheap way to
-                            see what this turn would be drawn as before spending a picture on it. */}
-                        <Button
-                          variant="ghost"
-                          className="justify-start gap-2 text-meta h-8"
-                          onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
-                          disabled={sceneImageJob !== null || !sceneTurnId}
-                        >
-                          {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
-                          Write Scene Tags
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="justify-start gap-2 text-meta h-8"
-                          onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
-                          disabled={sceneImageJob !== null || !sceneTurnId}
-                        >
-                          {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                          Draw This Scene
-                        </Button>
-                      </>
-                    )}
-                    {!hasAudio && ttsLoaded && (
-                      <Button
-                        variant="ghost"
-                        className="justify-start gap-2 text-meta h-8"
-                        onClick={() => { setToolMenuOpen(false); onRegenerateTTS(); }}
-                        disabled={ttsGenerating}
-                      >
-                        {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                        Regenerate Audio
-                      </Button>
-                    )}
-                    {!hasAudio && (
-                      <Button
-                        variant="ghost"
-                        className="justify-start gap-2 text-meta h-8"
-                        onClick={() => { setToolMenuOpen(false); onTTSClick(); }}
-                      >
-                        <Headphones className="h-4 w-4" />
-                        Text to Speech
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      className="justify-start gap-2 text-meta h-8"
-                      onClick={() => { setToolMenuOpen(false); onExportStory(); }}
-                    >
-                      <ActionIcon.export className="h-4 w-4" />
-                      Export Story
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+          {chatLayout ? (
+            <div className={`${narrationFrame} flex flex-col`}>
+              {optionsControl}
+              {commandPreviewBlock}
+              <ChatNarration parseAssistantMessage={parseAssistantMessage} />
             </div>
-            {commandPreview && (
-              <div className="mb-3 p-2 border border-dashed border-primary/50 rounded relative">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-meta text-muted-foreground">Markdown preview (/markdown test)</span>
-                  <Tip tip="Dismiss preview">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDismissCommandPreview}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </Tip>
-                </div>
-                <div style={revealStyle}>
-                  <MarkdownRenderer text={gameplayText} animate={revealOn} animation={revealAnim} easing={revealEasing} />
-                </div>
-              </div>
-            )}
+          ) : (
+          <ScrollArea className={narrationFrame}>
+            {optionsControl}
+            {commandPreviewBlock}
             {displayedMessages.map((message, index) => {
               const isLatestMessage = index === displayedMessages.length - 1;
               // The live stream (narration + reasoning) belongs only to the current turn on the latest page.
@@ -900,6 +910,7 @@ export const MiddlePanel = ({
                 )}
             </div>
           </ScrollArea>
+          )}
           <EditTextModal
             isOpen={isEditMode}
             onOpenChange={setIsEditMode}
@@ -988,10 +999,11 @@ export const MiddlePanel = ({
           />
           <div className="relative flex flex-col items-center gap-2">
             {locationSuggestion}
-            <div className="relative flex w-full items-center justify-center">
-              <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-start md:justify-center" />
+            {/* Chat has no Pager: the scroll is the one way through the turns. */}
+            <div className={chatLayout ? "flex w-full justify-end" : "relative flex w-full items-center justify-center"}>
+              {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-start md:justify-center" />}
               {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. */}
-              <div className="absolute right-0">
+              <div className={chatLayout ? undefined : "absolute right-0"}>
                 {currentPage < totalPages ? (
                   <ConfirmDialog
                     title="Confirm Rollback"
