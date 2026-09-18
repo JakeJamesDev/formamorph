@@ -64,13 +64,14 @@ function $takeEdgeRun(node: LexicalNode | null, side: 'start' | 'end'): TextNode
 
 /**
  * Moves an open value's edge whitespace into the field beside its chip: leading before, trailing after.
- * A whitespace-only value goes to `side`.
+ * A whitespace-only value goes to `side`. A value still as it was filled moves nothing.
  */
 export function $ejectEdges(chip: VariableNode, side: 'start' | 'end' = 'end'): Ejected {
   const box = $valueBox(chip);
   const out: Ejected = { before: null, after: null };
   const text = box && $openValueText(chip);
-  if (!box || !text) return out;
+  // Whitespace the store holds is part of the value: only an edited value has pending edges.
+  if (!box || !text || text === box.getFilled()) return out;
   const { before, after } = splitEdges(text, side);
   if (after) out.after = $takeEdgeRun(box.getLastDescendant(), 'end');
   if (out.after) chip.insertAfter(out.after);

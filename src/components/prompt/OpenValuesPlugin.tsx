@@ -20,7 +20,7 @@ interface OwnWrite { from: string; to: string }
 function $fillOpenValue(chip: VariableNode, text: string, parse: ChipVocabulary['parse']): void {
   const para = $createParagraphNode();
   appendSegments(para, text, parse);
-  const box = new ValueBoxNode();
+  const box = new ValueBoxNode(text);
   box.append(para);
   $setSlot(chip, VALUE_SLOT, box);
 }
