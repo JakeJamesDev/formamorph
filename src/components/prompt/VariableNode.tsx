@@ -398,9 +398,18 @@ export class VariableNode extends DecoratorNode<ReactNode> {
 
 /** An open chip's value: a shadow root, so its text is a document of its own inside the chip. */
 export class ValueBoxNode extends ElementNode {
+  /** The text this box was filled with. Edge whitespace is pending only once the value differs from it. */
+  __filled: string;
+
+  constructor(filled = '', key?: NodeKey) {
+    super(key);
+    this.__filled = filled;
+  }
+
   static getType(): string { return 'placeholder-value-box'; }
-  static clone(node: ValueBoxNode): ValueBoxNode { return new ValueBoxNode(node.__key); }
+  static clone(node: ValueBoxNode): ValueBoxNode { return new ValueBoxNode(node.__filled, node.__key); }
   static importJSON(): ValueBoxNode { return new ValueBoxNode(); }
+  getFilled(): string { return this.getLatest().__filled; }
   exportJSON(): SerializedElementNode { return { ...super.exportJSON(), type: ValueBoxNode.getType(), version: 1 }; }
 
   createDOM(): HTMLElement { return document.createElement('span'); }

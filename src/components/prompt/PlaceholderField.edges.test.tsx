@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   $getRoot, $getSelection, $getSlot, $isElementNode, $isRangeSelection, $isTextNode, COMMAND_PRIORITY_LOW,
@@ -28,8 +28,8 @@ const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Sedge L
 
 const change = vi.fn<(v: string) => void>();
 
-function World() {
-  const [placeholders, setPlaceholders] = useState([town]);
+function World({ values }: { values?: string[] }) {
+  const [placeholders, setPlaceholders] = useState([values ? { ...town, values: phValues(values) } : town]);
   const [value, setValue] = useState(FIELD);
   const store = placeholderStore(placeholders, setPlaceholders);
   return (
@@ -298,5 +298,36 @@ describe('Enter inside a value', () => {
     expect(change).not.toHaveBeenCalled();
     expect(document.querySelectorAll('[data-open-value]')).toHaveLength(1);
     expect(document.querySelector('[data-open-value-text] br')).not.toBeNull();
+  });
+});
+
+describe('a value the world stores with edge whitespace', () => {
+  // The store's own whitespace is part of the value. Only what the author types at an edge is pending.
+  beforeEach(async () => {
+    cleanup();
+    render(<World values={[' Sedge Landing ', 'Marrow']} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Values' }));
+    change.mockReset();
+  });
+
+  it('leaves the field text alone across tab switches', async () => {
+    for (const name of ['Edit', 'Values', 'Preview', 'Values', 'Edit']) {
+      await userEvent.click(screen.getByRole('tab', { name }));
+    }
+    expect(change).not.toHaveBeenCalled();
+    expect(stored()).toBe(' Sedge Landing |Marrow');
+  });
+
+  it('leaves the field text alone when an arrow leaves the untouched value', async () => {
+    await edit(() => { $valueNode().select(15, 15); });
+    expect(await press(KEY_ARROW_RIGHT_COMMAND, key('ArrowRight'))).toBe(true);
+    expect(change).not.toHaveBeenCalled();
+  });
+
+  it('still drops the edges of that value once the author edits it', async () => {
+    await typeValue(' Sedge Landings ');
+    await userEvent.click(screen.getByRole('tab', { name: 'Edit' }));
+    expect(change).toHaveBeenLastCalledWith(`Welcome to  ${TOWN} , friend.`);
+    expect(stored()).toBe('Sedge Landings|Marrow');
   });
 });
