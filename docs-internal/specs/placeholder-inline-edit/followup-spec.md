@@ -1,20 +1,23 @@
 # Placeholder Values Tab — Follow-Up Spec
 
-Status: ready-for-human
+Status: ready-for-agent
 Base: 1bdc2b16
-Status note: all five fixes built and reviewed (`e859440c`, `ede64f5c`); parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser, because Tab stays inside the editor and a toolbar press hands the keyboard back to the value it refilled. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
+Status note: a sixth fix, "Pins are stops", was added 2026-09-18 after the user found a trait-pinned empty placeholder still locked; it widens the off-list pin fix and replaces the pinned-chip rule, and is not built. The first five fixes were built and reviewed (`e859440c`, `ede64f5c`); parent spec is `spec.md` beside this file. Two spec checks have no running test and need a human call: story 49 (the caret visible at a value's edges) needs pixel sampling, and story 21 (focus leaving the editor) could not be driven in a browser, because Tab stays inside the editor and a toolbar press hands the keyboard back to the value it refilled. Ticket 07 of the parent spec still awaits visual approval, and the pager changes the header's content, so that approval belongs after this.
 
-Five fixes to the Values tab and the chip flyout: an off-list pin becomes editable, a header click makes
-its value active, the header becomes a pager whose controls never move, only the active value carries an
-outline, and the World | Unique control shows read-only where a chip can only ever be World.
+Six fixes to the Values tab and the chip flyout: every pin on a placeholder is a stop the chevrons reach
+and an editable text, a header click makes its value active, the header becomes a pager whose controls
+never move, only the active value carries an outline, and the World | Unique control shows read-only where
+a chip can only ever be World.
 
 ## Problem Statement
 
-An author who uses the Values tab hits five rough spots.
+An author who uses the Values tab hits six rough spots.
 
-- A placeholder with no values of its own, held at a value by a pin, opens **locked**. The pin is the only
-  value that placeholder has in this draw, and the author cannot fix a word in it without hunting for the
-  value that carries the pin.
+- A placeholder with no values of its own, held at a value by a pin, opens **locked** and reads "No
+  Values". The pin is the only value that placeholder has, and the author cannot fix a word in it without
+  hunting for the trait, location, stat band or value that carries the pin.
+- The chevrons walk only the placeholder's own values. A pin a trait or a location lays is a value the
+  placeholder takes in play, and the author cannot step to it, read it in the sentence, or edit it there.
 - A click on a value's header does not make that value active. The header of an inactive value ignores the
   click. A chevron click on the active value loses the caret, so its header drops to the compact form and
   the line reflows under the pointer.
@@ -28,8 +31,11 @@ An author who uses the Values tab hits five rough spots.
 
 ## Solution
 
-- **An off-list pin opens editable.** Typing in it rewrites the pin's own text on the value that carries
-  the pin. The pinned placeholder gains no value. Every chip that reads that pin follows.
+- **Pins are stops.** The chevrons walk the placeholder's own values, then every pin on it, one stop per
+  source, labeled by that source. A placeholder with no values opens on its first pin. Typing in a pin stop
+  rewrites the pin's own text on its source, whether that is a trait, a location, a stat band or another
+  placeholder's value. The pinned placeholder gains no value. Preview and every other field show the stop
+  the author stepped to.
 - **A press anywhere on a header makes its value active.** The caret lands at the end of the value. After
   a chevron step the caret is back in the stepped value, so the header stays in its active form. A value
   that cannot take a caret (a mirror, a locked value, a read-only field) becomes active by the click alone.
@@ -45,11 +51,11 @@ An author who uses the Values tab hits five rough spots.
 
 ## User Stories
 
-1. As a world author, I want a placeholder that has no values but is held by a pin to open editable, so that I can fix the pinned text where I read it.
-2. As a world author, I want an edit to an off-list pin to change the pin's own text, so that the placeholder does not gain a value it never had.
+1. As a world author, I want a placeholder that has no values but is pinned by a trait, a location, a stat band or a value to open on that pin, editable, so that I can fix the pinned text where I read it.
+2. As a world author, I want an edit to a pin stop to change the pin's own text on its source, so that the placeholder does not gain a value it never had.
 3. As a world author, I want every chip that reads that pin to show my edit, so that one fix reaches everywhere.
-4. As a world author, I want a pin typed off the list on a placeholder that does have values to open editable too, so that every off-list pin behaves the same.
-5. As a world author, I want a pin that names a listed value to keep writing to that value, so that nothing that works today changes.
+4. As a world author, I want a placeholder that has values to offer its pins as stops after them, so that every pin on a placeholder is reachable from any field that uses it.
+5. As a world author, I want a pin that names a listed value to be that value's stop and to keep writing to the value, so that nothing that works today changes and no stop repeats.
 6. As a world author, I want a placeholder with no values and no pin to stay locked and say "No Values", so that I know there is nothing to edit.
 7. As a world author, I want an off-list pin that I empty to stay an empty pin, so that clearing text never deletes a pin behind my back.
 8. As a world author, I want undo inside an off-list pin to restore the pin's text, so that a slip is one keystroke from fixed.
@@ -76,7 +82,7 @@ An author who uses the Values tab hits five rough spots.
 29. As a world author, I want the compact header to keep the verbose label as a hover tip, so that compact hides nothing for good.
 30. As a world author, I want a header going from compact to active to grow only to the right, so that nothing left of the label moves when I click.
 31. As a world author, I want a Variable's header to show its name with no pager, so that a one-value placeholder shows no dead controls.
-32. As a world author, I want a pinned chip's header to show its name and a Pinned mark with no pager, so that I know a pin decides the value and a step would do nothing.
+32. As a world author, I want a chip whose draw a pin decides to open on that pin's stop with the pager showing, so that I see which pin holds it and can still step to the other stops.
 33. As a world author, I want a locked value's header to keep its lock mark, so that read-only stays visible in the compact form.
 34. As a world author, I want a "No Values" header to say so in the compact form, so that an empty placeholder never looks like a broken one.
 35. As a world author, I want headers still to stay inside the field and off each other, so that the pager changes the content and not the layout rules.
@@ -98,29 +104,49 @@ An author who uses the Values tab hits five rough spots.
 51. As a world author, I want a value made active by a header click to carry the same thin outline, so that active looks the same however I got there.
 52. As a world author, I want a wrapped active value to keep one contiguous outline, so that the quieter look loses none of the shape's meaning.
 53. As a world author, I want the outline to read in both themes, so that the quiet line is never invisible in dark or light.
+54. As a world author, I want a pin stop's label to name its source, such as "Pinned by Trait: Sworn", so that I know whose pin I am reading.
+55. As a world author, I want the counter to count values and pins together, so that `4/6` tells me there are two pins after four values.
+56. As a world author, I want a step onto a pin stop to show that pin in Preview and in every other field, so that the tabs and fields never disagree.
+57. As a world author, I want a step off a draw-laid pin to show the stepped stop, so that the pin never traps the chevrons.
+58. As a world author, I want a Variable that has pins to show the pager, so that its pins are reachable.
+59. As a world author, I want two chips that read the same pin stop to open once and mirror once, so that two copies never fight over one caret.
+60. As a world author, I want an emptied pin to stay an empty pin, so that clearing text never deletes a pin behind my back.
+61. As a world author, I want undo inside a pin stop to restore the pin's text, so that a slip is one keystroke from fixed.
+62. As a world author, I want a pin stop to be read-only in a read-only field, so that reading works where editing does not.
+63. As a world author, I want a pin edit to save through the same path as the pin editors on the source, so that discard and history behave the same.
 
 ## Implementation Decisions
 
-### Off-list pins write to the pin
+### Pins are stops
 
-- An off-list pin is a pin with text and no value id. In an editor draw, pins come only from the values of
-  other placeholders that the draw has picked, so the pin's home is always a placeholder value the bound
-  placeholder store can update.
-- The open-value draw reports, for a pinned chip, **which value laid the pin**: the carrying placeholder's
-  id and the carrying value's id. The draw-pin record holds that source beside the text. Play-time
-  resolution does not change.
-- The field builds the write path from that source: a write replaces the text of the pin entry for this
-  placeholder on the carrying value, through the same store update the value write-through uses. The pin's
-  placeholder id stays. The pin gains no value id. The pinned placeholder's value list stays as it is.
-- The identity that decides mirroring for an off-list pin is the pin itself: carrying placeholder, carrying
-  value, pinned placeholder. Two chips that read the same pin open one editable copy and one mirror, by the
-  existing rule.
-- A pin that names a listed value keeps today's path and writes to that value.
+- **The stop list** of a placeholder is its own values in order, then every pin that targets it, in the
+  order the world's pin rows already give: strongest source kind first, authored order within a kind. The
+  pin rows come from the existing pin-row seam, which already names each pin's source, its authored name
+  and its plain-text label.
+- A pin that names a listed value id is not its own stop. It collapses into that value's stop, and an edit
+  there writes to the value, as today. A pin with text and no value id is a stop of its own, whatever kind
+  of source carries it.
+- **Which stop a chip opens on:** the draw's answer when it names one, else the store's chosen stop, else
+  the roll. A chip whose draw a pin decides opens on that pin's stop. A placeholder with no values opens on
+  its first pin. No values and no pins stays locked and reads "No Values".
+- **A chevron step chooses a stop.** The rolls store's directed set widens from "this value id" to "this
+  stop": a value id, or a pin named by its source and its target. The draw reads a chosen pin stop before
+  it reads any pin the draw itself lays, so a step off a draw-laid pin shows the stepped stop, and Preview
+  and every other field show it too. World placements share the choice per placeholder; Unique placements
+  keep it per placement. A reroll clears the choice.
+- **Editing a pin stop writes to the pin's text on its source**, through the same world update the
+  source's own pin editor uses: a trait's pins, a location's pins, a stat band's pins or a value's pins. The
+  pin's target stays. The pin gains no value id. The target placeholder's value list stays as it is. The
+  edit reaches the world through the bound placeholder store's owner, so discard and history behave as
+  they do for the pin editors.
+- The identity that decides mirroring for a pin stop is the pin itself: source, target placeholder, and
+  the pin's place on that source. Two chips that read the same pin stop open one editable copy and one
+  mirror, by the existing rule.
 - The trim rule holds: stored pin text never starts or ends with whitespace. An emptied pin stays as an
   empty-text pin; this spec removes nothing.
-- The parent spec's line "a pin whose value is typed off the list opens read-only" is replaced by this
-  section. A pinned chip still shows no pager and never writes a roll.
-- No export shape changes: a pin's text is an existing field.
+- The parent spec's rules "a pin whose value is typed off the list opens read-only" and "a pinned chip
+  hides its chevrons" are both replaced by this section. A pinned chip shows the pager and its pin's stop.
+- No export shape changes: a pin's text is an existing field on every source.
 
 ### Active value
 
@@ -146,10 +172,15 @@ An author who uses the Values tab hits five rough spots.
   place across every step of one placeholder.
 - The verbose label is the value label the field already supplies. It is last so that its length never
   moves a control. The compact form keeps it as the hover tip and for assistive technology.
-- No pager when there is nothing to step: a Variable, a pinned chip, a placeholder with no values. Those
-  headers read `Name`, `Name · Pinned`, `Name · No Values`. The mark shows in both forms, since it is state
-  and not detail.
-- The counter carries an accessible name of the form "Value X of Y". The chevrons keep their names.
+- No pager when there is one stop or none: a Variable with no pins, a placeholder with no values and no
+  pins. Those headers read `Name` and `Name · No Values`. The mark shows in both forms, since it is state
+  and not detail. A Variable with pins, and a chip whose draw a pin decides, show the pager.
+- The counter counts values and pins together, values first. A pin stop's verbose label names its source
+  in the pin row's plain-text form: "Pinned by Trait: Sworn", "Pinned by Location: Fen", "Pinned by
+  Hunger ≤ 20", "Pinned by Mood · Value 2". A draw-laid pin the author has not stepped off keeps a "Pinned"
+  mark in the compact form, since it is state.
+- The counter carries an accessible name of the form "Value X of Y" on a value stop and "Pin X of Y" on a
+  pin stop. The chevrons keep their names.
 - The one-pass header layout, the box clamp, the slide and push rules, the corner rules and the traced
   outline do not change. The pager changes what a header holds, not where it goes.
 
@@ -189,12 +220,16 @@ The three seams of the parent spec carry all five fixes. No new seam.
 **Component seam: the placeholder field under a bound placeholder store and rolls provider.** Prior art:
 the field's write-through, duplicates, chevrons and edit-value tests.
 
-- A placeholder with no values held by an off-list pin opens editable; typing updates the pin's text on the
-  carrying value and adds no value to the pinned placeholder.
-- An off-list pin on a placeholder that has values opens editable. A pin that names a listed value still
-  writes to the value.
+- A placeholder with no values pinned by a trait opens on that pin, editable; typing updates the pin's
+  text on the trait and adds no value to the placeholder. The same for a location, a stat band and a value
+  as the source.
+- A placeholder with values lists its pins as stops after them; stepping past the last value reaches the
+  first pin, and the counter reads values plus pins.
+- A pin that names a listed value adds no stop and still writes to the value.
+- A chip whose draw a pin decides opens on that pin's stop with the pager; a step off it shows the stepped
+  stop in this field and in Preview.
 - No values and no pin stays locked and reads "No Values".
-- Two chips that read one off-list pin open one editable copy and one mirror.
+- Two chips that read one pin stop open one editable copy and one mirror.
 - A header press on an inactive value makes it the active one and lands the caret at its end.
 - A chevron step leaves the stepped value active, with the caret inside it.
 - A header press on a mirror and on a locked value makes it active with no caret; a press on another header
@@ -211,9 +246,9 @@ flyout test.
 - A token stored as Unique on a Variable shows Unique selected, read-only, and the token is unchanged.
 - A prompt-variable chip shows no mode control.
 
-**Pure seam: the draw.** Prior art: the placeholder resolver's tests. The open-value draw reports the
-carrying placeholder and value for an off-list pin, and play-time resolution returns the same text as
-before.
+**Pure seam: the draw and the rolls store.** Prior art: the placeholder resolver's tests and the rolls
+store's tests. The open-value draw reports the source of a pin it lays; a chosen pin stop is read before a
+draw-laid pin; a reroll clears the choice; play-time resolution returns the same text as before.
 
 **Browser seam: Playwright, outside the four gates.** Prior art: the open-value header and edge specs.
 
@@ -229,8 +264,9 @@ before.
 
 ## Out of Scope
 
-- Editing a pin laid by a trait, a location or a stat descriptor. An editor draw never reads those.
-- Removing a pin, or turning an off-list pin into a listed value, from the Values tab.
+- Removing a pin, adding a pin, or turning a pin into a listed value, from the Values tab.
+- Changing which pin wins in play. A pin stop is a view for reading and editing; the play-time pin order
+  does not change.
 - Adding or deleting values from the Values tab.
 - Changing what the verbose label says. See Further Notes.
 - Any change to header placement, to how the outline is traced, or to the edge-typing rules. Only the
@@ -249,5 +285,9 @@ before.
   and brightness lift go with the bright line, since they are the same loud active look. The caret takes
   the foreground color, since a chip-colored caret on a chip-tinted fill is the other way the caret gets
   lost. Drop either if the user wants only the line changed.
+- "Pins are stops" replaces the first version of this spec's pin fix, which covered only a pin laid by
+  another placeholder's value and put trait, location and stat pins out of scope. That cut was mine, and
+  the user's original pitch for the feature was "swap between each value, including pins". The value-pin
+  path already built stays valid as one kind of source.
 - Ticket 07 of the parent spec still awaits the user's visual approval. The pager changes the header's
   content, so that approval should happen after this spec lands, not before.
