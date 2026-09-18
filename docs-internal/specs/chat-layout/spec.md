@@ -252,3 +252,14 @@ name, a hook call, or the virtualizer's internals.
   numbers above.
 
 ## Comments
+
+- **Ruling: live turn in ticket 01 (spec session, 2026-09-18).** Ticket 01 shows the latest turn's live
+  reveal and the live reasoning block by the same rule as Pages, so a submit never shows an empty bubble.
+  Ticket 02 adds the pin, the minimum height, and Jump to Latest, and keeps its reasoning-block criterion as
+  a check.
+- **Ruling: image aspect box (spec session, 2026-09-18).** The intent is the image's real aspect, not a fixed
+  16:9; the prototype's 16:9 was a placeholder. A pure function that reads the size from the image header,
+  with a square fallback, is the approved way. The size is never stored in the save, because that changes the
+  export shape. An image that is a URL, not a data URL, takes the fallback box.
+- **Open gap: scene image controls in Chat.** Pages shows scene images with a pager, zoom, and delete. Ticket
+  01 may ship a plain inline image. No ticket restores those controls yet; the user decides where they go.
