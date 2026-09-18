@@ -1,9 +1,9 @@
 /**
  * Pairs double quotes in a run of text, so quoted speech can be styled apart from narration.
  *
- * `rehypeQuoteSpans` calls this for the markdown path. Only double quotes pair: an apostrophe is far more
- * often a contraction or a possessive than a quotation mark, and a run opened on one would color the rest
- * of a sentence.
+ * `rehypeQuoteSpans` calls this for the markdown path and `choiceRuns` for the choice buttons. Only double
+ * quotes pair: an apostrophe is far more often a contraction or a possessive than a quotation mark, and a
+ * run opened on one would color the rest of a sentence.
  */
 
 /** One run of text, flagged as quoted speech or as narration around it. Quote marks belong to the run they
@@ -53,4 +53,24 @@ export function segmentQuotes(text: string, startOpen = false): { segments: Quot
   }
   flush();
   return { segments, open };
+}
+
+/** One run of choice text: its bold and quoted flags are independent, so bold can sit inside a quote. */
+export interface ChoiceRun extends QuoteSegment {
+  bold: boolean;
+}
+
+/**
+ * Split a choice into runs for the choice buttons, which are not markdown. `**` toggles bold, and a quote
+ * carries across a bold edge so one quote stays one color.
+ */
+export function choiceRuns(text: string): ChoiceRun[] {
+  const runs: ChoiceRun[] = [];
+  let open = false;
+  text.split('**').forEach((part, i) => {
+    const result = segmentQuotes(part, open);
+    open = result.open;
+    for (const segment of result.segments) runs.push({ ...segment, bold: i % 2 === 1 });
+  });
+  return runs;
 }
