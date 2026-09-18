@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
@@ -46,6 +46,9 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { ColorPicker } from "@/components/ui/color-picker";
+import { useRootSnapshot } from '@/lib/useRootSnapshot';
+import { hslTripleToHex } from '@/lib/hslColor';
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
@@ -506,6 +509,27 @@ function PromptsShell({ morph, sourceRef, children }: {
     </>
   );
 }
+
+/** The active theme's own dialogue color, before any custom override. */
+const readThemeDialogueHex = () =>
+  hslTripleToHex(getComputedStyle(document.documentElement).getPropertyValue('--dialogue'));
+
+/** The custom quote color for the mode on screen. Memoized so the style read skips the modal's re-renders. */
+const QuoteColorField = memo(function QuoteColorField() {
+  const { quoteColorMode, activeQuoteColor, setActiveQuoteColor } = useSettings();
+  const themeDialogueHex = useRootSnapshot(readThemeDialogueHex);
+  return (
+    <Row htmlFor="quoteColorCustom" {...rowCopy(quoteColorMode === 'dark' ? 'quoteColorDark' : 'quoteColorLight')}>
+      <ColorPicker
+        id="quoteColorCustom"
+        value={activeQuoteColor ?? themeDialogueHex}
+        onChange={setActiveQuoteColor}
+        onReset={() => setActiveQuoteColor(null)}
+        resetLabel={SETTINGS_BUTTONS.resetToTheme}
+      />
+    </Row>
+  );
+});
 
 export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, forcedMode }: {
   isOpen: boolean;
@@ -1697,6 +1721,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 onChange={setQuoteColor}
                 {...rowCopy('quoteColor')}
               />
+              {quoteColor && <QuoteColorField />}
               <CheckRow
                 htmlFor="quoteItalic"
                 checked={quoteItalic}

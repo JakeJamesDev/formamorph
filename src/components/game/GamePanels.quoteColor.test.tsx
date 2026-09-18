@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, act } from '@testing-library/react';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
 import { renderMiddlePanel, type PanelHarness } from '@/test/gamePanels';
@@ -122,5 +122,40 @@ describe('MiddlePanel — quote color', () => {
     // The span stays — only the rule that reads it goes away, so nothing re-renders the markdown.
     expect(spans(narration())).toEqual(['"Then we leave at dawn,"']);
     expect(spans(screen.getByRole('button', { name: /Say "yes"/ }))).toEqual(['"yes"']);
+  });
+
+  describe('custom color', () => {
+    const root = document.documentElement;
+    const custom = () => root.style.getPropertyValue('--dialogue-custom');
+    /** Flips the mode class the way the theme provider does; the observer reports it on a microtask. */
+    const switchMode = (from: string, to: string) => act(async () => { root.classList.replace(from, to); });
+
+    beforeEach(() => root.classList.add('light'));
+    afterEach(() => root.classList.remove('light', 'dark'));
+
+    it('paints the active mode with its custom color, and reset hands it back to the theme', () => {
+      const view = renderMiddlePanel({}, { turns: TURNS });
+      expect(custom()).toBe('');
+
+      act(() => view.settings().setQuoteColorLight('#c0392b'));
+      expect(custom()).toBe('#c0392b');
+
+      act(() => view.settings().setQuoteColorLight(null));
+      expect(custom()).toBe('');
+    });
+
+    it('keeps a color per mode, so a mode switch shows the other value', async () => {
+      const view = renderMiddlePanel({}, { turns: TURNS });
+      act(() => view.settings().setQuoteColorLight('#c0392b'));
+
+      await switchMode('light', 'dark');
+      expect(custom()).toBe('');
+
+      act(() => view.settings().setQuoteColorDark('#88ccff'));
+      expect(custom()).toBe('#88ccff');
+
+      await switchMode('dark', 'light');
+      expect(custom()).toBe('#c0392b');
+    });
   });
 });

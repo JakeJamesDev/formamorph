@@ -538,7 +538,8 @@
    root attribute the Quote Color setting writes is what paints it, so switching the setting off leaves the
    span with nothing to read rather than re-rendering the markdown. */
 :root[data-quote-color] .dialogue-quote {
-  color: hsl(var(--dialogue));
+  /* `--dialogue-custom` is the player's color for the active mode, set on the root only while one exists. */
+  color: var(--dialogue-custom, hsl(var(--dialogue)));
 }
 
 /* Real italic only, no skew: a quote is often a whole sentence, and the skew's inline-block would stop it wrapping. */

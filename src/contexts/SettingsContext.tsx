@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt } from '../components/game/GamePrompts';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import type { ImageProviderId } from '../lib/imageGen';
 import { useLocalLlmStatus } from '../lib/useLocalLlmStatus';
@@ -31,6 +31,8 @@ import { normalizeEndpointUrl } from '../lib/endpointUrl';
 import { registerDevHook } from '../lib/devRouter';
 import { usePersistentState, stringCodec, boolCodec, intCodec, floatCodec, nullableIntCodec } from '../lib/usePersistentState';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import { useRootSnapshot, readRootMode } from '../lib/useRootSnapshot';
+import { parseHex6 } from '../lib/hslColor';
 import {
   resolveFontTuning, fontTuningVars, fontTuningMapCodec, withFontTuning,
   APP_TUNING_PREFIX, NARRATION_TUNING_PREFIX, type FontTuning, type FontTuningMap,
@@ -166,6 +168,12 @@ function seedTextPresetStore(): TextEndpointPresetStore {
   const id = randomUUID();
   return { activeId: toggleOn ? id : DEFAULT_TEXT_PRESET_ID, presets: [{ id, name: 'Custom', values: stashed }] };
 }
+
+/** A stored custom color: `#rrggbb`, or empty for unset. Anything else reads as unset. */
+const nullableHexCodec = {
+  parse: (raw: string): string | null => parseHex6(raw),
+  serialize: (value: string | null): string => value ?? '',
+};
 
 /** First-run default theme color. Honors an OS high-contrast request — but only while the user is still
  *  following the OS for appearance (light/dark = "system", the theme provider's default): if they've
@@ -1317,6 +1325,19 @@ function useProvideSettings() {
     else root.removeAttribute('data-quote-italic');
   }, [quoteItalic]);
 
+  // A custom quote color per mode. The active mode's value overrides the theme token on the root; with
+  // none set, the CSS falls back to `--dialogue`.
+  const [quoteColorLight, setQuoteColorLight] = usePersistentState<string | null>(`${APP_ID}_quoteColorLight`, DEFAULT_QUOTE_COLOR_LIGHT, nullableHexCodec);
+  const [quoteColorDark, setQuoteColorDark] = usePersistentState<string | null>(`${APP_ID}_quoteColorDark`, DEFAULT_QUOTE_COLOR_DARK, nullableHexCodec);
+  const quoteColorMode = useRootSnapshot(readRootMode);
+  const activeQuoteColor = quoteColorMode === 'dark' ? quoteColorDark : quoteColorLight;
+  const setActiveQuoteColor = quoteColorMode === 'dark' ? setQuoteColorDark : setQuoteColorLight;
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeQuoteColor) root.style.setProperty('--dialogue-custom', activeQuoteColor);
+    else root.style.removeProperty('--dialogue-custom');
+  }, [activeQuoteColor]);
+
   // Font tunings → CSS variables. The app-wide set comes from the global font; the narration pane carries
   // its own set (its font's, or the global font's when it inherits). The skew attribute gates a rule that
   // would otherwise make every italic run inline-block — see index.css.
@@ -1365,6 +1386,13 @@ function useProvideSettings() {
     setQuoteColor,
     quoteItalic,
     setQuoteItalic,
+    quoteColorLight,
+    setQuoteColorLight,
+    quoteColorDark,
+    setQuoteColorDark,
+    quoteColorMode,
+    activeQuoteColor,
+    setActiveQuoteColor,
     language,
     setLanguage,
     paragraphLimit,

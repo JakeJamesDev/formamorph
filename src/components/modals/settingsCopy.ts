@@ -108,9 +108,19 @@ Pick a suggestion or type your own. A **style** works too, like *formal English*
   quoteColor: {
     label: 'Quote Color',
     description: 'Colors quoted speech so dialogue stands out',
-    info: `Applies to the narration and your own typed lines. The color comes from your theme.
+    info: `Applies to the narration and your own typed lines. The color comes from your theme unless you set your own below.
 
 Only double quotes count. Apostrophes and single quotes stay plain, so contractions keep the body color.`,
+  },
+  quoteColorLight: {
+    label: 'Light Mode Color',
+    description: 'Replaces the theme’s quote color in light mode',
+    info: 'Dark mode keeps its own color. **Reset to Theme** brings back the theme’s color for light mode.',
+  },
+  quoteColorDark: {
+    label: 'Dark Mode Color',
+    description: 'Replaces the theme’s quote color in dark mode',
+    info: 'Light mode keeps its own color. **Reset to Theme** brings back the theme’s color for dark mode.',
   },
   quoteItalic: {
     label: 'Quote Italic',
@@ -557,6 +567,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
 /** Buttons inside the modal, kept here so their casing is guarded alongside the row labels. */
 export const SETTINGS_BUTTONS = {
   resetSizeSpacing: 'Reset Size & Spacing',
+  resetToTheme: 'Reset to Theme',
   restoreDefaultWorlds: 'Restore Default Worlds',
   clearCachedImages: 'Clear Cached Images',
   resetTutorials: 'Reset Tutorials',
