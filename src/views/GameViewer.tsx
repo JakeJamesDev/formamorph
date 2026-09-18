@@ -167,7 +167,7 @@ import {
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiSetupGate } from "../components/AiSetupGate";
-import { DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
+import { DemoAIBadge, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIDialogPending } from "../components/game/demoAISeen";
 import { nextEntryDialog } from "@/lib/entryDialogOrder";
 import { useAiReachable } from "../lib/useAiReachable";
@@ -834,6 +834,7 @@ const GameViewer = ({
   // --- Entry dialogs ---------------------------------------------------------------------------------
   // nextEntryDialog picks one at a time; a lower one waits until the one above it closes.
   const demoAINoticeRef = useRef<DemoAINoticeHandle>(null);
+  const openDemoAIDialog = useCallback(() => demoAINoticeRef.current?.open(), []);
   const demoAIDue = useDemoAIDialogPending();
   // 'waiting' until this entry settles the Demo AI dialog, so a later switch to the Demo AI shows nothing.
   const [demoAIEntry, setDemoAIEntry] = useState<DemoAIEntryState>('waiting');
@@ -4112,6 +4113,7 @@ const GameViewer = ({
   const middlePanel = (
     <MiddlePanel
       parseAssistantMessage={parseAssistantMessage}
+      narrationBadge={<DemoAIBadge onOpen={openDemoAIDialog} />}
       totalPages={totalPages}
       handlePageChange={handlePageChange}
       handleSendAction={handleSendAction}

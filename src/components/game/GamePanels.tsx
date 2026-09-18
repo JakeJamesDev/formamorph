@@ -453,6 +453,7 @@ const ROLLBACK_CONFIRM = {
 };
 
 export const MiddlePanel = ({
+  narrationBadge,
   parseAssistantMessage,
   totalPages,
   handlePageChange,
@@ -487,6 +488,8 @@ export const MiddlePanel = ({
   commandPreview,
   onDismissCommandPreview
 }: {
+  /** A status badge that leads the narration options. */
+  narrationBadge?: React.ReactNode;
   parseAssistantMessage: (content: string) => string;
   totalPages: number;
   handlePageChange: (page: number) => void;
@@ -690,6 +693,7 @@ export const MiddlePanel = ({
   // Chat keeps only the whole-story items here; the per-turn ones sit on each bubble.
   const optionsControl = (
     <div className="absolute top-2 right-2 z-10 flex gap-1">
+      {narrationBadge}
       {!chatLayout && <Tip tip="Edit text">
         <Button
           variant="ghost"

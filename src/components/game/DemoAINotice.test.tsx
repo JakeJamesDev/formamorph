@@ -16,8 +16,9 @@ vi.mock('@capacitor/core', async (orig) => {
 });
 
 import { SettingsProvider, useSettings } from '@/contexts/SettingsContext';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { DEFAULT_TEXT_PRESET_ID } from '@/lib/textEndpointPresets';
-import { DemoAINotice, type DemoAINoticeHandle } from './DemoAINotice';
+import { DemoAIBadge, DemoAINotice, type DemoAINoticeHandle } from './DemoAINotice';
 import { DEMO_AI_SEEN_KEY } from './demoAISeen';
 
 const UA = {
@@ -45,15 +46,18 @@ function Probe() {
   return null;
 }
 
-/** Mounts the notice the way a game-view entry does. `entry` is the entry order releasing the dialog. */
+/** Mounts the notice and its badge the way the game view does. `entry` is the entry order releasing the dialog. */
 function mountNotice(entry = true) {
   const onEntryDone = vi.fn();
   const ref = createRef<DemoAINoticeHandle>();
   const tree = (e: boolean) => (
-    <SettingsProvider>
-      <Probe />
-      <DemoAINotice ref={ref} entry={e} onEntryDone={onEntryDone} />
-    </SettingsProvider>
+    <TooltipProvider>
+      <SettingsProvider>
+        <Probe />
+        <DemoAIBadge onOpen={() => ref.current?.open()} />
+        <DemoAINotice ref={ref} entry={e} onEntryDone={onEntryDone} />
+      </SettingsProvider>
+    </TooltipProvider>
   );
   const view = render(tree(entry));
   return { ...view, onEntryDone, ref, enter: () => view.rerender(tree(true)) };
@@ -246,5 +250,87 @@ describe('DemoAINotice desktop pitch', () => {
     const view = mountNotice(false);
     act(() => view.ref.current?.open());
     expect(pitchShown()).toBe(false);
+  });
+});
+
+describe('DemoAINotice badge', () => {
+  const badge = () => screen.queryByRole('button', { name: 'Demo AI' });
+  const TIP = 'A small free model for trying Formamorph. For much better narration, connect a stronger AI in Settings.';
+  const TIP_DESKTOP = `${TIP} The desktop app can run one on your PC if your hardware allows.`;
+  /** The tooltip bubble's whole text, read after keyboard focus opens it. */
+  const tipText = async () => {
+    await userEvent.tab();
+    expect(badge()).toHaveFocus();
+    // The bubble is the element that holds the bold Settings run itself.
+    return screen.getByText((_, el) => !!el && Array.from(el.children).some((c) => c.tagName === 'STRONG' && c.textContent === 'Settings')).textContent;
+  };
+
+  it('shows while narration resolves to the Demo AI, with the seen-key already set', () => {
+    localStorage.setItem(DEMO_AI_SEEN_KEY, '1');
+    mountNotice(false);
+    expect(badge()).not.toBeNull();
+  });
+
+  it('goes away on a switch to another endpoint and comes back on a return, with no remount', () => {
+    mountNotice(false);
+    const userId = addUserPreset();
+    expect(badge()).not.toBeNull();
+    act(() => settings.selectTextEndpointPreset(userId));
+    expect(badge()).toBeNull();
+    act(() => settings.selectTextEndpointPreset(DEFAULT_TEXT_PRESET_ID));
+    expect(badge()).not.toBeNull();
+  });
+
+  it('follows the narration route, not the active endpoint', () => {
+    mountNotice(false);
+    const userId = addUserPreset();
+    route({ narration: userId, choices: DEFAULT_TEXT_PRESET_ID });
+    expect(badge()).toBeNull();
+    act(() => settings.selectTextEndpointPreset(userId));
+    act(() => settings.setPromptEndpoint('narration', DEFAULT_TEXT_PRESET_ID));
+    expect(badge()).not.toBeNull();
+  });
+
+  it('has no dismiss control: it is the only control while the dialog is closed', () => {
+    mountNotice(false);
+    expect(screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Demo AI']);
+  });
+
+  it('opens the dialog on click, and it stays after the dialog closes', async () => {
+    localStorage.setItem(DEMO_AI_SEEN_KEY, '1');
+    const view = mountNotice(false);
+    await userEvent.click(badge()!);
+    expect(screen.getByRole('heading', { name: TITLE })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep Playing' }));
+    expect(dialog()).toBeNull();
+    expect(badge()).not.toBeNull();
+    expect(view.onEntryDone).not.toHaveBeenCalled();
+  });
+
+  it('opens the dialog from the keyboard', async () => {
+    mountNotice(false);
+    await userEvent.tab();
+    expect(badge()).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('heading', { name: TITLE })).toBeInTheDocument();
+  });
+
+  it('holds the spec tooltip copy, with the desktop sentence in a desktop browser', async () => {
+    mountNotice(false);
+    expect(await tipText()).toBe(TIP_DESKTOP);
+  });
+
+  it.each([
+    ['an Android user agent', () => setDevice(UA.androidChrome, 5)],
+    ['an iPhone user agent', () => setDevice(UA.iPhoneSafari, 5)],
+    ['an iPad user agent', () => setDevice(UA.iPadSafari, 5)],
+    ['the native app', () => { rig.nativeApp = true; }],
+    ['the desktop app', () => setDesktopApp(true)],
+  ])('drops the desktop sentence in %s', async (_, arrange) => {
+    arrange();
+    mountNotice(false);
+    // The desktop app starts on its built-in engine, so the player selects the Demo AI.
+    act(() => settings.selectTextEndpointPreset(DEFAULT_TEXT_PRESET_ID));
+    expect(await tipText()).toBe(TIP);
   });
 });
