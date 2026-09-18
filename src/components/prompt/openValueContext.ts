@@ -12,6 +12,8 @@ export interface OpenValuePager {
   /** Zero-based; the header counts from one. */
   index: number;
   count: number;
+  /** What the open stop is: one of the placeholder's values, or a pin aimed at it. */
+  unit: 'Value' | 'Pin';
   /** Open the previous (-1) or next (1) value. */
   step: (direction: StepDirection) => void;
 }

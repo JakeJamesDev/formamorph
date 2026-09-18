@@ -168,7 +168,7 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
 }
 
 /** A chevron each way around the value's position in its list. */
-function Pager({ index, count, step }: OpenValuePager) {
+function Pager({ index, count, unit, step }: OpenValuePager) {
   const shown = Math.max(index, 0) + 1;
   return (
     <>
@@ -177,7 +177,7 @@ function Pager({ index, count, step }: OpenValuePager) {
         {/* The widest reading holds the width, so stepping never moves the chevron beside it. */}
         <span aria-hidden className="invisible col-start-1 row-start-1">{count}/{count}</span>
         <span aria-hidden className="col-start-1 row-start-1">{shown}/{count}</span>
-        <span className="sr-only">Value {shown} of {count}</span>
+        <span className="sr-only">{unit} {shown} of {count}</span>
       </span>
       <StepButton label="Next Value" onClick={() => step(1)}><ChevronRight className="h-3 w-3" /></StepButton>
     </>

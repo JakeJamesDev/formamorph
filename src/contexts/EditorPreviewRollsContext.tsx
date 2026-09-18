@@ -1,8 +1,11 @@
 import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   buildPlaceholderPreview, decodePlaceholderToken, drawOpenPlaceholderValues, parsePlaceholderText,
-  reachablePlaceholderIds, type OpenPlaceholderValue, type PlaceholderMode, type PlaceholderToken,
+  placeholderIsChoice, reachablePlaceholderIds,
+  type ChosenTexts, type OpenPlaceholderValue, type PlaceholderMode, type PlaceholderToken,
 } from '@/lib/placeholders';
+import type { PinRow } from '@/lib/placeholderPins';
+import { isPinStop, placeholderStops } from '@/lib/placeholderStops';
 import type { Placeholder, PlaceholderRolls } from '@/types';
 
 /**
@@ -18,15 +21,21 @@ export interface EditorPreviewRolls {
   /** Changes on every reroll, so a preview memoized on the store re-reads it. */
   version: number;
   /** Token → value for every chip in `text`. A chip nothing has drawn yet is drawn now and kept, so the
-   *  next reader — this field's next render, or another field — sees the same value. */
-  preview(text: string, placeholders: Placeholder[]): Record<string, string>;
+   *  next reader — this field's next render, or another field — sees the same value. `pinRows` are the
+   *  world's pins, which a stop an author stepped to may name. */
+  preview(text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[]): Record<string, string>;
   /** Token → the value each chip in `text` opens on, from the same rolls `preview` reads. */
-  open(text: string, placeholders: Placeholder[]): Record<string, OpenPlaceholderValue>;
+  open(text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[]): Record<string, OpenPlaceholderValue>;
   /** Redraw `ids` and every placeholder reachable through their values; every other roll stays. */
   reroll(ids: Iterable<string>, placeholders: Placeholder[]): void;
   /** Roll `valueId` for one placement: a World placement moves every chip of its placeholder, a Unique
    *  placement moves only itself. Nothing else is redrawn. */
   setRoll(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>, valueId: string): void;
+  /** Step one placement to a stop — a value or a pin (see `placeholderStops`). A step outranks any pin the
+   *  draw lays itself, and a World step moves every chip of its placeholder. A reroll clears it. */
+  choose(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>, stopKey: string): void;
+  /** The stop a placement was stepped to, if any. */
+  chosenStop(placement: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>): string | undefined;
 }
 
 const EditorPreviewRollsContext = createContext<EditorPreviewRolls | null>(null);
@@ -39,10 +48,13 @@ function usePreviewRollStore(): EditorPreviewRolls {
   // Which placeholder each bare Unique placement id belongs to — a nested Unique key carries its own
   // placeholder's id as its last step, but a chain root is keyed by the placement id alone.
   const uniqueOwner = useRef<Record<string, string>>({});
+  // Stop keys an author stepped to, keyed as the rolls are.
+  const chosenStops = useRef<Partial<Record<PlaceholderMode, Record<string, string>>>>({});
   const [version, setVersion] = useState(0);
   return useMemo((): EditorPreviewRolls => {
-    /** The live rolls as texts, less any whose value is gone, and the writer a fresh draw reports to. */
-    const storeFor = (text: string, placeholders: Placeholder[]) => {
+    /** The live rolls as texts, less any whose value is gone, the writer a fresh draw reports to, and the
+     *  text of every stop an author stepped to. */
+    const storeFor = (text: string, placeholders: Placeholder[], pinRows: readonly PinRow[] = []) => {
       for (const seg of parsePlaceholderText(text)) {
         const token = seg.type === 'variable' ? decodePlaceholderToken(seg.token) : null;
         if (token?.mode === 'unique') uniqueOwner.current[token.placementId] = token.id;
@@ -68,20 +80,40 @@ function usePreviewRollStore(): EditorPreviewRolls {
         const value = ownerOf(scope, key)?.values?.find((v) => v.text === text);
         if (value) (valueIds.current[scope] ??= {})[key] = value.id;
       };
-      return { rolls, setRoll: recordDraw };
+      // A stop this reader cannot see — a pin whose source it was not handed — is skipped, not dropped, so
+      // a reader with the whole world still shows it.
+      const chosen: ChosenTexts = {};
+      for (const scope of ['world', 'unique'] as const) {
+        for (const [key, stopKey] of Object.entries(chosenStops.current[scope] ?? {})) {
+          const owner = ownerOf(scope, key);
+          const stop = owner && placeholderStops(owner, pinRows).find((s) => s.key === stopKey);
+          if (!owner || !stop) continue;
+          // An Object shows every value at once; a step between them only picks which one a field opens.
+          if (!isPinStop(stop) && !placeholderIsChoice(owner) && owner.values.length > 1) continue;
+          (chosen[scope] ??= {})[key] = stop.text;
+        }
+      }
+      return { rolls, setRoll: recordDraw, chosen };
     };
+    const keyOf = ({ id, mode, placementId }: Pick<PlaceholderToken, 'id' | 'mode' | 'placementId'>) =>
+      (mode === 'world' ? id : placementId);
     return {
       version,
-      preview: (text, placeholders) => buildPlaceholderPreview(text, placeholders, undefined, storeFor(text, placeholders)),
-      open: (text, placeholders) => drawOpenPlaceholderValues(text, placeholders, undefined, storeFor(text, placeholders)),
+      preview: (text, placeholders, pinRows) =>
+        buildPlaceholderPreview(text, placeholders, undefined, storeFor(text, placeholders, pinRows)),
+      open: (text, placeholders, pinRows) =>
+        drawOpenPlaceholderValues(text, placeholders, undefined, storeFor(text, placeholders, pinRows)),
       reroll: (ids, placeholders) => {
         const drop = reachablePlaceholderIds(ids, placeholders);
-        const world = valueIds.current.world ?? {};
-        for (const id of drop) delete world[id];
-        const unique = valueIds.current.unique ?? {};
-        for (const key of Object.keys(unique)) {
-          const owner = uniqueOwnerOf(key);
-          if (owner && drop.has(owner)) delete unique[key];
+        // A reroll draws afresh, so it drops a step as it drops a roll.
+        for (const store of [valueIds.current, chosenStops.current]) {
+          const world = store.world ?? {};
+          for (const id of drop) delete world[id];
+          const unique = store.unique ?? {};
+          for (const key of Object.keys(unique)) {
+            const owner = uniqueOwnerOf(key);
+            if (owner && drop.has(owner)) delete unique[key];
+          }
         }
         setVersion((v) => v + 1);
       },
@@ -90,6 +122,12 @@ function usePreviewRollStore(): EditorPreviewRolls {
         (valueIds.current[mode] ??= {})[mode === 'world' ? id : placementId] = valueId;
         setVersion((v) => v + 1);
       },
+      choose: (placement, stopKey) => {
+        if (placement.mode === 'unique') uniqueOwner.current[placement.placementId] = placement.id;
+        (chosenStops.current[placement.mode] ??= {})[keyOf(placement)] = stopKey;
+        setVersion((v) => v + 1);
+      },
+      chosenStop: (placement) => chosenStops.current[placement.mode]?.[keyOf(placement)],
     };
   }, [version]);
   // Hoisted so both readers share it; `useMemo` above closes over the refs, not over this.

@@ -179,7 +179,7 @@ describe('a pin off the list of a placeholder that has values', () => {
     await openValuesTab();
     const [, pinned] = openValues();
     expect(valueText(pinned)).toBe('Anywhere');
-    expect(within(pinned).getByText(/· Pinned/)).toBeInTheDocument();
+    expect(within(pinned).getByText(/^· Pinned$/)).toBeInTheDocument();
 
     await typeInValue(1, 'Anywhere Else');
     expect(shown('lord-pins')).toBe('ghost=Wisp|town=Anywhere Else|steed=Ember');

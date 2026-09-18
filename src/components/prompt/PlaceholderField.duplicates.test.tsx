@@ -221,7 +221,7 @@ describe('read-only values', () => {
     const [lordValue, pinned] = openValues();
     expect(slotEditable(lordValue)).toBe('true');
     expect(valueText(pinned)).toBe('Anywhere');
-    expect(within(pinned).getByText(/Pinned/)).toBeInTheDocument();
+    expect(within(pinned).getByText(/^· Pinned$/)).toBeInTheDocument();
     expect(slotEditable(pinned)).toBe('true');
     expect(pinned).not.toHaveAttribute('data-read-only');
 

@@ -1,24 +1,27 @@
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { decodePlaceholderToken, directChipTargets, placeholderIsChoice, type DrawPinSource } from '@/lib/placeholders';
+import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
+import {
+  allPinRows, canCommitPinSource, commitPinSource, pinsTargeting, sameSource, updatePinAt,
+  type PinEditorWorld, type PinWriters,
+} from '@/lib/placeholderPins';
+import { isPinStop, openStopIndex, placeholderStops, type PinStop, type PlaceholderStop } from '@/lib/placeholderStops';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
-import type { Placeholder, PlaceholderValue } from '@/types';
+import type { Placeholder } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { OpenValueView, StepDirection } from './openValueContext';
 
-/** What a header says about an open value: its verbose name, and the mark for a value that is not an ordinary one. */
-function openValueNames(values: Placeholder['values'] | undefined, index: number, pinned = false): Pick<OpenValueView, 'label' | 'mark'> {
-  const label = index >= 0 ? `Value ${index + 1}` : '';
-  if (pinned) return { label, mark: 'Pinned' };
-  return values?.length ? { label } : { label, mark: 'No Values' };
-}
+/** The header's verbose name for a stop: its place among the values, or the source that pins it. */
+const stopLabel = (stop: PlaceholderStop): string =>
+  (isPinStop(stop) ? `Pinned by ${stop.row.label}` : `Value ${stop.index + 1}`);
 
-/** The value `direction` steps to from `index`, wrapping. Off the list, a step enters it at either end. */
+/** The stop `direction` steps to from `index`, wrapping. */
 const stepIndex = (index: number, direction: StepDirection, count: number): number =>
-  index < 0 ? (direction === 1 ? 0 : count - 1) : (index + direction + count) % count;
+  (index + direction + count) % count;
 
 /**
  * A chip editor for world text that can embed placeholders. Reuses the prompt chip editor with the
@@ -58,97 +61,96 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
 }) => {
   const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
   const rolls = useEditorPreviewRolls();
+  // The world's pins, which the chevrons step onto and a stepped-to stop may name. Without a world bound
+  // (a library item) the only pins are the ones this field's own placeholders' values carry.
+  const game = useGameDataOptional();
+  const pinRows = useMemo(
+    () => allPinRows({ traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders }),
+    [game?.traits, game?.locations, game?.stats, placeholders],
+  );
   // Re-read on every reroll: the store's identity carries its version.
-  const previewValues = useMemo(() => rolls.preview(value, placeholders), [rolls, value, placeholders]);
-  // An Object draws nothing, so the value its chip opens on is this field's own, by token.
-  const [objectIndexByToken, setObjectIndexByToken] = useState<Record<string, number>>({});
-  // A value edit goes through the same store a chip rename does. Writes made since the store last rendered
-  // build on each other, so two writes in one tick never drop the first.
+  const previewValues = useMemo(() => rolls.preview(value, placeholders, pinRows), [rolls, value, placeholders, pinRows]);
+  // A value edit goes through the same store a chip rename does, and a pin edit through the writer its source
+  // kind uses on the pin editors. Writes made since the world last rendered build on each other, so two in
+  // one tick never drop the first.
   const store = usePlaceholderStoreOptional();
-  const storeRef = useRef(store);
-  const unrendered = useRef(new Map<string, Placeholder>());
-  if (storeRef.current?.placeholders !== store?.placeholders) unrendered.current.clear();
-  storeRef.current = store;
-  const canWrite = !!store && !readOnly;
-  const editValue = useCallback((placeholderId: string, valueId: string, edit: (v: PlaceholderValue) => PlaceholderValue) => {
-    const bound = storeRef.current;
-    const ph = unrendered.current.get(placeholderId) ?? bound?.placeholders.find((p) => p.id === placeholderId);
-    if (!bound || !ph) return;
-    const next = { ...ph, values: ph.values.map((v) => (v.id === valueId ? edit(v) : v)) };
-    unrendered.current.set(placeholderId, next);
-    bound.updatePlaceholder(next);
+  const writers: PinWriters = useMemo(() => ({
+    updateTrait: game?.updateTrait,
+    updateLocation: game?.updateLocation,
+    updateStat: game?.updateStat,
+    updatePlaceholder: store?.updatePlaceholder,
+  }), [game?.updateTrait, game?.updateLocation, game?.updateStat, store?.updatePlaceholder]);
+  const written = useRef<{ base: readonly unknown[]; world: PinEditorWorld } | null>(null);
+  const baseWorld = useRef<PinEditorWorld>({ placeholders: [] });
+  baseWorld.current = { traits: game?.traits, locations: game?.locations, stats: game?.stats, placeholders: store?.placeholders ?? [] };
+  const base = [game?.traits, game?.locations, game?.stats, store?.placeholders];
+  if (written.current && written.current.base.some((b, i) => b !== base[i])) written.current = null;
+  const worldNow = useCallback(() => written.current?.world ?? baseWorld.current, []);
+  const commit = useCallback((next: PinEditorWorld, source: Parameters<typeof commitPinSource>[1], w: PinWriters) => {
+    const b = baseWorld.current;
+    written.current = { base: [b.traits, b.locations, b.stats, b.placeholders], world: next };
+    commitPinSource(next, source, w);
   }, []);
+  const writeValue = useCallback((placeholderId: string, valueId: string, text: string, w: PinWriters) => {
+    const world = worldNow();
+    const ph = world.placeholders.find((p) => p.id === placeholderId);
+    if (!ph) return;
+    const updated = { ...ph, values: ph.values.map((v) => (v.id === valueId ? { ...v, text } : v)) };
+    const next = { ...world, placeholders: world.placeholders.map((p) => (p.id === placeholderId ? updated : p)) };
+    commit(next, { kind: 'value', placeholderId, valueId }, w);
+  }, [worldNow, commit]);
+  // The pin is read again at its place on its source, so a second keystroke finds the text the first wrote.
+  const writePin = useCallback((targetId: string, stop: PinStop, text: string, w: PinWriters) => {
+    const world = worldNow();
+    const row = pinsTargeting(world, targetId).filter((r) => sameSource(r.source, stop.row.source))[stop.place];
+    if (!row) return;
+    const next = updatePinAt(world, row.source, row.pin, { ...row.pin, value: text });
+    if (next !== world) commit(next, row.source, w);
+  }, [worldNow, commit]);
   const openValues = useMemo(() => {
-    const writer = (placeholderId: string, valueId: string | undefined) =>
-      (canWrite && valueId
-        ? {
-          write: (text: string) => editValue(placeholderId, valueId, (v) => ({ ...v, text })),
-          valueKey: `${placeholderId}\n${valueId}`,
-        }
-        : {});
-    // An off-list pin's text belongs to the value that laid it, so an edit rewrites that pin entry and the
-    // pinned placeholder gains no value. Every chip reading the pin shares one key, so copies still mirror.
-    const pinWriter = (pinnedId: string, source: DrawPinSource | undefined) =>
-      (canWrite && source
-        ? {
-          write: (text: string) => editValue(source.placeholderId, source.valueId, (v) => ({
-            ...v,
-            pins: (v.pins ?? []).map((p) => (p.placeholderId === pinnedId ? { ...p, value: text } : p)),
-          })),
-          valueKey: `${source.placeholderId}\n${source.valueId}\npin:${pinnedId}`,
-        }
-        : {});
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
-    for (const [token, open] of Object.entries(rolls.open(value, placeholders))) {
+    for (const [token, open] of Object.entries(rolls.open(value, placeholders, pinRows))) {
       const ph = byId.get(open.placeholderId);
-      const values = ph?.values ?? [];
       const placement = decodePlaceholderToken(token);
-      // A pin decides the value, so a step would write a roll nothing reads.
-      if (!ph || !placement || values.length < 2 || open.pinned) {
-        const index = values.findIndex((v) => v.id === open.valueId);
-        out[token] = {
-          text: open.text,
-          ...openValueNames(values, index, open.pinned),
-          // A pin on no value of its own is edited where it was laid; every other value is edited in place.
-          ...(index >= 0 ? writer(open.placeholderId, values[index].id) : pinWriter(open.placeholderId, open.pinSource)),
-        };
-        continue;
-      }
-      if (!placeholderIsChoice(ph)) {
-        const index = (objectIndexByToken[token] ?? 0) % values.length;
-        out[token] = {
-          text: values[index].text,
-          ...openValueNames(values, index),
-          ...writer(ph.id, values[index].id),
-          pager: {
-            index,
-            count: values.length,
-            step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
-          },
-        };
-        continue;
-      }
-      // A World drill target rolls under its own id; a Unique one rolls under a chain key no placement names.
-      const rolled = placement.path?.length
-        ? placement.mode === 'world' && { ...placement, id: ph.id }
+      if (!ph || !placement) continue;
+      // A World drill target steps under its own id; a Unique one under a chain key no placement names.
+      const at = placement.path?.length
+        ? placement.mode === 'world' ? { ...placement, id: ph.id } : null
         : placement;
-      const index = open.valueId ? values.findIndex((v) => v.id === open.valueId) : -1;
+      const stops = placeholderStops(ph, pinRows);
+      const { index, drawPinned } = openStopIndex(stops, open, at ? rolls.chosenStop(at) : undefined);
+      const stop = stops[index];
+      if (!stop) {
+        out[token] = { text: open.text, label: '', mark: 'No Values' };
+        continue;
+      }
+      const pin = isPinStop(stop) ? stop : null;
+      const writable = !readOnly && (pin ? canCommitPinSource(pin.row.source, writers) : !!writers.updatePlaceholder);
       out[token] = {
-        text: open.text,
-        ...openValueNames(values, index),
-        ...writer(ph.id, values[index]?.id),
-        ...(rolled && {
+        text: stop.text,
+        label: stopLabel(stop),
+        ...(drawPinned && { mark: 'Pinned' as const }),
+        ...(writable && {
+          write: pin
+            ? (text: string) => writePin(ph.id, pin, text, writers)
+            : (text: string) => writeValue(ph.id, (stop as { valueId: string }).valueId, text, writers),
+          // Every copy open on one stop shares its key, so they mirror.
+          valueKey: `${ph.id}
+${stop.key}`,
+        }),
+        ...(at && stops.length > 1 && {
           pager: {
             index,
-            count: values.length,
-            step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
+            count: stops.length,
+            unit: pin ? 'Pin' as const : 'Value' as const,
+            step: (direction: StepDirection) => rolls.choose(at, stops[stepIndex(index, direction, stops.length)].key),
           },
         }),
       };
     }
     return out;
-  }, [rolls, value, placeholders, objectIndexByToken, canWrite, editValue]);
+  }, [rolls, value, placeholders, pinRows, readOnly, writers, writePin, writeValue]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],
