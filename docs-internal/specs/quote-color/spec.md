@@ -20,6 +20,7 @@ native input looks different on each OS and is poor on mobile.
 
 - **Quoted text has a color.** In narration, the player echo, and choice buttons, the text from an opening
   double quote through its closing double quote shows in the dialogue color. The marks take the color too.
+  A selected choice keeps its own foreground color.
 - **The color follows the theme.** Every theme defines a dialogue color for light and for dark. The
   feature is on by default.
 - **The player can pick a custom color.** One custom color per mode. The setting shows the field for the
@@ -50,7 +51,7 @@ native input looks different on each OS and is poor on mobile.
 17. As a player, I want straight and curly double quotes both recognized, so that the color works with any model's typography.
 18. As a player, I want apostrophes and single quotes left alone, so that contractions and possessives never color by mistake.
 19. As a player, I want streaming text inside an open quote colored as it arrives, so that the text never changes color when the closing mark lands.
-20. As a player, I want a quote the model forgot to close to color only to the end of its paragraph, so that one mistake never colors the rest of the turn.
+20. As a player, I want a quote the model forgot to close to color only to the end of its line, so that one mistake never colors the rest of the turn.
 21. As a player, I want bold and italic markdown inside a quote to keep working, so that emphasis in speech survives.
 22. As a player, I want a quote that contains bold or italic runs colored as one quote, so that emphasis does not break the color.
 23. As a player, I want code spans and code blocks left uncolored, so that code stays code.
@@ -103,13 +104,15 @@ native input looks different on each OS and is poor on mobile.
 
 **Markdown path**
 
-- A rehype plugin wraps quoted runs in a span with one class. It works per paragraph-level block, so an
-  unclosed quote ends with its block. A quote that crosses inline elements (bold, italic) stays colored
-  across them. Text inside code elements is skipped.
+- A rehype plugin wraps quoted runs in a span with one class. It works per line: an unclosed quote ends
+  at the next soft line break or at the end of its block, because models write line-separated sentences
+  and a dropped closing mark must not color a whole paragraph. A quote that crosses inline elements
+  (bold, italic) stays colored across them. Text inside code elements is skipped.
 - The plugin array must stay a module constant, because the streaming renderer memoizes on its identity.
   A renderer prop selects the array that includes the quote plugin. Narration and the player echo pass the
   prop. The reasoning block, the command preview, and every non-game pane do not.
-- The sanitize allowlist gains the span class.
+- The plugin runs after sanitize, the way the preview-tint plugin does, so the sanitize allowlist stays
+  unchanged.
 - Color and italic apply through CSS on the span class, gated by root attributes or variables the settings
   layer sets. With both switches off the spans carry no visible style.
 
@@ -117,6 +120,15 @@ native input looks different on each OS and is poor on mobile.
 
 - Choice buttons are not markdown. The existing manual bold split gains a quote pass that uses the same
   segmenter and the same span class.
+- A selected choice sits on the primary fill, where the dialogue token is not tuned for contrast. Its
+  quotes inherit the button's foreground color and stay plain. Unselected choices show the dialogue color.
+  Plain means color only: with the italic switch on, a selected choice's quotes stay italic.
+
+**Italic**
+
+- The quote span uses real `font-style: italic` and never the per-font skew transform. The skew rule
+  makes a run an inline-block, which stops a long quote from wrapping across lines. Narration quotes are
+  often full sentences, so they must flow.
 
 **Color picker**
 
@@ -144,7 +156,7 @@ It never asserts plugin internals or CSS variable names.
   outside quotes, an unclosed quote, empty quotes, adjacent quotes. Prior art: the preview-tint plugin's
   unit tests.
 - **Markdown renderer.** With the prop on: a quote across a bold run is one colored quote, code is skipped,
-  an unclosed quote stops at its paragraph. With the prop off: no spans. Prior art: the renderer's
+  an unclosed quote stops at its line. With the prop off: no spans. Prior art: the renderer's
   highlight test.
 - **GamePanels harness.** Real providers. Narration, the player echo, and choices carry spans. The
   reasoning block and command preview do not. Turning the color setting off removes the visible styling
