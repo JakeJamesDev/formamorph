@@ -149,7 +149,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
   const before = items.length ? items[0].start : 0;
   const after = items.length ? virtualizer.getTotalSize() - items[items.length - 1].end : 0;
   const lastIndex = turns.length - 1;
-  const { pinnedIndex, showJump, jumpToLatest, isProgrammaticScroll } = useChatPin({
+  const { pinnedIndex, showJump, newTextBelow, jumpToLatest, isProgrammaticScroll } = useChatPin({
     scroller, virtualizer, history: fullMessageHistory, gameKey, lastIndex,
   });
   // The barrier writes the same page state as the Pager: the latest turn follows (null), a past one pins.
@@ -241,7 +241,7 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor 
         >
           <ArrowDown className="h-4 w-4" aria-hidden />
           <span>Jump to Latest</span>
-          {streaming && <span className="text-muted-foreground">· New Text Below</span>}
+          {streaming && newTextBelow && <span className="text-muted-foreground">· New Text Below</span>}
         </button>
       )}
     </div>

@@ -22,11 +22,22 @@ export function jumpTarget({ turnTop, contentEnd, viewportHeight, maxScroll }: J
   return Math.max(0, Math.min(Math.max(turnTop, contentEnd - viewportHeight), maxScroll));
 }
 
+/** The viewport's top and bottom scroll offsets. */
+export interface ViewportSpan {
+  top: number;
+  bottom: number;
+}
+
 /**
- * Whether Jump to Latest shows: the latest turn is not mounted (`contentEnd` null), or its content ends
- * below or above the viewport.
+ * Where the latest turn's content ends relative to the viewport. A turn that is not mounted (`contentEnd`
+ * null) is below, because the latest turn is the last one in the list.
  */
-export function jumpVisible(contentEnd: number | null, viewport: { top: number; bottom: number }): boolean {
-  if (contentEnd === null) return true;
-  return contentEnd > viewport.bottom + EDGE_TOLERANCE_PX || contentEnd < viewport.top - EDGE_TOLERANCE_PX;
+export function latestPlacement(contentEnd: number | null, viewport: ViewportSpan): 'above' | 'inside' | 'below' {
+  if (contentEnd === null || contentEnd > viewport.bottom + EDGE_TOLERANCE_PX) return 'below';
+  return contentEnd < viewport.top - EDGE_TOLERANCE_PX ? 'above' : 'inside';
+}
+
+/** Whether Jump to Latest shows: the latest turn's content does not end inside the viewport. */
+export function jumpVisible(contentEnd: number | null, viewport: ViewportSpan): boolean {
+  return latestPlacement(contentEnd, viewport) !== 'inside';
 }

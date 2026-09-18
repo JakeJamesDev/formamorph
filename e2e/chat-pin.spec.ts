@@ -16,6 +16,9 @@ const LONG_REPLY = Array.from({ length: 14 }, () => PARAGRAPH.repeat(3)).join('\
 const SHORT_REPLY = 'The console blinks once.';
 const CHUNK_CHARS = 48;
 const CHUNK_GAP_MS = 25;
+// Frames a view must hold still to count as settled, and frames a pin gets to land.
+const STILL_FRAMES = 30;
+const PIN_FRAMES = 90;
 
 let server: Server;
 let endpoint = '';
@@ -51,6 +54,48 @@ test.afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())
 
 test.beforeEach(() => { reply = LONG_REPLY; });
 
+/** Start recording the scroll offset on every frame; `stop` ends it and returns the offsets. */
+async function recordFrames(page: Page, limit = Infinity) {
+  await page.evaluate((max) => {
+    const sc = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
+    const w = window as unknown as { __frames: number[]; __recording: boolean };
+    w.__frames = [];
+    w.__recording = true;
+    const tick = () => {
+      w.__frames.push(sc.scrollTop);
+      if (w.__recording && w.__frames.length < max) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, limit);
+  return {
+    filled: (count: number) => page.waitForFunction((n) => (window as unknown as { __frames: number[] }).__frames.length >= n, count),
+    stop: () => page.evaluate(() => {
+      const w = window as unknown as { __frames: number[]; __recording: boolean };
+      w.__recording = false;
+      return w.__frames;
+    }),
+  };
+}
+
+/** Frames in which the offset moved by a pixel or more. */
+const movingFrames = (frames: number[]) => frames.filter((v, i) => i > 0 && Math.abs(v - frames[i - 1]) >= 1).length;
+
+/**
+ * Offsets strictly between where the frames start and where they land: the path of a glide. A resize clamp
+ * (the action input shrinks on submit) moves away from the landing, so it is not one.
+ */
+const glideFrames = (frames: number[]) => {
+  const [from, to] = [frames[0], frames[frames.length - 1]];
+  return frames.filter((v) => v > Math.min(from, to) + 1 && v < Math.max(from, to) - 1).length;
+};
+
+/** The scroll offsets over the next `count` frames. */
+async function nextFrames(page: Page, count: number): Promise<number[]> {
+  const frames = await recordFrames(page, count);
+  await frames.filled(count);
+  return frames.stop();
+}
+
 async function openChat(page: Page) {
   page.on('pageerror', (error) => console.error(error.message));
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
@@ -62,16 +107,10 @@ async function openChat(page: Page) {
   }, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
   await page.locator('[data-chat-scroller] article').first().waitFor();
   // The list opens at the bottom over a few frames; start once it rests there.
-  await page.waitForFunction(() => new Promise<boolean>((resolve) => {
-    const sc = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
-    const offsets: number[] = [];
-    const tick = () => {
-      offsets.push(sc.scrollTop);
-      if (offsets.length < 10) { requestAnimationFrame(tick); return; }
-      resolve(new Set(offsets).size === 1 && Math.abs(sc.scrollTop + sc.clientHeight - sc.scrollHeight) < 2);
-    };
-    requestAnimationFrame(tick);
-  }));
+  await expect.poll(async () => {
+    const frames = await nextFrames(page, 10);
+    return movingFrames(frames) === 0 && (await geometry(page)).atBottom;
+  }).toBe(true);
 }
 
 /** The scroller's offset, and the latest turn's top and content end relative to the viewport top. */
@@ -92,6 +131,7 @@ const geometry = (page: Page) => page.evaluate(() => {
 
 const streaming = (page: Page) => page.getByRole('button', { name: /New Text Below/ });
 const jump = (page: Page) => page.getByRole('button', { name: /^Jump to Latest/ });
+const send = (page: Page) => page.getByRole('button', { name: 'Send' });
 
 async function submit(page: Page, action: string) {
   const input = page.getByPlaceholder(/Type your action/);
@@ -99,44 +139,28 @@ async function submit(page: Page, action: string) {
   await input.press('Enter');
 }
 
-/** Record the scroll offset on every frame until the reply finishes revealing. */
-async function sampleUntilDone(page: Page): Promise<number[]> {
-  await page.evaluate(() => {
-    const sc = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
-    const w = window as unknown as { __samples: number[]; __sampling: boolean };
-    w.__samples = [];
-    w.__sampling = true;
-    const tick = () => { w.__samples.push(sc.scrollTop); if (w.__sampling) requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
-  });
-  await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 60_000 });
-  return page.evaluate(() => {
-    const w = window as unknown as { __samples: number[]; __sampling: boolean };
-    w.__sampling = false;
-    return w.__samples;
-  });
+async function pinnedAtTop(page: Page) {
+  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(2);
+}
+
+/** Wheel up into history, far enough that the latest turn leaves the view. */
+async function scrollIntoHistory(page: Page) {
+  const box = (await page.locator('[data-chat-scroller]').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -400);
+  await expect(jump(page)).toBeVisible();
 }
 
 test('a submit pins its turn to the viewport top, and the view holds through a long stream', async ({ page }) => {
   await openChat(page);
-  const before = await geometry(page);
-  expect(before.atBottom).toBe(true);
 
   // Frames from the submit: the smooth pin moves over more than one of them.
-  await page.evaluate(() => {
-    const sc = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
-    const w = window as unknown as { __pin: number[] };
-    w.__pin = [];
-    const tick = () => { w.__pin.push(sc.scrollTop); if (w.__pin.length < 90) requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
-  });
+  const pinFrames = await recordFrames(page, PIN_FRAMES);
   await submit(page, 'I step through the seam.');
   await expect.poll(async () => (await geometry(page)).latestLabel).toBe('Turn 9');
-  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(1);
-  await page.waitForFunction(() => (window as unknown as { __pin: number[] }).__pin.length >= 90);
-  const pin = await page.evaluate(() => (window as unknown as { __pin: number[] }).__pin);
-  const moving = pin.filter((v, i) => i > 0 && Math.abs(v - pin[i - 1]) >= 1).length;
-  expect(moving).toBeGreaterThan(1);
+  await pinnedAtTop(page);
+  await pinFrames.filled(PIN_FRAMES);
+  expect(movingFrames(await pinFrames.stop())).toBeGreaterThan(1);
 
   // The action bubble sits at the top of the viewport, inside the turn's padding.
   const action = await page.locator('[data-chat-scroller] article').last().getByText('I step through the seam.').boundingBox();
@@ -146,12 +170,32 @@ test('a submit pins its turn to the viewport top, and the view holds through a l
 
   // From the pin to the end of the stream the offset never moves, while the reply grows past the fold.
   const pinned = (await geometry(page)).scrollTop;
-  const samples = await sampleUntilDone(page);
+  const stream = await recordFrames(page);
+  await expect(send(page)).toBeEnabled({ timeout: 60_000 });
+  const samples = await stream.stop();
   expect(samples.length).toBeGreaterThan(10);
   expect(Math.max(...samples.map((s) => Math.abs(s - pinned)))).toBeLessThan(1);
   const done = await geometry(page);
   expect(done.latestTop).toBeCloseTo(0, 0);
   expect(done.latestEnd).toBeGreaterThan(done.viewportHeight);
+});
+
+test('Re-generate pins the new reply to the viewport top', async ({ page }) => {
+  reply = SHORT_REPLY;
+  await openChat(page);
+  await submit(page, 'I tap the console.');
+  await expect(send(page)).toBeEnabled({ timeout: 30_000 });
+  await pinnedAtTop(page);
+  // Scroll up a little, so the pin has to move the view while the latest bubble's row stays in reach.
+  const box = (await page.locator('[data-chat-scroller]').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -150);
+  await expect.poll(async () => (await geometry(page)).latestTop).toBeGreaterThan(100);
+
+  await page.locator('[data-chat-scroller] article').last().getByRole('button', { name: 'Re-generate Narration' }).click();
+  await expect(send(page)).toBeEnabled({ timeout: 30_000 });
+  await pinnedAtTop(page);
+  expect((await geometry(page)).latestLabel).toBe('Turn 9');
 });
 
 test('Jump to Latest shows while the reply runs past the fold, lands on its end, and hides', async ({ page }) => {
@@ -160,7 +204,7 @@ test('Jump to Latest shows while the reply runs past the fold, lands on its end,
   await submit(page, 'I step through the seam.');
   // The reply grows below the fold while it streams, and the button says so.
   await expect(streaming(page)).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 60_000 });
+  await expect(send(page)).toBeEnabled({ timeout: 60_000 });
   await expect(jump(page)).toHaveText('Jump to Latest');
 
   await jump(page).click();
@@ -172,43 +216,43 @@ test('Jump to Latest shows while the reply runs past the fold, lands on its end,
   await expect(jump(page)).toBeHidden();
 });
 
-test('under reduced motion the pin lands in one frame', async ({ page }) => {
+test('under reduced motion the pin and Jump to Latest land without a glide', async ({ page }) => {
   reply = SHORT_REPLY;
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openChat(page);
-  await page.evaluate(() => {
-    const sc = document.querySelector<HTMLElement>('[data-chat-scroller]')!;
-    const w = window as unknown as { __pin: number[] };
-    w.__pin = [];
-    const tick = () => { w.__pin.push(sc.scrollTop); if (w.__pin.length < 60) requestAnimationFrame(tick); };
-    requestAnimationFrame(tick);
-  });
+  const pinFrames = await recordFrames(page, PIN_FRAMES);
   await submit(page, 'I tap the console.');
-  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(1);
-  await page.waitForFunction(() => (window as unknown as { __pin: number[] }).__pin.length >= 60);
-  const pin = await page.evaluate(() => (window as unknown as { __pin: number[] }).__pin);
-  expect(pin.filter((v, i) => i > 0 && Math.abs(v - pin[i - 1]) >= 1).length).toBe(1);
+  await pinnedAtTop(page);
+  await pinFrames.filled(PIN_FRAMES);
+  expect(glideFrames(await pinFrames.stop())).toBe(0);
+
+  await expect(send(page)).toBeEnabled({ timeout: 30_000 });
+  // Up past the short turn's end but not so far that it unmounts, so the jump is one direct scroll.
+  const box = (await page.locator('[data-chat-scroller]').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -700);
+  await expect(jump(page)).toBeVisible();
+  const jumpFrames = await recordFrames(page, PIN_FRAMES);
+  await jump(page).click();
+  await pinnedAtTop(page);
+  await jumpFrames.filled(PIN_FRAMES);
+  expect(glideFrames(await jumpFrames.stop())).toBe(0);
 });
 
 test('a player scroll during Jump to Latest keeps the view where the player left it', async ({ page }) => {
   await openChat(page);
   await submit(page, 'I step through the seam.');
-  await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 60_000 });
-  const box = (await page.locator('[data-chat-scroller]').boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -400);
-  await expect(jump(page)).toBeVisible();
+  await expect(send(page)).toBeEnabled({ timeout: 60_000 });
+  await scrollIntoHistory(page);
 
   // The smooth jump is under way when the player wheels back up.
   const start = (await geometry(page)).scrollTop;
   await jump(page).click();
   await expect.poll(async () => (await geometry(page)).scrollTop).toBeGreaterThan(start + 1);
   await page.mouse.wheel(0, -300);
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  const left = (await geometry(page)).scrollTop;
+  await nextFrames(page, 2);
   // No re-aim pulls the view back down after the player took over.
-  await page.waitForTimeout(1000);
-  expect(Math.abs((await geometry(page)).scrollTop - left)).toBeLessThan(1);
+  expect(movingFrames(await nextFrames(page, STILL_FRAMES * 2))).toBe(0);
   await expect(jump(page)).toBeVisible();
 });
 
@@ -216,8 +260,8 @@ test('a short reply keeps its action at the top and shows no Jump to Latest', as
   reply = SHORT_REPLY;
   await openChat(page);
   await submit(page, 'I tap the console.');
-  await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 30_000 });
-  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(1);
+  await expect(send(page)).toBeEnabled({ timeout: 30_000 });
+  await pinnedAtTop(page);
   await expect(jump(page)).toBeHidden();
 });
 
@@ -225,19 +269,14 @@ test('after a player scroll into history, Jump to Latest returns to a short turn
   reply = SHORT_REPLY;
   await openChat(page);
   await submit(page, 'I tap the console.');
-  await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({ timeout: 30_000 });
-  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(1);
+  await expect(send(page)).toBeEnabled({ timeout: 30_000 });
+  await pinnedAtTop(page);
 
-  const box = (await page.locator('[data-chat-scroller]').boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  for (let i = 0; i < 12; i++) await page.mouse.wheel(0, -400);
-  await expect(jump(page)).toBeVisible();
+  await scrollIntoHistory(page);
   // The view stays where the player left it.
-  const scrolled = (await geometry(page)).scrollTop;
-  await page.waitForTimeout(300);
-  expect((await geometry(page)).scrollTop).toBe(scrolled);
+  expect(movingFrames(await nextFrames(page, STILL_FRAMES))).toBe(0);
 
   await jump(page).click();
-  await expect.poll(async () => Math.abs((await geometry(page)).latestTop), { timeout: 10_000 }).toBeLessThan(2);
+  await pinnedAtTop(page);
   await expect(jump(page)).toBeHidden();
 });

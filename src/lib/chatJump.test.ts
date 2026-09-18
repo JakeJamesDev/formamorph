@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jumpTarget, jumpVisible } from './chatJump';
+import { jumpTarget, jumpVisible, latestPlacement } from './chatJump';
 
 // A 600px viewport over 5000px of content: the largest scroll offset is 4400.
 const viewportHeight = 600;
@@ -44,5 +44,25 @@ describe('jumpVisible', () => {
 
   it('hides when the latest content ends on the viewport bottom, within a rounding pixel', () => {
     expect(jumpVisible(3600.5, viewport)).toBe(false);
+  });
+});
+
+describe('latestPlacement', () => {
+  const viewport = { top: 3000, bottom: 3600 };
+
+  it('places an unmounted latest turn below: it is the last turn of the list', () => {
+    expect(latestPlacement(null, viewport)).toBe('below');
+  });
+
+  it('places content that ends past the viewport bottom below', () => {
+    expect(latestPlacement(3700, viewport)).toBe('below');
+  });
+
+  it('places content that ends before the viewport top above', () => {
+    expect(latestPlacement(2900, viewport)).toBe('above');
+  });
+
+  it('places content that ends in the viewport inside', () => {
+    expect(latestPlacement(3300, viewport)).toBe('inside');
   });
 });

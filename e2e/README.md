@@ -81,6 +81,13 @@ native `title` these replaced never showed there either.
 > neighbor hands over instantly whatever that value is. What makes them one group is the shared provider,
 > so removing it is the mutation that turns this guard red.
 
+[chat-pin.spec.ts](e2e/chat-pin.spec.ts) — the Chat layout's scroll: a submit or Re-generate pins the turn to
+the viewport top, the view holds still through a long stream, and Jump to Latest shows, lands, and hides. A
+local server streams the reply in timed chunks, because `page.route` answers in one piece.
+
+> **Frames, not seconds.** Motion and stillness are counts of frames in which the offset moved. Each guard
+> was verified by putting its bug back and watching the test go red.
+
 [library-drag-parity.spec.ts](e2e/library-drag-parity.spec.ts) — the library board's drag, as twelve executable
 rules. It is a **parity** suite: every rule was measured against the library as it stood before the tile board
 landed, and the file is written against app-level observables only (thumbnail order by `alt`, bounding boxes,
