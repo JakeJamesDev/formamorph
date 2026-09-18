@@ -23,6 +23,10 @@ export interface PromptVariantAxis {
   toggle?: boolean;
   /** Help shown beside a toggle axis's checkbox. */
   help?: string;
+  /** Show the stored choice and take no input. For an axis whose options exist but cannot differ here. */
+  readOnly?: boolean;
+  /** One line under a read-only axis: why it takes no input, and what unlocks it. */
+  readOnlyHelp?: string;
   /** Lay the options out this many per row instead of all on one. For axes with enough options that a
    *  single row squeezes the labels unreadably. */
   columns?: number;

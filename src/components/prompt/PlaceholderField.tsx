@@ -2,17 +2,18 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
-import { decodePlaceholderToken, directChipTargets, placeholderIsChoice } from '@/lib/placeholders';
+import { decodePlaceholderToken, directChipTargets, placeholderIsChoice, type DrawPinSource } from '@/lib/placeholders';
 import { useEditorPreviewRolls } from '@/contexts/EditorPreviewRollsContext';
 import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext';
-import type { Placeholder } from '@/types';
+import type { Placeholder, PlaceholderValue } from '@/types';
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import type { OpenValueView, StepDirection } from './openValueContext';
 
-/** The header's name for an open value: its place in the list, or what it is when it is on no list. */
-function openValueLabel(values: Placeholder['values'] | undefined, index: number, pinned = false): string {
-  if (index >= 0) return pinned ? `Value ${index + 1} · Pinned` : `Value ${index + 1} · ${index + 1}/${values?.length ?? 0}`;
-  return values?.length ? 'Pinned' : 'No Values';
+/** What a header says about an open value: its verbose name, and the mark for a value that is not an ordinary one. */
+function openValueNames(values: Placeholder['values'] | undefined, index: number, pinned = false): Pick<OpenValueView, 'label' | 'mark'> {
+  const label = index >= 0 ? `Value ${index + 1}` : '';
+  if (pinned) return { label, mark: 'Pinned' };
+  return values?.length ? { label } : { label, mark: 'No Values' };
 }
 
 /** The value `direction` steps to from `index`, wrapping. Off the list, a step enters it at either end. */
@@ -69,18 +70,33 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   if (storeRef.current?.placeholders !== store?.placeholders) unrendered.current.clear();
   storeRef.current = store;
   const canWrite = !!store && !readOnly;
-  const writeValue = useCallback((placeholderId: string, valueId: string, text: string) => {
+  const editValue = useCallback((placeholderId: string, valueId: string, edit: (v: PlaceholderValue) => PlaceholderValue) => {
     const bound = storeRef.current;
     const ph = unrendered.current.get(placeholderId) ?? bound?.placeholders.find((p) => p.id === placeholderId);
     if (!bound || !ph) return;
-    const next = { ...ph, values: ph.values.map((v) => (v.id === valueId ? { ...v, text } : v)) };
+    const next = { ...ph, values: ph.values.map((v) => (v.id === valueId ? edit(v) : v)) };
     unrendered.current.set(placeholderId, next);
     bound.updatePlaceholder(next);
   }, []);
   const openValues = useMemo(() => {
     const writer = (placeholderId: string, valueId: string | undefined) =>
       (canWrite && valueId
-        ? { write: (text: string) => writeValue(placeholderId, valueId, text), valueKey: `${placeholderId}\n${valueId}` }
+        ? {
+          write: (text: string) => editValue(placeholderId, valueId, (v) => ({ ...v, text })),
+          valueKey: `${placeholderId}\n${valueId}`,
+        }
+        : {});
+    // An off-list pin's text belongs to the value that laid it, so an edit rewrites that pin entry and the
+    // pinned placeholder gains no value. Every chip reading the pin shares one key, so copies still mirror.
+    const pinWriter = (pinnedId: string, source: DrawPinSource | undefined) =>
+      (canWrite && source
+        ? {
+          write: (text: string) => editValue(source.placeholderId, source.valueId, (v) => ({
+            ...v,
+            pins: (v.pins ?? []).map((p) => (p.placeholderId === pinnedId ? { ...p, value: text } : p)),
+          })),
+          valueKey: `${source.placeholderId}\n${source.valueId}\npin:${pinnedId}`,
+        }
         : {});
     const byId = new Map(placeholders.map((p) => [p.id, p]));
     const out: Record<string, OpenValueView> = {};
@@ -93,8 +109,9 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
         const index = values.findIndex((v) => v.id === open.valueId);
         out[token] = {
           text: open.text,
-          label: openValueLabel(values, index, open.pinned),
-          ...writer(open.placeholderId, values[index]?.id),
+          ...openValueNames(values, index, open.pinned),
+          // A pin on no value of its own is edited where it was laid; every other value is edited in place.
+          ...(index >= 0 ? writer(open.placeholderId, values[index].id) : pinWriter(open.placeholderId, open.pinSource)),
         };
         continue;
       }
@@ -102,9 +119,13 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
         const index = (objectIndexByToken[token] ?? 0) % values.length;
         out[token] = {
           text: values[index].text,
-          label: openValueLabel(values, index),
+          ...openValueNames(values, index),
           ...writer(ph.id, values[index].id),
-          step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
+          pager: {
+            index,
+            count: values.length,
+            step: (direction) => setObjectIndexByToken((prev) => ({ ...prev, [token]: stepIndex(index, direction, values.length) })),
+          },
         };
         continue;
       }
@@ -115,15 +136,19 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       const index = open.valueId ? values.findIndex((v) => v.id === open.valueId) : -1;
       out[token] = {
         text: open.text,
-        label: openValueLabel(values, index),
+        ...openValueNames(values, index),
         ...writer(ph.id, values[index]?.id),
         ...(rolled && {
-          step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
+          pager: {
+            index,
+            count: values.length,
+            step: (direction: StepDirection) => rolls.setRoll(rolled, values[stepIndex(index, direction, values.length)].id),
+          },
         }),
       };
     }
     return out;
-  }, [rolls, value, placeholders, objectIndexByToken, canWrite, writeValue]);
+  }, [rolls, value, placeholders, objectIndexByToken, canWrite, editValue]);
   const reroll = useCallback(
     () => rolls.reroll(directChipTargets([value]), placeholders),
     [rolls, value, placeholders],

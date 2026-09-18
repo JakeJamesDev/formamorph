@@ -44,7 +44,11 @@ import { VariableNode, ValueBoxNode, $createVariableNode, PromptDragContext } fr
 import { OpenValuesPlugin } from './OpenValuesPlugin';
 import { ValueEdgesPlugin } from './ValueEdgesPlugin';
 import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
-import { EditValueContext, OpenValuesContext, type EditValueRelay, type OpenValueView } from './openValueContext';
+import { ActiveValuePlugin } from './ActiveValuePlugin';
+import {
+  ActiveValueContext, EditValueContext, OpenValuesContext,
+  type ActiveValueRelay, type EditValueRelay, type OpenValueView,
+} from './openValueContext';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
@@ -629,6 +633,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   }), [valuesEnabled, valuesOpen, readOnly, askedChip, settleEditValue]);
   useEffect(() => { if (!valuesOpen) setAskedChip(null); }, [valuesOpen]);
 
+  // Which open value shows its active header: the one whose header was pressed last, until a caret decides
+  // for itself. Held here so one field never shows two.
+  const [pressedValue, setPressedValue] = useState<NodeKey | null>(null);
+  const clearPressedValue = useCallback(() => setPressedValue(null), []);
+  const activeValue = useMemo<ActiveValueRelay>(
+    () => ({ pressed: pressedValue, press: setPressedValue, clear: clearPressedValue }),
+    [pressedValue, clearPressedValue],
+  );
+  useEffect(() => { if (!valuesOpen) setPressedValue(null); }, [valuesOpen]);
+
   // Layout: the field measures itself rather than asking the device, so a shrunken desktop window falls
   // back to tabs and mobile never reaches the split threshold — no breakpoint to keep in sync.
   const [measureRef, containerWidth] = useContainerWidth();
@@ -994,6 +1008,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
       <ChipVocabularyContext.Provider value={vocab}>
       <OpenValuesContext.Provider value={openValues ?? NO_OPEN_VALUES}>
       <EditValueContext.Provider value={editValue}>
+      <ActiveValueContext.Provider value={activeValue}>
       <PromptDragContext.Provider value={dragKey}>
         {/* A real (nested) dialog rather than a hand-rolled overlay: most of these fields live inside the
             Settings dialog, and Radix parks `pointer-events: none` on the body while one is open — a
@@ -1020,9 +1035,10 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <SeededHistoryPlugin />
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
-        <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} />
+        <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} pressed={pressedValue} />
         <ValueEdgesPlugin active={valuesOpen} />
         {valuesOpen && <OpenValueLayoutPlugin />}
+        {valuesOpen && <ActiveValuePlugin relay={activeValue} />}
         <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
         <CaretFollowPlugin onCaret={followCaret} />
         {insertTrigger && !readOnly && (
@@ -1032,6 +1048,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           </>
         )}
       </PromptDragContext.Provider>
+      </ActiveValueContext.Provider>
       </EditValueContext.Provider>
       </OpenValuesContext.Provider>
       </ChipVocabularyContext.Provider>

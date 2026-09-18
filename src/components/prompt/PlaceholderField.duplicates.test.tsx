@@ -32,6 +32,8 @@ const lord: Placeholder = {
 
 const openValues = () => Array.from(document.querySelectorAll<HTMLElement>('[data-open-value]'));
 const valueText = (el: HTMLElement) => el.querySelector('[data-open-value-text]')?.textContent ?? '';
+/** The verbose label an open value's header carries — shown on the active header, kept for a tip otherwise. */
+const valueLabel = (el: HTMLElement) => el.querySelector('[data-open-value-label]')?.textContent ?? '';
 const slotEditable = (el: HTMLElement) => el.querySelector<HTMLElement>('[data-lexical-slot]')?.contentEditable;
 const stored = () => screen.getByTestId('stored').textContent;
 
@@ -108,7 +110,7 @@ describe('two World placements of one placeholder', () => {
     expect(editable).not.toHaveAttribute('data-read-only');
     expect(slotEditable(mirror)).toBe('false');
     expect(mirror).toHaveAttribute('data-read-only');
-    expect(within(mirror).getByText(/Value 1/)).toBeInTheDocument();
+    expect(valueLabel(mirror)).toMatch(/Value 1/);
   });
 
   it('update the mirror live as the editable copy is typed in', async () => {
@@ -213,20 +215,26 @@ describe('read-only values', () => {
     expect(slotEditable(openValues()[0])).toBe('false');
   });
 
-  it('a pin typed off the list opens read-only, and writes nothing', async () => {
+  it('a pin typed off the list opens editable and writes the pin, not a value', async () => {
     render(<Field text={`${world('lord', 'p1')} of ${world('town', 'p2')}.`} world={[town, lord]} />);
     await openValuesTab();
     const [lordValue, pinned] = openValues();
     expect(slotEditable(lordValue)).toBe('true');
     expect(valueText(pinned)).toBe('Anywhere');
     expect(within(pinned).getByText(/Pinned/)).toBeInTheDocument();
-    expect(slotEditable(pinned)).toBe('false');
-    expect(pinned).toHaveAttribute('data-read-only');
+    expect(slotEditable(pinned)).toBe('true');
+    expect(pinned).not.toHaveAttribute('data-read-only');
 
     await act(async () => {
       editor().update(() => { $valueTextNode(1).setTextContent('Somewhere'); }, { discrete: true });
     });
-    expect(updates).not.toHaveBeenCalled();
-    expect(valueText(openValues()[1])).toBe('Anywhere');
+    // The pin's own text moves on the value that laid it; Town keeps the two values it had.
+    expect(updates).toHaveBeenCalledTimes(1);
+    expect(updates.mock.calls[0][0]).toEqual({
+      ...lord,
+      values: [{ id: 'v:Ash', text: 'Ash', pins: [{ placeholderId: 'town', value: 'Somewhere' }] }, { id: 'v:Bram', text: 'Bram' }],
+    });
+    expect(stored()).toBe('Sedge Landing|Marrow');
+    expect(valueText(openValues()[1])).toBe('Somewhere');
   });
 });

@@ -267,26 +267,31 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                           <ToggleGroupItem
                             key={opt.id ?? FULL}
                             value={opt.id ?? FULL}
-                            disabled={!editable}
+                            disabled={!editable || axis.readOnly}
                             className="text-meta px-1.5"
                             style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
                           >{opt.label}</ToggleGroupItem>
                         ))}
                       </ToggleGroup>
-                      {/* Help lines stacked in one cell so the pop-out doesn't reflow when switching modes. */}
-                      <div className="grid">
-                        {axis.options.map((opt) => (
-                          <p
-                            key={opt.id ?? FULL}
-                            className={cn(
-                              'col-start-1 row-start-1 text-[11px] text-muted-foreground',
-                              (opt.id ?? FULL) !== active && 'invisible',
-                            )}
-                          >
-                            {opt.help}
-                          </p>
-                        ))}
-                      </div>
+                      {/* A shut axis says why instead: the mode help describes a choice this chip cannot make. */}
+                      {axis.readOnly ? (
+                        <p className="text-[11px] text-muted-foreground">{axis.readOnlyHelp}</p>
+                      ) : (
+                        // Help lines stacked in one cell so the pop-out doesn't reflow when switching modes.
+                        <div className="grid">
+                          {axis.options.map((opt) => (
+                            <p
+                              key={opt.id ?? FULL}
+                              className={cn(
+                                'col-start-1 row-start-1 text-[11px] text-muted-foreground',
+                                (opt.id ?? FULL) !== active && 'invisible',
+                              )}
+                            >
+                              {opt.help}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
