@@ -273,8 +273,10 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                           >{opt.label}</ToggleGroupItem>
                         ))}
                       </ToggleGroup>
-                      {/* A shut axis says why instead: the mode help describes a choice this chip cannot make. */}
-                      {axis.readOnly ? (
+                      {/* A shut axis says why instead: the mode help describes a choice this chip cannot make.
+                          Not in a read-only field, where nothing is on offer and the line would name an
+                          unlock the field itself is holding shut. */}
+                      {axis.readOnly && editable ? (
                         <p className="text-[11px] text-muted-foreground">{axis.readOnlyHelp}</p>
                       ) : (
                         // Help lines stacked in one cell so the pop-out doesn't reflow when switching modes.

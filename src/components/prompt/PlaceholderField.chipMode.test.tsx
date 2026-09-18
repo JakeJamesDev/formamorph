@@ -30,7 +30,7 @@ const WORLD = [town, hair, kit];
 
 const changes = vi.fn<(v: string) => void>();
 
-function Field({ text }: { text: string }) {
+function Field({ text, readOnly }: { text: string; readOnly?: boolean }) {
   const [placeholders, setPlaceholders] = useState(WORLD);
   const [value, setValue] = useState(text);
   return (
@@ -40,6 +40,7 @@ function Field({ text }: { text: string }) {
           value={value}
           onChange={(v) => { changes(v); setValue(v); }}
           placeholders={placeholders}
+          readOnly={readOnly}
         />
       </EditorPreviewRollsProvider>
     </PlaceholderStoreProvider>
@@ -86,6 +87,17 @@ describe('the mode control on a chip that can only be World', () => {
     expect(selected('World')).toBe(false);
     expect(modeItem('Unique')).toBeDisabled();
     expect(changes).not.toHaveBeenCalled();
+  });
+});
+
+describe('the mode control in a read-only field', () => {
+  it('looks as every other disabled control there, with no line promising an unlock', async () => {
+    render(<Field text={`She has ${world('hair', 'h1')} hair.`} readOnly />);
+    await openFlyout('Hair');
+    expect(selected('World')).toBe(true);
+    expect(modeItem('World')).toBeDisabled();
+    // Nothing unlocks while the field itself is shut, so the line that says what would is left off.
+    expect(screen.queryByText(/Unlocks once the placeholder can roll/)).toBeNull();
   });
 });
 

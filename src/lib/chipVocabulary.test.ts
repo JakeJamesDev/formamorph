@@ -80,6 +80,10 @@ describe('placeholderVocabulary', () => {
       { ...P('board', [tok('menu', 'world'), 'Bread']), roll: false },
       { ...P('sign', [`Tonight: ${tok('board', 'world')}`, `Today: ${tok('tavern', 'world')}`]), roll: false },
     ]);
+    // The axis follows the placeholder: a second value makes the roll differ per placement, so it opens.
+    const grown = placeholderVocabulary([P('king', ['Aldric', 'Bram'])]);
+    expect(grown.axes(tok('king', 'world')).map((a) => !!a.readOnly)).toEqual([false]);
+
     const nestedShut = (t: string) => nested.axes(t).map((a) => !!a.readOnly);
     expect(nestedShut(tok('tavern', 'world'))).toEqual([false]); // template of two wildcards
     expect(nestedShut(tok('menu', 'world'))).toEqual([true]); // two plain values, Object
