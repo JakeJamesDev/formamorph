@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '@/components/theme-provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,6 +55,7 @@ type ReferenceDefinition = {
 type ThemeMode = (typeof SETTINGS_OPTIONS.theme)[number]['value'];
 
 const LONG_ENDPOINT = 'Silver Siren local endpoint — 131,072-token creative-writing profile';
+const REFERENCE_COLOR = '#d4a24c';
 const MARKDOWN_VOCABULARY = plainVocabulary();
 const MARKDOWN_EXAMPLE = `# The Night Glass
 
@@ -253,6 +255,7 @@ function StateReference() {
   const invalidContext = Number(contextWindow) > 65536;
   const [modelName, setModelName] = useState('Silver Siren 12B');
   const [paragraphLimit, setParagraphLimit] = useState<ParagraphLimit>('auto');
+  const [dialogueColor, setDialogueColor] = useState(REFERENCE_COLOR);
 
   return (
     <Card role="region" aria-labelledby="control-states-title">
@@ -271,6 +274,15 @@ function StateReference() {
               value={paragraphLimit}
               onChange={setParagraphLimit}
               options={SETTINGS_OPTIONS.paragraphLimit}
+            />
+          </Row>
+          <Row label="Color" htmlFor="reference-color" hint="The hex field accepts 6-digit values only.">
+            <ColorPicker
+              id="reference-color"
+              value={dialogueColor}
+              onChange={setDialogueColor}
+              onReset={() => setDialogueColor(REFERENCE_COLOR)}
+              resetLabel="Reset to Theme"
             />
           </Row>
           <Row label="Keyboard Focus" hint="The selected theme controls the focus ring color.">
