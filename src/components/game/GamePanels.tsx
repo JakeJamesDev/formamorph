@@ -771,8 +771,9 @@ export const MiddlePanel = ({
                   {message.role === 'user' ? (
                     // Markdown like the narration it sits among — `remarkBreaks` keeps the typed line breaks
                     // the plain-text render used to hold. Never animated: the player's own text is committed
-                    // the moment it appears.
-                    <MarkdownRenderer text={message.content} />
+                    // the moment it appears. `dialogue` so a line the player wrote in quotes matches the
+                    // characters' lines around it.
+                    <MarkdownRenderer text={message.content} dialogue />
                   ) : (
                     <div ref={narrationRef} data-testid="narration" style={revealStyle}>
                       {/* The turn's reasoning aside, above the narration: live for the streaming latest turn
@@ -799,6 +800,7 @@ export const MiddlePanel = ({
                             animate={showLiveReveal && revealOn}
                             animation={revealAnim}
                             easing={revealEasing}
+                            dialogue
                           />
                         );
                       })()}

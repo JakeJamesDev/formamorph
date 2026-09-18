@@ -847,7 +847,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     narrationScale,
     setNarrationScale,
     narrationLineHeight,
-    setNarrationLineHeight
+    setNarrationLineHeight,
+    quoteColor,
+    setQuoteColor
   } = useSettings();
   const sharedEndpointActive = activeTextEndpointPresetIsBuiltIn && !localModelActive;
   const { theme, setTheme } = useTheme();
@@ -1687,6 +1689,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   </span>
                 </div>
               </Row>
+              <CheckRow
+                htmlFor="quoteColor"
+                checked={quoteColor}
+                onChange={setQuoteColor}
+                {...rowCopy('quoteColor')}
+              />
               <Row>
                 <div>
                   <ConfirmDialog
