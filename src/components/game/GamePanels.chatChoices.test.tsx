@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { renderMiddlePanel, stubChatLayout, type Settings, type TurnFixture } from '@/test/gamePanels';
 import { CONTINUE_CHOICE } from '@/lib/choices';
 
@@ -67,6 +67,34 @@ describe('Chat choices', () => {
     const turns = await screen.findAllByRole('article');
     fireEvent.click(within(turns[2]).getByRole('button', { name: 'Re-generate Choices' }));
     expect(view.props.handleRegenerateChoices).toHaveBeenCalledTimes(1);
+  });
+
+  it('appends a choice on a touch long press and opens no menu', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat });
+    const leave = await screen.findByRole('button', { name: 'Leave' });
+    fireEvent.click(screen.getByRole('button', { name: 'Wait' }));
+    vi.useFakeTimers();
+    try {
+      // jsdom has no PointerEvent, so a MouseEvent carries the pointer type.
+      const down = new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 10, clientY: 10 });
+      Object.defineProperty(down, 'pointerType', { value: 'touch' });
+      fireEvent(leave, down);
+      // Past both the append press and the menu's own long press.
+      act(() => vi.advanceTimersByTime(1000));
+      // Android follows a long press with a contextmenu event.
+      fireEvent.contextMenu(leave);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(input().value).toBe('Wait. Leave');
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('opens no choices menu while a reply streams', async () => {
+    renderMiddlePanel({}, { turns: TURNS, settings: chat, seed: (g) => g.setIsWaitingForAI(true) });
+    const turns = await screen.findAllByRole('article');
+    fireEvent.contextMenu(within(turns[2]).getByTestId('chat-choices'));
+    expect(screen.queryByRole('menu')).toBeNull();
   });
 
   it('has no re-generate icon with the choices request off', async () => {
