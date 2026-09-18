@@ -27,6 +27,10 @@ const PLACEHOLDERS = [
   { id: 'ph-two', name: 'Two', values: values('ph-two', ['Al', 'Bo']) },
   // A second placeholder, so the pair are two values rather than one value and its mirror.
   { id: 'ph-duo', name: 'Duo', values: values('ph-duo', ['Cy', 'Di']) },
+  { id: 'ph-long', name: 'Long', values: values('ph-long', [
+    'she walked for three days along the river and slept under the bridge each night until the rain stopped',
+    'he rode for four nights along the coast and camped in the dunes each dawn until the wind turned north',
+  ]) },
 ];
 
 const ENTITIES: Record<string, string> = {
@@ -37,6 +41,10 @@ const ENTITIES: Record<string, string> = {
   // Enough text to scroll a short field, with the value late in it.
   Scroll: `${'Filler text that goes on and on. '.repeat(20)}Then ${chip('ph-two', 'w1')} arrived.`,
   Pair: `First ${chip('ph-two', 'a1')} then ${chip('ph-duo', 'b1')}.`,
+  // Two World chips of one placeholder: the second is a mirror, which takes no caret of its own.
+  Mirror: `First ${chip('ph-two', 'm1')} then ${chip('ph-two', 'm2')} at the end of a fairly long sentence.`,
+  // One long value, so a narrow editor makes it wrap and the outline traces more than one line.
+  Wrap: `${chip('ph-long', 'w1')}.`,
 };
 
 const WORLD = {
@@ -91,6 +99,9 @@ interface HeaderReading {
   stroke: string;
   strokeWidth: string;
   fill: string;
+  active: boolean;
+  pieces: number;
+  lines: number;
   text: string;
 }
 
@@ -114,6 +125,18 @@ function reading(root: Locator, nth = 0): Promise<HeaderReading> {
       stroke: style.stroke,
       strokeWidth: style.strokeWidth,
       fill: style.fill,
+      active: chipEl.hasAttribute('data-active'),
+      // One `M` per piece of the traced shape: a wrap that joins stays one.
+      pieces: (path.getAttribute('d')?.match(/M/g) ?? []).length,
+      // Rects merged into one row per visual line, the way the outline itself groups them.
+      lines: [...chipEl.querySelector('[data-lexical-slot]')!.getClientRects()]
+        .filter((r) => r.width > 0)
+        .reduce<{ top: number; bottom: number }[]>((rows, r) => {
+          const last = rows[rows.length - 1];
+          if (last && r.top < last.bottom && r.bottom > last.top) last.bottom = Math.max(last.bottom, r.bottom);
+          else rows.push({ top: r.top, bottom: r.bottom });
+          return rows;
+        }, []).length,
       text: chipEl.querySelector('[data-open-value-text]')?.textContent ?? '',
     };
   }, nth);
@@ -218,6 +241,40 @@ test('a header press leaves the field scrolled where it was', async ({ page }) =
   await settle(page, root);
   expect(await root.evaluate((el) => el.scrollTop)).toBe(before);
   expect(await scroller.evaluate((el) => el.scrollTop)).toBe(before);
+});
+
+test('a press in the field text ends the active mark even where it moves no caret', async ({ page }) => {
+  const root = await openValues(page, 'Mirror');
+  await settle(page, root);
+  // The end of the sentence, past both chips: a click here twice selects the same offset both times, so the
+  // second one changes no selection and only the press itself says the author left the value.
+  const spot = await root.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.right - 8, y: r.top + 12 };
+  });
+  await page.mouse.click(spot.x, spot.y);
+  // The second copy is the mirror, which takes no caret, so the press below moves nothing.
+  await pressHeader(root, 1);
+  expect((await settle(page, root, 1)).active).toBe(true);
+
+  await page.mouse.click(spot.x, spot.y);
+  await expect.poll(() => reading(root, 1).then((r) => r.active)).toBe(false);
+});
+
+test('a wrapped active value keeps one contiguous outline', async ({ page }) => {
+  const root = await openValues(page, 'Wrap');
+  await root.evaluate((el) => { el.style.width = '260px'; });
+  const idle = await settle(page, root);
+  expect(idle.lines, 'the value must wrap for this to mean anything').toBeGreaterThan(1);
+  expect(idle.pieces).toBe(1);
+
+  await pressHeader(root);
+  const active = await settle(page, root);
+  expect(active.active).toBe(true);
+  expect(active.stroke).not.toBe('none');
+  // The quieter look loses none of the shape's meaning: still one line around every row of the value.
+  expect(active.pieces).toBe(1);
+  expect(active.lines).toBe(idle.lines);
 });
 
 for (const theme of ['light', 'dark'] as const) {

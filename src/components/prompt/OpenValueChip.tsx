@@ -124,7 +124,7 @@ export function OpenValueChip({ nodeKey, token }: { nodeKey: NodeKey; token: str
       root?.removeEventListener('focusin', mount);
       root?.removeEventListener('focusout', onFocusOut);
     };
-  }, [editor, nodeKey, token, values, asked, settle, pressed, press, caretToEnd]);
+  }, [editor, nodeKey, token, values, asked, settle, pressed, caretToEnd]);
 
   const color = vocab.color(token);
 

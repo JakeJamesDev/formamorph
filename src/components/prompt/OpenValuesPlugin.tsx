@@ -121,7 +121,7 @@ export function OpenValuesPlugin({ active, values, parse, pressed }: {
     // A chevron step or a reroll opens another value, which refills the value under the caret too. The step
     // belongs to the active value: the one holding the caret, else the one whose header took the last press.
     const opened = openedValues.current;
-    const switched = editor.getEditorState().read(() => {
+    const switchedKey = editor.getEditorState().read(() => {
       const key = $caretChipKey() ?? pressed;
       const chip = key === null ? null : $getNodeByKey(key);
       const token = $isVariableNode(chip) ? chip.getToken() : null;
@@ -129,7 +129,7 @@ export function OpenValuesPlugin({ active, values, parse, pressed }: {
     });
     opened.clear();
     for (const [token, open] of Object.entries(values)) opened.set(token, openValueIdentity(open));
-    resync({ spareCaret: !switched, restore: switched });
+    resync({ spareCaret: !switchedKey, restore: switchedKey });
     const unregister = editor.registerUpdateListener(({ editorState, prevEditorState, tags }) => {
       const edits = active ? valueEdits(prevEditorState, editorState) : [];
       const mirrors = edits.length ? editorState.read(() => $mirrorChipKeys(values)) : new Set<NodeKey>();

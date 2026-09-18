@@ -158,6 +158,7 @@ describe('a press on an open value header', () => {
     await caretToFieldText();
     expect(openValues().map(isActive)).toEqual([false]);
   });
+
 });
 
 describe('a chevron step', () => {
@@ -204,6 +205,20 @@ describe('the header reads', () => {
     expect(pagerButtons(empty)).toEqual([]);
     // The one chip that can step still does, so the absences above are the placeholder's kind, not the tab.
     expect(pagerButtons(lordValue)).toEqual(['Previous Value', 'Next Value']);
+  });
+
+  it('the lock mark on a value that takes no typing, in both forms', async () => {
+    // A mirror is the locked one: the field takes typing, this copy of the value does not.
+    render(<Field text={`${world('town', 'p1')} and ${world('town', 'p2')}.`} />);
+    await openTab('Values');
+    const lockMark = () => within(openValues()[1]).queryByRole('img', { name: 'Read-Only' });
+    expect(openValues().map(isActive)).toEqual([false, false]);
+    expect(lockMark()).toBeInTheDocument();
+    expect(within(openValues()[0]).queryByRole('img', { name: 'Read-Only' })).toBeNull();
+
+    await press(openValues()[1]);
+    expect(isActive(openValues()[1])).toBe(true);
+    expect(lockMark()).toBeInTheDocument();
   });
 
   it('the mark for a pinned chip and for a placeholder with no values, in both forms', async () => {
