@@ -20,7 +20,6 @@ import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/Pres
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
-import { isDemoAI } from '@/lib/promptEndpoints';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
@@ -652,6 +651,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     activeTextEndpointPresetId,
     activeTextEndpointPresetIsBuiltIn,
     activeTextEndpointPresetName,
+    activeTextEndpointIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,
     renameTextEndpointPreset,
@@ -924,7 +924,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const contextStatus = activeTextEndpointPresetIsBuiltIn
     ? {
         red: false,
-        text: isDemoAI({ endpointId: activeTextEndpointPresetId, endpoint: endpointUrl })
+        text: activeTextEndpointIsDemoAI
           ? "You're on the Demo AI. Add or pick a preset to set or detect the context window."
           : 'Add or pick a preset to set or detect the context window',
       }

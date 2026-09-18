@@ -3,13 +3,11 @@ import type { FontTuning, FontTuningMap } from '@/lib/fontTuning';
 import type { ConnectionStyle } from '@/lib/canvasEdgePath';
 import type { TravelView } from '@/lib/travelPrefs';
 
-// Built-in endpoint defaults, behind the read-only "Default" preset. Each honors its VITE_DEFAULT_* override.
+// Built-in endpoint defaults, behind the read-only default preset. Each honors its VITE_DEFAULT_* override.
 // Kept out of SettingsContext so that file only exports components/hooks (react-refresh).
-// The hosted endpoint behind the "Default" preset, on both platforms. Desktop used to point this at the
-// bundled engine instead; the engine is now its own preset (BUILTIN_ENGINE_PRESET_ID), so "Default" can mean
-// one thing everywhere and a desktop install can route some prompts to the engine and others to the cloud.
+// The default preset sends here on both platforms; the desktop engine is its own preset (BUILTIN_ENGINE_PRESET_ID).
 // Written as a base URL (normalizeEndpointUrl completes it), matching the shape every server's docs hand out.
-// The hosted service is the Demo AI only while the build does not override DEFAULT_ENDPOINT.
+// The preset is the Demo AI only while the build does not override DEFAULT_ENDPOINT.
 export const HOSTED_ENDPOINT = 'https://api.lyonade.net/v1';
 export const DEFAULT_ENDPOINT = import.meta.env.VITE_DEFAULT_ENDPOINT || HOSTED_ENDPOINT;
 export const DEFAULT_API_TOKEN = import.meta.env.VITE_DEFAULT_API_TOKEN || '';

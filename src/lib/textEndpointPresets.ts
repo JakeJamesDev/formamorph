@@ -70,9 +70,19 @@ export function isHostedEndpoint(endpoint: string): boolean {
   return normalizeEndpointUrl(endpoint) === normalizeEndpointUrl(HOSTED_ENDPOINT);
 }
 
+/** The preset a stored id resolves to. A ghost id reads as the Default preset, whose values it gets. */
+export function canonicalPresetId(store: TextEndpointPresetStore, id: string): string {
+  return isBuiltInPresetId(id) || store.presets.some((p) => p.id === id) ? id : DEFAULT_TEXT_PRESET_ID;
+}
+
+/** Whether a resolved endpoint is the Demo AI: the Default preset on the hosted service, never a user preset. */
+export function isDemoAI(resolved: { endpointId: string; endpoint: string }): boolean {
+  return resolved.endpointId === DEFAULT_TEXT_PRESET_ID && isHostedEndpoint(resolved.endpoint);
+}
+
 /** The Default preset's display name: the Demo AI on the hosted service, "Default" on a build that overrides it. */
 export function defaultPresetName(): string {
-  return isHostedEndpoint(DEFAULT_ENDPOINT) ? 'Demo AI' : 'Default';
+  return isDemoAI({ endpointId: DEFAULT_TEXT_PRESET_ID, endpoint: DEFAULT_ENDPOINT }) ? 'Demo AI' : 'Default';
 }
 
 /** The read-only presets available on this platform, in dropdown order. */
