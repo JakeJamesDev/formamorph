@@ -167,7 +167,13 @@ import {
 import { LocationBackdrop } from "../components/game/LocationBackdrop";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiSetupGate } from "../components/AiSetupGate";
+import { DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
+import { useDemoAIDialogPending } from "../components/game/demoAISeen";
+import { nextEntryDialog } from "@/lib/entryDialogOrder";
 import { useAiReachable } from "../lib/useAiReachable";
+
+/** Where this entry is with the Demo AI dialog. */
+type DemoAIEntryState = 'waiting' | 'open' | 'done';
 
 interface GameViewerProps {
   initialTraits?: string[];
@@ -357,7 +363,8 @@ const GameViewer = ({
   // its per-world "show readme" flag is on. The flag is shared with the main-menu "Show Readme" toggle.
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const readmeText = worldOverview?.readme?.trim() ?? "";
-  const [showReadmeModal, setShowReadmeModal] = useState(() => !!readmeText && showReadme(worldId));
+  const [showReadmeModal, setShowReadmeModal] = useState(false);
+  const [readmePending, setReadmePending] = useState(() => !!readmeText && showReadme(worldId));
 
   // A world may supply its own narration system prompt; the player can decline it per world from the
   // main-menu details popup. Resolved below, after the preset's own prompt is destructured.
@@ -820,15 +827,41 @@ const GameViewer = ({
   // most once per visit so dismissing it sticks.
   const { reachable: aiReachable, mode: aiMode, blocker: aiBlocker, recheck: aiRecheck } = useAiReachable();
   const [aiGateOpen, setAiGateOpen] = useState(false);
-  const aiGateShownRef = useRef(false);
-  useEffect(() => {
-    if (aiGateShownRef.current || aiReachable !== false) return;
-    aiGateShownRef.current = true;
-    setAiGateOpen(true);
-  }, [aiReachable]);
-  // The player took the gate's Continue action once setup finished — nothing is queued behind it, so
-  // just dismiss.
+  const [aiGateShown, setAiGateShown] = useState(false);
+  // The gate's Continue action after setup finished.
   const handleAiGateReady = useCallback(() => setAiGateOpen(false), []);
+
+  // --- Entry dialogs ---------------------------------------------------------------------------------
+  // nextEntryDialog picks one at a time; a lower one waits until the one above it closes.
+  const demoAINoticeRef = useRef<DemoAINoticeHandle>(null);
+  const demoAIDue = useDemoAIDialogPending();
+  // 'waiting' until this entry settles the Demo AI dialog, so a later switch to the Demo AI shows nothing.
+  const [demoAIEntry, setDemoAIEntry] = useState<DemoAIEntryState>('waiting');
+  const settleDemoAIEntry = useCallback(() => setDemoAIEntry((s) => (s === 'waiting' ? 'done' : s)), []);
+  const handleDemoAIEntryDone = useCallback(() => setDemoAIEntry('done'), []);
+  const settingsRequestPending = settings.settingsRequest !== null;
+  const nextEntry = nextEntryDialog({
+    aiGateDue: aiReachable === null ? null : aiReachable === false && !aiGateShown,
+    demoAIPending: demoAIEntry === 'waiting' && demoAIDue,
+    readmePending,
+  });
+  useEffect(() => {
+    if (nextEntry === 'aiGate') {
+      setAiGateShown(true);
+      setAiGateOpen(true);
+      // The gate takes this entry's turn; the seen-key stays unset, so the Demo AI dialog shows next entry.
+      settleDemoAIEntry();
+    } else if (nextEntry === 'demoAI') {
+      setDemoAIEntry('open');
+    } else if (nextEntry === 'readme') {
+      // Connect an AI opens Settings, so the readme waits for it too, from the request on.
+      if (aiGateOpen || demoAIEntry === 'open' || isSettingsOpen || settingsRequestPending) return;
+      setReadmePending(false);
+      setShowReadmeModal(true);
+    } else if (aiReachable !== null) {
+      settleDemoAIEntry();
+    }
+  }, [nextEntry, aiGateOpen, demoAIEntry, isSettingsOpen, settingsRequestPending, aiReachable, settleDemoAIEntry]);
 
   // DEV dev-router: open an in-game modal when the hash asks for it (Menu routes via MenuModal's own
   // devOpenLoad prop below). Tree-shaken in prod.
@@ -840,6 +873,7 @@ const GameViewer = ({
       case 'export': setIsExportModalOpen(true); break;
       case 'location': setIsLocationModalOpen(true); break;
       case 'aiContext': setIsDebugOpen(true); break;
+      case 'demoAI': demoAINoticeRef.current?.open(); break;
     }
   }, [devRoute?.modal]);
   // Entity modal is a per-entity detail view (needs a selected entity), so open the first one — and wait
@@ -5021,6 +5055,8 @@ const GameViewer = ({
         onOpenSettings={() => { setAiGateOpen(false); setSettingsTab('endpoints'); setIsSettingsOpen(true); }}
         onReady={handleAiGateReady}
       />
+
+      <DemoAINotice ref={demoAINoticeRef} entry={demoAIEntry === 'open'} onEntryDone={handleDemoAIEntryDone} />
 
       <LlmSetupGuide
         open={connectionGuideOpen}

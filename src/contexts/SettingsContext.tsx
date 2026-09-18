@@ -1135,6 +1135,12 @@ function useProvideSettings() {
    * endpoint state, so the pre-routing path is untouched; a pinned one resolves its preset and looks up
    * that target's cached capabilities, kicking off a probe the first time a signature is unknown.
    */
+  const activeEndpointState = useMemo(() => ({
+    activeId: textPresetStore.activeId,
+    values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive,
+    maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
+  }), [textPresetStore.activeId, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens, localMaxTokens, engineState.modelId]);
+
   const resolveEndpointForKind = useCallback((kind: AIRequestType): ResolvedPromptEndpoint & {
     /** Chat-completions URL, normalized the same way the active endpoint is. */
     url: string;
@@ -1143,11 +1149,7 @@ function useProvideSettings() {
     contextWindow: number;
     reasoning: ReasoningCapability;
   } => {
-    const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, {
-      activeId: textPresetStore.activeId,
-      values: textValues, isBuiltIn: textIsBuiltInActive, localEngine: localModelActive,
-      maxTokens: activeMaxTokens, engineMaxTokens: localMaxTokens, engineModelId: engineState.modelId ?? '',
-    });
+    const resolved = resolvePromptEndpoint(kind, promptEndpoints, textPresetStore, activeEndpointState);
     const url = normalizeEndpointUrl(resolved.endpoint);
     const presetName = resolved.presetId === null
       ? activeTextEndpointPresetName
@@ -1210,10 +1212,16 @@ function useProvideSettings() {
       reasoning: withEngineBudget(reasoningCapabilityCache[sig] ?? null),
     };
   }, [
-    promptEndpoints, textPresetStore, textValues, textIsBuiltInActive, localModelActive, activeMaxTokens,
+    promptEndpoints, textPresetStore, activeEndpointState,
     contextWindow, reasoningCapability, routedContextCache, reasoningCapabilityCache, localContextSize,
-    localMaxTokens, engineState.modelId, activeTextEndpointPresetName, setRoutedContextCache, cacheReasoningCapability,
+    activeTextEndpointPresetName, setRoutedContextCache, cacheReasoningCapability,
   ]);
+
+  // The Demo AI notice follows the narration model; the routing of other kinds has no effect.
+  const narrationIsDemoAI = useMemo(
+    () => isDemoAI(resolvePromptEndpoint('narration', promptEndpoints, textPresetStore, activeEndpointState)),
+    [promptEndpoints, textPresetStore, activeEndpointState],
+  );
 
   /**
    * Whether the bundled engine should be running: it's the active endpoint, or some prompt is routed to it.
@@ -1491,6 +1499,7 @@ function useProvideSettings() {
     activeTextEndpointPresetIsBuiltIn,
     activeTextEndpointPresetName,
     activeTextEndpointIsDemoAI,
+    narrationIsDemoAI,
     selectTextEndpointPreset,
     addTextEndpointPreset,
     renameTextEndpointPreset,
