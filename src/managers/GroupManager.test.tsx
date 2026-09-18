@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react';
 import type { TraitGroup } from '@/types';
 import GroupManager from './GroupManager';
 
-vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ placeholders: [], updateTraitGroup: vi.fn() }),
-}));
+vi.mock('@/contexts/GameDataContext', () => {
+  const data = { placeholders: [], updateTraitGroup: vi.fn() };
+  // Both readers of the one context, as the real module has: a placeholder field reads the optional one.
+  return { useGameData: () => data, useGameDataOptional: () => data };
+});
 // Keep Streamdown out of jsdom; the field's real Lexical editor still mounts.
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="md">{text}</div>,

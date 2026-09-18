@@ -196,14 +196,14 @@ describe('the header reads', () => {
     expect(within(openValues()[0]).getByText('Value 2 of 3')).toBeInTheDocument();
   });
 
-  it('no pager on a Variable, a pinned chip or a placeholder with no values', async () => {
+  it('no pager where there is one stop or none: a Variable with no pins, a placeholder with no values or pins', async () => {
     render(<Field text={`${world('hair', 'h1')} of ${world('lord', 'l1')} of ${world('town', 'p1')} and ${world('ghost', 'g1')}`} />);
     await openTab('Values');
     const [variable, lordValue, pinned, empty] = openValues();
     expect(pagerButtons(variable)).toEqual([]);
-    expect(pagerButtons(pinned)).toEqual([]);
     expect(pagerButtons(empty)).toEqual([]);
-    // The one chip that can step still does, so the absences above are the placeholder's kind, not the tab.
+    // A chip whose draw a pin decides still has every stop to step to, so it keeps its pager.
+    expect(pagerButtons(pinned)).toEqual(['Previous Value', 'Next Value']);
     expect(pagerButtons(lordValue)).toEqual(['Previous Value', 'Next Value']);
   });
 

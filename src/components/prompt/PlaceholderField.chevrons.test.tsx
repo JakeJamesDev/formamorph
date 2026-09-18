@@ -134,18 +134,31 @@ describe('the Values tab chevrons', () => {
     expect(within(second()).getByTestId('prompt-preview')).toHaveTextContent('At Marrow');
   });
 
-  it('are absent on a pinned chip, which opens on the pinned value', async () => {
+  it('show on a pinned chip, which opens on the pinned value', async () => {
     render(<Fields first={`${world('lord', 'l1')} of ${world('town', 'p1')} with ${world('gear', 'g1')}`} />);
     await openTab(first(), 'Values');
     const [, pinnedTown, pinnedGear] = openValues(first());
     expect(valueText(pinnedTown)).toBe('Marrow');
-    expect(within(pinnedTown).getByText(/· Pinned/)).toBeInTheDocument();
+    expect(within(pinnedTown).getByText(/^· Pinned$/)).toBeInTheDocument();
     expect(valueLabel(pinnedTown)).toMatch(/Value 2/);
-    expect(within(pinnedTown).queryByRole('button')).toBeNull();
+    expect(within(pinnedTown).getByRole('button', { name: 'Next Value' })).toBeInTheDocument();
     expect(valueText(pinnedGear)).toBe('lamp');
-    expect(within(pinnedGear).queryByRole('button')).toBeNull();
     await openTab(first(), 'Preview');
     expect(within(first()).getByTestId('prompt-preview')).toHaveTextContent('Ash of Marrow with lamp');
+  });
+
+  it('step off a pinned chip, and Preview and other fields show the stop stepped to', async () => {
+    render(<Fields first={`${world('lord', 'l1')} of ${world('town', 'p1')}`} second={`Leaving ${world('town', 'p2')}.`} />);
+    await openTab(first(), 'Values');
+    await step(openValues(first())[1], 'Next');
+    const [, stepped] = openValues(first());
+    expect(valueText(stepped)).toBe('Harrow Point');
+    // The step is the author's now, not the pin's, so the mark goes.
+    expect(within(stepped).queryByText(/^· Pinned$/)).toBeNull();
+    await openTab(first(), 'Preview');
+    expect(within(first()).getByTestId('prompt-preview')).toHaveTextContent('Ash of Harrow Point');
+    await openTab(second(), 'Preview');
+    expect(within(second()).getByTestId('prompt-preview')).toHaveTextContent('Leaving Harrow Point.');
   });
 });
 

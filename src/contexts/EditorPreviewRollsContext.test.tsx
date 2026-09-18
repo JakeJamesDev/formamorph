@@ -196,3 +196,51 @@ describe('EditorPreviewRollsProvider', () => {
     expect(h.session()?.rolls).toEqual({});
   });
 });
+
+// A chevron step on the Values tab chooses a stop: one of the placeholder's values, or a pin aimed at it.
+describe('a chosen stop', () => {
+  // Ash pins Eyes to text on no list, so the draw lays that pin itself.
+  const lord: Placeholder = {
+    id: 'lord', name: 'Lord', values: [{ id: 'v:Ash', text: 'Ash', pins: [{ placeholderId: 'eyes', value: 'grey' }] }],
+  };
+  const PINNED = [hair, eyes, lord];
+
+  function mountStops() {
+    let store: EditorPreviewRolls | null = null;
+    const Probe = () => { store = useEditorPreviewRolls(); return null; };
+    render(<EditorPreviewRollsProvider><Probe /></EditorPreviewRollsProvider>);
+    const get = () => { if (!store) throw new Error('probe never rendered'); return store; };
+    return {
+      read: (text: string) => get().preview(text, PINNED),
+      choose: (placement: Parameters<EditorPreviewRolls['choose']>[0], key: string) => act(() => { get().choose(placement, key); }),
+      chosen: (placement: Parameters<EditorPreviewRolls['choose']>[0]) => get().chosenStop(placement),
+      reroll: (ids: string[]) => act(() => { get().reroll(ids, PINNED); }),
+    };
+  }
+  const eyesWorld = { id: 'eyes', mode: 'world' as const, placementId: 'e1' };
+
+  it('outranks a pin the draw lays itself, in every field that reads the store', async () => {
+    const s = mountStops();
+    const text = `${tok('lord', 'l1')} ${tok('eyes', 'e1')}`;
+    expect(s.read(text)[tok('eyes', 'e1')]).toBe('grey');
+    await s.choose(eyesWorld, `v:${phValueId('green')}`);
+    expect(s.read(text)[tok('eyes', 'e1')]).toBe('green');
+    // A second World chip of Eyes, as another field would place it, follows the step.
+    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e9')}`)[tok('eyes', 'e9')]).toBe('green');
+  });
+
+  it('is kept until a reroll clears it', async () => {
+    const s = mountStops();
+    await s.choose(eyesWorld, `v:${phValueId('green')}`);
+    expect(s.chosen(eyesWorld)).toBe(`v:${phValueId('green')}`);
+    await s.reroll(['eyes']);
+    expect(s.chosen(eyesWorld)).toBeUndefined();
+    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('grey');
+  });
+
+  it('shows nothing where the stop it names is gone', async () => {
+    const s = mountStops();
+    await s.choose(eyesWorld, 'v:no-such-value');
+    expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('grey');
+  });
+});

@@ -653,6 +653,31 @@ export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourc
   });
 }
 
+/** Where each kind of rewritten source goes back to. A writer left out declines that kind. */
+export interface PinWriters {
+  updateTrait?: (trait: Trait) => void;
+  updateLocation?: (location: GameLocation) => void;
+  updateStat?: (stat: Stat) => void;
+  updatePlaceholder?: (placeholder: Placeholder) => void;
+}
+
+/** Whether `writers` can hand a source of this kind back at all. */
+export function canCommitPinSource(source: PinSourceRef, writers: PinWriters): boolean {
+  return !!{ trait: writers.updateTrait, location: writers.updateLocation, descriptor: writers.updateStat,
+    value: writers.updatePlaceholder }[source.kind];
+}
+
+/** Hands the record `next` holds for `source` — the trait, location, stat or placeholder — to its writer. */
+export function commitPinSource(next: PinEditorWorld, source: PinSourceRef, writers: PinWriters): void {
+  const id = pinSourceOwnerId(source);
+  switch (source.kind) {
+    case 'trait': { const t = next.traits?.find((x) => x.id === id); if (t) writers.updateTrait?.(t); return; }
+    case 'location': { const l = next.locations?.find((x) => x.id === id); if (l) writers.updateLocation?.(l); return; }
+    case 'descriptor': { const s = next.stats?.find((x) => x.id === id); if (s) writers.updateStat?.(s); return; }
+    case 'value': { const p = next.placeholders.find((x) => x.id === id); if (p) writers.updatePlaceholder?.(p); return; }
+  }
+}
+
 /** The world with the row on `source` that reads as `pin` removed. */
 export function removePinAt<W extends PinEditorWorld>(world: W, source: PinSourceRef, pin: PlaceholderPin): W {
   return specOf(source).write(world, source, (pins) => {

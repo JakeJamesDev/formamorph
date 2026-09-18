@@ -1314,6 +1314,44 @@ describe('drawOpenPlaceholderValues', () => {
       expect(draw(t)[t].pinSource).toBeUndefined();
     });
 
+    it('reads a stepped-to text before the pin the draw lays itself', () => {
+      const l = placed('lord', 'world', 'p1');
+      const t = placed('town', 'world', 'p2');
+      const store = { rolls: {}, chosen: { world: { town: 'Harrow Point' } } };
+      expect(drawOpenPlaceholderValues(`${l} of ${t}`, PINNED, first, store)[t]).toEqual({
+        placeholderId: 'town', valueId: phValueId('Harrow Point'), text: 'Harrow Point',
+      });
+      expect(buildPlaceholderPreview(`${l} of ${t}`, PINNED, first, store)[t]).toBe('Harrow Point');
+    });
+
+    it('takes a stepped-to pin text whole on a placeholder with no values', () => {
+      const g = placed('ghost', 'world', 'p1');
+      const store = { rolls: {}, chosen: { world: { ghost: 'Shade' } } };
+      expect(buildPlaceholderPreview(g, PINNED, first, store)[g]).toBe('Shade');
+    });
+
+    it('lets a stepped-to pin mask an Object\'s join, as a pin does in play', () => {
+      const o = placed('isasian', 'world', 'p1');
+      const store = { rolls: {}, chosen: { world: { isasian: 'Nobody in particular' } } };
+      expect(buildPlaceholderPreview(o, PINNED, first, store)[o]).toBe('Nobody in particular');
+    });
+
+    it('keys a stepped-to text by placement under Unique, so one placement moves alone', () => {
+      const a = placed('town', 'unique', 'u1');
+      const b = placed('town', 'unique', 'u2');
+      const store = { rolls: {}, chosen: { unique: { u2: 'Harrow Point' } } };
+      const out = buildPlaceholderPreview(`${a} ${b}`, PINNED, first, store);
+      expect([out[a], out[b]]).toEqual(['Sedge Landing', 'Harrow Point']);
+    });
+
+    it('still lays the pins a stepped-to value carries', () => {
+      const l = placed('lord', 'world', 'p1');
+      const g = placed('ghost', 'world', 'p2');
+      // A step is read through the choice's own draw, so the value stepped to lays its pins as a roll would.
+      const store = { rolls: {}, chosen: { world: { lord: 'Ash' } } };
+      expect(buildPlaceholderPreview(`${l} and ${g}`, PINNED, first, store)[g]).toBe('Wisp');
+    });
+
     it('resolves to the same text as before', () => {
       const l = placed('lord', 'world', 'p1');
       const g = placed('ghost', 'world', 'p2');

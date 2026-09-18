@@ -7,8 +7,8 @@ import { HelpButton } from '@/components/HelpButton';
 import { PinConflictNote } from '@/components/editor/PinConflictNote';
 import { PinValueField } from '@/components/editor/PinValueField';
 import {
-  addPinAt, PIN_KINDS, pinSourceKey, pinSourceOwnerId, pinSourcesOfKind, pinsTargeting, removePinAt,
-  sameSource, updatePinAt,
+  addPinAt, commitPinSource, PIN_KINDS, pinSourceKey, pinSourcesOfKind, pinsTargeting,
+  removePinAt, sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
 import type { GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
@@ -39,18 +39,10 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   const rows = useMemo(() => pinsTargeting(world, placeholder.id), [world, placeholder.id]);
   const options = (kind: PinSourceKind) => pinSourcesOfKind(world, kind, placeholder.id);
 
-  /** Where a rewritten source of each kind goes back to — one row, so a new source is a row and not a
-   *  case. The id is the record the pin sits on, which the source table already names. */
-  const writeBack: Record<PinSourceKind, (next: PinEditorWorld, id: string) => void> = {
-    trait: (next, id) => { const t = next.traits?.find((x) => x.id === id); if (t) world.updateTrait(t); },
-    location: (next, id) => { const l = next.locations?.find((x) => x.id === id); if (l) world.updateLocation(l); },
-    descriptor: (next, id) => { const s = next.stats?.find((x) => x.id === id); if (s) world.updateStat(s); },
-    value: (next, id) => { const p = next.placeholders.find((x) => x.id === id); if (p) world.updatePlaceholder(p); },
-  };
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
    *  source written twice lands the same record twice, which is harmless. */
   const commit = (next: PinEditorWorld, ...sources: PinSourceRef[]) => {
-    for (const source of sources) writeBack[source.kind](next, pinSourceOwnerId(source));
+    for (const source of sources) commitPinSource(next, source, world);
   };
   const setPin = (row: PinRow, next: PlaceholderPin) => commit(updatePinAt(world, row.source, row.pin, next), row.source);
   const remove = (row: PinRow) => commit(removePinAt(world, row.source, row.pin), row.source);
