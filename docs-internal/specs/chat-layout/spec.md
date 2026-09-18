@@ -63,7 +63,7 @@ A player setting, **Narration Layout**, selects **Pages** or **Chat**. In Chat:
 26. As a player, I want a submit to act on the latest turn no matter where I scrolled, so that reading history never changes my game.
 27. As a player, I want the choices to show only under the latest narration, so that old turns stay short.
 28. As a player, I want the choices to look like unsent player bubbles, so that a choice reads as my next message.
-29. As a player, I want a selected choice to become my action bubble, so that the list stays consistent.
+29. As a player, I want a choice click to put its text in the input, with the same append gesture as Pages, so that I can edit or combine choices before I send. The sent text becomes my action bubble.
 30. As a player, I want the Continue the Story choice in the same bubble style, so that all choices look alike.
 31. As a player, I want a Re-generate Choices icon under the choices, so that the control sits with the thing it changes.
 32. As a player, I want Re-generate Narration and Re-generate Stats as icons on the latest narration bubble, so that the controls sit with the text they change.
@@ -209,7 +209,7 @@ name, a hook call, or the virtualizer's internals.
 - **Bubble action builder (unit).** Latest against past, busy states, image present, and that Rewind to Here
   is the only destructive row. Prior art: the Locations Canvas menu section builder tests.
 - **Chat body under the real providers (GamePanels harness).** With the setting on Chat: choices show for
-  the latest turn only; a choice click submits; Rewind to Here opens the confirm dialog and rolls back to the
+  the latest turn only; a choice click stages its text in the input as in Pages; Rewind to Here opens the confirm dialog and rolls back to the
   index of the bubble; Re-generate controls call their handlers; the icon row and the menu list the same
   actions; a live turn has no actions. With the setting on Pages: the body is unchanged. The harness needs a
   stub for the virtualizer's element measurement, because jsdom has no layout; the stub mounts all staged
@@ -261,5 +261,13 @@ name, a hook call, or the virtualizer's internals.
   16:9; the prototype's 16:9 was a placeholder. A pure function that reads the size from the image header,
   with a square fallback, is the approved way. The size is never stored in the save, because that changes the
   export shape. An image that is a URL, not a data URL, takes the fallback box.
+- **Ruling: choice click (user, 2026-09-18).** Chat keeps the Pages contract. A click puts the choice text in
+  the input, Ctrl/Cmd+click or a long press appends it, the staged choice shows filled (the solid action
+  style), and the player presses send. The ticket 04 line "a choice click submits" is superseded; the spec
+  session wrote it from the prototype without the Pages contract in view.
+- **Ruling: submit-acts-on-latest test (spec session, 2026-09-18).** No new seam. The harness test covers
+  the panel side: with a past turn viewed, the input and Send stay enabled, the send handler is called, and
+  the choices are the latest turn's. The reset to follow-latest is existing GameViewer behavior that both
+  layouts share; the Playwright barrier test checks that the banner clears after a submit.
 - **Open gap: scene image controls in Chat.** Pages shows scene images with a pager, zoom, and delete. Ticket
   01 may ship a plain inline image. No ticket restores those controls yet; the user decides where they go.
