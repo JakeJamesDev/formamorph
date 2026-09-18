@@ -126,8 +126,9 @@ An author who uses the Values tab hits six rough spots.
 - A pin that names a listed value id is not its own stop. It collapses into that value's stop, and an edit
   there writes to the value, as today. A pin with text and no value id is a stop of its own, whatever kind
   of source carries it.
-- **Which stop a chip opens on:** the draw's answer when it names one, else the store's chosen stop, else
-  the roll. A chip whose draw a pin decides opens on that pin's stop. A placeholder with no values opens on
+- **Which stop a chip opens on:** the stop the author stepped to, else the pin the draw laid, else the
+  draw's roll, else the first stop. Chosen-first is what makes an Object's arrows work: its draw ignores a
+  step between its values. A chip whose draw a pin decides opens on that pin's stop. A placeholder with no values opens on
   its first pin. No values and no pins stays locked and reads "No Values".
 - **A chevron step chooses a stop.** The rolls store's directed set widens from "this value id" to "this
   stop": a value id, or a pin named by its source and its target. The draw reads a chosen pin stop before
@@ -174,7 +175,8 @@ An author who uses the Values tab hits six rough spots.
   moves a control. The compact form keeps it as the hover tip and for assistive technology.
 - No pager when there is one stop or none: a Variable with no pins, a placeholder with no values and no
   pins. Those headers read `Name` and `Name · No Values`. The mark shows in both forms, since it is state
-  and not detail. A Variable with pins, and a chip whose draw a pin decides, show the pager.
+  and not detail. A Variable with pins shows the pager. A chip whose draw a pin decides shows the pager
+  when it has more than one stop; a Variable pinned to its own single value has one, and shows none.
 - The counter counts values and pins together, values first. A pin stop's verbose label names its source
   in the pin row's plain-text form: "Pinned by Trait: Sworn", "Pinned by Location: Fen", "Pinned by
   Hunger ≤ 20", "Pinned by Mood = calm". The row's own label is the whole of it; no source kind gets a
@@ -237,7 +239,7 @@ the field's write-through, duplicates, chevrons and edit-value tests.
   moves the mark; a caret in the field text clears it.
 - The compact header holds name, pager and no verbose label; the active header adds the verbose label after
   the right chevron. A Variable with no pins and an empty placeholder with no pins show no pager; a
-  Variable with pins and a chip whose draw a pin decides show it.
+  Variable with pins shows it, and so does a pinned chip with more than one stop.
 - The counter reads "Value X of Y" to assistive technology.
 
 **Component seam: the chip flyout.** Prior art: the variable node label and paste tests, and the edit-value
@@ -277,6 +279,8 @@ draw-laid pin; a reroll clears the choice; play-time resolution returns the same
 
 ## Further Notes
 
+- Open gap, carried over from the parent spec: a Unique chip nested inside another value gets no pager
+  even when pins reach it, because a Unique drill has no placement key to step under. Not fixed here.
 - The verbose label today reads "Value N", which repeats the counter's `X`. With the pager in place it adds
   little. This spec keeps it and moves it last, so a richer label can replace it later with no layout work.
   What that label should say is the user's call.
