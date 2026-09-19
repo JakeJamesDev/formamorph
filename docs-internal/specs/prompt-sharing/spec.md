@@ -177,7 +177,11 @@ model has no way to find a preset that was written for that model.
 - A new payload builder maps the preset to the publish payload: listing name from the preset name,
   description and tags from the Overview, models as a new payload field, content from the shared preset
   artifact with tuning always present.
-- Publish is blocked while Models is empty. The block names the Overview field.
+- Publish is blocked while Models is empty. The check runs when Publish is pressed, before the dialog
+  opens, and names the Overview field.
+- Compatible worlds is the author's declaration, not a detected fact: a preset has no linked copy in a
+  world. The rows are every published world of the author. A world pinned directly to the preset starts
+  checked. A folder preset does not pre-check.
 - New versus overwrite is the author's choice each time, from their own listings of this kind. After a
   successful publish the local preset links to the listing.
 
