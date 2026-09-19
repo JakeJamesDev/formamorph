@@ -91,11 +91,15 @@ export interface TriggersProps {
   onSemanticChange: (on: boolean) => void;
 }
 
-/** The Opening instrument's bundle: the fresh-game view-model and its one action. */
+/** The Opening instrument's bundle: the fresh-game view-model and its actions. */
 export interface OpeningProps {
   data: OpeningData;
   /** Draw fresh values for the unpinned placeholders. */
   onReroll: () => void;
+  /** Show the fresh game at another member of the start pool. */
+  onStartChange: (startLocationId: string) => void;
+  /** Show another row of the opening pool, by its key. */
+  onOpeningChange: (openingKey: string) => void;
 }
 
 /** The desktop header's placement toggle. Absent on mobile, whose full panel is the sheet either way. */

@@ -14,7 +14,7 @@ const sameRolls = (a: PlaceholderRolls, b: PlaceholderRolls): boolean => {
 
 export interface OpeningRollsHandle {
   rolls: PlaceholderRolls;
-  reroll: (lens: BenchLens) => void;
+  reroll: (lens: BenchLens, startLocationId?: string | null) => void;
 }
 
 /**
@@ -32,7 +32,8 @@ export function useOpeningRolls(world: OpeningWorld, live: boolean): OpeningRoll
     });
   }, [live, world]);
   const reroll = useCallback(
-    (lens: BenchLens) => setRolls((prev) => rerollOpeningRolls(world, lens, prev)),
+    (lens: BenchLens, startLocationId?: string | null) =>
+      setRolls((prev) => rerollOpeningRolls(world, lens, prev, undefined, startLocationId)),
     [world],
   );
   // A stable handle, so a consumer callback keyed on it survives unrelated re-renders.

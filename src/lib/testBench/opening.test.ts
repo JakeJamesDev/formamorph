@@ -354,6 +354,101 @@ describe('the fresh game’s stage', () => {
   });
 });
 
+describe('the opening pool', () => {
+  const ov = (over: Partial<WorldOverview> = {}) =>
+    ({ name: 'Sedge Landing', description: '', systemPrompt: '', ...over }) as WorldOverview;
+  // Two starts; Maren waits at the market only, with one row of each kind.
+  const pooled = (over: Partial<WorldOverview> = {}) => world({
+    worldOverview: ov({
+      openings: [
+        { id: 'o-bench', text: 'Benched.', kind: 'action' },
+        { id: 'o-wake', text: `You wake with ${chip('ph-hair', 'world', 'pl-h9')} hair.`, kind: 'action' },
+        { id: 'o-rain', text: 'Rain on the steps.', kind: 'narration' },
+      ],
+      openingWeights: { 'o-bench': 0, 'o-rain': 3 },
+      ...over,
+    }),
+    locations: locations.map((l) => ({ ...l, isStarting: true })),
+    entities: [{
+      id: 'e-maren', name: 'Maren', locations: ['market'],
+      openings: [{ id: 'o-stall', text: 'Maren waves you over.', kind: 'narration' }],
+    }],
+  });
+  const at = (w: OpeningWorld, startLocationId: string | null, openingKey: string | null = null) =>
+    buildOpening(w, lensAt(w), primeOpeningRolls(w, {}, pickFirst), { startLocationId, openingKey });
+
+  it('lists the pool for the chosen start, with each row’s share of it', () => {
+    const w = pooled();
+    const harbor = at(w, 'harbor');
+    expect(harbor.location?.id).toBe('harbor');
+    expect(harbor.pool.map((r) => [r.ownerName, r.text, r.kind, r.chance])).toEqual([
+      [null, 'You wake with ash hair.', 'action', 25],
+      [null, 'Rain on the steps.', 'narration', 75],
+    ]);
+
+    const market = at(w, 'market');
+    expect(market.location?.id).toBe('market');
+    expect(market.pool.map((r) => [r.ownerName, r.chance])).toEqual([[null, 20], [null, 60], ['Maren', 20]]);
+  });
+
+  it('renders the user macro as the draw does', () => {
+    const w = pooled({ openings: [{ id: 'o-greet', text: '{{user}} steps off the boat.', kind: 'narration' }] });
+    expect(at(w, 'harbor').opening.text).toBe('You steps off the boat.');
+  });
+
+  it('offers every start a new game may begin in', () => {
+    expect(at(pooled(), null).starts).toEqual([{ id: 'harbor', name: 'Harbor Steps' }, { id: 'market', name: 'The Long Market' }]);
+  });
+
+  it('shows the first drawable row by default', () => {
+    const opening = at(pooled(), 'harbor');
+    expect(opening.selectedKey).toBe(opening.pool[0].key);
+    expect(opening.opening).toEqual({ kind: 'action', text: 'You wake with ash hair.' });
+    expect(opening.user).toContain('You wake with ash hair.');
+  });
+
+  it('falls back to the first row when the chosen one is not in this start’s pool', () => {
+    const w = pooled();
+    const stall = at(w, 'market').pool[2].key;
+    expect(at(w, 'harbor', stall).selectedKey).toBe(at(w, 'harbor').pool[0].key);
+  });
+
+  it('shows an Opening Narration as page one, with no narration prompt', () => {
+    const w = pooled();
+    const stall = at(w, 'market').pool[2].key;
+    const opening = at(w, 'market', stall);
+    expect(opening.opening).toEqual({ kind: 'narration', text: 'Maren waves you over.' });
+    expect(opening.system).toBe('');
+    expect(opening.user).toBe('');
+    expect(opening.totalTokens).toBe(0);
+  });
+
+  it('assembles the turn-one prompt for a chosen Opening Action', () => {
+    const w = pooled();
+    const wake = at(w, 'harbor').pool[0].key;
+    const opening = at(w, 'harbor', wake);
+    expect(opening.opening.kind).toBe('action');
+    expect(opening.user).toContain('You wake with ash hair.');
+    expect(opening.system).not.toBe('');
+  });
+
+  it('shows the default Opening Action for a switched-off list', () => {
+    const opening = at(pooled({ openingsEnabled: false }), 'market');
+    expect(opening.pool).toEqual([]);
+    expect(opening.openingsEnabled).toBe(false);
+    expect(opening.selectedKey).toBeNull();
+    expect(opening.opening).toEqual({ kind: 'action', text: OPENING_SCENE_CUE });
+    expect(opening.user).toContain(OPENING_SCENE_CUE);
+  });
+
+  it('shows the default Opening Action for an empty pool', () => {
+    const opening = at(pooled({ openings: [], openingWeights: undefined }), 'harbor');
+    expect(opening.pool).toEqual([]);
+    expect(opening.openingsEnabled).toBe(true);
+    expect(opening.opening).toEqual({ kind: 'action', text: OPENING_SCENE_CUE });
+  });
+});
+
 describe('safety', () => {
   it('never edits the world', () => {
     const w = world();

@@ -19,7 +19,7 @@ import {
 } from './rules';
 import { convertWorldImagesToWebp, describeWebpFixRun } from './imageWebpFix';
 import { buildAiContext, EMPTY_AI_CONTEXT } from './aiContext';
-import { buildOpening, EMPTY_OPENING } from './opening';
+import { buildOpening, EMPTY_OPENING, type OpeningChoice } from './opening';
 import { useOpeningRolls } from './useOpeningRolls';
 import { loadLastTurn, type LastTurn } from './lastTurn';
 import { checkStatCode } from './statCodeCheck';
@@ -175,13 +175,23 @@ export function useTestBench({
   // assembly itself — stat settling, the roll table, the whole first prompt — runs only while watched.
   const openingLive = benchOpen && benchTab === 'opening';
   const openingRolls = useOpeningRolls(benchWorld, openingLive);
+  // Which start and which opening the author is looking at: view state, never stored.
+  const [openingChoice, setOpeningChoice] = useState<OpeningChoice>({});
   const opening = useMemo(
-    () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls) : EMPTY_OPENING),
-    [openingLive, benchWorld, benchLens.lens, openingRolls.rolls],
+    () => (openingLive ? buildOpening(benchWorld, benchLens.lens, openingRolls.rolls, openingChoice) : EMPTY_OPENING),
+    [openingLive, benchWorld, benchLens.lens, openingRolls.rolls, openingChoice],
   );
   const rerollOpening = useCallback(
-    () => openingRolls.reroll(benchLens.lens),
-    [openingRolls, benchLens.lens],
+    () => openingRolls.reroll(benchLens.lens, openingChoice.startLocationId),
+    [openingRolls, benchLens.lens, openingChoice.startLocationId],
+  );
+  const chooseOpeningStart = useCallback(
+    (startLocationId: string) => setOpeningChoice((prev) => ({ ...prev, startLocationId })),
+    [],
+  );
+  const chooseOpening = useCallback(
+    (openingKey: string) => setOpeningChoice((prev) => ({ ...prev, openingKey })),
+    [],
   );
   // The world's most recent save, read while the Bench is open so a turn played since it was last opened is
   // the one offered. Absent when the world has never been played — then there is no button at all.
@@ -416,6 +426,8 @@ export function useTestBench({
       opening: {
         data: opening,
         onReroll: rerollOpening,
+        onStartChange: chooseOpeningStart,
+        onOpeningChange: chooseOpening,
       },
     },
   };
