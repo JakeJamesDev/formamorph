@@ -141,6 +141,8 @@ One new pure module owns every rule. It has no React and no storage.
 - The name macro becomes the entity's name. The user macro stays in the stored text. At draw time it renders as "you".
   - **Stored form:** import writes every spelling of the user macro as the one canonical form `{{user}}`. The Persona spec says its Player Name chip adopts the form Openings writes, and Openings builds first, so this form is the contract between the two. One pure module owns the form and the draw-time render, and the Persona work replaces the render there.
   - **Render:** the match at draw time is case-insensitive and allows inner spaces. The result is "You" at the start of the text, at the start of a line, or after sentence-ending punctuation, with opening punctuation allowed in between. It is "you" elsewhere. Verb agreement is not corrected, because a name later makes "`{{user}}` wakes" correct as written.
+  - **Possessive:** the marker followed by an apostrophe and "s" renders as "your", or "Your" at a sentence start, never "you's". This rule belongs to the "you" fallback only. When the Persona work resolves the marker to a name, the possessive is correct as the card wrote it, and the fallback for no persona keeps "your".
+  - **Known limit:** any period counts as a sentence end, so "Mr. `{{user}}`" renders as "Mr. You". A name removes the case.
   - The legacy V1 macros `<USER>` and `<BOT>` stay out of scope, as they are for descriptions today.
 - Description fields keep today's macro handling. Only openings keep the user macro.
 
