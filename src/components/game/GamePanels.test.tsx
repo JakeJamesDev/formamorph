@@ -38,19 +38,16 @@ const TURNS = [
 
 const STATS = [statFixture('Vigor', 50)];
 
-/** Open the caret flyout beside Re-generate and return its two partial-regenerate items. */
-const openRegenFlyout = () => {
-  fireEvent.click(screen.getByRole('button', { name: 'More re-generate options' }));
-  return {
-    stats: screen.getByRole('button', { name: 'Re-generate Stats' }),
-    choices: screen.getByRole('button', { name: 'Re-generate Choices' }),
-  };
-};
+/** The latest page's two partial re-generates: Re-generate Stats in the card's row, Re-generate Choices under the choices. */
+const partialRegens = () => ({
+  stats: within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Re-generate Stats' }),
+  choices: screen.getByRole('button', { name: 'Re-generate Choices' }),
+});
 
 describe('MiddlePanel — partial re-generate against a scene render', () => {
   it('holds both partial re-generates while a scene image is being drawn', () => {
     const view = renderMiddlePanel({ sceneImageJob: 'image' }, { turns: TURNS, stats: STATS });
-    const items = openRegenFlyout();
+    const items = partialRegens();
 
     // One graphics card can't write and draw at once.
     expect(items.stats).toBeDisabled();
@@ -68,37 +65,39 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
 
   it('holds them while the tag pass runs too', () => {
     renderMiddlePanel({ sceneImageJob: 'tags' }, { turns: TURNS, stats: STATS });
-    const items = openRegenFlyout();
+    const items = partialRegens();
     expect(items.stats).toBeDisabled();
     expect(items.choices).toBeDisabled();
   });
 
   it('offers only the partial re-generates their aux requests are switched on for', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: (s) => s.setChoicesEnabled(false) });
-    fireEvent.click(screen.getByRole('button', { name: 'More re-generate options' }));
 
-    expect(screen.getByRole('button', { name: 'Re-generate Stats' })).toBeInTheDocument();
+    expect(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Re-generate Stats' })).toBeInTheDocument();
     // Re-generating choices that are switched off would fire a request whose result nothing displays.
     expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
   });
 
-  it('drops the flyout entirely when neither is available', () => {
-    // No stats in this world and choices off — a caret opening an empty menu.
+  it('offers neither when neither is available, and keeps the full re-generate', () => {
+    // No stats in this world and choices off.
     renderMiddlePanel({}, { turns: TURNS, settings: (s) => s.setChoicesEnabled(false) });
-    expect(screen.queryByRole('button', { name: 'More re-generate options' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Re-generate' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
   });
 
   it('offers them again with nothing in flight', () => {
-    // The other half of the guard: the hold has to be the job's doing, not a permanently dead menu.
+    // The other half of the guard: the hold has to be the job's doing, not a permanently dead control.
     const view = renderMiddlePanel({ sceneImageJob: null }, { turns: TURNS, stats: STATS });
-    const items = openRegenFlyout();
+    const items = partialRegens();
 
     expect(items.stats).toBeEnabled();
     expect(items.choices).toBeEnabled();
 
     fireEvent.click(items.stats);
     expect(view.props.handleRegenerateStats).toHaveBeenCalled();
+    fireEvent.click(items.choices);
+    expect(view.props.handleRegenerateChoices).toHaveBeenCalled();
   });
 });
 
@@ -148,10 +147,11 @@ describe('MiddlePanel — the audio row', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Regenerate audio for current text' }));
     expect(view.props.onRegenerateTTS).toHaveBeenCalled();
-    // With audio in hand the narration menu offers neither of the two entries that produce it.
+    // The card's row offers the audio entries under Chat's conditions; the corner menu holds the whole-story item only.
+    expect(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Text to Speech' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'More narration options' }));
-    expect(screen.queryByRole('button', { name: /Regenerate Audio/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Text to Speech/ })).toBeNull();
+    const menu = screen.getByRole('dialog');
+    expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Export Story']);
   });
 });
 
@@ -247,9 +247,9 @@ describe('MiddlePanel — editing a turn\'s narration', () => {
     }),
   });
 
-  /** Rewrite the viewed turn through the Edit Text modal and save. */
+  /** Rewrite the viewed turn through its row's Edit and save. */
   const rewriteAs = async (text: string) => {
-    fireEvent.click(screen.getByRole('button', { name: 'Edit text' }));
+    fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Edit' }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: text } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
@@ -714,19 +714,22 @@ describe('MiddlePanel — paging repaints the narration', () => {
 });
 
 describe('MiddlePanel — the player\'s own action', () => {
+  // The opening page has no action line, so each case plays one turn past it.
+  const afterOpening = (action: string) => [{ narration: 'The ferry lands.' }, { action, narration: 'The dock creaks.' }];
+
   it('renders as markdown, like the narration it sits among', () => {
-    renderMiddlePanel({}, { turns: [{ action: 'I shout **stop** and _step back_', narration: 'The dock creaks.' }] });
+    renderMiddlePanel({}, { turns: afterOpening('I shout **stop** and _step back_') });
 
     // Streamdown renders bold as a marked span rather than a <strong>, so match on its own marker.
-    const you = screen.getByText('You:').parentElement!;
+    const you = screen.getByTestId('action-line');
     expect(within(you).getByText('stop').closest('[data-streamdown="strong"]')).not.toBeNull();
     expect(within(you).getByText('step back').closest('em')).not.toBeNull();
   });
 
   it('keeps a typed line break', () => {
-    renderMiddlePanel({}, { turns: [{ action: 'I wait.\nThen I knock.', narration: 'The dock creaks.' }] });
+    renderMiddlePanel({}, { turns: afterOpening('I wait.\nThen I knock.') });
 
-    const you = screen.getByText('You:').parentElement!;
+    const you = screen.getByTestId('action-line');
     expect(you.querySelector('br')).not.toBeNull();
   });
 });
