@@ -7,10 +7,12 @@
 - [📱 Install on Android](Install-on-Android)
 - [🧠 Story Memory](Memory)
 - [🎭 Entities in Play](Entities)
+- [🪪 Personas](Personas)
 
 **Reference**
 - [✍️ Text Formatting](TextFormatting)
 - [🛠️ World Editor](WorldEditor)
+- [🪪 Personas for Authors](Persona-Authoring)
 - [📐 World Format](WorldFormat)
 - [🧮 Stat Code Guide](StatCodeGuide)
 - [🔗 Linked Content](LinkedContent)
