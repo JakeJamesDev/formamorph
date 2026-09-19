@@ -164,6 +164,11 @@ describe('the pool with entities', () => {
     expect(drawOpening(pool, seeded(1))).toEqual(DEFAULT_OPENING);
   });
 
+  it('adds nothing, with no error, for an entity written before openings', () => {
+    const older: Entity = { id: 'old', name: 'Old', locations: ['dock'] };
+    expect(openingPool({ overview: overview(), entities: [older], startingLocationId: 'dock' })).toEqual([]);
+  });
+
   it('adds nothing for an entity at no location, or with no starting location chosen', () => {
     expect(openingPool({ overview: overview(), entities: [guide({ locations: undefined })], startingLocationId: 'dock' })).toEqual([]);
     expect(openingPool({ overview: overview(), entities: [guide()], startingLocationId: null })).toEqual([]);

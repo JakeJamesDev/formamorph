@@ -1,6 +1,6 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
 import { followedLibraryId } from '@/lib/publishLinks';
-import { openingTexts } from '@/lib/openings';
+import { entityTexts } from '@/lib/entityTexts';
 import { randomUUID } from '@/lib/uuid';
 import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder } from '@/types';
 
@@ -140,10 +140,7 @@ export function chipTexts(item: LinkableContent): string[] {
     return item.entries
       .flatMap((entry) => [entry.name ?? '', ...(entry.key ?? []), ...(entry.secondaryKeys ?? []), entry.value ?? '']);
   }
-  return [
-    item.name, ...(item.aliases ?? []),
-    item.playerDescription, item.aiDescription, item.aiSummary, item.imageTags, ...openingTexts(item),
-  ].filter((text): text is string => !!text);
+  return entityTexts(item).filter((text): text is string => !!text);
 }
 
 /** The authored content of one item, ready to compare. Dictionary entry ids go too: every copy mints its

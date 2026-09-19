@@ -38,6 +38,7 @@ import {
 } from '@/lib/imageBytes';
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
+import { entityTexts } from '@/lib/entityTexts';
 import { openingTexts } from '@/lib/openings';
 import type {
   DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, Trait, World,
@@ -725,7 +726,7 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
   },
   ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },
-    texts: [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags, ...openingTexts(e)],
+    texts: entityTexts(e),
   })),
   ...(world.locations ?? []).map((l) => ({
     item: namedItem(l.id, l.name, world, 'locations'),

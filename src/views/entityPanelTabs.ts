@@ -29,7 +29,8 @@ export const ENTITY_EDITOR_TABS = [
 
 export type EntityEditorTab = (typeof ENTITY_EDITOR_TABS)[number]['value'];
 
-/** Which tab holds each searchable field; an opening row's key names its id, so it is matched apart. An alias arrives indexed, since the hit is on one chip, so it is
+/** Which tab holds each searchable field. An opening row's key names its id, so `entityTabForField` matches it
+ *  apart. An alias arrives indexed, since the hit is on one chip, so it is
  *  listed in the bracket form `tabForField` matches those against. */
 const TAB_BY_FIELD: Record<string, EntityPanelTab> = {
   name: 'profile',

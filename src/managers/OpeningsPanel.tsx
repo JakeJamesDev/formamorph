@@ -56,9 +56,9 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
 }) {
   return (
     <div className="space-y-2">
-      <OpeningsList owner={entity} onChange={onChange} placeholders={placeholders} empty={<Hint>No openings yet.</Hint>} />
+      <OpeningsList owner={entity} onChange={onChange} placeholders={placeholders} empty={<Hint>No openings yet</Hint>} />
       <Hint>
-        {"Join the world's draw when a player starts at a location this entity is at. The world's switch covers them too."}
+        {"Drawn with the world's openings when a player starts at a location this entity is at. The world's switch turns them off too."}
       </Hint>
     </div>
   );
