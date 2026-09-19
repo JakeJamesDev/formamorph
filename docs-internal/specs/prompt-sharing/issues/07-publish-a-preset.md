@@ -1,6 +1,7 @@
 # 07: Publish a Preset
 
-Status: ready-for-agent
+Status: in-progress
+Base: 315277e0
 Blocked by: 02, 04, 06
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -24,7 +25,11 @@ an update to one of their own.
   Neither renders for a built-in preset.
 - The publish dialog handles the kind. It shows the changelog and compatible worlds sections. It does not
   show contest entry, linked content, or the remote-image warning. The policy and terms gate applies.
-- Publish is blocked while Models is empty. The message names the Overview field and offers to open it.
+- Publish is blocked while Models is empty. The check runs on the Prompts screen when Publish is pressed,
+  before the publish dialog opens. A small dialog names the Overview field and offers to open it.
+- Compatible worlds lists every published world of the author. A world whose own pin names this preset
+  starts checked; a folder preset does not pre-check. An overwrite starts from the listing's stored worlds.
+  The relationship is the author's declaration, so the copy does not claim the app detected it.
 - New versus overwrite is the author's choice each time, from their own `prompt` listings. After a
   successful publish the local preset links to the listing.
 
