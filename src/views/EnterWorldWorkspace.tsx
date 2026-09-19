@@ -54,7 +54,9 @@ export interface EnterWorldWorkspaceProps {
   libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
   dictionaryItems: DictionarySelectionItem[];
-  /** The library personas on offer. The category hides when there are none. */
+  /** The world's own personas on offer. */
+  worldPersonas?: PersonaOption[];
+  /** The library personas on offer. The category hides when neither list has one. */
   personas?: PersonaOption[];
   persona?: PersonaRef;
   onPersonaChange?: (ref: PersonaRef) => void;
@@ -146,7 +148,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => (personaId ? props.libraryEntities.filter((entity) => entity.id !== personaId) : props.libraryEntities),
     [personaId, props.libraryEntities],
   );
-  const hasPersonas = (props.personas?.length ?? 0) > 0;
+  const hasPersonas = (props.worldPersonas?.length ?? 0) + (props.personas?.length ?? 0) > 0;
   const categories = useMemo(
     () => [
       ...(hasPersonas ? [{ kind: 'persona' as const, id: 'persona', name: 'Persona' }] : []),
@@ -427,7 +429,12 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               <p className="mb-4 text-helper text-muted-foreground">Choose who you play in this world</p>
-              <PersonaPicker library={personaOptions} value={props.persona} onChange={props.onPersonaChange} />
+              <PersonaPicker
+                world={props.worldPersonas}
+                library={personaOptions}
+                value={props.persona}
+                onChange={props.onPersonaChange}
+              />
             </>
           )}
           {current?.kind === 'location' && (

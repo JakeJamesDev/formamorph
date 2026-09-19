@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { resolvePersona } from './persona';
 import { entityIdsAt } from './entityPresence';
-import type { Entity, PersonaRef } from '@/types';
+import { buildEntityContext, buildSublocationEntitiesContext } from './locationContext';
+import type { Entity, GameLocation, PersonaRef } from '@/types';
 
 const ent = (id: string, name: string, extra: Partial<Entity> = {}): Entity => ({ id, name, ...extra });
 
@@ -81,5 +82,28 @@ describe('resolvePersona', () => {
   it('hands back the same cast array when nothing is played', () => {
     expect(resolvePersona({ source: 'none' }, world, library).cast).toBe(world);
     expect(resolvePersona({ source: 'library', entityId: 'l-wren' }, world, library).cast).toBe(world);
+  });
+});
+
+describe('the roster without the played entity', () => {
+  const town: GameLocation = { id: 'town', name: 'Town' };
+  const dock: GameLocation = { id: 'dock', name: 'Dock', parentId: 'town' };
+  const inn: GameLocation = { id: 'inn', name: 'Inn', parentId: 'town' };
+  const locations = [town, dock, inn];
+  const played = resolvePersona({ source: 'world', entityId: 'w-mira' }, world, library);
+
+  it('leaves the played entity out of the roster at every one of its locations', () => {
+    for (const location of [dock, inn]) {
+      expect(buildEntityContext(location, played.cast, { format: 'markdown' })).not.toContain('Mira');
+    }
+    expect(buildEntityContext(dock, played.cast, { format: 'markdown' })).toContain('Captain Vos');
+    expect(buildSublocationEntitiesContext(town, locations, played.cast, { format: 'markdown' })).not.toContain('Mira');
+  });
+
+  it('lists the entity at its locations again after a switch away', () => {
+    const { cast } = resolvePersona({ source: 'none' }, world, library);
+    for (const location of [dock, inn]) {
+      expect(buildEntityContext(location, cast, { format: 'markdown' })).toContain('Mira');
+    }
   });
 });

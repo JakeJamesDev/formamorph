@@ -1,5 +1,5 @@
 import { createKeyedRecordStore, readStorageJson, writeStorageJson } from './keyedStorage';
-import type { PersonaRef } from '@/types';
+import type { Entity, PersonaRef } from '@/types';
 
 /** Who a world lets the player be. Only Open exists until the world gains its player setting. */
 export type WorldPlayerSetting = 'open';
@@ -11,8 +11,8 @@ export interface PersonaChoices {
   remembered: PersonaRef | undefined;
   /** The global default: a library entity id. */
   globalDefault: string | undefined;
-  /** The persona ids the picker offers. */
-  available: { library: string[] };
+  /** The persona ids the picker offers: the world's marked entities and the library personas. */
+  available: { world: string[]; library: string[] };
 }
 
 const NONE: PersonaRef = { source: 'none' };
@@ -20,11 +20,35 @@ const NONE: PersonaRef = { source: 'none' };
 /** The persona the picker starts on: the world's remembered pick, then the global default, then None. A pick
  *  that names an entity the picker does not offer falls through to the next rule. */
 export function preselectPersona({ remembered, globalDefault, available }: PersonaChoices): PersonaRef {
-  const offered = (ref: PersonaRef) => ref.source === 'none' || (ref.source === 'library' && available.library.includes(ref.entityId));
-  if (available.library.length === 0) return NONE;
+  const offered = (ref: PersonaRef) => ref.source === 'none' || available[ref.source].includes(ref.entityId);
+  if (available.world.length === 0 && available.library.length === 0) return NONE;
   if (remembered && offered(remembered)) return remembered;
   if (globalDefault && available.library.includes(globalDefault)) return { source: 'library', entityId: globalDefault };
   return NONE;
+}
+
+/** The first of the entity's locations that is a starting location, or null when it has none. */
+export function personaStartLocation(entity: Entity, startingLocationIds: readonly string[]): string | null {
+  return entity.locations?.find((id) => startingLocationIds.includes(id)) ?? null;
+}
+
+/** What a persona pick reads to preselect a starting location. */
+export interface PersonaPickContext {
+  worldEntities: readonly Entity[];
+  startingLocationIds: readonly string[];
+}
+
+/** The starting location after a persona pick. A world persona preselects its own starting location until
+ *  the player picks a location by hand; every other pick keeps the current one. */
+export function locationForPersonaPick({ ref, current, locationChosen, worldEntities, startingLocationIds }: {
+  ref: PersonaRef;
+  current: string | null;
+  /** The player picked the location by hand in this step. */
+  locationChosen: boolean;
+} & PersonaPickContext): string | null {
+  if (locationChosen || ref.source !== 'world') return current;
+  const entity = worldEntities.find((e) => e.id === ref.entityId);
+  return (entity && personaStartLocation(entity, startingLocationIds)) ?? current;
 }
 
 /** The added characters without the library persona: one entity fills one role per playthrough. */

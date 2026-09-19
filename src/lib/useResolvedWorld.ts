@@ -39,6 +39,8 @@ export interface ResolvedWorld {
   persona: ResolvedPersona | null;
   /** The persona's name and aliases, which the planner reads as the player. */
   playerNames: string[];
+  /** The world's entities the player can play as, the played one included. */
+  worldPersonas: Entity[];
   /** The save names a persona its source no longer holds. False while a library read is in flight. */
   personaUnresolved: boolean;
   locations: GameLocation[];
@@ -223,6 +225,7 @@ export function useResolvedWorld(): ResolvedWorld {
     () => resolvePersona(personaRef, worldEntities, libraryEntities),
     [personaRef, worldEntities, libraryEntities],
   );
+  const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -240,7 +243,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, persona, playerNames, personaUnresolved: unresolved && !personaPending,
+    entities, persona, playerNames, worldPersonas, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, pins, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,

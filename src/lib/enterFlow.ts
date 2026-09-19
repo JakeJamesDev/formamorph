@@ -24,6 +24,8 @@ export interface EnterFlowWorld {
   traitCount: number;
   startingLocationCount: number;
   hasLibraryAdditions: boolean;
+  /** The world has entities the player can play as. */
+  hasWorldPersonas: boolean;
   use3DModel: boolean;
 }
 
@@ -39,6 +41,7 @@ export function buildEnterFlow(world: EnterFlowWorld, mode: EnterMode): EnterSte
     world.traitCount > 0
     || world.startingLocationCount > 1
     || world.hasLibraryAdditions
+    || world.hasWorldPersonas
   ) steps.push('workspace');
   if (world.use3DModel) steps.push('avatar');
   return steps;

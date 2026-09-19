@@ -1,3 +1,4 @@
+import { primaryImage } from './entityImages';
 import type { Entity, PersonaRef } from '@/types';
 
 /** The entity the player plays, and where it was read from. */
@@ -48,3 +49,7 @@ export interface PersonaPick {
   ref: PersonaRef;
   libraryEntity?: Entity;
 }
+
+/** A world entity as a persona picker option. */
+export const personaOption = (entity: Entity): { id: string; name: string; image?: string } =>
+  ({ id: entity.id, name: entity.name, image: primaryImage(entity) });

@@ -4,8 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
+import { emptyEntryDraft, withLocationPick, withPersonaPick } from '@/lib/entryDraft';
 import { withoutPersona } from '@/lib/personaPick';
-import type { EntityMetadata, PersonaRef, Trait } from '@/types';
+import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -825,5 +826,69 @@ describe('the Persona category', () => {
     await user.click(screen.getByRole('button', { name: 'Persona' }));
     expect(screen.queryByRole('radio', { name: 'Quiet Cartographer' })).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Mara Vale' })).toBeInTheDocument();
+  });
+});
+
+const worldEntities: Entity[] = [
+  { id: 'warden', name: 'Harbor Warden', aiDescription: '', persona: true, locations: ['inn', 'dock'] },
+  { id: 'drifter', name: 'Road Drifter', aiDescription: '', persona: true, locations: ['road'] },
+];
+const worldPersonas = worldEntities.map(({ id, name }) => ({ id, name }));
+const startLocations: GameLocation[] = [
+  { id: 'gate', name: 'Town Gate', description: '', isStarting: true },
+  { id: 'dock', name: 'Harbor Dock', description: '', isStarting: true },
+];
+
+// The host's side of the pick rules, through the same draft functions the main menu uses.
+function WorldPersonaHarness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>>) {
+  const [draft, setDraft] = useState(emptyEntryDraft);
+  const context = { worldEntities, startingLocationIds: startLocations.map((l) => l.id) };
+  return (
+    <Harness
+      worldPersonas={worldPersonas}
+      personas={personas}
+      persona={draft.persona}
+      onPersonaChange={(ref) => setDraft((current) => withPersonaPick(current, ref, context))}
+      locations={startLocations}
+      selectedLocationId={draft.locationId}
+      onLocationChange={(id) => setDraft((current) => withLocationPick(current, id))}
+      {...props}
+    />
+  );
+}
+
+describe('world personas in the Persona category', () => {
+  it("lists None, then the world's personas and the library personas under their own headings", () => {
+    render(<WorldPersonaHarness />);
+    const picker = screen.getByRole('radiogroup', { name: 'Persona' });
+    const order = [...picker.querySelectorAll('[role="radio"], h3')].map((el) => el.getAttribute('aria-label') ?? el.textContent);
+    expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Road Drifter', 'Your Personas', 'Mara Vale', 'Quiet Cartographer']);
+  });
+
+  it('shows the category for world personas alone, with no library heading', () => {
+    render(<WorldPersonaHarness personas={[]} />);
+    expect(screen.getByRole('heading', { name: 'From This World' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Your Personas' })).not.toBeInTheDocument();
+  });
+
+  it('preselects the starting location of a picked world persona, and the location stays editable', async () => {
+    const user = userEvent.setup();
+    render(<WorldPersonaHarness />);
+    await user.click(screen.getByRole('radio', { name: 'Harbor Warden' }));
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.getByRole('radio', { name: 'Harbor Dock' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Town Gate' }));
+    expect(screen.getByRole('radio', { name: 'Town Gate' })).toBeChecked();
+  });
+
+  it('leaves a hand-chosen location in place', async () => {
+    const user = userEvent.setup();
+    render(<WorldPersonaHarness />);
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    await user.click(screen.getByRole('radio', { name: 'Town Gate' }));
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Harbor Warden' }));
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.getByRole('radio', { name: 'Town Gate' })).toBeChecked();
   });
 });

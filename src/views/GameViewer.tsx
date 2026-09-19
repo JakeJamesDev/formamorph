@@ -1759,7 +1759,7 @@ const GameViewer = ({
       "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple', view),
       "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown', view),
       "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml', view),
-      ...personaContextValues(persona?.entity ?? null),
+      ...personaContextValues(persona),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
       // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
       // (the now-line's) simply vanishes and the setting needs no special case anywhere else.

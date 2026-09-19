@@ -63,12 +63,15 @@ import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
-import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
+import {
+  emptyEntryDraft, withLocationPick, withPersonaPick, type EntryDraft,
+} from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   clearDefaultPersona, preselectPersona, readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona,
-  withoutPersona,
+  withoutPersona, type PersonaPickContext,
 } from '@/lib/personaPick';
+import { personaOption } from '@/lib/persona';
 import type { PersonaPick } from '@/lib/persona';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
@@ -366,6 +369,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     cancelEntryResolution();
     setEntryDraft(prev => ({ ...prev, [key]: typeof value === 'function' ? value(prev[key]) : value }));
   };
+  const reviseDraft = (revise: (draft: EntryDraft) => EntryDraft) => {
+    cancelEntryResolution();
+    setEntryDraft(revise);
+  };
   useEffect(() => () => { entryRequest.current = null; }, []);
   // Finalized dictionaries for normal entry; null keeps Quick Start and saves on authored defaults.
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
@@ -392,7 +399,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       rolls,
     });
   }, [selectedTraits, selectedLocationId, rawTraits, rawTraitGroups, rawStats, rawLocations, placeholders, rolls]);
-  const { traits, traitGroups, stats, locations, resolvePH, resolveTraitText } = useResolvedAuthoredWorld(draftPins);
+  const {
+    traits, traitGroups, stats, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText,
+  } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showWorldPrompts, setShowWorldPrompts] = useState(false);
@@ -1317,12 +1326,25 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     () => additionEntities.filter((entity) => entity.persona === true).map(({ id, name, image }) => ({ id, name, image })),
     [additionEntities],
   );
-  // Enter World and Quick Start start on the same persona.
+  /** The world's entities the author marked as playable. */
+  const worldPersonaOptions = useMemo(
+    () => resolvedWorldEntities.filter((entity) => entity.persona === true)
+      .map(personaOption),
+    [resolvedWorldEntities],
+  );
+  const personaPickContext: PersonaPickContext = {
+    worldEntities: resolvedWorldEntities,
+    startingLocationIds: startingLocations(locations).map((location) => location.id),
+  };
+  // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
     playerSetting: 'open',
     remembered: readWorldPersona(worldId),
     globalDefault: defaultPersona,
-    available: { library: personaOptions.map((option) => option.id) },
+    available: {
+      world: worldPersonaOptions.map((option) => option.id),
+      library: personaOptions.map((option) => option.id),
+    },
   });
   // Reads a library persona for page one. One deleted since the pick lands as None.
   const loadPersonaPick = async (ref: PersonaRef): Promise<PersonaPick> => {
@@ -1371,7 +1393,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (entryRequest.current !== request) return;
       const dicts = finalizeSelection(draft.dictionaryItems, books);
       // Only a pick the step showed is remembered; a hidden category leaves room for a later default.
-      if (personaOptions.length > 0) rememberWorldPersona(selectedWorld!.id, draft.persona);
+      if (worldPersonaOptions.length + personaOptions.length > 0) rememberWorldPersona(selectedWorld!.id, draft.persona);
       setSelectedCharacters(chars);
       setSelectedDictionaries(dicts);
       setSelectedPersona(persona);
@@ -1419,6 +1441,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     traitCount: traits.length,
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
+    hasWorldPersonas: worldPersonaOptions.length > 0,
     use3DModel: !!selectedWorld?.data.worldOverview?.use3DModel,
   }, mode);
   const showEnterStep = (step: NavigableStep) => {
@@ -1452,11 +1475,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const additions = restoreWorldAdditionDefaults(
       selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities);
     const persona = personaPreselect(selectedWorld!.id);
-    // The persona wins a tie with a remembered character.
-    const draft: EntryDraft = {
-      ...emptyEntryDraft(), traitIds: defaults, ...additions, persona,
-      entityIds: withoutPersona(additions.entityIds, persona),
-    };
+    // The persona wins a tie with a remembered character, and a world persona preselects its location.
+    const draft = withPersonaPick(
+      { ...emptyEntryDraft(), traitIds: defaults, ...additions }, persona, personaPickContext);
     cancelEntryResolution();
     entryStarted.current = false;
     setEntryDraft(draft);
@@ -2611,17 +2632,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         const defaults = collapseExclusiveDefaults(
                           traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         const persona = personaPreselect(selectedWorld!.id);
-                        const draft: EntryDraft = {
-                          ...emptyEntryDraft(), traitIds: defaults, persona,
+                        // A world persona starts at its own starting location; any other start stays random.
+                        const draft = withPersonaPick({
+                          ...emptyEntryDraft(), traitIds: defaults,
                           dictionaryItems: buildInitialSelection(worldBooks, dictionaries, signedInId),
-                        };
+                        }, persona, personaPickContext);
                         if (entryStarted.current) return;
                         cancelEntryResolution();
                         entryStarted.current = true;
                         setEntryDraft(draft);
                         const characterData = currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null;
                         loadPersonaPick(persona).then(
-                          (pick) => onStartGame(defaults, characterData, true, null, null, null, pick),
+                          (pick) => onStartGame(defaults, characterData, true, draft.locationId, null, null, pick),
                           (error: unknown) => {
                             entryStarted.current = false;
                             console.error('Could not read the Quick Start persona', error);
@@ -3022,16 +3044,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           libraryEntities={additionEntities}
           selectedEntityIds={entryDraft.entityIds}
           dictionaryItems={entryDraft.dictionaryItems}
+          worldPersonas={worldPersonaOptions}
           personas={personaOptions}
           persona={entryDraft.persona}
-          onPersonaChange={(ref) => {
-            updateDraft('persona', ref);
-            updateDraft('entityIds', (current) => withoutPersona(current, ref));
-          }}
+          onPersonaChange={(ref) => reviseDraft((draft) => withPersonaPick(draft, ref, personaPickContext))}
           categoryIndex={entryDraft.traitSection}
           onCategoryChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}
-          onLocationChange={(id) => updateDraft('locationId', id)}
+          onLocationChange={(id) => reviseDraft((draft) => withLocationPick(draft, id))}
           onEntityToggle={(id, selected) => updateDraft('entityIds', (current) => {
             const next = new Set(current);
             if (selected) next.add(id); else next.delete(id);

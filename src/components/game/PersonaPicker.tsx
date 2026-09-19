@@ -34,8 +34,14 @@ function Portrait({ option }: { option: PersonaOption }) {
   );
 }
 
-/** The persona choice: None, then the library personas, each with its portrait and name. */
-export function PersonaPicker({ library, value, onChange }: {
+const groupHeading = (label: string) => (
+  <h3 className="col-span-full mt-2 text-meta font-medium tracking-wide text-muted-foreground">{label}</h3>
+);
+
+/** The persona choice: None, then the world's own personas, then the library personas, each group under its
+ *  own heading and each persona with its portrait and name. */
+export function PersonaPicker({ world = [], library, value, onChange }: {
+  world?: PersonaOption[];
   library: PersonaOption[];
   value: PersonaRef;
   onChange: (ref: PersonaRef) => void;
@@ -49,8 +55,16 @@ export function PersonaPicker({ library, value, onChange }: {
       </label>
     </div>
   );
+  const personaRow = (source: Exclude<PersonaRef['source'], 'none'>) => (option: PersonaOption) =>
+    row(`${source}:${option.id}`, option.name, (
+      <>
+        <Portrait option={option} />
+        <strong className="min-w-0 break-words text-label font-semibold">{option.name}</strong>
+      </>
+    ));
   return (
     <RadioGroup
+      aria-label="Persona"
       value={current}
       onValueChange={(key) => onChange(refOf(key))}
       className="grid min-w-0 gap-3 xl:grid-cols-2"
@@ -61,12 +75,10 @@ export function PersonaPicker({ library, value, onChange }: {
           <span className="mt-1 block text-helper text-muted-foreground">Play as the world describes the player</span>
         </span>
       ))}
-      {library.map((option) => row(`library:${option.id}`, option.name, (
-        <>
-          <Portrait option={option} />
-          <strong className="min-w-0 break-words text-label font-semibold">{option.name}</strong>
-        </>
-      )))}
+      {world.length > 0 && groupHeading('From This World')}
+      {world.map(personaRow('world'))}
+      {library.length > 0 && groupHeading('Your Personas')}
+      {library.map(personaRow('library'))}
     </RadioGroup>
   );
 }
