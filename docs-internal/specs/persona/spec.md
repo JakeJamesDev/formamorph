@@ -173,7 +173,8 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - The workspace step gains a Persona category. It shows when at least one persona is available for that world under the world's player setting.
 - It is the first category, because the starting-location preselect depends on the pick. It is one flat category named Persona, with no nav header of its own.
 - A new game always lands a reference. When the category is hidden, the save gets an explicit None.
-- Only a pick the player makes in the step, or a Change in game, writes the world's remembered pick. A hidden category writes none, so a player who makes a first persona later still gets the global default preselected.
+- The world's remembered pick is the persona last used in that world. Start writes it whenever the Persona category was shown, and a selection the player let stand counts as a pick. A world that starts on the global default therefore keeps that persona when the global default later changes. A Change in game also writes it.
+- A hidden category and Quick Start show no picker, so they read the preselect order and write nothing. A player who makes a first persona later still gets the global default preselected.
 - When the remembered additions and the preselected persona name one entity, the persona wins.
 - A library entity picked as the persona is removed from the added characters for that playthrough. The picker and the character list enforce this in both directions.
 - Picking a world persona preselects the starting location to the first of that entity's locations that is a starting location. The player can change it. No pick is forced.
