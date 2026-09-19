@@ -106,9 +106,13 @@ thing, so no zoom between them can look correct.
 - **Opacity, in the fly-in sense.** Outer layer 1 → 0 at 75% progress. Folder tile inside the outer layer
   1 → 0 at 30%. Inner layer 0 → 1 at 35%. Inner layer clip: from the tile's height at tile corner radius
   to no clip.
-- **Text fades run on linear time**, because the camera easing holds them near full opacity for a third of
-  the duration. Folder name bar: 1 → 0 in the first 12%. Member title text: fly-out only, gone in the
-  first 15% of the fly-out.
+- **The folder name bar fades on linear time**, 1 → 0 in the first 12%, because the camera easing would
+  hold it near full opacity for a third of the duration. The name bar is not on the board, so the clock
+  is the right measure for it.
+- **Member title text rides the camera.** Fly-out only, and on the camera's own easing rather than linear
+  time, so the fade is read against the board's size instead of the clock: a name is gone once the board
+  has receded past a quarter of the camera's range, about 308 ms into the 420 ms trip. This is what makes
+  the fade read as distance taking the text, not as a beat that starts the motion.
 - **Scroll.** A fly-in saves the library scroll offset and sets the folder board to the top. A fly-out
   restores the saved offset before it measures the tile.
 - **Guards.** No animation while a drag is active, under `prefers-reduced-motion: reduce`, in the detailed
