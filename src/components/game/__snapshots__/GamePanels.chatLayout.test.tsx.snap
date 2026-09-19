@@ -3,7 +3,7 @@
 exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
 <div>
   <div
-    class="rounded-lg border text-card-foreground shadow-sm w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden"
+    class="rounded-lg border text-card-foreground shadow-sm w-full flex-grow md:mx-0.5 md:min-w-0 md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden"
   >
     <div
       class="flex-grow flex flex-col overflow-hidden p-4 sm:p-1"
@@ -406,7 +406,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
 exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
 <div>
   <div
-    class="rounded-lg border text-card-foreground shadow-sm w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden"
+    class="rounded-lg border text-card-foreground shadow-sm w-full flex-grow md:mx-0.5 md:min-w-0 md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden"
   >
     <div
       class="flex-grow flex flex-col overflow-hidden p-4 sm:p-1"
