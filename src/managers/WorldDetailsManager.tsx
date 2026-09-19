@@ -64,7 +64,10 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
  * Openings need no player-facing opt-out where the prompts do: the pre-filled box is editable, so the
  * player already has the last word on what the opening turn says.
  */
-const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
+const CustomPromptsSection = ({ focusField, onOpenEntity }: {
+  focusField?: FocusFieldHint | null;
+  onOpenEntity?: (entityId: string) => void;
+}) => {
   const {
     worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
     placeholders,
@@ -191,7 +194,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | nu
         ))}
       </ToggleGroup>
 
-      {tab === 'opening' && <OpeningsPanel />}
+      {tab === 'opening' && <OpeningsPanel onOpenEntity={onOpenEntity} />}
 
       {tab !== null && tab !== 'opening' && (() => {
         const kind = tab;
@@ -304,7 +307,11 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
 
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField }: { focusField?: FocusFieldHint | null }) => {
+const WorldDetailsManager = ({ focusField, onOpenEntity }: {
+  focusField?: FocusFieldHint | null;
+  /** Opens an entity's Openings tab, from the openings panel's group header. */
+  onOpenEntity?: (entityId: string) => void;
+}) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
   // for it. No chip family here: any `{{ph…}}` an old world carries stays inert text, exactly as it'd read.
@@ -333,7 +340,7 @@ const WorldDetailsManager = ({ focusField }: { focusField?: FocusFieldHint | nul
         resizable
       />
 
-      <CustomPromptsSection focusField={focusField} />
+      <CustomPromptsSection focusField={focusField} onOpenEntity={onOpenEntity} />
     </div>
   );
 };
