@@ -11,13 +11,14 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
+import { ListAddButton, ListToolbar } from '@/components/ListToolbar';
 import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -977,14 +978,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const addGroupHere = activeTab === "entities" ? handleAddEntityGroup : activeTab === "placeholders" ? handleAddPlaceholderGroup : handleAddGroup;
   const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
   const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
+  const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
   const addSearchBar = activeTab !== "overview" && (
-    <div className="flex items-center space-x-2 flex-shrink-0 mt-4">
+    <ListToolbar className="mt-4">
       {advanced && grouped ? (
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
-            <Button size="icon" className="h-9 w-9 shrink-0">
-              <Plus className="h-4 w-4" />
-            </Button>
+            <ListAddButton label={addLabel} />
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-44 p-1">
             <button
@@ -1004,9 +1004,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           </PopoverContent>
         </Popover>
       ) : (
-        <Button onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem} size="icon" className="h-9 w-9 shrink-0">
-          <Plus className="h-4 w-4" />
-        </Button>
+        <ListAddButton
+          label={addLabel}
+          onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem}
+        />
       )}
       {activeTab === "locations" ? (
         <ToggleGroup
@@ -1037,7 +1038,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       />
       {/* key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount). */}
       {helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
-    </div>
+    </ListToolbar>
   );
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">

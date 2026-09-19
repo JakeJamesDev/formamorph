@@ -2,6 +2,16 @@ import { randomUUID } from "@/lib/uuid";
 import { remintPlaceholdersDeep } from "@/lib/placeholders";
 import type { Dictionary, DictionaryEntry } from '@/types';
 
+/** A new entry. Its name is blank, so the tree and the prompt label read its first keyword until it has one. */
+export function blankDictionaryEntry(): DictionaryEntry {
+  return { id: randomUUID(), name: '', key: [], value: '' };
+}
+
+/** The entry a book's tree shows first: its first Background entry, else its first Foreground one. */
+export function firstDictionaryEntryId(book: Dictionary): string | null {
+  return (book.entries.find((e) => e.position === 'before') ?? book.entries[0])?.id ?? null;
+}
+
 /** Pure array move (no dnd-kit dependency, so these reducers stay unit-testable). */
 function move<T>(arr: T[], from: number, to: number): T[] {
   const next = arr.slice();

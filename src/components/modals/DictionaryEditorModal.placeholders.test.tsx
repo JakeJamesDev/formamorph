@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import DictionaryEditorModal from './DictionaryEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
@@ -100,15 +100,15 @@ beforeEach(() => { stores.length = 0; });
 describe('the library dictionary editor’s own placeholder store', () => {
   it('labels an entry’s chip with the book’s placeholder, not the world’s', async () => {
     await open();
-    // The modal opens on the book's own panel, so the tree is the one place the entry's name shows.
-    expect(screen.getByText(/Hair Color/)).toBeInTheDocument();
+    const list = document.querySelector('[data-list-detail]')!.children[0] as HTMLElement;
+    expect(within(list).getByText(/Hair Color/)).toBeInTheDocument();
     expect(screen.queryByText(/World Weather/, { ignore: '[data-testid="world-placeholders"]' })).toBeNull();
   });
 
   it('keeps the store instance across a keystroke in an entry value', async () => {
     await open();
     const user = userEvent.setup();
-    await user.click(screen.getByText('Hostile Forces'));
+    await user.click(within(document.querySelector('[data-list-detail]')!.children[0] as HTMLElement).getByText('Hostile Forces'));
     await user.click(screen.getByText('A big lizard.'));
     const before = modalStores().length;
     const settled = modalStores().at(-1);
@@ -124,7 +124,7 @@ describe('the library dictionary editor’s own placeholder store', () => {
   it('puts a placeholder made from an entry field in the book, and leaves the world alone', async () => {
     await open();
     const user = userEvent.setup();
-    await user.click(screen.getByText('Hostile Forces'));
+    await user.click(within(document.querySelector('[data-list-detail]')!.children[0] as HTMLElement).getByText('Hostile Forces'));
     await user.click(screen.getByLabelText('Name'));
     await user.keyboard('{{Southern');
     // The menu opts back into pointer events with a class jsdom has no stylesheet for; it acts on mousedown.
