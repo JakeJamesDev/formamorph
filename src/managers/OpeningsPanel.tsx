@@ -6,14 +6,15 @@ import { EditorDndContext, StableSortableContext } from '@/components/dnd/Editor
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, moveOpening, openingChances, openingsEnabled, openingWeight, removeOpening,
-  setOpeningText, setOpeningWeight,
+  setOpeningKind, setOpeningText, setOpeningWeight,
 } from '@/lib/openings';
-import type { Opening, Placeholder } from '@/types';
+import type { Opening, OpeningKind, Placeholder } from '@/types';
 
 /** The world's openings: one card per row with its text, weight and chance, in draw order. */
 export function OpeningsPanel() {
@@ -54,6 +55,7 @@ export function OpeningsPanel() {
                   weight={openingWeight(worldOverview.openingWeights, opening.id)}
                   chance={chances[opening.id] ?? 0}
                   placeholders={placeholders}
+                  onKind={(kind) => updateWorldOverview(setOpeningKind(worldOverview, opening.id, kind))}
                   onText={(text) => updateWorldOverview(setOpeningText(worldOverview, opening.id, text))}
                   onWeight={(w) => updateWorldOverview(setOpeningWeight(worldOverview, opening.id, w))}
                   onRemove={() => updateWorldOverview(removeOpening(worldOverview, opening.id))}
@@ -74,7 +76,7 @@ export function OpeningsPanel() {
       </Button>
       <Hint>
         {enabled
-          ? 'Draws one opening by weight when a player starts this world and fills their input box with it. They can edit it before they send it.'
+          ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
           : 'Not applied until you switch the list on. Players start on the default opening.'}
       </Hint>
     </div>
@@ -82,13 +84,14 @@ export function OpeningsPanel() {
 }
 
 const OpeningCard = ({
-  opening, index, weight, chance, placeholders, onText, onWeight, onRemove,
+  opening, index, weight, chance, placeholders, onKind, onText, onWeight, onRemove,
 }: {
   opening: Opening;
   index: number;
   weight: number;
   chance: number;
   placeholders: Placeholder[];
+  onKind: (kind: OpeningKind) => void;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
   onRemove: () => void;
@@ -114,6 +117,16 @@ const OpeningCard = ({
           <GripVertical className="h-3.5 w-3.5" />
         </button>
         <span className="min-w-0 flex-1 truncate text-helper font-medium text-muted-foreground">{label}</span>
+        <ToggleGroup
+          type="single"
+          value={opening.kind}
+          onValueChange={(v) => { if (v) onKind(v as OpeningKind); }}
+          aria-label={`Opens as, ${label}`}
+          className="h-6"
+        >
+          <ToggleGroupItem value="action" className="h-6 px-2 text-helper">Player Action</ToggleGroupItem>
+          <ToggleGroupItem value="narration" className="h-6 px-2 text-helper">Narration</ToggleGroupItem>
+        </ToggleGroup>
         <Input
           type="number"
           min={0}
@@ -146,7 +159,7 @@ const OpeningCard = ({
           onChange={onText}
           placeholders={placeholders}
           ariaLabel={label}
-          placeholder="What the player's first action says"
+          placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
           resizable
         />
       </div>
