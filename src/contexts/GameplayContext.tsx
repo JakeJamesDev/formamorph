@@ -17,6 +17,8 @@ import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
+import { registerDevHook } from '../lib/devRouter';
+import EntityStorageService from '../services/EntityStorageService';
 import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
@@ -35,8 +37,10 @@ import type {
   Choice,
   DiscoveredEntity,
   Dictionary,
+  Entity,
   SceneEntity,
   EntityVisualPreference,
+  PersonaRef,
   TraitsPanelView,
 } from '@/types';
 
@@ -108,6 +112,30 @@ function useProvideGameplay() {
   // absent from the save envelope: where you had paged to is a property of looking at something, not of the
   // playthrough, so a load starts every entity back at its primary.
   const [entityImageIndex, setEntityImageIndex] = useState<Record<string, number>>({});
+  // Who the player plays (see lib/persona). Envelope state beside the dictionaries, so an undo leaves it.
+  const [personaRef, setPersonaRef] = useState<PersonaRef | undefined>(undefined);
+  // A library persona is a live read, never a copy: re-read at load and whenever the library writes it.
+  // `id` records which read landed, so a read still in flight is not mistaken for a deleted entity.
+  const libraryPersonaId = personaRef?.source === 'library' ? personaRef.entityId : null;
+  const [libraryPersonaRead, setLibraryPersonaRead] = useState<{ id: string; entity: Entity | null } | null>(null);
+  useEffect(() => {
+    if (!libraryPersonaId) return;
+    let live = true;
+    const read = () => EntityStorageService.getEntityData(libraryPersonaId).then(
+      (entity) => { if (live) setLibraryPersonaRead({ id: libraryPersonaId, entity }); },
+      () => { if (live) setLibraryPersonaRead({ id: libraryPersonaId, entity: null }); },
+    );
+    void read();
+    const unsubscribe = EntityStorageService.subscribe((id) => { if (id === libraryPersonaId) void read(); });
+    return () => { live = false; unsubscribe(); };
+  }, [libraryPersonaId]);
+  const libraryPersona = libraryPersonaId && libraryPersonaRead?.id === libraryPersonaId ? libraryPersonaRead : null;
+  // True while a library persona's first read is in flight.
+  const personaPending = libraryPersonaId !== null && libraryPersona === null;
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('setPersona', (ref: PersonaRef | undefined) => setPersonaRef(ref));
+  }, []);
   // The accumulated milestone verdicts (T4: incremental, sticky): which candidate turn ids the
   // selector has judged and which it kept (`selected` null = a legacy malformed full-vote → keep
   // everything). Persisted in the save envelope so verdicts survive load.
@@ -334,6 +362,7 @@ function useProvideGameplay() {
         ...(placeholderRolls.world || placeholderRolls.unique ? { placeholderRolls } : {}),
         ...(Object.keys(memoryPins).length ? { memoryPins } : {}),
         ...(Object.keys(entityVisualPreference).length ? { entityVisualPreference } : {}),
+        ...(personaRef ? { persona: personaRef } : {}),
         ...(milestoneSelection ? { milestoneSelection } : {}),
         ...(Object.keys(memoryEdits).length ? { memoryEdits } : {}),
         ...(memoryDeleted.length ? { memoryDeleted } : {}),
@@ -357,7 +386,7 @@ function useProvideGameplay() {
       }
       return false;
     }
-  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
+  }, [saveCurrentGameState, gameStates, runtimeDictionaries, placeholderRolls, memoryPins, entityVisualPreference, personaRef, milestoneSelection, memoryEdits, memoryDeleted, memoryNotes, sceneImages, addSystemLogEntry]);
 
   // Autosave has failed at least once this session — used to toast only once, re-armed on a later success.
   const autosaveFailedRef = useRef(false);
@@ -414,6 +443,8 @@ function useProvideGameplay() {
           // Absent on saves written before the preference existed ⇒ every entity opens on its image.
           setEntityVisualPreference(migrated.entityVisualPreference ?? {});
           setEntityImageIndex({});
+          // Absent on saves written before personas ⇒ no persona, never the player's default.
+          setPersonaRef(migrated.persona);
           // Restore accumulated verdicts (T4: sticky, never re-voted); older saves lack the field —
           // the loaded history is then judged fresh in one incremental batch on the next idle tick.
           setMilestoneSelection(migrated.milestoneSelection ?? null);
@@ -469,6 +500,7 @@ function useProvideGameplay() {
 
           const success = loadGameState(backfillGameStateStats(migrateLegacySaveState(convertedData), worldStats), locations, { worldStats });
           if (success) {
+            setPersonaRef(undefined);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
           }
           return success;
@@ -659,6 +691,10 @@ function useProvideGameplay() {
     setEntityVisualPreference,
     entityImageIndex,
     setEntityImageIndex,
+    personaRef,
+    setPersonaRef,
+    libraryPersona: libraryPersona?.entity ?? null,
+    personaPending,
     milestoneSelection,
     setMilestoneSelection,
     memoryEdits,
