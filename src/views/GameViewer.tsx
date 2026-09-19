@@ -37,6 +37,7 @@ import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/g
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawOpening, drawUnseenOpening, openingPool } from "@/lib/openings";
+import { renderUserMacro } from "@/lib/userMacro";
 import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
@@ -1184,7 +1185,7 @@ const GameViewer = ({
     // to show, so the page stays as it is. The draw is recorded only once the restore has succeeded.
     const session = openingSessionRef.current;
     const redraw = page === 1 ? drawUnseenOpening(sessionPool(), session.shown, Math.random) : null;
-    const redrawText = redraw ? resolvePH(redraw.opening.text) : "";
+    const redrawText = redraw ? renderUserMacro(resolvePH(redraw.opening.text)) : "";
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
@@ -1793,7 +1794,7 @@ const GameViewer = ({
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
     // This session's opening, resolved: an old save's history holds the sentinel rather than the text.
-    openingCue: resolvePH(openingCue().text),
+    openingCue: renderUserMacro(resolvePH(openingCue().text)),
     choices: resolvedChoicesPrompt,
     choicesUser: choicesUserPrompt,
     statUpdates: resolvedStatUpdatesPrompt,
@@ -3936,7 +3937,7 @@ const GameViewer = ({
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
       };
-      const openingText = resolveWith(openingPins, drawn.opening.text);
+      const openingText = renderUserMacro(resolveWith(openingPins, drawn.opening.text));
       if (drawn.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
         setPendingTurnNonce((n) => n + 1);
