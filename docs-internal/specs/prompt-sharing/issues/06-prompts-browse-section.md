@@ -1,6 +1,7 @@
 # 06: Prompts Browse Section
 
-Status: ready-for-agent
+Status: in-progress
+Base: c7feaa98
 Blocked by: 05
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -20,7 +21,11 @@ Download comes in ticket 09.
   kinds. Cards show the kind icon in place of a thumbnail.
 - The section is visible in Simple mode.
 - Listing details show description, tags, models, author, the changelog, and "Made for Formamorph X" from
-  the artifact's app version stamp. Parse the artifact with the existing share parser.
+  the listing row's `app_version`. The details read returns no content, and the content read counts a
+  download, so the panel never parses the artifact.
+- Server part (FormamorphServer, its own commit): the row gains `app_version`, derived from the artifact's
+  stamp at create and update of a `prompt`, null when the stamp is missing or not a short string, null for
+  other kinds. List and detail responses return it. The client shows the line only for a non-empty string.
 - Likes, reports, quarantine, and hidden tags and authors work as for other kinds.
 - A server that does not know the kind returns nothing; the section then shows its empty state.
 - Add the dev-router coverage needed to land on the section in one call.
