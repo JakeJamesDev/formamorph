@@ -1,14 +1,15 @@
 // Import a SillyTavern / Character-Card character embedded in a PNG. Such cards store the card JSON base64'd
 // in a PNG text chunk — `ccv3` (Character Card V3) preferred, else `chara` (V2/V1). We map only the fields a
-// Formamorph world entity has a home for: name, and description + personality + scenario → `aiDescription`.
-// The chat-runtime fields (first_mes, mes_example, greetings, system_prompt, …) have no narrative-entity
-// equivalent and are dropped. An embedded `character_book` lorebook is offered separately to the dictionary
-// library. See the MIT Character Card V3 spec (credited in THIRD-PARTY-NOTICES.md).
+// Formamorph world entity has a home for: name, description + personality + scenario → `aiDescription`, and
+// the first message + alternate greetings → Opening Narration rows. The other chat-runtime fields
+// (mes_example, system_prompt, …) are dropped. An embedded `character_book` lorebook is offered separately to
+// the dictionary library. See the MIT Character Card V3 spec (credited in THIRD-PARTY-NOTICES.md).
 
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Dictionary } from '@/types';
+import type { Entity, Dictionary, Opening } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
+import { canonicalUserMacro } from './userMacro';
 
 /** The subset of card fields we read. V2/V3 nest these under `data`; V1 is flat. */
 interface TavernData {
@@ -16,6 +17,8 @@ interface TavernData {
   description?: unknown;
   personality?: unknown;
   scenario?: unknown;
+  first_mes?: unknown;
+  alternate_greetings?: unknown;
   character_book?: unknown;
 }
 
@@ -26,10 +29,12 @@ function decodeBase64Utf8(b64: string): string {
   return new TextDecoder('utf-8').decode(bytes);
 }
 
+const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
+
 /** `{{char}}` → the character's name, `{{user}}` → "the player"; other macros are left untouched. */
 function substituteMacros(text: string, name: string): string {
   return text
-    .replace(/\{\{\s*char\s*\}\}/gi, name)
+    .replace(CHAR_MACRO_RE, name)
     .replace(/\{\{\s*user\s*\}\}/gi, 'the player');
 }
 
@@ -60,7 +65,18 @@ function cardToEntity(data: TavernData): Entity {
   if (str(data.personality)) parts.push(`Personality: ${str(data.personality)}`);
   if (str(data.scenario)) parts.push(`Scenario: ${str(data.scenario)}`);
   const aiDescription = substituteMacros(parts.join('\n\n'), name);
-  return { id: randomUUID(), name, ...(aiDescription ? { aiDescription } : {}) };
+  const openings = cardOpenings(data, name);
+  return { id: randomUUID(), name, ...(aiDescription ? { aiDescription } : {}), ...(openings.length ? { openings } : {}) };
+}
+
+/** The first message, then each alternate greeting, as Narration rows at the default weight. The user macro
+ *  stays in the text for the draw to render. */
+function cardOpenings(data: TavernData, name: string): Opening[] {
+  const alternates: unknown[] = Array.isArray(data.alternate_greetings) ? data.alternate_greetings : [];
+  return [data.first_mes, ...alternates]
+    .map(str)
+    .filter(Boolean)
+    .map((text) => ({ id: randomUUID(), text: canonicalUserMacro(text.replace(CHAR_MACRO_RE, name)), kind: 'narration' }));
 }
 
 /**
