@@ -56,12 +56,16 @@ A chance is the share of the whole draw at one starting location. World rows and
 
 An entity at no starting location shows a **No Starting Location** badge. Its openings never come up.
 
+## Re-generate on page one
+
+**Re-generate** on page one draws again. The game picks an opening this playthrough hasn't shown yet. When every opening has been shown, the draw starts over. A world with one opening keeps the same page.
+
 ## Chips, search and older worlds
 
 - **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
 - **The Player Name chip works in openings.** Type `{` and pick **Player Name**. Page one then says the [persona](Persona-Authoring#the-player-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
 - **Search and replace reaches every opening**, on the world and on each entity.
-- **A world saved with one pre-filled opening** loads with it as its first Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
+- **A world saved with one pre-filled opening** loads with it as an Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
 
 > ⚠️ **An Opening Action is sent as written.** Nothing is added to it. The default opening tells the AI not to ask the player what to do next. Keep a line like that in your own Opening Actions, or the AI may open by offering options.
 
@@ -73,5 +77,6 @@ An entity at no starting location shows a **No Starting Location** badge. Its op
 |---|---|
 | **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too. An entity has no switch of its own. |
+| **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch doesn't turn them off. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#make-an-entity-playable), its openings leave the draw for that game. |
