@@ -867,6 +867,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           book={selectedBook}
           tab={shownBookTab}
           onTabChange={setBookTab}
+          focusField={focusFieldForItem(findField, selectedBook.id)}
         />
       )}
       {activeTab === "dictionary" && !selectedBook && selectedEntry && (
