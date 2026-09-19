@@ -1,6 +1,7 @@
 # 10: Catalog Suggestions in Overview
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 43675466
 Blocked by: 01, 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: low
@@ -21,8 +22,8 @@ The Overview's Tags and Models fields suggest the values other prompt listings u
 
 ## Acceptance criteria
 
-- [ ] Pure collector test: ranking, case-insensitive merge, other kinds ignored
-- [ ] Tags shows no world-vocabulary suggestions
-- [ ] Offline, both fields still accept free text with no error
-- [ ] Opening the Overview makes no catalog request (network read in the preview)
-- [ ] Four gates green
+- [x] Pure collector test: ranking, case-insensitive merge, other kinds ignored
+- [x] Tags shows no world-vocabulary suggestions
+- [x] Offline, both fields still accept free text with no error
+- [x] Opening the Overview makes no catalog request (network read in the preview)
+- [x] Four gates green
