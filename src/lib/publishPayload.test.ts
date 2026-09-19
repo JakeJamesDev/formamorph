@@ -58,6 +58,11 @@ describe('entityPublishPayload', () => {
     expect(entityPublishPayload(entity({ aiSummary: 'knight, weary' })).description).toBe('knight, weary');
   });
 
+  it('publishes the Persona mark and pronouns in the listing content', () => {
+    const payload = entityPublishPayload(entity({ persona: true, pronouns: 'they/them' }));
+    expect(payload.contentData).toMatchObject({ persona: true, pronouns: 'they/them' });
+  });
+
   it('never publishes aiDescription — it is long and full of prompt scaffolding', () => {
     const payload = entityPublishPayload(entity({ aiDescription: 'You are a knight who…' }));
     expect(payload.description).toBe('');

@@ -425,6 +425,28 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext(location, [{ ...guard, aliases: ["  "] }])).not.toContain("also known as");
   });
 
+  it("renders pronouns after the aliases in each format", () => {
+    const she = { ...guard, aliases: ["Em"], pronouns: " she/her " };
+    expect(buildEntityContext(location, [she])).toContain("  also known as: Em\n  pronouns: she/her\n");
+    expect(buildEntityContext(location, [she], { format: "markdown" }))
+      .toContain("  - **also known as:** Em\n  - **pronouns:** she/her\n");
+    expect(buildEntityContext(location, [she], { format: "xml" }))
+      .toContain("  <aliases>Em</aliases>\n  <pronouns>she/her</pronouns>\n");
+  });
+
+  it("renders an entity with no pronouns exactly as one without the field", () => {
+    for (const format of ["simple", "markdown", "xml"] as const) {
+      const bare = buildEntityContext(location, [guard], { format });
+      expect(buildEntityContext(location, [{ ...guard, pronouns: "" }], { format })).toBe(bare);
+      expect(buildEntityContext(location, [{ ...guard, pronouns: "  " }], { format })).toBe(bare);
+      expect(bare).not.toContain("pronouns");
+    }
+  });
+
+  it("never sends the Persona mark to the AI", () => {
+    expect(buildEntityContext(location, [{ ...guard, persona: true }])).toBe(buildEntityContext(location, [guard]));
+  });
+
   it("never emits editor-only grouping fields (groupId/order) to the AI", () => {
     // Grouping is purely organizational; the entity context is identical whether grouped or not.
     const grouped: Entity = { id: "g9", name: "Synthia", aiDescription: "The matron.", groupId: "elf", order: 2, locations: ["l"] };

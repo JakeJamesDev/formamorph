@@ -80,6 +80,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
           <EntityProfileFields
             {...groupProps}
             nameHandlers={rename}
+            home="world"
             // Two columns need ~570px, and the pane holding them is not monotonic in viewport width: below
             // `md` it is the full-width detail sheet, at `md` it becomes half the editor. So the second
             // column comes back only where the pane is wide enough — once in the sheet, again at `xl`.

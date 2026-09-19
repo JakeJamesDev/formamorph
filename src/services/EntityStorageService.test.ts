@@ -109,6 +109,14 @@ describe('EntityStorageService', () => {
     });
   });
 
+  it('flags a persona on the metadata the Personas filter reads, and only a persona', async () => {
+    await EntityStorageService.storeEntity({ id: 'p1', name: 'Mara', data: { id: 'p1', name: 'Mara', persona: true } });
+    await EntityStorageService.storeEntity(record('e2'));
+    const meta = await EntityStorageService.getEntityMetadata();
+    expect(meta.find((m) => m.id === 'p1')?.persona).toBe(true);
+    expect(meta.find((m) => m.id === 'e2')).not.toHaveProperty('persona');
+  });
+
   it('renders placeholder chips in the blurb the library card draws', async () => {
     // The card has no world or playthrough behind it, so an unrendered chip reaches the player as raw
     // `{{ph…}}` token text.

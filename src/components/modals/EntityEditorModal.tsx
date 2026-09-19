@@ -20,11 +20,15 @@ import { exportEntityCard } from '@/lib/entityFile';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
+import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
 import type { Entity, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
 const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
+
+/** The library editor sits outside the World Editor's mode, even when a world opens it. */
+const ALWAYS_ADVANCED: EditorModeValue = { mode: 'advanced', advanced: true, setMode: () => {} };
 
 /**
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
@@ -135,6 +139,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
   };
 
   return (
+    <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
       <EditorModalShell
@@ -170,6 +175,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
                       value={entity}
                       onChange={handleChange}
                       placeholders={pool}
+                      home="library"
                       columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)]"
                     />
                   ) : tab === 'openings' ? (
@@ -199,6 +205,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
       </EditorModalShell>
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
+    </EditorModeContext.Provider>
   );
 };
 

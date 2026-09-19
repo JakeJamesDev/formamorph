@@ -163,9 +163,12 @@ export function renderEntityRoster(
     const aliasLine = aliases.length
       ? field(xml ? "aliases" : "also known as", aliases.join(", "))
       : "";
+    const pronouns = entityItem.pronouns?.trim();
+    const pronounLine = pronouns ? field("pronouns", pronouns) : "";
     if (xml) {
       let inner = field("name", entityItem.name);
       inner += aliasLine;
+      inner += pronounLine;
       if (hasDesc) inner += field("description", entityDescription!);
       inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
       output += `<entity>\n${inner}</entity>\n`;
@@ -173,6 +176,7 @@ export function renderEntityRoster(
     }
     output += head(entityItem.name);
     output += aliasLine;
+    output += pronounLine;
     if (hasDesc) output += field("description", entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
   });

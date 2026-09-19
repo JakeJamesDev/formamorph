@@ -129,6 +129,22 @@ describe('a world file carries its relationships', () => {
   });
 });
 
+describe('a world file carries each entity’s Persona mark and pronouns', () => {
+  it('writes both and reads them back on import', async () => {
+    const persona: Entity = { ...entity, persona: true, pronouns: 'he/him' };
+    const read = migrateWorld(previousWorldReader(await worldFileText(world({ entities: [persona] }))));
+    expect((read as unknown as World).entities[0]).toMatchObject({ persona: true, pronouns: 'he/him' });
+  });
+
+  it('loads a world with neither field unchanged', async () => {
+    const read = migrateWorld(previousWorldReader(await worldFileText(world())));
+    const loaded = (read as unknown as World).entities[0];
+    expect(loaded).not.toHaveProperty('persona');
+    expect(loaded).not.toHaveProperty('pronouns');
+    expect(loaded).toMatchObject({ id: 'e1', name: 'Wren', aiDescription: 'A marsh guide.' });
+  });
+});
+
 describe('a reader built to the previous shape loses nothing', () => {
   it('keeps every section and every field of a world file, relationships included', async () => {
     const source = world() as Record<string, unknown>;

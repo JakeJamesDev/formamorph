@@ -1,5 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
@@ -60,6 +62,16 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
         />
       </div>
       )}
+      <div className="space-y-2">
+        <Label htmlFor={`entity-pronouns-${value.id}`}>Pronouns</Label>
+        <Hint>Tells the AI how to refer to this entity</Hint>
+        <Input
+          id={`entity-pronouns-${value.id}`}
+          value={value.pronouns || ''}
+          onChange={(e) => onChange('pronouns', e.target.value)}
+          placeholder="she/her, he/him, they/them"
+        />
+      </div>
       {advanced && (
         <div className="space-y-2">
           <Label>Type</Label>
@@ -71,6 +83,30 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
         </div>
       )}
     </>
+  );
+};
+
+/** Where an entity lives, which decides what its Persona mark means. */
+export type EntityHome = 'world' | 'library';
+
+const PERSONA_HINT: Record<EntityHome, string> = {
+  world: 'Lets the player play as this entity in this world',
+  library: 'Lets you play as this entity in any world',
+};
+
+/** The Persona mark. Advanced only in the World Editor; the library editor is always Advanced. */
+export const EntityPersonaField = ({ value, onChange, home }: EntityFieldGroupProps & { home: EntityHome }) => {
+  const { advanced } = useEditorMode();
+  if (!advanced) return null;
+  return (
+    <label className="flex items-center gap-2 text-label cursor-pointer">
+      <Checkbox
+        checked={value.persona === true}
+        onCheckedChange={(c) => onChange('persona', c === true ? true : undefined)}
+      />
+      Persona
+      <Hint as="span">{PERSONA_HINT[home]}</Hint>
+    </label>
   );
 };
 
@@ -202,14 +238,15 @@ export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => 
 };
 
 /**
- * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields,
- * then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
+ * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields and
+ * the Persona mark, then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
  * two columns, since each host's pane widens differently.
  */
-export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, ...props }: EntityFieldGroupProps & {
+export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, home, ...props }: EntityFieldGroupProps & {
   columnsClassName: string;
   nameHandlers?: RenameFieldHandlers;
   locations?: ReactNode;
+  home: EntityHome;
 }) => (
   <>
     <EntityImageWidget {...props}>
@@ -217,6 +254,7 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
         <ImageGallery />
         <div className="space-y-4">
           <EntityIdentityFields {...props} nameHandlers={nameHandlers} />
+          <EntityPersonaField {...props} home={home} />
           <ImageTags />
         </div>
       </div>

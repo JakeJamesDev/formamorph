@@ -28,6 +28,9 @@ import { cn } from "@/lib/utils";
 import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 import { usePersistentState, boolCodec } from "@/lib/usePersistentState";
 import {
+  ENTITY_LIBRARY_FILTER_KEY, entityLibraryFilterCodec, entityLibraryPredicate, type EntityLibraryFilter,
+} from "@/lib/entityLibraryFilter";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -298,6 +301,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [entitiesLayout, setEntitiesLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_entities`, 'grid', layoutCodec);
   const [dictionariesLayout, setDictionariesLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_dictionaries`, 'grid', layoutCodec);
   const [modelsLayout, setModelsLayout] = usePersistentState<'grid' | 'detailed'>(`${LAYOUT_MODE_KEY}_models`, 'grid', layoutCodec);
+  const [entityFilter, setEntityFilter] = usePersistentState<EntityLibraryFilter>(
+    ENTITY_LIBRARY_FILTER_KEY, 'all', entityLibraryFilterCodec,
+  );
+  const entityPredicate = useMemo(() => entityLibraryPredicate(entityFilter), [entityFilter]);
   // Per-modal "collapse to single column" preference, persisted across sessions.
   const [worldModalCollapsed, setWorldModalCollapsed] = usePersistentState(
     WORLD_MODAL_COLLAPSED_KEY, false, boolCodec,
@@ -2037,13 +2044,31 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           minMediumWidth={ENTITY_MIN_TILE}
           detailedColumnsClass={DETAILED_GRID_CLASS}
           thumbnailOf={(entity) => entity.image}
-          emptyState={!isLoadingEntities ? (
+          filter={entityPredicate}
+          toolbar={(
+            <ToggleGroup
+              type="single"
+              value={entityFilter}
+              aria-label="Entity Filter"
+              onValueChange={(v) => { if (v) setEntityFilter(entityLibraryFilterCodec.parse(v)); }}
+            >
+              <ToggleGroupItem value="all">All</ToggleGroupItem>
+              <ToggleGroupItem value="personas">Personas</ToggleGroupItem>
+            </ToggleGroup>
+          )}
+          emptyState={isLoadingEntities ? undefined : entityPredicate ? (
+            <div className="flex items-center justify-center py-16 px-4 select-none">
+              <p className="max-w-md text-center text-helper text-muted-foreground">
+                No personas yet. Open an entity and select the <span className="font-semibold">Persona</span> checkbox on its <span className="font-semibold">Profile</span> tab.
+              </p>
+            </div>
+          ) : (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-helper text-muted-foreground">
                 No characters yet — use <span className="font-semibold">New Entity</span> or <span className="font-semibold">Import Entity</span> to add one.
               </p>
             </div>
-          ) : undefined}
+          )}
           renderCard={(entity, { layout, fill, compact }) => (
             <SortableWorldCard
               world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags }}
