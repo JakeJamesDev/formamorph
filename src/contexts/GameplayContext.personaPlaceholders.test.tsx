@@ -156,6 +156,15 @@ describe('a library persona with placeholders of its own', () => {
     expect(eyesIn(narrationPrompt(live))).toBe(eyes);
   });
 
+  it('resolves the chips in its name and aliases for the side panel and the planner', async () => {
+    const titled: Entity = { ...wren, name: `Wren the ${chip(EYES.id, 'p-name')}`, aliases: [`${chip(EYES.id, 'p-alias')} Eye`] };
+    const live = await start(titled);
+    await waitFor(() => expect(live().gameplay.placeholderRolls.world?.[EYES.id]).toBeDefined());
+    const eyes = live().gameplay.placeholderRolls.world?.[EYES.id];
+    expect(live().world.persona?.entity.name).toBe(`Wren the ${eyes}`);
+    expect(live().world.playerNames).toEqual([`Wren the ${eyes}`, `${eyes} Eye`]);
+  });
+
   it('changes nothing for a persona with no placeholders', async () => {
     const live = await start(plain);
     await waitFor(() => expect(narrationPrompt(live)).toContain('Nothing to roll.'));

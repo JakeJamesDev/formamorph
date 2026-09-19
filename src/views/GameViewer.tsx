@@ -386,6 +386,7 @@ const GameViewer = ({
     locations: authoredLocations,
     connections,
     dictionaries,
+    placeholders: worldPlaceholders,
     placeholderOwners,
     worldOverview,
     worldId,
@@ -628,8 +629,7 @@ const GameViewer = ({
     resolveTraitFor, playerNames, persona,
   } = useResolvedWorld();
   usePersonaNotice();
-  // The session's rolls, for the one pass that collects pins before they are in state (the init effect), and
-  // its Placeholder Set, which holds a library persona's placeholders beside the world's.
+  // The session's rolls for the init effect's pins, and its Placeholder Set with the library persona's list.
   const { rolls: sessionRolls, placeholders, setPersona: setSessionPersona } = usePlaceholderSession();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
@@ -2583,7 +2583,8 @@ const GameViewer = ({
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
           traits: { ...held, world: { traits: authoredTraits, groups: traitGroups } },
           placeholders: {
-            placeholders, owners: placeholderOwners, rolls: sessionRolls,
+            // The world's list only: stat code is authored with the world and never reads a persona's.
+            placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
             pins: preTurn ? pinsFor(basePins) : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
@@ -2629,7 +2630,7 @@ const GameViewer = ({
         return null;
       }
     },
-    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, placeholders, placeholderOwners, sessionRolls, pinsFor,
+    [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
       traits, authoredTraits, authoredStats, traitGroups, resolveTraitText,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
   );
