@@ -63,7 +63,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 22. As a player, I want the entities of the world to know my world persona from turn one, so that they do not treat a known person as a stranger.
 23. As a player, I want the starting location preselected to one of my world persona's locations when that location is a starting location, so that I start where that entity lives.
 24. As a player, I want to change that preselected location, so that the choice stays mine.
-25. As an author, I want relationships that point at a played entity to point at the player, so that the authored ties hold.
+25. As an author, I want world text that names a played entity to mean the player, so that the ties I wrote in other entities' descriptions hold.
 
 ### Author control
 
@@ -178,6 +178,10 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - When the remembered additions and the preselected persona name one entity, the persona wins.
 - A library entity picked as the persona is removed from the added characters for that playthrough. The picker and the character list enforce this in both directions.
 - Picking a world persona preselects the starting location to the first of that entity's locations that is a starting location. The player can change it. No pick is forced.
+- A pick sets the location only while the player has not chosen a location by hand in this step. After a hand choice, no persona pick moves it. A library persona or None keeps the location, and an entity with no starting location among its locations leaves it unchanged.
+- When the step opens on a remembered world persona, the same preselect applies. A remembered starting location for that world wins over it.
+- Quick Start with a world persona starts at that entity's first starting location, and at today's random location when the entity has none.
+- Every picker lists None first with no heading, then "From This World", then "Your Personas". The in-game picker lists world personas too, and a switch moves the entity out of the cast or back on the next turn.
 - The pick travels to the game the same way the chosen dictionaries and added characters do.
 
 ### Openings and the persona
@@ -201,7 +205,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - The section heading of a Full or Summary placement rides in the chip's affix, so an empty persona drops the heading with the block. This is the first default placement to do so: the Notes heading sits outside its chip, and empty notes render N/A under it. Notes does not change.
 - The affix fields of the chip pop-out are therefore newline-safe and show the newline. The preset restyle reads a heading inside an affix, so the Simple and XML built-ins derive correctly. For XML, the affixes open and close the section tag.
 - Full and Summary reuse the entity context builder, so a persona renders as one entity block: name, aliases, pronouns, description. Name renders the name and pronouns only.
-- For a world persona, the chip adds one line that states the other entities of this world know this person. A library persona gets no such line.
+- For a world persona, the chip adds one line that states the other entities of this world know this person, and that this name in world text means the player. A library persona gets no such line. No entity-to-entity relationship field exists; the only ties are free text that names the played entity, and this line covers them.
 - Default preset coverage:
 
 | Prompt | Variant |
