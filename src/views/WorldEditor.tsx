@@ -56,6 +56,9 @@ import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
 import { TRAIT_PANEL_TABS, traitPanelTabsFor, type TraitPanelTab } from './traitPanelTabs';
 import { DICTIONARY_PANEL_TABS, dictionaryPanelTabsFor, type DictionaryPanelTab } from './dictionaryPanelTabs';
+import {
+  DICTIONARY_BOOK_PANEL_TABS, dictionaryBookPanelTabsFor, type DictionaryBookPanelTab,
+} from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
@@ -213,6 +216,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (entryTabs.length === 1) setEntryTab('details');
   }, [entryTabs]);
+  // The dictionary book panel's own tabs, held here for the same reason. Placeholders is Advanced only, so
+  // Simple mode leaves one tab and no strip.
+  const [bookTab, setBookTab] = useState<DictionaryBookPanelTab>('details');
+  const bookTabs = useMemo(() => dictionaryBookPanelTabsFor(advanced), [advanced]);
+  const shownBookTab = bookTabs.some((t) => t.value === bookTab) ? bookTab : 'details';
+  useEffect(() => {
+    if (bookTabs.length === 1) setBookTab('details');
+  }, [bookTabs]);
 
   // DEV dev-router: jump to a specific editor tab via `#dev?modal=worldEditor&tab=…`. Tree-shaken in prod.
   const devRoute = useDevRoute();
@@ -255,6 +266,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   useEffect(() => {
     if (import.meta.env.DEV && DICTIONARY_PANEL_TABS.some((t) => t.value === devSubtab)) {
       setEntryTab(devSubtab as DictionaryPanelTab);
+    }
+  }, [devSubtab]);
+  // And over the book panel, which shares the Dictionary tab's slot. Only one of the two panels shows at a
+  // time, so `details` landing on both is the same request to each.
+  useEffect(() => {
+    if (import.meta.env.DEV && DICTIONARY_BOOK_PANEL_TABS.some((t) => t.value === devSubtab)) {
+      setBookTab(devSubtab as DictionaryBookPanelTab);
     }
   }, [devSubtab]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -844,7 +862,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         />
       )}
       {activeTab === "dictionary" && selectedBook && (
-        <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
+        <DictionaryBookManager
+          key={selectedBook.id}
+          book={selectedBook}
+          tab={shownBookTab}
+          onTabChange={setBookTab}
+        />
       )}
       {activeTab === "dictionary" && !selectedBook && selectedEntry && (
         <DictionaryManager
