@@ -5,6 +5,7 @@ import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
+import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
@@ -82,6 +83,8 @@ export interface OpeningOverrides {
   extraPins?: Record<string, string>;
   /** The persona chosen at entry. Absent, the persona in state is named. */
   persona?: ResolvedPersona | null;
+  /** The rolls drawn for that persona, which state does not hold yet. */
+  rolls?: PlaceholderRolls;
 }
 
 /** The pin-carrying state `pinsFor` reads, where the caller has a copy newer than the one in state. */
@@ -111,9 +114,9 @@ export function useResolvedAuthoredWorld(
 ) {
   const {
     stats: rawStats, locations: rawLocations, connections, entities: rawEntities,
-    traits: rawTraits, traitGroups: rawTraitGroups, placeholders,
+    traits: rawTraits, traitGroups: rawTraitGroups,
   } = useGameData();
-  const { rolls } = usePlaceholderSession();
+  const { rolls, placeholders } = usePlaceholderSession();
 
   const player = useMemo(() => ({ name: personaName }), [personaName]);
   const resolvePH = useCallback(
@@ -134,10 +137,12 @@ export function useResolvedAuthoredWorld(
   );
   const resolveOpening = useCallback((text: string, over: OpeningOverrides = {}) => {
     const withPins = { ...pins, ...over.extraPins };
+    const set = over.persona?.source === 'library' ? personaPlaceholderSet(placeholders, over.persona.entity) : placeholders;
+    const withRolls = over.rolls ?? rolls;
     const name = over.persona === undefined
       ? personaName
-      : over.persona && resolvePlaceholders(over.persona.entity.name, { placeholders, rolls, pins: withPins });
-    return resolvePlaceholders(text, { placeholders, rolls, pins: withPins, player: { name, kind: 'opening' } });
+      : over.persona && resolvePlaceholders(over.persona.entity.name, { placeholders: set, rolls: withRolls, pins: withPins });
+    return resolvePlaceholders(text, { placeholders: set, rolls: withRolls, pins: withPins, player: { name, kind: 'opening' } });
   }, [placeholders, rolls, pins, personaName]);
   const resolveTraitFor = useCallback(
     (withPins: Record<string, string>, trait: Trait, text: string) =>
@@ -170,7 +175,8 @@ const NO_PINS: Record<string, string> = {};
 
 /** The persona's name with its chips resolved, which the Player Name chip renders. Null with no persona. */
 export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, string>): string | null {
-  const { entities, placeholders } = useGameData();
+  const { entities } = useGameData();
+  const { placeholders } = usePlaceholderSession();
   const { personaRef, libraryPersona } = useGameplay();
   // Read from the authored entities, because the resolved ones render the chip this name feeds.
   return useMemo(() => {
@@ -180,8 +186,8 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 }
 
 export function useResolvedWorld(): ResolvedWorld {
-  const { traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, placeholders } = useGameData();
-  const { rolls } = usePlaceholderSession();
+  const { traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations } = useGameData();
+  const { rolls, placeholders } = usePlaceholderSession();
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, playerTraits, disabledTraitIds, codePins,

@@ -386,7 +386,6 @@ const GameViewer = ({
     locations: authoredLocations,
     connections,
     dictionaries,
-    placeholders,
     placeholderOwners,
     worldOverview,
     worldId,
@@ -629,8 +628,9 @@ const GameViewer = ({
     resolveTraitFor, playerNames, persona,
   } = useResolvedWorld();
   usePersonaNotice();
-  // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
-  const { rolls: sessionRolls } = usePlaceholderSession();
+  // The session's rolls, for the one pass that collects pins before they are in state (the init effect), and
+  // its Placeholder Set, which holds a library persona's placeholders beside the world's.
+  const { rolls: sessionRolls, placeholders, setPersona: setSessionPersona } = usePlaceholderSession();
 
   // --- Active traits and what they switch on ------------------------------------------------------------
   // A chosen trait the player has switched off contributes nothing: no AI text, no stat toggle, no pin. Its
@@ -3926,6 +3926,8 @@ const GameViewer = ({
       // A new game always holds a reference; None is a choice, and absence means a save from before personas.
       const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
       setPersonaRef(personaPick.ref);
+      // Drawn now, so page one reads the Wildcard values every later turn reads.
+      const personaRolls = setSessionPersona(personaPick.libraryEntity ?? null);
       setEntityImageIndex({});
       setMilestoneSelection(null);
       setMemoryEdits({});
@@ -3953,7 +3955,9 @@ const GameViewer = ({
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
       };
-      const openingText = resolveOpening(drawn.opening.text, { extraPins: openingPins, persona: drawnPersona });
+      const openingText = resolveOpening(drawn.opening.text, {
+        extraPins: openingPins, persona: drawnPersona, rolls: personaRolls,
+      });
       if (drawn.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
         setPendingTurnNonce((n) => n + 1);
@@ -3989,6 +3993,7 @@ const GameViewer = ({
     addLogEntry,
     setRuntimeDictionaries,
     setPersonaRef,
+    setSessionPersona,
     setDiscoveredEntities,
     setPlayerInput,
     setMemoryPins,
