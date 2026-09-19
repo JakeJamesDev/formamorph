@@ -1,48 +1,131 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, Trash2 } from 'lucide-react';
+import { GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
+import { badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
-  addOpening, DEFAULT_OPENING, moveOpening, openingChances, openingsEnabled, openingWeight, removeOpening,
-  setOpeningKind, setOpeningText, setOpeningWeight, type OpeningOwner,
+  addOpening, DEFAULT_OPENING, moveOpening, openingsEnabled, removeOpening, setOpeningKind, setOpeningText,
+  setOpeningWeight, type OpeningOwner,
 } from '@/lib/openings';
+import { openingsEditorView, ownerOpeningRows, type EditorOpeningRow } from '@/lib/openingsEditor';
+import { labelPlaceholders } from '@/lib/placementLetters';
+import { cn } from '@/lib/utils';
 import type { Entity, Opening, OpeningKind, Placeholder } from '@/types';
 
-/** The world's openings, with the default opening shown while the list is empty and the switch's effect. */
-export function OpeningsPanel() {
-  const { worldOverview, updateWorldOverview, placeholders } = useGameData();
+/**
+ * Every opening in the world, grouped by owner: the world's own rows, then each authored entity that has
+ * openings. Each edit lands on its owner. The chances describe one starting location, which the author picks
+ * when the world has several; the pick is view state and is never stored.
+ */
+export function OpeningsPanel({ onOpenEntity }: {
+  /** Opens that entity's Openings tab. */
+  onOpenEntity?: (entityId: string) => void;
+}) {
+  const {
+    worldOverview, updateWorldOverview, entities, updateEntity, locations, placeholders, placementLetters,
+    placeholderOwners,
+  } = useGameData();
+  const [startId, setStartId] = useState<string | null>(null);
+  const view = openingsEditorView({ overview: worldOverview, entities, locations }, startId);
+  const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+  const described = view.starts.find((l) => l.id === view.describedStartId);
+  const [world, ...entityGroups] = view.groups;
+
   return (
-    <div className="space-y-2">
-      <OpeningsList
-        owner={worldOverview}
-        onChange={updateWorldOverview}
-        placeholders={placeholders}
-        empty={(
-          <div className="space-y-1">
-            <Hint>No openings yet. Players start on the default opening.</Hint>
-            <div
-              role="note"
-              aria-label="Default opening"
-              className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
-            >
-              {DEFAULT_OPENING.text}
+    <div className="space-y-4">
+      {view.starts.length > 1 && (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="openings-chances-at" className="shrink-0">Chances At</Label>
+          <Select value={view.describedStartId ?? undefined} onValueChange={setStartId}>
+            <SelectTrigger id="openings-chances-at" className="h-8 min-w-0 flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {view.starts.map((l) => <SelectItem key={l.id} value={l.id}>{label(l.name)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <section aria-label="This World" className="space-y-2">
+        <h3 className="text-body font-semibold">This World</h3>
+        <OpeningsList
+          owner={worldOverview}
+          rows={world.rows}
+          onChange={updateWorldOverview}
+          placeholders={placeholders}
+          empty={(
+            <div className="space-y-1">
+              <Hint>No openings yet. Players start on the default opening.</Hint>
+              <div
+                role="note"
+                aria-label="Default opening"
+                className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
+              >
+                {DEFAULT_OPENING.text}
+              </div>
             </div>
-          </div>
-        )}
-      />
+          )}
+        />
+      </section>
+
+      {entityGroups.map((group) => {
+        const entity = entities.find((e) => e.id === group.ownerId);
+        if (!entity) return null;
+        const name = label(group.name) || 'Unnamed entity';
+        const notHere = !group.atNoStart && group.rows.some((r) => r.chance === null);
+        return (
+          <section key={entity.id} aria-label={name} className="space-y-2" data-testid="opening-group">
+            <div className="flex flex-wrap items-center gap-2">
+              <Tip tip="Open this entity's Openings tab" labelsChild={false}>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto min-w-0 p-0 text-body font-semibold"
+                  onClick={() => onOpenEntity?.(entity.id)}
+                >
+                  <span className="truncate">{name}</span>
+                </Button>
+              </Tip>
+              {group.atNoStart && (
+                <Tip tip="Isn't at any starting location, so its openings never come up" labelsChild={false}>
+                  {/* A span, not Badge: the tip's trigger needs a ref, and Badge forwards none. */}
+                  <span tabIndex={0} className={cn(badgeVariants({ variant: 'outline' }), 'gap-1')}>
+                    <MapPinOff className="h-3 w-3" aria-hidden /> No Starting Location
+                  </span>
+                </Tip>
+              )}
+            </div>
+            {notHere && described && (
+              <Hint>{`Not at ${label(described.name)}, so these openings don't come up there`}</Hint>
+            )}
+            <OpeningsList
+              owner={entity}
+              rows={group.rows}
+              onChange={(patch) => updateEntity({ ...entity, ...patch })}
+              placeholders={placeholders}
+              labelPrefix={`${name} `}
+              empty={null}
+            />
+          </section>
+        );
+      })}
+
       <Hint>
         {openingsEnabled(worldOverview)
           ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
-          : 'Not applied until you switch the list on. Players start on the default opening.'}
+          : "Not applied until you switch the list on. Players start on the default opening. Chances show the odds you'll get once it's on."}
       </Hint>
     </div>
   );
@@ -56,7 +139,13 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
 }) {
   return (
     <div className="space-y-2">
-      <OpeningsList owner={entity} onChange={onChange} placeholders={placeholders} empty={<Hint>No openings yet</Hint>} />
+      <OpeningsList
+        owner={entity}
+        rows={ownerOpeningRows(entity)}
+        onChange={onChange}
+        placeholders={placeholders}
+        empty={<Hint>No openings yet</Hint>}
+      />
       <Hint>
         {"Drawn with the world's openings when a player starts at a location this entity is at. The world's switch turns them off too."}
       </Hint>
@@ -66,39 +155,40 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
 
 /**
  * One owner's openings: a card per row with its kind, text, weight and chance, in draw order, and the Add
- * button. The world panel and both entity editors render this, and each edit goes to `onChange` as a patch
- * of the owner's opening fields.
+ * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
+ * dash: the row is outside the pool the chances describe.
  */
-export function OpeningsList({ owner, onChange, placeholders, empty }: {
+export function OpeningsList({ owner, rows, onChange, placeholders, empty, labelPrefix = '' }: {
   owner: OpeningOwner;
+  rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
   /** What shows in place of the rows while there are none. */
   empty: ReactNode;
+  /** Names the owner in each row's accessible labels, where several owners share one screen. */
+  labelPrefix?: string;
 }) {
-  const openings = owner.openings ?? [];
-  const chances = openingChances(owner);
-
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = openings.findIndex((o) => o.id === active.id);
-    const to = openings.findIndex((o) => o.id === over.id);
+    const from = rows.findIndex((r) => r.opening.id === active.id);
+    const to = rows.findIndex((r) => r.opening.id === over.id);
     if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
 
   return (
     <div className="space-y-2">
-      {openings.length === 0 ? empty : (
+      {rows.length === 0 ? empty : (
         <EditorDndContext onDragEnd={handleDragEnd}>
-          <StableSortableContext items={openings} strategy={verticalListSortingStrategy}>
+          <StableSortableContext items={rows.map((r) => r.opening)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-3">
-              {openings.map((opening, i) => (
+              {rows.map(({ opening, weight, chance }, i) => (
                 <OpeningCard
                   key={opening.id}
                   opening={opening}
-                  index={i}
-                  weight={openingWeight(owner.openingWeights, opening.id)}
-                  chance={chances[opening.id] ?? 0}
+                  visibleLabel={`Opening ${i + 1}`}
+                  label={`${labelPrefix}Opening ${i + 1}`}
+                  weight={weight}
+                  chance={chance}
                   placeholders={placeholders}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
@@ -110,7 +200,14 @@ export function OpeningsList({ owner, onChange, placeholders, empty }: {
           </StableSortableContext>
         </EditorDndContext>
       )}
-      <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => onChange(addOpening(owner))}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="w-full"
+        aria-label={labelPrefix ? `Add Opening to ${labelPrefix.trim()}` : undefined}
+        onClick={() => onChange(addOpening(owner))}
+      >
         <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
       </Button>
     </div>
@@ -118,12 +215,14 @@ export function OpeningsList({ owner, onChange, placeholders, empty }: {
 }
 
 const OpeningCard = ({
-  opening, index, weight, chance, placeholders, onKind, onText, onWeight, onRemove,
+  opening, visibleLabel, label, weight, chance, placeholders, onKind, onText, onWeight, onRemove,
 }: {
   opening: Opening;
-  index: number;
+  visibleLabel: string;
+  /** The row's accessible name, owner included where several share the screen. */
+  label: string;
   weight: number;
-  chance: number;
+  chance: number | null;
   placeholders: Placeholder[];
   onKind: (kind: OpeningKind) => void;
   onText: (text: string) => void;
@@ -131,7 +230,6 @@ const OpeningCard = ({
   onRemove: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: opening.id });
-  const label = `Opening ${index + 1}`;
   return (
     <div
       ref={setNodeRef}
@@ -140,7 +238,8 @@ const OpeningCard = ({
       className="rounded-md border bg-card"
       data-testid="opening-row"
     >
-      <div className="flex items-center gap-2 border-b px-2 py-1.5">
+      {/* Wraps on a narrow pane: the weight, chance and remove group drops to a second line, right-aligned. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-2 py-1.5">
         <button
           type="button"
           className="cursor-grab touch-none text-muted-foreground"
@@ -150,7 +249,7 @@ const OpeningCard = ({
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
-        <span className="min-w-0 flex-1 truncate text-helper font-medium text-muted-foreground">{label}</span>
+        <span className="min-w-[4.5rem] flex-1 truncate text-helper font-medium text-muted-foreground">{visibleLabel}</span>
         <ToggleGroup
           type="single"
           value={opening.kind}
@@ -161,31 +260,33 @@ const OpeningCard = ({
           <ToggleGroupItem value="action" className="h-6 px-2 text-helper">Player Action</ToggleGroupItem>
           <ToggleGroupItem value="narration" className="h-6 px-2 text-helper">Narration</ToggleGroupItem>
         </ToggleGroup>
-        <Input
-          type="number"
-          min={0}
-          step={1}
-          value={weight}
-          onChange={(e) => onWeight(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-          className="h-6 w-14 px-1.5 text-helper"
-          aria-label={`Draw weight for ${label}`}
-          title="Draw weight"
-        />
-        <span className="w-10 text-right text-meta text-muted-foreground" aria-label={`Chance for ${label}`}>
-          {Math.round(chance)}%
-        </span>
-        <Tip tip="Remove opening" labelsChild={false}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            aria-label={`Remove ${label}`}
-            onClick={onRemove}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </Tip>
+        <div className="ml-auto flex items-center gap-2">
+          <Input
+            type="number"
+            min={0}
+            step={1}
+            value={weight}
+            onChange={(e) => onWeight(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+            className="h-6 w-14 px-1.5 text-helper"
+            aria-label={`Draw weight for ${label}`}
+            title="Draw weight"
+          />
+          <span className="w-10 text-right text-meta text-muted-foreground" aria-label={`Chance for ${label}`}>
+            {chance === null ? '—' : `${Math.round(chance)}%`}
+          </span>
+          <Tip tip="Remove opening" labelsChild={false}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              aria-label={`Remove ${label}`}
+              onClick={onRemove}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </Tip>
+        </div>
       </div>
       <div className="p-2">
         <PlaceholderField

@@ -21,8 +21,10 @@ const baseOverview = {
 } as unknown as WorldOverview;
 
 // The world under edit, mutated by the manager's own writes so a test can assert what ends up stored.
-const world: { overview: WorldOverview; rerender: () => void } = {
+const world: { overview: WorldOverview; entities: Entity[]; locations: GameLocation[]; rerender: () => void } = {
   overview: baseOverview,
+  entities: [],
+  locations: [],
   rerender: () => {},
 };
 
@@ -61,7 +63,12 @@ vi.mock('@/contexts/GameDataContext', () => ({
       world.overview = { ...world.overview, ...patch };
       world.rerender();
     },
-    stats, locations, entities, traits, traitGroups: [], dictionaries, placeholders,
+    updateEntity: (next: Entity) => {
+      world.entities = world.entities.map((e) => (e.id === next.id ? next : e));
+      world.rerender();
+    },
+    entities: world.entities, locations: world.locations,
+    stats, traits, traitGroups: [], dictionaries, placeholders,
   }),
 }));
 vi.mock('@/contexts/SettingsContext', () => ({
@@ -94,15 +101,15 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 type FocusField = FocusFieldHint | null;
 
 /** Renders the manager against the live `world`, re-rendering whenever the manager writes to it. */
-const Harness = ({ focusField }: { focusField?: FocusField }) => {
+const Harness = ({ focusField, onOpenEntity }: { focusField?: FocusField; onOpenEntity?: (id: string) => void }) => {
   const [, setTick] = useState(0);
   world.rerender = () => setTick((n) => n + 1);
-  return <WorldDetailsManager focusField={focusField} />;
+  return <WorldDetailsManager focusField={focusField} onOpenEntity={onOpenEntity} />;
 };
 
-const renderManager = (advanced = true, focusField?: FocusField) => render(
+const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: (id: string) => void) => render(
   <EditorModeContext.Provider value={{ mode: advanced ? 'advanced' : 'simple', advanced, setMode: () => {} }}>
-    <Harness focusField={focusField} />
+    <Harness focusField={focusField} onOpenEntity={onOpenEntity} />
   </EditorModeContext.Provider>,
 );
 
@@ -118,6 +125,8 @@ const openKind = () => screen.getAllByRole('radio').filter((r) => r.getAttribute
 
 beforeEach(() => {
   world.overview = { ...baseOverview, promptOverrides: { ...baseOverview.promptOverrides } };
+  world.entities = entities;
+  world.locations = locations;
   fieldProps.byLabel = {};
 });
 
@@ -507,5 +516,116 @@ describe('the openings panel', () => {
     // The find bar is the only way to reach a panel that is not showing.
     renderManager(true, { fieldKey: openingFieldKey('o2'), itemId: null });
     expect(field('Opening 2').value).toBe('The ferry bell rings twice.');
+  });
+});
+
+describe('the mirrored openings panel', () => {
+  const dock = { id: 'dock', name: 'The Dock', isStarting: true } as unknown as GameLocation;
+  const market = { id: 'market', name: 'The Market', isStarting: true } as unknown as GameLocation;
+  const cave = { id: 'cave', name: 'The Cave' } as unknown as GameLocation;
+  const guide = {
+    id: 'guide', name: 'Guide', locations: ['dock'],
+    openings: [{ id: 'g1', text: 'The guide waves.', kind: 'action' }, { id: 'g2', text: 'The guide sighs.', kind: 'narration' }],
+  } as unknown as Entity;
+  const hermit = {
+    id: 'hermit', name: 'Hermit', locations: ['cave'],
+    openings: [{ id: 'h1', text: 'A cough in the dark.', kind: 'action' }],
+  } as unknown as Entity;
+  const plain = { id: 'plain', name: 'Plain', locations: ['dock'] } as unknown as Entity;
+
+  const open = async (onOpenEntity?: (id: string) => void) => {
+    const user = userEvent.setup();
+    renderManager(true, undefined, onOpenEntity);
+    await user.click(picker('Opening'));
+    return user;
+  };
+  const groups = () => screen.queryAllByTestId('opening-group').map((g) => g.getAttribute('aria-label'));
+  const chance = (label: string) => screen.getByLabelText(`Chance for ${label}`).textContent;
+  const guideNow = () => world.entities.find((e) => e.id === 'guide')!;
+
+  beforeEach(() => {
+    world.overview = { ...world.overview, openings: [ROWS[0]] };
+    world.entities = [guide, plain, hermit];
+    world.locations = [dock, cave];
+  });
+
+  it('lists the world’s rows, then one group per entity with openings, and follows the entities', async () => {
+    await open();
+    expect(screen.getByRole('region', { name: 'This World' })).toBeInTheDocument();
+    expect(groups()).toEqual(['Guide', 'Hermit']);
+    expect(within(screen.getByRole('region', { name: 'Guide' })).getAllByTestId('opening-row')).toHaveLength(2);
+
+    act(() => {
+      world.entities = [hermit, { ...plain, openings: [{ id: 'p1', text: 'Hello.', kind: 'action' }] }];
+      world.rerender();
+    });
+    expect(groups()).toEqual(['Hermit', 'Plain']);
+  });
+
+  it('writes an edit, a weight, an add and a remove in an entity’s group to that entity', async () => {
+    const user = await open();
+    const before = world.overview;
+
+    edit('Guide Opening 1', 'The guide bows.');
+    expect(guideNow().openings?.[0].text).toBe('The guide bows.');
+
+    const weight = screen.getByLabelText('Draw weight for Guide Opening 2');
+    await user.clear(weight);
+    await user.type(weight, '3');
+    expect(guideNow().openingWeights).toEqual({ g2: 3 });
+
+    await user.click(screen.getByRole('button', { name: 'Add Opening to Guide' }));
+    expect(guideNow().openings).toHaveLength(3);
+
+    await user.click(screen.getByRole('button', { name: 'Remove Guide Opening 2' }));
+    expect(guideNow().openings?.map((o) => o.id)).toEqual(['g1', expect.any(String)]);
+    expect(guideNow().openingWeights).toBeUndefined();
+
+    expect(world.overview.openings).toEqual(before.openings);
+  });
+
+  it('shows each row’s share of the whole pool, and a dash for an entity elsewhere', async () => {
+    await open();
+    expect(chance('Opening 1')).toBe('33%');
+    expect(chance('Guide Opening 1')).toBe('33%');
+    expect(chance('Guide Opening 2')).toBe('33%');
+    expect(chance('Hermit Opening 1')).toBe('—');
+    expect(screen.queryByRole('combobox', { name: 'Chances At' })).not.toBeInTheDocument();
+  });
+
+  it('marks an entity at no starting location with a named term, not color alone', async () => {
+    await open();
+    expect(within(screen.getByRole('region', { name: 'Hermit' })).getByText('No Starting Location')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Guide' })).queryByText('No Starting Location')).not.toBeInTheDocument();
+  });
+
+  it('with several starting locations, names the one the chances describe and follows the pick', async () => {
+    world.locations = [dock, market];
+    world.entities = [guide, { ...hermit, locations: ['market'] }];
+    const user = await open();
+    const at = screen.getByRole('combobox', { name: 'Chances At' });
+    expect(at).toHaveTextContent('The Dock');
+    expect(chance('Hermit Opening 1')).toBe('—');
+    expect(within(screen.getByRole('region', { name: 'Hermit' })).getByText(/Not at The Dock/)).toBeInTheDocument();
+
+    await user.click(at);
+    await user.click(screen.getByRole('option', { name: 'The Market' }));
+    expect(chance('Hermit Opening 1')).toBe('50%');
+    expect(chance('Guide Opening 1')).toBe('—');
+    expect(world.overview).not.toHaveProperty('startingLocationId');
+  });
+
+  it('keeps the chances with the switch off, and says the list is off', async () => {
+    world.overview = { ...world.overview, openingsEnabled: false };
+    await open();
+    expect(chance('Guide Opening 1')).toBe('33%');
+    expect(screen.getByText(/Not applied until you switch the list on/)).toBeInTheDocument();
+  });
+
+  it('opens the entity’s Openings tab from its group header', async () => {
+    const onOpenEntity = vi.fn();
+    const user = await open(onOpenEntity);
+    await user.click(screen.getByRole('button', { name: 'Guide' }));
+    expect(onOpenEntity).toHaveBeenCalledWith('guide');
   });
 });

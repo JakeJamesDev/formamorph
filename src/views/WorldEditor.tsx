@@ -778,7 +778,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         <PlaceholderPaletteBar placeholders={placeholders} scopeId={paletteScopeId} className="-mx-3 -mt-3 mb-3 px-3" />
       )}
       {activeTab === "overview" && (
-        <WorldDetailsManager focusField={findField} />
+        <WorldDetailsManager
+          focusField={findField}
+          onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
+        />
       )}
       {activeTab === "stats" && selectedItem && (
         <StatManager
