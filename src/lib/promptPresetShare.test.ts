@@ -202,3 +202,62 @@ describe('endpoint routing is never shared', () => {
     expect((r.preset as unknown as Record<string, unknown>).promptEndpoints).toBeUndefined();
   });
 });
+
+describe('Overview in a shared preset', () => {
+  const overview = { author: 'Ann Author', description: 'Tuned for **small** models.', tags: ['slow burn', 'dialogue'], models: ['Cydonia-24B', 'Silver-Siren-12B'] };
+
+  it('round-trips all four fields through the file and through the share code', () => {
+    const shared = buildSharedPreset({ ...base, overview }, APP);
+    expect(parseSharedJson(serializeSharedJson(shared), APP).preset!.overview).toEqual(overview);
+    expect(parseSharedCode(serializeSharedCode(shared), APP).preset!.overview).toEqual(overview);
+  });
+
+  it('omits the block when every field is empty', () => {
+    expect(buildSharedPreset({ ...base, overview: { author: '', description: '', tags: [], models: [] } }, APP).overview).toBeUndefined();
+    expect(buildSharedPreset(base, APP).overview).toBeUndefined();
+  });
+
+  it('writes the block when one field has content', () => {
+    expect(buildSharedPreset({ ...base, overview: { author: '', description: '', tags: [], models: ['M'] } }, APP).overview)
+      .toEqual({ author: '', description: '', tags: [], models: ['M'] });
+  });
+
+  it('imports a payload from before the Overview with none and no new warning', () => {
+    const r = parseSharedJson(serializeSharedJson(buildSharedPreset(base, APP)), APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.overview).toBeUndefined();
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('drops wrong types field by field and still imports', () => {
+    const crafted = JSON.stringify({
+      ...buildSharedPreset(base, APP),
+      overview: { author: 42, description: 'Kept.', tags: ['ok', 7, null, { x: 1 }], models: 'not-an-array' },
+    });
+    const r = parseSharedJson(crafted, APP);
+    expect(r.ok).toBe(true);
+    expect(r.preset!.overview).toEqual({ author: '', description: 'Kept.', tags: ['ok'], models: [] });
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('drops an Overview that is not an object, or has nothing left after the type check', () => {
+    for (const bad of ['text', 5, null, ['a'], {}, { author: 1, description: [], tags: [2], models: [' '] }]) {
+      const r = parseSharedJson(JSON.stringify({ ...buildSharedPreset(base, APP), overview: bad }), APP);
+      expect(r.ok).toBe(true);
+      expect(r.preset!.overview).toBeUndefined();
+    }
+  });
+
+  it('normalizes tags and models like a stored Overview, with no truncation', () => {
+    const long = 'x'.repeat(50_000);
+    const crafted = JSON.stringify({
+      ...buildSharedPreset(base, APP),
+      overview: { author: long, description: long, tags: [' Dark ', 'dark', 'Slow'], models: [' Cydonia ', 'cydonia', 'Nemo'] },
+    });
+    const o = parseSharedJson(crafted, APP).preset!.overview!;
+    expect(o.tags).toEqual(['dark', 'slow']);
+    expect(o.models).toEqual(['Cydonia', 'Nemo']);
+    expect(o.author).toHaveLength(50_000);
+    expect(o.description).toHaveLength(50_000);
+  });
+});

@@ -920,7 +920,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore) }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const style = imported.style;
     const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
@@ -931,6 +931,7 @@ function useProvideSettings() {
       ...(opts.includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
       ...(opts.includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
       ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
+      ...(imported.overview ? { overview: imported.overview } : {}),
     };
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
     const id = randomUUID();

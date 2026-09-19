@@ -7,6 +7,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'react-toastify';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
+import { CHIP_BASE } from '@/components/Chip';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
+import { cn } from '@/lib/utils';
+import { hasOverviewContent, type PresetOverview } from '@/lib/promptPresets';
 import {
   serializeSharedJson, serializeSharedCode, parseSharedAny,
   type SharedPreset, type ImportedPreset, type ParseResult,
@@ -44,7 +48,35 @@ export function ExportPresetDialog({ open, onOpenChange, shared }: {
   );
 }
 
-/** Import dialog: choose a file or paste a code → preview name + warnings → pick tuning + collision handling → add. */
+/** The imported preset's Overview, one row per field that has content. */
+function OverviewPreview({ overview }: { overview: PresetOverview }) {
+  const chips = (items: string[]) => (
+    <div className="flex flex-wrap gap-1.5">
+      {items.map((t) => <span key={t} className={cn(CHIP_BASE, 'bg-primary text-primary-foreground')}>{t}</span>)}
+    </div>
+  );
+  if (!hasOverviewContent(overview)) return null;
+  const { author, description, tags, models } = overview;
+  return (
+    <dl aria-label="Overview" className="flex flex-col gap-2 rounded-md border p-3 max-h-60 overflow-y-auto">
+      {author && <OverviewRow label="Author"><span className="text-label">{author}</span></OverviewRow>}
+      {description && <OverviewRow label="Description"><div className="text-muted-foreground"><MarkdownRenderer text={description} /></div></OverviewRow>}
+      {tags.length > 0 && <OverviewRow label="Tags">{chips(tags)}</OverviewRow>}
+      {models.length > 0 && <OverviewRow label="Models">{chips(models)}</OverviewRow>}
+    </dl>
+  );
+}
+
+function OverviewRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <dt className="text-helper font-semibold text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+/** Import dialog: choose a file or paste a code → preview warnings, Overview, and name → pick tuning + collision handling → add. */
 export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, existingUserNames, onImport }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -104,6 +136,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
             {parsed.warnings.map((w, i) => (
               <p key={i} className="text-meta text-amber-600 dark:text-amber-500">⚠ {w}</p>
             ))}
+            {parsed.preset?.overview && <OverviewPreview overview={parsed.preset.overview} />}
             <label className="flex flex-col gap-1 text-label">
               Name
               <Input value={name} onChange={(e) => { setName(e.target.value); setOverwrite(false); }} />

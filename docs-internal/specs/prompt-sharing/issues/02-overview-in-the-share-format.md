@@ -1,6 +1,7 @@
 # 02: Overview in the Share Format
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 6d200263
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium

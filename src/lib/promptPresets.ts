@@ -325,6 +325,11 @@ export function normalizeOverview(o: PresetOverview): PresetOverview {
   };
 }
 
+/** Whether any Overview field holds something. */
+export function hasOverviewContent(o: PresetOverview): boolean {
+  return !!(o.author || o.description || o.tags.length || o.models.length);
+}
+
 /** The active preset's Overview; null for a built-in, which has none. */
 export function activeOverview(store: PromptPresetStore): PresetOverview | null {
   if (isBuiltInActive(store)) return null;
