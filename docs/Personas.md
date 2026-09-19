@@ -81,7 +81,7 @@ A library persona is read from your library each time. Edit its description once
 
 ## Persona Placeholders
 
-A library persona can have its own [placeholders](WorldEditor#placeholders). Its Wildcards roll one time when you pick the persona, and the save keeps the values. Switch to another persona and back, and the first one reads the same values.
+A library persona can have its own [placeholders](World-Editor-Placeholders). Its Wildcards roll one time when you pick the persona, and the save keeps the values. Switch to another persona and back, and the first one reads the same values.
 
 ## Import from SillyTavern
 

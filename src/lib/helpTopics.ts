@@ -142,8 +142,7 @@ Settings → Output → Characters → **Describe New Characters** gives each in
   },
   'worldEditor.locations': {
     title: 'Locations',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'locations',
+    wikiPage: 'World-Editor-Locations',
     body: `The places your story happens. The player is always in exactly one, and it decides what the AI is told about the scene: the description, who's there, and where the story might go next.
 
 Locations keep the story in one place. Without a fixed place the narrator loses track of where the scene is. The tavern becomes a street, then a forest, and nothing stays put. A location is sent to the AI again every turn, so the scene stays where you put it.
@@ -173,8 +172,7 @@ Write the AI-Facing Description first, since it's the one doing the work. Nest l
   },
   'worldEditor.entities': {
     title: 'Entities',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'entities',
+    wikiPage: 'World-Editor-Entities',
     body: `The people, creatures and things that populate your world: a ferryman, an eel-smoker, a barred door. An entity belongs to one or more **Locations**, and the AI is handed the ones that could turn up wherever the player currently is.
 
 Entities give the AI a cast it can't lose track of. Left to itself the narrator invents a stranger, gives them a name, and forgets both by the next turn. An entity is fixed and reusable, so the story can keep returning to it.
@@ -222,8 +220,7 @@ Give an entity the one or two names the story will actually use. Each alias is a
   },
   'worldEditor.traits': {
     title: 'Traits',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'traits',
+    wikiPage: 'World-Editor-Traits',
     body: `The choices that make one playthrough different from the next: *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
 
 A trait is a durable fact about the character. Stats move constantly and the story moves with them. A trait stays fixed, so the narrator is handed the same fact on turn one and turn ninety. A stat says *how much*, a trait says *who you are*.
@@ -295,8 +292,7 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
   },
   'worldEditor.placeholders': {
     title: 'Placeholders',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'placeholders',
+    wikiPage: 'World-Editor-Placeholders',
     body: `Reusable bits of world text you define once and drop into your writing as chips: an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere you place its chip, it resolves to one of those values when the story runs.
 
 Placeholders let a world vary without being rewritten. Author *"the {{Eye Color}} stranger"* once, and it reads as a real detail every playthrough. Sometimes it's the same detail on purpose, sometimes a fresh one each time.
@@ -326,8 +322,7 @@ Define a placeholder here, then place its chip from any field that offers them. 
   },
   'worldEditor.stats': {
     title: 'Stats',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'stats',
+    wikiPage: 'World-Editor-Stats',
     body: `The numbers that describe your player: health, coin, reputation, whatever your world needs. Each stat has a value between a **Min** and **Max**, and the AI sees them every turn and lets them color how each action turns out.
 
 Stats give the story a memory with consequences. Prose alone forgets. A stat is a fact the AI has to write around: a low one shows up as effort and cost, a high one as ease. The narrator is told to work them into events rather than announce them, so stats shape the story without reading like a spreadsheet.
@@ -436,8 +431,7 @@ This enables a per-hour drain (\`current + 2 * deltaHours\`) or a stat that only
   },
   'worldEditor.dictionary': {
     title: 'Dictionary',
-    wikiPage: 'WorldEditor',
-    wikiAnchor: 'dictionary',
+    wikiPage: 'World-Editor-Dictionary',
     body: `Your world's lorebook. Each **book** holds **entries**, and an entry injects its content into the AI's prompt whenever one of its keywords shows up in the scanned text.
 
 The AI can't hold your whole world in mind at once. Rather than spending context on every detail every turn, the Dictionary keeps lore on standby and pays for it only when it's relevant. Someone mentions the Gloamwater, and the AI knows what it is.
