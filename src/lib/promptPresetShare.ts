@@ -1,4 +1,4 @@
-import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
+import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
 import type { AIRequestType } from '@/types';
 import { parsePromptReasoningSetting } from './reasoningEffort';
@@ -24,6 +24,7 @@ export interface SharedPreset {
   reasoningBudget?: ReasoningBudgetMap;
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
+  overview?: PresetOverview;
 }
 
 /** The preset payload an import yields (id is minted when added to the store). */
@@ -36,6 +37,7 @@ export interface ImportedPreset {
   reasoningBudget?: ReasoningBudgetMap;
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
+  overview?: PresetOverview;
 }
 
 export interface ParseResult {
@@ -50,7 +52,7 @@ export interface ParseResult {
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
  *  values/tuning by the caller before export. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview },
   appVersion: string,
 ): SharedPreset {
   return {
@@ -65,6 +67,7 @@ export function buildSharedPreset(
     ...(input.reasoningBudget && Object.keys(input.reasoningBudget).length ? { reasoningBudget: input.reasoningBudget } : {}),
     ...(input.maxOutput && Object.keys(input.maxOutput).length ? { maxOutput: input.maxOutput } : {}),
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
+    ...(input.overview && hasOverviewContent(input.overview) ? { overview: input.overview } : {}),
   };
 }
 
@@ -138,6 +141,8 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (maxOutput) preset.maxOutput = maxOutput;
   const verbatim = sanitizeVerbatim(o.verbatim);
   if (verbatim) preset.verbatim = verbatim;
+  const overview = sanitizeOverview(o.overview);
+  if (overview) preset.overview = overview;
 
   return { ok: true, preset, sourceAppVersion, warnings };
 }
@@ -192,6 +197,17 @@ function sanitizeReasoningBudget(raw: unknown): ReasoningBudgetMap | undefined {
   const out: Record<string, number> = {};
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(0, Math.min(100, v));
   return Object.keys(out).length ? (out as ReasoningBudgetMap) : undefined;
+}
+
+/** Type-check each Overview field on its own: a string stays, a list keeps its string members, the rest drops.
+ *  An Overview left with no content reads as none. */
+function sanitizeOverview(raw: unknown): PresetOverview | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const overview = normalizeOverview({ author: str(r.author), description: str(r.description), tags: list(r.tags), models: list(r.models) });
+  return hasOverviewContent(overview) ? overview : undefined;
 }
 
 // --- UTF-8-safe base64 (prompt text carries em-dashes, curly quotes, etc.; btoa alone is Latin1-only) ---
