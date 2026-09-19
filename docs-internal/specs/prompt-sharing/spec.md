@@ -162,6 +162,9 @@ model has no way to find a preset that was written for that model.
   download.
 - The server stores `models` as a string array on the listing row and returns it in list and detail
   responses. The list endpoint accepts a model substring filter.
+- The server stores `app_version` on the row, derived from the artifact's stamp at create and update, and
+  returns it in list and detail responses. The details read returns no content and the content read counts
+  a download, so "Made for Formamorph X" and the pre-download mismatch check read the row, never the artifact.
 - The server also refuses a `prompt` with no valid model. The description is optional for the kind.
 - `prompt` is compatible-only, not a component kind. It can declare compatible worlds and shows on a world
   where compatible offers already show. A world cannot require it, and unlisted visibility is refused,
