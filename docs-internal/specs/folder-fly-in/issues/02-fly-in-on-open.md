@@ -1,6 +1,7 @@
 # 02: Fly-In On Open
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 0749541d
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
