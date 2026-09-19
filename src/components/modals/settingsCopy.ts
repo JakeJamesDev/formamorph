@@ -564,7 +564,7 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   // ── Prompts · Overview ──────────────────────────────────────────────────────
   presetAuthor: {
     label: 'Author',
-    description: 'Your name or handle, shown with the preset when you share it',
+    description: 'Name who wrote the preset',
   },
   presetDescription: {
     label: 'Description',

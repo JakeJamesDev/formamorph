@@ -86,7 +86,7 @@ export interface PromptPreset {
   /** Per-prompt endpoint routing. Preset-scoped like the tuning above, but deliberately excluded from
    *  sharing: it names endpoint presets, whose ids mean nothing on another machine. */
   promptEndpoints?: PromptEndpointMap;
-  /** User presets only; absent on presets stored before it existed. */
+  /** Optional; user presets only. */
   overview?: PresetOverview;
 }
 
@@ -329,6 +329,12 @@ export function normalizeOverview(o: PresetOverview): PresetOverview {
 export function activeOverview(store: PromptPresetStore): PresetOverview | null {
   if (isBuiltInActive(store)) return null;
   return store.presets.find((p) => p.id === store.activeId)?.overview ?? EMPTY_OVERVIEW;
+}
+
+/** The Overview the active user preset actually stores, for a copy to carry; undefined when it has none. */
+export function storedOverview(store: PromptPresetStore): PresetOverview | undefined {
+  if (isBuiltInActive(store)) return undefined;
+  return store.presets.find((p) => p.id === store.activeId)?.overview;
 }
 
 /** Patch the active preset's Overview. No-op under a built-in. */
