@@ -72,7 +72,7 @@ import {
   type ParsedDirector,
 } from "../lib/stagedPlanning";
 import { selectRelevantDiary } from "../lib/semanticDiary";
-import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
+import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, cleanDiscoveredDescription, pruneDiscoveredToHistory, pickedAtStart, INITIAL_SOURCE_TURN_ID } from "../lib/runtimeCharacters";
 import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
@@ -1121,11 +1121,13 @@ const GameViewer = ({
   const openingActionRef = useRef<string>("");
   // A new game draws at seed; a loaded save draws on first need.
   const openingSessionRef = useRef<OpeningSession>(newOpeningSession());
-  /** The rows this playthrough draws from: the world's, plus authored entities at the starting location. */
+  /** The rows this playthrough draws from. The picked entities come off the initial-turn seed, so a loaded
+   *  save rebuilds the same pool. */
   const sessionPool = () => openingPool({
     overview: worldOverview,
     entities,
     startingLocationId: openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory),
+    picked: pickedAtStart(discoveredEntities),
   });
   // An Opening Narration is page one, never a directive to the narrator, so a session that drew one reads
   // an action row here.
@@ -3927,7 +3929,9 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      const pool = openingPool({ overview: worldOverview, entities, startingLocationId: location?.id });
+      const pool = openingPool({
+        overview: worldOverview, entities, startingLocationId: location?.id, picked: location ? initialCharacters ?? [] : [],
+      });
       const drawn = drawUnseenOpening(pool, [], Math.random);
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,

@@ -4,10 +4,10 @@
  * or replaying turns. Loaded via dynamic `import()` so each fixture is a separate chunk fetched only when
  * `loadDevFixture` runs (DEV-gated), never in the production bundle. See `devRouter.ts` / [[formamorph-dev-router]].
  */
-import type { World, SaveObject } from '@/types';
+import type { Entity, World, SaveObject } from '@/types';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening', 'pickedOpening'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -19,10 +19,16 @@ export interface DevFixture {
   save?: SaveObject;
   /** IndexedDB key the boot writes the save under before running the real `loadGame`. */
   saveName?: string;
+  /** Library entities the player picked at Enter World, for a new game. */
+  picked?: Entity[];
 }
 
 /** Page one of the `writtenOpening` fixture. */
 export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
+/** The `pickedOpening` world's own opening, which the picked entity's opening replaces. */
+export const WORLD_OPENING_TEXT = 'I look around the white room.';
+/** The `pickedOpening` picked entity's opening. */
+export const PICKED_OPENING_TEXT = 'I wave to the courier by the door.';
 
 /** Load a fixture's world+save (dynamic import → own chunk). Null outside DEV or for an unknown name. */
 export async function loadDevFixture(name: string): Promise<DevFixture | null> {
@@ -75,6 +81,23 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
               ?? [{ id: 'written-opening', text: WRITTEN_OPENING_TEXT, kind: 'narration' }],
           },
         },
+      };
+    }
+    case 'pickedOpening': {
+      // A new game where the player picked one entity with an Opening Action, so the box fills with its text.
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      return {
+        world: {
+          ...world,
+          worldOverview: {
+            ...world.worldOverview,
+            openings: [{ id: 'world-opening', text: WORLD_OPENING_TEXT, kind: 'action' }],
+          },
+        },
+        picked: [{
+          id: 'dev-courier', name: 'Courier', aiDescription: 'A courier waiting by the door.',
+          openings: [{ id: 'courier-opening', text: PICKED_OPENING_TEXT, kind: 'action' }],
+        }],
       };
     }
     default:

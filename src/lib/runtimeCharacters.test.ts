@@ -6,8 +6,10 @@ import {
   cleanDiscoveredDescription,
   selectReachableVisitors,
   pruneDiscoveredToHistory,
+  pickedAtStart,
   INITIAL_SOURCE_TURN_ID,
 } from './runtimeCharacters';
+import { drawUnseenOpening, openingPool } from './openings';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext } from './locationContext';
 import type { ChatMessage, DiscoveredEntity, Entity, GameLocation } from '@/types';
@@ -223,5 +225,29 @@ describe('discoveredAsEntities', () => {
   it('never mutates the stored discovery record', () => {
     discoveredAsEntities(discovered);
     expect('locations' in discovered[0].entity).toBe(false);
+  });
+});
+
+describe('pickedAtStart', () => {
+  const world = { name: 'W', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '', use3DModel: false, tags: [],
+    openings: [{ id: 'w1', text: 'The world opens.', kind: 'action' as const }] };
+  const bard: Entity = { id: 'bard', name: 'Bard', openings: [{ id: 'b1', text: 'The bard tunes up.', kind: 'narration' }] };
+  // A character met later in play, given an opening so the rebuild has a wrong row it could pick up.
+  const stranger: Entity = { id: 'stranger', name: 'Stranger', openings: [{ id: 's1', text: 'A stranger nods.', kind: 'action' }] };
+
+  it('rebuilds a loaded save’s page-one pool from the entities seeded at the initial turn', () => {
+    const saved: DiscoveredEntity[] = JSON.parse(JSON.stringify([
+      { entity: bard, locationId: 'dock', sourceTurnId: INITIAL_SOURCE_TURN_ID },
+      { entity: stranger, locationId: 'dock', sourceTurnId: 'turn-3' },
+    ]));
+    const pool = openingPool({ overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
+    expect(pool.map((e) => e.opening.text)).toEqual(['The bard tunes up.']);
+    expect(drawUnseenOpening(pool, [], () => 0.5).opening.text).toBe('The bard tunes up.');
+  });
+
+  it('falls back to the world’s pool on a save with no seeded entities', () => {
+    const saved: DiscoveredEntity[] = [{ entity: stranger, locationId: 'dock', sourceTurnId: 'turn-3' }];
+    const pool = openingPool({ overview: world, startingLocationId: 'dock', picked: pickedAtStart(saved) });
+    expect(pool.map((e) => e.opening.text)).toEqual(['The world opens.']);
   });
 });

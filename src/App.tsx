@@ -139,7 +139,7 @@ function AppViews() {
 
   return (
     <>
-      <DevFixtureLoader />
+      <DevFixtureLoader onPicked={setInitialCharacters} />
       {/* Android only: elsewhere there is no hardware back button and the plugin has nothing to send.
           The DEV route mounts it anyway, so the exit prompt's copy is reachable without a phone. */}
       {(Capacitor.isNativePlatform() || (import.meta.env.DEV && devRoute?.modal === 'exitApp')) && (

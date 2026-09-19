@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { BROWSE_TABS } from './browseTabs';
-import { DEV_FIXTURES, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
+import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { PROMPT_SURFACE_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -229,6 +229,13 @@ describe('mid-game boot fixtures', () => {
     expect(fx?.world.worldOverview.openings).toEqual([
       { id: 'written-opening', text: WRITTEN_OPENING_TEXT, kind: 'narration' },
     ]);
+  });
+
+  it('the picked-opening fixture is a new game whose picked entity carries an opening beside the world’s own', async () => {
+    const fx = await loadDevFixture('pickedOpening');
+    expect(fx?.save).toBeUndefined();
+    expect(fx?.world.worldOverview.openings?.map((o) => o.text)).toEqual([WORLD_OPENING_TEXT]);
+    expect(fx?.picked?.flatMap((e) => e.openings ?? []).map((o) => o.text)).toEqual([PICKED_OPENING_TEXT]);
   });
 
   it('white-room world has a location to start in', () => {

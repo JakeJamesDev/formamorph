@@ -53,6 +53,11 @@ export function selectDueDiscovery(history: ChatMessage[], knownNames: string[])
  *  so rewind pruning must never drop it. */
 export const INITIAL_SOURCE_TURN_ID = 'initial';
 
+/** The entities the player picked at Enter World: those seeded at the initial turn. */
+export function pickedAtStart(discovered: readonly DiscoveredEntity[]): Entity[] {
+  return discovered.filter((d) => d.sourceTurnId === INITIAL_SOURCE_TURN_ID).map((d) => d.entity);
+}
+
 /**
  * The discovered records to retain after a rewind: those whose introducing turn still exists in the
  * rewound `history`. Records anchored to no real turn — a missing `sourceTurnId` (legacy saves) or the
