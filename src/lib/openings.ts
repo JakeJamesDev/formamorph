@@ -28,7 +28,7 @@ export interface PoolEntry {
 }
 
 type Overview = WorldOverview | null | undefined;
-type Owner = OpeningOwner | null | undefined;
+type MaybeOwner = OpeningOwner | null | undefined;
 
 /** Whether the world's list is switched on. Absent means on. */
 export function openingsEnabled(overview: Overview): boolean {
@@ -42,7 +42,7 @@ export function openingWeight(weights: Record<string, number> | undefined, id: s
 }
 
 /** The rows of one owner that can come up, with their weights. A blank or benched row never draws. */
-function drawable(owner: Owner, ownerId: string | null): PoolEntry[] {
+function drawable(owner: MaybeOwner, ownerId: string | null): PoolEntry[] {
   return (owner?.openings ?? [])
     .filter((o) => o.text.trim())
     .map((opening) => ({ ownerId, opening, weight: openingWeight(owner?.openingWeights, opening.id) }))
@@ -120,7 +120,7 @@ export function resolveOpening(overview: Overview, random: () => number = Math.r
 
 /** Each of one owner's rows' chance of being drawn from that owner's list, as a percentage keyed by id.
  *  Ignores the switch, so an author drafting a switched-off list still reads the odds it will have. */
-export function openingChances(owner: Owner): Record<string, number> {
+export function openingChances(owner: MaybeOwner): Record<string, number> {
   const pool = drawable(owner, null);
   const total = poolWeight(pool);
   const out: Record<string, number> = {};
@@ -130,7 +130,7 @@ export function openingChances(owner: Owner): Record<string, number> {
 }
 
 /** Every row's text, drawable or not — what chip priming, placement letters and the World Doctor scan. */
-export function openingTexts(owner: Owner): string[] {
+export function openingTexts(owner: MaybeOwner): string[] {
   return (owner?.openings ?? []).map((o) => o.text).filter(Boolean);
 }
 
@@ -159,21 +159,18 @@ export const isOpeningFieldKey = (key: string | undefined): boolean => !!key?.st
 
 // ── Editor patches ────────────────────────────────────────────────────────────
 
-/** What an edit writes to its owner. Each patch reads only the owner's two opening fields. */
-type Patch = OpeningOwner;
-
 /** Turns the world's list on or off; on is stored as absent. */
 export function setOpeningsEnabled(on: boolean): Partial<WorldOverview> {
   return { openingsEnabled: on ? undefined : false };
 }
 
 /** Appends an empty Opening Action under a fresh id. */
-export function addOpening(owner: OpeningOwner): Patch {
+export function addOpening(owner: OpeningOwner): OpeningOwner {
   return { openings: [...(owner.openings ?? []), { id: randomUUID(), text: '', kind: 'action' }] };
 }
 
 /** Removes the row and its weight. */
-export function removeOpening(owner: OpeningOwner, id: string): Patch {
+export function removeOpening(owner: OpeningOwner, id: string): OpeningOwner {
   const { [id]: _drop, ...weights } = owner.openingWeights ?? {};
   return {
     openings: (owner.openings ?? []).filter((o) => o.id !== id),
@@ -182,17 +179,17 @@ export function removeOpening(owner: OpeningOwner, id: string): Patch {
 }
 
 /** Replaces one row's text. */
-export function setOpeningText(owner: OpeningOwner, id: string, text: string): Patch {
+export function setOpeningText(owner: OpeningOwner, id: string, text: string): OpeningOwner {
   return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };
 }
 
 /** Sets whether one row opens as a Player Action or as Narration. */
-export function setOpeningKind(owner: OpeningOwner, id: string, kind: OpeningKind): Patch {
+export function setOpeningKind(owner: OpeningOwner, id: string, kind: OpeningKind): OpeningOwner {
   return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
 }
 
 /** Stores a weight only when it differs from the default of 1. */
-export function setOpeningWeight(owner: OpeningOwner, id: string, weight: number): Patch {
+export function setOpeningWeight(owner: OpeningOwner, id: string, weight: number): OpeningOwner {
   const weights = { ...(owner.openingWeights ?? {}) };
   if (weight === 1) delete weights[id];
   else weights[id] = weight;
@@ -200,7 +197,7 @@ export function setOpeningWeight(owner: OpeningOwner, id: string, weight: number
 }
 
 /** Moves the row at `from` to `to`; weights key by id, so they follow. */
-export function moveOpening(owner: OpeningOwner, from: number, to: number): Patch {
+export function moveOpening(owner: OpeningOwner, from: number, to: number): OpeningOwner {
   const next = [...(owner.openings ?? [])];
   const [row] = next.splice(from, 1);
   if (row) next.splice(to, 0, row);

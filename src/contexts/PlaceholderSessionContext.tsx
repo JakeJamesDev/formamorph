@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useGameData } from './GameDataContext';
 import { primeRolls, weightedPick } from '@/lib/placeholders';
 import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
+import { entityTexts } from '@/lib/entityTexts';
 import { openingTexts } from '@/lib/openings';
 import type { PlaceholderRolls } from '@/types';
 
@@ -86,7 +87,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       worldOverview.introReadme || '',
       ...openingTexts(worldOverview),
 
-      ...entities.flatMap((e) => [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags, ...openingTexts(e)]),
+      ...entities.flatMap(entityTexts),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),
       ...stats.flatMap((s) => [s.name, s.description, ...(s.descriptors ?? []).map((d) => d.description)]),

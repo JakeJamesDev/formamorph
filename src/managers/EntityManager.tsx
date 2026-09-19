@@ -48,13 +48,15 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
   // no longer has are filtered out of the selection rather than shown as blank rows.
   const selectedLocationIds = (editingEntity?.locations ?? []).filter((id) => locations.some((l) => l.id === id));
 
-  const handleLocationsChange = (ids: string[]) => {
-    if (!editingEntity) return;
-    // Written whole rather than through `setField`, so clearing the list drops the field instead of
-    // persisting an empty array.
-    const next = withEntityLocations(editingEntity, ids);
+  // Written whole rather than through `setField`, so a patch of several fields lands at once and a cleared
+  // field drops instead of persisting an empty value.
+  const writeWhole = (next: Entity) => {
     setDraft(next);
     updateEntity(next);
+  };
+
+  const handleLocationsChange = (ids: string[]) => {
+    if (editingEntity) writeWhole(withEntityLocations(editingEntity, ids));
   };
 
   // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by
@@ -107,11 +109,7 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
             <EntityOpenings
               entity={editingEntity}
               placeholders={placeholders}
-              onChange={(patch) => {
-                const next = { ...editingEntity, ...patch };
-                setDraft(next);
-                updateEntity(next);
-              }}
+              onChange={(patch) => writeWhole({ ...editingEntity, ...patch })}
             />
           </TabsContent>
         )}
