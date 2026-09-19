@@ -214,9 +214,14 @@ export function useResolvedWorld(): ResolvedWorld {
     entities: worldEntities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
   } = useResolvedAuthoredWorld(pins, personaName);
+  // Resolved like the world's entities, so the side panel and the planner read its name, not its chips.
+  const libraryEntities = useMemo(
+    () => (libraryPersona ? resolveEntityNames([libraryPersona], resolvePH) : []),
+    [libraryPersona, resolvePH],
+  );
   const { persona, cast: entities, playerNames, unresolved } = useMemo(
-    () => resolvePersona(personaRef, worldEntities, libraryPersona ? [libraryPersona] : []),
-    [personaRef, worldEntities, libraryPersona],
+    () => resolvePersona(personaRef, worldEntities, libraryEntities),
+    [personaRef, worldEntities, libraryEntities],
   );
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
