@@ -54,13 +54,16 @@ const PlaceholderText = ({ text, placeholders, className, neutral }: {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const decoded = decodePlaceholderToken(seg.token);
         const ph = decoded && byId.get(decoded.id);
-        // A chip whose definition is gone: say so rather than rendering nothing, which is what the plain-text
-        // form does and what makes a broken reference invisible in a list.
-        if (!ph) return <MissingChip key={i} label={decoded?.label} className={className} />;
-        // A step naming a placeholder that is gone strands the chip exactly as a gone root does — the same
-        // reading the Bench's dangling-reference rule takes.
-        if ((decoded.path ?? []).some((s) => s.kind === 'val' && !byId.has(s.ref))) {
-          return <MissingChip key={i} label={decoded.label} className={className} />;
+        // The Player Name chip needs no definition, so it is never a missing one.
+        if (!vocab.fixed?.(seg.token)) {
+          // A chip whose definition is gone: say so rather than rendering nothing, which is what the plain-text
+          // form does and what makes a broken reference invisible in a list.
+          if (!ph) return <MissingChip key={i} label={decoded?.label} className={className} />;
+          // A step naming a placeholder that is gone strands the chip exactly as a gone root does — the same
+          // reading the Bench's dangling-reference rule takes.
+          if ((decoded.path ?? []).some((s) => s.kind === 'val' && !byId.has(s.ref))) {
+            return <MissingChip key={i} label={decoded.label} className={className} />;
+          }
         }
         // The whole path, so a part and a root of the same name never read alike. Pathless, this is the name.
         const name = vocab.label(seg.token);

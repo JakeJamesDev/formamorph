@@ -40,6 +40,7 @@ import {
   pruneSharedWeights,
   mergePlaceholderWeights,
   readPlaceholders,
+  parsePlaceholderText,
   type OpenPlaceholderValue,
   type ResolveOptions,
 } from './placeholders';
@@ -73,6 +74,48 @@ describe('placeholders token codec', () => {
   it('detects presence', () => {
     expect(hasPlaceholders('plain text')).toBe(false);
     expect(hasPlaceholders(`eyes: ${tok('eye', 'world', 'p1')}`)).toBe(true);
+  });
+});
+
+describe('the Player Name chip in the placeholder pass', () => {
+  const eyes = P('eyes', ['green']);
+  const mixed = `{{user}} has ${tok('eyes', 'world', 'p1')} eyes. She trusts {{User}}'s word.`;
+
+  it('renders the persona name beside authored chips', () => {
+    expect(resolvePlaceholders(mixed, { placeholders: [eyes], rolls: {}, player: { name: 'Wren' } }))
+      .toBe("Wren has green eyes. She trusts Wren's word.");
+  });
+
+  it('renders "the player" in reference text with no persona, which is the default kind', () => {
+    expect(resolvePlaceholders(mixed, { placeholders: [eyes], rolls: {} }))
+      .toBe("The player has green eyes. She trusts the player's word.");
+  });
+
+  it('renders "you" in opening text with no persona', () => {
+    expect(resolvePlaceholders(mixed, { placeholders: [eyes], rolls: {}, player: { kind: 'opening' } }))
+      .toBe('You has green eyes. She trusts your word.');
+  });
+
+  it('renders a marker that a placeholder value carries', () => {
+    const friend = P('friend', ["{{user}}'s oldest friend"]);
+    expect(resolvePlaceholders(`Mara is ${tok('friend', 'world', 'p1')}.`, {
+      placeholders: [friend], rolls: {}, player: { name: 'Wren' },
+    })).toBe("Mara is Wren's oldest friend.");
+  });
+
+  it('counts as a chip, and parses as one that keeps its spelling', () => {
+    expect(hasPlaceholders('Hi {{ User }}.')).toBe(true);
+    expect(parsePlaceholderText(`Hi {{ User }} and ${tok('eyes', 'world', 'p1')}`)).toEqual([
+      { type: 'text', value: 'Hi ' },
+      { type: 'variable', token: '{{ User }}' },
+      { type: 'text', value: ' and ' },
+      { type: 'variable', token: tok('eyes', 'world', 'p1') },
+    ]);
+  });
+
+  it('reads as its label on design-time surfaces', () => {
+    expect(describePlaceholders('Hi {{user}}.', [])).toBe('Hi Player Name.');
+    expect(buildPlaceholderPreview('Hi {{user}}.', [])).toEqual({ '{{user}}': 'Player Name' });
   });
 });
 

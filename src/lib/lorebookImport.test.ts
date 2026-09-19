@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { convertLorebook } from './lorebookImport';
+import { USER_MACRO } from './userMacro';
 import type { DictionaryEntry } from '@/types';
 
 // Grab a converted entry by its joined keywords, since ids are randomized.
@@ -59,6 +60,11 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
   it('sorts entries by insertion_order', () => {
     const d = convertLorebook({ entries: [{ keys: ['a'], content: 'x', insertion_order: 20 }, { keys: ['b'], content: 'y', insertion_order: 5 }] });
     expect(d!.entries.map((e) => e.key)).toEqual([['b'], ['a']]);
+  });
+
+  it('stores every user macro spelling in lore as the Player Name chip', () => {
+    const d = convertLorebook({ entries: [{ keys: ['oath'], content: 'Sworn to {{ User }} and {{USER}}.' }] });
+    expect(d!.entries[0].value).toBe(`Sworn to ${USER_MACRO} and ${USER_MACRO}.`);
   });
 
   it('strips leading @@ decorator lines from content', () => {

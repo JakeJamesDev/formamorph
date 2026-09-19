@@ -11,7 +11,7 @@ import {
   resolveDictionaryEntryNames,
 } from '@/lib/resolveWorldNames';
 import type {
-  CodePins, Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup,
+  CodePins, Connection, DictionaryEntry, Entity, GameLocation, PlaceholderRolls, PlayerStat, Stat, Trait, TraitGroup,
 } from '@/types';
 
 /**
@@ -70,9 +70,18 @@ export interface ResolvedWorld {
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
    *  carrying them, which `resolvePH` would resolve against the pins as they stood before. */
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
+  /** Resolve opening text, where the Player Name chip reads "you" with no persona. */
+  resolveOpening: (text: string, over?: OpeningOverrides) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
    *  pinning trait reads its own value whatever else is ticked. Trait names in `traits` already use this. */
   resolveTraitText: (trait: Trait, text: string) => string;
+}
+
+/** What a new game's first draw knows before React renders it into state. */
+export interface OpeningOverrides {
+  extraPins?: Record<string, string>;
+  /** The persona chosen at entry. Absent, the persona in state is named. */
+  persona?: ResolvedPersona | null;
 }
 
 /** The pin-carrying state `pinsFor` reads, where the caller has a copy newer than the one in state. */
@@ -95,21 +104,26 @@ export interface PinSources {
  * lazily here would draw a different value on every render, so a missing `beginSession` must show up rather
  * than quietly work.
  */
-export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS) {
+export function useResolvedAuthoredWorld(
+  pins: Record<string, string> = NO_PINS,
+  /** Who the Player Name chip names. Absent, it reads "the player". */
+  personaName: string | null = null,
+) {
   const {
     stats: rawStats, locations: rawLocations, connections, entities: rawEntities,
     traits: rawTraits, traitGroups: rawTraitGroups, placeholders,
   } = useGameData();
   const { rolls } = usePlaceholderSession();
 
+  const player = useMemo(() => ({ name: personaName }), [personaName]);
   const resolvePH = useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins }),
-    [placeholders, rolls, pins],
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins, player }),
+    [placeholders, rolls, pins, player],
   );
   const resolveFor = useCallback(
     (withPins: Record<string, string>, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: withPins }),
-    [placeholders, rolls],
+      resolvePlaceholders(text, { placeholders, rolls, pins: withPins, player }),
+    [placeholders, rolls, player],
   );
   // Resolve with pins that aren't in state yet. State updates are async, so code that applies traits and
   // then writes a string in the same pass (the init effect's log lines) would otherwise resolve against the
@@ -118,10 +132,17 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
     (extraPins: Record<string, string>, text: string) => resolveFor({ ...pins, ...extraPins }, text),
     [resolveFor, pins],
   );
+  const resolveOpening = useCallback((text: string, over: OpeningOverrides = {}) => {
+    const withPins = { ...pins, ...over.extraPins };
+    const name = over.persona === undefined
+      ? personaName
+      : over.persona && resolvePlaceholders(over.persona.entity.name, { placeholders, rolls, pins: withPins });
+    return resolvePlaceholders(text, { placeholders, rolls, pins: withPins, player: { name, kind: 'opening' } });
+  }, [placeholders, rolls, pins, personaName]);
   const resolveTraitFor = useCallback(
     (withPins: Record<string, string>, trait: Trait, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders) }),
-    [placeholders, rolls],
+      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders), player }),
+    [placeholders, rolls, player],
   );
   const resolveTraitText = useCallback(
     (trait: Trait, text: string) => resolveTraitFor(pins, trait, text),
@@ -141,11 +162,22 @@ export function useResolvedAuthoredWorld(pins: Record<string, string> = NO_PINS)
 
   return {
     entities, locations, connections, stats, traits, traitGroups,
-    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
+    resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
   };
 }
 
 const NO_PINS: Record<string, string> = {};
+
+/** The persona's name with its chips resolved, which the Player Name chip renders. Null with no persona. */
+export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, string>): string | null {
+  const { entities, placeholders } = useGameData();
+  const { personaRef, libraryPersona } = useGameplay();
+  // Read from the authored entities, because the resolved ones render the chip this name feeds.
+  return useMemo(() => {
+    const found = resolvePersona(personaRef, entities, libraryPersona ? [libraryPersona] : []).persona;
+    return found ? resolvePlaceholders(found.entity.name, { placeholders, rolls, pins }) : null;
+  }, [personaRef, entities, libraryPersona, placeholders, rolls, pins]);
+}
 
 export function useResolvedWorld(): ResolvedWorld {
   const { traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, placeholders } = useGameData();
@@ -170,11 +202,12 @@ export function useResolvedWorld(): ResolvedWorld {
     codePins: withCodePins,
   }), [playerTraits, disabledTraitIds, rawTraits, traitOrder, rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls]);
   const pins = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
+  const personaName = usePersonaName(rolls, pins);
 
   const {
     entities: worldEntities, locations, connections, stats, traits, traitGroups,
-    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
-  } = useResolvedAuthoredWorld(pins);
+    resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
+  } = useResolvedAuthoredWorld(pins, personaName);
   const { persona, cast: entities, playerNames, unresolved } = useMemo(
     () => resolvePersona(personaRef, worldEntities, libraryPersona ? [libraryPersona] : []),
     [personaRef, worldEntities, libraryPersona],
@@ -199,6 +232,6 @@ export function useResolvedWorld(): ResolvedWorld {
     entities, persona, playerNames, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, pins, pinsFor,
-    resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
+    resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
   };
 }

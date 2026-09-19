@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry } from '@/types';
+import { canonicalUserMacro } from './userMacro';
 
 /**
  * Convert an open-format lorebook into a Formamorph dictionary ("book"), or return `null` if `raw` isn't a
@@ -43,7 +44,9 @@ function firstNumber(...values: unknown[]): number | undefined {
 /** Convert one lorebook entry to a `DictionaryEntry`, honoring book-level scan/recursion defaults. */
 function convertEntry(raw: RawEntry, book: { scanDepth?: number; recursive?: boolean }): DictionaryEntry | null {
   const keys = asKeywordList(raw.keys ?? raw.key);
-  const value = stripDecorators(typeof raw.content === 'string' ? raw.content : typeof raw.value === 'string' ? raw.value : '');
+  const value = canonicalUserMacro(
+    stripDecorators(typeof raw.content === 'string' ? raw.content : typeof raw.value === 'string' ? raw.value : ''),
+  );
   const constant = raw.constant === true;
   // Drop pure noise, but keep a keyless "always inject" (constant) entry.
   if (!value && keys.length === 0 && !constant) return null;

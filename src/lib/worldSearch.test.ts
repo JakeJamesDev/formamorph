@@ -355,6 +355,14 @@ describe('findMatches — chips', () => {
     expect(chipHits(findMatches(targets, 'hometown', LOOSE, chips))).toEqual([second]);
   });
 
+  it('matches the Player Name chip by its label and never inside its token', () => {
+    const { src } = sources({ entities: [entity({ name: '', aiDescription: 'Wren greets {{user}}.' })] });
+    const targets = collectSearchTargets(src);
+    const chips = { placeholders: [], letters: placementLetters([]) };
+    expect(chipHits(findMatches(targets, 'player name', LOOSE, chips))).toEqual(['{{user}}']);
+    expect(findMatches(targets, 'user', LOOSE, chips)).toHaveLength(0);
+  });
+
   it('matches a chip by any of its values', () => {
     const { targets, chips } = setup();
     expect(chipHits(findMatches(targets, 'harrow', LOOSE, chips))).toEqual([first, second]);

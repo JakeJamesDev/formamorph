@@ -1,6 +1,9 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
+import {
+  USER_MACRO_LABEL, USER_MACRO_RE, USER_MACRO_SOURCE, hasUserMacro, isUserMacroToken, renderUserMacro, type UserMacroRender,
+} from './userMacro';
 
 /**
  * Placeholders — resolve author-defined named values embedded in world text as inline chips. A placeholder
@@ -53,6 +56,8 @@ const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}=][^:{}]*))
 // The same token with nothing around it: "is this string one whole chip?". Built once — both readers of it
 // run per value on render paths. Ungreedy of state: no `g`, so `exec` never carries a `lastIndex`.
 const WHOLE_TOKEN_RE = new RegExp(`^${TOKEN_RE.source}$`);
+// Every chip the editor shows: a placeholder token or the Player Name marker, which needs no definition.
+const CHIP_RE = new RegExp(`${TOKEN_RE.source}|${USER_MACRO_SOURCE}`, 'g');
 
 // Path grammar: segments joined by `>`, each `v<targetId>` (explicit pick) or `s<name>` (slot). Slot names
 // and placement labels are author text, so the four characters the grammar owns are percent-escaped.
@@ -100,10 +105,11 @@ export function decodePlaceholderToken(token: string): PlaceholderToken | null {
   return path ? { ...base, path } : null;
 }
 
-/** True if `text` contains at least one placeholder chip (cheap pre-check to skip resolution work). */
+/** True if `text` contains at least one chip, the Player Name marker included (cheap pre-check to skip
+ *  resolution work). */
 export function hasPlaceholders(text: string): boolean {
   TOKEN_RE.lastIndex = 0;
-  return TOKEN_RE.test(text);
+  return TOKEN_RE.test(text) || hasUserMacro(text);
 }
 
 /** Reads a chain of placeholder names as one name — a drill path, a breadcrumb, or a name qualified by its
@@ -222,13 +228,12 @@ export function newPlaceholder(name: string, values: string[] = []): Placeholder
   return { id: randomUUID(), name, values: values.map(newPlaceholderValue), roll: true };
 }
 
-/** Split text into literal runs and placeholder-chip tokens (mirrors parsePromptTemplate for the `{{ph}}`
- *  token, so the same Lexical chip editor can render placeholder fields). Non-token text stays literal. */
+/** Split text into literal runs and chip tokens: placeholder chips and the Player Name marker, as written
+ *  (mirrors parsePromptTemplate, so the same Lexical chip editor can render placeholder fields). */
 export function parsePlaceholderText(text: string): PromptSegment[] {
   const segments: PromptSegment[] = [];
   let last = 0;
-  TOKEN_RE.lastIndex = 0;
-  for (const match of text.matchAll(TOKEN_RE)) {
+  for (const match of text.matchAll(CHIP_RE)) {
     const idx = match.index;
     if (idx > last) segments.push({ type: 'text', value: text.slice(last, idx) });
     segments.push({ type: 'variable', token: match[0] });
@@ -612,10 +617,11 @@ export function buildPlaceholderPreview(
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
   return drawWithValuePins(authorDraw(placeholders, pick, store), (ctx) => {
     const out: Record<string, string> = {};
+    for (const [marker] of text.matchAll(USER_MACRO_RE)) out[marker] = USER_MACRO_LABEL;
     TOKEN_RE.lastIndex = 0;
     for (const m of text.matchAll(TOKEN_RE)) {
       if (m[0] in out) continue;
-      out[m[0]] = resolveText(m[0], ctx);
+      out[m[0]] = labelUserMacro(resolveText(m[0], ctx));
     }
     return out;
   });
@@ -754,7 +760,13 @@ export function drawPlaceholderSpans(
     : [...placeholders, ph];
   const rootPick: PlaceholderPick = (values, w) => pick(values, values === ph.values && weights ? weights : w);
   // Starts at the placeholder itself: a root World chip of it would resolve to the same thing.
-  return drawWithValuePins({ placeholders: list, rolls: {}, pick: rootPick }, (ctx) => phSpans(ph, ctx));
+  return drawWithValuePins({ placeholders: list, rolls: {}, pick: rootPick }, (ctx) => phSpans(ph, ctx))
+    .map((span) => ({ ...span, text: labelUserMacro(span.text) }));
+}
+
+/** A design-time surface has no persona, so the Player Name chip reads as its label. */
+function labelUserMacro(text: string): string {
+  return text.replace(USER_MACRO_RE, USER_MACRO_LABEL);
 }
 
 /**
@@ -776,7 +788,8 @@ export function describePlaceholders(
   pins?: Record<string, string>,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
-  return describeText(text, { byId: new Map(placeholders.map((p) => [p.id, p])), pins, depth: 0, seen: new Set() });
+  const described = describeText(text, { byId: new Map(placeholders.map((p) => [p.id, p])), pins, depth: 0, seen: new Set() });
+  return labelUserMacro(described);
 }
 
 /** How many levels of nested chips a describe pass walks. Deep enough to show a character's parts, shallow
@@ -929,6 +942,9 @@ export interface ResolveOptions {
   pins?: Record<string, string>;
   /** Called once per structural problem met while resolving. */
   onFinding?: (finding: PlaceholderFinding) => void;
+  /** Who the Player Name chip names and what kind of text this is. Absent, it is reference text with no
+   *  persona. */
+  player?: UserMacroRender;
 }
 
 /**
@@ -1434,8 +1450,8 @@ function valueSpans(value: string, ctx: ResolveCtx, crossing?: Crossing): Placeh
   const lone = crossing ? lonePlaceholderToken(value) : null;
   const out: PlaceholderSpan[] = [];
   for (const seg of parsePlaceholderText(value)) {
-    if (seg.type === 'text') {
-      out.push({ text: seg.value });
+    if (seg.type === 'text' || isUserMacroToken(seg.token)) {
+      out.push({ text: seg.type === 'text' ? seg.value : seg.token });
       continue;
     }
     const token = decodePlaceholderToken(seg.token);
@@ -1539,7 +1555,7 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
  */
 export function resolvePlaceholders(text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
-  return resolveText(text, createResolveCtx(opts));
+  return renderUserMacro(resolveText(text, createResolveCtx(opts)), { kind: 'reference', ...opts.player });
 }
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */

@@ -26,7 +26,6 @@ import {
 } from '@/lib/placeholders';
 import { DEFAULT_OPENING, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
-import { renderUserMacro } from '@/lib/userMacro';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
@@ -381,7 +380,9 @@ export function buildOpening(
     overview: world.worldOverview, entities: world.entities ?? [], startingLocationId: location?.id,
   });
   const chances = poolChances(entries);
-  const openingText = (text: string) => renderUserMacro(resolve(text));
+  // The Bench has no persona, so the Player Name chip reads "you" here as it does in a game without one.
+  const openingText = (text: string) =>
+    resolvePlaceholders(text, { placeholders, rolls, pins, player: { kind: 'opening' } });
   const pool = entries.map((entry, i): OpeningPoolRow => ({
     key: poolKey(entry),
     ownerName: entry.ownerId == null ? null : resolve(entityName.get(entry.ownerId) ?? entry.ownerId),

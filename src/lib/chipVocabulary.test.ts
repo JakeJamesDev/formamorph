@@ -118,6 +118,40 @@ describe('placeholderVocabulary', () => {
   });
 });
 
+describe('placeholderVocabulary — the Player Name chip', () => {
+  const placeholders = [P('eye', ['Red', 'Blue'])];
+  const v = placeholderVocabulary(placeholders, { playerName: true });
+
+  it('parses the marker as a known chip that keeps its spelling', () => {
+    expect(v.parse('Hi {{ User }}.')).toEqual([
+      { type: 'text', value: 'Hi ' },
+      { type: 'variable', token: '{{ User }}' },
+      { type: 'text', value: '.' },
+    ]);
+    expect(v.isKnown('{{ User }}')).toBe(true);
+    expect(placeholderVocabulary(placeholders).isKnown('{{user}}')).toBe(true);
+  });
+
+  it('reads as its label and offers no mode, affixes, drill, or rename', () => {
+    expect(v.label('{{user}}')).toBe('Player Name');
+    expect(v.display?.('{{user}}')).toBe('Player Name');
+    expect(v.variantLabel('{{user}}')).toBeNull();
+    expect(v.axes('{{user}}')).toEqual([]);
+    expect(v.affixes('{{user}}')).toBeNull();
+    expect(v.drill?.('{{user}}')).toEqual([]);
+    expect(v.structure?.('{{user}}')).toBeNull();
+    expect(v.freshInsertToken('{{user}}')).toBe('{{user}}');
+    expect(v.fixed?.('{{user}}')).toBe(true);
+    expect(v.fixed?.(tok('eye', 'world'))).toBe(false);
+  });
+
+  it('heads the palette where the field offers it, and only there', () => {
+    expect(v.palette().map((r) => r.label)).toEqual(['Player Name', 'name-eye']);
+    expect(v.palette()[0].token).toBe('{{user}}');
+    expect(placeholderVocabulary(placeholders).palette().map((r) => r.label)).toEqual(['name-eye']);
+  });
+});
+
 /**
  * The two structural hooks the `{` typeahead drives: one level down from a chip, and minting a placeholder
  * that does not exist yet. Both are optional on the vocabulary, so the static prompt family simply does not

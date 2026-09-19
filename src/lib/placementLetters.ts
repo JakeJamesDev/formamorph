@@ -8,6 +8,7 @@ import {
 } from './placeholders';
 import type { PlaceholderSegment, PlaceholderToken } from './placeholders';
 import { allPlaceholders, type PlaceholderOwners } from './placeholderHomes';
+import { USER_MACRO_LABEL, isUserMacroToken } from './userMacro';
 import { qualifiedPlaceholderName } from './placeholderTree';
 import { sortedDescriptors } from './statDescriptorGeometry';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
@@ -242,6 +243,7 @@ export function labelPlaceholders(
   return parsePlaceholderText(text).map((seg) => {
     if (seg.type === 'text') return seg.value;
     const token = decodePlaceholderToken(seg.token);
+    if (isUserMacroToken(seg.token)) return seg.token === text ? USER_MACRO_LABEL : `{${USER_MACRO_LABEL}}`;
     if (!token) return '';
     const name = chipPathName(token, placeholders, options);
     const shown = name == null

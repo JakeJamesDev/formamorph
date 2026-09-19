@@ -1,6 +1,7 @@
 import type { Placeholder } from '@/types';
 import { decodePlaceholderToken, hasPlaceholders, parsePlaceholderText } from './placeholders';
 import { mapPreservingIdentity } from './utils';
+import { USER_MACRO_LABEL, isUserMacroToken } from './userMacro';
 
 /**
  * The one name stat code sees for a stat or a trait.
@@ -24,7 +25,9 @@ export function statCodeName(name: string | undefined, placeholders: readonly Pl
   return parsePlaceholderText(name)
     .map((segment) => (segment.type === 'text'
       ? segment.value
-      : nameById.get(decodePlaceholderToken(segment.token)?.id ?? '') ?? ''))
+      : isUserMacroToken(segment.token)
+        ? USER_MACRO_LABEL
+        : nameById.get(decodePlaceholderToken(segment.token)?.id ?? '') ?? ''))
     .join('')
     .replace(/\s+/g, ' ')
     .trim();
