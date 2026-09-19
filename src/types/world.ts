@@ -378,12 +378,23 @@ export interface WorldOverview {
   introReadme?: string;
   /** Prompt text this world supplies in place of the player's preset. Absent = the player's preset alone. */
   promptOverrides?: WorldPromptOverrides;
-  /** The text the input box opens pre-filled with at Start Game, in place of the shipped cue. Placeholder
-   *  chips resolve at pre-fill time; the player edits the result before submitting (see lib/openingCue). */
-  openingCue?: string;
-  /** `false` keeps `openingCue` on the world without applying it. Absent = stored text is applied, so a
-   *  world hand-authored without the flag still opens with its cue. */
-  openingCueEnabled?: boolean;
+  /** The world's own openings, in authored order. One is drawn by weight at Start Game (see lib/openings). */
+  openings?: Opening[];
+  /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
+  openingWeights?: Record<string, number>;
+  /** `false` keeps `openings` on the world without drawing them. Absent = on. */
+  openingsEnabled?: boolean;
+}
+
+/** Where an opening's text lands: `action` pre-fills the player's input box, `narration` is page one. */
+export type OpeningKind = 'action' | 'narration';
+
+/** One authored way to start a playthrough. The id is minted once, so a draw weight keyed by it survives
+ *  the author rewriting the text. Placeholder chips in `text` resolve against the opening pins. */
+export interface Opening {
+  id: string;
+  text: string;
+  kind: OpeningKind;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

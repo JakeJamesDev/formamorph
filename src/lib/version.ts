@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
   World, SaveObject, Stat, GameState, Trait, PlayerStat, Connection, GameLocation, Placeholder, PlaceholderValue,
+  Opening,
 } from '@/types';
 import { implicitPairs, pairKey } from './locationGraph';
 import { normalizeCustomVRM } from './worldImport';
@@ -322,6 +323,24 @@ function normalizeContentLinks(world: Record<string, unknown>): void {
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
  */
+/**
+ * Move the single `openingCue` into the openings list as one Opening Action, and drop the old fields. A cue
+ * switched off keeps its row and switches the list off. A blank cue opened on the default and adds no row.
+ * Idempotent: a world without the old fields passes through untouched.
+ */
+function migrateOpeningCue(world: Record<string, unknown>): void {
+  const ov = world.worldOverview as Record<string, unknown> | undefined;
+  if (!ov || typeof ov !== 'object' || !('openingCue' in ov || 'openingCueEnabled' in ov)) return;
+  const { openingCue: cue, openingCueEnabled: enabled, ...rest } = ov;
+  const next: Record<string, unknown> = { ...rest };
+  if (typeof cue === 'string' && cue.trim()) {
+    const row: Opening = { id: randomUUID(), text: cue, kind: 'action' };
+    next.openings = [...(Array.isArray(rest.openings) ? rest.openings : []), row];
+  }
+  if (enabled === false) next.openingsEnabled = false;
+  world.worldOverview = next;
+}
+
 function migrateWorldPlaceholders(world: Record<string, unknown>): void {
   if (!Array.isArray(world.placeholders)) return;
   world.placeholders = world.placeholders.map((ph) =>
@@ -380,6 +399,7 @@ export function migrateWorld(raw: unknown): World {
   migrateLocationConnections(world);
   migrateStartLocationFlag(world);
   migrateWorldPlaceholders(world);
+  migrateOpeningCue(world);
   normalizeContentLinks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 

@@ -65,9 +65,11 @@ describe('worldUsesAdvancedFeatures', () => {
     }))).toBe(true);
   });
 
-  it('says yes about a stored opening cue, even one switched off', () => {
+  it('says yes about a written opening, even with the list switched off', () => {
     expect(worldUsesAdvancedFeatures(plain({
-      worldOverview: overview({ openingCue: 'You wake in the reed-beds.', openingCueEnabled: false }),
+      worldOverview: overview({
+        openings: [{ id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' }], openingsEnabled: false,
+      }),
     }))).toBe(true);
   });
 

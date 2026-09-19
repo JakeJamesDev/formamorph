@@ -24,7 +24,7 @@ import {
   placeholderChances, primeRolls, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
-import { resolveOpeningCue } from '@/lib/openingCue';
+import { resolveOpening } from '@/lib/openings';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
@@ -333,8 +333,8 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     '<NOTES>': NONE_PLACEHOLDER,
     '<TIME>': NONE_PLACEHOLDER,
   };
-  // The world's own cue when the author switched one on, resolved as the pre-fill resolves it.
-  const cue = resolve(resolveOpeningCue(world.worldOverview));
+  // The first drawable opening, resolved as the pre-fill resolves it: a fixed source keeps the lens stable.
+  const cue = resolve(resolveOpening(world.worldOverview, () => 0).text);
   const { prompt: system } = buildNarrationPrompt({
     template: defaultSystemPrompt,
     ctx,

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { placementLetters } from '@/lib/placementLetters';
+import { isOpeningFieldKey, openingFieldKey } from '@/lib/openings';
 import { collectSearchTargets, findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
@@ -185,23 +186,30 @@ describe('collectSearchTargets', () => {
     })]]);
   });
 
-  it('reaches a stored opening cue, switched on or not', () => {
+  it('reaches every opening row, switched on or not', () => {
+    const openings = [
+      { id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' as const },
+      { id: 'o2', text: 'The ferry bell rings twice.', kind: 'action' as const },
+    ];
     const { src, writes } = sources({
-      worldOverview: overview({ openingCue: 'You wake in the reed-beds.', openingCueEnabled: false }),
+      worldOverview: overview({ openings, openingWeights: { o2: 3 }, openingsEnabled: false }),
     });
     const targets = collectSearchTargets(src);
-    expect(targetFor(targets, 'openingCue'))
-      .toMatchObject({ value: 'You wake in the reed-beds.', fieldLabel: 'Opening Cue', chipCapable: true });
+    expect(targetFor(targets, openingFieldKey('o1')))
+      .toMatchObject({ value: 'You wake in the reed-beds.', fieldLabel: 'Opening 1', chipCapable: true });
+    expect(targetFor(targets, openingFieldKey('o2'))).toMatchObject({ value: 'The ferry bell rings twice.' });
 
-    targetFor(targets, 'openingCue').write('You wake in the reed-beds, already wet.');
-    // The switch is the author's; a replace edits their text and leaves it where they set it.
+    targetFor(targets, openingFieldKey('o2')).write('The ferry bell rings once.');
+    // The switch and the weights are the author's; a replace edits one row's text and nothing else.
     expect(writes).toEqual([['overview', expect.objectContaining({
-      openingCue: 'You wake in the reed-beds, already wet.', openingCueEnabled: false,
+      openings: [openings[0], { ...openings[1], text: 'The ferry bell rings once.' }],
+      openingWeights: { o2: 3 },
+      openingsEnabled: false,
     })]]);
   });
 
-  it('offers no target for an opening cue still tracking the default', () => {
-    expect(collectSearchTargets(sources().src).map((t) => t.fieldKey)).not.toContain('openingCue');
+  it('offers no target for the default opening', () => {
+    expect(collectSearchTargets(sources().src).some((t) => isOpeningFieldKey(t.fieldKey))).toBe(false);
   });
 
   it('offers no target for a prompt tab still tracking the preset', () => {

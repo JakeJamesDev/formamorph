@@ -91,12 +91,14 @@ describe('PlaceholderSessionProvider', () => {
     expect(TOWN.values).toContain(h.rolls().unique?.['intro-1']);
   });
 
-  it('rolls a Wildcard that appears only in the opening cue', () => {
-    // The cue is resolved into the input box at Start Game, so a placement it alone carries has to be
+  it('rolls a Wildcard that appears only in an opening', () => {
+    // An opening is resolved into the input box at Start Game, so a placement it alone carries has to be
     // primed with the rest — resolving from an unprimed roll draws a new value on every render.
     const w = world();
-    (w.worldOverview as { openingCue?: string }).openingCue =
-      `You wake in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'cue-1' })}.`;
+    w.worldOverview.openings = [
+      { id: 'o1', text: 'Plain.', kind: 'action' },
+      { id: 'o2', text: `You wake in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'cue-1' })}.`, kind: 'action' },
+    ];
     const h = mount();
     h.loadWorld(w);
     h.begin();

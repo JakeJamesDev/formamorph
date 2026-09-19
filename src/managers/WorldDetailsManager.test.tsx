@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
+import { openingFieldKey } from '@/lib/openings';
 import WorldDetailsManager from './WorldDetailsManager';
 
 const PRESET_NARRATION = 'PRESET narration prompt';
@@ -400,155 +401,95 @@ describe('the world narration prompt field', () => {
   });
 });
 
-/** The one field the section shows, and the checkbox that applies it. */
-const CUE_FIELD = 'World opening cue';
-const cueCheckbox = () => screen.getByRole('checkbox', { name: "Use this world's opening cue" });
+const openingsCheckbox = () => screen.getByRole('checkbox', { name: "Use this world's openings" });
+const ROWS = [
+  { id: 'o1', text: 'You wake in the reed-beds.', kind: 'action' as const },
+  { id: 'o2', text: 'The ferry bell rings twice.', kind: 'action' as const },
+];
 
-describe('the opening cue panel', () => {
-  /** Opens the cue by picking it — browsing, which must leave the world untouched. */
-  const browseCue = async () => {
+describe('the openings panel', () => {
+  /** Opens the panel by picking it — browsing, which must leave the world untouched. */
+  const browse = async () => {
     const user = userEvent.setup();
     renderManager();
     await user.click(picker('Opening'));
-    return user;
-  };
-
-  /** Switches the cue on, which opens it the same way a prompt kind's checkbox does. */
-  const enableCue = async () => {
-    const user = userEvent.setup();
-    renderManager();
-    await user.click(cueCheckbox());
     return user;
   };
 
   it('is hidden in Simple mode', () => {
     renderManager(false);
     expect(screen.queryByRole('radio', { name: 'Opening' })).not.toBeInTheDocument();
-    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
   });
 
-  it('shows the cue’s enabled state without opening it', () => {
-    world.overview.openingCue = 'You wake in the reed-beds.';
-    world.overview.openingCueEnabled = false;
-    renderManager();
-
-    // Nothing is open, so the picker chrome is the only place this state can be read — and a cue that is
-    // switched off still keeps its text.
-    expect(cueCheckbox()).not.toBeChecked();
-    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
-    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
+  it('counts an absent switch as on, and browsing writes nothing', async () => {
+    const before = world.overview;
+    await browse();
+    expect(openingsCheckbox()).toBeChecked();
+    expect(world.overview).toBe(before);
   });
 
-  it('only opens when the picker itself is clicked', async () => {
-    await browseCue();
+  it('names the default opening and shows its text read-only when the list is empty', async () => {
+    await browse();
+    expect(screen.getByText(/Players start on the default opening/)).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'Default opening' })).toHaveTextContent(OPENING_SCENE_CUE);
+    expect(screen.queryByTestId('Opening 1')).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId(CUE_FIELD)).toBeInTheDocument();
-    // Browsing must never enable anything, and must not write to the world at all.
-    expect(cueCheckbox()).not.toBeChecked();
-    expect(world.overview.openingCueEnabled).toBeUndefined();
+  it('adds a row and writes its text, chips palette and all', async () => {
+    const user = await browse();
+    await user.click(screen.getByRole('button', { name: /Add Opening/ }));
+    expect(world.overview.openings).toEqual([{ id: expect.any(String), text: '', kind: 'action' }]);
+    expect(field('Opening 1').placeholders).toEqual(placeholders);
+
+    edit('Opening 1', 'You wake in the reed-beds.');
+    expect(world.overview.openings?.[0].text).toBe('You wake in the reed-beds.');
+    expect(screen.queryByRole('note', { name: 'Default opening' })).not.toBeInTheDocument();
+  });
+
+  it('shows each row’s chance from its weight, and keeps a weight 0 row', async () => {
+    world.overview.openings = ROWS;
+    const user = await browse();
+    expect(screen.getByLabelText('Chance for Opening 1')).toHaveTextContent('50%');
+
+    const weight2 = screen.getByLabelText('Draw weight for Opening 2');
+    await user.clear(weight2);
+    await user.type(weight2, '3');
+    expect(world.overview.openingWeights).toEqual({ o2: 3 });
+    expect(screen.getByLabelText('Chance for Opening 1')).toHaveTextContent('25%');
+    expect(screen.getByLabelText('Chance for Opening 2')).toHaveTextContent('75%');
+
+    await user.clear(screen.getByLabelText('Draw weight for Opening 1'));
+    expect(world.overview.openingWeights).toEqual({ o1: 0, o2: 3 });
+    expect(screen.getByLabelText('Chance for Opening 1')).toHaveTextContent('0%');
+    expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
+  });
+
+  it('drops a removed row together with its weight', async () => {
+    world.overview.openings = ROWS;
+    world.overview.openingWeights = { o1: 2, o2: 5 };
+    const user = await browse();
+    await user.click(screen.getByRole('button', { name: 'Remove Opening 2' }));
+    expect(world.overview.openings).toEqual([ROWS[0]]);
+    expect(world.overview.openingWeights).toEqual({ o1: 2 });
+  });
+
+  it('switching the list off keeps the rows, and leaves the panel open', async () => {
+    world.overview.openings = ROWS;
+    const user = await browse();
+    await user.click(openingsCheckbox());
+    expect(world.overview.openingsEnabled).toBe(false);
+    expect(world.overview.openings).toEqual(ROWS);
+    expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
     expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
+
+    await user.click(openingsCheckbox());
+    expect(world.overview.openingsEnabled).toBeUndefined();
   });
 
-  it('closes the cue when it is picked again', async () => {
-    const user = await browseCue();
-    await user.click(picker('Opening'));
-
-    expect(screen.queryByTestId(CUE_FIELD)).not.toBeInTheDocument();
-    expect(openKind()).toEqual([]);
-  });
-
-  it('opens on the shipped cue, storing nothing', async () => {
-    await enableCue();
-
-    expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
-    expect(screen.getByText(/Shows the standard cue/)).toBeInTheDocument();
-    expect(world.overview.openingCue).toBeUndefined();
-  });
-
-  it('stores the text on the first edit that diverges from the shipped cue', async () => {
-    await enableCue();
-    edit(CUE_FIELD, `${OPENING_SCENE_CUE} And it is raining.`);
-
-    expect(world.overview.openingCue).toBe(`${OPENING_SCENE_CUE} And it is raining.`);
-    expect(world.overview.openingCueEnabled).toBe(true);
-  });
-
-  it('drafting a cue does not switch it on', async () => {
-    await browseCue();
-    edit(CUE_FIELD, 'You wake in the reed-beds.');
-
-    // Enabling is the checkbox's job. The flag has to be written rather than left to default, since stored
-    // text on its own reads as switched on.
-    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
-    expect(world.overview.openingCueEnabled).toBe(false);
-    expect(cueCheckbox()).not.toBeChecked();
-  });
-
-  it('does not store a template that came back unchanged', async () => {
-    await enableCue();
-    edit(CUE_FIELD, OPENING_SCENE_CUE);
-
-    // The field echoes its value on mount and on any no-op edit; that must not become an authored cue.
-    expect(world.overview.openingCue).toBeUndefined();
-  });
-
-  it('switching the cue off keeps the text it holds, and leaves it open to edit', async () => {
-    world.overview.openingCue = 'You wake in the reed-beds.';
-    world.overview.openingCueEnabled = true;
-    const user = await browseCue();
-
-    await user.click(cueCheckbox());
-    expect(world.overview.openingCueEnabled).toBe(false);
-    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
-    // Switching something off is not a request to stop looking at it — the panel must not shut under the click.
-    expect(screen.getByTestId(CUE_FIELD)).toBeInTheDocument();
-    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
-  });
-
-  it('offers Reset only for a cue the author actually wrote', async () => {
-    const user = await enableCue();
-    // Only one panel is open at a time, so the only Reset on screen is the cue's.
-    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument();
-
-    edit(CUE_FIELD, 'You wake in the reed-beds.');
-    expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Reset' }));
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(world.overview.openingCue).toBe('You wake in the reed-beds.');
-  });
-
-  it('drops the stored cue and returns the field to the shipped one', async () => {
-    world.overview.openingCue = 'You wake in the reed-beds.';
-    world.overview.openingCueEnabled = true;
-    const user = await browseCue();
-    await user.click(screen.getByRole('button', { name: 'Reset' }));
-
-    // One dialog serves every panel now — asking about a "prompt" here would describe the wrong discard.
-    expect(screen.getByText("Discard this world's opening cue?")).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(world.overview.openingCue).toBeUndefined();
-    expect(field(CUE_FIELD).value).toBe(OPENING_SCENE_CUE);
-    // Reset discards authored text; it does not decline the feature.
-    expect(world.overview.openingCueEnabled).toBe(true);
-  });
-
-  it('opens the cue when the find bar navigates to it', () => {
-    world.overview.openingCue = 'You wake in the reed-beds.';
-    // The find bar is the only way to reach a panel that is not showing; a hit that leaves it closed lands
-    // the author on a picker with nothing open and no visible match.
-    renderManager(true, { fieldKey: 'openingCue', itemId: null });
-
-    expect(screen.getByTestId(CUE_FIELD)).toBeInTheDocument();
-    expect(field(CUE_FIELD).value).toBe('You wake in the reed-beds.');
-  });
-
-  it('offers the world’s placeholders as chips', async () => {
-    await enableCue();
-    // A Wildcard in the cue is how a world opens differently each playthrough, so the field has to be the
-    // chip-capable one with this world's own placeholders in its palette.
-    expect(field(CUE_FIELD).placeholders).toEqual(placeholders);
+  it('opens the panel when the find bar navigates to a row', () => {
+    world.overview.openings = ROWS;
+    // The find bar is the only way to reach a panel that is not showing.
+    renderManager(true, { fieldKey: openingFieldKey('o2'), itemId: null });
+    expect(field('Opening 2').value).toBe('The ferry bell rings twice.');
   });
 });

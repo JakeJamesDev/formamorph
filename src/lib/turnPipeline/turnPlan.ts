@@ -68,8 +68,8 @@ export interface TurnPrompts {
   storyboard: string;
   narrationUser: string;
   oocDirective: string;
-  /** The cue the opening turn's legacy "START GAME" sentinel resolves to — the world's own when it has one
-   *  (see lib/openingCue), the shipped default otherwise. */
+  /** The text the opening turn's legacy "START GAME" sentinel resolves to: the session's drawn opening
+   *  (see lib/openings). */
   openingCue: string;
   choices: string;
   choicesUser: string;
