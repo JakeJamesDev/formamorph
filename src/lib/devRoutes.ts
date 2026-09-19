@@ -150,6 +150,9 @@ export const DEV_MODAL_TABS = {
   // `surface=…` (`#dev?modal=settings&tab=prompts&subtab=narration&surface=anatomy`). `anatomy` is the
   // hub every prompt lands on, not an editor; the panel falls back to it wherever a surface doesn't apply.
   settingsPromptSurfaces: ['system', 'user', 'messages', 'options', 'anatomy'],
+  // Settings → Prompts preset-level entries, reached with `subtab=…` in place of a prompt
+  // (`#dev?modal=settings&tab=prompts&subtab=overview`). A built-in preset shows none and lands on Narration.
+  settingsPromptPreset: ['overview'],
   // GameViewer's side panel (Entities/Notes/Memory/Logs). Also not a modal: `#dev?view=gameViewer&tab=memory`.
   // The mobile-only `model` tab is deliberately not routable.
   gameViewer: ['entities', 'notes', 'memory', 'logs'],

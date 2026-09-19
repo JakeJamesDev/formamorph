@@ -56,6 +56,20 @@ export type PromptValues = Record<PromptTextKey, string>;
  *  bodies are shared; only the header decoration differs (see src/lib/sectionStyle.ts). */
 export type SectionStyle = 'markdown' | 'labels' | 'xml';
 
+/** What a user preset says about itself: who wrote it, what it is for, and the models it fits. */
+export interface PresetOverview {
+  author: string;
+  /** Markdown. */
+  description: string;
+  /** Trimmed, lowercased, de-duplicated. */
+  tags: string[];
+  /** Trimmed, de-duplicated case-insensitively; the author's casing is kept. */
+  models: string[];
+}
+
+/** The Overview a user preset without one reads as. */
+export const EMPTY_OVERVIEW: PresetOverview = { author: '', description: '', tags: [], models: [] };
+
 /** A named set of prompt text. Built-ins are virtual (derived from the shipped canonical, never stored);
  *  a user preset stores a full value snapshot plus the section style it was authored in. */
 export interface PromptPreset {
@@ -72,6 +86,8 @@ export interface PromptPreset {
   /** Per-prompt endpoint routing. Preset-scoped like the tuning above, but deliberately excluded from
    *  sharing: it names endpoint presets, whose ids mean nothing on another machine. */
   promptEndpoints?: PromptEndpointMap;
+  /** User presets only; absent on presets stored before it existed. */
+  overview?: PresetOverview;
 }
 
 /** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
@@ -164,9 +180,10 @@ export function setActive(store: PromptPresetStore, id: string): PromptPresetSto
   return { ...store, activeId: id };
 }
 
-/** Add a preset (a copy of `values` in `style`) and select it. */
-export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle): PromptPresetStore {
-  return { activeId: id, presets: [...store.presets, { id, name, values: { ...values }, style }] };
+/** Add a preset (a copy of `values` in `style`, plus a copy of `overview` when given) and select it. */
+export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle, overview?: PresetOverview): PromptPresetStore {
+  const preset: PromptPreset = { id, name, values: { ...values }, style, ...(overview ? { overview: normalizeOverview(overview) } : {}) };
+  return { activeId: id, presets: [...store.presets, preset] };
 }
 
 /** Add a full preset (name + values + style + optional tuning, e.g. an import) and select it. */
@@ -282,6 +299,41 @@ export function updateReasoningBudget(store: PromptPresetStore, kind: AIRequestT
 /** Replace the active preset's Max Output map via a transform. No-op under a built-in. */
 export function updateMaxOutput(store: PromptPresetStore, fn: (m: PromptMaxOutputMap) => PromptMaxOutputMap): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, maxOutput: fn(p.maxOutput ?? {}) }));
+}
+
+/** De-duplicate case-insensitively after trimming, keeping the first spelling; empties drop. */
+function uniqueTrimmed(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const v = raw.trim();
+    const key = v.toLowerCase();
+    if (!v || seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
+/** The stored form of an Overview: tags lowercased, both lists trimmed and de-duplicated, no caps. */
+export function normalizeOverview(o: PresetOverview): PresetOverview {
+  return {
+    author: o.author,
+    description: o.description,
+    tags: uniqueTrimmed(o.tags.map((t) => t.toLowerCase())),
+    models: uniqueTrimmed(o.models),
+  };
+}
+
+/** The active preset's Overview; null for a built-in, which has none. */
+export function activeOverview(store: PromptPresetStore): PresetOverview | null {
+  if (isBuiltInActive(store)) return null;
+  return store.presets.find((p) => p.id === store.activeId)?.overview ?? EMPTY_OVERVIEW;
+}
+
+/** Patch the active preset's Overview. No-op under a built-in. */
+export function updateOverview(store: PromptPresetStore, patch: Partial<PresetOverview>): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, overview: normalizeOverview({ ...EMPTY_OVERVIEW, ...p.overview, ...patch }) }));
 }
 
 /** One-time migration: fold the (previously global) tuning onto every user preset that lacks it, so switching
