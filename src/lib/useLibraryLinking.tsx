@@ -135,8 +135,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   /**
    * Bring the world's linked copies up to date with the library items their author owns, and let go of
-   * the items that are gone. Letting go is silent: the player deleted the item, and the copy's own row is
-   * where the state change reads.
+   * the items that are gone. Each outcome is announced once per pass.
    */
   const syncFromLibrary = useCallback(async () => {
     const current = latest.current;
@@ -165,10 +164,17 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     // A reference the source has newly introduced arrives as a placeholder of its own; Save Connections is
     // where the author points it at one they already have.
     next.toAdd.forEach(current.addPlaceholder);
-    if (!next.updated) return;
-    toast.info(next.updated === 1
-      ? 'Formamorph updated one linked copy from your library.'
-      : `Formamorph updated ${next.updated} linked copies from your library.`);
+    if (next.updated) {
+      toast.info(next.updated === 1
+        ? 'Formamorph updated one linked copy from your library.'
+        : `Formamorph updated ${next.updated} linked copies from your library.`);
+    }
+    // The world now differs from its saved copy, so the author is told what changed it.
+    if (next.unlinked) {
+      toast.info(next.unlinked === 1
+        ? 'Formamorph unlinked one copy whose library item is gone.'
+        : `Formamorph unlinked ${next.unlinked} copies whose library items are gone.`);
+    }
   }, []);
 
   // Which library items this world follows, as a value an effect can watch. Keyed on the set rather than
