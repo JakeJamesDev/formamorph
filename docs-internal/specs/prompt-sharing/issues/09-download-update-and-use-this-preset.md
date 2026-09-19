@@ -1,6 +1,7 @@
 # 09: Download, Update, and Use This Preset
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 43675466
 Blocked by: 02, 07
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -29,12 +30,12 @@ A player downloads a prompt listing into their preset list, activates it, and ge
 
 ## Acceptance criteria
 
-- [ ] Download state tests for the `prompt` kind: none, refresh, update
-- [ ] Context tests: replace in place keeps the id; a world pinned to the preset resolves to it after an update
-- [ ] Test: a dirty copy asks before it is replaced; a clean copy does not
-- [ ] Test: blank Author is filled; a set Author is kept
-- [ ] Test: a listing with missing prompt keys downloads and runs on defaults for those keys
-- [ ] Use This Preset selects the preset in Simple mode and in Advanced mode
-- [ ] The link never appears in an export of the downloaded preset
-- [ ] Full flow checked against the dev server: publish, download on a second profile, edit, update
-- [ ] Changelog In-Progress entry added; four gates green
+- [x] Download state tests for the `prompt` kind: none, refresh, update
+- [x] Context tests: replace in place keeps the id; a world pinned to the preset resolves to it after an update
+- [x] Test: a dirty copy asks before it is replaced; a clean copy does not
+- [x] Test: blank Author is filled; a set Author is kept
+- [x] Test: a listing with missing prompt keys downloads and runs on defaults for those keys
+- [x] Use This Preset selects the preset in Simple mode and in Advanced mode
+- [x] The link never appears in an export of the downloaded preset
+- [x] Full flow checked against the dev server: publish, download on a second profile, edit, update
+- [x] Changelog In-Progress entry added; four gates green
