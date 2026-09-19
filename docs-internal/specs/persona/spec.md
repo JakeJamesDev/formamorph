@@ -21,7 +21,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 - A player makes personas in the Entities library. The tab filters on the mark.
 - An author marks world entities as playable. A marked world entity is a persona of that world.
-- The player picks a persona, or None, when they enter a world. They can change it in game from the side panel.
+- The player picks a persona, or None, when they enter a world. They can change it in game from the right panel.
 - A `<PERSONA>` chip carries the persona into each prompt that writes, plans, or refers to the player.
 - A reserved Player Name chip lets authored text and imported cards say the player's name.
 - SillyTavern personas import from ST's backup file, with their avatar images.
@@ -79,7 +79,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 ### In game
 
-32. As a player, I want a persona row in the side panel beside Notes and Traits, so that my own data sits together.
+32. As a player, I want a persona row at the top of the right panel, above my stats and traits, so that my own data sits together and stays visible.
 33. As a player, I want a Change control there, so that I can change my persona mid-playthrough.
 34. As a player with a save made before this feature, I want to attach a persona to it, so that old saves gain the feature.
 35. As a player, I want an edit to a persona to reach every save that uses it, so that I fix a description one time.
@@ -190,7 +190,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 ### In game
 
-- The side panel shows the persona's portrait and name beside Notes and Traits, with a Change control that opens the same picker.
+- The persona's portrait and name show in a fixed row at the top of the right panel, above the Stats, Traits, and Location tabs, beside the language field and the clock. The row stays visible on every tab. A Change control on the row opens the same picker. Notes is a tab of the left panel, so the row does not sit with it.
 - A change rewrites the save's persona reference. It obeys the world's player setting and the one-role rule.
 - Digests and diaries written before a change keep the earlier name. No re-attribution runs.
 
