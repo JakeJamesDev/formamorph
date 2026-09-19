@@ -12,6 +12,12 @@ export interface PersonaOption {
 
 const keyOf = (ref: PersonaRef) => (ref.source === 'none' ? 'none' : `${ref.source}:${ref.entityId}`);
 
+const refOf = (key: string): PersonaRef => {
+  const split = key.indexOf(':');
+  const source = key.slice(0, split);
+  return source === 'world' || source === 'library' ? { source, entityId: key.slice(split + 1) } : { source: 'none' };
+};
+
 const rowClass = (selected: boolean) => cn(
   'flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border bg-card p-3 transition-colors',
   'focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset',
@@ -46,10 +52,7 @@ export function PersonaPicker({ library, value, onChange }: {
   return (
     <RadioGroup
       value={current}
-      onValueChange={(key) => {
-        if (key === 'none') onChange({ source: 'none' });
-        else onChange({ source: 'library', entityId: key.slice('library:'.length) });
-      }}
+      onValueChange={(key) => onChange(refOf(key))}
       className="grid min-w-0 gap-3 xl:grid-cols-2"
     >
       {row('none', 'None', (
