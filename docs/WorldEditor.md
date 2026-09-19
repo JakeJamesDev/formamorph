@@ -32,6 +32,7 @@ The world's own tab: its name, description, thumbnail and the AI-facing text tha
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices; **Gameplay** shows when they enter the world. Both take markdown. |
 | **System Prompt Addition** | Text added to the narrator's prompt on every turn of this world. |
 | **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](#openings). |
+| **Persona Choice** | **Advanced mode only.** Decides who the player can be: **Open**, **Fixed** or **Cast**. See [Personas for Authors](Persona-Authoring#persona-choice). |
 
 ### Openings
 
@@ -92,6 +93,7 @@ An entity at no starting location shows a **No Starting Location** badge. Its op
 #### Chips, search and older worlds
 
 - **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
+- **The Player Name chip works in openings.** Type `{` and pick **Player Name**. Page one then says the [persona](Persona-Authoring#the-player-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
 - **Search and replace reaches every opening**, on the world and on each entity.
 - **A world saved with one pre-filled opening** loads with it as its first Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
 
@@ -199,11 +201,13 @@ Assignment to a location is the entire gate: an entity in no location never reac
 |---|---|
 | **Name** | Always |
 | **Aliases** | Yes — as "also known as" |
+| **Pronouns** | Yes, beside the name and aliases |
 | **AI-Facing Description** | Yes — the main thing the AI knows |
 | **AI-Facing Summary** | Only in prompt slots that ask for the short form |
 | **Type** | Yes, as a plain field |
 | **Player-Facing Description** | **Never** |
 | Image, Image Tags, 3D model, group, order | Never |
+| The **Persona** checkbox | Not as a field. It lets the player play as the entity: see [Personas for Authors](Persona-Authoring#make-an-entity-playable). |
 
 > 💡 **The two descriptions are disjoint, and that's the point.** The player only ever sees the Player-Facing one; the AI only ever sees the AI-Facing one. So the **AI-Facing Description** is where a secret lives — the narrator can act on it while the player stays in the dark. The default prompt even asks the narrator to hold a name back until the player would plausibly have learned it, though that's a request to the AI rather than something the app enforces.
 
@@ -253,6 +257,7 @@ The default prompt feeds entities from three places, as separate blocks: the pla
 | **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too. An entity has no switch of its own. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
+| **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#make-an-entity-playable), its openings leave the draw for that game. |
 
 ### Groups
 
@@ -292,12 +297,11 @@ Import a SillyTavern PNG card into your entity library, and it becomes an entity
 | **First message** | The entity's first Opening Narration |
 | Each **alternate greeting** | One more Opening Narration, in card order, at weight 1 |
 | The name macro, `{{char}}` | The entity's name |
-| The user macro, `{{user}}` | "you" when the opening shows, or "You" at the start of a sentence |
-| `{{user}}'s` | "your", or "Your" at the start of a sentence |
+| The user macro, `{{user}}` | The [Player Name chip](Persona-Authoring#the-player-name-chip) |
 
 When these openings are in the draw, **Re-generate** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
 
-> 💡 **`{{user}}` stays in the stored text.** Only the shown page says "you". In the entity's descriptions, the macro becomes "the player" at import.
+> 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
 ### Getting started
 

@@ -24,6 +24,10 @@ _Avoid_: auto layout (as a live behavior), nudge
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Persona**:
+The entity that fills the player slot for a playthrough. It comes from the player's library or from the world's entities that carry the Persona mark. A save names one, or an explicit None.
+_Avoid_: player character, user
+
 **Opening**:
 One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration.
 _Avoid_: cue, opening cue, greeting, first message (the SillyTavern term)

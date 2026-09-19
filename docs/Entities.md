@@ -91,6 +91,8 @@ At **Start Game**, the game draws one opening. **Quick Start** draws the same wa
 
 You start on the default opening when no picked entity has an opening and the world's list is switched off or has nothing to draw.
 
+An entity you play as your [persona](Personas#play-a-worlds-own-entity) keeps its openings out of the draw, so page one never greets you as yourself.
+
 Loading a save draws nothing.
 
 ### Regenerating Page One
@@ -108,5 +110,6 @@ Loading a save draws nothing.
 
 ## Related
 
+- [🪪 Personas](Personas) — who you are in the story
 - [🧠 Story Memory](Memory) — how the story remembers what those characters did
 - [🛠️ World Editor](WorldEditor) — authoring the cast that ships with your world, including its own **Entities** section

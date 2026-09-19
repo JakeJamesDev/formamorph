@@ -21,6 +21,8 @@ Formamorph runs entirely in the browser and talks to any **OpenAI-compatible** c
 | 📱 **[Install on Android](Install-on-Android)** | Getting the app on your phone — the download, Android's prompts, and how it updates itself |
 | 🧠 **[Story Memory](Memory)** | How a long story is remembered, and how to pin, edit or write its memories yourself |
 | 🎭 **[Entities in Play](Entities)** | Who the story tracks as present — including the characters it invents mid-scene, and how to remove one it got wrong |
+| 🪪 **[Personas](Personas)** | Who you are in the story — making a persona, picking one at Enter World, changing it in game, and the SillyTavern import |
+| 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Persona Choice** control, and the Persona and Player Name chips |
 | ✍️ **[Text Formatting](TextFormatting)** | Every piece of Markdown the app renders, including `==highlights==` and their color keys |
 | 📐 **[World Format](WorldFormat)** | The full structure of a world `.json` — every field of stats, traits, locations, entities, stat-updates, and the dictionary |
 | 🧮 **[Stat Code Guide](StatCodeGuide)** | Writing dynamic JS formulas that derive one stat from others |

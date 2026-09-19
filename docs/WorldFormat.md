@@ -63,6 +63,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `openings` | [Opening](#-openings)[] | The world's own openings, in authored order. One is drawn by weight at Start Game |
 | `openingWeights` | Object | Draw weight per opening `id`. A missing entry weighs 1; `0` keeps the opening without drawing it |
 | `openingsEnabled` | Boolean | `false` keeps the world's openings, and those of its entities, without drawing them. Absent = on |
+| `playerSetting` | `"open"` \| `"fixed"` \| `"cast"` | Who the player can be: the [Persona Choice](Persona-Authoring#persona-choice) control. Absent = `open`, and the editor writes no field for it |
 
 ### 📊 `stats`
 
@@ -200,6 +201,8 @@ People, creatures and objects in the world.
 | `name` | String | Display name |
 | `aliases` | String[] | Other names this entity answers to. Sent to the AI as "also known as", and matched in the story text to detect that the entity is present — **case-sensitive**, whole-word, plural-aware |
 | `type` | String | Optional category label |
+| `pronouns` | String | Free text, such as "she/her". Sent to the AI beside the name and aliases |
+| `persona` | Boolean | `true` makes the entity [playable](Persona-Authoring#make-an-entity-playable). In a library entity, it marks one of the player's personas. Absent = off |
 | `playerDescription` | String | Shown to the player in-game |
 | `aiDescription` | String | Full description sent to the AI |
 | `aiSummary` | String | Short description sent to the AI where the full one is too long |
@@ -220,7 +223,7 @@ One way a playthrough can start. Used by `worldOverview.openings` and `entities[
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Unique within its owner. `openingWeights` is keyed by it |
-| `text` | String | The opening's text. Supports placeholder chips, resolved when the opening is drawn |
+| `text` | String | The opening's text. Supports placeholder chips, resolved when the opening is drawn. `{{user}}` is the stored form of the [Player Name chip](Persona-Authoring#the-player-name-chip) |
 | `kind` | `"action"` \| `"narration"` | `action` fills the player's input box (Opening Action). `narration` is page one, shown as written (Opening Narration) |
 
 ### 🔄 `statUpdates`
