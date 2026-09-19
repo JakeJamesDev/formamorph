@@ -2,10 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SceneImagePanel } from './SceneImagePanel';
 
-const IMG = ['data:image/png;base64,AAA', 'data:image/png;base64,BBB', 'data:image/png;base64,CCC'];
-
 const props = {
-  images: [] as string[],
+  hasImage: false,
   tags: '',
   ready: true,
   job: null as 'tags' | 'image' | null,
@@ -14,7 +12,6 @@ const props = {
   onGenerate: vi.fn(),
   onRegenerateTags: vi.fn(),
   onCancel: vi.fn(),
-  onDelete: vi.fn(),
 };
 
 const img = () => screen.getByRole('img') as HTMLImageElement;
@@ -35,7 +32,7 @@ describe('SceneImagePanel', () => {
   });
 
   it('renders nothing at all before the page holds a committed turn', () => {
-    const { container } = render(<SceneImagePanel {...props} ready={false} images={IMG} tags="1girl" />);
+    const { container } = render(<SceneImagePanel {...props} ready={false} hasImage tags="1girl" />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -65,36 +62,9 @@ describe('SceneImagePanel', () => {
     expect(screen.getByText('50%')).toBeInTheDocument();
   });
 
-  it('opens on the newest image and browses back through the older ones', () => {
-    render(<SceneImagePanel {...props} images={IMG} tags="1girl" />);
-    expect(img().src).toContain('CCC');
-    expect(screen.getByText('3/3')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Previous image'));
-    expect(img().src).toContain('BBB');
-    expect(screen.getByText('2/3')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByLabelText('Next image'));
-    expect(img().src).toContain('CCC');
-    expect(screen.getByLabelText('Next image')).toBeDisabled();
-  });
-
-  it('hides the arrows for a single image', () => {
-    render(<SceneImagePanel {...props} images={[IMG[0]]} tags="1girl" />);
-    expect(screen.queryByLabelText('Previous image')).toBeNull();
-  });
-
-  it('deletes the image being viewed, not the newest', () => {
-    const onDelete = vi.fn();
-    render(<SceneImagePanel {...props} images={IMG} tags="1girl" onDelete={onDelete} />);
-    fireEvent.click(screen.getByLabelText('Previous image')); // now on index 1
-    fireEvent.click(screen.getByLabelText('Delete this image'));
-    expect(onDelete).toHaveBeenCalledWith(1);
-  });
-
   it('re-reads the narration when the tags are untouched, and sends them verbatim once edited', () => {
     const onGenerate = vi.fn();
-    render(<SceneImagePanel {...props} images={[IMG[0]]} tags="1girl, dock" onGenerate={onGenerate} />);
+    render(<SceneImagePanel {...props} hasImage tags="1girl, dock" onGenerate={onGenerate} />);
     fireEvent.click(screen.getByRole('button', { name: /^Tags$/ }));
 
     fireEvent.click(screen.getByRole('button', { name: /Draw again/ }));
@@ -137,25 +107,32 @@ describe('SceneImagePanel', () => {
   });
 
   it('reverts an edit back to the stored line', () => {
-    render(<SceneImagePanel {...props} images={[IMG[0]]} tags="1girl, dock" />);
+    render(<SceneImagePanel {...props} hasImage tags="1girl, dock" />);
     fireEvent.click(screen.getByRole('button', { name: /^Tags$/ }));
     fireEvent.change(screen.getByLabelText('Scene tags'), { target: { value: 'nonsense' } });
     fireEvent.click(screen.getByRole('button', { name: /Revert/ }));
     expect((screen.getByLabelText('Scene tags') as HTMLTextAreaElement).value).toBe('1girl, dock');
   });
 
-  it('shows the live frame in place of the finished image while a render runs', () => {
+  it('shows the live frame while a render runs, and no image once it ends', () => {
     const FRAME = 'data:image/jpeg;base64,LIVE';
-    const { rerender } = render(<SceneImagePanel {...props} images={IMG} tags="1girl" job="image" preview={FRAME} />);
+    const { rerender } = render(<SceneImagePanel {...props} hasImage tags="1girl" job="image" preview={FRAME} />);
     expect(img().src).toContain('LIVE');
-    // Once the run ends the finished image is back, and the live frame is gone.
-    rerender(<SceneImagePanel {...props} images={IMG} tags="1girl" job={null} preview={null} />);
-    expect(img().src).toContain('CCC');
+    // The finished image shows on the plate, not here.
+    rerender(<SceneImagePanel {...props} hasImage tags="1girl" job={null} preview={null} />);
+    expect(screen.queryByRole('img')).toBeNull();
   });
 
-  it('keeps showing the last image when a render reports no frame yet', () => {
-    render(<SceneImagePanel {...props} images={IMG} tags="1girl" job="image" preview={null} />);
-    expect(img().src).toContain('CCC');
+  it('offers the tag row on a turn with an image', () => {
+    render(<SceneImagePanel {...props} hasImage tags="1girl" />);
+    expect(screen.getByRole('button', { name: /^Tags$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete this image' })).toBeNull();
+  });
+
+  it('offers the tag row on a turn with an image and no tag line', () => {
+    render(<SceneImagePanel {...props} hasImage />);
+    expect(screen.getByRole('button', { name: /^Tags$/ })).toBeInTheDocument();
   });
 
   it('shows a stop button while drawing, with a percentage when the provider reports one', () => {

@@ -3326,9 +3326,7 @@ const GameViewer = ({
     sceneImageAbortRef.current?.abort();
   };
 
-  const handleDeleteSceneImage = (index: number) => {
-    const turnId = parseTurnContent(fullMessageHistory[pageAssistantIndex(currentPage, messagesPerPage)]?.content ?? "")?.turnId;
-    if (!turnId) return;
+  const handleDeleteSceneImage = (turnId: string, index: number) => {
     setSceneImages((prev) => removeSceneImage(prev, turnId, index));
   };
 
