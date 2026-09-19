@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   locationRows, removeCollapsedChildren, getLocationDropProjection,
-  applyLocationDrop, removeLocationPromotingChildren, type FlatLocationNode,
+  applyLocationDrop, type FlatLocationNode,
 } from '@/lib/locationTree';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 import { TREE_INDENT } from '@/components/EditorRow';
@@ -13,7 +13,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 
 /** The Locations tab's sub-location tree: a flat sortable list where horizontal drag sets nesting depth. */
 const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { locations, setLocations, placeholders } = useGameData();
+  const { locations, setLocations, removeLocation, placeholders } = useGameData();
 
   // Ids that are a parent of at least one location — drives the chevron (from the full list, so a
   // collapsed node still shows its expand chevron).
@@ -35,7 +35,7 @@ const LocationTree = ({ selectedId, onSelect }: { selectedId: string | null; onS
       lead: parentIds.has(node.id) ? 'chevron' : 'spacer',
       collapseLabels: ['Expand sub-locations', 'Collapse sub-locations'],
       label: <PlaceholderText text={node.location.name} placeholders={placeholders} />,
-      remove: () => setLocations(removeLocationPromotingChildren(locations, node.id)),
+      remove: () => removeLocation(node.id),
       duplicate: () => {
         const index = locations.findIndex((l) => l.id === node.id);
         if (index === -1) return;

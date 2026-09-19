@@ -53,6 +53,22 @@ describe('entity ↔ location membership', () => {
     expect(result.current.entities[0].locations).toEqual(['l2']);
   });
 
+  it('moves the sub-locations of a deleted location up to its parent', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData({
+      ...world('w', {}),
+      locations: [
+        { id: 'l1', name: 'Harbor' },
+        { id: 'l2', name: 'Dock', parentId: 'l1' },
+        { id: 'l3', name: 'Shed', parentId: 'l2' },
+      ],
+    } as unknown as World); });
+
+    act(() => { result.current.removeLocation('l2'); });
+
+    expect(result.current.locations.map((l) => [l.id, l.parentId ?? null])).toEqual([['l1', null], ['l3', 'l1']]);
+  });
+
   it('leaves the entities untouched when nobody belonged to the deleted location', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(worldWith(['keep'])); });

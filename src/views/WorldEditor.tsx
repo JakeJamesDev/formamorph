@@ -61,7 +61,6 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { duplicateTraitNode } from '@/lib/traitTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
@@ -125,7 +124,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
-    removeStat, removeEntity, removeTrait, removeStatUpdate,
+    removeStat, removeEntity, removeLocation, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
@@ -741,8 +740,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     } else if (activeTab === "entities") {
       removeEntity(id);
     } else if (activeTab === "locations") {
-      // Deleting a location promotes its sub-locations up to the deleted node's parent (nothing lost).
-      setLocations(removeLocationPromotingChildren(locations, id));
+      removeLocation(id);
     } else if (activeTab === "traits") {
       removeTrait(id);
     } else if (activeTab === "statUpdates") {
