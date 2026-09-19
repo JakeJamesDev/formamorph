@@ -5,6 +5,7 @@
 
 import { deriveModelsUrls } from '@/lib/contextLength';
 import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+import { isDesktop, listLocalModels } from '@/lib/imageGen/desktop';
 
 /** One endpoint to ask. `localEngine` reads the desktop engine's installed list instead of the network. */
 export interface ModelListTarget {
@@ -14,6 +15,16 @@ export interface ModelListTarget {
 }
 
 type FetchLike = (url: string, init: { headers: Record<string, string> }) => Promise<Response>;
+
+/** Seams for tests; production uses the network and the desktop engine bridge. */
+export interface ModelListSources {
+  doFetch?: FetchLike;
+  listEngine?: () => Promise<string[]>;
+}
+
+const defaultFetch: FetchLike = (url, init) => fetch(url, init);
+const defaultListEngine = (): Promise<string[]> =>
+  isDesktop() ? listLocalModels() : Promise.reject(new Error('no desktop engine'));
 
 /** A row the server itself types as an embedding model; these can't narrate. */
 function isEmbeddingRow(row: Record<string, unknown>): boolean {
@@ -108,8 +119,7 @@ async function readEngineNames(listEngine: () => Promise<string[]>): Promise<str
  */
 export function loadEndpointModels(
   target: ModelListTarget,
-  doFetch: FetchLike = (url, init) => fetch(url, init),
-  listEngine: () => Promise<string[]> = () => Promise.reject(new Error('no desktop engine')),
+  { doFetch = defaultFetch, listEngine = defaultListEngine }: ModelListSources = {},
 ): Promise<string[]> {
   const key = target.localEngine ? 'engine' : `${target.url}\n${target.token}`;
   const hit = cache.get(key);
