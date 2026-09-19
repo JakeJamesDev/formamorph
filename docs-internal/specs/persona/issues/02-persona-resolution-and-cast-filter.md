@@ -1,6 +1,7 @@
 # 02: Persona Resolution and Cast Filter
 
-Status: in-progress
+Status: ready-for-human
+Status note: The reader guard is a source scan, because the game view is too large to mount. The opening pool already reads the cast, so ticket 06 only needs its guard test.
 Base: fe233128
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
