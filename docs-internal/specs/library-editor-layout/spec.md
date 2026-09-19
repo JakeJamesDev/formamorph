@@ -44,7 +44,7 @@ Both library editors get one size and one tab grammar.
 13. As an author, I want search results and findings to open the correct tab and sub-tab, so that a jump to a field still lands on it.
 14. As an author, I want one Placeholders surface per library editor, so that nothing looks like a bug.
 15. As an author, I want a library dictionary's Name, Description, and Enabled on Overview, so that everything about the book is in one place.
-16. As an author, I want the rename offer to still work when I rename a book on Overview, so that placeholder paths follow the new name.
+16. As an author, I want to rename a library book on Overview with no question asked, so that the rename is one edit and no world changes.
 17. As an author, I want the library entry tree to show entries only, so that the tree is a list of what I write.
 18. As an author, I want a + button at the top of the entry list, in the same position and style as the World Editor's lists, so that adding an entry is familiar.
 19. As an author, I want the dictionary editor to open on the Dictionary tab with the first entry selected, so that I land on content.
@@ -83,7 +83,7 @@ Both library editors get one size and one tab grammar.
 ### Dictionary editor
 
 - The top strip stays Overview, Dictionary, Placeholders.
-- Overview holds Tags, Cover Image, Name, Description, and Enabled. At `sm` and up it uses two columns: Tags and cover on the left, the three fields on the right. The rename offer moves with the Name field.
+- Overview holds Tags, Cover Image, Name, Description, and Enabled. At `sm` and up it uses two columns: Tags and cover on the left, the three fields on the right. The Name field keeps the rename wiring it shares with the World Editor's book panel. The offer rewrites stat code only, and only the World Editor mounts its provider. A library book has no stat code, so the library editor mounts no provider and the field asks nothing there.
 - The book panel component stays the World Editor's. The library editor no longer mounts it. The `inWorld` prop from the guard fix goes away if no host needs it.
 - The entry tree takes a mode that hides the book row and shows its entries at the top level. Entry order, drag, duplicate, and delete do not change.
 - A + icon button sits at the top of the entry list, with the size, style, and position of the World Editor's list add button. The two hosts share the button row where that is practical. A search field is out of scope.
@@ -122,7 +122,7 @@ Both library editors get one size and one tab grammar.
 
 - A good test reads what the author sees: which tabs exist, which is selected, which fields are on screen, and what a chip label says. It does not read class names or component state.
 - **Library entity editor, rendered whole in jsdom.** Prior art: the entity editor's tabs test and placeholders test. Cases: the two top tabs; the three sub-tabs; Tags present on each sub-tab; opens on Entity and Profile; a field focus request opens the correct sub-tab; no Overview tab.
-- **Library dictionary editor, rendered whole in jsdom.** Prior art: the dictionary editor's entry tabs test, which already mounts the real GameData provider around the modal. Cases: opens on the first entry; no book row in the tree; the + adds an entry and selects it; the empty-book hint; Overview holds Name, Description, and Enabled; a rename on Overview raises the offer; no second Placeholders surface (exists today); an entry name that holds a chip shows the book's placeholder name while the surrounding GameData world holds a different placeholder.
+- **Library dictionary editor, rendered whole in jsdom.** Prior art: the dictionary editor's entry tabs test, which already mounts the real GameData provider around the modal. Cases: opens on the first entry; no book row in the tree; the + adds an entry and selects it; the empty-book hint; Overview holds Name, Description, and Enabled; a rename on Overview renames the book, raises no offer, and changes no stat of the surrounding world; no second Placeholders surface (exists today); an entry name that holds a chip shows the book's placeholder name while the surrounding GameData world holds a different placeholder.
 - **Store identity.** One case proves a keystroke in an entry value does not change the modal's store instance. Prove the test bites by removing the memo once.
 - **World Editor book panel, rendered in its providers.** Prior art: the book manager test from the guard fix. Cases: two tabs in Advanced mode; no strip in Simple mode; the placeholder editor on its tab.
 - **Dev-router drift guard.** Prior art: the existing guard test. It fails when a tab list and its ledger disagree.
