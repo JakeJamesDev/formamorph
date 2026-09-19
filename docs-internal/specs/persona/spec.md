@@ -227,6 +227,8 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 | Opening text, which the player reads as page one or submits | "you" and "your", with the sentence-start and possessive rules that Openings built. Unchanged. |
 | World, entity, and dictionary text, which the AI reads as reference | "the player" and "the player's" |
 
+- The "the player" fallback uses the same sentence-start rule as the "you" fallback, from the one module: "The player" and "The player's" at a sentence start, lowercase elsewhere. The known limit carries over: any period counts as a sentence end.
+- A surface that shows authored text shows the chip by its label. A surface that simulates play renders the text. So the editor chip, chip lists, findings, and search and replace show and match "Player Name". The Test Bench opening lens keeps "You", because the Bench has no persona. The authored prompt preview renders the no-persona fallback.
 - The marker needs no definition, no Roll, and no home. Every text that resolves placeholders also renders the marker, in the same pass, so no reader handles it alone.
 - The placeholder chip editor shows the marker as a Player Name chip and offers it in the chip menu of world, entity, dictionary, and opening text fields. Imported openings already hold the marker as plain text. They show as chips with no re-import.
 - The character card importer writes the marker into description fields, where it wrote "the player" before. The lorebook importer does the same. Both reuse the module's canonical writer, so every spelling of the macro becomes the one form.
