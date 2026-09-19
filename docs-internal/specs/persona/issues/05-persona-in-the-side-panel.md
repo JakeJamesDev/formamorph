@@ -16,7 +16,8 @@ Reasoning effort: medium
 - [ ] The row shows the portrait and name, or a None state, and sits with the player's own data.
 - [ ] Change opens the picker from ticket 04. A pick rewrites the save's reference. The one-role rule holds against the characters added to that playthrough.
 - [ ] A save with no reference shows the None state and can take a persona.
-- [ ] A reference that no longer resolves gives no persona and raises one notice per load, never one per turn.
+- [ ] A reference that no longer resolves gives no persona and raises one notice per load, never one per turn. Only a deleted or absent entity counts. An entity that lost its Persona mark still resolves and raises no notice.
+- [ ] The row shows a current persona that has lost its mark, although the picker no longer offers it. A Change away from it cannot be undone from the picker until the mark is set again. A test covers this state.
 - [ ] A change updates the world's remembered pick.
 - [ ] Digests and diaries written before a change keep the earlier name. No re-attribution runs.
 - [ ] Tests run through the game panels harness: the row renders, a Change writes the reference, and the notice fires one time.
