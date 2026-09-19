@@ -1,6 +1,4 @@
-// The persona reference on the save envelope, and the live read behind it. Storage is real (in-memory): the
-// provider writes saves to IndexedDB and a library persona is read from the entity library there. Must be
-// imported before anything touches `indexedDB`.
+// Real in-memory storage for saves and the entity library; must load before anything touches `indexedDB`.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, vi } from 'vitest';
 import { render, act, waitFor } from '@testing-library/react';

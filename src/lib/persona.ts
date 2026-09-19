@@ -3,7 +3,7 @@ import type { Entity, PersonaRef } from '@/types';
 /** The entity the player plays, and where it was read from. */
 export interface ResolvedPersona {
   entity: Entity;
-  source: 'world' | 'library';
+  source: Exclude<PersonaRef['source'], 'none'>;
 }
 
 export interface PersonaResolution {

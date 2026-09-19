@@ -18,7 +18,7 @@ import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/t
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
-import EntityStorageService from '../services/EntityStorageService';
+import { useLibraryEntity } from '../lib/useLibraryEntity';
 import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
 import type { MemoryEditMap, MemoryNote } from '../lib/memoryOverrides';
@@ -37,7 +37,6 @@ import type {
   Choice,
   DiscoveredEntity,
   Dictionary,
-  Entity,
   SceneEntity,
   EntityVisualPreference,
   PersonaRef,
@@ -114,24 +113,10 @@ function useProvideGameplay() {
   const [entityImageIndex, setEntityImageIndex] = useState<Record<string, number>>({});
   // Who the player plays (see lib/persona). Envelope state beside the dictionaries, so an undo leaves it.
   const [personaRef, setPersonaRef] = useState<PersonaRef | undefined>(undefined);
-  // A library persona is a live read, never a copy: re-read at load and whenever the library writes it.
-  // `id` records which read landed, so a read still in flight is not mistaken for a deleted entity.
-  const libraryPersonaId = personaRef?.source === 'library' ? personaRef.entityId : null;
-  const [libraryPersonaRead, setLibraryPersonaRead] = useState<{ id: string; entity: Entity | null } | null>(null);
-  useEffect(() => {
-    if (!libraryPersonaId) return;
-    let live = true;
-    const read = () => EntityStorageService.getEntityData(libraryPersonaId).then(
-      (entity) => { if (live) setLibraryPersonaRead({ id: libraryPersonaId, entity }); },
-      () => { if (live) setLibraryPersonaRead({ id: libraryPersonaId, entity: null }); },
-    );
-    void read();
-    const unsubscribe = EntityStorageService.subscribe((id) => { if (id === libraryPersonaId) void read(); });
-    return () => { live = false; unsubscribe(); };
-  }, [libraryPersonaId]);
-  const libraryPersona = libraryPersonaId && libraryPersonaRead?.id === libraryPersonaId ? libraryPersonaRead : null;
-  // True while a library persona's first read is in flight.
-  const personaPending = libraryPersonaId !== null && libraryPersona === null;
+  // A library persona is a live read, never a copy.
+  const { entity: libraryPersona, pending: personaPending } = useLibraryEntity(
+    personaRef?.source === 'library' ? personaRef.entityId : null,
+  );
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     return registerDevHook('setPersona', (ref: PersonaRef | undefined) => setPersonaRef(ref));
@@ -693,7 +678,7 @@ function useProvideGameplay() {
     setEntityImageIndex,
     personaRef,
     setPersonaRef,
-    libraryPersona: libraryPersona?.entity ?? null,
+    libraryPersona,
     personaPending,
     milestoneSelection,
     setMilestoneSelection,
