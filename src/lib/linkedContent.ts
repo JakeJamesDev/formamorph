@@ -258,11 +258,17 @@ export function planWriteBack(
   });
 }
 
+/** A copy the sync pass let go of, as the world holds it. */
+export interface UnlinkedCopy {
+  id: string;
+  name: string;
+}
+
 function syncList<T extends LinkableContent>(
   items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[],
-): { items: T[]; updated: number; unlinked: number; toAdd: Placeholder[] } {
+): { items: T[]; updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   let updated = 0;
-  let unlinked = 0;
+  const unlinkedCopies: UnlinkedCopy[] = [];
   const toAdd: Placeholder[] = [];
   const next = items.map((item) => {
     const link = item.link;
@@ -271,7 +277,7 @@ function syncList<T extends LinkableContent>(
     // The lookup covered every library id the world names, so an id it did not answer is an item the
     // player deleted. This is where that reaches the copies, which is why no scan runs at deletion time.
     if (!sources.has(libraryId)) {
-      unlinked += 1;
+      unlinkedCopies.push({ id: item.id, name: item.name });
       return dropLibraryLink(item);
     }
     if (link.localReplacement) return item;
@@ -286,7 +292,8 @@ function syncList<T extends LinkableContent>(
     toAdd.push(...applied.toAdd);
     return applied.item;
   });
-  return { items: updated || unlinked ? next : items, updated, unlinked, toAdd };
+  const unlinked = unlinkedCopies.length;
+  return { items: updated || unlinked ? next : items, updated, unlinked, unlinkedCopies, toAdd };
 }
 
 /**
@@ -302,11 +309,12 @@ function syncList<T extends LinkableContent>(
  * carry reads as an item the player deleted, and its copies become independent copies.
  *
  * `placeholders` is the world's shared list, which the updated content resolves its references against;
- * `toAdd` is what the world gains for references no copy had a connection for.
+ * `toAdd` is what the world gains for references no copy had a connection for. `unlinkedCopies` names each
+ * let-go copy as this world holds it, entities first.
  */
 export function syncWorldContent(
   world: WorldContent & { placeholders: Placeholder[] }, sources: LibrarySource[],
-): WorldContent & { updated: number; unlinked: number; toAdd: Placeholder[] } {
+): WorldContent & { updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
   const entities = syncList(world.entities, byId, world.placeholders);
   const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
@@ -315,6 +323,7 @@ export function syncWorldContent(
     dictionaries: dictionaries.items,
     updated: entities.updated + dictionaries.updated,
     unlinked: entities.unlinked + dictionaries.unlinked,
+    unlinkedCopies: [...entities.unlinkedCopies, ...dictionaries.unlinkedCopies],
     toAdd: [...entities.toAdd, ...dictionaries.toAdd],
   };
 }

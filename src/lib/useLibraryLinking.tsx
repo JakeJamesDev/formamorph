@@ -22,6 +22,7 @@ import {
 import {
   kindOf, libraryItemData, loadLinkedSources, saveCopyToLibrary, type LibraryKind,
 } from '@/lib/librarySources';
+import { describePlaceholders } from '@/lib/placeholders';
 import {
   adoptBookPlaceholders, adoptEntityPlaceholders, remapBookChips, remapEntityChips,
 } from '@/lib/placeholderHomes';
@@ -137,6 +138,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
    * Bring the world's linked copies up to date with the library items their author owns, and let go of
    * the items that are gone. Each outcome is announced once per pass.
    */
+  const announcedUnlinks = useRef(new Set<string>());
   const syncFromLibrary = useCallback(async () => {
     const current = latest.current;
     const linkedIds = [...current.entities, ...current.dictionaries]
@@ -169,11 +171,15 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         ? 'Formamorph updated one linked copy from your library.'
         : `Formamorph updated ${next.updated} linked copies from your library.`);
     }
-    // The world now differs from its saved copy, so the author is told what changed it.
-    if (next.unlinked) {
-      toast.info(next.unlinked === 1
-        ? 'Formamorph unlinked one copy whose library item is gone.'
-        : `Formamorph unlinked ${next.unlinked} copies whose library items are gone.`);
+    // The world now differs from its saved copy, so the author is told what changed it. Once per copy:
+    // Exit Without Saving restores the link, and the pass lets go of it again on the way out.
+    const fresh = next.unlinkedCopies.filter((copy) => !announcedUnlinks.current.has(copy.id));
+    fresh.forEach((copy) => announcedUnlinks.current.add(copy.id));
+    if (fresh.length) {
+      const name = describePlaceholders(fresh[0].name, current.placeholders) || 'Untitled';
+      toast.info(fresh.length === 1
+        ? `Formamorph unlinked “${name}” because its library item is gone.`
+        : `Formamorph unlinked ${fresh.length} copies whose library items are gone.`);
     }
   }, []);
 
