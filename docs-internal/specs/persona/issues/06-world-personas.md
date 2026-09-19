@@ -14,7 +14,7 @@ Reasoning effort: high
 ## Acceptance criteria
 
 - [ ] Only world entities that carry the mark appear in the picker. The reference stores the world source.
-- [ ] The played entity is absent from the roster at every one of its locations, and from every other reader, through the module from ticket 02. An AI-context test proves it.
+- [ ] The played entity is absent from the roster at every one of its locations, and from every other reader, through the module from ticket 02. A test at the roster builder, fed by the module's cast, proves it. The Test Bench is not the seam: it has no persona.
 - [ ] A switch away from a world persona returns that entity to the cast on the next turn.
 - [ ] The Persona chip adds the known-person line for a world persona only. A library persona gets no such line. Builder tests cover both.
 - [ ] The known-person line follows the prompt writing guide and ships with probe numbers on both reference tiers, recorded in the ticket's comments.
