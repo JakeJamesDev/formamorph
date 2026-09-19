@@ -1,6 +1,7 @@
 # 02: Pages Turn on the Turn Card
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: c53f7b6c
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

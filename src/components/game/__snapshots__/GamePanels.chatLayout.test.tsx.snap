@@ -31,35 +31,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 class="absolute top-2 right-2 z-10 flex gap-1"
               >
                 <button
-                  aria-label="Edit text"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground narration-tool h-8 w-8"
-                  data-base-ui-tooltip-trigger=""
-                  data-idle="true"
-                  id="base-ui-:rk:"
-                >
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-pencil h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
-                    />
-                    <path
-                      d="m15 5 4 4"
-                    />
-                  </svg>
-                </button>
-                <button
-                  aria-controls="radix-:rl:"
+                  aria-controls="radix-:ru:"
                   aria-expanded="false"
                   aria-haspopup="dialog"
                   aria-label="More narration options"
@@ -67,7 +39,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   data-base-ui-tooltip-trigger=""
                   data-idle="true"
                   data-state="closed"
-                  id="base-ui-:rn:"
+                  id="base-ui-:r10:"
                   type="button"
                 >
                   <svg
@@ -102,32 +74,28 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 </button>
               </div>
               <div
-                class="mb-2 text-warning"
+                class="rounded-lg border border-border bg-card px-3.5 py-2.5"
+                data-state="closed"
+                style="--rl-o: 0;"
               >
-                <strong>
-                  You:
-                </strong>
                 <div
-                  class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                  class="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+                  data-testid="action-line"
                 >
                   <div
-                    class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
-                    <p>
-                      I step onto the pier.
-                    </p>
+                    <div
+                      class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                    >
+                      <p>
+                        I step onto the pier.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div
-                class="mb-2 "
-              >
-                <strong>
-                  Event:
-                </strong>
                 <div
                   data-testid="narration"
-                  style="--rl-o: 0;"
                 >
                   <div
                     class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
@@ -140,6 +108,179 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                       </p>
                     </div>
                   </div>
+                </div>
+                <div
+                  class="mt-2 flex items-center gap-0.5 border-t border-border pt-1.5"
+                  data-testid="bubble-actions"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="mr-auto text-meta text-muted-foreground"
+                  >
+                    Turn 
+                    2
+                  </span>
+                  <button
+                    aria-label="Generate Scene Image"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r1g:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-image-plus h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M16 5h6"
+                      />
+                      <path
+                        d="M19 2v6"
+                      />
+                      <path
+                        d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
+                      />
+                      <path
+                        d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+                      />
+                      <circle
+                        cx="9"
+                        cy="9"
+                        r="2"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Edit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r1i:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-pencil h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+                      />
+                      <path
+                        d="m15 5 4 4"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Copy Text"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r1k:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-copy h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        height="14"
+                        rx="2"
+                        ry="2"
+                        width="14"
+                        x="8"
+                        y="8"
+                      />
+                      <path
+                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Rewind to Here"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent h-8 w-8 text-destructive hover:text-destructive"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r1m:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-undo2 lucide-undo-2 h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M9 14 4 9l5-5"
+                      />
+                      <path
+                        d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-haspopup="menu"
+                    aria-label="More"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r1o:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-ellipsis h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="1"
+                      />
+                      <circle
+                        cx="19"
+                        cy="12"
+                        r="1"
+                      />
+                      <circle
+                        cx="5"
+                        cy="12"
+                        r="1"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div
@@ -165,162 +306,118 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
           </div>
         </div>
         <div
-          class="relative flex flex-col items-center gap-2"
+          class="flex flex-col items-center gap-2"
         >
-          <div
-            class="relative flex w-full items-center justify-center"
+          <nav
+            aria-label="pagination"
+            class="mx-auto flex w-full justify-center"
+            role="navigation"
           >
-            <nav
-              aria-label="pagination"
-              class="mx-auto flex w-full justify-start md:justify-center"
-              role="navigation"
+            <ul
+              class="flex flex-row items-center gap-1"
             >
-              <ul
-                class="flex flex-row items-center gap-1"
+              <li
+                class=""
               >
-                <li
-                  class=""
+                <a
+                  aria-label="Go to previous page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
+                  href="#"
                 >
-                  <a
-                    aria-label="Go to previous page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
-                    href="#"
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-left h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
                   >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-chevron-left h-4 w-4"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="m15 18-6-6 6-6"
-                      />
-                    </svg>
-                    <span
-                      class="hidden md:inline"
-                    >
-                      Previous
-                    </span>
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                    href="#"
+                    <path
+                      d="m15 18-6-6 6-6"
+                    />
+                  </svg>
+                  <span
+                    class="hidden md:inline"
                   >
-                    1
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <button
-                    aria-controls="radix-:r14:"
-                    aria-current="page"
-                    aria-expanded="false"
-                    aria-haspopup="dialog"
-                    aria-label="Page 2 of 3 — jump to a page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
-                    data-state="closed"
-                    type="button"
-                  >
-                    2
-                  </button>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                    href="#"
-                  >
-                    3
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    aria-label="Go to next page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5"
-                    href="#"
-                  >
-                    <span
-                      class="hidden md:inline"
-                    >
-                      Next
-                    </span>
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-chevron-right h-4 w-4"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="m9 18 6-6-6-6"
-                      />
-                    </svg>
-                  </a>
-                </li>
-              </ul>
-            </nav>
-            <div
-              class="absolute right-0"
-            >
-              <button
-                aria-controls="radix-:rs:"
-                aria-expanded="false"
-                aria-haspopup="dialog"
-                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 w-32"
-                data-state="closed"
-                type="button"
+                    Previous
+                  </span>
+                </a>
+              </li>
+              <li
+                class=""
               >
-                <svg
-                  aria-hidden="true"
-                  class="lucide lucide-refresh-cw h-3 w-3"
-                  fill="none"
-                  height="24"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
+                <a
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                  href="#"
                 >
-                  <path
-                    d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
-                  />
-                  <path
-                    d="M21 3v5h-5"
-                  />
-                  <path
-                    d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
-                  />
-                  <path
-                    d="M8 16H3v5"
-                  />
-                </svg>
-                Rollback
-              </button>
-            </div>
-          </div>
+                  1
+                </a>
+              </li>
+              <li
+                class=""
+              >
+                <button
+                  aria-controls="radix-:r1p:"
+                  aria-current="page"
+                  aria-expanded="false"
+                  aria-haspopup="dialog"
+                  aria-label="Page 2 of 3 — jump to a page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
+                  data-state="closed"
+                  type="button"
+                >
+                  2
+                </button>
+              </li>
+              <li
+                class=""
+              >
+                <a
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                  href="#"
+                >
+                  3
+                </a>
+              </li>
+              <li
+                class=""
+              >
+                <a
+                  aria-label="Go to next page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5"
+                  href="#"
+                >
+                  <span
+                    class="hidden md:inline"
+                  >
+                    Next
+                  </span>
+                  <svg
+                    aria-hidden="true"
+                    class="lucide lucide-chevron-right h-4 w-4"
+                    fill="none"
+                    height="24"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="m9 18 6-6-6-6"
+                    />
+                  </svg>
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
         <div
           class="flex flex-col gap-2"
@@ -434,35 +531,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 class="absolute top-2 right-2 z-10 flex gap-1"
               >
                 <button
-                  aria-label="Edit text"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground narration-tool h-8 w-8"
-                  data-base-ui-tooltip-trigger=""
-                  data-idle="true"
-                  id="base-ui-:r1:"
-                >
-                  <svg
-                    aria-hidden="true"
-                    class="lucide lucide-pencil h-4 w-4"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
-                    />
-                    <path
-                      d="m15 5 4 4"
-                    />
-                  </svg>
-                </button>
-                <button
-                  aria-controls="radix-:r2:"
+                  aria-controls="radix-:r0:"
                   aria-expanded="false"
                   aria-haspopup="dialog"
                   aria-label="More narration options"
@@ -470,7 +539,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   data-base-ui-tooltip-trigger=""
                   data-idle="true"
                   data-state="closed"
-                  id="base-ui-:r4:"
+                  id="base-ui-:r2:"
                   type="button"
                 >
                   <svg
@@ -505,32 +574,28 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 </button>
               </div>
               <div
-                class="mb-2 text-warning"
+                class="rounded-lg border border-border bg-card px-3.5 py-2.5"
+                data-state="closed"
+                style="--rl-o: 0;"
               >
-                <strong>
-                  You:
-                </strong>
                 <div
-                  class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
+                  class="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+                  data-testid="action-line"
                 >
                   <div
-                    class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                    class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
                   >
-                    <p>
-                      I wave at the gull.
-                    </p>
+                    <div
+                      class="space-y-4 whitespace-normal [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                    >
+                      <p>
+                        I wave at the gull.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div
-                class="mb-2 "
-              >
-                <strong>
-                  Event:
-                </strong>
                 <div
                   data-testid="narration"
-                  style="--rl-o: 0;"
                 >
                   <div
                     class="[overflow-wrap:anywhere] [&_ul]:list-outside [&_ul]:pl-6 [&_ol]:list-outside [&_ol]:pl-6"
@@ -543,6 +608,209 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                       </p>
                     </div>
                   </div>
+                </div>
+                <div
+                  class="mt-2 flex items-center gap-0.5 border-t border-border pt-1.5"
+                  data-testid="bubble-actions"
+                >
+                  <span
+                    aria-hidden="true"
+                    class="mr-auto text-meta text-muted-foreground"
+                  >
+                    Turn 
+                    3
+                  </span>
+                  <button
+                    aria-label="Re-generate Narration"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:ri:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-refresh-cw h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+                      />
+                      <path
+                        d="M21 3v5h-5"
+                      />
+                      <path
+                        d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
+                      />
+                      <path
+                        d="M8 16H3v5"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Generate Scene Image"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:rk:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-image-plus h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M16 5h6"
+                      />
+                      <path
+                        d="M19 2v6"
+                      />
+                      <path
+                        d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
+                      />
+                      <path
+                        d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
+                      />
+                      <circle
+                        cx="9"
+                        cy="9"
+                        r="2"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Edit"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:rm:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-pencil h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+                      />
+                      <path
+                        d="m15 5 4 4"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Text to Speech"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:ro:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-headphones h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-label="Copy Text"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:rq:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-copy h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        height="14"
+                        rx="2"
+                        ry="2"
+                        width="14"
+                        x="8"
+                        y="8"
+                      />
+                      <path
+                        d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    aria-haspopup="menu"
+                    aria-label="More"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:rs:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-ellipsis h-4 w-4"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="1"
+                      />
+                      <circle
+                        cx="19"
+                        cy="12"
+                        r="1"
+                      />
+                      <circle
+                        cx="5"
+                        cy="12"
+                        r="1"
+                      />
+                    </svg>
+                  </button>
                 </div>
               </div>
               <div
@@ -572,139 +840,72 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 >
                   [Continue the Story]
                 </button>
+                <div
+                  class="flex justify-end"
+                >
+                  <button
+                    aria-label="Re-generate Choices"
+                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
+                    data-base-ui-tooltip-trigger=""
+                    id="base-ui-:r4:"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="lucide lucide-list-restart h-4 w-4 shrink-0"
+                      fill="none"
+                      height="24"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M21 5H3"
+                      />
+                      <path
+                        d="M7 12H3"
+                      />
+                      <path
+                        d="M7 19H3"
+                      />
+                      <path
+                        d="M12 18a5 5 0 0 0 9-3 4.5 4.5 0 0 0-4.5-4.5c-1.33 0-2.54.54-3.41 1.41L11 14"
+                      />
+                      <path
+                        d="M11 10v4h4"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div
-          class="relative flex flex-col items-center gap-2"
+          class="flex flex-col items-center gap-2"
         >
-          <div
-            class="relative flex w-full items-center justify-center"
+          <nav
+            aria-label="pagination"
+            class="mx-auto flex w-full justify-center"
+            role="navigation"
           >
-            <nav
-              aria-label="pagination"
-              class="mx-auto flex w-full justify-start md:justify-center"
-              role="navigation"
+            <ul
+              class="flex flex-row items-center gap-1"
             >
-              <ul
-                class="flex flex-row items-center gap-1"
+              <li
+                class=""
               >
-                <li
-                  class=""
-                >
-                  <a
-                    aria-label="Go to previous page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
-                    href="#"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-chevron-left h-4 w-4"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="m15 18-6-6 6-6"
-                      />
-                    </svg>
-                    <span
-                      class="hidden md:inline"
-                    >
-                      Previous
-                    </span>
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                    href="#"
-                  >
-                    1
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
-                    href="#"
-                  >
-                    2
-                  </a>
-                </li>
-                <li
-                  class=""
-                >
-                  <button
-                    aria-controls="radix-:rh:"
-                    aria-current="page"
-                    aria-expanded="false"
-                    aria-haspopup="dialog"
-                    aria-label="Page 3 of 3 — jump to a page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
-                    data-state="closed"
-                    type="button"
-                  >
-                    3
-                  </button>
-                </li>
-                <li
-                  class=""
-                >
-                  <a
-                    aria-label="Go to next page"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5 pointer-events-none opacity-50"
-                    href="#"
-                  >
-                    <span
-                      class="hidden md:inline"
-                    >
-                      Next
-                    </span>
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-chevron-right h-4 w-4"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="m9 18 6-6-6-6"
-                      />
-                    </svg>
-                  </a>
-                </li>
-              </ul>
-            </nav>
-            <div
-              class="absolute right-0"
-            >
-              <div
-                class="flex"
-              >
-                <button
-                  aria-label="Re-generate"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 rounded-r-none md:w-28"
+                <a
+                  aria-label="Go to previous page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pl-2.5"
+                  href="#"
                 >
                   <svg
                     aria-hidden="true"
-                    class="lucide lucide-refresh-cw h-3 w-3"
+                    class="lucide lucide-chevron-left h-4 w-4"
                     fill="none"
                     height="24"
                     stroke="currentColor"
@@ -716,36 +917,68 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
-                      d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
-                    />
-                    <path
-                      d="M21 3v5h-5"
-                    />
-                    <path
-                      d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
-                    />
-                    <path
-                      d="M8 16H3v5"
+                      d="m15 18-6-6 6-6"
                     />
                   </svg>
                   <span
                     class="hidden md:inline"
                   >
-                    Re-generate
+                    Previous
                   </span>
-                </button>
+                </a>
+              </li>
+              <li
+                class=""
+              >
+                <a
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                  href="#"
+                >
+                  1
+                </a>
+              </li>
+              <li
+                class=""
+              >
+                <a
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 w-10"
+                  href="#"
+                >
+                  2
+                </a>
+              </li>
+              <li
+                class=""
+              >
                 <button
-                  aria-controls="radix-:ri:"
+                  aria-controls="radix-:rt:"
+                  aria-current="page"
                   aria-expanded="false"
                   aria-haspopup="dialog"
-                  aria-label="More re-generate options"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 py-2 rounded-l-none border-l-0 px-2"
+                  aria-label="Page 3 of 3 — jump to a page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 w-10"
                   data-state="closed"
                   type="button"
                 >
+                  3
+                </button>
+              </li>
+              <li
+                class=""
+              >
+                <a
+                  aria-label="Go to next page"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 gap-1 pr-2.5 pointer-events-none opacity-50"
+                  href="#"
+                >
+                  <span
+                    class="hidden md:inline"
+                  >
+                    Next
+                  </span>
                   <svg
                     aria-hidden="true"
-                    class="lucide lucide-chevron-up h-3 w-3"
+                    class="lucide lucide-chevron-right h-4 w-4"
                     fill="none"
                     height="24"
                     stroke="currentColor"
@@ -757,13 +990,13 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <path
-                      d="m18 15-6-6-6 6"
+                      d="m9 18 6-6-6-6"
                     />
                   </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
         <div
           class="flex flex-col gap-2"

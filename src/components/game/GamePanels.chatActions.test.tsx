@@ -142,14 +142,14 @@ describe('Chat bubble actions', () => {
     expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Export Story']);
   });
 
-  it('keeps the full control and no bubble rows in Pages', async () => {
+  it('gives Pages the same top-right control and a row on its card', async () => {
     renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS });
     await screen.findByTestId('narration');
-    expect(screen.queryByTestId('bubble-actions')).toBeNull();
+    expect(screen.getByTestId('bubble-actions')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit text' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'More narration options' }));
     const menu = await screen.findByRole('dialog');
-    expect(within(menu).getByRole('button', { name: /Write Scene Tags/ })).toBeTruthy();
-    expect(within(menu).getByRole('button', { name: /Export Story/ })).toBeTruthy();
+    expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Export Story']);
   });
 });
 

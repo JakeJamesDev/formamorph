@@ -16,6 +16,8 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
+import { TurnCard } from './TurnCard';
+import { BubbleActionButton } from './BubbleMenu';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { toast } from 'react-toastify';
@@ -24,7 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, Image as ImageIcon, Dices, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -458,7 +460,7 @@ const ActionInput = ({
   );
 };
 
-// One rollback prompt for the Pages button and Chat's Rewind to Here.
+// The prompt of Rewind to Here, in both layouts.
 const ROLLBACK_CONFIRM = {
   title: "Confirm Rollback",
   description: "Are you sure you want to rollback to the previous state? This action cannot be undone.",
@@ -581,10 +583,9 @@ export const MiddlePanel = ({
   const revealOn = revealActive(revealSpec);
   const revealAnim = revealAnimName(revealSpec);
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
-  // Which partial re-generate options the flyout should offer (mirrors the aux-request gates).
+  // Which partial re-generate actions to offer (mirrors the aux-request gates).
   const canRegenChoices = choicesEnabled;
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
-  const [regenMenuOpen, setRegenMenuOpen] = useState(false);
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
 
   // Ctrl/Cmd+click or a touch long-press appends a choice as a new sentence; a plain tap replaces it.
@@ -634,10 +635,6 @@ export const MiddlePanel = ({
   // Whether TTS has produced playable audio for the current text (drives the frozen top row).
   const hasAudio = ttsPlayback.duration > 0;
 
-  // A job whose progress spinner lives inside the collapsed narration menu; the trigger has to show it
-  // (and stay un-faded) or the work becomes invisible while the menu is closed.
-  const toolBusy = sceneImageJob !== null || ttsGenerating;
-
   // Karaoke highlighter: paint the spoken sentence in the current page's narration as audio plays.
   const narrationRef = useRef<HTMLDivElement>(null);
   useSentenceHighlight(narrationRef, {
@@ -646,8 +643,7 @@ export const MiddlePanel = ({
     enabled: ttsHighlight,
   });
 
-  // Game text of the page currently being viewed, so the Edit button is page-aware
-  // (rather than always editing the most recent text).
+  // The viewed page's narration: the editor's text when no action row opened it.
   const currentAssistantMessage = displayedMessages.find(m => m.role === 'assistant');
   let currentPageText = gameplayText;
   if (currentAssistantMessage) {
@@ -660,7 +656,7 @@ export const MiddlePanel = ({
     }
   }
 
-  // A Chat bubble's Edit and Rewind to Here target the bubble's own page, never the viewed one.
+  // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
   const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
   const copyText = (text: string) => {
@@ -700,23 +696,30 @@ export const MiddlePanel = ({
     );
   };
 
+  // Pages shows the viewed turn. The opening's user message is the hidden start proxy, so page 1 has no action line.
+  const actionLine = currentPage > 1 ? displayedMessages.find((m) => m.role === 'user')?.content : undefined;
+  // The live stream belongs to the latest page only; a past page shows its committed text.
+  const pageLive = !isViewingPast && isRevealingNarration && !!currentAssistantMessage;
+  const pageNarration = pageLive ? gameplayText : currentAssistantMessage ? parseAssistantMessage(currentAssistantMessage.content) : '';
+  const pageReasoningLive = !isViewingPast && !!liveReasoning.text;
+  const pageReasoning = pageReasoningLive
+    ? liveReasoning
+    : currentAssistantMessage ? parseSavedReasoning(currentAssistantMessage.content) : null;
+  const pageActions = currentAssistantMessage ? actionsFor({
+    index: currentPage - 1, isLatest: !isViewingPast, live: pageLive, hasImage: sceneImages.length > 0, text: pageNarration,
+  }) : [];
+  /** The choices block's actions, for a block that shows `hasChoices`. */
+  const regenChoicesActions = (hasChoices: boolean) => choicesActions(
+    { canRegenerate: canRegenChoices, hasChoices, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
+    () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
+  );
+  const pageChoicesActions = isViewingPast ? [] : regenChoicesActions((choices?.length ?? 0) > 0 || showContinue);
+
   const narrationFrame = `narration-text flex-grow border border-border p-2 bg-muted/80 min-h-0 ${isFlashing ? 'flash-animation' : ''} relative`;
-  // Edit stays inline; the rest folds into the overflow menu. Idle fade: `.narration-tool` in index.css.
-  // Chat keeps only the whole-story items here; the per-turn ones sit on each bubble.
+  // The corner holds the whole-story items; the per-turn ones sit on each turn's card. Idle fade: `.narration-tool` in index.css.
   const optionsControl = (
     <div className="absolute top-2 right-2 z-10 flex gap-1">
       {narrationBadge}
-      {!chatLayout && <Tip tip="Edit text">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="narration-tool h-8 w-8"
-          data-idle="true"
-          onClick={() => setIsEditMode(true)}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      </Tip>}
       <Popover open={toolMenuOpen} onOpenChange={setToolMenuOpen}>
         <Tip tip="More narration options">
           <PopoverTrigger asChild>
@@ -724,59 +727,14 @@ export const MiddlePanel = ({
               variant="ghost"
               size="icon"
               className="narration-tool h-8 w-8"
-              data-idle={toolMenuOpen || (toolBusy && !chatLayout) ? undefined : "true"}
+              data-idle={toolMenuOpen ? undefined : "true"}
             >
-              {toolBusy && !chatLayout ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
         </Tip>
         <PopoverContent align="end" className="w-52 p-1">
           <div className="flex flex-col">
-            {sceneImagesAvailable && !chatLayout && (
-              <>
-                {/* Tags first: it costs one small text request and no render, so it is the cheap way to
-                    see what this turn would be drawn as before spending a picture on it. */}
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2 text-meta h-8"
-                  onClick={() => { setToolMenuOpen(false); onSceneTags(); }}
-                  disabled={sceneImageJob !== null || !sceneTurnId}
-                >
-                  {sceneImageJob === 'tags' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dices className="h-4 w-4" />}
-                  Write Scene Tags
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="justify-start gap-2 text-meta h-8"
-                  onClick={() => { setToolMenuOpen(false); onSceneImage(); }}
-                  disabled={sceneImageJob !== null || !sceneTurnId}
-                >
-                  {sceneImageJob === 'image' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
-                  Draw This Scene
-                </Button>
-              </>
-            )}
-            {!hasAudio && ttsLoaded && !chatLayout && (
-              <Button
-                variant="ghost"
-                className="justify-start gap-2 text-meta h-8"
-                onClick={() => { setToolMenuOpen(false); onRegenerateTTS(); }}
-                disabled={ttsGenerating}
-              >
-                {ttsGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Regenerate Audio
-              </Button>
-            )}
-            {!hasAudio && !chatLayout && (
-              <Button
-                variant="ghost"
-                className="justify-start gap-2 text-meta h-8"
-                onClick={() => { setToolMenuOpen(false); onTTSClick(); }}
-              >
-                <Headphones className="h-4 w-4" />
-                Text to Speech
-              </Button>
-            )}
             <Button
               variant="ghost"
               className="justify-start gap-2 text-meta h-8"
@@ -866,10 +824,7 @@ export const MiddlePanel = ({
                     disabled={disabled || isWaitingForAI}
                     isSelected={(choice) => playerInput.includes(choice)}
                     choicePress={choicePress}
-                    actions={choicesActions(
-                      { canRegenerate: canRegenChoices, hasChoices: latestChoices.length > 0 || chatShowContinue, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
-                      () => { setChoicesRegenerating(true); handleRegenerateChoices(); },
-                    )}
+                    actions={regenChoicesActions(latestChoices.length > 0 || chatShowContinue)}
                   />
                 }
               />
@@ -878,63 +833,31 @@ export const MiddlePanel = ({
           <ScrollArea className={narrationFrame}>
             {optionsControl}
             {commandPreviewBlock}
-            {displayedMessages.map((message, index) => {
-              const isLatestMessage = index === displayedMessages.length - 1;
-              // The live stream (narration + reasoning) belongs only to the current turn on the latest page.
-              // While viewing history, generation keeps running in the background but this page shows the
-              // paged turn's committed text — the stream must not bleed onto it (`isLatestMessage` alone is
-              // page-local, so a past page's last message would otherwise pick up the live reveal).
-              const showLiveReveal = !isViewingPast && isLatestMessage && isRevealingNarration;
-              return (
-                <div key={index} className={`mb-2 ${message.role === 'user' ? 'text-warning' : ''}`}>
-                  <strong>{message.role === 'user' ? 'You:' : 'Event:'}</strong>
-                  {message.role === 'user' ? (
-                    // Markdown like the narration it sits among — `remarkBreaks` keeps the typed line breaks
-                    // the plain-text render used to hold. Never animated: the player's own text is committed
-                    // the moment it appears. `dialogue` so a line the player wrote in quotes matches the
-                    // characters' lines around it.
-                    <MarkdownRenderer text={message.content} dialogue />
-                  ) : (
-                    <div ref={narrationRef} data-testid="narration" style={revealStyle}>
-                      {/* The turn's reasoning aside, above the narration: live for the streaming latest turn
-                          on the current page, otherwise this turn's saved scratchpad. */}
-                      {showReasoning && (() => {
-                        const useLive = !isViewingPast && isLatestMessage && !!liveReasoning.text;
-                        const r = useLive ? liveReasoning : parseSavedReasoning(message.content);
-                        return r?.text ? <ReasoningBlock text={r.text} ms={r.ms} active={useLive && liveReasoning.active} /> : null;
-                      })()}
-                      {/* Show the live reveal only while THIS turn's narration is actually streaming and we're
-                          on the current page; during setup/thinking (or after), or while viewing history, show
-                          the committed text so stale/other-turn text can't animate all at once. */}
-                      {(() => {
-                        const narrationText = showLiveReveal ? gameplayText : parseAssistantMessage(message.content);
-                        // Streamdown memoizes its element components on the markdown node's source POSITION,
-                        // never its text, so swapping in another turn's narration of the same shape reads as
-                        // "unchanged" and the old text stays painted. Keying committed text by its content
-                        // remounts whenever it actually differs; the live stream keeps one key so it still
-                        // animates token by token instead of remounting per chunk.
-                        return (
-                          <MarkdownRenderer
-                            key={showLiveReveal ? 'live' : `committed:${narrationText}`}
-                            text={narrationText}
-                            animate={showLiveReveal && revealOn}
-                            animation={revealAnim}
-                            easing={revealEasing}
-                            dialogue
-                          />
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {/* Thinking phase: the narration's assistant message isn't in history yet, so show the live
-                reasoning block on its own (below the just-submitted action) until narration commits it. */}
-            {showReasoning && liveReasoning.text && displayedMessages[displayedMessages.length - 1]?.role === 'user' && (
-              <div className="mb-2">
-                <ReasoningBlock text={liveReasoning.text} ms={liveReasoning.ms} active={liveReasoning.active} />
-              </div>
+            {(actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
+              <TurnCard actions={pageActions} turnNumber={currentPage} live={pageLive} style={revealStyle}>
+                {actionLine !== undefined && (
+                  // Upright, so the player's own italics and quote styling show.
+                  <div data-testid="action-line" className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground">
+                    <MarkdownRenderer text={actionLine} dialogue />
+                  </div>
+                )}
+                {showReasoning && pageReasoning?.text && (
+                  <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
+                )}
+                {currentAssistantMessage && (
+                  <div ref={narrationRef} data-testid="narration">
+                    {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
+                    <MarkdownRenderer
+                      key={pageLive ? 'live' : `committed:${pageNarration}`}
+                      text={pageNarration}
+                      animate={pageLive && revealOn}
+                      animation={revealAnim}
+                      easing={revealEasing}
+                      dialogue
+                    />
+                  </div>
+                )}
+              </TurnCard>
             )}
             {sceneImagesAvailable && (
               <SceneImagePanel
@@ -1003,15 +926,20 @@ export const MiddlePanel = ({
                     </Button>
                   </>
                 )}
+                {pageChoicesActions.length > 0 && (
+                  <div className="flex justify-end">
+                    {pageChoicesActions.map((action) => <BubbleActionButton key={action.key} action={action} />)}
+                  </div>
+                )}
             </div>
           </ScrollArea>
           )}
-          {chatLayout && <ConfirmDialog
+          <ConfirmDialog
             open={rewindPage !== null}
             onOpenChange={(open) => { if (!open) setRewindPage(null); }}
             {...ROLLBACK_CONFIRM}
             onConfirm={() => { if (rewindPage !== null) handleRollback(rewindPage); }}
-          />}
+          />
           <EditTextModal
             isOpen={isEditMode}
             onOpenChange={(open) => { setIsEditMode(open); if (!open) setEditTarget(null); }}
@@ -1104,81 +1032,10 @@ export const MiddlePanel = ({
               });
             }}
           />
-          <div className="relative flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2">
             {locationSuggestion}
             {/* Chat has no Pager: the scroll is the one way through the turns. */}
-            <div className={chatLayout ? "flex w-full justify-end" : "relative flex w-full items-center justify-center"}>
-              {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-start md:justify-center" />}
-              {/* Right-aligned action: rollback when viewing a past page, re-generate on the current one. Chat
-                  puts both on the bubbles. */}
-              <div className={chatLayout ? undefined : "absolute right-0"}>
-                {chatLayout ? null : currentPage < totalPages ? (
-                  <ConfirmDialog
-                    {...ROLLBACK_CONFIRM}
-                    onConfirm={handleRollback}
-                  >
-                    <Button variant="outline" className="gap-1 w-32" disabled={isWaitingForAI}>
-                      <RefreshCw className="h-3 w-3" />
-                      Rollback
-                    </Button>
-                  </ConfirmDialog>
-                ) : totalPages > 0 ? (
-                  <div className="flex">
-                    {/* Left half: full re-generate, unchanged. Right caret opens the partial-regenerate flyout. */}
-                    <Button
-                      variant="outline"
-                      aria-label="Re-generate"
-                      className={`gap-1 ${canRegenChoices || canRegenStats ? "rounded-r-none md:w-28" : "md:w-32"}`}
-                      onClick={() => handleRegenerate()}
-                      disabled={isWaitingForAI}
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      <span className="hidden md:inline">Re-generate</span>
-                    </Button>
-                    {(canRegenChoices || canRegenStats) && (
-                      <Popover open={regenMenuOpen} onOpenChange={setRegenMenuOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="rounded-l-none border-l-0 px-2"
-                            disabled={isWaitingForAI}
-                            aria-label="More re-generate options"
-                          >
-                            <ChevronUp className="h-3 w-3" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" align="end" className="w-48 p-1">
-                          <div className="flex flex-col">
-                            {/* Held while a scene renders: these keep the turn, so the picture being drawn is
-                                still the right one for it — and one graphics card can't write and draw at once. */}
-                            {canRegenStats && (
-                              <Button
-                                variant="ghost"
-                                className="justify-start text-meta h-8"
-                                onClick={() => { setRegenMenuOpen(false); handleRegenerateStats(); }}
-                                disabled={sceneImageJob !== null}
-                              >
-                                Re-generate Stats
-                              </Button>
-                            )}
-                            {canRegenChoices && (
-                              <Button
-                                variant="ghost"
-                                className="justify-start text-meta h-8"
-                                onClick={() => { setRegenMenuOpen(false); handleRegenerateChoices(); }}
-                                disabled={sceneImageJob !== null}
-                              >
-                                Re-generate Choices
-                              </Button>
-                            )}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            </div>
+            {!chatLayout && <Pager page={currentPage} pageCount={totalPages} onPageChange={handlePageChange} className="justify-center" />}
           </div>
           {progressBar}
           <div className="flex flex-col gap-2">

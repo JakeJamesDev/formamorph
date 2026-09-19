@@ -14,7 +14,7 @@ const TURNS: TurnFixture[] = [
 ];
 
 describe('Narration Layout: Pages', () => {
-  // Recorded from the Pages body before the Chat body joined MiddlePanel, so any Pages change fails here.
+  // Recorded from the Turn Card body, so any Pages change fails here.
   it('renders the latest page unchanged', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS });
     await screen.findByText('The gull does not wave back.');

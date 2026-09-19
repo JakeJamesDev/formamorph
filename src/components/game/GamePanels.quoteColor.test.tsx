@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, fireEvent, act } from '@testing-library/react';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
-import { renderMiddlePanel, type PanelHarness } from '@/test/gamePanels';
+import { renderMiddlePanel } from '@/test/gamePanels';
 
 // three.js needs a WebGL context and the TTS engine a Web Audio graph; jsdom has neither.
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -31,12 +31,8 @@ function turnWithReasoning(narration: string, reasoning: string): string {
 const spans = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>(`.${QUOTE_CLASS}`)].map((s) => s.textContent);
 
 const narration = () => screen.getByTestId('narration');
-/** The player's own line, which sits in the same list as the narration but outside its test id. */
-const echo = (view: PanelHarness<unknown>) => {
-  const label = [...view.container.querySelectorAll('strong')].find((s) => s.textContent === 'You:');
-  if (!label?.parentElement) throw new Error('no player echo rendered');
-  return label.parentElement;
-};
+/** The player's own line, which sits on the card with the narration but outside its test id. */
+const echo = () => screen.getByTestId('action-line');
 
 describe('MiddlePanel — quote color', () => {
   it('colors quoted speech in the narration', () => {
@@ -45,8 +41,8 @@ describe('MiddlePanel — quote color', () => {
   });
 
   it('colors quoted speech in the player echo', () => {
-    const view = renderMiddlePanel({}, { turns: TURNS });
-    expect(spans(echo(view))).toEqual(['"we leave at dawn"']);
+    renderMiddlePanel({}, { turns: [{ narration: 'The ferry lands.' }, ...TURNS] });
+    expect(spans(echo())).toEqual(['"we leave at dawn"']);
   });
 
   it('colors a turn read back from history the same as the live one', () => {
