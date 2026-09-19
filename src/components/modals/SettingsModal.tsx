@@ -23,7 +23,7 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
-import { revealEditorChip } from '@/lib/editorFieldFocus';
+import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
 import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
 import { RequestAnatomyPanel } from './RequestAnatomyPanel';
 import { Settings } from "lucide-react";
@@ -1202,6 +1202,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     revealEditorChip(jumpChip);
     setJumpChip(null);
   }, [jumpChip, promptView]);
+  // Its own effect: the jump effect re-runs as soon as it clears `jumpChip`, which would cancel the reveal.
+  useEffect(() => cancelEditorReveals, []);
 
   // The generation settings the Anatomy hub draws under. Memoized alongside its prompts and its value pool
   // so all three inputs are stable: a hub re-runs a turn's worth of assembly, and a fresh object on any of

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { ChevronUp, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,8 +64,14 @@ export function FeedbackList({
   // render look like a filter change and refetch forever. The request is rebuilt from it.
   const statusKey = Array.isArray(status) ? status.join(',') : status ?? '';
 
-  const load = useCallback(async () => {
-    if (!active) return;
+  // `isCurrent` turns false when the list unmounts or a newer load replaces this one, so a late answer
+  // sets no state and an older filter's rows never land over a newer one's.
+  const load = useCallback(async (isCurrent: () => boolean) => {
+    if (!active) {
+      // The load this one replaces no longer clears the flag for itself.
+      setIsLoading(false);
+      return;
+    }
 
     const asked = statusKey ? (statusKey.split(',') as FeedbackStatus[]) : [];
     const statusArg = asked.length > 1 ? asked : asked[0];
@@ -75,21 +81,34 @@ export function FeedbackList({
       const result = await FeedbackService.list({
         type, page, limit: PAGE_SIZE, scope, status: statusArg, category, sort,
       });
+      if (!isCurrent()) return;
       setThreads(result.threads);
       setTotal(result.total);
       setTruncated(result.truncated ?? false);
     } catch (error) {
+      if (!isCurrent()) return;
       toast.error((error as Error).message || 'Failed to load these');
       setThreads([]);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   }, [active, type, page, scope, statusKey, category, sort]);
 
-  useEffect(() => { load(); }, [load, refreshNonce]);
+  useEffect(() => {
+    let current = true;
+    load(() => current);
+    return () => { current = false; };
+  }, [load, refreshNonce]);
 
   // A filter change would otherwise land on whatever page the previous list was showing.
   useEffect(() => { setPage(1); }, [type, statusKey, category, scope, sort]);
+
+  // A vote outlives no filter change, only the list itself, so it needs the mount and not a per-load flag.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const toggleVote = async (thread: FeedbackThread) => {
     if (voting.has(thread.id)) return;
@@ -97,13 +116,15 @@ export function FeedbackList({
     setVoting((prev) => new Set(prev).add(thread.id));
     try {
       const updated = await FeedbackService.setVote(thread.id, !thread.voted);
+      if (!mountedRef.current) return;
       // Patched in place rather than reloading: re-sorting the board under a click would move the row
       // out from under the pointer.
       setThreads((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
     } catch (error) {
+      // Still said after an unmount: the vote failed whether or not the list is there to show it.
       toast.error((error as Error).message || 'Failed to record your vote');
     } finally {
-      setVoting((prev) => {
+      if (mountedRef.current) setVoting((prev) => {
         const next = new Set(prev);
         next.delete(thread.id);
         return next;

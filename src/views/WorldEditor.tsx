@@ -28,7 +28,9 @@ import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import type { FindingSection } from '@/lib/testBench/rules';
 import { useTestBench } from '@/lib/testBench/useTestBench';
 import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
-import { revealEditorMatch, revealEditorChip, clearEditorMatch, revealSelectedRow } from '@/lib/editorFieldFocus';
+import {
+  revealEditorMatch, revealEditorChip, clearEditorMatch, revealSelectedRow, cancelEditorReveals,
+} from '@/lib/editorFieldFocus';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
@@ -317,6 +319,15 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // even when two consecutive hits sit in the same field and the author flipped tabs between them.
   // `itemId` says which item the hit belongs to — null for Overview's own fields, which sit in no item.
   const [findField, setFindField] = useState<FocusFieldHint | null>(null);
+  // The deferred reveal of the latest navigation, held so a newer one or the unmount can drop it.
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deferReveal = useCallback((reveal: () => void) => {
+    if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = setTimeout(() => {
+      revealTimerRef.current = null;
+      reveal();
+    }, 0);
+  }, []);
   const navigateToMatch = useCallback((match: SearchMatch | null) => {
     if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
@@ -333,7 +344,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       fieldLabel: match.target.fieldLabel,
       inChipList: match.target.inChipList,
     };
-    setTimeout(() => {
+    deferReveal(() => {
       // A chip hit rings the chip itself; a text hit marks the field holding it. The field marker is
       // dropped first either way, so a chip hit never leaves the previous field's ring behind.
       if (match.chip) {
@@ -345,9 +356,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
       // The list is the other half of "go to this hit": without it the detail pane jumps and the tree
       // stays wherever it was, with the selected row off screen.
       revealSelectedRow(editorRootRef.current);
-    }, 0);
+    });
+  }, [deferReveal]);
+  useEffect(() => () => {
+    if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
+    cancelEditorReveals();
+    clearEditorMatch();
   }, []);
-  useEffect(() => clearEditorMatch, []);
   const isMobile = useIsMobile();
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   // Leaving asks about unsaved edits first. The dialog around the editor refuses Escape so nothing bypasses
@@ -370,8 +385,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     setSearchTerm('');
     setSelectedItemId(itemId);
     if (entityTab) setEntityTab(entityTab);
-    setTimeout(() => revealSelectedRow(editorRootRef.current), 0);
-  }, []);
+    deferReveal(() => revealSelectedRow(editorRootRef.current));
+  }, [deferReveal]);
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selectedItemId : null,

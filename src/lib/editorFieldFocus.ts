@@ -230,11 +230,41 @@ const EXACT_TEXT = 1e6;
 const RETRY_LIMIT = 30;
 const RETRY_MS = 40;
 
+/**
+ * The pending retry of each reveal, so a newer reveal or an unmount can stop the older lookup. A field
+ * hit and a chip hit share one slot: a navigation is one or the other, and the newer one wins.
+ */
+const pending: Record<'hit' | 'row', ReturnType<typeof setTimeout> | null> = { hit: null, row: null };
+
+function cancelPending(slot: keyof typeof pending) {
+  const timer = pending[slot];
+  if (timer !== null) clearTimeout(timer);
+  pending[slot] = null;
+}
+
+function retryLater(slot: keyof typeof pending, run: () => void) {
+  pending[slot] = setTimeout(() => {
+    pending[slot] = null;
+    run();
+  }, RETRY_MS);
+}
+
+/** Stop every reveal still waiting on a mount. For the unmount of whatever asked for them. */
+export function cancelEditorReveals(): void {
+  cancelPending('hit');
+  cancelPending('row');
+}
+
 /** Mark the field under `root` holding `hit` and bring it on screen. */
-export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation, attempt = 0): void {
+export function revealEditorMatch(root: HTMLElement | null, hit: MatchLocation): void {
+  cancelPending('hit');
+  seekMatch(root, hit, 0);
+}
+
+function seekMatch(root: HTMLElement | null, hit: MatchLocation, attempt: number): void {
   if (!root || !hit.matchText) return;
   const found = locate(root, hit);
-  const retry = () => setTimeout(() => revealEditorMatch(root, hit, attempt + 1), RETRY_MS);
+  const retry = () => retryLater('hit', () => seekMatch(root, hit, attempt + 1));
   if (!found) {
     if (attempt < RETRY_LIMIT) retry();
     else clearMarker();
@@ -322,6 +352,7 @@ function revealRect(field: Field, rect: DOMRect): void {
 
 /** Drop the marker — the find bar closing, or a search that no longer matches anything. */
 export function clearEditorMatch(): void {
+  cancelPending('hit');
   clearMarker();
 }
 
@@ -341,12 +372,17 @@ const CHIP_RING_MS = 1600;
  * Lexical editor, or inside a chip-list entry (a keyword or alias holding a placeholder pill), is what makes
  * it the right chip: the anatomy draws chips of its own, outside either, and so do the editor's trees.
  */
-export function revealEditorChip(token: string, attempt = 0): void {
+export function revealEditorChip(token: string): void {
+  cancelPending('hit');
+  seekChip(token, 0);
+}
+
+function seekChip(token: string, attempt: number): void {
   if (!token) return;
   const attr = `[${CHIP_TOKEN_ATTR}="${CSS.escape(token)}"]`;
   const chip = document.querySelector<HTMLElement>(`[data-lexical-editor] ${attr}, [data-chip] ${attr}`);
   if (!chip) {
-    if (attempt < RETRY_LIMIT) setTimeout(() => revealEditorChip(token, attempt + 1), RETRY_MS);
+    if (attempt < RETRY_LIMIT) retryLater('hit', () => seekChip(token, attempt + 1));
     return;
   }
   chip.classList.add(RING_CLASS);
@@ -361,10 +397,15 @@ export function revealEditorChip(token: string, attempt = 0): void {
  * hit far down a long tree left the list sitting wherever it was — the detail pane moved and the list did
  * not. Retried on the same budget as the field lookup, since the row appears with the tree's next render.
  */
-export function revealSelectedRow(root: HTMLElement | null, attempt = 0): void {
+export function revealSelectedRow(root: HTMLElement | null): void {
+  cancelPending('row');
+  seekSelectedRow(root, 0);
+}
+
+function seekSelectedRow(root: HTMLElement | null, attempt: number): void {
   const row = root?.querySelector<HTMLElement>('[data-editor-row-selected]');
   if (!row) {
-    if (root && attempt < RETRY_LIMIT) setTimeout(() => revealSelectedRow(root, attempt + 1), RETRY_MS);
+    if (root && attempt < RETRY_LIMIT) retryLater('row', () => seekSelectedRow(root, attempt + 1));
     return;
   }
   row.scrollIntoView({ block: 'nearest', behavior: scrollBehavior() });
