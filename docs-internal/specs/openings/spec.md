@@ -138,6 +138,8 @@ One new pure module owns every rule. It has no React and no storage.
 ### Editors
 
 - **First ticket, no data change:** the library entity editor takes the World Editor's organization. Both editors show Profile, Descriptions, and Placeholders. The library editor keeps Overview, which holds publish information only. The field bodies stay shared.
+  - Both editors build their tabs from one shared tab list, which also holds the field-to-tab map. The library editor therefore follows the World Editor in Simple mode and hides Placeholders there.
+  - The library editor has no find bar, and this work adds none. The find bar criteria in this spec apply to the World Editor.
 - Both editors then gain an **Openings** tab. Each row has the text field with chip support, an **Opens As** toggle with the values **Player Action** and **Narration**, the weight, and the computed chance. The multiline weighted-value rows from the Placeholder editor are the model for the row.
 - The World Editor's opening panel becomes the mirrored list. It shows the world's rows first, then one group per authored entity. Edits write to the owner. The panel holds the world switch. The empty state names the default opening and shows its text read-only.
 - The find bar reaches every opening on every owner and opens the correct tab.
