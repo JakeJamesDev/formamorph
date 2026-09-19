@@ -96,6 +96,13 @@ Both library editors get one size and one tab grammar.
 - The store must keep its identity across a keystroke in an entry or a field. Today the carried pool is a new array on each change when the item carries shared placeholders. The build memoizes the pool by its two source lists before it widens the provider. Without this, every chip field rebuilds its vocabulary on each keystroke.
 - The modal's store has no world lists, so no scoped section can bind inside it.
 
+### No world behind a library editor
+
+- The main menu mounts both library modals inside the app-wide GameData provider, so an optional GameData read inside a modal returns the last loaded world. User stories 22 and 31 cover every such read, not only the placeholder store.
+- Each library modal puts a null GameData override around its body. Every optional GameData read inside then returns nothing, and a new widget gets the same result with no work.
+- A library item has no traits, locations, or stats, so a placeholder pin in a library editor offers no trait, location, or stat target. Pin data the item already carries stays as it is: the editor does not strip it, and it does not offer new targets.
+- One test per modal renders it inside a loaded world and proves that no world name shows and that no world write occurs.
+
 ### World Editor dictionary book panel
 
 - The book panel gets a Details tab and a Placeholders tab, from a tab list in the same form as the other panel tab lists. Details holds Name, Description, Enabled, and the entry count hint. Placeholders holds the scoped placeholder editor in its fill form.
