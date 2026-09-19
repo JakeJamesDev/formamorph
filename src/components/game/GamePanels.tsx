@@ -58,6 +58,7 @@ import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { effectiveDestinations } from '@/lib/locationGraph';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
+import { PersonaRow } from './PersonaRow';
 import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
 
@@ -1333,6 +1334,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         {/* The story's position, not an hour count: elapsed hours read as a stopwatch, and the daypart is
             what the prose is actually written around. Same wording the memory stamps use. */}
         <p className="text-center">{formatAbsolute(gameTime, calendar)}</p>
+        <PersonaRow />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
