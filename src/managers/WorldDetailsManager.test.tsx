@@ -584,6 +584,23 @@ describe('the mirrored openings panel', () => {
     expect(world.overview.openings).toEqual(before.openings);
   });
 
+  it('reorders an entity’s rows by keyboard drag, on that entity', async () => {
+    // jsdom lays nothing out; stack the rows 100px apart so the keyboard sensor can find a neighbor.
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const row = this.closest<HTMLElement>('[data-testid="opening-row"]');
+      const i = row ? [...row.parentElement!.children].indexOf(row) : 0;
+      return DOMRect.fromRect({ x: 0, y: i * 100, width: 300, height: 90 });
+    });
+    const user = await open();
+    screen.getByRole('button', { name: 'Reorder Guide Opening 2' }).focus();
+    await user.keyboard('[Space]');
+    await user.keyboard('[ArrowUp]');
+    await user.keyboard('[Space]');
+    rect.mockRestore();
+    expect(guideNow().openings?.map((o) => o.id)).toEqual(['g2', 'g1']);
+    expect(world.overview.openings).toEqual([ROWS[0]]);
+  });
+
   it('shows each row’s share of the whole pool, and a dash for an entity elsewhere', async () => {
     await open();
     expect(chance('Opening 1')).toBe('33%');

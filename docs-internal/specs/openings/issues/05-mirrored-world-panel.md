@@ -1,6 +1,6 @@
 # 05: Mirrored World Openings Panel
 
-Status: in-progress
+Status: ready-for-human
 Base: c0ba2b9f
 Blocked by: 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)

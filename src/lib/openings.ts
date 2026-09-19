@@ -1,7 +1,8 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import { entityIdsAt } from '@/lib/entityPresence';
+import { entityIdsAt, entityIdsAtAny } from '@/lib/entityPresence';
+import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
-import type { Entity, Opening, OpeningKind, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
  * Openings: the weighted list a playthrough starts from. Every rule lives here — which rows can be drawn,
@@ -98,7 +99,9 @@ function drawEntry(pool: readonly PoolEntry[], random: () => number): PoolEntry 
 }
 
 /** What the shown list records a row under: owner plus opening id, since ids repeat across owners. */
-export const poolKey = (entry: PoolEntry): string => JSON.stringify([entry.ownerId, entry.opening.id]);
+const openingKey = (ownerId: string | null, openingId: string) => JSON.stringify([ownerId, openingId]);
+
+export const poolKey = (entry: PoolEntry): string => openingKey(entry.ownerId, entry.opening.id);
 
 /** One draw and the shown list after it: row keys in the order the session showed them, newest last. */
 export interface UnseenDraw {
@@ -133,11 +136,100 @@ export function resolveOpening(overview: Overview, random: () => number = Math.r
  *  Ignores the switch, so an author drafting a switched-off list still reads the odds it will have. */
 export function openingChances(owner: MaybeOwner): Record<string, number> {
   const pool = drawable(owner, null);
-  const total = poolWeight(pool);
+  const chances = poolChances(pool);
   const out: Record<string, number> = {};
   for (const o of owner?.openings ?? []) out[o.id] = 0;
-  for (const e of pool) out[e.opening.id] = (e.weight / total) * 100;
+  pool.forEach((e, i) => { out[e.opening.id] = chances[i]; });
   return out;
+}
+
+// ── Editor view ───────────────────────────────────────────────────────────────
+
+/** One row as an editor shows it. A null chance marks a row outside the pool the chances describe. */
+export interface EditorOpeningRow {
+  opening: Opening;
+  weight: number;
+  chance: number | null;
+}
+
+/** One owner's rows in the world panel. The world's own group has no entity. */
+export interface EditorOpeningGroup {
+  entity: Entity | null;
+  name: string;
+  rows: EditorOpeningRow[];
+  /** At none of the world's starting locations, so its rows never come up. */
+  atNoStart: boolean;
+  /** At the starting location the chances describe, so its rows count in them. */
+  atChancesStart: boolean;
+}
+
+export interface OpeningsEditorView {
+  /** Where a new game may begin, resolved as the start of play resolves it. */
+  starts: GameLocation[];
+  /** The start the chances describe; null in a world with no locations. */
+  chancesStartId: string | null;
+  groups: EditorOpeningGroup[];
+}
+
+export interface OpeningsEditorSources {
+  overview: Overview;
+  entities: readonly Entity[];
+  locations: readonly GameLocation[];
+}
+
+const editorRows = (owner: OpeningOwner, chanceOf: (id: string) => number | null): EditorOpeningRow[] =>
+  (owner.openings ?? []).map((opening) => ({
+    opening,
+    weight: openingWeight(owner.openingWeights, opening.id),
+    chance: chanceOf(opening.id),
+  }));
+
+/** One owner's rows with chances within its own list, for an entity's Openings tab. */
+export function ownerOpeningRows(owner: OpeningOwner): EditorOpeningRow[] {
+  const chances = openingChances(owner);
+  return editorRows(owner, (id) => chances[id] ?? 0);
+}
+
+/**
+ * Every opening in the world grouped by owner: the world's rows first, then each authored entity that has
+ * openings, in cast order. A chance is the row's share of the whole pool at `startId`, falling back to the
+ * first start. The switch is ignored, so a switched-off draft reads the odds it will have.
+ */
+export function openingsEditorView(
+  { overview, entities, locations }: OpeningsEditorSources,
+  startId?: string | null,
+): OpeningsEditorView {
+  const starts = startCandidates(locations);
+  const chancesStartId = starts.find((l) => l.id === startId)?.id ?? starts[0]?.id ?? null;
+  const pool = openingPool({
+    overview: overview && { ...overview, openingsEnabled: undefined },
+    entities,
+    startingLocationId: chancesStartId,
+  });
+  const chances = poolChances(pool);
+  const shares = new Map(pool.map((e, i) => [poolKey(e), chances[i]]));
+  const here = new Set(entityIdsAt(chancesStartId, [...entities]));
+  const atAnyStart = new Set(entityIdsAtAny(starts.map((l) => l.id), [...entities]));
+  const rowsOf = (owner: OpeningOwner, ownerId: string | null) =>
+    editorRows(owner, (id) => shares.get(openingKey(ownerId, id)) ?? 0);
+
+  return {
+    starts,
+    chancesStartId,
+    groups: [
+      {
+        entity: null, name: overview?.name ?? '', rows: rowsOf(overview ?? {}, null),
+        atNoStart: false, atChancesStart: true,
+      },
+      ...entities.filter((e) => e.openings?.length).map((e) => ({
+        entity: e,
+        name: e.name,
+        rows: here.has(e.id) ? rowsOf(e, e.id) : editorRows(e, () => null),
+        atNoStart: !atAnyStart.has(e.id),
+        atChancesStart: here.has(e.id),
+      })),
+    ],
+  };
 }
 
 /** Every row's text, drawable or not — what chip priming, placement letters and the World Doctor scan. */
