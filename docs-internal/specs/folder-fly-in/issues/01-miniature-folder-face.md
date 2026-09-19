@@ -1,6 +1,7 @@
 # 01: Miniature Folder Face
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 74c62704
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -31,15 +32,15 @@ Decisions from the spec:
 
 ## Acceptance criteria
 
-- [ ] A folder tile in the grid layout draws each member at the cell and span the open folder gives it
-- [ ] A member sized small or large shows at that size in the miniature
-- [ ] Holes in the folder board show as holes in the miniature
-- [ ] The miniature repacks when the column count changes
-- [ ] A filtered view draws only passing members, packed as the filtered folder board packs them
-- [ ] The detailed layout still draws the mosaic
-- [ ] The `+N` badge is gone in the grid layout; the name bar and the count remain
-- [ ] A small folder tile still gives its name and count as a tip
-- [ ] Adding, removing, resizing, or moving a member updates the miniature
-- [ ] jsdom tests in the existing grid test files cover the cell/span match, the filtered view, and the detailed layout, and each fails when its behavior is broken
-- [ ] `docs/Changelog.md` In-Progress entry added
-- [ ] Four gates green; no export-shape change
+- [x] A folder tile in the grid layout draws each member at the cell and span the open folder gives it
+- [x] A member sized small or large shows at that size in the miniature
+- [x] Holes in the folder board show as holes in the miniature
+- [x] The miniature repacks when the column count changes
+- [x] A filtered view draws only passing members, packed as the filtered folder board packs them
+- [x] The detailed layout still draws the mosaic
+- [x] The `+N` badge is gone in the grid layout; the name bar and the count remain
+- [x] A small folder tile still gives its name and count as a tip
+- [x] Adding, removing, resizing, or moving a member updates the miniature
+- [x] jsdom tests in the existing grid test files cover the cell/span match, the filtered view, and the detailed layout, and each fails when its behavior is broken
+- [x] `docs/Changelog.md` In-Progress entry added
+- [x] Four gates green; no export-shape change

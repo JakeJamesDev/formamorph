@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Folder, Sparkles } from 'lucide-react';
@@ -7,10 +8,10 @@ import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from '@/components/WorldCar
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 
-/** How many member thumbnails the folder shows before it starts counting the rest. */
+/** How many member thumbnails the detailed layout's folder card shows. */
 const MOSAIC_CELLS = 4;
 
-/** The 2x2 mini-mosaic that makes a folder recognizable at a glance. */
+/** The 2x2 mini-mosaic that makes a folder card recognizable at a glance. */
 function GroupMosaic({ thumbnails, aspect, className }: {
   thumbnails: (string | undefined)[];
   aspect: ThumbAspect;
@@ -19,7 +20,7 @@ function GroupMosaic({ thumbnails, aspect, className }: {
   const cells = Array.from({ length: MOSAIC_CELLS }, (_, i) => thumbnails[i]);
 
   return (
-    <div className={cn('grid grid-cols-2 grid-rows-2 gap-px bg-border', className)}>
+    <div data-folder-mosaic className={cn('grid grid-cols-2 grid-rows-2 gap-px bg-border', className)}>
       {cells.map((thumbnail, index) => (
         <div key={index} className="relative overflow-hidden bg-muted">
           {thumbnail && (
@@ -36,19 +37,21 @@ function GroupMosaic({ thumbnails, aspect, className }: {
 }
 
 /**
- * A folder's tile in a library grid — the mosaic of what is inside, its name, and how many it holds.
+ * A folder's tile in a library grid: a picture of what is inside, its name, and how many it holds.
  *
  * Draggable and sortable like any other tile, so a folder can be reordered and resized; clicking it
  * opens the folder view rather than a popup.
  *
- * @param thumbnails - Member thumbnails in member order; the tile shows the first four
+ * @param thumbnails - Member thumbnails in member order; the detailed card shows the first four
+ * @param miniature - The folder's own board at tile scale, which the grid layout draws as the face
  * @param presetName - The prompt preset this folder applies, when it carries one
  */
 export function LibraryGroupTile({
-  group, thumbnails, aspect, layout, fill, compact, presetName, onOpen,
+  group, thumbnails, miniature, aspect, layout, fill, compact, presetName, onOpen,
 }: {
   group: LibraryGroup;
   thumbnails: (string | undefined)[];
+  miniature?: ReactNode;
   /** The shape of the member art, which is what the mosaic's crops anchor by. */
   aspect: ThumbAspect;
   layout: 'grid' | 'detailed';
@@ -105,12 +108,7 @@ export function LibraryGroupTile({
       )}
       onClick={() => onOpen(group.id)}
     >
-      <GroupMosaic thumbnails={thumbnails} aspect={aspect} className="h-full w-full" />
-      {group.members.length > MOSAIC_CELLS && (
-        <span className="absolute top-1 right-1 rounded bg-overlay/70 px-1.5 py-0.5 text-meta text-white">
-          +{group.members.length - MOSAIC_CELLS}
-        </span>
-      )}
+      {miniature}
       {!compact && (
         <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8 flex items-end gap-2', TITLE_SCRIM)}>
           <Folder className="h-5 w-5 shrink-0 text-white" />
@@ -121,6 +119,6 @@ export function LibraryGroupTile({
     </div>
   );
 
-  // A small folder tile keeps only the mosaic, so its name and count reach the player as a tip.
+  // A small folder tile keeps only the miniature, so its name and count reach the player as a tip.
   return compact ? <Tip tip={`${group.name} — ${count}`}>{tile}</Tip> : tile;
 }
