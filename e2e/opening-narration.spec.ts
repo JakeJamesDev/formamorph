@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { openApp } from './app';
+import { WRITTEN_OPENING_TEXT as WRITTEN } from '../src/lib/devFixtures';
 
 /**
  * A new game whose draw is an Opening Narration, through the real game view: page one is the authored
@@ -9,17 +10,16 @@ import { openApp } from './app';
  * what reaches history and the page.
  */
 
-const WRITTEN = 'The white room hums. A door you did not see before stands open.';
-
 interface LoggedRequest { type: string; messages: { role: string; content: string }[] }
 interface LoggedTurn { action: string; requests: LoggedRequest[] }
 
-async function mockModel(page: Page) {
+async function mockModel(page: Page, failFirst = 0) {
   let calls = 0;
   await page.route('**/api/v0/models', (route) => route.fulfill({ status: 404 }));
   await page.route('**/v1/models', (route) => route.fulfill({ json: { data: [{ id: 'e2e-model' }] } }));
   await page.route('**/chat/completions', async (route) => {
     calls += 1;
+    if (calls <= failFirst) { await route.fulfill({ status: 500, body: 'down' }); return; }
     await route.fulfill({ contentType: 'text/event-stream', body:
       `data: ${JSON.stringify({ choices: [{ delta: { content: 'Step through the door' }, finish_reason: null }] })}\n\ndata: [DONE]\n\n` });
   });
@@ -128,4 +128,25 @@ test('Re-generate that draws an Opening Action returns to the filled box, not st
   await expect(actionBox(page)).toHaveValue(ACTION);
   await expect(page.getByText(WRITTEN)).toHaveCount(0);
   expect(calls()).toBe(before);
+});
+
+test('a request that fails after a written page one keeps the page, and the next submit is a normal turn', async ({ page }) => {
+  page.on('pageerror', (error) => console.error(error.message));
+  // One request at a time, so the failed choices request ends the turn instead of being absorbed.
+  await mockModel(page, 1);
+  await openApp(page, { ...settings, FORMAMORPH_concurrentTurnRequests: false },
+    { url: '/#dev?view=gameViewer&fixture=writtenOpening' });
+  await expect(page.getByText(WRITTEN).first()).toBeVisible();
+  await expect(actionBox(page)).toBeEnabled();
+  await page.waitForFunction(() => '__baseline' in window);
+
+  await page.evaluate(() => (window as unknown as { __baseline: { runScript(actions: string[]): Promise<void> } })
+    .__baseline.runScript(['I walk to the door.']));
+  const log = await turns(page);
+  // A second opening turn would record the start proxy here in place of the player's action.
+  expect(log.map((turn) => turn.action)).toEqual(['START GAME', 'I walk to the door.']);
+  const narration = log[1].requests.find((request) => request.type === 'narration');
+  const chat = narration!.messages.filter((message) => message.role !== 'system');
+  expect(chat.map((message) => message.role)).toEqual(['user', 'assistant', 'user']);
+  expect(chat[1].content).toContain(WRITTEN);
 });
