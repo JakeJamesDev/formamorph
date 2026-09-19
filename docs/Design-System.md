@@ -560,6 +560,7 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 | Instance that drops its strip in Simple mode | `StatManager` in [`StatManager.tsx`](../src/managers/StatManager.tsx) and [`statPanelTabs.ts`](../src/views/statPanelTabs.ts) |
 | Two-tab instance, mounted by two hosts | `DictionaryManager` in [`DictionaryManager.tsx`](../src/managers/DictionaryManager.tsx) and [`dictionaryPanelTabs.ts`](../src/views/dictionaryPanelTabs.ts) |
 | Its second host | `DictionaryEditorModal` in [`DictionaryEditorModal.tsx`](../src/components/modals/DictionaryEditorModal.tsx) |
+| Entity strip in a second host, with Placeholders on the host's own strip | `EntityEditorModal` in [`EntityEditorModal.tsx`](../src/components/modals/EntityEditorModal.tsx), from `ENTITY_EDITOR_SUBTABS` |
 | Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
 | Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
 
@@ -570,6 +571,8 @@ The pane holding these panels is not monotonic in viewport width. Below `md` the
 So the label steps on at `sm`, off at `md`, and on again at `xl`. Three tabs in a 375px sheet get 105px each and four get 85px, while one row of "Descriptions" needs 137px. Two tabs get 148px each, which is why the dictionary entry strip is the one case the label would fit; it hides anyway, because a strip that keeps its labels at a width where its neighbors drop theirs reads as a different control. The same shortfall returns in the half-width pane between `md` and `xl`.
 
 A container query would state this directly. `@tailwindcss/container-queries` is not a dependency, and these two breakpoints track the layout's own `md` switch exactly.
+
+The library entity editor is the one host with other breakpoints. Its strip sits beside a Tags column, so the strip is narrow until `lg` and then only widens. It passes `labelClassName="hidden lg:inline"` to `PanelTabsList`. The [`library-editor-widths.spec.ts`](../e2e/library-editor-widths.spec.ts) check fails if a drawn label overflows its trigger.
 
 ### State reference
 
