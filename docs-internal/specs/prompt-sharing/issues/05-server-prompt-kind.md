@@ -1,6 +1,7 @@
 # 05: Server `prompt` Kind
 
-Status: in-progress
+Status: ready-for-human
+Status note: done in FormamorphServer 283b2b3, not deployed
 Base: 657e4e7 (FormamorphServer)
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -47,3 +48,13 @@ artifact, stored as opaque JSON.
 - [ ] An old client that sends no `models` still creates and updates other kinds
 - [ ] The migration runs on a copy of the dev database
 - [ ] The server repo's gates are green; the deploy is left to the user
+
+## Comments
+
+**2026-09-19, ticket session:** Done in FormamorphServer `283b2b3`. It is not deployed yet.
+
+- The spec session ruled on three points. A prompt can offer compatible worlds, but no world can require it and it cannot be unlisted. Description is optional. Every prompt needs at least one model.
+- Every listing now returns `models`. It is `[]` for every kind except `prompt`, and `models` sent for other kinds is ignored.
+- `?model=` filters only with `kind=prompt`. It matches each model name separately. Case matching covers A–Z only.
+- A contest entry for a prompt is refused with a 400 and code `CONTEST_KIND_REFUSED`.
+- The `promptModels` migration ran on a copy of the dev database. It gave the 42 existing rows `[]` and did nothing on a second run.
