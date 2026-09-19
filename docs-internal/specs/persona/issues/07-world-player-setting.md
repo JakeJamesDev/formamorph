@@ -14,7 +14,7 @@ Reasoning effort: medium
 ## Acceptance criteria
 
 - [ ] An absent value means Open, so every existing world behaves as before.
-- [ ] The World Editor shows the setting as a value control, not tabs, with help copy in the UI help copy pattern.
+- [ ] The World Editor shows the setting as a value control, not tabs, with help copy in the UI help copy pattern. It is an Advanced control, and a value other than Open counts as Advanced data for the notice beside the mode switch.
 - [ ] Fixed: None is preselected and Quick Start uses None, unless the player made a pick in that world before.
 - [ ] Cast: the enter-world picker and the in-game picker list only the world's personas, offer no None, and preselect the first. A Cast world with no marked entity behaves as Fixed.
 - [ ] Pure tests cover all three values for the step, for Quick Start, and for the in-game picker, together with the remembered pick and the global default.

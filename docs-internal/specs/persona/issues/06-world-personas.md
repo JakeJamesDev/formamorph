@@ -20,11 +20,11 @@ Reasoning effort: high
 - [ ] The known-person line follows the prompt writing guide and ships with probe numbers on both reference tiers, recorded in the ticket's comments.
 - [ ] Relationships that point at the played entity render as ties to the player.
 - [ ] When one of the entity's locations is a starting location, the step preselects the first such location. The player can change it. Tests cover an entity with no starting location among its locations.
-- [ ] The opening pool reads the module's cast, so a played entity's openings leave the pool. When the Openings work is not yet built, record this in a comment on the Openings spec and skip the code.
+- [ ] The opening pool takes its authored entities from the module's cast, so a played entity's openings leave the pool: at the first draw, at page-one regenerate, and in the pool a loaded save rebuilds. Tests run through the Openings module with a seeded random source. The guard is proven by passing the raw entity list and watching the test fail.
 - [ ] A world persona's own placeholders resolve as they do today. A test proves it.
 - [ ] The picker with both headings is checked in the preview through the dev-router.
 - [ ] Typecheck, lint, tests, and build pass; report test wall time. Update the code graph. Add a changelog entry in the In Progress section.
 
 ## Scope notes
 
-The author owns entity text that names "the player" as a separate person. This ticket does not rewrite it; ticket 11 documents it. No new export-shape change: the mark shipped in ticket 01.
+The Test Bench opening lens has no persona and keeps showing the pool as the world defines it. The author owns entity text that names "the player" as a separate person. This ticket does not rewrite it; ticket 11 documents it. No new export-shape change: the mark shipped in ticket 01.

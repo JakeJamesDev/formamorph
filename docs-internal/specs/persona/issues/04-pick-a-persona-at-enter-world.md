@@ -15,6 +15,8 @@ Reasoning effort: high
 
 - [ ] The category lists marked library entities with portrait and name, plus None. It is hidden when no persona is available.
 - [ ] The pick travels to the game the way the chosen dictionaries and added characters do, and lands as the save's reference. None lands as an explicit None.
+- [ ] The new-game seed step sets the reference before it draws the opening, so later tickets can render the persona's name into page one. A test asserts the order.
+- [ ] A library entity picked as the persona is not among the picked entities that the opening pool reads, so its openings never enter the pool. A test proves it.
 - [ ] A marked library entity shows in both the character list and the persona picker. Picking it in one removes it from the other for that playthrough. Component tests cover both directions.
 - [ ] The player sets and clears a global default persona from the Entities tab. It names a library entity only. It is device-local and never exported.
 - [ ] Each world remembers its last pick, None included, on the device. Pure tests cover the preselect order for the step and for Quick Start: the world's remembered pick, then the global default, then None.

@@ -15,6 +15,7 @@ Reasoning effort: medium
 
 - [ ] A player page covers: making a persona, the global default, the pick at Enter World, the change in game, and the SillyTavern import with where ST keeps its avatar files.
 - [ ] An author page covers: marking an entity as playable, the world player setting, the Persona chip and its variants for prompt overrides, and the Player Name chip.
+- [ ] The Openings author docs exist. Extend them where the Player Name chip and the played entity's openings change what they say, and link the pages both ways. Do not restate them.
 - [ ] The author page states that text which names "the player" as a separate person reads wrong for a played entity, and that the author owns that text.
 - [ ] The author page states the hard cutover: a world prompt override gets no persona until its author adds the chip.
 - [ ] The domain glossary gains Persona, with "player character" and "user" as terms to avoid.
