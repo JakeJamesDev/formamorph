@@ -63,6 +63,63 @@ describe('Narration layout parity', () => {
     expect(pages.row.length).toBeGreaterThan(1);
     expect(pages.menu).toEqual(expect.arrayContaining(pages.row.filter((n) => n !== 'More')));
   });
+
+  it.each([['the latest turn', 3], ['a past turn', 2]])('lists the same player-action menu for %s in Pages and in Chat', async (_, turn) => {
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, page: turn, settings: statsOn });
+    const pages = await menuLabels(await screen.findByTestId('action-line'));
+    cleanup();
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, settings: chat });
+    const article = (await screen.findAllByRole('article'))[turn - 1];
+    const chatted = await menuLabels(within(article).getByTestId('player-action'));
+    cleanup();
+    expect(pages).toEqual(chatted);
+    expect(pages.length).toBeGreaterThan(0);
+  });
+});
+
+describe('Pages: the action line menu', () => {
+  afterEach(() => { window.getSelection()?.removeAllRanges(); });
+
+  it("lists the player action's Edit and Copy Text, not the narration's actions", async () => {
+    renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, stats: STATS, settings: statsOn });
+    expect(await menuLabels(await screen.findByTestId('action-line'))).toEqual(['Edit', 'Copy Text']);
+  });
+
+  it("copies the action's markdown source", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    const real = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    try {
+      renderMiddlePanel({}, { turns: TURNS });
+      rightClick(await screen.findByTestId('action-line'));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Copy Text' }));
+      expect(writeText).toHaveBeenCalledWith('I say *softly* "hello, gull."');
+    } finally {
+      if (real) Object.defineProperty(navigator, 'clipboard', real);
+      else delete (navigator as { clipboard?: unknown }).clipboard;
+    }
+  });
+
+  it('disables Edit while a turn generates', async () => {
+    renderMiddlePanel({}, { turns: TURNS, page: 2, seed: (g) => g.setIsWaitingForAI(true) });
+    rightClick(await screen.findByTestId('action-line'));
+    expect(screen.getByRole('menuitem', { name: 'Edit' }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('menuitem', { name: 'Copy Text' }).getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('keeps the browser menu on the action line while the narration streams', async () => {
+    renderMiddlePanel({}, { turns: TURNS, gameplayText: 'The gull', seed: (g) => g.setIsRevealingNarration(true) });
+    expect(rightClick(await screen.findByTestId('action-line'))).toBe(true);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('keeps the browser menu for a right-click on selected action text', async () => {
+    renderMiddlePanel({}, { turns: TURNS });
+    const text = within(await screen.findByTestId('action-line')).getByText('softly');
+    window.getSelection()!.selectAllChildren(text);
+    expect(rightClick(text)).toBe(true);
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
 });
 
 describe('Pages: the Turn Card', () => {
