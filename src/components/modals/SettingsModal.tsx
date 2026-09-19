@@ -24,6 +24,8 @@ import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { PresetOverviewPanel } from './PresetOverviewPanel';
 import { useEndpointModelSuggestions } from './useEndpointModelSuggestions';
+import { usePromptCatalogSuggestions } from './usePromptCatalogSuggestions';
+import { mergeModelSuggestions } from '@/lib/promptCatalogSuggestions';
 import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, OVERVIEW_LABEL, OVERVIEW_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
 import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
@@ -1105,6 +1107,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Bumped to put focus on the Overview's Models field, the way out of the empty-Models publish block.
   const [focusModels, setFocusModels] = useState(0);
   const endpointModels = useEndpointModelSuggestions();
+  const catalogSuggestions = usePromptCatalogSuggestions(showingOverview);
+  const modelSuggestions = useMemo(
+    () => mergeModelSuggestions(catalogSuggestions.modelCounts, endpointModels.suggestions),
+    [catalogSuggestions.modelCounts, endpointModels.suggestions],
+  );
   // The mobile selector's value for the Overview entry; prompt and surface entries use their own prefixes.
   const overviewOption = `preset:${OVERVIEW_ROUTE}`;
   // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
@@ -2767,7 +2774,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <PresetOverviewPanel
                     overview={presetOverview}
                     onChange={setPresetOverview}
-                    modelSuggestions={endpointModels.suggestions}
+                    tagSuggestions={catalogSuggestions.tags}
+                    modelSuggestions={modelSuggestions}
                     onModelsOpen={endpointModels.load}
                     focusModels={focusModels}
                   />
