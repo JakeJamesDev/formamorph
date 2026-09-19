@@ -38,15 +38,18 @@ function drawable(openings: readonly Opening[] | undefined, weights: Record<stri
     .filter((e) => e.weight > 0);
 }
 
-/** The rows a new playthrough draws from. A switched-off list contributes nothing. */
+/** The rows a new playthrough draws from. A switched-off list contributes nothing. Takes an object so the
+ *  entity sources of the later tickets join as fields. */
 export function openingPool({ overview }: { overview: Overview }): PoolEntry[] {
   if (!openingsEnabled(overview)) return [];
   return drawable(overview?.openings, overview?.openingWeights);
 }
 
+const poolWeight = (pool: readonly PoolEntry[]) => pool.reduce((sum, e) => sum + e.weight, 0);
+
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawOpening(pool: readonly PoolEntry[], random: () => number): Opening {
-  const total = pool.reduce((sum, e) => sum + e.weight, 0);
+  const total = poolWeight(pool);
   if (total <= 0) return DEFAULT_OPENING;
   let r = random() * total;
   for (const e of pool) {
@@ -65,7 +68,7 @@ export function resolveOpening(overview: Overview, random: () => number = Math.r
  *  a switched-off list still reads the odds it will have. */
 export function openingChances(overview: Overview): Record<string, number> {
   const pool = drawable(overview?.openings, overview?.openingWeights);
-  const total = pool.reduce((sum, e) => sum + e.weight, 0);
+  const total = poolWeight(pool);
   const out: Record<string, number> = {};
   for (const o of overview?.openings ?? []) out[o.id] = 0;
   for (const e of pool) out[e.opening.id] = (e.weight / total) * 100;
@@ -89,8 +92,15 @@ export const isOpeningFieldKey = (key: string | undefined): boolean => !!key?.st
 
 type Patch = Partial<WorldOverview>;
 
-const nonEmpty = (weights: Record<string, number>) => (Object.keys(weights).length ? weights : undefined);
+/** An absent map already means every weight is 1, so an empty one is stored as absent. */
+const weightsOrAbsent = (weights: Record<string, number>) => (Object.keys(weights).length ? weights : undefined);
 
+/** Turns the list on or off; on is stored as absent. */
+export function setOpeningsEnabled(on: boolean): Patch {
+  return { openingsEnabled: on ? undefined : false };
+}
+
+/** Appends an empty Opening Action under a fresh id. */
 export function addOpening(overview: WorldOverview): Patch {
   return { openings: [...(overview.openings ?? []), { id: randomUUID(), text: '', kind: 'action' }] };
 }
@@ -100,10 +110,11 @@ export function removeOpening(overview: WorldOverview, id: string): Patch {
   const { [id]: _drop, ...weights } = overview.openingWeights ?? {};
   return {
     openings: (overview.openings ?? []).filter((o) => o.id !== id),
-    openingWeights: nonEmpty(weights),
+    openingWeights: weightsOrAbsent(weights),
   };
 }
 
+/** Replaces one row's text. */
 export function setOpeningText(overview: WorldOverview, id: string, text: string): Patch {
   return { openings: (overview.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };
 }
@@ -113,9 +124,10 @@ export function setOpeningWeight(overview: WorldOverview, id: string, weight: nu
   const weights = { ...(overview.openingWeights ?? {}) };
   if (weight === 1) delete weights[id];
   else weights[id] = weight;
-  return { openingWeights: nonEmpty(weights) };
+  return { openingWeights: weightsOrAbsent(weights) };
 }
 
+/** Moves the row at `from` to `to`; weights key by id, so they follow. */
 export function moveOpening(overview: WorldOverview, from: number, to: number): Patch {
   const next = [...(overview.openings ?? [])];
   const [row] = next.splice(from, 1);
