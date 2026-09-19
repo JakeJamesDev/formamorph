@@ -277,5 +277,5 @@ name, a hook call, or the virtualizer's internals.
   text; if it is tied to the latest gameplay text, only the latest bubble offers them and the ticket records
   the gap. Every per-turn action acts on its own bubble's turn, never on the viewed turn. Re-generate
   Narration and Re-generate Stats act on the latest turn only.
-- **Open gap: scene image controls in Chat.** Pages shows scene images with a pager, zoom, and delete. Ticket
-  01 may ship a plain inline image. No ticket restores those controls yet; the user decides where they go.
+- **Closed gap: scene image controls in Chat.** Each Chat turn shows the Scene Plate under its narration, with
+  zoom, browse, and delete. Pages Layout Refresh ticket 06 closes it.

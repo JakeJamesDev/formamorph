@@ -1,6 +1,7 @@
 # 06: Scene Plate in Chat
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 5098d930
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -20,10 +21,10 @@ virtualized list; check the pin and the open-at-bottom aim with the existing Pla
 
 ## Acceptance criteria
 
-- [ ] Each Chat turn with images shows the plate under its narration; the inline image component is gone
-- [ ] Zoom, browse, and delete work on a past turn and on the latest turn
-- [ ] Delete removes the image from the turn whose plate was used, not from the viewed turn
-- [ ] The existing "image box sized before load" Chat test still passes
-- [ ] The existing Chat scroll cases in the e2e suite pass
-- [ ] Verified in the preview, both themes
-- [ ] Four gates green
+- [x] Each Chat turn with images shows the plate under its narration; the inline image component is gone
+- [x] Zoom, browse, and delete work on a past turn and on the latest turn
+- [x] Delete removes the image from the turn whose plate was used, not from the viewed turn
+- [x] The existing "image box sized before load" Chat test still passes
+- [x] The existing Chat scroll cases in the e2e suite pass
+- [x] Verified in the preview, both themes
+- [x] Four gates green
