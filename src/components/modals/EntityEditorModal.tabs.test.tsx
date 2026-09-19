@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import EntityEditorModal from './EntityEditorModal';
 import EntityManager from '@/managers/EntityManager';
 import { SettingsProvider } from '@/contexts/SettingsContext';
+import { EditorModeContext } from '@/lib/editorMode';
 import { entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 import type { Entity } from '@/types';
 
@@ -86,6 +87,19 @@ describe('the two entity editors', () => {
 
     expect(library).toEqual(['Overview', 'Profile', 'Descriptions', 'Placeholders']);
     expect(worldTabs).toEqual(library.slice(1));
+  });
+
+  it('drop Placeholders in the World Editor in Simple mode, and keep it in the always-Advanced library', () => {
+    const simple = (ui: React.ReactNode) => (
+      <SettingsProvider>
+        <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: vi.fn() }}>{ui}</EditorModeContext.Provider>
+      </SettingsProvider>
+    );
+    render(simple(<WorldPanel />));
+    expect(tabNames()).toEqual(['Profile', 'Descriptions']);
+    cleanup();
+    render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
+    expect(tabNames()).toEqual(['Overview', 'Profile', 'Descriptions', 'Placeholders']);
   });
 
   it('open the library editor on Profile, not Overview', () => {
