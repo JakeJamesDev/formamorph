@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { emptyTabOrganization, groupOf, loadTabOrganization, saveTabOrganization, type LibraryTabOrganization } from '@/lib/libraryOrganization';
-import { useLibraryTiles } from '@/lib/useLibraryTiles';
+import { useLibraryTiles, type LibraryTiles } from '@/lib/useLibraryTiles';
 import { LibraryTileContextMenu } from './LibraryTileContextMenu';
 import { LibraryTileGrid } from './LibraryTileGrid';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -184,5 +184,126 @@ describe('library group flow', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(organization()).toEqual(before);
     expect(screen.getByRole('button', { name: 'World Tile' })).toHaveFocus();
+  });
+});
+
+describe('the folder miniature', () => {
+  // 1000 px at a 200 px medium tile is 4 medium columns, so 8 base columns.
+  const MEMBERS = ['m1', 'm2', 'm3', 'm4', 'm5'];
+  const faceItems = ['loose', ...MEMBERS].map((id) => ({ id, name: `Item ${id}` }));
+  let resize: ((width: number) => void) | null = null;
+  let latest: LibraryTiles | null = null;
+
+  const seedFolder = () => saveTabOrganization('worlds', {
+    ...emptyTabOrganization(),
+    order: ['loose', 'gF'],
+    groups: { gF: { id: 'gF', name: 'Packed Folder', members: MEMBERS, settings: {} } },
+    sizes: { m1: 'large', m2: 'small', m4: 'large', m5: 'large' },
+    // m2 and m3 leave holes at (1,4), (0,5), and (1,5); m5 starts below what the tile shows.
+    placements: {
+      8: {
+        loose: { row: 0, col: 0 }, gF: { row: 0, col: 2 },
+        m1: { row: 0, col: 0 }, m2: { row: 0, col: 4 }, m3: { row: 2, col: 4 },
+        m4: { row: 4, col: 0 }, m5: { row: 8, col: 0 },
+      },
+    },
+  });
+
+  function FaceGrid({ layout = 'grid' }: { layout?: 'grid' | 'detailed' }) {
+    const tiles = useLibraryTiles('worlds', faceItems.map((item) => item.id), true);
+    latest = tiles;
+    return <TooltipProvider><LibraryTileGrid
+      items={faceItems} idOf={(item) => item.id} nameOf={(item) => item.name} tiles={tiles}
+      layout={layout} aspect="landscape" minMediumWidth={200} detailedColumnsClass="grid-cols-1"
+      thumbnailOf={(item) => `/art/${item.id}.webp`} renderCard={(item) => <button>{item.name}</button>}
+    /></TooltipProvider>;
+  }
+
+  const cell = (node: Element | null) => {
+    const style = (node as HTMLElement | null)?.style;
+    return style ? `${style.gridColumn} | ${style.gridRow}` : null;
+  };
+  const miniature = () => Object.fromEntries(
+    [...document.querySelectorAll('[data-miniature-member]')]
+      .map((node) => [node.getAttribute('data-miniature-member'), cell(node)]),
+  );
+  const folderTile = () => document.querySelector('[data-tile-id="gF"]') as HTMLElement;
+  /** The open folder board's cells for the members it draws. */
+  const openBoard = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(within(folderTile()).getByText('Packed Folder'));
+    const board = Object.fromEntries(MEMBERS
+      .map((id) => [id, cell(document.querySelector(`[data-tile-id="${id}"]`))])
+      .filter(([, at]) => at));
+    await user.click(screen.getByRole('button', { name: 'Library' }));
+    return board;
+  };
+
+  beforeEach(() => {
+    seedFolder();
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly report: ResizeObserverCallback) {}
+      observe() {
+        resize = (width) => this.report(
+          [{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver,
+        );
+      }
+      unobserve() {}
+      disconnect() {}
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    resize = null;
+    latest = null;
+  });
+
+  it('draws each member at the cell and span the open folder gives it, holes included', async () => {
+    const user = userEvent.setup();
+    render(<FaceGrid />);
+    const face = miniature();
+    expect(face).toMatchObject({
+      m1: '1 / span 4 | 1 / span 4',
+      m2: '5 / span 1 | 1 / span 1',
+      m3: '5 / span 2 | 3 / span 2',
+    });
+    const board = await openBoard(user);
+    const { m5: _belowTheTile, ...shown } = board;
+    expect(face).toEqual(shown);
+  });
+
+  it('draws only the rows the tile shows, and no count badge', () => {
+    render(<FaceGrid />);
+    expect(Object.keys(miniature())).toEqual(['m1', 'm2', 'm3', 'm4']);
+    expect(within(folderTile()).queryByText(/^\+\d/)).toBeNull();
+    expect(within(folderTile()).getByText('Packed Folder')).toBeInTheDocument();
+    expect(within(folderTile()).getByText(String(MEMBERS.length))).toBeInTheDocument();
+  });
+
+  it('repacks with the board when the column count changes', async () => {
+    const user = userEvent.setup();
+    render(<FaceGrid />);
+    const wide = miniature();
+    act(() => resize?.(500));
+    const narrow = miniature();
+    expect(narrow).not.toEqual(wide);
+    const board = await openBoard(user);
+    expect(board).toMatchObject(narrow);
+  });
+
+  it('follows a member resized inside the folder', async () => {
+    const user = userEvent.setup();
+    render(<FaceGrid />);
+    act(() => latest?.setSize('m2', 'medium'));
+    expect(miniature().m2).toMatch(/span 2 \| .* span 2$/);
+    const board = await openBoard(user);
+    expect(board.m2).toBe(miniature().m2);
+  });
+
+  it('keeps the mosaic in the detailed layout', () => {
+    render(<FaceGrid layout="detailed" />);
+    expect(document.querySelector('[data-folder-miniature]')).toBeNull();
+    expect(document.querySelector('[data-folder-mosaic]')).not.toBeNull();
   });
 });

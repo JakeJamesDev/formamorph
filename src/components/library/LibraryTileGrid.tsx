@@ -32,6 +32,7 @@ import {
   SLICE_SHARE,
   type GestureReading,
   type LibraryGroup,
+  type LibraryTabOrganization,
   type PackedTile,
   type PlacementMap,
   type TilePlacement,
@@ -39,6 +40,7 @@ import {
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
+import { FolderMiniature } from '@/components/library/FolderMiniature';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
 
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
@@ -138,6 +140,23 @@ const samePlaces = (a: PlacementMap, b: PlacementMap): boolean => {
   return ids.length === Object.keys(b).length
     && ids.every((id) => b[id] && a[id].row === b[id].row && a[id].col === b[id].col);
 };
+
+/**
+ * Where every tile of one board lives at this width. A filtered view packs the tiles it shows in the
+ * order the full board reads; the full view reads the player's arrangement.
+ *
+ * @param ids - Every tile of the board, which fixes a filtered view's reading order
+ * @param shown - The tiles the board draws
+ */
+const boardHomes = (
+  org: LibraryTabOrganization,
+  ids: string[],
+  shown: string[],
+  columns: number,
+  filtered: boolean,
+): PlacementMap => (filtered
+  ? filteredPlacements(org, ids, shown, columns)
+  : resolvePlacements(org, shown, columns));
 
 /** Rows the grid needs to show every home it is drawing. */
 const rowsFor = (
@@ -315,17 +334,24 @@ export function LibraryTileGrid<T>({
     () => new Map(items.filter((item) => !filter || filter(item)).map((item) => [idOf(item), item] as const)),
     [items, idOf, filter],
   );
+  // A folder's full tile list: the members this tab holds.
+  const membersOf = useCallback(
+    (group: LibraryGroup) => group.members.filter((id) => allIds.has(id)),
+    [allIds],
+  );
+  // The tiles of a list the view draws: all of them, or the ones the filter passes and folders holding one.
+  const shownOf = useCallback(
+    (ids: string[]) => (locked
+      ? ids.filter((id) => byId.has(id) || !!tiles.group(id)?.members.some((m) => byId.has(m)))
+      : ids),
+    [locked, byId, tiles],
+  );
   // The grid's full tile list, which fixes the reading order a filtered view packs in.
   const gridIds = useMemo(
-    () => (openGroup ? openGroup.members.filter((id) => allIds.has(id)) : tiles.topLevel),
-    [openGroup, allIds, tiles.topLevel],
+    () => (openGroup ? membersOf(openGroup) : tiles.topLevel),
+    [openGroup, membersOf, tiles.topLevel],
   );
-  const renderedIds = useMemo(
-    () => (locked
-      ? gridIds.filter((id) => byId.has(id) || !!tiles.group(id)?.members.some((m) => byId.has(m)))
-      : gridIds),
-    [locked, gridIds, byId, tiles],
-  );
+  const renderedIds = useMemo(() => shownOf(gridIds), [shownOf, gridIds]);
 
   const mediumCols = fitMediumColumns(width, minMediumWidth);
   const baseCols = mediumCols * 2;
@@ -338,11 +364,23 @@ export function LibraryTileGrid<T>({
   // Where every tile lives at this width: the arrangement the player left, seeded through the packer at
   // a width they have never used, with anything homeless dropped into the first free block.
   const homes = useMemo(
-    () => (layout !== 'grid' ? {}
-      : locked ? filteredPlacements(tiles.organization, gridIds, renderedIds, baseCols)
-      : resolvePlacements(tiles.organization, renderedIds, baseCols)),
+    () => (layout !== 'grid' ? {} : boardHomes(tiles.organization, gridIds, renderedIds, baseCols, locked)),
     [layout, locked, tiles.organization, gridIds, renderedIds, baseCols],
   );
+
+  // Each folder tile's face: the board the folder opens to, read the same way as `homes` above.
+  const folderBoards = useMemo(() => {
+    const boards = new Map<string, { members: string[]; places: PlacementMap }>();
+    if (layout !== 'grid' || openGroup) return boards;
+    for (const id of renderedIds) {
+      const group = tiles.group(id);
+      if (!group) continue;
+      const ids = membersOf(group);
+      const members = shownOf(ids);
+      boards.set(id, { members, places: boardHomes(tiles.organization, ids, members, baseCols, locked) });
+    }
+    return boards;
+  }, [layout, openGroup, renderedIds, tiles, membersOf, shownOf, baseCols, locked]);
 
   // The board on screen right now. While a grid drag runs this IS the preview: tiles hold real cells at
   // every moment, and the slide effect below animates them when those cells change.
@@ -354,6 +392,7 @@ export function LibraryTileGrid<T>({
   const cellWidth = width > 0 ? (width - (baseCols - 1) * GAP) / baseCols : 0;
   const cellHeight = cellWidth > 0 ? ((2 * cellWidth + GAP) / THUMB_RATIO[aspect] - GAP) / 2 : 0;
   const pitch = { x: cellWidth + GAP, y: cellHeight + GAP };
+  const rowHeight = Math.max(1, Math.round(cellHeight));
 
   // The slide, run before the browser paints the new cells: each moved tile is pushed back to where it
   // was, the push is forced into the layout, and then released. Doing it here rather than through state
@@ -697,6 +736,7 @@ export function LibraryTileGrid<T>({
     if (!group && !item) return null;
 
     const spot = live[id];
+    const board = folderBoards.get(id);
     const size = tiles.size(id);
     const compact = layout === 'grid' && size === 'small';
     // `transform` and `transition` are left out on purpose: the slide effect owns both, and a value
@@ -730,6 +770,7 @@ export function LibraryTileGrid<T>({
               else tileNodes.current.delete(id);
             }}
             style={style}
+            data-tile-id={id}
             data-group-target={id === preview.folderTarget ? '' : undefined}
             className={cn(
               'relative min-w-0',
@@ -753,6 +794,25 @@ export function LibraryTileGrid<T>({
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
                 })}
+                miniature={board && (
+                  <FolderMiniature
+                    {...board}
+                    spanOf={spanOf}
+                    thumbnailOf={(memberId) => {
+                      const member = byId.get(memberId);
+                      return member ? thumbnailOf(member) : undefined;
+                    }}
+                    columns={baseCols}
+                    boardWidth={width}
+                    rowHeight={rowHeight}
+                    gap={GAP}
+                    tile={{
+                      width: spanOf(id) * cellWidth + (spanOf(id) - 1) * GAP,
+                      height: spanOf(id) * cellHeight + (spanOf(id) - 1) * GAP,
+                    }}
+                    fit={thumbFit(aspect)}
+                  />
+                )}
                 layout={layout}
                 fill={layout === 'grid'}
                 compact={compact}
@@ -770,7 +830,7 @@ export function LibraryTileGrid<T>({
   const gridStyle: React.CSSProperties = layout === 'grid'
     ? {
       gridTemplateColumns: `repeat(${baseCols}, minmax(0, 1fr))`,
-      gridTemplateRows: `repeat(${rowsFor(live, drawnIds, spanOf, claim)}, ${Math.max(1, Math.round(cellHeight))}px)`,
+      gridTemplateRows: `repeat(${rowsFor(live, drawnIds, spanOf, claim)}, ${rowHeight}px)`,
     }
     : {};
 
