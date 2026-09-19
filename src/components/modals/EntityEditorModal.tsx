@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react
 import { toast } from 'react-toastify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
-import EntityFields from '@/managers/EntityFields';
+import { EntityDescriptionFields, EntityProfileFields } from '@/managers/EntityFields';
+import { ENTITY_EDITOR_TABS, type EntityEditorTab } from '@/views/entityPanelTabs';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
@@ -24,30 +25,25 @@ import type { Entity, Placeholder } from '@/types';
  *  a baseline is taken once and the graph it describes is about to be edited. */
 const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
 
-const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'entity', label: 'Character' },
-  { value: 'placeholders', label: 'Placeholders' },
-];
-
-type EntityTab = (typeof TABS)[number]['value'];
-
 /**
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
  * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Export
  * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
- * `onPublish` (when the user is signed in) hands the character up to the publish dialog.
+ * `onPublish` (when the user is signed in) hands the character up to the publish dialog. The tabs past
+ * Overview are the World Editor entity panel's, over the same field bodies.
  */
-const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
+const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = 'profile' }: {
   entityId: string | null;
   draft?: Entity | null;
   onClose: () => void;
   onPublish?: (entity: Entity) => void;
+  initialTab?: EntityEditorTab;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
-  // Opens on Character rather than Overview: tags are the thing you set once, the descriptions are
-  // what you come back to edit.
-  const [tab, setTab] = useState<EntityTab>('entity');
+  // Opens on Profile rather than Overview: tags are the thing you set once, the entity itself is what you
+  // come back to edit.
+  const [tab, setTab] = useState<EntityEditorTab>(initialTab);
+  useEffect(() => { setTab(initialTab); }, [initialTab]);
   const baselineRef = useRef('');
   // Reuses cached serialization for the entity's unchanged base64 image/model on each keystroke; matches
   // the JSON.stringify baseline byte-for-byte.
@@ -147,9 +143,9 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
         title={labelPlaceholders(entity?.name ?? '', pool, { letters }) || 'Character'}
         contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         loading={!entity}
-        tabs={TABS}
+        tabs={ENTITY_EDITOR_TABS}
         tab={tab}
-        onTabChange={(v) => setTab(v as EntityTab)}
+        onTabChange={(v) => setTab(v as EntityEditorTab)}
         hasUnsavedChanges={hasUnsavedChanges}
         onSave={handleSave}
         onClose={onClose}
@@ -162,18 +158,29 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish }: {
               <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
             </div>
           </ScrollArea>
-        ) : entity && tab === 'entity' ? (
+        ) : entity && (tab === 'profile' || tab === 'descriptions') ? (
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-4">
               <ChipInsertTargetProvider>
                 <PlaceholderPaletteBar placeholders={pool} />
-                <EntityFields value={entity} onChange={handleChange} placeholders={pool} />
+                <div className="space-y-4">
+                  {tab === 'profile' ? (
+                    <EntityProfileFields
+                      value={entity}
+                      onChange={handleChange}
+                      placeholders={pool}
+                      columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)]"
+                    />
+                  ) : (
+                    <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
+                  )}
+                </div>
               </ChipInsertTargetProvider>
             </div>
           </ScrollArea>
         ) : (
           <PlaceholderStoreProvider value={phStore}>
-            {/* The same palette the Character tab gets, over the value fields: a value is a chip field too. */}
+            {/* The same palette the field tabs get, over the value fields: a value is a chip field too. */}
             <ChipInsertTargetProvider>
               <div className="flex min-h-0 flex-1 flex-col">
                 <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />

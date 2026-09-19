@@ -202,16 +202,26 @@ export const EntityModelField = ({ value, onChange }: EntityFieldGroupProps) => 
 };
 
 /**
- * The library `EntityEditorModal`'s stacked entity body: the same field groups the World Editor composes,
- * in one column and without the locations picker, bound to isolated state rather than the world store.
+ * The Profile tab of both entity editors: the picture and its tags in one grid with the identity fields,
+ * then `locations` (World Editor only) and the model. `columnsClassName` sets when the grid splits into
+ * two columns, since each host's pane widens differently.
  */
-const EntityFields = (props: EntityFieldGroupProps) => (
-  <div className="space-y-4">
-    <EntityIdentityFields {...props} />
-    <EntityDescriptionFields {...props} />
-    <EntityGalleryField {...props} />
+export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations, ...props }: EntityFieldGroupProps & {
+  columnsClassName: string;
+  nameHandlers?: RenameFieldHandlers;
+  locations?: ReactNode;
+}) => (
+  <>
+    <EntityImageWidget {...props}>
+      <div className={`grid gap-4 ${columnsClassName}`}>
+        <ImageGallery />
+        <div className="space-y-4">
+          <EntityIdentityFields {...props} nameHandlers={nameHandlers} />
+          <ImageTags />
+        </div>
+      </div>
+    </EntityImageWidget>
+    {locations}
     <EntityModelField {...props} />
-  </div>
+  </>
 );
-
-export default EntityFields;

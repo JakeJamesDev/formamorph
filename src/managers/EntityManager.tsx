@@ -2,14 +2,7 @@ import { useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
-import {
-  EntityDescriptionFields,
-  EntityIdentityFields,
-  EntityImageWidget,
-  EntityLocationsField,
-  EntityModelField,
-} from './EntityFields';
-import { ImageGallery, ImageTags } from './ImageTagsField';
+import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
@@ -24,9 +17,7 @@ import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/vi
 /**
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions and Placeholders.
  *
- * The panel remounts per entity, so the chosen tab is the editor's to hold and arrives as a prop. Profile
- * places the picture and its tags in separate columns of one grid, which is why the gallery widget is opened
- * up here rather than drawn as a single box.
+ * The panel remounts per entity, so the chosen tab is the editor's to hold and arrives as a prop.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the Overview panel takes for its own pair.
@@ -82,30 +73,27 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
         <PanelTabsList tabs={tabs} stripLabel="Entity Fields" />
 
         <TabsContent value="profile" className="space-y-4">
-          <EntityImageWidget {...groupProps}>
-            {/* Two columns need ~570px, and the pane holding them is not monotonic in viewport width: below
-                `md` it is the full-width detail sheet, at `md` it becomes half the editor. So the second
-                column comes back only where the pane is wide enough — once in the sheet, again at `xl`. */}
-            <div className="grid gap-4 sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]">
-              <ImageGallery />
-              <div className="space-y-4">
-                <EntityIdentityFields {...groupProps} nameHandlers={rename} />
-                <ImageTags />
-              </div>
-            </div>
-          </EntityImageWidget>
-          <EntityLocationsField
+          <EntityProfileFields
             {...groupProps}
-            // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
-            options={locationRows(locations).map(({ location, depth }) => ({
-              label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
-              value: location.id,
-              depth,
-            }))}
-            selectedIds={selectedLocationIds}
-            onLocationsChange={handleLocationsChange}
+            nameHandlers={rename}
+            // Two columns need ~570px, and the pane holding them is not monotonic in viewport width: below
+            // `md` it is the full-width detail sheet, at `md` it becomes half the editor. So the second
+            // column comes back only where the pane is wide enough — once in the sheet, again at `xl`.
+            columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]"
+            locations={(
+              <EntityLocationsField
+                {...groupProps}
+                // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
+                options={locationRows(locations).map(({ location, depth }) => ({
+                  label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
+                  value: location.id,
+                  depth,
+                }))}
+                selectedIds={selectedLocationIds}
+                onLocationsChange={handleLocationsChange}
+              />
+            )}
           />
-          <EntityModelField {...groupProps} />
         </TabsContent>
 
         <TabsContent value="descriptions" className="space-y-4">

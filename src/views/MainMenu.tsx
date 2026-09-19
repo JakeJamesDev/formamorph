@@ -97,6 +97,7 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
+import { type EntityEditorTab } from "@/views/entityPanelTabs";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { useTutorial } from "@/lib/tutorials";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -2721,6 +2722,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         draft={draftEntity}
         onClose={() => { setEditingEntityId(null); setDraftEntity(null); refreshEntities(); }}
         onPublish={isAuthenticated ? publishEntity : undefined}
+        initialTab={devRoute?.modal === 'entityEditor' ? (devRoute.tab as EntityEditorTab | undefined) : undefined}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>

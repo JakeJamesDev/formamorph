@@ -70,14 +70,13 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 vi.mock('./ImageTagsField', () => ({
   ImageGallery: () => null,
   ImageTags: () => null,
-  ImageWidget: () => null,
+  ImageWidget: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('./EntityFields', async (importOriginal) => {
   const real = await importOriginal<typeof import('./EntityFields')>();
   return {
     ...real,
-    EntityImageWidget: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
     EntityDescriptionFields: () => null,
     EntityLocationsField: () => null,
     EntityModelField: () => null,
