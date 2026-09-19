@@ -3920,18 +3920,18 @@ const GameViewer = ({
 
       // Seed the entry-step characters into the starting location as runtime-only entities (never written
       // to the authored world). They flow through the existing discovered-entity path; loadGame overrides.
-      if (location && initialCharacters && initialCharacters.length > 0) {
+      // The opening draw reads the same list, so a reload's pool matches this one.
+      const picked = location ? initialCharacters ?? [] : [];
+      if (location && picked.length > 0) {
         setDiscoveredEntities(
-          initialCharacters.map((entity) => ({ entity, locationId: location.id, sourceTurnId: INITIAL_SOURCE_TURN_ID })),
+          picked.map((entity) => ({ entity, locationId: location.id, sourceTurnId: INITIAL_SOURCE_TURN_ID })),
         );
       }
 
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      const pool = openingPool({
-        overview: worldOverview, entities, startingLocationId: location?.id, picked: location ? initialCharacters ?? [] : [],
-      });
+      const pool = openingPool({ overview: worldOverview, entities, startingLocationId: location?.id, picked });
       const drawn = drawUnseenOpening(pool, [], Math.random);
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
