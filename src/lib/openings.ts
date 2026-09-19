@@ -11,6 +11,7 @@ import type { Entity, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /** What a world with nothing to draw opens on. */
 export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE, kind: 'action' };
+
 /** Anything that carries openings: the world overview or an entity. An opening id is unique within its
  *  owner only, since a library entity added twice keeps its ids. */
 export interface OpeningOwner {
@@ -74,12 +75,6 @@ export function openingPool({ overview, entities = [], startingLocationId, picke
 }
 
 const poolWeight = (pool: readonly PoolEntry[]) => pool.reduce((sum, e) => sum + e.weight, 0);
-
-/** Each row's chance of being drawn from the whole pool, as a percentage, in pool order. */
-export function poolChances(pool: readonly PoolEntry[]): number[] {
-  const total = poolWeight(pool);
-  return pool.map((e) => (total > 0 ? (e.weight / total) * 100 : 0));
-}
 
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawOpening(pool: readonly PoolEntry[], random: () => number): Opening {
