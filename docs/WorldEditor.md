@@ -31,11 +31,11 @@ The world's own tab: its name, description, thumbnail and the AI-facing text tha
 | **World Description** | The blurb on the library card. Players read it before they play, so placeholders stay as plain text here. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices; **Gameplay** shows when they enter the world. Both take markdown. |
 | **System Prompt Addition** | Text added to the narrator's prompt on every turn of this world. |
-| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Opening** item holds the world's [Openings](#openings). |
+| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](#openings). |
 
 ### Openings
 
-**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Opening** to write them. When a player presses **Start Game**, the game draws one opening from the list.
+**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Openings** to write them. When a player presses **Start Game**, the game draws one opening from the list.
 
 Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
 
@@ -60,7 +60,7 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 
 #### The list switch
 
-The checkbox beside **Opening** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening.
+The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening.
 
 > 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
 
@@ -70,7 +70,7 @@ A world with no openings, or with the switch off, starts on the default opening.
 
 #### Every opening in one place
 
-The **Opening** panel shows every opening in the world, grouped by owner:
+The **Openings** panel shows every opening in the world, grouped by owner:
 
 | Group | Holds |
 |---|---|
@@ -251,7 +251,7 @@ The default prompt feeds entities from three places, as separate blocks: the pla
 | Rule | Effect |
 |---|---|
 | **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
-| **The world switch** | The world's **Opening** checkbox turns the entity's openings off too. An entity has no switch of its own. |
+| **The world switch** | The world's **Openings** checkbox turns the entity's openings off too. An entity has no switch of its own. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
 
 ### Groups
