@@ -194,6 +194,7 @@ Every guard is proven by reinstating the fault once and seeing the test fail. Th
 
 ## Further Notes
 
+- **Persona alignment (2026-09-18).** The Persona spec builds on this work and records three rulings that touch it. The user-macro module stays the one owner of the stored form and the render, and the Persona work extends that render: a name with a persona, the built "you" rules with none. The marker also becomes a chip in opening text fields. The pool takes its authored entities from the persona cast, so the openings of a world entity that the player plays leave the pool. None of this changes what is built here until those tickets land.
 - **Follow-up:** when the player-name spec lands, the stored user macro resolves to the player's name. No second import is needed, which is why import keeps the marker.
 - Five points were put to the project owner as assumptions and drew no objection: the world switch does not block picked entities; the world panel lists all authored entities and marks those at no starting location; history keeps the hidden start message before a written page one; the Test Bench shows a written page one with no prompt; and the items above stay out of scope. Any of them can be reopened before tickets are cut.
 - The older Opening Cue spec describes the single-cue feature this work replaces. Its resolver rule still holds: every fallback site reads one function.

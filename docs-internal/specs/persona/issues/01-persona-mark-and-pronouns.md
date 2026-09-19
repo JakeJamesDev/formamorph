@@ -14,7 +14,9 @@ Reasoning effort: medium
 ## Acceptance criteria
 
 - [ ] The Persona mark is an optional boolean on the entity. Pronouns is optional free text on the entity.
-- [ ] Both editors show the mark and the pronouns field through the shared entity fields body, so the two editors cannot drift.
+- [ ] Both editors show the mark and the pronouns field on the Profile tab, through the shared entity fields body and the shared entity tab list, so the two editors cannot drift.
+- [ ] Pronouns joins the field-to-tab map, and the World Editor find bar opens the Profile tab on a pronouns hit. The tab tests cover it.
+- [ ] In the World Editor the mark is an Advanced control, and an entity that carries it counts as Advanced data for the notice beside the mode switch. Pronouns shows in both modes. The library editor shows both.
 - [ ] The Entities tab filter shows all entities or only personas. The filter choice is device-local.
 - [ ] The entity context builder renders pronouns in the Simple, Markdown, and XML formats. An entity with no pronouns renders exactly as it does today. Builder tests cover each format.
 - [ ] An exported entity card and a published listing carry both fields. An import keeps them. Round-trip tests prove it.
@@ -26,4 +28,4 @@ Reasoning effort: medium
 
 ## Scope notes
 
-Openings ticket 01 adds tabs to the same entity editor. Check for a running session on it before the first edit, and sequence the editor work. This ticket adds no picker and no gameplay use of the mark.
+The Openings work is built. It gave both entity editors one shared tab list with a field-to-tab map, and this ticket builds on that list. This ticket adds no picker and no gameplay use of the mark.

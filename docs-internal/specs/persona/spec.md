@@ -9,7 +9,7 @@ The player has no identity in Formamorph. No name exists, and no description exi
 
 This blocks three things:
 
-- A player who comes from SillyTavern cannot bring the persona they wrote there. An imported character card loses every `{{user}}` reference, because the importer rewrites it to "the player".
+- A player who comes from SillyTavern cannot bring the persona they wrote there. An imported character card loses every `{{user}}` reference in its description, because the importer rewrites it to "the player". Imported openings keep the reference, and they render it as "you" because no name exists.
 - A player cannot say who they are one time and use that in every world.
 - An author cannot let the player play as one of the world's own entities.
 
@@ -101,24 +101,28 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 ### Player Name chip
 
 47. As an author, I want a Player Name chip in world, entity, and dictionary text fields, so that authored text can say the player's name.
-48. As a player with no persona, I want that chip to read "the player", so that text stays correct.
+48. As a player with no persona, I want that chip to read "the player" in text the AI reads and "you" in an opening, so that each text stays correct.
 49. As a player, I want an imported card's `{{user}}` to become the Player Name chip, so that the card addresses my persona by name.
 50. As a player, I want an imported lorebook's `{{user}}` to become the same chip, so that lore reads the same way.
+51. As a player, I want an imported greeting to say my persona's name where it said "you" before, so that page one addresses me as the card intended.
+52. As a player, I want openings I imported before this feature to gain my name with no second import, so that old cards improve at once.
+53. As an author, I want the Player Name chip in opening text, so that a written page one can name the player.
+54. As a player who plays a world entity, I want that entity's openings out of the draw, so that I am never greeted by myself.
 
 ### Placeholders
 
-51. As a player, I want my library persona's own placeholders to resolve in play, so that a persona with chips renders complete text.
-52. As a player, I want those placeholders rolled one time per playthrough, so that my persona stays stable across turns.
+55. As a player, I want my library persona's own placeholders to resolve in play, so that a persona with chips renders complete text.
+56. As a player, I want those placeholders rolled one time per playthrough, so that my persona stays stable across turns.
 
 ### SillyTavern import
 
-53. As an ST user, I want to import ST's persona backup file, so that all my personas arrive in one action.
-54. As an ST user, I want to pick my avatar image files with the backup file, so that each persona gets its portrait.
-55. As an ST user, I want a persona with no matching image to get the initials placeholder, so that the import never fails on a missing file.
-56. As an ST user, I want `{{user}}` in a persona description to become that persona's own name, so that the text reads correctly here.
-57. As an ST user, I want `{{char}}` in a persona description to become "the other character", so that no raw macro remains.
-58. As an ST user, I want ST's default persona to become my global default when I have none, so that my setup carries over.
-59. As an ST user, I want a report of what the import skipped, so that I know what to fix by hand.
+57. As an ST user, I want to import ST's persona backup file, so that all my personas arrive in one action.
+58. As an ST user, I want to pick my avatar image files with the backup file, so that each persona gets its portrait.
+59. As an ST user, I want a persona with no matching image to get the initials placeholder, so that the import never fails on a missing file.
+60. As an ST user, I want `{{user}}` in a persona description to become that persona's own name, so that the text reads correctly here.
+61. As an ST user, I want `{{char}}` in a persona description to become "the other character", so that no raw macro remains.
+62. As an ST user, I want ST's default persona to become my global default when I have none, so that my setup carries over.
+63. As an ST user, I want a report of what the import skipped, so that I know what to fix by hand.
 
 ## Implementation Decisions
 
@@ -127,7 +131,8 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - A Persona is an Entity with a boolean Persona mark. No new record type, store, editor, or library tab exists.
 - The mark means one thing in two places. On a library entity it means "this is one of my personas". On a world entity it means "the player can play as this entity".
 - Every entity gains an optional pronouns field. It is free text. The entity context builder renders it for every entity, not only personas.
-- The entity editor shows the mark and the pronouns field in both the World Editor and the library editor.
+- Both entity editors build their tabs from one shared tab list, which also maps each searchable field to its tab. The mark and the pronouns field go on the Profile tab through the shared field body, and pronouns joins the field-to-tab map so that the find bar opens the correct tab.
+- In the World Editor, the mark is an Advanced control, like the Openings and Placeholders tabs. An entity that carries the mark counts as Advanced data for the notice beside the mode switch. Pronouns shows in both modes. The library editor is always Advanced and shows both.
 - "Convert entity to persona" is the act of setting the mark. No copy is made.
 
 ### The persona reference
@@ -156,6 +161,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - The world overview gains one setting with three values. Open is the default and is the meaning of an absent value.
 - Open: any persona. Preselect follows the order above.
 - Fixed: None is preselected, and Quick Start uses None, unless the player made a pick in that world before. The player can still pick.
+- The setting is an Advanced control in the World Editor.
 - Cast: the picker lists only the world's own personas and preselects the first. None is not offered. A Cast world with no marked entity behaves as Fixed.
 
 ### Enter-world
@@ -164,6 +170,15 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - A library entity picked as the persona is removed from the added characters for that playthrough. The picker and the character list enforce this in both directions.
 - Picking a world persona preselects the starting location to the first of that entity's locations that is a starting location. The player can change it. No pick is forced.
 - The pick travels to the game the same way the chosen dictionaries and added characters do.
+
+### Openings and the persona
+
+- The new-game seed step sets the persona reference before it draws the opening, so the first draw renders the marker with the persona's name. Page-one regenerate renders with the persona that is current at that time.
+- A page one that is already written keeps its text when the persona changes.
+- The opening pool takes its authored entities from the persona resolution module's cast. A played world entity's openings therefore leave the pool, for the first draw, for regenerate, and for the pool a loaded save rebuilds.
+- A library persona is never one of the picked entities, so its openings never enter the pool. The one-role rule already keeps it out of that list.
+- A Cast or Fixed world changes nothing in the pool rules. The world's openings switch and the picked-entity priority work as built.
+- The Test Bench opening lens has no persona. It shows the pool as the world defines it.
 
 ### In game
 
@@ -191,11 +206,21 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 ### The Player Name chip
 
-- A reserved built-in chip resolves at render time to the persona's name, or to "the player" when no persona is set.
-- It lives beside the placeholder grammar as a fixed token that needs no definition, no Roll, and no home. The placeholder resolver resolves it in the same pass as authored chips, so every text that already resolves placeholders gains it.
-- World, entity, and dictionary text fields offer it in the chip menu.
-- The character card importer and the lorebook importer write it where they wrote "the player" before.
-- Text that holds the chip and is read by an older app version shows the raw token. That is the cost of the shape change.
+- The Openings work is built, and it set the contract. The stored form of the chip is the canonical user macro, `{{user}}`. One pure user-macro module owns that form and its render. Openings calls that render at every opening draw, where it gives "you" and "your" today.
+- This work extends that module. It does not add a second token or a second module. The render takes the persona's name and the kind of text it renders.
+- With a persona, the marker renders as the persona's name on every surface. A possessive stays as the text wrote it.
+- With no persona, the fallback follows the kind of text:
+
+| Text | Fallback |
+|---|---|
+| Opening text, which the player reads as page one or submits | "you" and "your", with the sentence-start and possessive rules that Openings built. Unchanged. |
+| World, entity, and dictionary text, which the AI reads as reference | "the player" and "the player's" |
+
+- The marker needs no definition, no Roll, and no home. Every text that resolves placeholders also renders the marker, in the same pass, so no reader handles it alone.
+- The placeholder chip editor shows the marker as a Player Name chip and offers it in the chip menu of world, entity, dictionary, and opening text fields. Imported openings already hold the marker as plain text. They show as chips with no re-import.
+- The character card importer writes the marker into description fields, where it wrote "the player" before. The lorebook importer does the same. Both reuse the module's canonical writer, so every spelling of the macro becomes the one form.
+- Entities and lore imported before this work keep their plain "the player" text. No migration runs.
+- Text that holds the marker and is read by an older app version shows the raw token. For description and lore text, that is the cost of the shape change. Opening text already carries it.
 
 ### Library persona placeholders
 
@@ -240,7 +265,8 @@ A good test here states a playthrough's inputs and asserts what the player or th
 - **Reader coverage guard.** One test lists the entity readers and proves each takes its cast from the module. The guard must fail when a reader reads the raw entity list. Prove it by pointing one reader at the raw list and watching it fail.
 - **Preselect rules.** Pure tests over the world's player setting, the remembered pick, and the global default, for both the step and Quick Start. Include Cast with no marked entity.
 - **Persona chip.** Builder tests for each detail and format variant, the known-person line for world personas only, and the empty render with affixes. Prior art: the entity context builder tests and the template round-trip tests.
-- **Player Name chip.** Resolver tests: persona set, no persona, and a text that mixes it with authored chips. Importer tests assert that `{{user}}` becomes the chip.
+- **Player Name chip.** The user-macro module is the seam. Tests cover a persona set, no persona on each kind of text, a possessive with and without a persona, and a text that mixes the marker with authored chips. Every "you" case that Openings built must still pass unchanged; that suite is the regression guard. Importer tests assert that description and lore text keep the canonical marker.
+- **Openings and the persona.** Through the Openings module and its seeded random source: a played world entity's rows are absent from the pool at the first draw, at regenerate, and after a load. A draw with a persona renders the name in page one.
 - **AI context, end to end.** The Test Bench's AI-context builder is the highest existing seam for "what the model sees". Tests there assert the persona appears in the prompts of the coverage table and is absent from the rest, and that a played world entity is absent from the roster.
 - **Library persona placeholders.** Tests assert that a persona's own Wildcard resolves in play, keeps one Roll across turns, and keeps it across a switch away and back.
 - **ST import converter.** Pure tests over a fixture backup: name and description mapping, macro rewrites, filename matching, the missing-image path, the default persona rule, and a malformed file. Prior art: the lorebook import tests and the tavern card tests. Fixture names come from the repo's neutral set.
@@ -251,7 +277,7 @@ Motion and timing are never asserted. UI checks use the dev-router and static DO
 
 ## Out of Scope
 
-- Greeting and example dialogue fields, depth injection, per-world request toggles, and the chat world itself. Each is a separate effort on the ST parity list.
+- Example dialogue, depth injection, per-world request toggles, and the chat world itself. Each is a separate effort on the ST parity list. Greetings are built, as Openings.
 - A link between a persona and the player's Avatar, and any use of the entity's own 3D model or sound for the player.
 - The persona portrait inside the game beyond the side-panel row.
 - ST's persona title, position, depth, and lock rules.
@@ -266,8 +292,8 @@ Motion and timing are never asserted. UI checks use the dev-router and static DO
 - The decisions in this spec come from a recorded interview, questions 1 to 27. The earlier ST parity research stays the reference for how ST composes its prompt.
 - ST facts were read live on 2026-09-18 from the SillyTavern docs repository and the persona script on the release branch. The backup file holds no images, which is why the import takes image files beside it.
 - The staged planner's player-name list holds trait names today. Moving it to the persona's name is a behavior change for playthroughs with no persona: the list becomes empty there.
-- **The Openings spec meets this one in three places.**
-  - Openings keeps ST's user macro in stored opening text and shows it as "you", to wait for a player-name feature. The Player Name chip is that feature. Its stored form must be the form Openings writes, so that one import serves both. Whichever effort builds second adopts the first one's form.
-  - A played entity is out of the cast, so its openings leave the opening pool for that playthrough. The persona resolution module's cast is the list the opening draw reads.
-  - Openings adds tabs to the entity editor. The Persona mark and the pronouns field land in the same editor. Sequence those tickets so that two sessions do not edit it at one time.
-- A suggested ticket order: the entity fields and the resolution module first, then the chip and default prompts with probes, then enter-world and the side panel, then the Player Name chip, then library persona placeholders, then the ST import.
+- **Openings is built, and this spec builds on it.** The three meeting points are settled in the sections above:
+  - The user macro: see The Player Name chip.
+  - The opening pool: see Openings and the persona.
+  - The entity editor: see The record.
+- The ticket order and the blocking edges live in the ticket files.
