@@ -433,14 +433,14 @@ const CommunityCreationsBrowser = ({
 
   const {
     searchQuery, applySearchInput, authorFilter, setAuthorFilter, tagFilter, setTagFilter,
-    tagMode, setTagMode, statusFilter, toggleStatus, clearFilters, activeFilterCount,
+    tagMode, setTagMode, modelFilter, setModelFilter, statusFilter, toggleStatus, clearFilters, activeFilterCount,
     sortField, setSortField, sortOrder, setSortOrder,
     sortUpdatesFirst, setSortUpdatesFirst, currentPage, setCurrentPage,
     hiddenWorldIds, hiddenTags, hiddenAuthors,
     hideRemoteWorld, hideRemoteTag, hideRemoteAuthor,
     setHiddenTagsList, setHiddenAuthorsList,
     resetHiddenWorlds, unhideWorld, hiddenWorldName,
-    allAuthors, allTags, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
+    allAuthors, allTags, allModels, filteredRemoteWorlds, totalPages, pagedRemoteWorlds,
   } = useCommunityBrowserFilters(
     catalogInView, downloadStateForRecord, open, browseTab,
     currentUser?.id ? String(currentUser.id) : undefined,
@@ -786,13 +786,13 @@ const CommunityCreationsBrowser = ({
     >
     <div className="relative flex-grow min-w-[200px]">
       <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      {/* `author:`/`tag:`/`status:` typed here become filter chips — see the hook's applySearchInput.
+      {/* `author:`/`tag:`/`status:`/`model:` typed here become filter chips — see the hook's applySearchInput.
           Enter finishes the token under the cursor, a space finishes it as you keep typing. */}
       <Input
         // The prefix hint is desktop-only: on mobile it outruns the field and hides the word "Search".
         placeholder={isMobile
           ? `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}…`
-          : `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}… or type author:, tag:, status:`}
+          : `Search ${BROWSE_TAB_LABELS[browseTab].many.toLowerCase()}… or type author:, tag:, ${browseTab === 'prompt' ? 'model:, ' : ''}status:`}
         className="pl-8"
         value={searchQuery}
         onChange={(e) => { dismissIfShowing('community-search-prefixes'); applySearchInput(e.target.value); }}
@@ -944,6 +944,7 @@ const CommunityCreationsBrowser = ({
       clearFilters={clearFilters}
       allAuthors={allAuthors}
       allTags={allTags}
+      models={browseTab === 'prompt' ? { filter: modelFilter, setFilter: setModelFilter, options: allModels } : undefined}
       signedIn={isAuthenticated}
       centered={eventChips}
       trailing={updatesControl}
