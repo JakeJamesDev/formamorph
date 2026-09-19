@@ -219,3 +219,61 @@ describe('a character card’s tags', () => {
     expect(parsed.tags).toEqual(['npc']);
   });
 });
+
+describe('a character card’s openings', () => {
+  const withOpenings: Entity = {
+    id: 'w',
+    name: 'Wren',
+    openings: [
+      { id: 'o1', text: 'Wren waves from the jetty.', kind: 'narration' },
+      { id: 'o2', text: 'I call out to Wren.', kind: 'action' },
+    ],
+    openingWeights: { o2: 3 },
+  };
+
+  it('come back in order under fresh ids, with the weights re-keyed', () => {
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(withOpenings)), { w: 4, h: 4 });
+    const parsed = parseEntityCardData(JSON.parse(readEntityCard(bytes) as string));
+    const openings = parsed.openings ?? [];
+    expect(openings.map((o) => [o.text, o.kind])).toEqual([
+      ['Wren waves from the jetty.', 'narration'],
+      ['I call out to Wren.', 'action'],
+    ]);
+    expect(openings.map((o) => o.id)).not.toContain('o1');
+    expect(openings.map((o) => o.id)).not.toContain('o2');
+    expect(parsed.openingWeights).toEqual({ [openings[1].id]: 3 });
+  });
+
+  it('carry the shared placeholders an opening’s chips use', () => {
+    const town = { id: 'town', name: 'Town', values: phValues(['Sedge']) };
+    const unused = { id: 'unused', name: 'Weather', values: phValues(['Rain']) };
+    const card = buildEntityCardData(
+      { id: 'w', name: 'Wren', openings: [{ id: 'o1', text: 'Dawn in {{ph:town:world:p1}}.', kind: 'narration' }] },
+      [town, unused],
+    );
+    expect(card.sharedPlaceholders).toEqual([town]);
+  });
+
+  it('are left off a card for an entity with none', () => {
+    const card = buildEntityCardData({ id: 'q', name: 'Plain', openings: [] });
+    expect(card).not.toHaveProperty('openings');
+    expect(card).not.toHaveProperty('openingWeights');
+  });
+
+  it('are absent, with no error, on a card written before openings', () => {
+    const parsed = parseEntityCardData({ formamorphKind: 'entity', name: 'Old' });
+    expect(parsed).not.toHaveProperty('openings');
+    expect(parsed).not.toHaveProperty('openingWeights');
+  });
+
+  it('drop junk rows rather than import them', () => {
+    const parsed = parseEntityCardData({
+      formamorphKind: 'entity',
+      name: 'X',
+      openings: [null, { text: 5 }, { id: 'a', text: 'Kept.', kind: 'bogus' }],
+      openingWeights: 'heavy',
+    });
+    expect(parsed.openings?.map((o) => [o.text, o.kind])).toEqual([['Kept.', 'action']]);
+    expect(parsed).not.toHaveProperty('openingWeights');
+  });
+});

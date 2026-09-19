@@ -387,6 +387,18 @@ describe('adoptEntityPlaceholders', () => {
     expect(chipIds(entity.aiDescription!)).toEqual([owned?.id, 'w-weather']);
   });
 
+  it('re-aims the chips in an entity’s openings at the defs they land on', () => {
+    const card: Entity = {
+      id: 'card', name: 'Molly',
+      openings: [{ id: 'o1', text: `${chip('eyes', 'a')} under ${chip('shared', 'b')}`, kind: 'narration' }],
+      placeholders: [P('eyes', 'Eyes', ['amber'])],
+      sharedPlaceholders: [P('shared', 'Weather', ['rain', 'sun'])],
+    };
+    const { entity } = adoptEntityPlaceholders(card, [P('w-weather', 'Weather', ['rain', 'sun'])]);
+    expect(chipIds(entity.openings![0].text)).toEqual([entity.placeholders?.[0].id, 'w-weather']);
+    expect(entity.openings![0]).toMatchObject({ id: 'o1', kind: 'narration' });
+  });
+
   it('adds a shared def the world has no match for, and re-aims a chip inside an owned value at it', () => {
     const card: Entity = {
       id: 'card', name: 'Molly',

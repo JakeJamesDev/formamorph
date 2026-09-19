@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, entityTabForField } from './entityPanelTabs';
+import { openingFieldKey } from '@/lib/openings';
 
 /**
  * The field-to-tab map behind Find's landing.
@@ -25,6 +26,11 @@ describe('entityTabForField', () => {
     expect(entityTabForField('playerDescription')).toBe('descriptions');
     expect(entityTabForField('aiDescription')).toBe('descriptions');
     expect(entityTabForField('aiSummary')).toBe('descriptions');
+  });
+
+  it('puts every opening row on Openings', () => {
+    expect(entityTabForField(openingFieldKey('o1'))).toBe('openings');
+    expect(entityTabForField(openingFieldKey('another-id'))).toBe('openings');
   });
 
   it('answers nothing for a key it does not place', () => {

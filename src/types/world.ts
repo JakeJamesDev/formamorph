@@ -172,6 +172,11 @@ export interface Entity {
    *  entity when it is deleted or duplicated. Off-world (export bundle / library) they stay the entity's
    *  own, and an import keeps them so under fresh ids. */
   placeholders?: Placeholder[];
+  /** This entity's own openings, in authored order. They join the world's pool when the entity stands at the
+   *  player's starting location (see lib/openings). Entities have no switch of their own. */
+  openings?: Opening[];
+  /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
+  openingWeights?: Record<string, number>;
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];

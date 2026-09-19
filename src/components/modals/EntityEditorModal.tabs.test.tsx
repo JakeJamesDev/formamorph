@@ -85,11 +85,11 @@ describe('the two entity editors', () => {
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
     const worldTabs = tabNames();
 
-    expect(library).toEqual(['Overview', 'Profile', 'Descriptions', 'Placeholders']);
+    expect(library).toEqual(['Overview', 'Profile', 'Descriptions', 'Openings', 'Placeholders']);
     expect(worldTabs).toEqual(library.slice(1));
   });
 
-  it('drop Placeholders in the World Editor in Simple mode, and keep it in the always-Advanced library', () => {
+  it('drop Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
     const simple = (ui: React.ReactNode) => (
       <SettingsProvider>
         <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: vi.fn() }}>{ui}</EditorModeContext.Provider>
@@ -99,7 +99,7 @@ describe('the two entity editors', () => {
     expect(tabNames()).toEqual(['Profile', 'Descriptions']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
-    expect(tabNames()).toEqual(['Overview', 'Profile', 'Descriptions', 'Placeholders']);
+    expect(tabNames()).toEqual(['Overview', 'Profile', 'Descriptions', 'Openings', 'Placeholders']);
   });
 
   it('open the library editor on Profile, not Overview', () => {
@@ -109,10 +109,10 @@ describe('the two entity editors', () => {
 
   it('put each field in the same tab, with Locations only in the World Editor', async () => {
     render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
-    const library = await fieldsByTab(['Overview', 'Placeholders']);
+    const library = await fieldsByTab(['Overview', 'Openings', 'Placeholders']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    const worldFields = await fieldsByTab(['Placeholders']);
+    const worldFields = await fieldsByTab(['Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Type', 'Image Tags', '3D Model'],
@@ -133,5 +133,39 @@ describe('the two entity editors', () => {
     render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
     await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(within(screen.getByRole('tabpanel')).queryAllByText(FIELD_LABELS)).toEqual([]);
+  });
+
+  it('show the same opening rows on the Openings tab, and write a new row to the entity', async () => {
+    const withOpenings = {
+      ...entity,
+      openings: [{ id: 'o1', text: 'Wren trims the lamp.', kind: 'narration' }],
+      openingWeights: { o1: 2 },
+    } as unknown as Entity;
+    const rowsOn = async () => {
+      await userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
+      const panel = screen.getByRole('tabpanel');
+      return within(panel).getAllByTestId('opening-row').map((row) => [
+        within(row).getByLabelText('Draw weight for Opening 1').getAttribute('value'),
+        within(row).getByLabelText('Chance for Opening 1').textContent,
+      ]);
+    };
+
+    render(<SettingsProvider><EntityEditorModal entityId={null} draft={withOpenings} onClose={vi.fn()} /></SettingsProvider>);
+    const library = await rowsOn();
+    cleanup();
+    world.updateEntity.mockClear();
+    const Panel = () => {
+      const [tab, setTab] = useState<EntityPanelTab>('profile');
+      return <EntityManager entity={withOpenings} tab={tab} onTabChange={setTab} />;
+    };
+    render(<SettingsProvider><Panel /></SettingsProvider>);
+    expect(await rowsOn()).toEqual(library);
+    expect(library).toEqual([['2', '100%']]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add Opening' }));
+    const written = world.updateEntity.mock.calls.at(-1)?.[0] as Entity;
+    expect(written.id).toBe('e1');
+    expect(written.openings).toHaveLength(2);
+    expect(written.openingWeights).toEqual({ o1: 2 });
   });
 });

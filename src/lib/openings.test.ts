@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
-import type { Opening, WorldOverview } from '@/types';
+import type { Entity, Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey,
-  drawUnseenOpening, openingPool, openingsEnabled, openingTexts, removeOpening, resolveOpening, setOpeningKind,
+  drawUnseenOpening, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   setOpeningText, setOpeningWeight,
 } from './openings';
 
@@ -90,6 +90,9 @@ describe('the draw', () => {
 describe('the no-repeat draw', () => {
   const pool = (ids: string[], weights?: Record<string, number>) =>
     openingPool({ overview: overview({ openings: ids.map((id) => action(id)), openingWeights: weights }) });
+  /** The shown-list key of the world's own row `id`. */
+  const k = (id: string) => poolKey({ ownerId: null, opening: action(id), weight: 1 });
+  const ks = (...ids: string[]) => ids.map(k);
 
   it('shows every opening once before any repeats, whatever the weights', () => {
     const rows = pool(['a', 'b', 'c', 'd'], { a: 50 });
@@ -97,7 +100,7 @@ describe('the no-repeat draw', () => {
       const random = seeded(seed);
       let shown: string[] = [];
       for (let i = 0; i < 4; i++) shown = drawUnseenOpening(rows, shown, random).shown;
-      expect([...shown].sort()).toEqual(['a', 'b', 'c', 'd']);
+      expect([...shown].sort()).toEqual(ks('a', 'b', 'c', 'd').sort());
     }
   });
 
@@ -106,7 +109,7 @@ describe('the no-repeat draw', () => {
     const random = seeded(3);
     const counts: Record<string, number> = {};
     for (let i = 0; i < 8000; i++) {
-      const id = drawUnseenOpening(rows, ['a'], random).opening.id;
+      const id = drawUnseenOpening(rows, ks('a'), random).opening.id;
       counts[id] = (counts[id] ?? 0) + 1;
     }
     expect(counts.a).toBeUndefined();
@@ -116,26 +119,122 @@ describe('the no-repeat draw', () => {
   it('starts the set over when all are shown, and never repeats the one on screen', () => {
     const rows = pool(['a', 'b', 'c']);
     for (let seed = 1; seed <= 25; seed++) {
-      const next = drawUnseenOpening(rows, ['a', 'c', 'b'], seeded(seed));
+      const next = drawUnseenOpening(rows, ks('a', 'c', 'b'), seeded(seed));
       expect(next.opening.id).not.toBe('b');
-      expect(next.shown).toEqual(['b', next.opening.id]);
+      expect(next.shown).toEqual(ks('b', next.opening.id));
     }
   });
 
   it('returns the same opening from a pool of one', () => {
     const rows = pool(['a']);
     const first = drawUnseenOpening(rows, [], seeded(1));
-    expect(first).toEqual({ opening: action('a'), shown: ['a'] });
+    expect(first).toEqual({ opening: action('a'), shown: ks('a') });
     expect(drawUnseenOpening(rows, first.shown, seeded(2))).toEqual(first);
   });
 
   it('ignores a shown id that left the pool', () => {
-    const next = drawUnseenOpening(pool(['a', 'b']), ['gone', 'a'], seeded(1));
+    const next = drawUnseenOpening(pool(['a', 'b']), ks('gone', 'a'), seeded(1));
     expect(next.opening.id).toBe('b');
   });
 
   it('returns the default for an empty pool and leaves the shown set alone', () => {
-    expect(drawUnseenOpening([], ['a'], seeded(1))).toEqual({ opening: DEFAULT_OPENING, shown: ['a'] });
+    expect(drawUnseenOpening([], ks('a'), seeded(1))).toEqual({ opening: DEFAULT_OPENING, shown: ks('a') });
+  });
+});
+
+describe('the pool with entities', () => {
+  const guide = (over: Partial<Entity> = {}): Entity => ({
+    id: 'guide', name: 'Guide', locations: ['dock'], openings: [action('g1', 'The guide waves.')], ...over,
+  });
+  const texts = (pool: { opening: Opening }[]) => pool.map((e) => e.opening.text);
+
+  it('adds the rows of an entity at the starting location after the world’s own', () => {
+    const pool = openingPool({
+      overview: overview({ openings: [action('w1', 'The world opens.')] }),
+      entities: [guide()],
+      startingLocationId: 'dock',
+    });
+    expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
+    expect(pool.map((e) => e.ownerId)).toEqual([null, 'guide']);
+  });
+
+  it('adds nothing for an entity somewhere else', () => {
+    const pool = openingPool({ overview: overview(), entities: [guide({ locations: ['market'] })], startingLocationId: 'dock' });
+    expect(pool).toEqual([]);
+    expect(drawOpening(pool, seeded(1))).toEqual(DEFAULT_OPENING);
+  });
+
+  it('adds nothing for an entity at no location, or with no starting location chosen', () => {
+    expect(openingPool({ overview: overview(), entities: [guide({ locations: undefined })], startingLocationId: 'dock' })).toEqual([]);
+    expect(openingPool({ overview: overview(), entities: [guide()], startingLocationId: null })).toEqual([]);
+  });
+
+  it('follows whichever of several starting locations was chosen', () => {
+    const entities = [
+      guide(),
+      { id: 'clerk', name: 'Clerk', locations: ['market'], openings: [action('c1', 'The clerk looks up.')] },
+      { id: 'both', name: 'Both', locations: ['dock', 'market'], openings: [action('b1', 'A voice calls.')] },
+    ];
+    const ov = overview({ openings: [action('w1', 'The world opens.')] });
+    expect(texts(openingPool({ overview: ov, entities, startingLocationId: 'dock' })))
+      .toEqual(['The world opens.', 'The guide waves.', 'A voice calls.']);
+    expect(texts(openingPool({ overview: ov, entities, startingLocationId: 'market' })))
+      .toEqual(['The world opens.', 'The clerk looks up.', 'A voice calls.']);
+  });
+
+  it('draws an entity’s rows by their own weights, benched and blank rows left out', () => {
+    const entity = guide({
+      openings: [action('g1', 'Often.'), action('g2', 'Rarely.'), action('g3', 'Benched.'), action('g4', '  ')],
+      openingWeights: { g1: 3, g3: 0 },
+    });
+    const pool = openingPool({ overview: overview(), entities: [entity], startingLocationId: 'dock' });
+    expect(pool.map((e) => [e.opening.text, e.weight])).toEqual([['Often.', 3], ['Rarely.', 1]]);
+  });
+
+  it('removes the entities’ rows along with the world’s when the world switch is off', () => {
+    const pool = openingPool({
+      overview: overview({ openings: [action('w1')], openingsEnabled: false }),
+      entities: [guide()],
+      startingLocationId: 'dock',
+    });
+    expect(pool).toEqual([]);
+  });
+
+  it('reads the entities it is handed, so a deleted entity’s rows are gone', () => {
+    const ov = overview();
+    expect(openingPool({ overview: ov, entities: [guide()], startingLocationId: 'dock' })).toHaveLength(1);
+    expect(openingPool({ overview: ov, entities: [], startingLocationId: 'dock' })).toEqual([]);
+  });
+
+  it('keeps two entities that share opening ids apart, in the draw and in the shown list', () => {
+    // One library entity added twice: two entity ids, the same opening ids.
+    const copies = [guide({ id: 'copy-1' }), guide({ id: 'copy-2' })];
+    const pool = openingPool({ overview: overview(), entities: copies, startingLocationId: 'dock' });
+    expect(pool).toHaveLength(2);
+    expect(new Set(pool.map(poolKey)).size).toBe(2);
+    for (let seed = 1; seed <= 25; seed++) {
+      const first = drawUnseenOpening(pool, [], seeded(seed));
+      const second = drawUnseenOpening(pool, first.shown, seeded(seed + 100));
+      // The second draw still has an unseen row, so the list has not started over.
+      expect(second.shown).toHaveLength(2);
+      expect(new Set(second.shown).size).toBe(2);
+    }
+  });
+});
+
+describe('fresh opening ids', () => {
+  it('re-mints every row and re-keys the weights to follow', () => {
+    const next = remintOpenings({ openings: [action('a'), action('b')], openingWeights: { b: 5, gone: 2 } });
+    const ids = (next.openings ?? []).map((o) => o.id);
+    expect(next.openings?.map((o) => o.text)).toEqual(['Opening a.', 'Opening b.']);
+    expect(ids).not.toContain('a');
+    expect(new Set(ids).size).toBe(2);
+    expect(next.openingWeights).toEqual({ [ids[1]]: 5 });
+  });
+
+  it('writes nothing for an owner with no rows', () => {
+    expect(remintOpenings({})).toEqual({});
+    expect(remintOpenings({ openings: [] })).toEqual({});
   });
 });
 

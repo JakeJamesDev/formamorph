@@ -178,7 +178,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   // entity, so an author reviewing every entity's descriptions stays on Descriptions down the list.
   const [entityTab, setEntityTab] = useState<EntityPanelTab>('profile');
   const entityTabs = useMemo(() => entityPanelTabsFor(advanced), [advanced]);
-  // Simple mode has no Placeholders tab. Derived rather than corrected in an effect, which would draw one
+  // Simple mode has no Openings or Placeholders tab. Derived rather than corrected in an effect, which would draw one
   // frame of a strip with nothing selected over an empty body. The choice itself is kept, so returning to
   // Advanced returns to the tab the author left.
   const shownEntityTab = entityTabs.some((t) => t.value === entityTab) ? entityTab : 'profile';

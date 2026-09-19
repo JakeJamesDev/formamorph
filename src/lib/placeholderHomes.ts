@@ -459,10 +459,12 @@ export function remapEntityChips(entity: Entity, idMap: Record<string, string>):
     ...(entity.aiDescription !== undefined ? { aiDescription: remapText(entity.aiDescription, idMap) } : {}),
     ...(entity.aiSummary !== undefined ? { aiSummary: remapText(entity.aiSummary, idMap) } : {}),
     ...(entity.imageTags !== undefined ? { imageTags: remapText(entity.imageTags, idMap) } : {}),
+    ...(entity.openings ? { openings: entity.openings.map((o) => ({ ...o, text: remapText(o.text, idMap) ?? o.text })) } : {}),
   };
   const same = next.name === entity.name && sameTexts(next.aliases, entity.aliases)
     && next.playerDescription === entity.playerDescription && next.aiDescription === entity.aiDescription
-    && next.aiSummary === entity.aiSummary && next.imageTags === entity.imageTags;
+    && next.aiSummary === entity.aiSummary && next.imageTags === entity.imageTags
+    && sameTexts(next.openings?.map((o) => o.text), entity.openings?.map((o) => o.text));
   return same ? entity : next;
 }
 

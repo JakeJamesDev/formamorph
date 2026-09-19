@@ -1,6 +1,7 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
+import { entityIdsAt } from '@/lib/entityPresence';
 import { randomUUID } from '@/lib/uuid';
-import type { Opening, OpeningKind, WorldOverview } from '@/types';
+import type { Entity, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
  * Openings: the weighted list a playthrough starts from. Every rule lives here — which rows can be drawn,
@@ -11,13 +12,23 @@ import type { Opening, OpeningKind, WorldOverview } from '@/types';
 /** What a world with nothing to draw opens on. */
 export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE, kind: 'action' };
 
-/** One drawable row and its weight, always above 0. */
+/** Anything that carries openings: the world overview or an entity. An opening id is unique within its
+ *  owner only, since a library entity added twice keeps its ids. */
+export interface OpeningOwner {
+  openings?: Opening[];
+  openingWeights?: Record<string, number>;
+}
+
+/** One drawable row, its owner and its weight, always above 0. `ownerId` is the entity's id, or null for
+ *  the world's own rows. */
 export interface PoolEntry {
+  ownerId: string | null;
   opening: Opening;
   weight: number;
 }
 
 type Overview = WorldOverview | null | undefined;
+type Owner = OpeningOwner | null | undefined;
 
 /** Whether the world's list is switched on. Absent means on. */
 export function openingsEnabled(overview: Overview): boolean {
@@ -30,19 +41,32 @@ export function openingWeight(weights: Record<string, number> | undefined, id: s
   return typeof w === 'number' && Number.isFinite(w) ? Math.max(0, w) : 1;
 }
 
-/** The rows that can come up, with their weights. A blank or benched row never draws. */
-function drawable(openings: readonly Opening[] | undefined, weights: Record<string, number> | undefined): PoolEntry[] {
-  return (openings ?? [])
+/** The rows of one owner that can come up, with their weights. A blank or benched row never draws. */
+function drawable(owner: Owner, ownerId: string | null): PoolEntry[] {
+  return (owner?.openings ?? [])
     .filter((o) => o.text.trim())
-    .map((opening) => ({ opening, weight: openingWeight(weights, opening.id) }))
+    .map((opening) => ({ ownerId, opening, weight: openingWeight(owner?.openingWeights, opening.id) }))
     .filter((e) => e.weight > 0);
 }
 
-/** The rows a new playthrough draws from. A switched-off list contributes nothing. Takes an object so the
- *  entity sources of the later tickets join as fields. */
-export function openingPool({ overview }: { overview: Overview }): PoolEntry[] {
+/** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
+export interface PoolSources {
+  overview: Overview;
+  entities?: readonly Entity[];
+  startingLocationId?: string | null;
+}
+
+/**
+ * The rows a new playthrough draws from: the world's own, then those of the authored entities present at the
+ * starting location, in cast order. The world switch removes both.
+ */
+export function openingPool({ overview, entities = [], startingLocationId }: PoolSources): PoolEntry[] {
   if (!openingsEnabled(overview)) return [];
-  return drawable(overview?.openings, overview?.openingWeights);
+  const present = new Set(entityIdsAt(startingLocationId, [...entities]));
+  return [
+    ...drawable(overview, null),
+    ...entities.filter((e) => present.has(e.id)).flatMap((e) => drawable(e, e.id)),
+  ];
 }
 
 const poolWeight = (pool: readonly PoolEntry[]) => pool.reduce((sum, e) => sum + e.weight, 0);
@@ -62,8 +86,8 @@ function drawEntry(pool: readonly PoolEntry[], random: () => number): PoolEntry 
   return pool[pool.length - 1];
 }
 
-/** What the shown list records a row under. */
-export const poolKey = (entry: PoolEntry): string => entry.opening.id;
+/** What the shown list records a row under: owner plus opening id, since ids repeat across owners. */
+export const poolKey = (entry: PoolEntry): string => JSON.stringify([entry.ownerId, entry.opening.id]);
 
 /** One draw and the shown list after it: row keys in the order the session showed them, newest last. */
 export interface UnseenDraw {
@@ -94,21 +118,36 @@ export function resolveOpening(overview: Overview, random: () => number = Math.r
   return drawOpening(openingPool({ overview }), random);
 }
 
-/** Each row's chance of being drawn, as a percentage keyed by id. Ignores the switch, so an author drafting
- *  a switched-off list still reads the odds it will have. */
-export function openingChances(overview: Overview): Record<string, number> {
-  const pool = drawable(overview?.openings, overview?.openingWeights);
+/** Each of one owner's rows' chance of being drawn from that owner's list, as a percentage keyed by id.
+ *  Ignores the switch, so an author drafting a switched-off list still reads the odds it will have. */
+export function openingChances(owner: Owner): Record<string, number> {
+  const pool = drawable(owner, null);
   const total = poolWeight(pool);
   const out: Record<string, number> = {};
-  for (const o of overview?.openings ?? []) out[o.id] = 0;
+  for (const o of owner?.openings ?? []) out[o.id] = 0;
   for (const e of pool) out[e.opening.id] = (e.weight / total) * 100;
   return out;
 }
 
 /** Every row's text, drawable or not — what chip priming, placement letters and the World Doctor scan. */
-export function openingTexts(overview: Overview): string[] {
-  return (overview?.openings ?? []).map((o) => o.text).filter(Boolean);
+export function openingTexts(owner: Owner): string[] {
+  return (owner?.openings ?? []).map((o) => o.text).filter(Boolean);
 }
+
+/** The owner's rows under fresh ids, with the weights re-keyed to follow them. Empty for an owner with none. */
+export function remintOpenings(owner: OpeningOwner): OpeningOwner {
+  if (!owner.openings?.length) return {};
+  const idMap = new Map(owner.openings.map((o) => [o.id, randomUUID()] as const));
+  const weights = Object.fromEntries(Object.entries(owner.openingWeights ?? {})
+    .flatMap(([id, w]) => (idMap.has(id) ? [[idMap.get(id) as string, w]] : [])));
+  return {
+    openings: owner.openings.map((o) => ({ ...o, id: idMap.get(o.id) as string })),
+    openingWeights: weightsOrAbsent(weights),
+  };
+}
+
+/** An absent map already means every weight is 1, so an empty one is stored as absent. */
+const weightsOrAbsent = (weights: Record<string, number>) => (Object.keys(weights).length ? weights : undefined);
 
 const FIELD_KEY_PREFIX = 'openings:';
 
@@ -120,51 +159,49 @@ export const isOpeningFieldKey = (key: string | undefined): boolean => !!key?.st
 
 // ── Editor patches ────────────────────────────────────────────────────────────
 
-type Patch = Partial<WorldOverview>;
+/** What an edit writes to its owner. Each patch reads only the owner's two opening fields. */
+type Patch = OpeningOwner;
 
-/** An absent map already means every weight is 1, so an empty one is stored as absent. */
-const weightsOrAbsent = (weights: Record<string, number>) => (Object.keys(weights).length ? weights : undefined);
-
-/** Turns the list on or off; on is stored as absent. */
-export function setOpeningsEnabled(on: boolean): Patch {
+/** Turns the world's list on or off; on is stored as absent. */
+export function setOpeningsEnabled(on: boolean): Partial<WorldOverview> {
   return { openingsEnabled: on ? undefined : false };
 }
 
 /** Appends an empty Opening Action under a fresh id. */
-export function addOpening(overview: WorldOverview): Patch {
-  return { openings: [...(overview.openings ?? []), { id: randomUUID(), text: '', kind: 'action' }] };
+export function addOpening(owner: OpeningOwner): Patch {
+  return { openings: [...(owner.openings ?? []), { id: randomUUID(), text: '', kind: 'action' }] };
 }
 
 /** Removes the row and its weight. */
-export function removeOpening(overview: WorldOverview, id: string): Patch {
-  const { [id]: _drop, ...weights } = overview.openingWeights ?? {};
+export function removeOpening(owner: OpeningOwner, id: string): Patch {
+  const { [id]: _drop, ...weights } = owner.openingWeights ?? {};
   return {
-    openings: (overview.openings ?? []).filter((o) => o.id !== id),
+    openings: (owner.openings ?? []).filter((o) => o.id !== id),
     openingWeights: weightsOrAbsent(weights),
   };
 }
 
 /** Replaces one row's text. */
-export function setOpeningText(overview: WorldOverview, id: string, text: string): Patch {
-  return { openings: (overview.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };
+export function setOpeningText(owner: OpeningOwner, id: string, text: string): Patch {
+  return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };
 }
 
 /** Sets whether one row opens as a Player Action or as Narration. */
-export function setOpeningKind(overview: WorldOverview, id: string, kind: OpeningKind): Patch {
-  return { openings: (overview.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
+export function setOpeningKind(owner: OpeningOwner, id: string, kind: OpeningKind): Patch {
+  return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
 }
 
 /** Stores a weight only when it differs from the default of 1. */
-export function setOpeningWeight(overview: WorldOverview, id: string, weight: number): Patch {
-  const weights = { ...(overview.openingWeights ?? {}) };
+export function setOpeningWeight(owner: OpeningOwner, id: string, weight: number): Patch {
+  const weights = { ...(owner.openingWeights ?? {}) };
   if (weight === 1) delete weights[id];
   else weights[id] = weight;
   return { openingWeights: weightsOrAbsent(weights) };
 }
 
 /** Moves the row at `from` to `to`; weights key by id, so they follow. */
-export function moveOpening(overview: WorldOverview, from: number, to: number): Patch {
-  const next = [...(overview.openings ?? [])];
+export function moveOpening(owner: OpeningOwner, from: number, to: number): Patch {
+  const next = [...(owner.openings ?? [])];
   const [row] = next.splice(from, 1);
   if (row) next.splice(to, 0, row);
   return { openings: next };

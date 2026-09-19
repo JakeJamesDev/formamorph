@@ -8,6 +8,7 @@ import {
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
 import { duplicateEntityPlaceholders } from './placeholderHomes';
+import { remintOpenings } from './openings';
 import type { Entity, EntityGroup } from '@/types';
 
 export type EntityTreeNode = GroupTreeNode<EntityGroup, Entity>;
@@ -48,7 +49,7 @@ export function duplicateEntityNode(
   const r = duplicateNode(groups, entities, id);
   if (r.leaves === entities) return { groups: r.groups, entities, newId: r.newId };
   const original = new Set(entities.map((e) => e.id));
-  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(e)));
+  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders({ ...e, ...remintOpenings(e) })));
   return { groups: r.groups, entities: leaves, newId: r.newId };
 }
 

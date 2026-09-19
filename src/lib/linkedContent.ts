@@ -1,5 +1,6 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
 import { followedLibraryId } from '@/lib/publishLinks';
+import { openingTexts } from '@/lib/openings';
 import { randomUUID } from '@/lib/uuid';
 import type { CommunityLink, ContentLink, Dictionary, Entity, Placeholder } from '@/types';
 
@@ -141,7 +142,7 @@ export function chipTexts(item: LinkableContent): string[] {
   }
   return [
     item.name, ...(item.aliases ?? []),
-    item.playerDescription, item.aiDescription, item.aiSummary, item.imageTags,
+    item.playerDescription, item.aiDescription, item.aiSummary, item.imageTags, ...openingTexts(item),
   ].filter((text): text is string => !!text);
 }
 
