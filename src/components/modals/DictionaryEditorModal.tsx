@@ -16,6 +16,7 @@ import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
+import { NoWorld } from '@/contexts/GameDataContext';
 import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
@@ -161,7 +162,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   };
 
   return (
-    // A World Editor in Simple mode can open this editor; the book still shows Enabled and both zones.
+    <NoWorld>
+    {/* A World Editor in Simple mode can open this editor; the book still shows Enabled and both zones. */}
     <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
@@ -242,6 +244,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
     </EditorModeContext.Provider>
+    </NoWorld>
   );
 };
 

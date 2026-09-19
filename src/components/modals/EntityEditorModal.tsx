@@ -20,6 +20,7 @@ import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
+import { NoWorld } from '@/contexts/GameDataContext';
 import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { exportedLibraryLinks } from '@/lib/componentExportLinks';
@@ -158,6 +159,7 @@ const EntityEditorModal = ({
   };
 
   return (
+    <NoWorld>
     <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
@@ -233,6 +235,7 @@ const EntityEditorModal = ({
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
     </EditorModeContext.Provider>
+    </NoWorld>
   );
 };
 

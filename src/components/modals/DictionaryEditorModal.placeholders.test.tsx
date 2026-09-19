@@ -16,7 +16,7 @@ import type { Dictionary } from '@/types';
  * app-wide store around it holds. The modal mounts inside the real GameData provider, as MainMenu mounts it.
  */
 
-const stores = vi.hoisted(() => [] as PlaceholderStore[]);
+const stores = vi.hoisted(() => [] as (PlaceholderStore | null)[]);
 
 // Records every store a provider is handed, so a test can tell whether the modal's own store kept its instance.
 vi.mock('@/contexts/PlaceholderStoreContext', async (importOriginal) => {
@@ -92,8 +92,9 @@ const open = async () => {
   await waitFor(() => expect(screen.getByTestId('world-placeholders')).toHaveTextContent('World Weather'));
 };
 
-/** The stores the modal handed out: the world's own store carries the world's lists, the modal's none. */
-const modalStores = () => stores.filter((s) => !s.lists);
+/** The stores the modal handed out: the world's own store carries the world's lists, the modal's none, and
+ *  the no-world boundary hands out null. */
+const modalStores = () => stores.filter((s): s is PlaceholderStore => s !== null && !s.lists);
 
 beforeEach(() => { stores.length = 0; });
 

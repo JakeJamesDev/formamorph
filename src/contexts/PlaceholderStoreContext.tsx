@@ -69,7 +69,7 @@ export const usePlaceholderStore = (): PlaceholderStore => {
 // eslint-disable-next-line react-refresh/only-export-components
 export const usePlaceholderStoreOptional = (): PlaceholderStore | null => useContext(PlaceholderStoreContext);
 
-/** Provides a `PlaceholderStore` to the placeholder-editing widgets below it. */
-export const PlaceholderStoreProvider = ({ value, children }: { value: PlaceholderStore; children: ReactNode }) => (
+/** Provides a `PlaceholderStore` to the placeholder-editing widgets below it; null hides the one above. */
+export const PlaceholderStoreProvider = ({ value, children }: { value: PlaceholderStore | null; children: ReactNode }) => (
   <PlaceholderStoreContext.Provider value={value}>{children}</PlaceholderStoreContext.Provider>
 );
