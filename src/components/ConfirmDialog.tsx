@@ -25,6 +25,7 @@ export function ConfirmDialog({
   children,
   open,
   onOpenChange,
+  onCloseAutoFocus,
 }: {
   title?: ReactNode
   description?: ReactNode
@@ -35,6 +36,8 @@ export function ConfirmDialog({
   children?: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  /** Runs as the dialog closes. A controlled dialog has no trigger, so this is where it returns focus. */
+  onCloseAutoFocus?: (event: Event) => void
 }) {
   const handleConfirm = () => {
     onConfirm?.()
@@ -51,7 +54,7 @@ export function ConfirmDialog({
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       {children && <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>}
-      <AlertDialogContent>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle className={shown.icon ? "flex items-center gap-2" : undefined}>
             {shown.icon}{shown.title}

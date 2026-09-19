@@ -64,6 +64,8 @@ import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
 import { DEFAULT_WORLDS, readDeletedDefaultWorlds, clearDeletedDefaultWorlds } from '@/lib/defaultWorlds';
 import { PresetNameDialog } from './PresetNameDialog';
+import { PresetHeaderMenu } from './PresetHeaderMenu';
+import { presetHeaderActions, type PresetHeaderAction } from '@/lib/presetHeaderActions';
 import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt, OPENING_SCENE_CUE } from '../game/GamePrompts';
 import { isDesktop } from '@/lib/imageGen/desktop';
 import { fetchComfyMeta, DEFAULT_COMFY_WORKFLOW, type ComfyMeta } from '@/lib/imageGen/comfyui';
@@ -954,6 +956,32 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     else if (v === IMPORT_PRESET_SENTINEL) setImportOpen(true);
     else selectPreset(v);
   };
+  const [presetConfirm, setPresetConfirm] = useState<Extract<PresetHeaderAction['key'], 'reset' | 'delete'> | null>(null);
+  // The confirms are controlled, so they return focus to what opened them by hand.
+  const presetConfirmOpener = useRef<Element | null>(null);
+  const askPresetConfirm = (kind: NonNullable<typeof presetConfirm>) => {
+    presetConfirmOpener.current = document.activeElement;
+    setPresetConfirm(kind);
+  };
+  const presetConfirmProps = {
+    onOpenChange: (open: boolean) => { if (!open) setPresetConfirm(null); },
+    onCloseAutoFocus: (event: Event) => {
+      const opener = presetConfirmOpener.current;
+      presetConfirmOpener.current = null;
+      if (!(opener instanceof HTMLElement) || !opener.isConnected) return;
+      event.preventDefault();
+      opener.focus();
+    },
+  };
+  const presetActions = presetHeaderActions(activePresetIsBuiltIn, {
+    rename: () => setPresetDialog({ mode: 'rename' }),
+    export: () => setExportShared(exportActivePreset(APP_VERSION)),
+    reset: () => askPresetConfirm('reset'),
+    delete: () => askPresetConfirm('delete'),
+  });
+  const presetRowButton = (a: PresetHeaderAction) => (
+    <Button key={a.key} variant="outline" size="sm" className="hidden md:inline-flex" onClick={a.run}>{a.label}</Button>
+  );
   const handlePresetNameSubmit = (name: string) => {
     if (presetDialog?.mode === 'add') addPreset(name);
     else if (presetDialog?.mode === 'rename') renamePreset(activePresetId, name);
@@ -2561,26 +2589,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef}>
             {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
                 are read-only and differ only in section-header style. */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0" data-testid="preset-header-row">
               <span className="text-helper text-muted-foreground">Preset</span>
-              {!activePresetIsBuiltIn && (
-                <ConfirmDialog
-                  title="Delete Preset"
-                  description={`Delete the "${activePresetName}" preset? This can't be undone.`}
-                  onConfirm={() => deletePreset(activePresetId)}
-                >
-                  <Button variant="outline" size="sm">Delete</Button>
-                </ConfirmDialog>
-              )}
-              {!activePresetIsBuiltIn && (
-                <ConfirmDialog
-                  title="Reset Preset"
-                  description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
-                  onConfirm={() => resetPreset(activePresetId)}
-                >
-                  <Button variant="outline" size="sm">Reset</Button>
-                </ConfirmDialog>
-              )}
+              {/* Desktop mirrors the menu around the selector: destructive actions outermost on the left. */}
+              {presetActions.filter((a) => a.section === 'destructive').reverse().map(presetRowButton)}
               <Select value={activePresetId} onValueChange={handlePresetSelect}>
                 <SelectTrigger aria-label="Preset" className="flex-1 min-w-0">
                   <SelectValue />
@@ -2597,11 +2609,23 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <SelectItem value={IMPORT_PRESET_SENTINEL}>Import Preset…</SelectItem>
                 </SelectContent>
               </Select>
-              {!activePresetIsBuiltIn && (
-                <Button variant="outline" size="sm" onClick={() => setPresetDialog({ mode: 'rename' })}>Rename</Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => setExportShared(exportActivePreset(APP_VERSION))}>Export</Button>
+              {presetActions.filter((a) => a.section === 'file').map(presetRowButton)}
+              <PresetHeaderMenu actions={presetActions} className="md:hidden" />
             </div>
+            <ConfirmDialog
+              open={presetConfirm === 'delete'}
+              {...presetConfirmProps}
+              title="Delete Preset"
+              description={`Delete the "${activePresetName}" preset? This can't be undone.`}
+              onConfirm={() => deletePreset(activePresetId)}
+            />
+            <ConfirmDialog
+              open={presetConfirm === 'reset'}
+              {...presetConfirmProps}
+              title="Reset Preset"
+              description={`Reset every prompt in the "${activePresetName}" preset to its default value? This can't be undone.`}
+              onConfirm={() => resetPreset(activePresetId)}
+            />
             {/* While a pinned world is open the selector edits that world's pin, not the global choice —
                 say so, or picking a preset here looks like it silently did nothing to the rest of the app. */}
             {presetPinnedToWorld && (

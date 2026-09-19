@@ -1,6 +1,7 @@
 # 04: Preset Header Overflow Menu
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 9d9c0e6e
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -23,9 +24,9 @@ menu. Desktop keeps the full button row.
 
 ## Acceptance criteria
 
-- [ ] Below `md`: selector plus ⋯ only; at `md` and above: the existing row, unchanged
-- [ ] Menu items and order match the list; built-in shows Export only
-- [ ] Reset and Delete still confirm and still work from the menu
-- [ ] A rendered test covers the item set for a user preset and for a built-in
-- [ ] Checked in the preview at mobile width on a touch profile, both themes
-- [ ] Changelog In-Progress entry added; four gates green
+- [x] Below `md`: selector plus ⋯ only; at `md` and above: the existing row, unchanged
+- [x] Menu items and order match the list; built-in shows Export only
+- [x] Reset and Delete still confirm and still work from the menu
+- [x] A rendered test covers the item set for a user preset and for a built-in
+- [x] Checked in the preview at mobile width on a touch profile, both themes
+- [x] Changelog In-Progress entry added; four gates green
