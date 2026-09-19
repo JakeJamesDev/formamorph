@@ -1,7 +1,7 @@
 # Folder Fly-In — Spec
 
 Status: ready-for-agent
-Spec session: Menu tile folder zoom animation
+Spec session: Folder Fly-In — Spec
 
 A folder on the main menu tile board opens with a camera zoom into the folder tile, and closes with the
 same zoom in reverse. The folder tile shows a miniature of its own board, so the zoom starts and ends on
