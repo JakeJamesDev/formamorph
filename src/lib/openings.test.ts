@@ -3,7 +3,8 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey,
-  openingPool, openingsEnabled, openingTexts, removeOpening, resolveOpening, setOpeningText, setOpeningWeight,
+  drawUnseenOpening, openingPool, openingsEnabled, openingTexts, removeOpening, resolveOpening, setOpeningKind,
+  setOpeningText, setOpeningWeight,
 } from './openings';
 
 /** Mulberry32: a small seeded source, so a draw test is repeatable without mocking a global. */
@@ -86,6 +87,58 @@ describe('the draw', () => {
   });
 });
 
+describe('the no-repeat draw', () => {
+  const pool = (ids: string[], weights?: Record<string, number>) =>
+    openingPool({ overview: overview({ openings: ids.map((id) => action(id)), openingWeights: weights }) });
+
+  it('shows every opening once before any repeats, whatever the weights', () => {
+    const rows = pool(['a', 'b', 'c', 'd'], { a: 50 });
+    for (let seed = 1; seed <= 25; seed++) {
+      const random = seeded(seed);
+      let shown: string[] = [];
+      for (let i = 0; i < 4; i++) shown = drawUnseenOpening(rows, shown, random).shown;
+      expect([...shown].sort()).toEqual(['a', 'b', 'c', 'd']);
+    }
+  });
+
+  it('draws the unseen rows by weight', () => {
+    const rows = pool(['a', 'b', 'c'], { c: 3 });
+    const random = seeded(3);
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 8000; i++) {
+      const id = drawUnseenOpening(rows, ['a'], random).opening.id;
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    expect(counts.a).toBeUndefined();
+    expect(counts.c / 8000).toBeCloseTo(0.75, 1);
+  });
+
+  it('starts the set over when all are shown, and never repeats the one on screen', () => {
+    const rows = pool(['a', 'b', 'c']);
+    for (let seed = 1; seed <= 25; seed++) {
+      const next = drawUnseenOpening(rows, ['a', 'c', 'b'], seeded(seed));
+      expect(next.opening.id).not.toBe('b');
+      expect(next.shown).toEqual(['b', next.opening.id]);
+    }
+  });
+
+  it('returns the same opening from a pool of one', () => {
+    const rows = pool(['a']);
+    const first = drawUnseenOpening(rows, [], seeded(1));
+    expect(first).toEqual({ opening: action('a'), shown: ['a'] });
+    expect(drawUnseenOpening(rows, first.shown, seeded(2))).toEqual(first);
+  });
+
+  it('ignores a shown id that left the pool', () => {
+    const next = drawUnseenOpening(pool(['a', 'b']), ['gone', 'a'], seeded(1));
+    expect(next.opening.id).toBe('b');
+  });
+
+  it('returns the default for an empty pool and leaves the shown set alone', () => {
+    expect(drawUnseenOpening([], ['a'], seeded(1))).toEqual({ opening: DEFAULT_OPENING, shown: ['a'] });
+  });
+});
+
 describe('the chance each row shows', () => {
   it('agrees with the draw, blank and benched rows at 0', () => {
     const ov = overview({
@@ -122,6 +175,11 @@ describe('what the editor writes', () => {
     expect(setOpeningWeight(ov, 'a', 4)).toEqual({ openingWeights: { a: 4 } });
     expect(setOpeningWeight({ ...ov, openingWeights: { a: 4 } }, 'a', 1)).toEqual({ openingWeights: undefined });
     expect(setOpeningWeight(ov, 'a', 0)).toEqual({ openingWeights: { a: 0 } });
+  });
+
+  it('sets the kind of one row and leaves the others', () => {
+    const ov = overview({ openings: [action('a'), action('b')] });
+    expect(setOpeningKind(ov, 'b', 'narration').openings).toEqual([action('a'), { ...action('b'), kind: 'narration' }]);
   });
 
   it('edits text in place and moves rows without touching weights', () => {

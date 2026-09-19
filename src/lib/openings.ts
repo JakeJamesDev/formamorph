@@ -1,6 +1,6 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { randomUUID } from '@/lib/uuid';
-import type { Opening, WorldOverview } from '@/types';
+import type { Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
  * Openings: the weighted list a playthrough starts from. Every rule lives here — which rows can be drawn,
@@ -49,14 +49,44 @@ const poolWeight = (pool: readonly PoolEntry[]) => pool.reduce((sum, e) => sum +
 
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawOpening(pool: readonly PoolEntry[], random: () => number): Opening {
-  const total = poolWeight(pool);
-  if (total <= 0) return DEFAULT_OPENING;
-  let r = random() * total;
+  return poolWeight(pool) <= 0 ? DEFAULT_OPENING : drawEntry(pool, random).opening;
+}
+
+/** One row by weight from a pool that has weight to draw. */
+function drawEntry(pool: readonly PoolEntry[], random: () => number): PoolEntry {
+  let r = random() * poolWeight(pool);
   for (const e of pool) {
     r -= e.weight;
-    if (r < 0) return e.opening;
+    if (r < 0) return e;
   }
-  return pool[pool.length - 1].opening;
+  return pool[pool.length - 1];
+}
+
+/** What the shown list records a row under. */
+export const poolKey = (entry: PoolEntry): string => entry.opening.id;
+
+/** One draw and the shown list after it: row keys in the order the session showed them, newest last. */
+export interface UnseenDraw {
+  opening: Opening;
+  shown: string[];
+}
+
+/**
+ * One opening by weight from the rows the session has not shown. When every row has been shown the set
+ * starts over, keeping only the one on screen so the next draw still differs from it. A pool of one has
+ * nothing else to give and returns its row again.
+ */
+export function drawUnseenOpening(pool: readonly PoolEntry[], shown: readonly string[], random: () => number): UnseenDraw {
+  if (poolWeight(pool) <= 0) return { opening: DEFAULT_OPENING, shown: [...shown] };
+  let seen = shown.filter((key) => pool.some((e) => poolKey(e) === key));
+  let unseen = pool.filter((e) => !seen.includes(poolKey(e)));
+  if (unseen.length === 0) {
+    seen = seen.slice(-1);
+    unseen = pool.filter((e) => !seen.includes(poolKey(e)));
+    if (unseen.length === 0) return { opening: pool[0].opening, shown: seen };
+  }
+  const entry = drawEntry(unseen, random);
+  return { opening: entry.opening, shown: [...seen, poolKey(entry)] };
 }
 
 /** The opening a new playthrough of this world starts on. */
@@ -117,6 +147,11 @@ export function removeOpening(overview: WorldOverview, id: string): Patch {
 /** Replaces one row's text. */
 export function setOpeningText(overview: WorldOverview, id: string, text: string): Patch {
   return { openings: (overview.openings ?? []).map((o) => (o.id === id ? { ...o, text } : o)) };
+}
+
+/** Sets whether one row opens as a Player Action or as Narration. */
+export function setOpeningKind(overview: WorldOverview, id: string, kind: OpeningKind): Patch {
+  return { openings: (overview.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
 }
 
 /** Stores a weight only when it differs from the default of 1. */

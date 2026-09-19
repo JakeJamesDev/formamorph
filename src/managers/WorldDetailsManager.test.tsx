@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Dictionary, Entity, FocusFieldHint, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import { EditorModeContext } from '@/lib/editorMode';
@@ -462,6 +462,22 @@ describe('the openings panel', () => {
     expect(world.overview.openingWeights).toEqual({ o1: 0, o2: 3 });
     expect(screen.getByLabelText('Chance for Opening 1')).toHaveTextContent('0%');
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
+  });
+
+  it('sets how a row opens with a two-value toggle, not tabs', async () => {
+    world.overview.openings = ROWS;
+    const user = await browse();
+    const opensAs = within(screen.getByRole('radiogroup', { name: 'Opens as, Opening 2' }));
+    expect(opensAs.getByRole('radio', { name: 'Player Action' })).toBeChecked();
+    expect(screen.queryByRole('tab', { name: 'Narration' })).not.toBeInTheDocument();
+
+    await user.click(opensAs.getByRole('radio', { name: 'Narration' }));
+    expect(world.overview.openings).toEqual([ROWS[0], { ...ROWS[1], kind: 'narration' }]);
+    expect(opensAs.getByRole('radio', { name: 'Narration' })).toBeChecked();
+
+    // Pressing the value already set keeps it: a row always has a kind.
+    await user.click(opensAs.getByRole('radio', { name: 'Narration' }));
+    expect(world.overview.openings?.[1].kind).toBe('narration');
   });
 
   it('drops a removed row together with its weight', async () => {
