@@ -533,6 +533,12 @@ describe('migrateWorld — single opening cue to the openings list', () => {
     expect('openingCue' in ov).toBe(false);
   });
 
+  it('carries a switched-off blank cue over as a switched-off empty list', () => {
+    const ov = overviewOf({ openingCue: '', openingCueEnabled: false });
+    expect(ov.openings).toBeUndefined();
+    expect(ov.openingsEnabled).toBe(false);
+  });
+
   it('is idempotent — a second run changes nothing', () => {
     const once = migrateWorld({ worldOverview: { openingCue: CUE, openingCueEnabled: false } });
     const twice = migrateWorld(structuredClone(once));

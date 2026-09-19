@@ -19,7 +19,7 @@ import {
   clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled, worldPromptFieldKey,
   WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
 } from "@/lib/worldPrompt";
-import { isOpeningFieldKey, openingsEnabled } from "@/lib/openings";
+import { isOpeningFieldKey, openingsEnabled, setOpeningsEnabled } from "@/lib/openings";
 import { OpeningsPanel } from "./OpeningsPanel";
 import { useEditorMode } from "@/lib/editorMode";
 import type { FocusFieldHint } from "@/types";
@@ -126,7 +126,7 @@ const CustomPromptsSection = ({ focusField }: { focusField?: FocusFieldHint | nu
   // it stands rather than yanking a field open around the click.
   const toggle = (kind: PanelKind, on: boolean) => {
     if (on) setTab(kind);
-    if (kind === 'opening') updateWorldOverview({ openingsEnabled: on ? undefined : false });
+    if (kind === 'opening') updateWorldOverview(setOpeningsEnabled(on));
     else write(kind, { enabled: on });
   };
 

@@ -1,6 +1,7 @@
 # 02: Weighted Opening Actions On A World
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 9740ab36
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

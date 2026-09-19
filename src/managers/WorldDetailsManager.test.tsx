@@ -480,7 +480,7 @@ describe('the openings panel', () => {
     expect(world.overview.openingsEnabled).toBe(false);
     expect(world.overview.openings).toEqual(ROWS);
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
-    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
+    expect(screen.getByText(/Not applied until you switch the list on/)).toBeInTheDocument();
 
     await user.click(openingsCheckbox());
     expect(world.overview.openingsEnabled).toBeUndefined();

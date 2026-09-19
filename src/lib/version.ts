@@ -320,12 +320,9 @@ function normalizeContentLinks(world: Record<string, unknown>): void {
 }
 
 /**
- * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
- * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
- */
-/**
  * Move the single `openingCue` into the openings list as one Opening Action, and drop the old fields. A cue
- * switched off keeps its row and switches the list off. A blank cue opened on the default and adds no row.
+ * switched off keeps its row and switches the list off. A blank cue opened on the default and adds no row;
+ * its switch still carries over.
  * Idempotent: a world without the old fields passes through untouched.
  */
 function migrateOpeningCue(world: Record<string, unknown>): void {
@@ -341,6 +338,10 @@ function migrateOpeningCue(world: Record<string, unknown>): void {
   world.worldOverview = next;
 }
 
+/**
+ * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
+ * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
+ */
 function migrateWorldPlaceholders(world: Record<string, unknown>): void {
   if (!Array.isArray(world.placeholders)) return;
   world.placeholders = world.placeholders.map((ph) =>
@@ -381,8 +382,8 @@ function migrateStatCode(stats: readonly Stat[]): Stat[] {
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
- * connection-record pair-merge, the start-flag rename, the placeholder value-record conversion and the
- * content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * connection-record pair-merge, the start-flag rename, the placeholder value-record conversion, the
+ * opening-cue move and the content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * rewrites stat code's `stats.find` lookups to the map form, and renames v1.2 description keys on

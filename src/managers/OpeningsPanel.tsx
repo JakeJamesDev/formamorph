@@ -74,8 +74,8 @@ export function OpeningsPanel() {
       </Button>
       <Hint>
         {enabled
-          ? 'One opening is drawn by weight when a player starts this world. It fills their input box, and they can edit it before they send it.'
-          : 'Not applied until you switch this one on. Players start on the default opening.'}
+          ? 'Draws one opening by weight when a player starts this world and fills their input box with it. They can edit it before they send it.'
+          : 'Not applied until you switch the list on. Players start on the default opening.'}
       </Hint>
     </div>
   );

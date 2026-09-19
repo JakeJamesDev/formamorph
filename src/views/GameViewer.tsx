@@ -4176,6 +4176,8 @@ const GameViewer = ({
   const handleMenuLoad = async (id: string, targetWorldId?: string) => {
     // A render from the outgoing session must not finish into the loaded one under a dead turn id.
     cancelSceneImage();
+    // The loaded save draws its own opening on first need.
+    sessionOpeningRef.current = null;
     // A save from another (installed) world: swap GameData to that world first, then restore the save against
     // its locations — otherwise the save would run inside the current world's shell.
     if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
