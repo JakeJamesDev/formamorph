@@ -33,6 +33,11 @@ describe('renderUserMacro', () => {
     expect(renderUserMacro('Well, {{user}}; "{{user}}" said.')).toBe('Well, you; "you" said.');
   });
 
+  it('renders the possessive as "your", capitalized at a sentence start', () => {
+    expect(renderUserMacro("She takes {{user}}'s hand. {{user}}’s cup is empty. {{user}}'s"))
+      .toBe('She takes your hand. Your cup is empty. Your');
+  });
+
   it('matches a hand-typed marker regardless of case and inner spaces', () => {
     expect(renderUserMacro('Hi {{ User }}. {{USER}} smiles.')).toBe('Hi you. You smiles.');
   });
