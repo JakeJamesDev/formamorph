@@ -1,6 +1,7 @@
 # 04: Dictionary Editor: Book Fields on Overview
 
-Status: ready-for-agent
+Status: in-progress
+Base: 6d200263
 Blocked by: 01, 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -14,7 +15,7 @@ Reasoning effort: high
 ## Acceptance criteria
 
 - [ ] Overview holds Tags, Cover Image, Name, Description, and Enabled. At `sm` and up it uses two columns: Tags and cover on the left, the three fields on the right.
-- [ ] A rename on Overview raises the rename offer, and placeholder paths follow the new name.
+- [ ] A rename on Overview renames the book, raises no offer, and changes no stat of the surrounding world. The Name field keeps the rename wiring it shares with the World Editor's book panel.
 - [ ] The library editor no longer mounts the book panel. The World Editor still does.
 - [ ] The entry tree has a mode that hides the book row and shows its entries at the top level. Entry order, drag, duplicate, and delete work as before. The World Editor's tree keeps its book nodes.
 - [ ] A + icon button sits at the top of the entry list, with the size, style, and position of the World Editor's list add button. The two hosts share the button row where that is practical. It adds an entry and selects it.

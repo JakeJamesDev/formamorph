@@ -64,7 +64,10 @@ const panelTab = (name: string) =>
 // These tabs switch on mouseDown, not click.
 const openPanelTab = (name: string) => fireEvent.mouseDown(panelTab(name));
 
-const selectEntry = (name: string) => fireEvent.click(screen.getByText(name));
+/** The list half of the split: the entry tree and its + row. */
+const entryList = () => document.querySelector('[data-list-detail]')!.children[0] as HTMLElement;
+
+const selectEntry = (name: string) => fireEvent.click(within(entryList()).getByText(name));
 
 describe('the library dictionary editor’s entry panel', () => {
   it('offers the same two tabs, opening on Details', () => {
@@ -104,11 +107,11 @@ describe('the library dictionary editor’s entry panel', () => {
     expect(palette.compareDocumentPosition(panelStrip()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows the book its own panel with no strip', () => {
-    // The modal opens with the book itself selected, so this is the panel an author lands on.
+  it('opens on the first entry, with no book panel', () => {
     open();
-    expect(panelStrip()).toBeNull();
-    expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toBeInTheDocument();
+    expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('A big lizard.')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Notes for you, not injected into the prompt')).toBeNull();
   });
 
   it('keeps the book’s placeholders on the Placeholders tab alone', () => {

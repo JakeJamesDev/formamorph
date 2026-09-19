@@ -16,13 +16,13 @@ const book = (entryCount: number): Dictionary => ({
 });
 
 /** The tree as its hosts mount it: real stores, and a real ScrollArea viewport for the virtualizer. */
-function Harness({ books, placeholders = [] }: { books: Dictionary[]; placeholders?: Placeholder[] }) {
+function Harness({ books, placeholders = [], hideBookRow }: { books: Dictionary[]; placeholders?: Placeholder[]; hideBookRow?: boolean }) {
   const store = useDictionaryStoreState(books);
   return (
     <DictionaryStoreProvider value={store}>
       <PlaceholderStoreProvider value={placeholderStore(placeholders, () => {})}>
         <ScrollArea style={{ height: 400 }}>
-          <DictionaryTree selectedId={null} onSelect={() => {}} />
+          <DictionaryTree selectedId={null} onSelect={() => {}} hideBookRow={hideBookRow} />
         </ScrollArea>
       </PlaceholderStoreProvider>
     </DictionaryStoreProvider>
@@ -81,5 +81,21 @@ describe('DictionaryTree — a book named with a placeholder', () => {
     render(<Harness books={[named]} placeholders={[town]} />);
     expect(screen.getByText('Town')).toBeInTheDocument();
     expect(document.body.textContent).not.toContain('{{ph:');
+  });
+});
+
+describe('DictionaryTree — the book row', () => {
+  it('shows each book as a row in the World Editor', () => {
+    render(<Harness books={[book(2)]} />);
+    expect(screen.getByText('Book')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete dictionary' })).toBeInTheDocument();
+    expect(renderedEntryRows()).toBe(2);
+  });
+
+  it('hides the book row and keeps its entries when told to', () => {
+    render(<Harness books={[book(2)]} hideBookRow />);
+    expect(screen.queryByText('Book')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete dictionary' })).toBeNull();
+    expect(renderedEntryRows()).toBe(2);
   });
 });

@@ -84,9 +84,9 @@ for (const width of WIDTHS) {
       await gotoDev(page, 'mainMenu', { modal: 'dictionaryEditor' });
       await expectDialogWidth(page, width);
 
-      // Mobile opens on the book's detail, over the tree that holds the add button.
-      const back = page.getByRole('dialog').getByRole('button', { name: 'Dictionary', exact: true });
-      if (width < 768) await back.click();
+      // The dev-router's book is empty, so it opens on the entry list with nothing selected.
+      await expect(page.getByRole('dialog').getByText(/No entries yet/)).toBeVisible();
+      await expectNoHorizontalOverflow(page);
       await page.getByRole('dialog').getByRole('button', { name: 'Add entry' }).click();
       expect(await fieldColumnWidth(page)).toBeLessThanOrEqual(FIELD_MAX);
       await expectNoHorizontalOverflow(page);
@@ -94,6 +94,11 @@ for (const width of WIDTHS) {
       await page.getByRole('tab', { name: 'Overview', exact: true }).click();
       expect(await fieldColumnWidth(page)).toBeLessThanOrEqual(FIELD_MAX);
       await expectNoHorizontalOverflow(page);
+      // From `sm` up, Tags sit left of the book's fields; below it they stack above them.
+      const tags = await page.getByRole('dialog').getByText('Tags', { exact: true }).boundingBox();
+      const fields = await page.getByRole('dialog').locator('[data-field-column]').boundingBox();
+      if (width >= 640) expect(tags!.x + tags!.width).toBeLessThanOrEqual(fields!.x);
+      else expect(tags!.y).toBeLessThan(fields!.y);
 
       await page.getByRole('tab', { name: 'Placeholders', exact: true }).click();
       await expectPlaceholderPanesShareWidth(page, width);

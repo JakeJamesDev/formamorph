@@ -13,6 +13,7 @@
 export const REF_SAFE_COMPOSED_CHILDREN = [
   'Button', // src/components/ui/button.tsx
   'GradientButton',
+  'ListAddButton', // src/components/ListToolbar.tsx
   'WorldActionButton',
   'TokenChip', // src/components/prompt/TokenChip.tsx
   'ToggleGroupItem', // src/components/ui/toggle-group.tsx

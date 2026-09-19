@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react
 import { toast } from 'react-toastify';
 import { ListDetail } from '@/components/ui/list-detail';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ListAddButton, ListToolbar } from '@/components/ListToolbar';
+import { EmptyListHint } from '@/components/EmptyListHint';
 import EditorModalShell from './EditorModalShell';
 import { FieldColumn } from './FieldColumn';
 import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
-import DictionaryBookManager from '@/managers/DictionaryBookManager';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
@@ -19,6 +20,7 @@ import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
+import { blankDictionaryEntry, firstDictionaryEntryId } from '@/lib/dictionaryTree';
 import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -70,7 +72,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
 
   // Seed the isolated store from the draft, or load a stored book; clear when closed.
   useEffect(() => {
-    const seed = (b: Dictionary) => { setDictionaries([b]); setBook(b); setSelectedId(b.id); baselineRef.current = canon([b]); };
+    // Opens on the first entry the tree shows, or on nothing for an empty book.
+    const seed = (b: Dictionary) => {
+      setDictionaries([b]); setBook(b); setSelectedId(firstDictionaryEntryId(b)); baselineRef.current = canon([b]);
+    };
     if (draft) { seed(draft); return; }
     if (dictionaryId === null) { setBook(null); return; }
     let cancelled = false;
@@ -80,11 +85,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
-  // The modal stays mounted between opens, so the entry tab is reset here rather than by unmounting.
-  useEffect(() => { setEntryTab('details'); }, [dictionaryId, draft]);
+  // The modal stays mounted between opens, so the tabs are reset here rather than by unmounting.
+  useEffect(() => { setTab('dictionary'); setEntryTab('details'); }, [dictionaryId, draft]);
 
   const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
-  const selectedBook = dictionaries.find((b) => b.id === selectedId);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0): its own plus the shared ones it
   // carries from the world it was exported from. Its entries' chips resolve against both.
@@ -113,6 +117,14 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     () => (dictionaries[0] ? dictionaryPlacementLetters(dictionaries[0]) : EMPTY_LETTERS),
     [dictionaries],
   );
+
+  const addEntry = () => {
+    const current = dictionaries[0];
+    if (!current) return;
+    const entry = blankDictionaryEntry();
+    store.addDictionaryEntry(current.id, entry);
+    setSelectedId(entry.id);
+  };
 
   // Returns whether the save succeeded, so a save-and-exit caller only closes on success.
   const handleSave = async (): Promise<boolean> => {
@@ -171,9 +183,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         <DictionaryStoreProvider value={store}>
           {tab === 'overview' ? (
             <ScrollArea className="flex-1 min-h-0">
-              <FieldColumn>
-                {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
-              </FieldColumn>
+              {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
             </ScrollArea>
           ) : tab === 'placeholders' ? (
             // The same palette an entry gets, over the value fields: a value is a chip field too.
@@ -185,19 +195,27 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
             </ChipInsertTargetProvider>
           ) : (
             <ListDetail
-              showDetail={!!(selectedBook || selectedEntry)}
+              showDetail={!!selectedEntry}
               onBack={() => setSelectedId(null)}
               backLabel="Dictionary"
+              // The + row stays put over the scrolling entries, as the World Editor's does.
+              scrollList={false}
               list={
-                <div className="p-2">
-                  <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} />
+                <div className="flex h-full flex-col">
+                  <ListToolbar className="p-2 pb-0">
+                    <ListAddButton label="Add entry" onClick={addEntry} />
+                    {dictionaries[0]?.entries.length === 0 && <EmptyListHint noun="entries" />}
+                  </ListToolbar>
+                  <ScrollArea className="min-h-0 flex-1">
+                    <div className="p-2">
+                      <DictionaryTree selectedId={selectedId} onSelect={setSelectedId} hideBookRow />
+                    </div>
+                  </ScrollArea>
                 </div>
               }
               detail={
                 <FieldColumn>
-                  {selectedBook ? (
-                    <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
-                  ) : selectedEntry ? (
+                  {selectedEntry ? (
                     <ChipInsertTargetProvider>
                       <PlaceholderPaletteBar placeholders={bookPlaceholders} />
                       <DictionaryManager
@@ -209,7 +227,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                       />
                     </ChipInsertTargetProvider>
                   ) : (
-                    <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>
+                    <p className="text-helper text-muted-foreground">Select an entry to edit it</p>
                   )}
                 </FieldColumn>
               }
