@@ -1,6 +1,6 @@
 # 02: Library Editor Size and Field Cap
 
-Status: in-progress
+Status: ready-for-human
 Base: c53f7b6c
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
