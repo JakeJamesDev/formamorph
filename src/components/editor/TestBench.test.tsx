@@ -96,7 +96,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     ...over.triggers,
   },
   aiContext: over.aiContext ?? buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
-  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), ...over.opening },
+  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), onStartChange: vi.fn(), onOpeningChange: vi.fn(), ...over.opening },
 });
 
 const renderBench = (from: RuleWorld, over: BenchOver = {}, placementControl?: PlacementControl) => {
@@ -640,6 +640,43 @@ describe('TestBench Opening instrument', () => {
     const { opening } = renderOpening();
     await userEvent.click(screen.getByRole('button', { name: /Reroll/ }));
     expect(opening.onReroll).toHaveBeenCalledTimes(1);
+  });
+
+  const pooledWorld: RuleWorld = {
+    ...openingWorld,
+    worldOverview: {
+      ...openingWorld.worldOverview,
+      openings: [
+        { id: 'o-wake', text: 'You wake on the steps.', kind: 'action' },
+        { id: 'o-rain', text: 'Rain drums on the steps.', kind: 'narration' },
+      ],
+    },
+  };
+  const pooledData = (openingKey?: string) => buildOpening(
+    pooledWorld, buildLens(pooledWorld, EMPTY_LENS), {}, { openingKey },
+  );
+
+  it('lists the opening pool and hands a pick to the editor', async () => {
+    const data = pooledData();
+    const { opening } = renderBench(pooledWorld, { tab: 'opening', opening: { data } });
+    expect(screen.getByRole('button', { name: /You wake on the steps\..*50%/ })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(screen.getByRole('button', { name: /Rain drums on the steps\./ }));
+    expect(opening.onOpeningChange).toHaveBeenCalledWith(data.pool[1].key);
+  });
+
+  it('shows an Opening Narration as page one, with no prompt', () => {
+    const data = pooledData(pooledData().pool[1].key);
+    renderBench(pooledWorld, { tab: 'opening', opening: { data } });
+    expect(screen.getByText('Page One')).toBeInTheDocument();
+    expect(screen.getByText(/no narration request goes out/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /System Prompt/ })).toBeNull();
+  });
+
+  it('says a switched-off list opens on the default Opening Action', () => {
+    const off: RuleWorld = { ...pooledWorld, worldOverview: { ...pooledWorld.worldOverview, openingsEnabled: false } };
+    renderBench(off, { tab: 'opening', opening: { data: buildOpening(off, buildLens(off, EMPTY_LENS), {}) } });
+    expect(screen.getByText(/openings list is off/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /System Prompt/ })).toBeInTheDocument();
   });
 
   it('says a world with no locations has nowhere to start', () => {

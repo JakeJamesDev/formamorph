@@ -104,7 +104,7 @@ export function TestBench({
               />
             )}
             {t.value === 'aiContext' && <AiContextInstrument data={aiContext} />}
-            {t.value === 'opening' && <OpeningInstrument data={opening.data} onReroll={opening.onReroll} />}
+            {t.value === 'opening' && <OpeningInstrument {...opening} />}
           </TabsContent>
         ))}
       </Tabs>

@@ -24,8 +24,9 @@ import {
   placeholderChances, primeRolls, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
-import { resolveOpening } from '@/lib/openings';
+import { DEFAULT_OPENING, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { renderUserMacro } from '@/lib/userMacro';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
@@ -33,7 +34,7 @@ import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import { acquireTrait, seedStatBases, type TraitRuntimeState } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
-import type { GameLocation, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait } from '@/types';
+import type { GameLocation, Opening, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait } from '@/types';
 import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
 import { chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
@@ -100,6 +101,18 @@ export interface OpeningRollGroup {
   collisionChance?: number;
 }
 
+/** One row of the opening pool at the chosen start, resolved as the player would meet it. */
+export interface OpeningPoolRow {
+  /** The Openings module's key for the row: owner plus opening id. */
+  key: string;
+  /** The entity that owns the row, or null for the world's own. */
+  ownerName: string | null;
+  kind: Opening['kind'];
+  text: string;
+  /** Chance of being drawn from this pool, as a percentage. */
+  chance: number;
+}
+
 /** Everything the Opening instrument shows for one lens. */
 export interface OpeningData {
   pcName: string | null;
@@ -107,21 +120,33 @@ export interface OpeningData {
   locationName: string;
   /** How many places the fresh game might start at — above 1, play picks one at random. */
   startPool: number;
+  /** The places the fresh game might start at, for the author to pick one. */
+  starts: { id: string; name: string }[];
+  /** The rows a fresh game at `location` draws from, in pool order. */
+  pool: OpeningPoolRow[];
+  /** The pool row shown, or null when the pool is empty and play opens on the default. */
+  selectedKey: string | null;
+  /** The opening shown, resolved. */
+  opening: Pick<Opening, 'kind' | 'text'>;
+  /** The world's openings switch. */
+  openingsEnabled: boolean;
   stats: OpeningStat[];
   /** Stats the world holds but this opening switches off, named as the stat list names them. */
   disabledStats: string[];
   traits: OpeningTrait[];
   rolls: OpeningRollGroup[];
-  /** The narration system prompt of turn one, as the shipped default prompts and settings assemble it. */
+  /** The narration system prompt of turn one, as the shipped default prompts and settings assemble it.
+   *  Empty for an Opening Narration, which sends no narration request. */
   system: string;
-  /** The opening user turn — the cue, framed as play frames it. */
+  /** The opening user turn — the cue, framed as play frames it. Empty for an Opening Narration. */
   user: string;
   totalTokens: number;
 }
 
 /** What the instrument reads while it has nothing to assemble — a Bench closed, or closed on another tab. */
 export const EMPTY_OPENING: OpeningData = {
-  pcName: null, location: null, locationName: '', startPool: 0,
+  pcName: null, location: null, locationName: '', startPool: 0, starts: [], pool: [], selectedKey: null,
+  opening: { kind: DEFAULT_OPENING.kind, text: '' }, openingsEnabled: true,
   stats: [], disabledStats: [], traits: [], rolls: [], system: '', user: '', totalTokens: 0,
 };
 
@@ -131,17 +156,19 @@ interface OpeningStart {
   active: Trait[];
   settled: PlayerStat[];
   seeded: PlayerStat[];
-  /** The random pool play draws the start from, shown deterministically as its first member. */
+  /** The random pool play draws the start from. */
   pool: GameLocation[];
+  /** The author's chosen member of `pool`, or its first. */
   location: GameLocation | null;
 }
 
-function openingStart(world: OpeningWorld, lens: BenchLens): OpeningStart {
+function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: string | null): OpeningStart {
   const active = lensActiveTraits(world, lens);
   const locations = world.locations ?? [];
   const flagged = startingLocations(locations);
   const pool = flagged.length > 0 ? flagged : locations;
-  return { active, ...settleOpeningStats(world, active), pool, location: pool[0] ?? null };
+  const location = pool.find((l) => l.id === startLocationId) ?? pool[0] ?? null;
+  return { active, ...settleOpeningStats(world, active), pool, location };
 }
 
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
@@ -181,10 +208,11 @@ export function rerollOpeningRolls(
   lens: BenchLens,
   previous: PlaceholderRolls,
   pick?: PlaceholderPick,
+  startLocationId?: string | null,
 ): PlaceholderRolls {
   // Rolls are what is being redrawn, so a pin that only holds because of a roll is no reason to keep one;
   // value pins count here only where a source above them, or a sole value, fixes the pinner.
-  const pins = openingPins(world, openingStart(world, lens), {});
+  const pins = openingPins(world, openingStart(world, lens, startLocationId), {});
   const placeholders = allPlaceholders(world);
   const texts = [...chipBearingTexts(world), ...valuePinRollChips(placeholders)];
   const pinTexts = openingPinTexts(world);
@@ -235,14 +263,26 @@ function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: Pl
   return { settled: state.stats, seeded };
 }
 
+/** What the author picked to look at: a start from the start pool and a row from its opening pool. */
+export interface OpeningChoice {
+  startLocationId?: string | null;
+  openingKey?: string | null;
+}
+
 /**
  * Everything the Opening instrument shows for `lens` and the frozen `rolls`. Only the lens PC matters here —
- * a fresh game always begins at the world's starting location, wherever the lens is standing.
+ * a fresh game begins at a starting location, wherever the lens is standing. `choice` picks the start and
+ * the opening; each falls back to the first.
  */
-export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: PlaceholderRolls): OpeningData {
+export function buildOpening(
+  world: OpeningWorld,
+  lens: BenchLens,
+  rolls: PlaceholderRolls,
+  choice: OpeningChoice = {},
+): OpeningData {
   const placeholders = allPlaceholders(world);
-  const start = openingStart(world, lens);
-  const { active, settled, seeded, pool, location } = start;
+  const start = openingStart(world, lens, choice.startLocationId);
+  const { active, settled, seeded, location } = start;
   const pins = openingPins(world, start, rolls);
   const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins });
 
@@ -333,9 +373,29 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     '<NOTES>': NONE_PLACEHOLDER,
     '<TIME>': NONE_PLACEHOLDER,
   };
-  // The first drawable opening, resolved as the pre-fill resolves it: a fixed source keeps the lens stable.
-  const cue = resolve(resolveOpening(world.worldOverview, () => 0).text);
-  const { prompt: system } = buildNarrationPrompt({
+  // The opening pool at this start, as Enter World reads it. Picked library entities are a player choice.
+  const entityName = new Map((world.entities ?? []).map((e) => [e.id, e.name]));
+  const entries = openingPool({
+    overview: world.worldOverview, entities: world.entities ?? [], startingLocationId: location?.id,
+  });
+  const chances = poolChances(entries);
+  const openingText = (text: string) => renderUserMacro(resolve(text));
+  const pool = entries.map((entry, i): OpeningPoolRow => ({
+    key: poolKey(entry),
+    ownerName: entry.ownerId == null ? null : resolve(entityName.get(entry.ownerId) ?? entry.ownerId),
+    kind: entry.opening.kind,
+    text: openingText(entry.opening.text),
+    chance: chances[i],
+  }));
+  const chosen = pool.find((row) => row.key === choice.openingKey) ?? pool[0] ?? null;
+  const opening = chosen
+    ? { kind: chosen.kind, text: chosen.text }
+    : { kind: DEFAULT_OPENING.kind, text: openingText(DEFAULT_OPENING.text) };
+
+  // An Opening Narration is page one: play shows it and sends no narration request.
+  const narrated = opening.kind === 'narration';
+  const cue = opening.text;
+  const system = narrated ? '' : buildNarrationPrompt({
     template: defaultSystemPrompt,
     ctx,
     action: cue,
@@ -350,14 +410,19 @@ export function buildOpening(world: OpeningWorld, lens: BenchLens, rolls: Placeh
     markdownOutput: true,
     sectionStyle: 'markdown',
     resolvePH: resolve,
-  });
-  const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': cue });
+  }).prompt;
+  const user = narrated ? '' : renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': cue });
 
   return {
     pcName: lens.pc ? resolveLensText(lens.pc.name, placeholders, pins) : null,
     location,
     locationName: location ? resolve(location.name) : '',
-    startPool: pool.length,
+    startPool: start.pool.length,
+    starts: start.pool.map((l) => ({ id: l.id, name: resolve(l.name) })),
+    pool,
+    selectedKey: chosen?.key ?? null,
+    opening,
+    openingsEnabled: openingsEnabled(world.worldOverview),
     stats,
     disabledStats: (world.stats ?? [])
       .filter((stat) => !enabled[stat.id])

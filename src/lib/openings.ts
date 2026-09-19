@@ -76,6 +76,12 @@ export function openingPool({ overview, entities = [], startingLocationId, picke
 
 const poolWeight = (pool: readonly PoolEntry[]) => pool.reduce((sum, e) => sum + e.weight, 0);
 
+/** Each row's chance of being drawn from the whole pool, as a percentage, in pool order. */
+export function poolChances(pool: readonly PoolEntry[]): number[] {
+  const total = poolWeight(pool);
+  return pool.map((e) => (total > 0 ? (e.weight / total) * 100 : 0));
+}
+
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawOpening(pool: readonly PoolEntry[], random: () => number): Opening {
   return poolWeight(pool) <= 0 ? DEFAULT_OPENING : drawEntry(pool, random).opening;

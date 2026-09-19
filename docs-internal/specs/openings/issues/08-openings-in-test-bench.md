@@ -1,6 +1,7 @@
 # 08: Openings In The Test Bench
 
-Status: ready-for-agent
+Status: in-progress
+Base: 1a1a26dc
 Blocked by: 03, 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
