@@ -1,6 +1,7 @@
 # 01: Overview on a User Preset
 
-Status: ready-for-agent
+Status: in-progress
+Base: 6339da9d
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

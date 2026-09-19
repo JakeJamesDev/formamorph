@@ -49,8 +49,8 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset,
-  type PromptPresetStore, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
+  addFullPreset, replacePreset, activeOverview, updateOverview,
+  type PromptPresetStore, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
 import { clampMaxOutput, isMaxOutputKind, shippedMaxOutput } from '../lib/promptMaxOutput';
@@ -894,7 +894,7 @@ function useProvideSettings() {
     // Built from the effective values, so "save as new" while pinned copies what is actually running.
     setRawPresetStore((s) => {
       const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
-      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from));
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), activeOverview(from) ?? undefined);
       return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
     });
     if (pinnedPresetId) {
@@ -904,6 +904,12 @@ function useProvideSettings() {
     return id;
   };
   const renamePreset = (id: string, name: string) => setPresetStore((s) => renamePresetOp(s, id, name));
+  // Null under a built-in, which has no Overview; the setter no-ops there like the tuning setters.
+  const presetOverview = useMemo(() => activeOverview(effectiveStore), [effectiveStore]);
+  const setPresetOverview = useCallback(
+    (patch: Partial<PresetOverview>) => setPresetStore((s) => updateOverview(s, patch)),
+    [setPresetStore],
+  );
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
   const resetPreset = (id: string) => setPresetStore((s) => {
     const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';
@@ -1632,6 +1638,8 @@ function useProvideSettings() {
     renamePreset,
     deletePreset,
     resetPreset,
+    presetOverview,
+    setPresetOverview,
     exportActivePreset,
     importPreset,
     imageGenDisabled,

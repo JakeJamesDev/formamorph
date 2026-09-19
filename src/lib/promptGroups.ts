@@ -117,6 +117,14 @@ export const HUB_ROUTE = 'anatomy';
 /** Every `surface=…` value the dev-router accepts: the editors, plus the hub. */
 export const PROMPT_SURFACE_ROUTES: string[] = [...Object.keys(SURFACE_LABELS), HUB_ROUTE];
 
+/** The preset-level rail entry above the prompt groups, shown for user presets only. Its route is a
+ *  `subtab=…` value, since it stands in place of a prompt. */
+export const OVERVIEW_LABEL = 'Overview';
+export const OVERVIEW_ROUTE = 'overview';
+
+/** Every preset-level `subtab=…` value the dev-router accepts. */
+export const PRESET_ROUTES: string[] = [OVERVIEW_ROUTE];
+
 /**
  * The groups with their unavailable prompts removed, and empty groups dropped — so a player with images
  * off doesn't see an "Images" heading over nothing.

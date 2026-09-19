@@ -561,6 +561,24 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
     info: 'Tells the AI the bracketed text is you directing the scene as the author, not something your character says',
   },
 
+  // ── Prompts · Overview ──────────────────────────────────────────────────────
+  presetAuthor: {
+    label: 'Author',
+    description: 'Your name or handle, shown with the preset when you share it',
+  },
+  presetDescription: {
+    label: 'Description',
+    description: 'Explain what the preset changes and how to use it',
+  },
+  presetTags: {
+    label: 'Tags',
+    description: 'Label the preset by style and purpose',
+  },
+  presetModels: {
+    label: 'Models',
+    description: 'List the models this preset works well with',
+  },
+
   // ── Data · Saves ────────────────────────────────────────────────────────────
   autosave: {
     label: 'Autosave',

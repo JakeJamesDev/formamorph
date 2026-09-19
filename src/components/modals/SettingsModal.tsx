@@ -21,7 +21,8 @@ import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
-import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
+import { PresetOverviewPanel } from './PresetOverviewPanel';
+import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, OVERVIEW_LABEL, OVERVIEW_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
 import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
 import type { AnatomyViewMode } from '@/components/game/RequestAnatomyView';
@@ -771,6 +772,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     renamePreset,
     deletePreset,
     resetPreset,
+    presetOverview,
+    setPresetOverview,
     exportActivePreset,
     importPreset,
     memoryDigests,
@@ -1060,6 +1063,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [promptTab, setPromptTab] = useState(initialPromptTab ?? 'narration');
   // DEV dev-router: honor a requested prompt sub-tab (a `subtab=…` in the hash).
   useEffect(() => { if (initialPromptTab) setPromptTab(initialPromptTab); }, [initialPromptTab]);
+  // The preset's Overview stands in place of a prompt. A built-in has none, so it falls through to the prompt.
+  const [overviewOpen, setOverviewOpen] = useState(initialPromptTab === OVERVIEW_ROUTE);
+  useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab]);
+  const showingOverview = overviewOpen && presetOverview !== null;
   // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
   // call the same prompt two different things.
   const promptResets: Record<string, { label: string; reset: () => void }> = {
@@ -1122,10 +1129,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const promptsFullscreen = promptsMorph.contentInOverlay;
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
-  const selectPromptTab = (t: string) => { setPromptTab(t); setPromptView(null); setJumpField(null); };
+  const selectPromptTab = (t: string) => { setOverviewOpen(false); setPromptTab(t); setPromptView(null); setJumpField(null); };
+  const selectPromptView = (s: PromptSurface | null) => { setOverviewOpen(false); setPromptView(s); };
   /** A clicked run or chip in the anatomy: open the prompt, the editor that owns it, and — for a chip —
    *  the placement itself. A target with no surface is another prompt's hub. */
   const jumpToPrompt = (target: PromptJumpTarget) => {
+    setOverviewOpen(false);
     setPromptTab(target.tab);
     setPromptView(target.surface ?? null);
     setJumpField(target.field ?? null);
@@ -2607,19 +2616,28 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {/* Prompt and surface entries live in one list but must not share a value string, or
                     Radix matches both and renders their labels concatenated. */}
                 <Select
-                  value={`surface:${promptView ?? HUB_ROUTE}`}
+                  value={showingOverview ? `preset:${OVERVIEW_ROUTE}` : `surface:${promptView ?? HUB_ROUTE}`}
                   onValueChange={(v) => {
                     const [kind, id] = v.split(':');
-                    if (kind === 'prompt') selectPromptTab(id);
-                    else setPromptView(id === HUB_ROUTE ? null : (id as PromptSurface));
+                    if (kind === 'preset') setOverviewOpen(true);
+                    else if (kind === 'prompt') selectPromptTab(id);
+                    else selectPromptView(id === HUB_ROUTE ? null : (id as PromptSurface));
                   }}
                 >
                   {/* Named outright rather than via SelectValue: the value tracks only the surface, and
                       the reader needs to see which prompt they're in. */}
                   <SelectTrigger>
-                    <span className="truncate leading-normal">{selectedPrompt.label} &middot; {promptView ? SURFACE_LABELS[promptView] : HUB_LABEL}</span>
+                    <span className="truncate leading-normal">
+                      {showingOverview ? OVERVIEW_LABEL : <>{selectedPrompt.label} &middot; {promptView ? SURFACE_LABELS[promptView] : HUB_LABEL}</>}
+                    </span>
                   </SelectTrigger>
                   <SelectContent>
+                    {presetOverview && (
+                      <>
+                        <SelectItem value={`preset:${OVERVIEW_ROUTE}`}>{OVERVIEW_LABEL}</SelectItem>
+                        <SelectSeparator />
+                      </>
+                    )}
                     {railGroups.map((g) => (
                       <SelectGroup key={g.label}>
                         <SelectLabel>{g.label}</SelectLabel>
@@ -2643,7 +2661,20 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               </div>
 
               <ScrollArea className="hidden md:block w-[190px] flex-shrink-0 border-r pr-2">
-                <div className="flex flex-col gap-0.5 pb-2">
+                <nav aria-label="Prompts" className="flex flex-col gap-0.5 pb-2">
+                  {presetOverview && (
+                    <button
+                      type="button"
+                      onClick={() => setOverviewOpen(true)}
+                      aria-current={showingOverview ? 'true' : undefined}
+                      className={cn(
+                        'mt-1 rounded px-2 py-1 text-left text-label',
+                        showingOverview ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50',
+                      )}
+                    >
+                      {OVERVIEW_LABEL}
+                    </button>
+                  )}
                   {railGroups.map((g) => (
                     <div key={g.label} className="flex flex-col gap-0.5">
                       {/* A divider, not an entry: styled like the items it heads, it invited clicks and
@@ -2655,7 +2686,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                         <span className="h-hairline flex-1 bg-border" aria-hidden />
                       </div>
                       {g.tabs.map((t) => {
-                        const selected = t === activePromptTab;
+                        const selected = !showingOverview && t === activePromptTab;
                         return (
                           <div key={t} className="flex flex-col">
                             <button
@@ -2675,7 +2706,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                               <button
                                 key={s}
                                 type="button"
-                                onClick={() => setPromptView(s)}
+                                onClick={() => selectPromptView(s)}
                                 aria-current={promptView === s ? 'true' : undefined}
                                 className={cn(
                                   'ml-2 rounded px-2 py-0.5 text-left text-meta',
@@ -2690,11 +2721,17 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                       })}
                     </div>
                   ))}
-                </div>
+                </nav>
               </ScrollArea>
 
               <div className="flex flex-1 min-w-0 min-h-0 flex-col gap-2">
 
+              {showingOverview && presetOverview ? (
+                <ScrollArea className="flex-1 min-h-0">
+                  <PresetOverviewPanel overview={presetOverview} onChange={setPresetOverview} />
+                </ScrollArea>
+              ) : (
+              <>
               {/* What this prompt is for, over every surface, so the first thing seen names the prompt's job.
                   The hub draws the same line itself, beside its own controls. Above rather than beneath: at
                   the bottom of a full-height editor it sat below the fold. */}
@@ -3036,13 +3073,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               )}
               </>
               )}
+              </>
+              )}
               </div>
             </Tabs>
 
             {/* Reset targets the on-screen template; hidden on the Options sub-tab (edits no template)
                 and the Messages view (per-field resets). */}
             <div className="flex flex-wrap justify-end items-center gap-2 flex-shrink-0">
-              {!activePresetIsBuiltIn && !showingOptions && !showingMessages && !showingHub && (
+              {!activePresetIsBuiltIn && !showingOverview && !showingOptions && !showingMessages && !showingHub && (
                 <ConfirmDialog
                   title={`Reset ${resetTarget.label}`}
                   description={`Are you sure you want to reset the ${resetTarget.label} to its default value?`}
