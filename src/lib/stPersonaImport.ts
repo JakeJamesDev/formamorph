@@ -4,6 +4,7 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Entity } from '@/types';
 import { renderUserMacro } from './userMacro';
+import { CHAR_MACRO_RE } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, optimizeImageDataUrl } from './imageOptim';
 
 /** One converted persona and the avatar file that matched its key, if any. */
@@ -27,7 +28,6 @@ export interface StPersonaBackup {
   unusedImages: string[];
 }
 
-const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
 const NOT_A_BACKUP = "This file isn't a SillyTavern persona backup.";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
