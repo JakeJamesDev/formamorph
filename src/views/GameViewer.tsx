@@ -600,6 +600,7 @@ const GameViewer = ({
     setMemoryPins,
     setEntityVisualPreference,
     setEntityImageIndex,
+    setPersonaRef,
     milestoneSelection,
     setMilestoneSelection,
     memoryEdits,
@@ -619,7 +620,7 @@ const GameViewer = ({
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveTraitText,
-    resolveTraitFor,
+    resolveTraitFor, playerNames,
   } = useResolvedWorld();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
@@ -655,7 +656,8 @@ const GameViewer = ({
   const characterExclusions = useMemo(() => {
     const clean = (xs: string[]) => xs.map((n) => (n ?? '').trim()).filter(Boolean);
     return {
-      characters: clean(allEntities.map((e) => e.name)),
+      // The persona is a person the narration names, so it takes the surname rule too.
+      characters: clean([...allEntities.map((e) => e.name), ...playerNames]),
       terms: clean([
         ...locations.map((l) => l.name),
         ...stats.map((s) => s.name),
@@ -666,7 +668,7 @@ const GameViewer = ({
         ...(playerNotes.match(/\b[A-Z][A-Za-z'’-]+/g) ?? []),
       ]),
     };
-  }, [allEntities, locations, stats, traits, dictionary, placeholders, playerNotes]);
+  }, [allEntities, playerNames, locations, stats, traits, dictionary, placeholders, playerNotes]);
 
   /** Who belongs at `loc` — authored cast plus any discovered/visiting character anchored there. */
   const presentIdsAt = useCallback(
@@ -2229,7 +2231,7 @@ const GameViewer = ({
 
       /** Fold one planner answer's cast into the turn's candidate sets and live scene cast. */
       const classifyPlannerCast = (cast: DirectorCastMember[]) => {
-        const classified = classifyCast(cast, allEntities, activeTraits.map((t) => t.name));
+        const classified = classifyCast(cast, allEntities, playerNames);
         flaggedCast = classified.flaggedCast;
         directorCandidates = classified.directorCandidates;
         adHocCandidates = classified.adHocCandidates;
@@ -3913,6 +3915,7 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setEntityVisualPreference({});
+      setPersonaRef(undefined);
       setEntityImageIndex({});
       setMilestoneSelection(null);
       setMemoryEdits({});
@@ -3970,6 +3973,7 @@ const GameViewer = ({
     changeLocation,
     addLogEntry,
     setRuntimeDictionaries,
+    setPersonaRef,
     setDiscoveredEntities,
     setPlayerInput,
     setMemoryPins,

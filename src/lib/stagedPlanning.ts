@@ -436,7 +436,7 @@ export async function runStagedPlanning(ctx: {
   lastStory: string;
   entities: Entity[];
   presentEntityIds: string[];
-  /** Selected trait names — used to recognize the player when the director names them instead of labeling. */
+  /** The persona's name and aliases — used to recognize the player when the director names them instead of labeling. */
   playerNames: string[];
   characterDiaries: boolean;
   /** Run the per-character motivation passes concurrently (they're independent) instead of one at a time. */

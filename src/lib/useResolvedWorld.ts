@@ -4,6 +4,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
+import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
@@ -31,7 +32,14 @@ import type {
  * turn's pins would stop matching them.
  */
 export interface ResolvedWorld {
+  /** The cast: the authored entities without the one the player plays (see lib/persona). */
   entities: Entity[];
+  /** Who the player plays, or null. */
+  persona: ResolvedPersona | null;
+  /** The persona's name and aliases, which the planner reads as the player. */
+  playerNames: string[];
+  /** The save names a persona its source no longer holds. False while a library read is in flight. */
+  personaUnresolved: boolean;
   locations: GameLocation[];
   /** The authored travel links, forwarded as-is: endpoints are ids and carry no name to resolve. */
   connections: Connection[];
@@ -145,6 +153,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, playerTraits, disabledTraitIds, codePins,
+    personaRef, libraryPersona, personaPending,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
@@ -163,9 +172,13 @@ export function useResolvedWorld(): ResolvedWorld {
   const pins = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
 
   const {
-    entities, locations, connections, stats, traits, traitGroups,
+    entities: worldEntities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
   } = useResolvedAuthoredWorld(pins);
+  const { persona, cast: entities, playerNames, unresolved } = useMemo(
+    () => resolvePersona(personaRef, worldEntities, libraryPersona ? [libraryPersona] : []),
+    [personaRef, worldEntities, libraryPersona],
+  );
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -183,7 +196,8 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
+    entities, persona, playerNames, personaUnresolved: unresolved && !personaPending,
+    locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, pins, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveTraitText, resolveTraitFor,
   };

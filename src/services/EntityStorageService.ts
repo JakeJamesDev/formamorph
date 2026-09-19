@@ -71,13 +71,27 @@ class EntityStorageService {
   }
 
   /** Upsert a character by `id`; `createdAt` is sticky (stamped once), `lastAccessed` bumped each store. */
-  storeEntity(entity: StoredEntityRecord): Promise<void> {
-    return this.store.store(entity);
+  async storeEntity(entity: StoredEntityRecord): Promise<void> {
+    await this.store.store(entity);
+    this.notify(entity.id);
   }
 
   /** Remove a character from the library by `id`. */
-  deleteEntity(id: string): Promise<void> {
-    return this.store.delete(id);
+  async deleteEntity(id: string): Promise<void> {
+    await this.store.delete(id);
+    this.notify(id);
+  }
+
+  private readonly listeners = new Set<(id: string) => void>();
+
+  /** Call `listener` with the id of each entity stored or deleted. Returns the unsubscribe. */
+  subscribe(listener: (id: string) => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  private notify(id: string) {
+    for (const listener of this.listeners) listener(id);
   }
 }
 

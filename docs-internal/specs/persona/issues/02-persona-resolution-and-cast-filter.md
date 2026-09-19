@@ -1,6 +1,7 @@
 # 02: Persona Resolution and Cast Filter
 
-Status: ready-for-agent
+Status: in-progress
+Base: fe233128
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

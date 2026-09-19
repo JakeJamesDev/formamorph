@@ -274,7 +274,17 @@ export interface SaveObject {
    *  at creation, which places the note chronologically among the digests. Never judged by the selector —
    *  a player-written memory rides until deleted. Absent (or empty) on older saves ⇒ none. */
   memoryNotes?: Array<{ id: string; text: string; anchorTurn: number }>;
+  /** Who the player plays in this playthrough (see lib/persona). Sits beside `dictionaries` and does not
+   *  rewind with an undo. Absent on saves written before personas ⇒ no persona. */
+  persona?: PersonaRef;
 }
+
+/** A save's persona choice: a world entity, a library entity, or an explicit None. Content is read live
+ *  from its source by id, never copied into the save. */
+export type PersonaRef =
+  | { source: 'world'; entityId: string }
+  | { source: 'library'; entityId: string }
+  | { source: 'none' };
 
 /** Placeholder id → what stat code pinned it to: one text, or the list an Object pin holds. Masks the roll
  *  and every authored pin until code unpins it. */
