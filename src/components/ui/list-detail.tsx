@@ -30,7 +30,7 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
 
   if (!isMobile) {
     return (
-      <div className={cn('flex-1 min-h-0 flex', className)}>
+      <div data-list-detail className={cn('flex-1 min-h-0 flex', className)}>
         {scrollList
           ? <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
           : <div className="w-1/2 min-w-0 border-r overflow-hidden">{list}</div>}
@@ -40,7 +40,7 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
   }
 
   return (
-    <div className={cn('flex-1 min-h-0 relative overflow-hidden', className)}>
+    <div data-list-detail className={cn('flex-1 min-h-0 relative overflow-hidden', className)}>
       {/* List sits underneath; parallaxes left while the detail is open (it isn't interactable then, so its
           transform is `none` at rest — keeping dnd/portals inside it unaffected). The absolute box owns the
           positioning: ScrollArea's own Root is always `position: relative`, so `absolute inset-0` on it would

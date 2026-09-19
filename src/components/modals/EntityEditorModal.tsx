@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react
 import { toast } from 'react-toastify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
+import { FieldColumn } from './FieldColumn';
+import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { EntityDescriptionFields, EntityProfileFields } from '@/managers/EntityFields';
 import { EntityOpenings } from '@/managers/OpeningsPanel';
 import { ENTITY_EDITOR_TABS, type EntityEditorTab } from '@/views/entityPanelTabs';
@@ -149,7 +151,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
         // A library character has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
         title={labelPlaceholders(entity?.name ?? '', pool, { letters }) || 'Character'}
-        contentClassName="max-w-[800px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
+        contentClassName={LIBRARY_EDITOR_CONTENT_CLASS}
         loading={!entity}
         tabs={ENTITY_EDITOR_TABS}
         tab={tab}
@@ -162,13 +164,13 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
       >
         {entity && tab === 'overview' ? (
           <ScrollArea className="flex-1 min-h-0">
-            <div className="p-4">
+            <FieldColumn>
               <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
-            </div>
+            </FieldColumn>
           </ScrollArea>
         ) : entity && (tab === 'profile' || tab === 'descriptions' || tab === 'openings') ? (
           <ScrollArea className="flex-1 min-h-0">
-            <div className="p-4">
+            <FieldColumn>
               <ChipInsertTargetProvider>
                 <PlaceholderPaletteBar placeholders={pool} />
                 <div className="space-y-4">
@@ -191,7 +193,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
                   )}
                 </div>
               </ChipInsertTargetProvider>
-            </div>
+            </FieldColumn>
           </ScrollArea>
         ) : (
           // The same palette the field tabs get, over the value fields: a value is a chip field too.
