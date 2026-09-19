@@ -7,12 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search, RotateCcw, ArrowDownWideNarrow, ArrowUpNarrowWide, ArrowLeft, X, SlidersHorizontal, ChevronDown,
-  Earth, User, BookOpen, PersonStanding, Globe, ShieldAlert, Trophy,
+  Globe, ShieldAlert, Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
-import { CATALOG_KINDS, KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
@@ -83,15 +83,6 @@ import { useTutorial } from "@/lib/tutorials";
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
-
-/** Icon for each catalog kind's row in the section switcher (rail on landscape, dropdown on portrait). */
-const SECTION_ICON_BY_KIND: Record<CatalogKind, LucideIcon> = {
-  world: Earth,
-  entity: User,
-  dictionary: BookOpen,
-  // The same figure the local library's Avatars tab wears, so one thing has one icon everywhere.
-  model: PersonStanding,
-};
 
 /** A row in the section switcher: one per catalog kind, plus Contest while a contest exists. */
 type SwitcherSection = { key: BrowseTab; label: string; icon: LucideIcon };
@@ -459,7 +450,7 @@ const CommunityCreationsBrowser = ({
 
   // One read for the whole page's stored thumbnails, so a page of seen cards paints together rather
   // than opening a database read per card.
-  useThumbnailPreload(pagedRemoteWorlds.map((w) => ({
+  useThumbnailPreload(pagedRemoteWorlds.filter((w) => kindHasThumbnail(kindOf(w))).map((w) => ({
     file: w.thumbnail_file as string | null | undefined,
     updatedAt: w.updated_at as string | null | undefined,
   })));
@@ -710,7 +701,7 @@ const CommunityCreationsBrowser = ({
   const kindSections: SwitcherSection[] = CATALOG_KINDS.map((kind) => ({
     key: kind,
     label: BROWSE_TAB_LABELS[kind].many,
-    icon: SECTION_ICON_BY_KIND[kind],
+    icon: KIND_ICONS[kind],
   }));
   const sections: SwitcherSection[] = contests.length > 0
     ? [...kindSections, { key: 'contest', label: 'Contest', icon: Trophy }]

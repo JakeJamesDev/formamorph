@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { CATALOG_KINDS, CARD_TYPE_BY_KIND, KIND_BY_CARD_TYPE, KIND_LABELS, kindOf } from './catalogKinds';
+import { CATALOG_KINDS, CARD_TYPE_BY_KIND, KIND_BY_CARD_TYPE, KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from './catalogKinds';
+import { PUBLISH_LIMITS } from './publishLimits';
+import { BROWSE_TABS } from './browseTabs';
 
 describe('kindOf', () => {
   it('reads a kind the server sent', () => {
@@ -7,6 +9,7 @@ describe('kindOf', () => {
     expect(kindOf({ kind: 'dictionary' })).toBe('dictionary');
     expect(kindOf({ kind: 'world' })).toBe('world');
     expect(kindOf({ kind: 'model' })).toBe('model');
+    expect(kindOf({ kind: 'prompt' })).toBe('prompt');
   });
 
   it('treats a record with no kind as a world', () => {
@@ -24,10 +27,30 @@ describe('kindOf', () => {
 });
 
 describe('kind mappings', () => {
-  it('round-trips every kind through the local library tab value', () => {
-    for (const kind of CATALOG_KINDS) {
+  it('round-trips every library kind through the local library tab value', () => {
+    for (const kind of Object.keys(CARD_TYPE_BY_KIND) as (keyof typeof CARD_TYPE_BY_KIND)[]) {
       expect(KIND_BY_CARD_TYPE[CARD_TYPE_BY_KIND[kind]]).toBe(kind);
     }
+  });
+
+  it('gives a prompt no library tab, because presets live in Settings', () => {
+    expect(Object.keys(CARD_TYPE_BY_KIND).sort()).toEqual(CATALOG_KINDS.filter((k) => k !== 'prompt').sort());
+    expect(Object.values(KIND_BY_CARD_TYPE)).not.toContain('prompt');
+  });
+
+  it('gives every kind an icon, a publish limit, and a browse section', () => {
+    for (const kind of CATALOG_KINDS) {
+      expect(KIND_ICONS[kind]).toBeTruthy();
+      expect(PUBLISH_LIMITS[kind]).toBeGreaterThan(0);
+      expect(BROWSE_TABS).toContain(kind);
+    }
+  });
+
+  it('sets the prompt kind apart: its own label, a 1 MB limit, and no thumbnail', () => {
+    expect(KIND_LABELS.prompt).toEqual({ one: 'Prompt', many: 'Prompts' });
+    expect(PUBLISH_LIMITS.prompt).toBe(1024 * 1024);
+    expect(kindHasThumbnail('prompt')).toBe(false);
+    expect(CATALOG_KINDS.filter(kindHasThumbnail)).toEqual(['world', 'entity', 'dictionary', 'model']);
   });
 
   it('labels every kind', () => {
@@ -39,6 +62,6 @@ describe('kind mappings', () => {
 
   it('matches the server’s kinds', () => {
     // Mirrors FormamorphServer's config/kinds KINDS — they must not drift.
-    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary', 'model']);
+    expect([...CATALOG_KINDS]).toEqual(['world', 'entity', 'dictionary', 'model', 'prompt']);
   });
 });

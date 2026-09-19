@@ -18,7 +18,9 @@ import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf, type CatalogKind } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasThumbnail, listingAppVersion, listingModels, type CatalogKind } from "@/lib/catalogKinds";
+import { KindArt } from "@/components/community/KindArt";
+import { CHIP_BASE } from "@/components/Chip";
 import { componentKind } from "@/lib/worldDependencies";
 import { associationGroups } from "@/lib/listingAssociations";
 import { ListingCompatibleWorlds } from "@/components/community/ListingCompatibleWorlds";
@@ -261,10 +263,14 @@ export function RemoteWorldDetailsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
 
-  const thumbFile = world?.thumbnail_file;
+  // A kind with no cover art never asks for the server's stand-in file.
+  const hasArt = world ? kindHasThumbnail(kindOf(world)) : false;
+  const thumbFile = hasArt ? world?.thumbnail_file : undefined;
   const thumbUrl = thumbFile
     ? `${WorldStorageService.API_URL}/thumbnails/${thumbFile}`
-    : (world?.thumbnail || '');
+    : (hasArt && world?.thumbnail) || '';
+  const models = world ? listingModels(world) : [];
+  const madeFor = world ? listingAppVersion(world) : null;
   // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
   // rather than the raw cross-origin server URL (which CORP blocks from an <img> load, breaking the viewer).
   const { src: thumbSrc } = useCachedThumbnail(thumbFile, thumbUrl, world?.updated_at);
@@ -371,6 +377,8 @@ export function RemoteWorldDetailsModal({
                             thumbFit(kindOf(world) === 'entity' ? 'portrait' : 'landscape'),
                           )}
                         />
+                      ) : !hasArt ? (
+                        <KindArt kind={kindOf(world)} className="absolute top-0 left-0" iconClassName="h-16 w-16" />
                       ) : (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                           <Globe className="h-16 w-16" />
@@ -438,6 +446,25 @@ export function RemoteWorldDetailsModal({
                         <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
                       </p>
                     </div>
+
+                    {/* The models a prompt fits and the app version it was made for. */}
+                    {(models.length > 0 || madeFor) && (
+                      <div className="col-span-2">
+                        {models.length > 0 && (
+                          <>
+                            <h3 className="text-helper font-semibold text-muted-foreground">Models</h3>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {models.map((model) => (
+                                <span key={model} className={cn(CHIP_BASE, "bg-secondary text-secondary-foreground")}>{model}</span>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        {madeFor && (
+                          <p className="mt-2 text-meta text-muted-foreground">Made for Formamorph {madeFor}</p>
+                        )}
+                      </div>
+                    )}
 
                     {/* What the download installs beside the world, and what the player may add to it.
                         Absent for a world that follows nothing, and against a server without the routes. */}

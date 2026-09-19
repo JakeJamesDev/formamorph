@@ -122,6 +122,20 @@ describe('per-kind filter state', () => {
     rerender({ kind: 'world' });
     expect(result.current.statusFilter).toEqual(['mine']);
   });
+
+  it('keeps the Prompts section’s filters apart from the Worlds section’s, across a restart', () => {
+    const first = renderHook(
+      ({ kind }) => useCommunityBrowserFilters(catalog, downloadStateOf, true, kind, ME),
+      { initialProps: { kind: 'prompt' as 'world' | 'prompt' } },
+    );
+    act(() => { first.result.current.setTagFilter(['slow burn']); });
+    first.rerender({ kind: 'world' });
+    expect(first.result.current.tagFilter).toEqual([]);
+    first.unmount();
+
+    const second = renderHook(() => useCommunityBrowserFilters(catalog, downloadStateOf, true, 'prompt', ME));
+    expect(second.result.current.tagFilter).toEqual(['slow burn']);
+  });
 });
 
 describe('persistence', () => {

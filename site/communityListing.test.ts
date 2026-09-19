@@ -12,6 +12,11 @@ describe('community listing destinations', () => {
       .toEqual({ status: 'listing', listing: { kind: 'dictionary', id: 'harbor terms' } });
   });
 
+  it('reads a prompt listing destination', () => {
+    expect(communityListingTarget(communityListingPath({ kind: 'prompt', id: 'p-1' })))
+      .toEqual({ status: 'listing', listing: { kind: 'prompt', id: 'p-1' } });
+  });
+
   it('keeps the catalog route distinct from a malformed listing destination', () => {
     expect(communityListingTarget('/community')).toEqual({ status: 'catalog' });
     expect(communityListingTarget('/community/world')).toEqual({ status: 'invalid' });
