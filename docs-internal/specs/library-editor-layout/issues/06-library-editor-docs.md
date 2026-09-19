@@ -1,6 +1,8 @@
 # 06: Library Editor Docs
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Docs in WorldEditor.md "In the library" sections and the book panel table. The chip label fix keeps its own Fixed entry rather than folding into the library editor entry; confirm which the spec meant.
+Base: 08a71c91
 Blocked by: 03, 04, 05
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium

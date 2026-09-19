@@ -552,7 +552,7 @@ A dictionary in your library is always one book, so its editor has no row for th
 | **Dictionary** | The entries only. The **+** button at the top of the list adds one. |
 | **Placeholders** | The book's own [placeholders](#placeholders), across the full width. |
 
-The editor opens on **Dictionary** with the first entry selected. An empty book shows a hint beside the **+** button. Rename the book on **Overview**. No world changes.
+The editor opens on **Dictionary** with the first entry selected. An empty book shows a hint beside the **+** button. Rename the book on **Overview**. The rename changes no world.
 
 ### Getting started
 
