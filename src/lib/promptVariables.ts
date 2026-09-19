@@ -94,6 +94,17 @@ const CONTENT_AXIS: PromptVariantAxis = {
   ],
 };
 
+// The persona is one entity, so its content axis speaks of one person rather than of each item in a list.
+const PERSONA_CONTENT_AXIS: PromptVariantAxis = {
+  id: 'content',
+  label: 'Content',
+  options: [
+    { id: null, label: 'Full', help: "Sends the persona's name, aliases, pronouns, and full description" },
+    { id: 'summary', label: 'Summary', help: 'Sends the short AI summary, or the full description if there is none' },
+    { id: 'name', label: 'Name', help: 'Sends only the name and pronouns, for use inside a sentence' },
+  ],
+};
+
 // Shared "how the block is shaped" axis (mirrors the Default/Simple presets): Simple = plain text; Default =
 // markdown. The labels-style preset strips this axis back to plain (see sectionStyle `stripChipFormat`).
 const FORMAT_AXIS: PromptVariantAxis = {
@@ -127,6 +138,9 @@ const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', co
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
+// The entity the player plays. Affixable so a placement can carry its own heading, which then disappears
+// with the value when no persona is set.
+const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [PERSONA_CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
 const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
@@ -185,12 +199,12 @@ export const NOW_LINE_VARIABLES: PromptVariable[] = [LOCATION, ENTITIES, TIME, N
 
 /** All known variables — used by the parser to recognize any token regardless of which prompt it's in. */
 export const ALL_PROMPT_VARIABLES: PromptVariable[] = [
-  WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
+  WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, NOTES, DICTIONARY, LENGTH, MARKDOWN, ACTIVE_CHARACTER, PLAYER_ACTION, NARRATION, CHARACTER, SUBJECT,
   TIME, IN_FRAME, LANGUAGE, FIRST_PASSAGE, LATER_MATERIAL, REMEMBERED_MOMENTS, NEW_MOMENTS,
 ];
 
 /** The context chips every system prompt can reference; GameViewer substitutes them uniformly. */
-const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, LOCATION, ENTITIES, NOTES, TIME];
+const CONTEXT_VARS: PromptVariable[] = [WORLD, STATS, TRAITS, PERSONA, LOCATION, ENTITIES, NOTES, TIME];
 
 /** Which variables each prompt's toolbar offers. Every kind gets the shared context chips (even when its
  *  default text doesn't use them); some add their own extras (narration's length/markdown, character's name). */

@@ -86,6 +86,7 @@ import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
+import { personaContextValues } from "../lib/personaContext";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
@@ -625,7 +626,7 @@ const GameViewer = ({
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveTraitText,
-    resolveTraitFor, playerNames,
+    resolveTraitFor, playerNames, persona,
   } = useResolvedWorld();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
@@ -1757,6 +1758,7 @@ const GameViewer = ({
       "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple', view),
       "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown', view),
       "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml', view),
+      ...personaContextValues(persona?.entity ?? null),
       "<NOTES>": playerNotes || NONE_PLACEHOLDER,
       // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
       // (the now-line's) simply vanishes and the setting needs no special case anywhere else.
@@ -1775,7 +1777,7 @@ const GameViewer = ({
     for (const k in values) values[k] = resolve(values[k]);
     return values;
   }, [
-    worldOverview, activeStats, generateTraitDescriptions,
+    worldOverview, activeStats, generateTraitDescriptions, persona,
     currentLocation, locations, connections, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
     fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);

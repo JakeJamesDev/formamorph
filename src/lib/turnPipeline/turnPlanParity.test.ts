@@ -4,6 +4,7 @@ import { TURN_PASSES, milestoneSelectPass } from './turnPasses';
 import type { TurnMaterial, TurnPassId, TurnPassRecord } from './turnPlan';
 import type { ChatMessage } from '@/types';
 import { planDirective } from '@/components/game/GamePrompts';
+import { personaContextValues } from '@/lib/personaContext';
 import {
   fixture, PARITY_PROMPTS as PROMPTS, PASS_ID_BY_TYPE, DRAINER_TYPES,
   recordedPasses, inputFor, narrationOf, expectedCap, PARITY_DESTINATIONS,
@@ -47,8 +48,9 @@ const materialFor = (index: number, over: Partial<TurnMaterial> = {}): TurnMater
     action: turn.action,
     effectiveAction: index === 0 ? 'START GAME' : turn.action,
     turnId: turn.turnId ?? '',
-    ctx: {},
-    baseCtx: {},
+    // The recorded run had no persona; the game's context map still carries the persona chips, empty.
+    ctx: personaContextValues(null),
+    baseCtx: personaContextValues(null),
     sceneEntityTokens: {},
     destinations: PARITY_DESTINATIONS,
     narrationSystemPrompt: narrationOf(turn).systemPrompt,

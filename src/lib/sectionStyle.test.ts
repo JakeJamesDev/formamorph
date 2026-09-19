@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { restyle, buildStyledValues } from './sectionStyle';
 import { PROMPT_TEXT_KEYS, type PromptValues } from './promptPresets';
 import { defaultSystemPrompt, defaultDiscoverEntityPrompt } from '@/components/game/GamePrompts';
-import { parsePromptTemplate } from './promptTemplate';
+import { parsePromptTemplate, renderPromptTemplate } from './promptTemplate';
 import { joinToken, splitToken } from './promptVariables';
 
 describe('restyle', () => {
@@ -72,10 +72,16 @@ describe('buildStyledValues', () => {
     for (const k of PROMPT_TEXT_KEYS) expect(labels[k]).toContain(`${k.toUpperCase()}:`);
   });
 
-  it('preserves every chip token when restyling headers (restyle is headers-only)', () => {
+  it('preserves every chip when restyling headers, and every affix that holds no heading', () => {
     const tokensOf = (s: string) =>
       parsePromptTemplate(s).flatMap((seg) => (seg.type === 'variable' ? [seg.token] : []));
-    expect(tokensOf(restyle(defaultSystemPrompt, 'labels'))).toEqual(tokensOf(defaultSystemPrompt));
+    const before = tokensOf(defaultSystemPrompt);
+    const after = tokensOf(restyle(defaultSystemPrompt, 'labels'));
+    expect(after.map((t) => splitToken(t)?.key)).toEqual(before.map((t) => splitToken(t)?.key));
+    const headed = /^#{1,6}\s/m;
+    before.forEach((token, i) => {
+      if (!headed.test(token)) expect(after[i]).toBe(token);
+    });
   });
 
   it('labels style strips the chip format axis (markdown → plain); markdown keeps it', () => {
@@ -132,6 +138,35 @@ describe('chip affixes survive a style downcast (gate 6)', () => {
     expect(entities && entities.type === 'variable' && splitToken(entities.token)).toMatchObject({
       pre: ' with ', post: ' present',
     });
+  });
+
+  it('restyles a heading that rides in an affix, so the placement keeps its own section', () => {
+    const headed = '## Traits\n<TRAITS DESCRIPTION|markdown>\n<PERSONA|markdown|pre="\n## Player Character\n"|post="\n">\n## Notes\n<NOTES>';
+    const persona = { name: 'Traveler', entity: '- **Traveler**\n' };
+    const render = (text: string, value: string) =>
+      renderPromptTemplate(text, { '<TRAITS DESCRIPTION>': 'T', '<TRAITS DESCRIPTION|xml>': 'T', '<NOTES>': 'N', '<PERSONA>': value, '<PERSONA|xml>': value });
+
+    const labels = buildStyledValues(values(headed), 'labels').systemPrompt;
+    expect(render(labels, persona.entity)).toBe(`TRAITS:\nT\n\nPLAYER CHARACTER:\n${persona.entity}\n\nNOTES:\nN`);
+
+    // The affix opens and closes its own tag; the chip line itself is never read as a header line.
+    const xml = buildStyledValues(values(headed), 'xml').systemPrompt;
+    expect(render(xml, persona.entity)).toBe(
+      `<traits>\nT\n\n<player_character>\n${persona.entity}\n</player_character>\n\n</traits>\n<notes>\nN\n</notes>`,
+    );
+  });
+
+  it('renders a headed affix placement as nothing when empty, in every style', () => {
+    const bare = '## Traits\n<TRAITS DESCRIPTION|markdown>\n\n## Notes\n<NOTES>';
+    const headed = '## Traits\n<TRAITS DESCRIPTION|markdown>\n<PERSONA|markdown|pre="\n## Player Character\n"|post="\n">\n## Notes\n<NOTES>';
+    const empty = {
+      '<TRAITS DESCRIPTION>': 'T', '<TRAITS DESCRIPTION|xml>': 'T', '<TRAITS DESCRIPTION|markdown>': 'T', '<NOTES>': 'N',
+      '<PERSONA>': '', '<PERSONA|xml>': '', '<PERSONA|markdown>': '',
+    };
+    for (const style of ['markdown', 'labels', 'xml'] as const) {
+      expect(renderPromptTemplate(buildStyledValues(values(headed), style).systemPrompt, empty))
+        .toBe(renderPromptTemplate(buildStyledValues(values(bare), style).systemPrompt, empty));
+    }
   });
 
   it('still changes the format axis while preserving the affixes', () => {

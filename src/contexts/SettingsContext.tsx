@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, type ReactNode } from 'react';
-import { defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt, defaultLocationChangePrompt, defaultThinkingPrompt, defaultSummaryPrompt, defaultChoicesUserPrompt, defaultStatUpdatesUserPrompt, defaultLocationChangeUserPrompt, defaultSummaryUserPrompt, defaultDiaryPrompt, defaultDirectorPrompt, defaultDirectorUserPrompt, defaultCharacterPrompt, defaultStoryboardPrompt, defaultNowLinePrompt, defaultTimePassedPrompt, defaultTimePassedUserPrompt, defaultOpeningTimePrompt, defaultOpeningTimeUserPrompt, defaultSceneTagsPrompt, defaultSceneTagsUserPrompt, defaultDiscoverEntityPrompt, defaultDiscoverEntityUserPrompt, defaultMilestoneSelectPrompt, defaultMilestoneSelectUserPrompt } from '../components/game/GamePrompts';
+import { PROMPT_TEXT_DEFAULTS } from '../components/game/GamePrompts';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, DEFAULT_CONTEXT_WINDOW, DEFAULT_LOCAL_CONTEXT_SIZE, DEFAULT_LOCAL_GPU_LAYERS, DEFAULT_LOCAL_FLASH_ATTENTION, DEFAULT_LOCAL_PARALLEL_REQUESTS, DEFAULT_LOCAL_GPU_DEVICE, DEFAULT_LOCAL_AUTO_LOAD, DEFAULT_GEN_TEMPERATURE, DEFAULT_GEN_TOP_P, DEFAULT_GEN_REPETITION_PENALTY, DEFAULT_GEN_TOP_K, DEFAULT_GEN_MIN_P, DEFAULT_THEME_COLOR, BASE_THEME_COLOR, THEME_COLORS, DEFAULT_FONT, DEFAULT_FONT_TUNINGS, FONT_OPTIONS, SYSTEM_FONT_STACK, DEFAULT_NARRATION_FONT, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, DEFAULT_QUOTE_COLOR, DEFAULT_QUOTE_ITALIC, DEFAULT_QUOTE_COLOR_LIGHT, DEFAULT_QUOTE_COLOR_DARK, NARRATION_FONT_OPTIONS, fontStack, fontSizeAdjust, DEFAULT_UPDATE_CHANNEL, DEFAULT_SCENE_IMAGE_AUTO, DEFAULT_CONTINUE_CHOICE, CONTINUE_CHOICE_MODES, DEFAULT_NARRATION_LAYOUT, NARRATION_LAYOUTS, type ContinueChoiceMode, type NarrationLayout, type ThemeColor, type FontChoice, type NarrationFont, type UpdateChannel } from './settingsDefaults';
 import { isDesktop } from '../lib/imageGen/desktop';
 import type { ImageProviderId } from '../lib/imageGen';
@@ -193,40 +193,6 @@ function preloadFont(stack: string): Promise<unknown> {
   const family = stack.split(',')[0].trim(); // e.g. "'Inter Variable'"
   return document.fonts.load(`1em ${family}`).catch(() => {});
 }
-
-/** The canonical shipped prompt text — authored in markdown headers; the built-in styles derive from it. */
-const PROMPT_TEXT_DEFAULTS: PromptValues = {
-  systemPrompt: defaultSystemPrompt,
-  narrationUserPrompt: defaultNarrationUserPrompt,
-  recapUserPrompt: defaultRecapUserPrompt,
-  rehydrateUserPrompt: defaultRehydrateUserPrompt,
-  oocDirectivePrompt: defaultOocDirectivePrompt,
-  choicesPrompt: defaultChoicesPrompt,
-  statUpdatesPrompt: defaultStatUpdatesPrompt,
-  locationChangePromptText: defaultLocationChangePrompt,
-  thinkingPrompt: defaultThinkingPrompt,
-  summaryPrompt: defaultSummaryPrompt,
-  diaryPrompt: defaultDiaryPrompt,
-  directorPrompt: defaultDirectorPrompt,
-  directorUserPrompt: defaultDirectorUserPrompt,
-  characterPrompt: defaultCharacterPrompt,
-  storyboardPrompt: defaultStoryboardPrompt,
-  choicesUserPrompt: defaultChoicesUserPrompt,
-  statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
-  locationChangeUserPrompt: defaultLocationChangeUserPrompt,
-  summaryUserPrompt: defaultSummaryUserPrompt,
-  milestoneSelectPrompt: defaultMilestoneSelectPrompt,
-  milestoneSelectUserPrompt: defaultMilestoneSelectUserPrompt,
-  nowLinePrompt: defaultNowLinePrompt,
-  timePassedPrompt: defaultTimePassedPrompt,
-  timePassedUserPrompt: defaultTimePassedUserPrompt,
-  openingTimePrompt: defaultOpeningTimePrompt,
-  openingTimeUserPrompt: defaultOpeningTimeUserPrompt,
-  sceneTagsPrompt: defaultSceneTagsPrompt,
-  sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
-  discoverEntityPrompt: defaultDiscoverEntityPrompt,
-  discoverEntityUserPrompt: defaultDiscoverEntityUserPrompt,
-};
 
 /** Each read-only built-in preset's values, its section style applied to the canonical text (markdown =
  *  identity). Keyed by preset id for O(1) resolution of the active built-in. */

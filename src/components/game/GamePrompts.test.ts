@@ -23,23 +23,27 @@ import {
   planDirective,
 } from './GamePrompts';
 import { parsePromptTemplate } from '@/lib/promptTemplate';
+import { splitToken } from '@/lib/promptVariables';
 
 // The variable chips a prompt injects, in order. This is the mechanical contract we guard: each default
 // prompt must carry exactly the context tokens it's meant to, so an edit can't silently drop or reorder
 // injected context (e.g. lose <DICTIONARY>). Prompt *wording* is a quality matter measured by the baseline
 // harness (npm run baseline), not pinned here — so these tests pass on a reword and fail on a dropped token.
+// Chips by their affix-free key: a placement's wording is copy, not the injected-context contract.
 const tokensIn = (prompt: string): string[] =>
-  parsePromptTemplate(prompt).flatMap((s) => (s.type === 'variable' ? [s.token] : []));
+  parsePromptTemplate(prompt).flatMap((s) => (s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
 
 describe('default prompts carry the expected variable chips', () => {
   it('game-text prompt', () => {
     expect(tokensIn(defaultSystemPrompt)).toEqual([
       '<LENGTH GUIDANCE>',
+      '<PERSONA|name>',
       '<MARKDOWN GUIDANCE>',
       '<WORLD DESCRIPTION>',
       '<DICTIONARY|before>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|markdown>',
       '<NOTES>',
       '<LOCATION|markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -58,6 +62,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|name.markdown>',
       '<NOTES>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
@@ -91,6 +96,7 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultThinkingPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
@@ -105,6 +111,7 @@ describe('default prompts carry the expected variable chips', () => {
     expect(tokensIn(defaultDirectorPrompt)).toEqual([
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
@@ -121,14 +128,15 @@ describe('default prompts carry the expected variable chips', () => {
       '<CHARACTER NAME>',
       '<WORLD DESCRIPTION>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
     ]);
   });
 
-  it('diary prompt carries no variable chips', () => {
-    expect(tokensIn(defaultDiaryPrompt)).toEqual([]);
+  it('diary prompt carries only the persona name', () => {
+    expect(tokensIn(defaultDiaryPrompt)).toEqual(['<PERSONA|name>']);
   });
 
   it('staged storyboard prompt', () => {
@@ -136,6 +144,7 @@ describe('default prompts carry the expected variable chips', () => {
       '<WORLD DESCRIPTION>',
       '<STATS DESCRIPTION|descriptions.markdown>',
       '<TRAITS DESCRIPTION|markdown>',
+      '<PERSONA|markdown>',
       '<LOCATION|summary.markdown>',
       '<LOCATION|sublocations.summary.markdown>',
       '<LOCATION|reachable.summary.markdown>',
