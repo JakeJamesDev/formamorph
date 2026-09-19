@@ -73,6 +73,12 @@ describe('worldUsesAdvancedFeatures', () => {
     }))).toBe(true);
   });
 
+  it('says yes about an entity with a written opening', () => {
+    const entity = { id: 'e1', name: 'Wren', openings: [{ id: 'o1', text: 'Wren waves.', kind: 'narration' as const }] };
+    expect(worldUsesAdvancedFeatures(plain({ entities: [entity] }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, openings: [] }] }))).toBe(false);
+  });
+
   it('says no about a world whose collections are simply absent, rather than throwing on it', () => {
     // Hand-edited or third-party world JSON can omit an array the types call required, and this runs in the
     // editor's render — so a world with nothing to look through hides nothing rather than blanking the editor.

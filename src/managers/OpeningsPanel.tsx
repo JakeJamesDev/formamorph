@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -12,38 +13,82 @@ import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, moveOpening, openingChances, openingsEnabled, openingWeight, removeOpening,
-  setOpeningKind, setOpeningText, setOpeningWeight,
+  setOpeningKind, setOpeningText, setOpeningWeight, type OpeningOwner,
 } from '@/lib/openings';
-import type { Opening, OpeningKind, Placeholder } from '@/types';
+import type { Entity, Opening, OpeningKind, Placeholder } from '@/types';
 
-/** The world's openings: one card per row with its text, weight and chance, in draw order. */
+/** The world's openings, with the default opening shown while the list is empty and the switch's effect. */
 export function OpeningsPanel() {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
-  const openings = worldOverview.openings ?? [];
-  const chances = openingChances(worldOverview);
-  const enabled = openingsEnabled(worldOverview);
+  return (
+    <div className="space-y-2">
+      <OpeningsList
+        owner={worldOverview}
+        onChange={updateWorldOverview}
+        placeholders={placeholders}
+        empty={(
+          <div className="space-y-1">
+            <Hint>No openings yet. Players start on the default opening.</Hint>
+            <div
+              role="note"
+              aria-label="Default opening"
+              className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
+            >
+              {DEFAULT_OPENING.text}
+            </div>
+          </div>
+        )}
+      />
+      <Hint>
+        {openingsEnabled(worldOverview)
+          ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
+          : 'Not applied until you switch the list on. Players start on the default opening.'}
+      </Hint>
+    </div>
+  );
+}
+
+/** One entity's openings, for both entity editors. */
+export function EntityOpenings({ entity, onChange, placeholders }: {
+  entity: Entity;
+  onChange: (patch: OpeningOwner) => void;
+  placeholders: Placeholder[];
+}) {
+  return (
+    <div className="space-y-2">
+      <OpeningsList owner={entity} onChange={onChange} placeholders={placeholders} empty={<Hint>No openings yet.</Hint>} />
+      <Hint>
+        {"Join the world's draw when a player starts at a location this entity is at. The world's switch covers them too."}
+      </Hint>
+    </div>
+  );
+}
+
+/**
+ * One owner's openings: a card per row with its kind, text, weight and chance, in draw order, and the Add
+ * button. The world panel and both entity editors render this, and each edit goes to `onChange` as a patch
+ * of the owner's opening fields.
+ */
+export function OpeningsList({ owner, onChange, placeholders, empty }: {
+  owner: OpeningOwner;
+  onChange: (patch: OpeningOwner) => void;
+  placeholders: Placeholder[];
+  /** What shows in place of the rows while there are none. */
+  empty: ReactNode;
+}) {
+  const openings = owner.openings ?? [];
+  const chances = openingChances(owner);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const from = openings.findIndex((o) => o.id === active.id);
     const to = openings.findIndex((o) => o.id === over.id);
-    if (from !== -1 && to !== -1) updateWorldOverview(moveOpening(worldOverview, from, to));
+    if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
 
   return (
     <div className="space-y-2">
-      {openings.length === 0 ? (
-        <div className="space-y-1">
-          <Hint>No openings yet. Players start on the default opening.</Hint>
-          <div
-            role="note"
-            aria-label="Default opening"
-            className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
-          >
-            {DEFAULT_OPENING.text}
-          </div>
-        </div>
-      ) : (
+      {openings.length === 0 ? empty : (
         <EditorDndContext onDragEnd={handleDragEnd}>
           <StableSortableContext items={openings} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-3">
@@ -52,33 +97,22 @@ export function OpeningsPanel() {
                   key={opening.id}
                   opening={opening}
                   index={i}
-                  weight={openingWeight(worldOverview.openingWeights, opening.id)}
+                  weight={openingWeight(owner.openingWeights, opening.id)}
                   chance={chances[opening.id] ?? 0}
                   placeholders={placeholders}
-                  onKind={(kind) => updateWorldOverview(setOpeningKind(worldOverview, opening.id, kind))}
-                  onText={(text) => updateWorldOverview(setOpeningText(worldOverview, opening.id, text))}
-                  onWeight={(w) => updateWorldOverview(setOpeningWeight(worldOverview, opening.id, w))}
-                  onRemove={() => updateWorldOverview(removeOpening(worldOverview, opening.id))}
+                  onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
+                  onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
+                  onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
+                  onRemove={() => onChange(removeOpening(owner, opening.id))}
                 />
               ))}
             </div>
           </StableSortableContext>
         </EditorDndContext>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={() => updateWorldOverview(addOpening(worldOverview))}
-      >
+      <Button type="button" variant="outline" size="sm" className="w-full" onClick={() => onChange(addOpening(owner))}>
         <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
       </Button>
-      <Hint>
-        {enabled
-          ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
-          : 'Not applied until you switch the list on. Players start on the default opening.'}
-      </Hint>
     </div>
   );
 }

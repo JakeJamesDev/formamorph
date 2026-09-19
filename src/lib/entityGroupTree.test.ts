@@ -68,6 +68,26 @@ describe('duplicateEntityNode', () => {
     expect(copy.name).toBe('a (Copy)');
   });
 
+  it('copies an entity’s openings under fresh ids, with the weights following them', () => {
+    const original: Entity = {
+      ...entity('a', null, 0),
+      openings: [
+        { id: 'o1', text: 'First.', kind: 'action' },
+        { id: 'o2', text: 'Second.', kind: 'narration' },
+      ],
+      openingWeights: { o2: 4 },
+    };
+    const { entities: e2, newId } = duplicateEntityNode([], [original], 'a');
+    const copy = e2.find((e) => e.id === newId)!;
+    const ids = (copy.openings ?? []).map((o) => o.id);
+    expect(copy.openings?.map((o) => [o.text, o.kind])).toEqual([['First.', 'action'], ['Second.', 'narration']]);
+    expect(ids).not.toContain('o1');
+    expect(ids).not.toContain('o2');
+    expect(copy.openingWeights).toEqual({ [ids[1]]: 4 });
+    // The original keeps its own.
+    expect(e2.find((e) => e.id === 'a')?.openings).toBe(original.openings);
+  });
+
   it('deep-copies a group subtree with fresh ids and remapped parents', () => {
     const groups = [group('races', null, 0), group('elves', 'races', 0)];
     const entities = [entity('synthia', 'elves', 0), entity('loner', null, 1)];

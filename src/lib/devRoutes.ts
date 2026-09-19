@@ -109,11 +109,11 @@ export const DEV_MODAL_TABS = {
   worldEditorLocations: ['list', 'canvas'],
   // The World Editor's entity panel splits its fields across its own tabs, reached with the same `subtab=…`
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
-  // panel, so pair it with a world that has an entity to select. `placeholders` is Advanced only.
-  worldEditorEntity: ['profile', 'descriptions', 'placeholders'],
+  // panel, so pair it with a world that has an entity to select. `openings` and `placeholders` are Advanced only.
+  worldEditorEntity: ['profile', 'descriptions', 'openings', 'placeholders'],
   // The library entity editor (`#dev?modal=entityEditor&tab=descriptions`): Overview, then the entity
   // panel's own tabs. It opens on a blank draft and is never in Simple mode, so every tab is reachable.
-  entityEditor: ['overview', 'profile', 'descriptions', 'placeholders'],
+  entityEditor: ['overview', 'profile', 'descriptions', 'openings', 'placeholders'],
   // The World Editor's location panel does the same over the Locations tab
   // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
   // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.

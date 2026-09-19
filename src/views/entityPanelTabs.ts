@@ -1,13 +1,15 @@
 /** The entity tabs, in order, for both entity editors. `EntityManager`'s `PanelTabsList` and the library
  *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
  *  `DEV_MODAL_TABS.entityEditor`) are guarded against them in `devRouter.test.ts`. */
-import { AlignLeft, Braces, Info, User } from 'lucide-react';
+import { AlignLeft, Braces, Info, Play, User } from 'lucide-react';
 
+import { isOpeningFieldKey } from '@/lib/openings';
 import { tabForField } from './findFocus';
 
 export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: User },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
+  { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: Braces, advancedOnly: true },
 ] as const;
 
@@ -27,7 +29,7 @@ export const ENTITY_EDITOR_TABS = [
 
 export type EntityEditorTab = (typeof ENTITY_EDITOR_TABS)[number]['value'];
 
-/** Which tab holds each searchable field. An alias arrives indexed, since the hit is on one chip, so it is
+/** Which tab holds each searchable field; an opening row's key names its id, so it is matched apart. An alias arrives indexed, since the hit is on one chip, so it is
  *  listed in the bracket form `tabForField` matches those against. */
 const TAB_BY_FIELD: Record<string, EntityPanelTab> = {
   name: 'profile',
@@ -41,5 +43,6 @@ const TAB_BY_FIELD: Record<string, EntityPanelTab> = {
 
 /** The tab holding `fieldKey`, or `null` for a key no tab claims, such as a group's name. */
 export function entityTabForField(fieldKey: string): EntityPanelTab | null {
+  if (isOpeningFieldKey(fieldKey)) return 'openings';
   return tabForField(fieldKey, TAB_BY_FIELD);
 }

@@ -208,6 +208,20 @@ describe('collectSearchTargets', () => {
     })]]);
   });
 
+  it('reaches an entity’s opening rows and writes a replace to that entity', () => {
+    const openings = [{ id: 'o1', text: 'Mira waves from the jetty.', kind: 'narration' as const }];
+    const { src, writes } = sources({ entities: [entity({ openings, openingWeights: { o1: 2 } })] });
+    const target = targetFor(collectSearchTargets(src), openingFieldKey('o1'));
+    expect(target).toMatchObject({ itemId: 'e1', tab: 'entities', fieldLabel: 'Opening 1', chipCapable: true });
+
+    target.write('Mira waves from the pier.');
+    expect(writes).toEqual([['entity', expect.objectContaining({
+      id: 'e1',
+      openings: [{ ...openings[0], text: 'Mira waves from the pier.' }],
+      openingWeights: { o1: 2 },
+    })]]);
+  });
+
   it('offers no target for the default opening', () => {
     expect(collectSearchTargets(sources().src).some((t) => isOpeningFieldKey(t.fieldKey))).toBe(false);
   });

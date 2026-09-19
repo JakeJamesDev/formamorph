@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Placeholder } from '@/types';
+import type { Entity, Opening, Placeholder } from '@/types';
+import { remintOpenings } from './openings';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
 import { describePlaceholders } from './placeholders';
@@ -39,6 +40,9 @@ export interface EntityCardData {
   placeholders?: Placeholder[];
   /** The shared placeholders the entity's chips and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
+  /** The entity's own openings and their weights (see lib/openings). Import mints fresh ids for both. */
+  openings?: Opening[];
+  openingWeights?: Record<string, number>;
   /** Where this character came from, so an importer can reconnect it (see lib/componentFileLinks). */
   source?: ComponentFileSource;
   /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
@@ -73,6 +77,9 @@ export function buildEntityCardData(
     ...(extras.length ? { extraImages: extras } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
+    ...(entity.openings?.length ? { openings: entity.openings } : {}),
+    ...(entity.openings?.length && entity.openingWeights && Object.keys(entity.openingWeights).length
+      ? { openingWeights: entity.openingWeights } : {}),
     ...(links.source ? { source: links.source } : {}),
     ...(links.associations?.length ? { associations: links.associations } : {}),
   };
@@ -100,6 +107,12 @@ export function parseEntityCardData(raw: unknown): Entity {
   const extras = Array.isArray(obj.extraImages)
     ? (obj.extraImages as unknown[]).filter((u): u is string => typeof u === 'string' && !!u)
     : [];
+  const openings = Array.isArray(obj.openings) ? (obj.openings as unknown[]).flatMap(cardOpening) : [];
+  const weights = obj.openingWeights && typeof obj.openingWeights === 'object' && !Array.isArray(obj.openingWeights)
+    ? Object.fromEntries(Object.entries(obj.openingWeights as Record<string, unknown>)
+      .filter((e): e is [string, number] => typeof e[1] === 'number' && Number.isFinite(e[1])))
+    : undefined;
+  const carried = remintOpenings({ openings, openingWeights: weights });
   return {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
@@ -115,7 +128,22 @@ export function parseEntityCardData(raw: unknown): Entity {
     // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
     ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),
+    ...(carried.openings ? { openings: carried.openings } : {}),
+    ...(carried.openingWeights ? { openingWeights: carried.openingWeights } : {}),
   };
+}
+
+/** One card row as an opening, or nothing when it is not one. An unknown kind reads as a Player Action. The
+ *  id is kept only so the weights can follow it through the re-mint. */
+function cardOpening(raw: unknown): Opening[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const row = raw as Record<string, unknown>;
+  if (typeof row.text !== 'string') return [];
+  return [{
+    id: typeof row.id === 'string' && row.id ? row.id : randomUUID(),
+    text: row.text,
+    kind: row.kind === 'narration' ? 'narration' : 'action',
+  }];
 }
 
 /** A simple deterministic initials-on-color portrait, used when an entity has no image so a card can still be made. */

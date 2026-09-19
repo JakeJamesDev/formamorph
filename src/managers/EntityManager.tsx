@@ -4,6 +4,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
+import { EntityOpenings } from './OpeningsPanel';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
 import { useRenameField } from '@/lib/useCodeRename';
@@ -15,7 +16,8 @@ import { useEditorMode } from '@/lib/editorMode';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
- * Right-panel editor for one entity: the field groups split across Profile, Descriptions and Placeholders.
+ * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Openings and
+ * Placeholders.
  *
  * The panel remounts per entity, so the chosen tab is the editor's to hold and arrives as a prop.
  *
@@ -99,6 +101,20 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
         <TabsContent value="descriptions" className="space-y-4">
           <EntityDescriptionFields {...groupProps} />
         </TabsContent>
+
+        {advanced && (
+          <TabsContent value="openings">
+            <EntityOpenings
+              entity={editingEntity}
+              placeholders={placeholders}
+              onChange={(patch) => {
+                const next = { ...editingEntity, ...patch };
+                setDraft(next);
+                updateEntity(next);
+              }}
+            />
+          </TabsContent>
+        )}
 
         {advanced && (
           <TabsContent value="placeholders">

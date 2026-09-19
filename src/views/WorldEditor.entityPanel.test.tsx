@@ -76,10 +76,10 @@ const selectEntity = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor entity panel tabs', () => {
-  it('offers three tabs in Advanced mode and opens on Profile', () => {
+  it('offers four tabs in Advanced mode and opens on Profile', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Placeholders']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Openings', 'Placeholders']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 

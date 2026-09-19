@@ -725,7 +725,7 @@ const chipOwners = (world: RuleWorld): ChipOwner[] => [
   },
   ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },
-    texts: [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags],
+    texts: [e.name, ...(e.aliases ?? []), e.playerDescription, e.aiDescription, e.aiSummary, e.imageTags, ...openingTexts(e)],
   })),
   ...(world.locations ?? []).map((l) => ({
     item: namedItem(l.id, l.name, world, 'locations'),

@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
 import { EntityDescriptionFields, EntityProfileFields } from '@/managers/EntityFields';
+import { EntityOpenings } from '@/managers/OpeningsPanel';
 import { ENTITY_EDITOR_TABS, type EntityEditorTab } from '@/views/entityPanelTabs';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
@@ -158,7 +159,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
               <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
             </div>
           </ScrollArea>
-        ) : entity && (tab === 'profile' || tab === 'descriptions') ? (
+        ) : entity && (tab === 'profile' || tab === 'descriptions' || tab === 'openings') ? (
           <ScrollArea className="flex-1 min-h-0">
             <div className="p-4">
               <ChipInsertTargetProvider>
@@ -170,6 +171,12 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
                       onChange={handleChange}
                       placeholders={pool}
                       columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)]"
+                    />
+                  ) : tab === 'openings' ? (
+                    <EntityOpenings
+                      entity={entity}
+                      placeholders={pool}
+                      onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}
                     />
                   ) : (
                     <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
