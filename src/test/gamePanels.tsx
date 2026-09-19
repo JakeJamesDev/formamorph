@@ -331,6 +331,11 @@ export function renderLeftPanel(
   return renderPanel(defaults, overrides, options, (props) => <LeftPanel {...props} />);
 }
 
+/** Render any in-game node, such as a hook probe, under the same providers and staging as the panels. */
+export function renderInGame(node: ReactNode, options: PanelHarnessOptions = {}): PanelHarness<object> {
+  return renderPanel({}, {}, options, () => node);
+}
+
 /** Render the stats/traits/location panel over a staged playthrough. */
 export function renderRightPanel(
   overrides: Partial<RightPanelProps> = {},

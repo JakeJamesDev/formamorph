@@ -88,6 +88,7 @@ import { buildTraitContext } from "../lib/traitTree";
 import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
 import { personaContextValues } from "../lib/personaContext";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
+import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
 import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
 import { buildStatContext } from "../lib/statContext";
@@ -628,6 +629,7 @@ const GameViewer = ({
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveTraitText,
     resolveTraitFor, playerNames, persona,
   } = useResolvedWorld();
+  usePersonaNotice();
   // The session's rolls, for the one pass that collects pins before they are in state (the init effect).
   const { rolls: sessionRolls } = usePlaceholderSession();
 
