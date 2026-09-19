@@ -1,7 +1,7 @@
 # 01: Own Placeholder Store for Library Editors
 
 Status: ready-for-human
-Status note: Built in "Give Library Editors Their Own Placeholder Store". The `inWorld` prop is removed: the modal store has no world lists, so the scoped section cannot bind there. Open follow-up: three components in the modals still read the world through `useGameDataOptional()` (`PlaceholderManager` pin names, `PlaceholderField` pin rows and writers, `DictionaryBookManager` rename code name).
+Status note: Built in "Give Library Editors Their Own Placeholder Store". The `inWorld` prop is removed: the modal store has no world lists, so the scoped section cannot bind there. The other GameData reads inside the modals belong to ticket 07.
 Base: c53f7b6c
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
