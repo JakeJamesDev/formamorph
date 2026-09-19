@@ -24,7 +24,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, Image as ImageIcon, Dices, MoreHorizontal } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, Image as ImageIcon, Dices, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -63,6 +63,17 @@ import { useNarrationLayout } from '@/lib/useNarrationLayout';
 import { useStatsSnap } from '@/lib/useStatsSnap';
 
 import { parseSavedReasoning } from '@/lib/savedReasoning';
+
+/** One side-panel tab: an icon, and the label where the panel is wide enough to hold it. */
+const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIcon; label: string }) => (
+  // The label's own text names the tab; the tip shows it where the label is hidden.
+  <Tip tip={label} labelsChild={false}>
+    <TabsTrigger value={value} className="min-w-0 gap-1.5 px-1">
+      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="sr-only truncate max-md:not-sr-only xl:not-sr-only">{label}</span>
+    </TabsTrigger>
+  </Tip>
+);
 
 export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   entities: Entity[];
@@ -201,7 +212,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
   ) : null;
 
   return (
-  <Card className="w-full md:w-1/4 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+  <Card className="w-full md:w-1/4 md:shrink-0 md:mr-1 grow md:grow-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
     <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
       {/* Landscape: model on top with a show/hide toggle in the upper right */}
       {!isMobile && (
@@ -254,12 +265,12 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
       )}
 
       <Tabs value={leftTab} onValueChange={setLeftTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <TabsList className="flex-shrink-0">
-          {isMobile && <TabsTrigger value="model">Avatar</TabsTrigger>}
-          <TabsTrigger value="entities">Entities</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
-          <TabsTrigger value="memory">Memory</TabsTrigger>
-          <TabsTrigger value="logs">Logs ({logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})</TabsTrigger>
+        <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
+          {isMobile && <PanelTab value="model" icon={User} label="Avatar" />}
+          <PanelTab value="entities" icon={Users} label="Entities" />
+          <PanelTab value="notes" icon={NotebookPen} label="Notes" />
+          <PanelTab value="memory" icon={Brain} label="Memory" />
+          <PanelTab value="logs" icon={ScrollText} label={`Logs (${logEntries.reduce((sum, entry) => sum + 1 + (entry.repeat || 0), 0)})`} />
         </TabsList>
         {isMobile && (
           <TabsContent value="model" className="flex-grow overflow-hidden min-h-[100px]">
@@ -796,7 +807,7 @@ export const MiddlePanel = ({
   );
 
   return (
-    <Card className="w-full flex-grow md:mx-0.5 md:max-w-[48%] min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
+    <Card className="w-full flex-grow md:mx-0.5 md:min-w-0 md:basis-0 min-h-0 flex flex-col bg-background/60 border-border overflow-hidden">
       <CardContent className="flex-grow flex flex-col overflow-hidden p-4 sm:p-1">
         {memoryBar}
         {/* Determinate generation progress (sentence X of N) while narration synthesizes; playback
@@ -1296,6 +1307,9 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   // Whether the descriptor line is part of this world's stat list at all. Held across every row so the list
   // keeps its shape as values move in and out of bands; a world that names none of them pays nothing, and a
   // stat the player never sees can't put the line there for the ones they do.
+  // A world with no stat the player can see gets no Stats tab; the panel then opens on Traits.
+  const hasShownStats = playerStats.some((stat) => stat.hidden !== true);
+  const shownTab = !hasShownStats && activeTab === 'stats' ? 'traits' : activeTab;
   const anyDescriptors = visibleStats.some(({ stat }) => (stat.descriptors?.length ?? 0) > 0);
   // On a past page show the viewed turn's location (Location tab); live otherwise.
   const displayLocation = isViewingPast
@@ -1315,7 +1329,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
   }, [connections, locations, displayLocation]);
 
   return (
-    <Card className="w-full md:w-1/4 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
+    <Card className="w-full md:w-1/4 md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         <div className="flex items-center gap-2 pl-2">
@@ -1337,11 +1351,11 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
         <PersonaRow />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
-        <TabsList className="flex-shrink-0">
-          <TabsTrigger value="stats">Stats</TabsTrigger>
-          <TabsTrigger value="traits">Traits</TabsTrigger>
-          <TabsTrigger value="location">Location</TabsTrigger>
+      <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
+        <TabsList className="grid w-full flex-shrink-0 auto-cols-fr grid-flow-col">
+          {hasShownStats && <PanelTab value="stats" icon={ChartColumn} label="Stats" />}
+          <PanelTab value="traits" icon={Sparkles} label="Traits" />
+          <PanelTab value="location" icon={MapPin} label="Location" />
         </TabsList>
         <TabsContent value="stats" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)] relative">

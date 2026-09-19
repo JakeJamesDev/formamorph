@@ -336,6 +336,26 @@ describe('RightPanel', () => {
     expect(screen.getByText('Vigor')).toBeInTheDocument();
     expect(screen.queryByText('Luck')).toBeNull();
   });
+
+  it('keeps the Stats tab when one stat shows', () => {
+    renderRightPanel({}, {
+      turns: TURNS,
+      stats: [statFixture('Vigor', 50), statFixture('Luck', 30, { hidden: true })],
+    });
+    expect(screen.getByRole('tab', { name: 'Stats' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('has no Stats tab and opens on Traits when every stat is hidden', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [statFixture('Luck', 30, { hidden: true })] });
+    expect(screen.queryByRole('tab', { name: 'Stats' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Traits' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('has no Stats tab in a world with no stats', () => {
+    renderRightPanel({}, { turns: TURNS, stats: [] });
+    expect(screen.queryByRole('tab', { name: 'Stats' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Traits' })).toHaveAttribute('aria-selected', 'true');
+  });
 });
 
 /** Vigor's authored bands: ≤30 Winded, ≤70 Steady. Above 70 the stat is in no band at all. */
