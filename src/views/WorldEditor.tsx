@@ -843,7 +843,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         />
       )}
       {activeTab === "dictionary" && selectedBook && (
-        <DictionaryBookManager key={selectedBook.id} book={selectedBook} inWorld />
+        <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
       )}
       {activeTab === "dictionary" && !selectedBook && selectedEntry && (
         <DictionaryManager

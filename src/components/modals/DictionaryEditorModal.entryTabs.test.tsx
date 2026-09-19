@@ -47,8 +47,7 @@ const draft = {
   ],
 } as unknown as Dictionary;
 
-// The modal's own stores are isolated, but the tree reads the app-wide placeholder store its real host —
-// MainMenu, inside the GameData provider — puts around it.
+// The real host, MainMenu, mounts the modal inside the GameData provider and its app-wide stores.
 const open = (onClose = vi.fn()) => render(
   <SettingsProvider>
     <GameDataProvider>

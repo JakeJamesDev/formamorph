@@ -87,7 +87,7 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
   entityRef.current = entity;
   // The pool is the entity's own placeholders plus the shared ones it carries from the world it was exported
   // from; a write splits the list back the same way, so a carried shared def stays shared on export.
-  const pool = useMemo(() => (entity ? carriedPlaceholders(entity) : []), [entity]);
+  const pool = carriedPlaceholders(entity ?? {});
   const phStore = useMemo(() => ({
     ...placeholderStore(pool, (action: SetStateAction<Placeholder[]>) =>
       setEntity((prev) => {
@@ -142,6 +142,8 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
     <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
+    {/* Around the whole body, so no field reads the world's placeholder store. */}
+    <PlaceholderStoreProvider value={phStore}>
       <EditorModalShell
         open={isOpen}
         // A library character has no world behind it, so its own carried defs render the chips — the same
@@ -192,17 +194,16 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
             </div>
           </ScrollArea>
         ) : (
-          <PlaceholderStoreProvider value={phStore}>
-            {/* The same palette the field tabs get, over the value fields: a value is a chip field too. */}
-            <ChipInsertTargetProvider>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
-                <PlaceholderEditor />
-              </div>
-            </ChipInsertTargetProvider>
-          </PlaceholderStoreProvider>
+          // The same palette the field tabs get, over the value fields: a value is a chip field too.
+          <ChipInsertTargetProvider>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
+              <PlaceholderEditor />
+            </div>
+          </ChipInsertTargetProvider>
         )}
       </EditorModalShell>
+    </PlaceholderStoreProvider>
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
     </EditorModeContext.Provider>

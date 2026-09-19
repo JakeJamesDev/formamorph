@@ -86,7 +86,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0): its own plus the shared ones it
   // carries from the world it was exported from. Its entries' chips resolve against both.
-  const bookPlaceholders = useMemo(() => (dictionaries[0] ? carriedPlaceholders(dictionaries[0]) : []), [dictionaries]);
+  const bookPlaceholders = carriedPlaceholders(dictionaries[0] ?? {});
   // Isolated placeholder store backed by the sole book's `placeholders` field (empty ⇒ undefined).
   // `placedIds` is the book's own chip-bearing fields, so a drag never takes a placeholder an entry names.
   // It reads the entries through a ref rather than closing over them, so a keystroke in an entry does not
@@ -148,6 +148,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   return (
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
+    {/* Around the whole body, so no field reads the world's placeholder store. */}
+    <PlaceholderStoreProvider value={phStore}>
       <EditorModalShell
         open={isOpen}
         // A library book has no world behind it, so its own carried defs render the chips — the same
@@ -172,15 +174,13 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
               </div>
             </ScrollArea>
           ) : tab === 'placeholders' ? (
-            <PlaceholderStoreProvider value={phStore}>
-              {/* The same palette an entry gets, over the value fields: a value is a chip field too. */}
-              <ChipInsertTargetProvider>
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <PlaceholderPaletteBar placeholders={bookPlaceholders} className="mx-0 mb-0 px-4" />
-                  <PlaceholderEditor />
-                </div>
-              </ChipInsertTargetProvider>
-            </PlaceholderStoreProvider>
+            // The same palette an entry gets, over the value fields: a value is a chip field too.
+            <ChipInsertTargetProvider>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <PlaceholderPaletteBar placeholders={bookPlaceholders} className="mx-0 mb-0 px-4" />
+                <PlaceholderEditor />
+              </div>
+            </ChipInsertTargetProvider>
           ) : (
             <ListDetail
               showDetail={!!(selectedBook || selectedEntry)}
@@ -215,6 +215,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
           )}
         </DictionaryStoreProvider>
       </EditorModalShell>
+    </PlaceholderStoreProvider>
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
   );
