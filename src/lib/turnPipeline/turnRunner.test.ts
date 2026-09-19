@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { planTurn } from './planTurn';
+import { computeTurnCommit } from './computeTurnCommit';
 import { runTurn, type TurnPassOutcome, type TurnRequestAdapter, type TurnResult } from './turnRunner';
 import { TEST_PROMPTS, testInput } from './turnTestInputs';
 import type { TurnMaterial, TurnPassId, TurnPassSubject, TurnPlanInput, TurnSettings } from './turnPlan';
@@ -369,7 +370,8 @@ describe('what the caller is asked to derive from', () => {
       request: fake.adapter,
       signal: new AbortController().signal,
       advance: (event) => {
-        trace.push(event.at === 'stage' ? `stage:${event.stage}` : `pass:${event.outcomes[0].id}`);
+        if (event.at === 'stage') trace.push(`stage:${event.stage}`);
+        else if (event.at === 'pass') trace.push(`pass:${event.outcomes[0].id}`);
       },
     });
     ok(result);
@@ -694,5 +696,88 @@ describe('the request each pass sends', () => {
     expect(digest.request.attachTurnId).toBe('turn-1');
     expect(outcome(finished, 'choices').request.systemPrompt).toContain(TEST_PROMPTS.choices.split(' ')[0]);
     expect(outcome(finished, 'narration').request.systemPrompt).toBe('NARRATION SYSTEM');
+  });
+});
+
+describe('a written page one', () => {
+  const WRITTEN = 'Rain drums on the ferry roof. Maela does not look up.';
+  // The opening turn of a world whose draw was an Opening Narration, every feature on.
+  const written = (over: RunOptions = {}) =>
+    run({ ...over, input: { isGameStarted: false, action: 'START GAME', writtenNarration: WRITTEN, ...over.input } });
+
+  it('sends no narration request, and nothing that only exists to shape one', async () => {
+    const { types } = await written();
+    for (const type of ['narration', 'locationChange', 'director', 'character', 'storyboard', 'thinking']) {
+      expect(types, type).not.toContain(type);
+    }
+  });
+
+  it('still sends every post-narration request an opening turn sends', async () => {
+    // Diarists come from the narration parse in the view; this file's fake derives them from the director's
+    // cast, which a written page never asks for. Both runs name them outright so the two are comparable.
+    const subjects = { diary: [{ name: 'Maela' }, { name: 'Bram' }] };
+    const asked = (await run({ subjects, input: { isGameStarted: false, action: 'START GAME' } })).types;
+    const { types } = await written({ subjects });
+    const upToNarration = ['locationChange', 'director', 'character', 'storyboard', 'narration'];
+    const after = asked.filter((t) => !upToNarration.includes(t));
+    // The fixture must really send these on a model-written opening, or the comparison proves nothing.
+    for (const type of ['choices', 'statUpdates', 'summary', 'openingTime', 'diary', 'discoverEntity']) {
+      expect(after, type).toContain(type);
+    }
+    expect([...types].sort()).toEqual([...after].sort());
+  });
+
+  it('feeds the authored text to the post-narration requests, exactly as written', async () => {
+    const finished = ok((await written()).result);
+    expect(finished.material.narration).toBe(WRITTEN);
+    expect(outcome(finished, 'choices').request.messages[0].content).toContain(WRITTEN);
+    expect(outcome(finished, 'openingTime').request.messages[0].content).toContain(WRITTEN);
+  });
+
+  it('tells the caller the narration is in, before the post-narration stage is built', async () => {
+    const order: string[] = [];
+    const fake = makeFake();
+    await runTurn({
+      plan: planTurn(testInput({ isGameStarted: false, action: 'START GAME', writtenNarration: WRITTEN })),
+      material: material(),
+      request: fake.adapter,
+      signal: new AbortController().signal,
+      advance: (event, mat) => {
+        if (event.at === 'written') order.push(`written:${event.narration === WRITTEN && mat.narration === WRITTEN}`);
+        if (event.at === 'stage') order.push(event.stage);
+      },
+    });
+    expect(order).toEqual(['preNarration', 'planning', 'narration', 'written:true', 'postNarration']);
+  });
+
+  it('streams nothing, so the page cannot imitate a model writing it', async () => {
+    const events: AiStreamEvent[] = [];
+    await written({ onNarrationEvent: (event) => events.push(event) });
+    expect(events).toEqual([]);
+  });
+
+  it('lands through the normal Turn Commit with the authored text as page one', async () => {
+    const plan = planTurn(testInput({ isGameStarted: false, action: 'START GAME', writtenNarration: WRITTEN }));
+    const result = await runTurn({
+      plan,
+      material: material(),
+      request: makeFake().adapter,
+      signal: new AbortController().signal,
+      advance: advanceLikeTheView(),
+    });
+    const commit = computeTurnCommit({
+      result,
+      plan,
+      context: { participants: [], knownDiscoveredNames: [], notes: '', reasoning: { text: '', ms: 0 }, gameTime: 0 },
+    });
+    expect(commit?.turn.narration).toBe(WRITTEN);
+    expect(commit?.isOpeningTurn).toBe(true);
+    expect(commit?.turn.choices).toEqual(['Wave at Maela', 'Walk on']);
+    expect(commit?.openingHour).not.toBeNull();
+  });
+
+  it('counts blank text as no written page, so the model writes it', async () => {
+    const { types } = await written({ input: { writtenNarration: '  \n' } });
+    expect(types).toContain('narration');
   });
 });

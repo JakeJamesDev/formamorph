@@ -7,13 +7,17 @@ import { TURN_PASSES, effectiveActionFor } from './turnPasses';
  * produce the same plan, and nothing here sends a request.
  */
 export function planTurn(input: TurnPlanInput): TurnPlan {
+  const writtenNarration = input.writtenNarration?.trim() ? input.writtenNarration : null;
+  // A written page one needs no router, planner or narrator: each exists only to shape the narration request.
+  const due = TURN_PASSES.filter((pass) => pass.isDue(input));
   return {
     input,
     isOpeningTurn: !input.isGameStarted,
     effectiveAction: effectiveActionFor(input),
     concurrency: input.settings.concurrentTurnRequests ? 'parallel' : 'serial',
     inlineThinking: input.settings.thinkingMode === 'inline',
-    passes: TURN_PASSES.filter((pass) => pass.isDue(input)),
+    writtenNarration,
+    passes: writtenNarration === null ? due : due.filter((pass) => pass.stage === 'postNarration'),
   };
 }
 

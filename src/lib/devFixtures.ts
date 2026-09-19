@@ -7,7 +7,7 @@
 import type { World, SaveObject } from '@/types';
 
 /** The names the router can boot. Kept in lockstep with `loadDevFixture` by `devRouter.test.ts`. */
-export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns'] as const;
+export const DEV_FIXTURES = ['whiteRoom', 'thousandTurns', 'writtenOpening'] as const;
 export type DevFixtureName = (typeof DEV_FIXTURES)[number];
 
 // Real-sized images for the long save, fetched from the dev server.
@@ -15,10 +15,14 @@ const THOUSAND_TURN_IMAGES = ['/thumbnails/1.jpg', '/thumbnails/2.jpg', '/thumbn
 
 export interface DevFixture {
   world: World;
-  save: SaveObject;
+  /** Absent boots a new game in the world. */
+  save?: SaveObject;
   /** IndexedDB key the boot writes the save under before running the real `loadGame`. */
-  saveName: string;
+  saveName?: string;
 }
+
+/** Page one of the `writtenOpening` fixture. */
+export const WRITTEN_OPENING_TEXT = 'The white room hums. A door you did not see before stands open.';
 
 /** Load a fixture's world+save (dynamic import → own chunk). Null outside DEV or for an unknown name. */
 export async function loadDevFixture(name: string): Promise<DevFixture | null> {
@@ -56,6 +60,21 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
           turns: 1000, narrations: narrations.default, images, imageEvery: 20,
         }),
         saveName: 'DEV: 1000 Turns',
+      };
+    }
+    case 'writtenOpening': {
+      // A new game whose only opening is an Opening Narration, so Start Game is page one. A world file
+      // that brings its own openings keeps them, which is how a browser spec sets up a larger pool.
+      const world = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World;
+      return {
+        world: {
+          ...world,
+          worldOverview: {
+            ...world.worldOverview,
+            openings: world.worldOverview.openings
+              ?? [{ id: 'written-opening', text: WRITTEN_OPENING_TEXT, kind: 'narration' }],
+          },
+        },
       };
     }
     default:

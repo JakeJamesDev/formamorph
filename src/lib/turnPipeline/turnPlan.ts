@@ -101,6 +101,9 @@ export interface TurnPlanInput {
   /** Locations in the world; one place means there is nowhere to suggest moving to. */
   locationCount: number;
   hasCurrentLocation: boolean;
+  /** An Opening Narration's resolved text: page one as authored. The turn sends nothing before its
+   *  post-narration stage. Blank counts as absent. */
+  writtenNarration?: string;
   settings: TurnSettings;
   prompts: TurnPrompts;
 }
@@ -255,6 +258,8 @@ export interface TurnPlan {
   concurrency: TurnConcurrency;
   /** True when the narration user message carries the inline `<think>` directive. */
   inlineThinking: boolean;
+  /** The authored page one this turn plays in place of a narration request; null when the model writes it. */
+  writtenNarration: string | null;
   /** The due passes, in dispatch order. */
   passes: TurnPassRecord[];
 }
