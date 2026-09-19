@@ -52,6 +52,8 @@ describe('promptFieldState', () => {
       ['a trailing blank line', 'The dock creaks.\n\n', false],
       ['text around a chip', `before ${TOKEN} after`, true],
       ['a chip alone', TOKEN, true],
+      // An imported opening holds the marker as it was typed, so its spelling has to come back unchanged.
+      ['the Player Name chip in any spelling', `{{ User }} greets {{user}} by ${TOKEN}.`, true],
       ['empty', '', false],
     ])('%s', (_label, value, withChips) => {
       const editor = makeEditor();

@@ -51,7 +51,7 @@ describe('readTavernCard', () => {
     expect(result).not.toBeNull();
     const { entity } = result!;
     expect(entity.name).toBe('Aria');
-    expect(entity.aiDescription).toContain('Aria greets the player warmly by the fire.');
+    expect(entity.aiDescription).toContain(`Aria greets ${USER_MACRO} warmly by the fire.`);
     expect(entity.aiDescription).toContain('Personality: kind, curious');
     expect(entity.aiDescription).toContain('Scenario: a riverside tavern');
     expect(entity.aiDescription).not.toContain('Hello, traveler!');
@@ -118,9 +118,22 @@ describe('readTavernCard greetings', () => {
     expect(text).toBe(`Aria smiles at ${USER_MACRO}. Aria waves to ${USER_MACRO} and ${USER_MACRO}.`);
   });
 
-  it('leaves the description macro handling as it is', () => {
-    expect(read({ data: { name: 'Aria', description: '{{char}} likes {{user}}.', first_mes: 'Hi {{user}}.' } }).aiDescription)
-      .toBe('Aria likes the player.');
+  it('stores every user macro spelling in a description as the Player Name chip', () => {
+    const entity = read({ data: {
+      name: 'Aria', description: '{{char}} likes {{ User }}.', personality: 'fond of {{USER}}', scenario: 'with {{user}}',
+    } });
+    expect(entity.aiDescription).toBe(`Aria likes ${USER_MACRO}.
+
+Personality: fond of ${USER_MACRO}
+
+Scenario: with ${USER_MACRO}`);
+  });
+
+  it('stores the user macro in the embedded lorebook as the Player Name chip', () => {
+    const result = readTavernCard(png('chara', b64(JSON.stringify({
+      data: { name: 'Aria', character_book: { entries: [{ keys: ['oath'], content: 'Aria swore to {{ User }}.' }] } },
+    }))));
+    expect(result?.book?.entries[0].value).toBe(`Aria swore to ${USER_MACRO}.`);
   });
 
   it('imports a card with no greetings with no openings', () => {

@@ -456,7 +456,8 @@ describe('PlaceholderManager — chip values', () => {
   it('hands the multiline boxes the same placeholders to insert', () => {
     render(<PlaceholderManager placeholder={ph({ values: phValues(['Red']) })} />);
     pickStyle('Multiline');
-    expect(box(1)).toHaveAttribute('data-palette', '2');
+    // The world's two placeholders, after the Player Name chip every prose field offers.
+    expect(box(1)).toHaveAttribute('data-palette', '3');
   });
 
   // The one-line summaries are plain text, so a chip in a value has nowhere to draw itself and would print

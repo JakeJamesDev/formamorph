@@ -9,7 +9,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Entity, Dictionary, Opening } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
-import { USER_MACRO_RE, canonicalUserMacro } from './userMacro';
+import { canonicalUserMacro } from './userMacro';
 
 /** The subset of card fields we read. V2/V3 nest these under `data`; V1 is flat. */
 interface TavernData {
@@ -31,11 +31,9 @@ function decodeBase64Utf8(b64: string): string {
 
 const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
 
-/** `{{char}}` → the character's name, `{{user}}` → "the player"; other macros are left untouched. */
+/** `{{char}}` → the character's name, `{{user}}` → the Player Name chip; other macros are left untouched. */
 function substituteMacros(text: string, name: string): string {
-  return text
-    .replace(CHAR_MACRO_RE, name)
-    .replace(USER_MACRO_RE, 'the player');
+  return canonicalUserMacro(text.replace(CHAR_MACRO_RE, name));
 }
 
 /** The card's field object (unwrapping the V2/V3 `data` envelope), or null if the PNG carries no card. */
@@ -77,7 +75,7 @@ function cardOpenings(data: TavernData, name: string): Opening[] {
   return [data.first_mes, ...alternates]
     .map(str)
     .filter(Boolean)
-    .map((text) => ({ id: randomUUID(), text: canonicalUserMacro(text.replace(CHAR_MACRO_RE, name)), kind: 'narration' }));
+    .map((text) => ({ id: randomUUID(), text: substituteMacros(text, name), kind: 'narration' }));
 }
 
 /**

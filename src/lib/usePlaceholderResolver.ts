@@ -4,6 +4,7 @@ import { useGameplay } from '@/contexts/GameplayContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { usePersonaName } from '@/lib/useResolvedWorld';
 
 /**
  * A gameplay-bound placeholder resolver: replaces `{{ph…}}` chips in authored text with their frozen
@@ -32,8 +33,9 @@ export function usePlaceholderResolver(): (text: string) => string {
     viewTraits, viewDisabledTraitIds, traits, traitGroups, locations, viewLocationId, viewStats, placeholders,
     placeholderRolls, viewCodePins,
   ]);
+  const name = usePersonaName(placeholderRolls, pins);
   return useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins }),
-    [placeholders, placeholderRolls, pins],
+    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins, player: { name } }),
+    [placeholders, placeholderRolls, pins, name],
   );
 }

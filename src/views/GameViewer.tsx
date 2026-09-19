@@ -39,7 +39,6 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawOpening, drawUnseenOpening, openingPool } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import type { PersonaPick } from "@/lib/persona";
-import { renderUserMacro } from "@/lib/userMacro";
 import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
@@ -626,7 +625,7 @@ const GameViewer = ({
   // values above stay untouched for roll priming, which has to see the chips it is rolling for.
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
-    currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveTraitText,
+    currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
     resolveTraitFor, playerNames, persona,
   } = useResolvedWorld();
   usePersonaNotice();
@@ -1195,7 +1194,7 @@ const GameViewer = ({
     // to show, so the page stays as it is. The draw is recorded only once the restore has succeeded.
     const session = openingSessionRef.current;
     const redraw = page === 1 ? drawUnseenOpening(sessionPool(), session.shown, Math.random) : null;
-    const redrawText = redraw ? renderUserMacro(resolvePH(redraw.opening.text)) : "";
+    const redrawText = redraw ? resolveOpening(redraw.opening.text) : "";
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
@@ -1805,7 +1804,7 @@ const GameViewer = ({
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
     // This session's opening, resolved: an old save's history holds the sentinel rather than the text.
-    openingCue: renderUserMacro(resolvePH(openingCue().text)),
+    openingCue: resolveOpening(openingCue().text),
     choices: resolvedChoicesPrompt,
     choicesUser: choicesUserPrompt,
     statUpdates: resolvedStatUpdatesPrompt,
@@ -3947,14 +3946,14 @@ const GameViewer = ({
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // `entities` is the whole world here: the persona set above is not in state until the next render.
-      const { draw: drawn } = drawNewGameOpening({
+      const { persona: drawnPersona, draw: drawn } = drawNewGameOpening({
         pick: personaPick, worldEntities: entities, overview: worldOverview, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
       };
-      const openingText = renderUserMacro(resolveWith(openingPins, drawn.opening.text));
+      const openingText = resolveOpening(drawn.opening.text, { extraPins: openingPins, persona: drawnPersona });
       if (drawn.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
         setPendingTurnNonce((n) => n + 1);
@@ -3983,6 +3982,7 @@ const GameViewer = ({
     entities,
     authoredStats,
     resolveWith,
+    resolveOpening,
     commitTraitState,
     resolveTraitText,
     changeLocation,

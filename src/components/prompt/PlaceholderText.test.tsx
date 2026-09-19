@@ -70,6 +70,12 @@ describe('the read-only pill', () => {
 });
 
 describe('the red ? treatment', () => {
+  it('reads the Player Name chip by its label and never marks it missing', () => {
+    draw('Friend of {{ user }}', []);
+    expect(screen.getByText('Player Name')).toBeInTheDocument();
+    expect(screen.queryByText('?')).toBeNull();
+  });
+
   it('marks a chip whose own placeholder is gone', () => {
     draw(chip('vanished'));
     expect(screen.getByText('?')).toHaveClass('text-destructive');

@@ -3,6 +3,7 @@ import PromptField from './PromptField';
 import ChipInput from './ChipInput';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
+import { hasUserMacro } from '@/lib/userMacro';
 import {
   allPinRows, canCommitPinSource, commitPinSource, pinsTargeting, sameSource, updatePinAt,
   type PinEditorWorld, type PinSourceRef, type PinWriters,
@@ -59,7 +60,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   /** Names the editor for assistive tech, for a field whose caption is not its own `label`. */
   ariaLabel?: string;
 }) => {
-  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
+  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId, { playerName: true });
   const rolls = useEditorPreviewRolls();
   // The world's pins, which the chevrons step onto and a stepped-to stop may name. Without a world bound
   // (a library item) the only pins are the ones this field's own placeholders' values carry.
@@ -165,7 +166,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       value={value}
       onChange={onChange}
       vocabulary={vocab}
-      previewValues={hasPlaceholders ? previewValues : undefined}
+      // The Player Name chip previews as its label, so it needs no placeholder behind it.
+      previewValues={hasPlaceholders || hasUserMacro(value) ? previewValues : undefined}
       openValues={hasPlaceholders ? openValues : undefined}
       onReroll={hasPlaceholders ? reroll : undefined}
       insertOwnerId={ownerId}

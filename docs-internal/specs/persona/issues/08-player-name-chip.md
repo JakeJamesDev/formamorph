@@ -1,6 +1,8 @@
 # 08: Player Name Chip
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: The game view is too large to mount, so a source scan guards its three opening sites and a hook test proves the render. The chip is in the `{` menu of prose fields only, not the placeholder strip or name and keyword fields.
+Base: 4139c508
 Blocked by: 02, 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

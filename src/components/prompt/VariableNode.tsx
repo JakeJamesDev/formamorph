@@ -108,7 +108,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
 
   // A family with structure to walk can re-aim a placed chip; the static prompt variables have none, so the
   // row is simply absent there. A chip whose placeholder is gone still offers it — re-pointing it is the fix.
-  const repickable = editable && known && !!vocab.structure && !!vocab.repoint;
+  const fixed = vocab.fixed?.(token) ?? false;
+  const repickable = editable && known && !fixed && !!vocab.structure && !!vocab.repoint;
 
   // The one-click path to this chip's value on the Values tab. It needs a value that can be written: a
   // prompt variable has none, and neither does a read-only field or a pin typed off the placeholder's list.
@@ -185,7 +186,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
 
   // Double-click renames what the chip stands for, the same gesture that renames a keyword chip. It ends
   // the pop-out the first click of the pair opened, so the two never fight over the chip.
-  const renameable = editable && known && !!vocab.rename;
+  const renameable = editable && known && !fixed && !!vocab.rename;
   const startRename = () => { setOpen(false); setRenaming(true); };
   // The picker walks a list, and a wide switcher needs the room its options ask for; neither face reflows
   // the other, since only one is up at a time.
