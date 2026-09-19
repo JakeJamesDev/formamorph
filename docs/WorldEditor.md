@@ -31,27 +31,71 @@ The world's own tab: its name, description, thumbnail and the AI-facing text tha
 | **World Description** | The blurb on the library card. Players read it before they play, so placeholders stay as plain text here. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices; **Gameplay** shows when they enter the world. Both take markdown. |
 | **System Prompt Addition** | Text added to the narrator's prompt on every turn of this world. |
-| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt, plus the Opening Cue below. |
+| **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Opening** item holds the world's [Openings](#openings). |
 
-### Opening Cue
+### Openings
 
-**Advanced mode only.** The text the player's input box opens pre-filled with when they press **Start Game**. Without one, every world opens on the same standard cue — a generic "write the opening scene" instruction. With one, your world's first turn is the one you designed.
+**Advanced mode only.** An opening is one way a playthrough can start. Open **Custom Prompts** → **Opening** to write them. When a player presses **Start Game**, the game draws one opening from the list.
 
-Switch the checkbox on and the field appears, ready to write what the opening turn should ask the narrator for. Switched off, the section is just its checkbox — a world opening on the standard cue costs you no space.
+Each opening has two buttons, **Player Action** and **Narration**. This choice is its Opens As setting, and it decides where the text lands:
 
-> 💡 It is a **starting point, not a script.** The player still reads the cue in their input box and can tweak or replace it before sending. That is why there is no player-side opt-out: they already have the last word.
+| Opens As | Called | Where the text lands | Who writes page one |
+|---|---|---|---|
+| **Player Action** | Opening Action | The player's input box. The player can edit it, then sends it. | The AI, from the sent action |
+| **Narration** | Opening Narration | Page one itself, shown at once exactly as written. No narration request goes out. | You |
 
-| Behavior | What happens |
+> 💡 **Use Opening Narration to set the voice.** The AI copies the style and length of page one for the rest of the story. A hand-written page one shows it what you want.
+
+After an Opening Narration, the input box is empty. A written page one works like any other page. Choices, stat changes, the clock, read-aloud and the scene image all run on it.
+
+#### Weights and chances
+
+| Setting | What it does |
 |---|---|
-| **Opens on the standard cue** | The field shows the shipped cue, guardrails and all, so you edit from something that works. It keeps following it until your first edit. |
-| **First edit stores it** | Only a change you actually make is saved onto the world. Opening the field writes nothing. |
-| **Switching it off keeps the text** | The checkbox decides whether the cue is *used*; it never discards what you wrote. The field goes away, your words don't — switch it back on to find them. |
-| **Reset** | Drops your stored text and returns the field to following the standard cue. Asks first. |
-| **Blank falls back** | An applied cue that is empty or only spaces sends the standard cue instead, never an empty opening. |
+| Weight (the number box) | How often the opening comes up, compared with the others. A missing weight counts as 1. |
+| Chance (the percentage beside it) | The share of draws this opening gets, calculated from all the weights. You don't set it. |
+| Weight 0 | Keeps the opening in the list and never draws it. Use it to keep a draft. |
 
-**Placeholder chips work here.** A Wildcard in the cue rolls per playthrough, so the same world can open on a different detail each time — and the player sees the rolled words, never the chip.
+Drag a row by its handle to change its place in the list. Order doesn't change the chances.
 
-> ⚠️ The whole cue is yours: nothing is appended to it. If you delete the "don't ask the player what to do" line the shipped cue carries, the AI may open by offering options — a separate step already does that. Edit from the template rather than starting from an empty field.
+#### The list switch
+
+The checkbox beside **Opening** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening.
+
+> 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
+
+#### The default opening
+
+A world with no openings, or with the switch off, starts on the default opening. This is an Opening Action with a general instruction to write the opening scene. The empty list shows its text.
+
+#### Every opening in one place
+
+The **Opening** panel shows every opening in the world, grouped by owner:
+
+| Group | Holds |
+|---|---|
+| **This World** | The world's own openings |
+| One group per entity with openings | The openings on that entity's **Openings** tab. The entity's name opens that tab. |
+
+An edit in the panel changes the owner's opening. The switch covers the entity groups too.
+
+A chance is the share of the whole draw at one starting location. World rows and entity rows add up to 100% together. With several starting locations, the **Chances At** picker chooses the location. The pick is a view only and is not saved.
+
+| The chance shows | Means |
+|---|---|
+| **A percentage** | The row can come up at that location |
+| **0%** | The row has weight 0, or no text |
+| **—** | The entity isn't at that location. A note under the group names the location. |
+
+An entity at no starting location shows a **No Starting Location** badge. Its openings never come up.
+
+#### Chips, search and older worlds
+
+- **Placeholder chips work in openings.** A Wildcard rolls per playthrough, so the same opening can read differently each time.
+- **Search and replace reaches every opening**, on the world and on each entity.
+- **A world saved with one pre-filled opening** loads with it as its first Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
+
+> ⚠️ **An Opening Action is sent as written.** Nothing is added to it. The default opening tells the AI not to ask the player what to do next. Keep a line like that in your own Opening Actions, or the AI may open by offering options.
 
 ---
 
@@ -200,6 +244,16 @@ The default prompt feeds entities from three places, as separate blocks: the pla
 
 > ⚠️ Every entity at the player's location is sent **every turn**. A crowded location is a permanent context bill — two or three that the scene turns on beat a populated village.
 
+### Entity Openings
+
+**Advanced mode only** in the World Editor. The library entity editor always shows it. The **Openings** tab gives an entity its own openings, so it can start the scene in its own voice. The rows work the same as the world's [Openings](#openings).
+
+| Rule | Effect |
+|---|---|
+| **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
+| **The world switch** | The world's **Opening** checkbox turns the entity's openings off too. An entity has no switch of its own. |
+| **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
+
 ### Groups
 
 Folders for your own sanity. Nesting and order are editor-only and **never reach the AI** — entities feed the AI exactly as if ungrouped, so grouping can never change the story.
@@ -228,6 +282,22 @@ A linked slot shows a 🔗 marker. Two of them are warnings worth reading:
 > 💡 **Make Available Offline** in a world's details window downloads all its linked pictures at once, so the world is ready before you lose your connection.
 
 Exporting a world with linked pictures asks whether to keep the links (small file) or download them into it (works anywhere). Exporting a **character card** always downloads the portrait, because the card *is* the picture.
+
+### SillyTavern cards
+
+Import a SillyTavern PNG card into your entity library, and it becomes an entity. The card's greetings become [Entity Openings](#entity-openings):
+
+| On the card | Becomes |
+|---|---|
+| **First message** | The entity's first Opening Narration |
+| Each **alternate greeting** | One more Opening Narration, in card order, at weight 1 |
+| The card's name marker | The entity's name |
+| The user marker | "you" when the opening shows, or "You" at the start of a sentence |
+| The user marker with **'s** | "your", or "Your" at the start of a sentence |
+
+When these openings are in the draw, page-one regenerate shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
+
+> 💡 **The user marker stays in the stored text.** Only the shown page says "you". In the entity's descriptions, the marker becomes "the player" at import.
 
 ### Getting started
 

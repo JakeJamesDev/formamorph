@@ -40,7 +40,7 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `stats` | Array | Game mechanics tracked during play |
 | `locations` | Array | Places the player can visit (nestable into sub-locations) |
 | `connections` | Array | Authored travel links between locations (optional) |
-| `entities` | Array | Characters/objects the player can interact with |
+| `entities` | Array | People, creatures and objects the player can interact with |
 | `traits` | Array | Selectable characteristics that modify stats |
 | `traitGroups` | Array | Optional folders that organize traits in the editor and selection screen |
 | `statUpdates` | Array | Rules the AI uses to change stats during play |
@@ -60,8 +60,9 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `tags` | String[] | Tags shown/searchable in the world browser |
 | `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
 | `readme` | String | Optional markdown shown to the player on entering the world (per-world "Show Readme" toggle) |
-| `openingCue` | String | Optional text the player's input box opens pre-filled with at Start Game, in place of the standard cue. Supports placeholder chips, resolved at pre-fill |
-| `openingCueEnabled` | Boolean | Whether `openingCue` is applied. Absent = applied when `openingCue` holds text |
+| `openings` | [Opening](#-openings)[] | The world's own openings, in authored order. One is drawn by weight at Start Game |
+| `openingWeights` | Object | Draw weight per opening `id`. A missing entry weighs 1; `0` keeps the opening without drawing it |
+| `openingsEnabled` | Boolean | `false` keeps the world's openings, and those of its entities, without drawing them. Absent = on |
 
 ### 📊 `stats`
 
@@ -191,7 +192,7 @@ Travel links the author draws between two locations, by `id` — so renaming a l
 
 ### 👥 `entities`
 
-Characters or objects in the world.
+People, creatures and objects in the world.
 
 | Field | Type | Description |
 |---|---|---|
@@ -209,6 +210,18 @@ Characters or objects in the world.
 | `model` | [MediaAsset](#-media-fields) | Associated 3D model |
 | `groupId` | String \| null | Parent entity-group `id`; null/absent = ungrouped (editor-only, not sent to the AI) |
 | `order` | Number | Sibling order within its group (editor-only) |
+| `openings` | [Opening](#-openings)[] | The entity's own openings. They join the draw when the entity is at the player's starting location |
+| `openingWeights` | Object | Draw weight per opening `id`, as on `worldOverview` |
+
+### 🎬 Openings
+
+One way a playthrough can start. Used by `worldOverview.openings` and `entities[].openings`.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | String | Unique within its owner. `openingWeights` is keyed by it |
+| `text` | String | The opening's text. Supports placeholder chips, resolved when the opening is drawn |
+| `kind` | `"action"` \| `"narration"` | `action` fills the player's input box (Opening Action). `narration` is page one, shown as written (Opening Narration) |
 
 ### 🔄 `statUpdates`
 
