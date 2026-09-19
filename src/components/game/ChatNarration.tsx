@@ -8,7 +8,6 @@ import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { parseTurnContent } from '@/lib/turnDigest';
 import { parseSavedReasoning, type SavedReasoning } from '@/lib/savedReasoning';
-import { dataUrlImageSize } from '@/lib/imageBytes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useChatPin } from './useChatPin';
@@ -18,6 +17,7 @@ import { hasNativeScrollAnchoring } from '@/lib/scrollAnchoring';
 import { ReasoningBlock } from './ReasoningBlock';
 import { BubbleMenu } from './BubbleMenu';
 import { TurnCard } from './TurnCard';
+import { ScenePlate } from './ScenePlate';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
@@ -25,8 +25,6 @@ import type { ChatMessage } from '@/types';
 const ESTIMATED_TURN_PX = 400;
 // Open-at-bottom gives up after this many frames if the bottom never holds.
 const MAX_AIM_FRAMES = 30;
-// Scene images show at most this tall, as in Pages (`max-h-72`).
-const IMAGE_MAX_REM = 18;
 const NATIVE_ANCHORING = hasNativeScrollAnchoring();
 
 /** One turn of the list: the player's action (null on the opening) and the narration message, once it exists. */
@@ -69,32 +67,20 @@ function chatTurns(history: ChatMessage[]): ChatTurn[] {
   return turns;
 }
 
-/** A scene image in a box sized from its header, so the text below does not move when it decodes. */
-function InlineSceneImage({ src }: { src: string }) {
-  const size = useMemo(() => dataUrlImageSize(src), [src]);
-  const ratio = size ? size.width / size.height : 1;
-  return (
-    <div
-      className="mx-auto max-w-full overflow-hidden rounded-md border bg-muted"
-      style={{ aspectRatio: size ? `${size.width} / ${size.height}` : '1 / 1', width: `min(100%, ${IMAGE_MAX_REM * ratio}rem)` }}
-    >
-      <img src={src} alt="Scene illustration" className="h-full w-full object-contain" />
-    </div>
-  );
-}
-
 /**
  * The Chat body of the narration panel: every turn in one virtualized list, the action as a bubble on the
  * right and the narration as a full-width block. Opens at the latest turn. `latestFooter` renders under the
  * latest turn's narration.
  */
-export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor }: {
+export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor, playerActionsFor, onDeleteSceneImage }: {
   parseAssistantMessage: (content: string) => string;
   latestFooter?: React.ReactNode;
   /** The actions of one committed narration bubble. */
   actionsFor?: (turn: ChatBubbleTurn) => BubbleAction[];
   /** The actions of one player action bubble. */
   playerActionsFor?: (turn: ChatPlayerTurn) => BubbleAction[];
+  /** Deletes one scene image of the named turn. */
+  onDeleteSceneImage: (turnId: string, index: number) => void;
 }) {
   const { fullMessageHistory, isRevealingNarration, isWaitingForAI, sceneImages, currentPage, totalPages, setUserPage } = useGameplay();
   const { revealSpec, revealEasing, showReasoning } = useSettings();
@@ -192,7 +178,8 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
             const reasoningLive = isLatest && !!liveReasoning.text;
             const reasoning = reasoningLive ? liveReasoning : turn.reasoning;
             const narrationText = liveReveal ? gameplayText : turn.narration ? parseAssistantMessage(turn.narration.content) : '';
-            const images = (!liveReveal && turn.turnId && sceneImages[turn.turnId]) || [];
+            const { turnId } = turn;
+            const images = (!liveReveal && turnId && sceneImages[turnId]) || [];
             const narrationActions = (turn.narration && actionsFor?.({
               index: item.index, isLatest, live: liveReveal, hasImage: images.length > 0, text: narrationText,
             })) || [];
@@ -241,10 +228,13 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                         />
                       </div>
                     )}
-                    {images.length > 0 && (
-                      <div className="mt-2.5 flex flex-col gap-2">
-                        {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
-                      </div>
+                    {turnId && (
+                      <ScenePlate
+                        turnId={turnId}
+                        images={images}
+                        onDelete={(index) => onDeleteSceneImage(turnId, index)}
+                        className="mt-2.5"
+                      />
                     )}
                   </TurnCard>
                 )}

@@ -822,6 +822,7 @@ export const MiddlePanel = ({
                 parseAssistantMessage={parseAssistantMessage}
                 actionsFor={actionsFor}
                 playerActionsFor={playerActionsFor}
+                onDeleteSceneImage={onDeleteSceneImage}
                 latestFooter={
                   <ChatChoices
                     choices={latestChoices}
