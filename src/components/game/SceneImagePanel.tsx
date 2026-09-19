@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Dices, Loader2, Square, Trash2, Sparkles } from 'lucide-react';
+import { Dices, Loader2, Square, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import TagField from '@/components/prompt/TagField';
-import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { Tip } from '@/components/ui/tooltip';
 
 /**
- * A turn's scene images, under its narration: the current picture, arrows to browse the ones drawn before
- * it, and the tag line it came from — editable and re-rollable, so a bad draw can be corrected without
- * touching the story. The tag row stays available on a turn with no image yet, because re-rolling tags is
- * the cheap way to judge them (one small text request) and shouldn't cost a render.
+ * A turn's scene job, under its narration: the draw status, the live frame while a render runs, and the tag
+ * line the image came from, editable and re-rollable, so a bad draw can be corrected without touching the
+ * story. The tag row stays available on a turn with no image yet, because re-rolling tags is the cheap way
+ * to judge them (one small text request) and shouldn't cost a render.
  */
 export const SceneImagePanel = ({
-  images,
+  hasImage,
   tags,
   ready,
   job,
@@ -22,9 +21,8 @@ export const SceneImagePanel = ({
   onGenerate,
   onRegenerateTags,
   onCancel,
-  onDelete,
 }: {
-  images: string[];
+  hasImage: boolean;
   /** The tag line the last image was drawn from; seeds the editable field. */
   tags: string;
   /** The viewed page holds a committed turn — without one there is nothing to tag or draw. */
@@ -33,23 +31,18 @@ export const SceneImagePanel = ({
   job: 'tags' | 'image' | null;
   /** 0..1 while the provider reports it; null for providers that don't. */
   progress: number | null;
-  /** The provider's live in-progress frame, shown in place of the finished image while it renders. */
+  /** The provider's live in-progress frame, shown while it renders. */
   preview: string | null;
   /** Draw. A tag line means "use exactly this"; undefined re-runs the tag pass from the narration. */
   onGenerate: (tags?: string) => void;
   /** Re-write the tag line from the narration without drawing anything. */
   onRegenerateTags: () => void;
   onCancel: () => void;
-  onDelete: (index: number) => void;
 }) => {
-  const [index, setIndex] = useState(Math.max(0, images.length - 1));
   const [draft, setDraft] = useState(tags);
-  const [zoomOpen, setZoomOpen] = useState(false);
   const [showTags, setShowTags] = useState(false);
   const busy = job !== null;
 
-  // Follow the newest image as ones arrive, and stay in range when one is deleted.
-  useEffect(() => { setIndex(Math.max(0, images.length - 1)); }, [images.length]);
   // Adopt a freshly written line, but never overwrite an edit the player is in the middle of. A finished
   // re-roll is the exception: it was asked for, so it replaces the field — and it must key off the job
   // ending rather than the value changing, or a re-roll that happens to return the same line leaves the
@@ -61,9 +54,8 @@ export const SceneImagePanel = ({
     setDraft((prev) => (finishedReroll || !prev.trim() ? tags : prev));
   }, [job, tags]);
 
-  if (!ready || (!images.length && !busy && !tags)) return null;
+  if (!ready || (!hasImage && !busy && !tags)) return null;
 
-  const current = images[Math.min(index, images.length - 1)];
   const edited = draft.trim() !== tags.trim();
 
   return (
@@ -89,69 +81,15 @@ export const SceneImagePanel = ({
         </div>
       )}
 
-      {/* While a render is running its live frame takes the frame's place, so the picture is visibly
-          forming rather than the last one sitting there looking finished. */}
-      {job === 'image' && preview ? (
+      {/* The finished image shows on the plate; the live frame shows here while the picture forms. */}
+      {job === 'image' && preview && (
         <img src={preview} alt="Drawing…" className="mx-auto max-h-72 rounded-md border opacity-90" />
-      ) : current && (
-        <>
-          {/* The alt already carries the tags; the tip only puts them on screen. */}
-          <Tip tip={tags} labelsChild={false}>
-            <img
-              src={current}
-              alt={`Scene illustration${tags ? `: ${tags}` : ''}`}
-              className="mx-auto max-h-72 rounded-md border cursor-zoom-in"
-              onClick={() => setZoomOpen(true)}
-            />
-          </Tip>
-          <ImageZoomViewer src={current} alt="Scene illustration" open={zoomOpen} onOpenChange={setZoomOpen} />
-        </>
       )}
 
-      <div className="flex items-center gap-1">
-        {images.length > 1 && (
-          <>
-            <Tip tip="Previous image">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIndex((i) => Math.max(0, i - 1))}
-                disabled={index === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </Tip>
-            <span className="text-meta text-muted-foreground tabular-nums">{Math.min(index, images.length - 1) + 1}/{images.length}</span>
-            <Tip tip="Next image">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setIndex((i) => Math.min(images.length - 1, i + 1))}
-                disabled={index >= images.length - 1}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Tip>
-          </>
-        )}
-        <div className="flex-1" />
+      <div className="flex items-center justify-end">
         <Button variant="ghost" size="sm" className="text-meta" onClick={() => setShowTags((v) => !v)}>
           {showTags ? 'Hide tags' : 'Tags'}
         </Button>
-        {current && (
-          <Tip tip="Delete this image">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => onDelete(Math.min(index, images.length - 1))}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </Tip>
-        )}
       </div>
 
       {showTags && (

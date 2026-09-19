@@ -1,6 +1,7 @@
 # 05: Scene Plate in Pages
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3ee13555
 Blocked by: 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

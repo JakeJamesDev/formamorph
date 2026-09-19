@@ -288,11 +288,8 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 class="mt-3 flex flex-col gap-2 border border-border rounded-md p-2 bg-background/40"
               >
                 <div
-                  class="flex items-center gap-1"
+                  class="flex items-center justify-end"
                 >
-                  <div
-                    class="flex-1"
-                  />
                   <button
                     class="inline-flex items-center justify-center whitespace-nowrap border font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3 text-meta"
                   >

@@ -45,6 +45,7 @@ import { useEntityGallery } from '@/lib/useEntityGallery';
 import TtsPlaybackBar from './TtsPlaybackBar';
 import { MemoryPanel } from './MemoryPanel';
 import { SceneImagePanel } from './SceneImagePanel';
+import { ScenePlate } from './ScenePlate';
 import { GAME_LEFT_PANEL_TABS } from './leftPanelTabs';
 import { useDevRoute } from '@/lib/devRouter';
 import type { TTSProgress } from './TTSModal';
@@ -535,7 +536,7 @@ export const MiddlePanel = ({
   /** Re-run the tag pass alone, no image. */
   onSceneTags: (page?: number) => void;
   onCancelSceneImage: () => void;
-  onDeleteSceneImage: (index: number) => void;
+  onDeleteSceneImage: (turnId: string, index: number) => void;
   onTTSClick: () => void;
   onExportStory: () => void;
   /** Synthesizes `text`, or the current text. */
@@ -839,6 +840,14 @@ export const MiddlePanel = ({
             {commandPreviewBlock}
             {(actionLine !== undefined || currentAssistantMessage || (showReasoning && pageReasoning?.text)) && (
               <TurnCard actions={pageActions} turnNumber={currentPage} live={pageLive} style={revealStyle}>
+                {sceneTurnId && (
+                  <ScenePlate
+                    turnId={sceneTurnId}
+                    images={sceneImages}
+                    onDelete={(index) => onDeleteSceneImage(sceneTurnId, index)}
+                    className="mb-3"
+                  />
+                )}
                 {actionLine !== undefined && (
                   // Upright, so the player's own italics and quote styling show.
                   <BubbleMenu actions={actionLineActions}>
@@ -872,10 +881,10 @@ export const MiddlePanel = ({
             )}
             {sceneImagesAvailable && (
               <SceneImagePanel
-                // Keyed by turn: paging to another turn remounts the panel, so the tag draft, image
-                // index, and open editor can't carry one turn's state onto another.
+                // Keyed by turn: paging to another turn remounts the panel, so the tag draft and open
+                // editor can't carry one turn's state onto another.
                 key={sceneTurnId}
-                images={sceneImages}
+                hasImage={sceneImages.length > 0}
                 tags={sceneTags}
                 ready={!!sceneTurnId}
                 job={sceneImageJob}
@@ -884,7 +893,6 @@ export const MiddlePanel = ({
                 onGenerate={onSceneImage}
                 onRegenerateTags={() => onSceneTags()}
                 onCancel={onCancelSceneImage}
-                onDelete={onDeleteSceneImage}
               />
             )}
             <ChoiceRows
