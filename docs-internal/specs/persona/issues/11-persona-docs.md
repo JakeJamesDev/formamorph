@@ -1,6 +1,7 @@
 # 11: Persona Docs
 
 Status: ready-for-agent
+Status note: Paused 2026-09-19 before any edit. Tickets 06 and 07 were in progress with no picker headings or player setting control, so the docs had no labels to match. Start after both land.
 Blocked by: 05, 07, 08, 10
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
