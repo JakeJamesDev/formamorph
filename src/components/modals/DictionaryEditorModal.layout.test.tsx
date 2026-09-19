@@ -6,7 +6,8 @@ import DictionaryEditorModal from './DictionaryEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { worldFixture } from '@/test/gamePanels';
-import type { Dictionary, Stat } from '@/types';
+import { EditorModeContext } from '@/lib/editorMode';
+import type { Dictionary } from '@/types';
 
 /** Where the library dictionary editor puts the book and its entries: the book on Overview, entries alone
  *  in the Dictionary tab's tree. */
@@ -39,26 +40,26 @@ if (typeof window.matchMedia !== 'function') {
 }
 
 /** The Foreground entry comes first in the array, but the tree shows the Background one first. */
-const book = {
+const book: Dictionary = {
   id: 'b1', name: 'Fen Lore', description: 'Marsh notes', enabled: true,
   entries: [
     { id: 'e1', name: 'Hostile Forces', key: ['dragon'], value: 'A big lizard.' },
     { id: 'e2', name: 'Quiet Folk', key: ['reed'], value: 'They keep to the water.', position: 'before' },
   ],
-} as unknown as Dictionary;
+};
 
-const emptyBook = { ...book, entries: [] } as unknown as Dictionary;
+const emptyBook: Dictionary = { ...book, entries: [] };
 
 /** A loaded world whose stat code names the book, so a rename that reached the world would show. */
 const statCode = 'placeholders["Fen Lore"].Mood.text';
 const world = worldFixture({
-  stats: [{ id: 's1', name: 'Calm', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, code: statCode }] as unknown as Stat[],
+  stats: [{ id: 's1', name: 'Calm', type: 'number', description: '', min: 0, max: 10, value: 1, regen: 0, descriptors: [], code: statCode }],
 });
 
 function WorldProbe() {
   const { loadWorldData, stats } = useGameData();
   useEffect(() => { loadWorldData(world); }, [loadWorldData]);
-  return <div data-testid="world-stat-code">{stats.map((s) => (s as Stat & { code?: string }).code).join('|')}</div>;
+  return <div data-testid="world-stat-code">{stats.map((s) => s.code).join('|')}</div>;
 }
 
 // The real host, MainMenu, mounts the modal inside the GameData provider.
@@ -150,6 +151,20 @@ describe('the library dictionary editor’s Overview', () => {
     expect(screen.getByText('Cover Image')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Fen Lore');
     expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toHaveValue('Marsh notes');
+    expect(screen.getByRole('checkbox', { name: /Enabled/ })).toBeChecked();
+  });
+
+  it('shows Enabled when a World Editor in Simple mode opens it', async () => {
+    render(
+      <SettingsProvider>
+        <GameDataProvider>
+          <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: () => {} }}>
+            <DictionaryEditorModal dictionaryId={null} draft={book} onClose={vi.fn()} />
+          </EditorModeContext.Provider>
+        </GameDataProvider>
+      </SettingsProvider>,
+    );
+    await userEvent.setup().click(topTab('Overview'));
     expect(screen.getByRole('checkbox', { name: /Enabled/ })).toBeChecked();
   });
 
