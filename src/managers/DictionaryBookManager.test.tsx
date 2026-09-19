@@ -7,7 +7,8 @@ import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/Placehold
 import type { Dictionary } from '@/types';
 
 /** Which host gets the book's own Placeholders section: the world's store, and never a library book's own
- *  store, even with the app-wide world store around it. */
+ *  store, even with the app-wide world store around it. The panel opens on its Placeholders tab here; the
+ *  tabs themselves are covered against the real editor in `WorldEditor.bookPanel.test.tsx`. */
 
 // The GameData provider opens IndexedDB on mount, which jsdom has none of.
 vi.mock('@/services/WorldStorageService', () => ({
@@ -33,11 +34,11 @@ const open = (host: 'world' | 'library') => render(
   <SettingsProvider>
     <GameDataProvider>
       {host === 'world' ? (
-        <DictionaryBookManager book={book} />
+        <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} />
       ) : (
         // A library modal binds a store over the book's own list, the way its modal does.
         <PlaceholderStoreProvider value={placeholderStore([], () => {})}>
-          <DictionaryBookManager book={book} />
+          <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} />
         </PlaceholderStoreProvider>
       )}
     </GameDataProvider>

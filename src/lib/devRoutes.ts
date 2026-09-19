@@ -132,6 +132,10 @@ export const DEV_MODAL_TABS = {
   // a book that has an entry to select. `matching` is Advanced only, and Simple mode leaves one tab and no
   // strip, so land it on an Advanced editor.
   worldEditorEntry: ['details', 'matching'],
+  // The World Editor's dictionary book panel shares that `subtab=…` slot
+  // (`#dev?modal=worldEditor&tab=dictionary&subtab=placeholders`). It lands on the book panel, so pair it
+  // with a book to select. `placeholders` is Advanced only.
+  worldEditorBook: ['details', 'placeholders'],
   // The World Editor's Test Bench: `bench=…` opens the full panel — at whichever placement is remembered —
   // on the instrument it names (`#dev?modal=worldEditor&bench=issues`). Only built instruments are listed,
   // since an unbuilt tab renders
