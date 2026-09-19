@@ -1,6 +1,6 @@
 # 01: Overview on a User Preset
 
-Status: in-progress
+Status: ready-for-human
 Base: 6339da9d
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)

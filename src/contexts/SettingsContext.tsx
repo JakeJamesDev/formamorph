@@ -49,7 +49,7 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset, activeOverview, updateOverview,
+  addFullPreset, replacePreset, activeOverview, storedOverview, updateOverview,
   type PromptPresetStore, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -894,7 +894,7 @@ function useProvideSettings() {
     // Built from the effective values, so "save as new" while pinned copies what is actually running.
     setRawPresetStore((s) => {
       const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
-      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), activeOverview(from) ?? undefined);
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from));
       return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
     });
     if (pinnedPresetId) {

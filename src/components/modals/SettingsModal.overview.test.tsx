@@ -89,6 +89,27 @@ describe('Settings → Prompts: preset Overview', () => {
     expect(stored()?.overview?.models).toEqual(['Cydonia-24B']);
   });
 
+  // Below md the rail becomes one dropdown. Radix opens a Select from the keyboard; jsdom has no pointer capture.
+  const openPromptDropdown = () => {
+    const trigger = screen.getAllByRole('combobox').find((c) => /Anatomy|Overview/.test(c.textContent ?? ''))!;
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+  };
+
+  it('the mobile prompt dropdown lists the Overview first for a user preset', () => {
+    seed('mine');
+    openPrompts();
+    openPromptDropdown();
+    expect(screen.getAllByRole('option')[0].textContent).toBe(OVERVIEW_LABEL);
+  });
+
+  it('the mobile prompt dropdown has no Overview for a built-in preset', () => {
+    seed('default');
+    openPrompts();
+    openPromptDropdown();
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('option', { name: OVERVIEW_LABEL })).toBeNull();
+  });
+
   it('picking a prompt leaves the Overview', () => {
     seed('mine');
     openPrompts('overview');

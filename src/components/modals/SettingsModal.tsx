@@ -1067,6 +1067,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [overviewOpen, setOverviewOpen] = useState(initialPromptTab === OVERVIEW_ROUTE);
   useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab]);
   const showingOverview = overviewOpen && presetOverview !== null;
+  // The mobile selector's value for the Overview entry; prompt and surface entries use their own prefixes.
+  const overviewOption = `preset:${OVERVIEW_ROUTE}`;
   // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
   // call the same prompt two different things.
   const promptResets: Record<string, { label: string; reset: () => void }> = {
@@ -2616,7 +2618,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {/* Prompt and surface entries live in one list but must not share a value string, or
                     Radix matches both and renders their labels concatenated. */}
                 <Select
-                  value={showingOverview ? `preset:${OVERVIEW_ROUTE}` : `surface:${promptView ?? HUB_ROUTE}`}
+                  value={showingOverview ? overviewOption : `surface:${promptView ?? HUB_ROUTE}`}
                   onValueChange={(v) => {
                     const [kind, id] = v.split(':');
                     if (kind === 'preset') setOverviewOpen(true);
@@ -2634,7 +2636,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                   <SelectContent>
                     {presetOverview && (
                       <>
-                        <SelectItem value={`preset:${OVERVIEW_ROUTE}`}>{OVERVIEW_LABEL}</SelectItem>
+                        <SelectItem value={overviewOption}>{OVERVIEW_LABEL}</SelectItem>
                         <SelectSeparator />
                       </>
                     )}

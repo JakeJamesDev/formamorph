@@ -63,4 +63,12 @@ describe('SettingsContext: preset Overview', () => {
     expect(result.current.activePresetId).toBe(copyId);
     expect(result.current.presetOverview).toMatchObject({ description: 'For small models', models: ['Cydonia-24B'] });
   });
+
+  it('a copy of a preset without an Overview stores none', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    let copyId = '';
+    act(() => { copyId = result.current.addPreset('Mine (copy)'); });
+    expect(stored().presets.find((p) => p.id === copyId)).not.toHaveProperty('overview');
+  });
 });

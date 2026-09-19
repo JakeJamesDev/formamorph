@@ -6,9 +6,34 @@ import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import type { PresetOverview } from '@/lib/promptPresets';
-import { SETTINGS_COPY } from './settingsCopy';
+import { SETTINGS_COPY, type SettingCopy } from './settingsCopy';
 
 const NO_SUGGESTIONS: string[] = [];
+
+/** A free-form chip list, read as label, help, control. */
+function ChipField({ copy, values, onChange, suggestions, placeholder }: {
+  copy: SettingCopy;
+  values: string[];
+  onChange: (values: string[]) => void;
+  suggestions: string[];
+  placeholder: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>{copy.label}</Label>
+      <Hint>{copy.description}</Hint>
+      <TokenAutocomplete
+        values={values}
+        onChange={onChange}
+        options={suggestions}
+        ariaLabel={copy.label}
+        reorderable
+        editable
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
 
 /**
  * A user preset's Overview: who wrote it, what it is for, and the models it fits. The store normalizes the
@@ -27,12 +52,12 @@ export function PresetOverviewPanel({ overview, onChange, tagSuggestions = NO_SU
     <div className="flex flex-col gap-5 pr-3">
       <div className="space-y-2">
         <Label htmlFor="preset-overview-author">{presetAuthor.label}</Label>
+        <Hint>{presetAuthor.description}</Hint>
         <Input
           id="preset-overview-author"
           value={overview.author}
           onChange={(e) => onChange({ author: e.target.value })}
         />
-        <Hint>{presetAuthor.description}</Hint>
       </div>
       <PromptField
         label={presetDescription.label}
@@ -45,32 +70,8 @@ export function PresetOverviewPanel({ overview, onChange, tagSuggestions = NO_SU
         markdown
         resizable
       />
-      <div className="space-y-2">
-        <Label>{presetTags.label}</Label>
-        <TokenAutocomplete
-          values={overview.tags}
-          onChange={(tags) => onChange({ tags })}
-          options={tagSuggestions}
-          ariaLabel={presetTags.label}
-          reorderable
-          editable
-          placeholder="Add tags"
-        />
-        <Hint>{presetTags.description}</Hint>
-      </div>
-      <div className="space-y-2">
-        <Label>{presetModels.label}</Label>
-        <TokenAutocomplete
-          values={overview.models}
-          onChange={(models) => onChange({ models })}
-          options={modelSuggestions}
-          ariaLabel={presetModels.label}
-          reorderable
-          editable
-          placeholder="Add models"
-        />
-        <Hint>{presetModels.description}</Hint>
-      </div>
+      <ChipField copy={presetTags} values={overview.tags} onChange={(tags) => onChange({ tags })} suggestions={tagSuggestions} placeholder="Add tags" />
+      <ChipField copy={presetModels} values={overview.models} onChange={(models) => onChange({ models })} suggestions={modelSuggestions} placeholder="Add models" />
     </div>
   );
 }
