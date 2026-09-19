@@ -107,7 +107,9 @@ export interface OpeningPoolRow {
   key: string;
   /** The entity that owns the row, or null for the world's own. */
   ownerName: string | null;
+  /** Whether the row opens as a Player Action or as Narration. */
   kind: Opening['kind'];
+  /** The row's text with chips and the user macro resolved. */
   text: string;
   /** Chance of being drawn from this pool, as a percentage. */
   chance: number;
