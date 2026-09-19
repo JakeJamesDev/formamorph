@@ -83,7 +83,7 @@ Both library editors get one size and one tab grammar.
 ### Dictionary editor
 
 - The top strip stays Overview, Dictionary, Placeholders.
-- Overview holds Tags, Cover Image, Name, Description, and Enabled. At `sm` and up it uses two columns: Tags and cover on the left, the three fields on the right. The Name field keeps the rename wiring it shares with the World Editor's book panel. The offer rewrites stat code only, and only the World Editor mounts its provider. A library book has no stat code, so the library editor mounts no provider and the field asks nothing there.
+- Overview holds Tags, Cover Image, Name, Description, and Enabled. At `sm` and up it uses two columns: Tags and cover on the left, the three fields on the right. The Name field keeps the rename wiring it shares with the World Editor's book panel. The offer rewrites stat code only, and only the World Editor mounts its provider. A library book has no stat code, so the library editor mounts no provider, and its boundary clears the World Editor's provider when the modal opens from there. The field asks nothing in a library editor from either host.
 - The book panel component stays the World Editor's. The library editor no longer mounts it. The `inWorld` prop from the guard fix goes away if no host needs it.
 - The entry tree takes a mode that hides the book row and shows its entries at the top level. Entry order, drag, duplicate, and delete do not change.
 - A + icon button sits at the top of the entry list, with the size, style, and position of the World Editor's list add button. The two hosts share the button row where that is practical. A search field is out of scope.
@@ -99,6 +99,8 @@ Both library editors get one size and one tab grammar.
 ### No world behind a library editor
 
 - The main menu mounts both library modals inside the app-wide GameData provider, so an optional GameData read inside a modal returns the last loaded world. User stories 22 and 31 cover every such read, not only the placeholder store.
+- The World Editor also mounts both library modals, under its stat-code rename provider. A book rename in a library modal opened from there queues an offer on the world's provider, and the offer's action writes the world's stats. The rename offer reads its own context, not GameData.
+- One boundary component wraps each library modal's body. It clears every context that reaches a world: GameData and the rename offer today. A new world-reaching context joins the same boundary.
 - Each library modal puts a null GameData override around its body. Every optional GameData read inside then returns nothing, and a new widget gets the same result with no work.
 - A library item has no traits, locations, or stats, so a placeholder pin in a library editor offers no trait, location, or stat target. Pin data the item already carries stays as it is: the editor does not strip it, and it does not offer new targets.
 - One test per modal renders it inside a loaded world and proves that no world name shows and that no world write occurs.
