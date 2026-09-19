@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { GameLocation, Stat, Trait, TraitGroup } from '@/types';
+import type { GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import { PersonaPicker, type PersonaOption } from '@/components/game/PersonaPicker';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
@@ -53,6 +54,10 @@ export interface EnterWorldWorkspaceProps {
   libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
   dictionaryItems: DictionarySelectionItem[];
+  /** The library personas on offer. The category hides when there are none. */
+  personas?: PersonaOption[];
+  persona?: PersonaRef;
+  onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
   onTraitSelect: (traitId: string) => void;
@@ -131,8 +136,20 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => buildTraitWorkspace(props.traits, props.traitGroups),
     [props.traits, props.traitGroups],
   );
+  // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
+  const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
+  const personaOptions = useMemo(
+    () => (props.personas ?? []).filter((option) => option.id === personaId || !props.selectedEntityIds.has(option.id)),
+    [personaId, props.personas, props.selectedEntityIds],
+  );
+  const characterOptions = useMemo(
+    () => (personaId ? props.libraryEntities.filter((entity) => entity.id !== personaId) : props.libraryEntities),
+    [personaId, props.libraryEntities],
+  );
+  const hasPersonas = (props.personas?.length ?? 0) > 0;
   const categories = useMemo(
     () => [
+      ...(hasPersonas ? [{ kind: 'persona' as const, id: 'persona', name: 'Persona' }] : []),
       ...traitWorkspace.categories,
       ...(props.locations.length > 1
         ? [{ kind: 'location' as const, id: 'location', name: 'Starting Location' }]
@@ -141,7 +158,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         ? [{ kind: 'library' as const, id: 'library', name: 'Library Additions' }]
         : []),
     ],
-    [props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
+    [hasPersonas, props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
   );
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
@@ -183,6 +200,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       </button>
     );
   };
+  const personaIndex = categories.findIndex((category) => category.kind === 'persona');
+  // Trait group indices count from the first trait category, which the Persona category precedes.
+  const traitOffset = personaIndex >= 0 ? 1 : 0;
   const generalIndex = categories.findIndex((category) => category.kind === 'traits' && category.id === null);
   const locationIndex = categories.findIndex((category) => category.kind === 'location');
   const libraryIndex = categories.findIndex((category) => category.kind === 'library');
@@ -195,6 +215,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       )}
     >
     <nav aria-label="World setup categories" className="space-y-1 p-3">
+      {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
       {props.traits.length > 0 && (
         <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
@@ -203,7 +224,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       {generalIndex >= 0 && categoryButton(categories[generalIndex], generalIndex)}
       {visibleGroups.map(({ group, depth, categoryIndex }) => (
         <div key={group.id}>
-          {categoryIndex >= 0 ? categoryButton(categories[categoryIndex], categoryIndex, depth) : (
+          {categoryIndex >= 0 ? categoryButton(categories[categoryIndex + traitOffset], categoryIndex + traitOffset, depth) : (
             <div
               aria-describedby={group.playerDescription?.trim() ? `setup-group-${group.id}-description` : undefined}
               className="min-h-8 break-words px-2 py-1 text-label text-muted-foreground"
@@ -401,6 +422,14 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               </fieldset>
             </>
           )}
+          {current?.kind === 'persona' && props.persona && props.onPersonaChange && (
+            <>
+              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
+              <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
+              <p className="mb-4 text-helper text-muted-foreground">Choose who you play in this world</p>
+              <PersonaPicker library={personaOptions} value={props.persona} onChange={props.onPersonaChange} />
+            </>
+          )}
           {current?.kind === 'location' && (
             <>
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
@@ -501,7 +530,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 </span>
               </div>
               <EnterWorldLibrary
-                entities={props.libraryEntities}
+                entities={characterOptions}
                 selectedEntityIds={props.selectedEntityIds}
                 dictionaryItems={props.dictionaryItems}
                 worldAuthor={props.worldAuthor}

@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, UserCheck, UserX, type LucideIcon } from "lucide-react";
+import { ContextMenuItem } from '@/components/ui/context-menu';
 import { ActionIcon } from '@/lib/actionIcons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
@@ -64,6 +65,11 @@ import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { emptyEntryDraft, type EntryDraft } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
+import {
+  clearDefaultPersona, preselectPersona, readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona,
+  withoutPersona,
+} from '@/lib/personaPick';
+import type { PersonaPick } from '@/lib/persona';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
@@ -72,7 +78,7 @@ import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import type { ReferenceChoices, ReferenceRow } from '@/lib/worldReferences';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, ServerEvent, WorldOverview } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, PersonaRef, ServerEvent, WorldOverview } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { updateBridge } from '@/lib/updates/updateBridge';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -159,7 +165,7 @@ import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick) => void;
   /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
   onLoadSaveGame: (saveId: string) => void;
   /** Easter-egg: replay the first-run welcome intro (snappy). Wired to the footer version click. */
@@ -364,6 +370,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [selectedDictionaries, setSelectedDictionaries] = useState<Dictionary[] | null>(null);
   // Independent entity copies finalized for normal entry; null means this path did not configure entities.
   const [selectedCharacters, setSelectedCharacters] = useState<Entity[] | null>(null);
+  const [selectedPersona, setSelectedPersona] = useState<PersonaPick>({ ref: { source: 'none' } });
+  // The global default persona: a library entity id, device-local.
+  const [defaultPersona, setDefaultPersonaId] = useState(readDefaultPersona);
 
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
   // the bands the starting stats fall in once those traits have applied — so these screens resolve the way
@@ -1238,6 +1247,29 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       .map((meta) => ({ ...meta, ...libraryLines(meta, signedInId) }));
   }, [entities, signedInId, worldEntities]);
 
+  /** The library personas this entry offers: marked entities the world holds no copy of. */
+  const personaOptions = useMemo(
+    () => additionEntities.filter((entity) => entity.persona === true).map(({ id, name, image }) => ({ id, name, image })),
+    [additionEntities],
+  );
+  // Enter World and Quick Start start on the same persona.
+  const personaPreselect = (worldId: string) => preselectPersona({
+    playerSetting: 'open',
+    remembered: readWorldPersona(worldId),
+    globalDefault: defaultPersona,
+    available: { library: personaOptions.map((option) => option.id) },
+  });
+  // Reads a library persona for page one. One deleted since the pick lands as None.
+  const loadPersonaPick = async (ref: PersonaRef): Promise<PersonaPick> => {
+    if (ref.source !== 'library') return { ref };
+    try {
+      return { ref, libraryEntity: await EntityStorageService.getEntityData(ref.entityId) };
+    } catch (error) {
+      if (error instanceof LibraryRecordNotFoundError) return { ref: { source: 'none' } };
+      throw error;
+    }
+  };
+
   const hasLibraryAdditions = additionEntities.length > 0 || shouldShowDictionaryChoices(worldBooks, dictionaries)
     || (worldBooks.length > 0 && !!selectedWorld && hasWorldAdditionDefaults(selectedWorld.id));
 
@@ -1248,7 +1280,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     entryRequest.current = request;
     setResolvingEntry(true);
     try {
-      const loaded = await Promise.all(additionEntities.filter(m => draft.entityIds.has(m.id))
+      const characterIds = withoutPersona(draft.entityIds, draft.persona);
+      const loaded = await Promise.all(additionEntities.filter(m => characterIds.has(m.id))
         .map(async (metadata) => {
           try {
             return await EntityStorageService.getEntityData(metadata.id);
@@ -1269,15 +1302,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           }
         }
       }
+      const persona = await loadPersonaPick(draft.persona);
       if (entryRequest.current !== request) return;
       const dicts = finalizeSelection(draft.dictionaryItems, books);
+      // Only a pick the step showed is remembered; a hidden category leaves room for a later default.
+      if (personaOptions.length > 0) rememberWorldPersona(selectedWorld!.id, draft.persona);
       setSelectedCharacters(chars);
       setSelectedDictionaries(dicts);
+      setSelectedPersona(persona);
       if (selectedWorld!.data.worldOverview?.use3DModel) {
         showEnterStep('avatar');
       } else {
         entryStarted.current = true;
-        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars);
+        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars, persona);
       }
     } catch (error) {
       if (entryRequest.current === request) {
@@ -1302,6 +1339,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setEntryDraft(emptyEntryDraft());
     setSelectedCharacters(null);
     setSelectedDictionaries(null);
+    setSelectedPersona({ ref: { source: 'none' } });
     setShowIntroReadme(false);
     setEnterAfterIntro(null);
     setShowSetupWorkspace(false);
@@ -1346,10 +1384,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const startEntry = () => {
     const defaults = collapseExclusiveDefaults(
       rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
+    const additions = restoreWorldAdditionDefaults(
+      selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities);
+    const persona = personaPreselect(selectedWorld!.id);
+    // The persona wins a tie with a remembered character.
     const draft: EntryDraft = {
-      ...emptyEntryDraft(), traitIds: defaults,
-      ...restoreWorldAdditionDefaults(
-        selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities),
+      ...emptyEntryDraft(), traitIds: defaults, ...additions, persona,
+      entityIds: withoutPersona(additions.entityIds, persona),
     };
     cancelEntryResolution();
     entryStarted.current = false;
@@ -1783,7 +1824,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           if (entryStarted.current) return;
           entryStarted.current = true;
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters);
+          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters, selectedPersona);
         }}
         onBack={backFrom('avatar')}
         onAbort={() => {
@@ -2077,9 +2118,25 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               fill={fill}
               compact={compact}
               onSelect={setEditingEntityId}
+              badge={entity.id === defaultPersona && entity.persona ? (
+                <span className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Default</span>
+              ) : undefined}
+              note={entity.id === defaultPersona && entity.persona ? 'Default persona' : undefined}
             />
           )}
           onCheckUpdates={(id) => { void checkForUpdates('entity', id); }}
+          itemActions={(id) => {
+            if (!entities.some((entity) => entity.id === id && entity.persona)) return null;
+            return id === defaultPersona ? (
+              <ContextMenuItem onSelect={() => { clearDefaultPersona(); setDefaultPersonaId(undefined); }}>
+                <UserX className="h-4 w-4 shrink-0" /> Clear Default Persona
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onSelect={() => { setDefaultPersona(id); setDefaultPersonaId(id); }}>
+                <UserCheck className="h-4 w-4 shrink-0" /> Set as Default Persona
+              </ContextMenuItem>
+            );
+          }}
           onDelete={setEntityToDelete}
         />
       ) : cardType === 'dictionaries' ? (
@@ -2488,14 +2545,24 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // Skip the setup steps but honor the author's default trait choices.
                         const defaults = collapseExclusiveDefaults(
                           traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
+                        const persona = personaPreselect(selectedWorld!.id);
                         const draft: EntryDraft = {
-                          ...emptyEntryDraft(), traitIds: defaults,
+                          ...emptyEntryDraft(), traitIds: defaults, persona,
                           dictionaryItems: buildInitialSelection(worldBooks, dictionaries, signedInId),
                         };
+                        if (entryStarted.current) return;
                         cancelEntryResolution();
-                        entryStarted.current = false;
+                        entryStarted.current = true;
                         setEntryDraft(draft);
-                        onStartGame(defaults, currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null, true);
+                        const characterData = currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null;
+                        loadPersonaPick(persona).then(
+                          (pick) => onStartGame(defaults, characterData, true, null, null, null, pick),
+                          (error: unknown) => {
+                            entryStarted.current = false;
+                            console.error('Could not read the Quick Start persona', error);
+                            toast.error('Formamorph could not read that persona. Try again.');
+                          },
+                        );
                       }}
                     >
                       <ChevronLast className="h-4 w-4 landscape:mr-2" />
@@ -2890,6 +2957,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           libraryEntities={additionEntities}
           selectedEntityIds={entryDraft.entityIds}
           dictionaryItems={entryDraft.dictionaryItems}
+          personas={personaOptions}
+          persona={entryDraft.persona}
+          onPersonaChange={(ref) => {
+            updateDraft('persona', ref);
+            updateDraft('entityIds', (current) => withoutPersona(current, ref));
+          }}
           categoryIndex={entryDraft.traitSection}
           onCategoryChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}

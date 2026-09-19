@@ -37,6 +37,8 @@ import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/g
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawOpening, drawUnseenOpening, openingPool } from "@/lib/openings";
+import { drawNewGameOpening } from "@/lib/newGameOpening";
+import type { PersonaPick } from "@/lib/persona";
 import { renderUserMacro } from "@/lib/userMacro";
 import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
@@ -186,6 +188,8 @@ interface GameViewerProps {
   /** Library characters chosen at the entry step to place in the starting location this playthrough (runtime
    *  only — seeded as `discoveredEntities`, never written to the authored world). */
   initialCharacters?: Entity[] | null;
+  /** The persona chosen at the entry step. Absent means None. */
+  initialPersona?: PersonaPick | null;
   /** Cold-load: a save id to restore on mount (main-menu Load Game) instead of starting a fresh game. The
    *  world it belongs to is loaded into GameData before this mounts. */
   initialSaveId?: string | null;
@@ -365,6 +369,7 @@ const GameViewer = ({
   initialLocationId = null,
   initialDictionaries = null,
   initialCharacters = null,
+  initialPersona = null,
   initialSaveId = null,
   onExitToMenu,
 }: GameViewerProps) => {
@@ -3915,7 +3920,9 @@ const GameViewer = ({
       setMemoryPins({});
       setCodePins({});
       setEntityVisualPreference({});
-      setPersonaRef(undefined);
+      // A new game always holds a reference; None is a choice, and absence means a save from before personas.
+      const personaPick: PersonaPick = initialPersona ?? { ref: { source: 'none' } };
+      setPersonaRef(personaPick.ref);
       setEntityImageIndex({});
       setMilestoneSelection(null);
       setMemoryEdits({});
@@ -3935,8 +3942,11 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      const pool = openingPool({ overview: worldOverview, entities, startingLocationId: location?.id, picked });
-      const drawn = drawUnseenOpening(pool, [], Math.random);
+      // `entities` is the whole world here: the persona set above is not in state until the next render.
+      const { draw: drawn } = drawNewGameOpening({
+        pick: personaPick, worldEntities: entities, overview: worldOverview, startingLocationId: location?.id,
+        picked, random: Math.random,
+      });
       openingSessionRef.current = {
         ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
       };
@@ -3957,6 +3967,7 @@ const GameViewer = ({
     sessionRolls,
     initialDictionaries,
     initialCharacters,
+    initialPersona,
     dictionaries,
     authoredTraits,
     authoredLocations,

@@ -41,3 +41,10 @@ export function resolvePersona(
     unresolved: false,
   };
 }
+
+/** The persona chosen at world entry. A library pick carries the entity read at entry, so page one can
+ *  name it; the save keeps only the reference. */
+export interface PersonaPick {
+  ref: PersonaRef;
+  libraryEntity?: Entity;
+}

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactElement } from 'react';
+import { useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { FolderPlus, FolderSearch, RefreshCw, Trash2 } from 'lucide-react';
 import {
   ContextMenu,
@@ -43,6 +43,7 @@ export function LibraryTileContextMenu({
   onCheckUpdates,
   onPublish,
   onDelete,
+  itemActions,
 }: {
   children: ReactElement;
   id: string;
@@ -58,6 +59,8 @@ export function LibraryTileContextMenu({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
+  /** The tab's own menu items for this item, above Delete. */
+  itemActions?: (id: string) => ReactNode;
 }) {
   const group = tiles.group(id);
   const inFolder = tiles.groupOfItem(id);
@@ -153,7 +156,7 @@ export function LibraryTileContextMenu({
 
         {/* The item's own actions, below everything about arranging it. Publish is offered on the tabs
             whose tiles can be published; Delete stays here because the card has no delete control. */}
-        {!group && (onCheckUpdates || onPublish || onDelete) && (
+        {!group && (onCheckUpdates || onPublish || onDelete || itemActions) && (
           <>
             {arrange && <ContextMenuSeparator />}
             {onCheckUpdates && (
@@ -166,6 +169,7 @@ export function LibraryTileContextMenu({
                 <ActionIcon.publish className="h-4 w-4 shrink-0" /> Publish
               </ContextMenuItem>
             )}
+            {itemActions?.(id)}
             {onDelete && (
               <ContextMenuItem
                 className="text-destructive focus:text-destructive"
