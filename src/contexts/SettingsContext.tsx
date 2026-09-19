@@ -618,8 +618,17 @@ function useProvideSettings() {
       return next;
     }, []);
 
+  // Aborts on unmount: a resolve still in flight stops, and a late answer writes no state.
+  const unmountRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    unmountRef.current = controller;
+    return () => controller.abort();
+  }, []);
+
   /** Folds a fresh record onto whatever the cache held, so a source that just answered outranks it. */
   const cacheReasoningCapability = useCallback((sig: string, record: ReasoningCapability) => {
+    if (unmountRef.current?.signal.aborted) return;
     setReasoningCapabilityCache((prev) => storeCapability(prev, sig, mergeReasoningCapability(prev[sig] ?? null, record)));
   }, [setReasoningCapabilityCache, storeCapability]);
 
@@ -665,7 +674,7 @@ function useProvideSettings() {
     const record = await resolveReasoningCapability(
       { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
       fetch,
-      { observation: reasoningObservationsRef.current[sig] },
+      { observation: reasoningObservationsRef.current[sig], signal: unmountRef.current?.signal },
     );
     // A resolve that answered nothing is not an answer. Release the signature so a server that was down
     // during the debounce is asked again, rather than staying unresolved for the rest of the session.
@@ -1149,7 +1158,7 @@ function useProvideSettings() {
       routedProbedRef.current.add(sig);
       if (routedContextCache[sig] === undefined) {
         void fetchContextLength(url, resolved.apiToken, resolved.model).then((detected) => {
-          if (detected === null) return;
+          if (detected === null || unmountRef.current?.signal.aborted) return;
           setRoutedContextCache((prev) => {
             const next = { ...prev, [sig]: detected };
             const keys = Object.keys(next);
@@ -1163,7 +1172,7 @@ function useProvideSettings() {
         void resolveReasoningCapability(
           { url, token: resolved.apiToken, model: resolved.model },
           fetch,
-          { observation: reasoningObservationsRef.current[sig] },
+          { observation: reasoningObservationsRef.current[sig], signal: unmountRef.current?.signal },
         ).then((record) => {
           if (!record) { resolvedSignatures.current.delete(sig); return; }
           cacheReasoningCapability(sig, record);
