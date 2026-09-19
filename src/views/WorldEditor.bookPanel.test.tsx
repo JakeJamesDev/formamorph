@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
@@ -27,11 +27,12 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-/** Two books, so the persistence case can move from one book to another. */
+/** Two books, so the persistence case can move from one book to another. The first book's description holds
+ *  a word found nowhere else, so a Find query lands on that field. */
 const WORLD: World = benchEditorWorld({
   dictionaries: [
     {
-      id: 'b1', name: 'Fen Lore', enabled: true,
+      id: 'b1', name: 'Fen Lore', enabled: true, description: 'Marsh sayings.',
       entries: [{ id: 'e1', name: 'Hostile Forces', key: ['dragon'], value: 'A big lizard.' }],
     },
     { id: 'b2', name: 'Harbor Lore', enabled: true, entries: [] },
@@ -108,6 +109,19 @@ describe('the World Editor dictionary book panel tabs', () => {
     fireEvent.click(screen.getByText('Harbor Lore'));
     expect(panelTab('Placeholders')).toHaveAttribute('aria-selected', 'true');
     expect(placeholderEditorShown()).toBe(true);
+  });
+
+  it('opens Details for a Find hit in the book description', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    selectBook('Fen Lore');
+    openPanelTab('Placeholders');
+
+    fireEvent.keyDown(window, { key: 'f', ctrlKey: true });
+    await screen.findByRole('search', { name: 'Find and replace in world' });
+    fireEvent.change(screen.getByLabelText('Find'), { target: { value: 'Marsh sayings' } });
+
+    await waitFor(() => expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(document.querySelector('.editor-find-target')).not.toBeNull());
   });
 
   it('lands on Details when Simple mode takes Placeholders away', () => {

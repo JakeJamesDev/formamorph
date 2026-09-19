@@ -1,9 +1,12 @@
+import { useEffect } from 'react';
 import { Hint } from '@/components/ui/typography';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { useEditorMode } from '@/lib/editorMode';
-import { dictionaryBookPanelTabsFor, type DictionaryBookPanelTab } from '@/views/dictionaryBookPanelTabs';
-import type { Dictionary } from '@/types';
+import {
+  dictionaryBookPanelTabsFor, dictionaryBookTabForField, type DictionaryBookPanelTab,
+} from '@/views/dictionaryBookPanelTabs';
+import type { Dictionary, FocusFieldHint } from '@/types';
 import DictionaryBookFields from './DictionaryBookFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 
@@ -11,14 +14,23 @@ import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
  *  on Placeholders. Entry editing is the DictionaryManager's job; add/delete entries from the tree on the left.
  *
  *  The panel remounts per book, so the chosen tab is the editor's to hold and arrives as a prop. Placeholders
- *  is Advanced only, so Simple mode leaves one tab and no strip. */
-const DictionaryBookManager = ({ book, tab, onTabChange }: {
+ *  is Advanced only, so Simple mode leaves one tab and no strip.
+ *
+ *  `focusField` is the Find hit the editor just navigated to. The panel opens the tab that holds it. */
+const DictionaryBookManager = ({ book, tab, onTabChange, focusField }: {
   book: Dictionary;
   tab: DictionaryBookPanelTab;
   onTabChange: (tab: DictionaryBookPanelTab) => void;
+  focusField?: FocusFieldHint | null;
 }) => {
   const { advanced } = useEditorMode();
   const tabs = dictionaryBookPanelTabsFor(advanced);
+
+  // Before the reveal, which is a timer behind this render: the field it looks for has to be mounting by then.
+  useEffect(() => {
+    const owning = focusField ? dictionaryBookTabForField(focusField.fieldKey) : null;
+    if (owning) onTabChange(owning);
+  }, [focusField, onTabChange]);
 
   const detailsPanel = (
     <>
