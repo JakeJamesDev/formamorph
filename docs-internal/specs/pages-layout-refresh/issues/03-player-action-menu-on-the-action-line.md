@@ -1,6 +1,7 @@
 # 03: Player-Action Menu on the Action Line
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3ee13555
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -21,10 +22,10 @@ Shares the narration panel file with 04 and 05; run them one at a time.
 
 ## Acceptance criteria
 
-- [ ] Right-click on the action line lists exactly the player-action builder's actions
-- [ ] Edit opens the editor with the action text; save changes the user message and not the narration
-- [ ] Copy Text copies the action's markdown source
-- [ ] Edit is disabled while a turn generates
-- [ ] The card's narration menu does not open from the action line
-- [ ] The parity test also compares the player-action menu between Pages and Chat
-- [ ] Four gates green
+- [x] Right-click on the action line lists exactly the player-action builder's actions
+- [x] Edit opens the editor with the action text; save changes the user message and not the narration
+- [x] Copy Text copies the action's markdown source
+- [x] Edit is disabled while a turn generates
+- [x] The card's narration menu does not open from the action line
+- [x] The parity test also compares the player-action menu between Pages and Chat
+- [x] Four gates green
