@@ -29,7 +29,8 @@ function decodeBase64Utf8(b64: string): string {
   return new TextDecoder('utf-8').decode(bytes);
 }
 
-const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
+/** Every spelling of the SillyTavern char macro. */
+export const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
 
 /** `{{char}}` → the character's name, `{{user}}` → the Player Name chip; other macros are left untouched. */
 function substituteMacros(text: string, name: string): string {

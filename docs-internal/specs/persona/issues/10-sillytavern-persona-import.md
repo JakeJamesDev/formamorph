@@ -1,6 +1,6 @@
 # 10: SillyTavern Persona Import
 
-Status: in-progress
+Status: ready-for-human
 Base: 7313b8b4
 Blocked by: 01, 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
