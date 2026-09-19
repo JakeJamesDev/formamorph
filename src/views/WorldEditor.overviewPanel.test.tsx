@@ -73,7 +73,7 @@ const shownReadmeTab = () => within(readmeStrip()).getAllByRole('tab')
 
 /** Which custom-prompt kind the picker has open. Its items are radios, not tabs — and so is the editor's
  *  own Simple/Advanced switch, so the selection is read by kind name rather than by walking the DOM. */
-const PROMPT_KINDS = ['Narration', 'Choices', 'Stats', 'Opening'];
+const PROMPT_KINDS = ['Narration', 'Choices', 'Stats', 'Openings'];
 
 const openPromptKind = () => screen.getAllByRole('radio')
   .filter((r) => r.getAttribute('data-state') === 'on')

@@ -421,13 +421,13 @@ describe('the openings panel', () => {
   const browse = async () => {
     const user = userEvent.setup();
     renderManager();
-    await user.click(picker('Opening'));
+    await user.click(picker('Openings'));
     return user;
   };
 
   it('is hidden in Simple mode', () => {
     renderManager(false);
-    expect(screen.queryByRole('radio', { name: 'Opening' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Openings' })).not.toBeInTheDocument();
   });
 
   it('counts an absent switch as on, and browsing writes nothing', async () => {
@@ -536,7 +536,7 @@ describe('the mirrored openings panel', () => {
   const open = async (onOpenEntity?: (id: string) => void) => {
     const user = userEvent.setup();
     renderManager(true, undefined, onOpenEntity);
-    await user.click(picker('Opening'));
+    await user.click(picker('Openings'));
     return user;
   };
   const groups = () => screen.queryAllByTestId('opening-group').map((g) => g.getAttribute('aria-label'));

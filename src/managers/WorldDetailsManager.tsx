@@ -39,7 +39,7 @@ type PanelKind = WorldPromptKind | 'opening';
 /** The three system prompts first, then the outlier — an opening is a different kind of text. */
 const PANEL_KINDS: PanelKind[] = [...WORLD_PROMPT_KINDS, 'opening'];
 
-const PANEL_LABELS: Record<PanelKind, string> = { ...WORLD_PROMPT_KIND_LABELS, opening: 'Opening' };
+const PANEL_LABELS: Record<PanelKind, string> = { ...WORLD_PROMPT_KIND_LABELS, opening: 'Openings' };
 
 /** The note-and-Reset row under whichever panel is open. Reset appears only for text the author stored. */
 const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void }) => (
