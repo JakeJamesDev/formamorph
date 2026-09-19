@@ -89,13 +89,13 @@ At **Start Game**, the game draws one opening. **Quick Start** draws the same wa
 | One or more entities with openings | Only the picked entities' openings, by weight. They win over the world's, even with the world's list switched off. |
 | No entity, or only entities with no openings | The world's openings, plus those of entities at your starting location |
 
-With no picked entity's openings, a switched-off list or an empty draw starts you on the default opening.
+You start on the default opening when no picked entity has an opening and the world's list is switched off or has nothing to draw.
 
 Loading a save draws nothing.
 
 ### Regenerating Page One
 
-Regenerate on page one draws another opening. It doesn't repeat one you already saw this session until every opening has come up.
+**Re-generate** on page one draws another opening. It doesn't repeat one you already saw this session until every opening has come up.
 
 | The new draw is | Result |
 |---|---|

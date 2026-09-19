@@ -188,7 +188,7 @@ const PoolRow = ({ row, selected, onSelect }: { row: OpeningPoolRow; selected: b
       selected ? 'border-primary bg-muted/50' : 'hover:bg-muted/30',
     )}
   >
-    <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">{row.ownerName ?? 'World'}</span>
+    <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">{row.ownerName ?? 'This World'}</span>
     <span className="shrink-0 text-meta text-muted-foreground">{KIND_LABEL[row.kind]}</span>
     <span className="min-w-0 flex-grow truncate text-label">{row.text}</span>
     <span className="shrink-0 text-meta font-medium">{Math.round(row.chance)}%</span>
@@ -250,8 +250,8 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChan
         {data.pool.length === 0 ? (
           <p className="text-meta text-muted-foreground">
             {data.openingsEnabled
-              ? 'No opening here can be drawn, so play opens on the default Opening Action'
-              : 'The openings list is off, so play opens on the default Opening Action'}
+              ? 'No opening here can be drawn, so play opens on the default opening'
+              : 'The openings list is off, so play opens on the default opening'}
           </p>
         ) : (
           <div className="space-y-1">
