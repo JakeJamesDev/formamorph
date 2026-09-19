@@ -157,6 +157,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 - The global default persona and the per-world remembered pick are device-local settings. Neither is exported.
 - The global default names a library entity only. A per-world pick can name a world entity, a library entity, or None.
+- The player sets and clears the global default from a tile menu item on marked entities, and that tile shows a Default badge. A default or remembered pick whose entity is deleted, or has lost its mark, falls through to the next rule. The mark gates every picker and preselect; only a save's reference resolves by id.
 - Preselect order at enter-world and for Quick Start: the world's remembered pick, then the rule of the world's player setting, then the global default.
 
 ### The world's player setting
@@ -170,6 +171,10 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 ### Enter-world
 
 - The workspace step gains a Persona category. It shows when at least one persona is available for that world under the world's player setting.
+- It is the first category, because the starting-location preselect depends on the pick. It is one flat category named Persona, with no nav header of its own.
+- A new game always lands a reference. When the category is hidden, the save gets an explicit None.
+- Only a pick the player makes in the step, or a Change in game, writes the world's remembered pick. A hidden category writes none, so a player who makes a first persona later still gets the global default preselected.
+- When the remembered additions and the preselected persona name one entity, the persona wins.
 - A library entity picked as the persona is removed from the added characters for that playthrough. The picker and the character list enforce this in both directions.
 - Picking a world persona preselects the starting location to the first of that entity's locations that is a starting location. The player can change it. No pick is forced.
 - The pick travels to the game the same way the chosen dictionaries and added characters do.
@@ -192,6 +197,8 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 ### The Persona chip
 
 - `<PERSONA>` joins the shared context chips. It has a detail axis with Full, Summary, and Name, plus the shared format axis. It is affixable.
+- The section heading of a Full or Summary placement rides in the chip's affix, so an empty persona drops the heading with the block. This is the first default placement to do so: the Notes heading sits outside its chip, and empty notes render N/A under it. Notes does not change.
+- The affix fields of the chip pop-out are therefore newline-safe and show the newline. The preset restyle reads a heading inside an affix, so the Simple and XML built-ins derive correctly. For XML, the affixes open and close the section tag.
 - Full and Summary reuse the entity context builder, so a persona renders as one entity block: name, aliases, pronouns, description. Name renders the name and pronouns only.
 - For a world persona, the chip adds one line that states the other entities of this world know this person. A library persona gets no such line.
 - Default preset coverage:
