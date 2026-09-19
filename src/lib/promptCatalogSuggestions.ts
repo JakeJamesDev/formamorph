@@ -1,4 +1,4 @@
-import { kindOf, listingModels } from './catalogKinds';
+import { kindOf, listingModels, listingTags } from './catalogKinds';
 
 /** A model name and how many sources use it. */
 export interface RankedName {
@@ -34,9 +34,6 @@ class SpellingTally {
   }
 }
 
-const listingTags = (record: { tags?: unknown }): string[] =>
-  Array.isArray(record.tags) ? record.tags.filter((t): t is string => typeof t === 'string') : [];
-
 /**
  * The tags and models on the catalog's prompt listings, most-used first. Each listing counts once per value.
  * Tags are lowercased like the Overview stores them; models merge case-insensitively under their most-used
@@ -44,7 +41,6 @@ const listingTags = (record: { tags?: unknown }): string[] =>
  */
 export function collectPromptSuggestions(records: readonly Record<string, unknown>[]): {
   tags: string[];
-  models: string[];
   modelCounts: RankedName[];
 } {
   const tags = new SpellingTally();
@@ -59,8 +55,7 @@ export function collectPromptSuggestions(records: readonly Record<string, unknow
       models.add(model);
     }
   }
-  const modelCounts = models.ranked();
-  return { tags: tags.ranked().map((t) => t.name), models: modelCounts.map((m) => m.name), modelCounts };
+  return { tags: tags.ranked().map((t) => t.name), modelCounts: models.ranked() };
 }
 
 /**
