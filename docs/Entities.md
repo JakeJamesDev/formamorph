@@ -80,6 +80,32 @@ Some AI models rarely name anyone, writing characters as *"she"* and *"the woman
 
 Characters written with **names** get picked up. Characters written with **pronouns** can't be.
 
+## How a Game Opens
+
+At **Start Game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](WorldEditor#openings) page explains how authors write them.
+
+| At Enter World you pick | The draw uses |
+|---|---|
+| One or more entities with openings | Only the picked entities' openings, by weight. They win over the world's, even with the world's list switched off. |
+| No entity, or only entities with no openings | The world's openings, plus those of entities at your starting location |
+
+With no picked entity's openings, a switched-off list or an empty draw starts you on the default opening.
+
+Loading a save draws nothing.
+
+### Regenerating Page One
+
+Regenerate on page one draws another opening. It doesn't repeat one you already saw this session until every opening has come up.
+
+| The new draw is | Result |
+|---|---|
+| **Opening Narration** | It replaces page one. |
+| **Opening Action** | The game goes back to the start, with the action in your input box. |
+| The same single Opening Narration | Page one stays as it is. |
+
+> [!NOTE]
+> The no-repeat memory lasts for the session only. After a reload, any opening can come up again.
+
 ## Related
 
 - [🧠 Story Memory](Memory) — how the story remembers what those characters did
