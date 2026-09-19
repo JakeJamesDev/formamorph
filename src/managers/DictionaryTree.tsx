@@ -18,6 +18,7 @@ import type { Dictionary, DictionaryEntry } from '@/types';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
 import { useEditorMode } from '@/lib/editorMode';
+import { cn } from '@/lib/utils';
 
 /** One entry ("page") row inside a book zone: grip handle + enabled toggle + name + duplicate/delete. */
 function EntryRow({ entry, selected, onSelect, onToggleEnabled, onDuplicate, onRemove }: {
@@ -315,7 +316,7 @@ function BookZones({ book, className, collapsedZones, selectedId, onToggleZone, 
   const before = useMemo(() => book.entries.filter((e) => e.position === 'before'), [book.entries]);
   const after = useMemo(() => book.entries.filter((e) => e.position !== 'before'), [book.entries]);
   return (
-    <div className={`flex flex-col gap-2 ${className ?? ''}`}>
+    <div className={cn('flex flex-col gap-2', className)}>
       <DictZone
         bookId={book.id} position="before" entries={before} flat={!advanced}
         collapsed={collapsedZones.has(`${book.id}:before`)} onToggleCollapse={() => onToggleZone(`${book.id}:before`)}

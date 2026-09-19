@@ -1,6 +1,6 @@
 # 04: Dictionary Editor: Book Fields on Overview
 
-Status: in-progress
+Status: ready-for-human
 Base: 6d200263
 Blocked by: 01, 02
 Recommended model: Claude Opus 5 (`claude-opus-5`)

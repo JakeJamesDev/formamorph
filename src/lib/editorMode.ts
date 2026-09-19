@@ -45,6 +45,9 @@ export const EditorModeContext = createContext<EditorModeValue>({
   setMode: () => {},
 });
 
+/** Advanced with no switch, for the library editors: they show every field whatever mode opened them. */
+export const ALWAYS_ADVANCED: EditorModeValue = { mode: 'advanced', advanced: true, setMode: () => {} };
+
 export function useEditorMode(): EditorModeValue {
   return useContext(EditorModeContext);
 }

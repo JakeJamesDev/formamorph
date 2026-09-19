@@ -20,6 +20,7 @@ import { directChipTargets } from '@/lib/placeholders';
 import { carriedPlaceholders, splitCarriedPlaceholders } from '@/lib/placeholderHomes';
 import { dictionaryPlacementLetters, EMPTY_LETTERS, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
+import { ALWAYS_ADVANCED, EditorModeContext } from '@/lib/editorMode';
 import { blankDictionaryEntry, firstDictionaryEntryId } from '@/lib/dictionaryTree';
 import { exportedLibraryLinks } from '@/lib/componentExportLinks';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
@@ -160,6 +161,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
   };
 
   return (
+    // A World Editor in Simple mode can open this editor; the book still shows Enabled and both zones.
+    <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
     {/* Around the whole body, so no field reads the world's placeholder store. */}
@@ -238,6 +241,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     </PlaceholderStoreProvider>
     </PlacementLettersProvider>
     </EditorPreviewRollsProvider>
+    </EditorModeContext.Provider>
   );
 };
 
