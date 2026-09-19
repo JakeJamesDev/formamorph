@@ -334,6 +334,90 @@ describe('votes on the list', () => {
   });
 });
 
+describe('a load that answers late', () => {
+  type ListResult = Awaited<ReturnType<typeof FeedbackService.list>>;
+
+  /** One `list` call held open, so the test decides when and how it answers. */
+  const heldLoad = () => {
+    let resolve!: (result: ListResult) => void;
+    let reject!: (error: Error) => void;
+    const promise = new Promise<ListResult>((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  };
+
+  it('says nothing about a failure that lands after the list is gone', async () => {
+    const { toast } = await import('react-toastify');
+    const held = heldLoad();
+    vi.spyOn(FeedbackService, 'list').mockReturnValue(held.promise);
+
+    const { unmount } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    unmount();
+    held.reject(new Error('offline'));
+    await held.promise.catch(() => {});
+    await Promise.resolve();
+
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('keeps the newer filter’s rows when the older filter answers last', async () => {
+    const older = heldLoad();
+    const newer = heldLoad();
+    vi.spyOn(FeedbackService, 'list')
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise);
+
+    const { rerender } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    rerender(<FeedbackList type="bug" active category="crash" onOpen={() => {}} />);
+    newer.resolve({ threads: [report({ id: 'new', title: 'Newer filter row' })], total: 1 });
+    expect(await screen.findByText('Newer filter row')).toBeTruthy();
+
+    older.resolve({ threads: [report({ id: 'old', title: 'Older filter row' })], total: 1 });
+    await older.promise;
+    await Promise.resolve();
+
+    expect(screen.queryByText('Older filter row')).toBeNull();
+    expect(screen.getByText('Newer filter row')).toBeTruthy();
+  });
+
+  it('stays busy while the newer load is out, whatever the older one does', async () => {
+    const older = heldLoad();
+    const newer = heldLoad();
+    vi.spyOn(FeedbackService, 'list')
+      .mockResolvedValueOnce({ threads: [report()], total: 1 })
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise);
+
+    // Rows on screen first: a first load shows a skeleton, which has no busy state to read.
+    const { rerender, container } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    await screen.findByText('Save button does nothing');
+    rerender(<FeedbackList type="bug" active category="crash" onOpen={() => {}} />);
+    rerender(<FeedbackList type="bug" active category="editor"onOpen={() => {}} />);
+    await waitFor(() => expect(FeedbackService.list).toHaveBeenCalledTimes(3));
+
+    older.resolve({ threads: [], total: 0 });
+    await older.promise;
+    await Promise.resolve();
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
+  it('stops being busy when it goes off screen mid-load', async () => {
+    const held = heldLoad();
+    vi.spyOn(FeedbackService, 'list')
+      .mockResolvedValueOnce({ threads: [report()], total: 1 })
+      .mockReturnValueOnce(held.promise);
+
+    const { rerender, container } = render(<FeedbackList type="bug" active onOpen={() => {}} />);
+    await screen.findByText('Save button does nothing');
+    rerender(<FeedbackList type="bug" active category="crash" onOpen={() => {}} />);
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).not.toBeNull());
+
+    rerender(<FeedbackList type="bug" active={false} category="crash" onOpen={() => {}} />);
+
+    await waitFor(() => expect(container.querySelector('[aria-busy="true"]')).toBeNull());
+  });
+});
+
 describe('what the list asks for', () => {
   it('names its branch', async () => {
     stubList([]);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 
 /**
@@ -142,5 +142,27 @@ describe('World Editor find focus return', () => {
     await findBarIsGone();
     expect(document.activeElement).not.toBe(document.body);
     expect(document.activeElement).toBe(editorRoot);
+  });
+});
+
+describe('World Editor find reveal on unmount', () => {
+  it('stops looking for the hit once the editor is gone', async () => {
+    setup();
+    await focusWorldName();
+    await pressFindShortcut();
+    // The row lookup asks for the selected row by this attribute, so the query names it.
+    const lookups = vi.spyOn(HTMLElement.prototype, 'querySelector');
+    const rowLookups = () => lookups.mock.calls.filter(([selector]) => selector === '[data-editor-row-selected]').length;
+
+    // A hit on Overview, which has no tree: the row lookup finds nothing and keeps retrying.
+    fireEvent.change(screen.getByLabelText('Find'), { target: { value: 'Sedge' } });
+    await waitFor(() => expect(rowLookups()).toBeGreaterThan(1));
+
+    cleanup();
+    const atUnmount = rowLookups();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    expect(rowLookups()).toBe(atUnmount);
+    lookups.mockRestore();
   });
 });
