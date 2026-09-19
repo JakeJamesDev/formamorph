@@ -1,6 +1,6 @@
 # 04: Pick a Persona at Enter World
 
-Status: in-progress
+Status: ready-for-human
 Base: f43219d7
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
