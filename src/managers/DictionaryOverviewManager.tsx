@@ -16,7 +16,7 @@ const DictionaryOverviewManager = ({ book }: { book: Dictionary }) => {
   const { updateDictionary } = useDictionaryStore();
 
   return (
-    <div className="space-y-6 max-w-[560px]">
+    <div className="space-y-6">
       <TagsField values={book.tags} onChange={(tags) => updateDictionary({ ...book, tags })} />
 
       <div className="space-y-2">

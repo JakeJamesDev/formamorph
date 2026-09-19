@@ -3,6 +3,8 @@ import { toast } from 'react-toastify';
 import { ListDetail } from '@/components/ui/list-detail';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
+import { FieldColumn } from './FieldColumn';
+import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryBookManager from '@/managers/DictionaryBookManager';
@@ -155,7 +157,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         // A library book has no world behind it, so its own carried defs render the chips — the same
         // treatment its card and its listing get.
         title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', bookPlaceholders, { letters }) || 'Dictionary'}
-        contentClassName="max-w-[1100px] w-[95vw] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
+        contentClassName={LIBRARY_EDITOR_CONTENT_CLASS}
         loading={!book}
         tabs={TABS}
         tab={tab}
@@ -169,9 +171,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         <DictionaryStoreProvider value={store}>
           {tab === 'overview' ? (
             <ScrollArea className="flex-1 min-h-0">
-              <div className="p-4">
+              <FieldColumn>
                 {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
-              </div>
+              </FieldColumn>
             </ScrollArea>
           ) : tab === 'placeholders' ? (
             // The same palette an entry gets, over the value fields: a value is a chip field too.
@@ -192,7 +194,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                 </div>
               }
               detail={
-                <div className="p-4">
+                <FieldColumn>
                   {selectedBook ? (
                     <DictionaryBookManager key={selectedBook.id} book={selectedBook} />
                   ) : selectedEntry ? (
@@ -209,7 +211,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
                   ) : (
                     <p className="text-helper text-muted-foreground">Select the dictionary or an entry to edit it.</p>
                   )}
-                </div>
+                </FieldColumn>
               }
             />
           )}
