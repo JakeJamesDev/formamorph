@@ -199,5 +199,6 @@ Every guard is proven by reinstating the fault once and seeing the test fail. Th
 - The older Opening Cue spec describes the single-cue feature this work replaces. Its resolver rule still holds: every fallback site reads one function.
 - This work is the first of the SillyTavern parity gaps recorded in the chat world research notes. The order agreed there is the first message, then example dialogue, then the request toggles.
 - A changelog entry goes in the In Progress section under the author-facing bucket.
+- **Author docs placement:** no new wiki page. The World Editor page gets an Openings section in place of its Opening Cue section, plus an Openings subsection and a SillyTavern import subsection in its Entities part. The Entities in Play page gets a short section on how a game opens. The World Format page replaces the old cue fields.
 
 ## Comments
