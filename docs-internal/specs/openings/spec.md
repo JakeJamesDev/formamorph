@@ -139,6 +139,9 @@ One new pure module owns every rule. It has no React and no storage.
 
 - The SillyTavern importer reads the first message and the alternate greetings. Each becomes a Narration opening at weight 1, in card order. Blank entries are skipped.
 - The name macro becomes the entity's name. The user macro stays in the stored text. At draw time it renders as "you".
+  - **Stored form:** import writes every spelling of the user macro as the one canonical form `{{user}}`. The Persona spec says its Player Name chip adopts the form Openings writes, and Openings builds first, so this form is the contract between the two. One pure module owns the form and the draw-time render, and the Persona work replaces the render there.
+  - **Render:** the match at draw time is case-insensitive and allows inner spaces. The result is "You" at the start of the text, at the start of a line, or after sentence-ending punctuation, with opening punctuation allowed in between. It is "you" elsewhere. Verb agreement is not corrected, because a name later makes "`{{user}}` wakes" correct as written.
+  - The legacy V1 macros `<USER>` and `<BOT>` stay out of scope, as they are for descriptions today.
 - Description fields keep today's macro handling. Only openings keep the user macro.
 
 ### Editors
