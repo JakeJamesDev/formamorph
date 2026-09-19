@@ -36,6 +36,10 @@ _Avoid_: player action (unqualified), prompt
 An Opening that is page one itself. Its text shows as written, and no narration request goes out for it.
 _Avoid_: scripted opening, greeting
 
+**Starting Location**:
+A location where a new game can begin, flagged by its author. When no location is flagged, every location is one. An entity's openings count only when the entity is at the player's Starting Location.
+_Avoid_: start location, spawn point
+
 **Avatar**:
 A VRM 3D model — in the local Model Library, chosen for a world, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Picture.
 _Avoid_: model (in copy), VRM (the file format, not the thing)
