@@ -16,13 +16,15 @@ const BUBBLE = [
   'disabled:pointer-events-none disabled:opacity-50',
 ].join(' ');
 
-/** The choice text, with its bold and quoted runs. */
-function ChoiceText({ choice }: { choice: string }) {
+/** The choice text, with its bold and quoted runs. `plainQuotes` gives the quotes the surrounding color. */
+export function ChoiceText({ choice, plainQuotes = false }: { choice: string; plainQuotes?: boolean }) {
   // One inline wrapper: as separate flex items the runs would drop the spaces at their edges.
   return (
     <span>
       {choiceRuns(choice).map((run, i) => {
-        const text = run.quoted ? <span className={QUOTE_CLASS}>{run.text}</span> : run.text;
+        const text = run.quoted
+          ? <span className={QUOTE_CLASS} style={plainQuotes ? { color: 'inherit' } : undefined}>{run.text}</span>
+          : run.text;
         return run.bold ? <strong key={i}>{text}</strong> : <React.Fragment key={i}>{text}</React.Fragment>;
       })}
     </span>
@@ -30,7 +32,7 @@ function ChoiceText({ choice }: { choice: string }) {
 }
 
 /** The press handlers of one choice button: the Pages stage-and-append contract. */
-type ChoicePress = (choice: string) => Pick<
+export type ChoicePress = (choice: string) => Pick<
   React.ButtonHTMLAttributes<HTMLButtonElement>,
   'onClick' | 'onPointerDown' | 'onPointerUp' | 'onPointerLeave' | 'onPointerCancel'
 >;

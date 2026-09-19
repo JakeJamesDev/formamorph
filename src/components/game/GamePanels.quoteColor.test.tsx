@@ -90,7 +90,7 @@ describe('MiddlePanel — quote color', () => {
     it('keeps bold next to a quote and colors a quote around bold as one', () => {
       renderMiddlePanel({}, { turns: withChoices(['**Shout** "I **will** go" loudly']) });
       const button = choice(/Shout/);
-      expect(button.textContent).toBe('Shout "I will go" loudly');
+      expect(button.textContent).toBe('1.Shout "I will go" loudly');
       const bold = [...button.querySelectorAll('strong')];
       expect(bold.map((s) => s.textContent)).toEqual(['Shout', 'will']);
       expect(spans(button)).toEqual(['"I ', 'will', ' go"']);

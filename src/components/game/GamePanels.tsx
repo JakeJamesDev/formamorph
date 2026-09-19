@@ -16,8 +16,9 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
+import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
-import { BubbleActionButton, BubbleMenu } from './BubbleMenu';
+import { BubbleMenu } from './BubbleMenu';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { toast } from 'react-toastify';
@@ -29,9 +30,7 @@ import { COMMON_LANGUAGES } from "@/lib/languages";
 import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { CONTINUE_CHOICE, choiceRuns } from "@/lib/choices";
-import { QUOTE_CLASS } from "@/lib/quoteSegments";
+import { CONTINUE_CHOICE } from "@/lib/choices";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -888,62 +887,16 @@ export const MiddlePanel = ({
                 onDelete={onDeleteSceneImage}
               />
             )}
-            <div className="mt-4 flex flex-col gap-2">
-                {choices && choices.length > 0 && choices.map((choice, index) => {
-                  // On a past page, highlight the inferred choice(s) the player acted on; on the live page,
-                  // any choice whose text is staged in the input box (plain-click replaces, shift-click appends).
-                  const isSelected = isViewingPast ? viewSelectedChoice.includes(index) : playerInput.includes(choice);
-                  return (
-                    <Button
-                      key={index}
-                      // Ctrl/Cmd+click (or a touch long-press) appends the choice as a new sentence; a plain tap replaces.
-                      {...choicePress(choice)}
-                      disabled={disabled || isViewingPast}
-                      variant={isSelected ? "default" : "outline"}
-                      className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
-                        ${isSelected
-                          ? "bg-primary text-primary-foreground font-bold shadow-lg"
-                          : "border-primary hover:bg-accent hover:text-accent-foreground"
-                        }`}
-                    >
-                      {/* One inline wrapper: as separate flex items the runs would drop the spaces at their edges. */}
-                      <span>
-                        {choiceRuns(choice).map((run, i) => {
-                          // A selected choice sits on the primary fill, where the dialogue color loses contrast.
-                          const text = run.quoted
-                            ? <span className={QUOTE_CLASS} style={isSelected ? { color: 'inherit' } : undefined}>{run.text}</span>
-                            : run.text;
-                          return run.bold ? <strong key={i}>{text}</strong> : <React.Fragment key={i}>{text}</React.Fragment>;
-                        })}
-                      </span>
-                    </Button>
-                  );
-                })}
-                {showContinue && (
-                  <>
-                    {choices && choices.length > 0 && <Separator className="my-1" />}
-                    <Button
-                      // Same click contract as a generated choice: plain tap replaces the input, Ctrl/Cmd+click
-                      // (or a long-press) appends. Never submits — the player still presses send.
-                      {...choicePress(CONTINUE_CHOICE)}
-                      disabled={disabled || isViewingPast}
-                      variant={continueSelected ? "default" : "outline"}
-                      className={`w-full transition-all duration-200 h-auto min-h-[3rem] whitespace-normal
-                        ${continueSelected
-                          ? "bg-primary text-primary-foreground font-bold shadow-lg"
-                          : "border-primary hover:bg-accent hover:text-accent-foreground"
-                        }`}
-                    >
-                      {CONTINUE_CHOICE}
-                    </Button>
-                  </>
-                )}
-                {pageChoicesActions.length > 0 && (
-                  <div className="flex justify-end">
-                    {pageChoicesActions.map((action) => <BubbleActionButton key={action.key} action={action} />)}
-                  </div>
-                )}
-            </div>
+            <ChoiceRows
+              choices={choices ?? []}
+              showContinue={showContinue}
+              disabled={disabled || isViewingPast}
+              // Past: the choice the player took. Live: any choice staged in the input.
+              isSelected={(choice, index) => isViewingPast ? viewSelectedChoice.includes(index) : playerInput.includes(choice)}
+              continueSelected={continueSelected}
+              choicePress={choicePress}
+              actions={pageChoicesActions}
+            />
           </ScrollArea>
           )}
           <ConfirmDialog

@@ -1,6 +1,7 @@
 # 04: Choice Rows
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3ee13555
 Blocked by: 02
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -23,13 +24,13 @@ Shares the narration panel file with 03 and 05; run them one at a time.
 
 ## Acceptance criteria
 
-- [ ] Choices show as numbered rows; the old outlined buttons are gone from Pages
-- [ ] Click stages the choice; Ctrl/Cmd+click and a long press append it
-- [ ] A staged row shows the primary fill, with readable quoted text
-- [ ] The continue choice is the last row with its own mark, under the same conditions as today
-- [ ] Past page: rows disabled, the taken choice marked, no Re-generate Choices icon
-- [ ] Focus ring is inset; rows are reachable by keyboard
-- [ ] Rows fit at phone width
-- [ ] Harness tests cover stage, append, and the past-page state
-- [ ] Verified in the preview, both themes
-- [ ] Four gates green
+- [x] Choices show as numbered rows; the old outlined buttons are gone from Pages
+- [x] Click stages the choice; Ctrl/Cmd+click and a long press append it
+- [x] A staged row shows the primary fill, with readable quoted text
+- [x] The continue choice is the last row with its own mark, under the same conditions as today
+- [x] Past page: rows disabled, the taken choice marked, no Re-generate Choices icon
+- [x] Focus ring is inset; rows are reachable by keyboard
+- [x] Rows fit at phone width
+- [x] Harness tests cover stage, append, and the past-page state
+- [x] Verified in the preview, both themes
+- [x] Four gates green
