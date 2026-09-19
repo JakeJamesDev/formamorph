@@ -24,6 +24,7 @@ import { TooltipProvider } from './components/ui/tooltip';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
 import type { CharacterData, Dictionary, Entity } from '@/types';
+import type { PersonaPick } from '@/lib/persona';
 
 const DesignSystemShowcase = import.meta.env.DEV
   ? lazy(() => import('./views/DesignSystemShowcase'))
@@ -89,6 +90,7 @@ function AppViews() {
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
   const [initialCharacters, setInitialCharacters] = useState<Entity[] | null>(null);
+  const [initialPersona, setInitialPersona] = useState<PersonaPick | null>(null);
   const [initialSaveId, setInitialSaveId] = useState<string | null>(null);
 
   const handleStartGame = (
@@ -98,12 +100,14 @@ function AppViews() {
     startingLocationId?: string | null,
     dictionaries?: Dictionary[] | null,
     characters?: Entity[] | null,
+    persona?: PersonaPick | null,
   ) => {
     setSelectedTraits(traits);
     setInitialCharacterData(customCharacterData);
     setInitialLocationId(startingLocationId ?? null);
     setInitialDictionaries(dictionaries ?? null);
     setInitialCharacters(characters ?? null);
+    setInitialPersona(persona ?? null);
     setInitialSaveId(null); // a fresh game, not a cold-loaded save
     // Quick Start reaches here without passing through the enter-world flow, so it opens the session itself.
     // Already-open is a no-op that keeps the flow's rolls, which is what makes the normal path idempotent.
@@ -170,6 +174,7 @@ function AppViews() {
                 initialLocationId={initialLocationId}
                 initialDictionaries={initialDictionaries}
                 initialCharacters={initialCharacters}
+                initialPersona={initialPersona}
                 initialSaveId={initialSaveId}
                 onExitToMenu={handleExitToMenu}
               />

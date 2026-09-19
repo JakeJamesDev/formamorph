@@ -10,6 +10,9 @@ import { acceptAgeGate } from '@/lib/ageGate';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { toast } from 'react-toastify';
+import { readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
+import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
+import type { PersonaRef } from '@/types';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -63,6 +66,8 @@ beforeEach(async () => {
     },
   });
 });
+const NO_PERSONA = { ref: { source: 'none' } };
+
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 async function enter() {
@@ -134,13 +139,13 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], []));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA));
     cleanup();
     onStartGame.mockClear();
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    expect(onStartGame).toHaveBeenCalledWith(['default'], null, true);
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA));
   });
 
   it('keeps defaults independent for two local worlds', async () => {
@@ -171,7 +176,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], []));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA));
   });
 
   it('keeps a remembered lone world dictionary editable after the library is removed', async () => {
@@ -251,7 +256,7 @@ describe('the retained entry draft', () => {
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    expect(onStartGame).toHaveBeenCalledWith(['default'], null, true);
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA));
     expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
   });
 
@@ -279,6 +284,7 @@ describe('the retained entry draft', () => {
       'hill',
       [expect.objectContaining({ name: 'Default', enabled: true })],
       [],
+      NO_PERSONA,
     );
   });
 
@@ -318,7 +324,7 @@ describe('the retained entry draft', () => {
       }),
       expect.objectContaining({ name: 'World book', id: 'shared' }),
     ],
-      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })]);
+      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })], NO_PERSONA);
     expect((await EntityStorageService.getEntityData('companion')).id).toBe('companion');
     expect(await DictionaryStorageService.getDictionaryData('shared')).toMatchObject({
       id: 'shared', entries: [{ id: 'library-entry' }],
@@ -358,7 +364,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
-      [expect.objectContaining({ name: 'Companion' })]);
+      [expect.objectContaining({ name: 'Companion' })], NO_PERSONA);
     // The harness keeps MainMenu mounted after handoff; start another ordinary visit.
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
@@ -504,6 +510,7 @@ describe('the retained entry draft', () => {
       ['default'], null, true, null,
       [expect.objectContaining({ id: 'shared', name: 'World book' })],
       [],
+      NO_PERSONA,
     );
   });
 
@@ -536,5 +543,124 @@ describe('the retained entry draft', () => {
     resolution.mockRestore();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+  });
+});
+
+describe('the persona at world entry', () => {
+  const storePersona = (id: string, name: string, over: Record<string, unknown> = {}) => EntityStorageService.storeEntity({
+    id, name,
+    data: { id, name, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, ...over },
+  });
+  const libraryRef = (entityId: string) => ({ source: 'library', entityId });
+  // The shared setup does not clear the entity library, so each persona stored here is removed after.
+  afterEach(async () => {
+    for (const id of ['self', 'other']) await EntityStorageService.deleteEntity(id).catch(() => {});
+  });
+
+  it('starts on the global default and hands it to the game, then remembers it for the world', async () => {
+    await storePersona('self', 'Self');
+    setDefaultPersona('self');
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.getByRole('heading', { name: 'Persona' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Self' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({
+      ref: libraryRef('self'), libraryEntity: expect.objectContaining({ id: 'self', name: 'Self' }),
+    });
+    expect(readWorldPersona('entry-world')).toEqual(libraryRef('self'));
+  });
+
+  it('lands a None pick as an explicit None and remembers it over the default', async () => {
+    await storePersona('self', 'Self');
+    setDefaultPersona('self');
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('radio', { name: 'None' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
+    expect(readWorldPersona('entry-world')).toEqual({ source: 'none' });
+  });
+
+  it('keeps the persona out of the added characters, so its openings never reach the pool', async () => {
+    await storePersona('self', 'Self', { openings: [{ id: 'hello', text: 'Hello.', kind: 'action' }] });
+    saveWorldAdditionDefaults('entry-world', { entityIds: new Set(['self', 'companion']), dictionaryItems: [] });
+    setDefaultPersona('self');
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.queryByRole('checkbox', { name: 'Include Self' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][5]).toEqual([expect.objectContaining({ name: 'Companion' })]);
+    expect(onStartGame.mock.calls[0][6].ref).toEqual(libraryRef('self'));
+  });
+
+  it('hides the category with no persona, starts on None, and leaves the world with no remembered pick', async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.queryByRole('button', { name: 'Persona' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
+    expect(readWorldPersona('entry-world')).toBeUndefined();
+  });
+
+  it('falls through a default that names a deleted or unmarked entity', async () => {
+    await storePersona('self', 'Self');
+    for (const missing of ['gone', 'companion']) {
+      setDefaultPersona(missing);
+      renderMainMenu();
+      await enter();
+      expect(screen.getByRole('radio', { name: 'None' })).toBeChecked();
+      cleanup();
+    }
+  });
+
+  it('sets and clears the global default from the Entities tab, on marked entities only', async () => {
+    await storePersona('self', 'Self');
+    renderMainMenu();
+    fireEvent.click(await screen.findByRole('radio', { name: 'Entities' }));
+    fireEvent.contextMenu(await screen.findByText('Companion'));
+    expect(screen.queryByRole('menuitem', { name: /Default Persona/ })).not.toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.contextMenu(screen.getByText('Self'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Set as Default Persona' }));
+    expect(readDefaultPersona()).toBe('self');
+    expect(await screen.findByText('Default')).toBeInTheDocument();
+    fireEvent.contextMenu(screen.getByText('Self'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Clear Default Persona' }));
+    expect(readDefaultPersona()).toBeUndefined();
+    await waitFor(() => expect(screen.queryByText('Default')).not.toBeInTheDocument());
+  });
+
+  it('gives Quick Start the remembered pick over the default, and does not remember for it', async () => {
+    await storePersona('self', 'Self');
+    await storePersona('other', 'Other');
+    setDefaultPersona('self');
+    rememberWorldPersona('entry-world', libraryRef('other') as PersonaRef);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({
+      ref: libraryRef('other'), libraryEntity: expect.objectContaining({ name: 'Other' }),
+    });
+    cleanup();
+    localStorage.removeItem('FORMAMORPH_worldPersona');
+    onStartGame.mockClear();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6].ref).toEqual(libraryRef('self'));
+    expect(readWorldPersona('entry-world')).toBeUndefined();
   });
 });

@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { EntityMetadata, Trait } from '@/types';
+import { withoutPersona } from '@/lib/personaPick';
+import type { EntityMetadata, PersonaRef, Trait } from '@/types';
 
 const identity = (text: string) => text;
 const traitIdentity = (_trait: Trait, text: string) => text;
@@ -753,5 +754,76 @@ describe('Enter World library inspection', () => {
     });
     await user.click(within(details).getByRole('button', { name: 'Back to Additions' }));
     expect(screen.getByRole('searchbox', { name: 'Search Library Additions' })).toHaveFocus();
+  });
+});
+
+const personas = libraryEntities.map(({ id, name, image }) => ({ id, name, image }));
+
+// The host's side of the one-role rule: a persona pick drops that entity from the added characters.
+function PersonaHarness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>>) {
+  const [persona, setPersona] = useState<PersonaRef>({ source: 'none' });
+  const [selectedEntityIds, setSelectedEntityIds] = useState(new Set<string>());
+  return (
+    <Harness
+      personas={personas}
+      persona={persona}
+      onPersonaChange={(ref) => {
+        setPersona(ref);
+        setSelectedEntityIds((current) => withoutPersona(current, ref));
+      }}
+      selectedEntityIds={selectedEntityIds}
+      onEntityToggle={(id, selected) => setSelectedEntityIds((current) => {
+        const next = new Set(current);
+        if (selected) next.add(id); else next.delete(id);
+        return next;
+      })}
+      {...props}
+    />
+  );
+}
+
+describe('the Persona category', () => {
+  it('opens first and lists None and each persona with its portrait and name', () => {
+    render(<PersonaHarness />);
+    expect(screen.getByRole('heading', { name: 'Persona' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'World setup categories' });
+    expect(within(nav).getAllByRole('button')[0]).toHaveTextContent('Persona');
+    expect(screen.getByRole('radio', { name: 'None' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Mara Vale' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Quiet Cartographer' })).toBeInTheDocument();
+    expect(document.querySelector('img[src="data:image/png;base64,portrait"]')).toBeInTheDocument();
+  });
+
+  it('is hidden when no persona is available', () => {
+    render(<PersonaHarness personas={[]} />);
+    expect(screen.queryByRole('button', { name: 'Persona' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'None' })).not.toBeInTheDocument();
+  });
+
+  it('removes a picked persona from the characters', async () => {
+    const user = userEvent.setup();
+    render(<PersonaHarness />);
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Mara Vale' }));
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    // An added character leaves the picker until it is removed again.
+    expect(screen.queryByRole('radio', { name: 'Mara Vale' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Mara Vale' }));
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Quiet Cartographer' }));
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    expect(screen.queryByRole('checkbox', { name: 'Include Quiet Cartographer' })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Include Mara Vale' })).not.toBeChecked();
+  });
+
+  it('removes an added character from the picker', async () => {
+    const user = userEvent.setup();
+    render(<PersonaHarness />);
+    await user.click(screen.getByRole('button', { name: 'Library Additions' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Include Quiet Cartographer' }));
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    expect(screen.queryByRole('radio', { name: 'Quiet Cartographer' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Mara Vale' })).toBeInTheDocument();
   });
 });

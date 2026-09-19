@@ -207,6 +207,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish
  * @param onDelete - Deletes one item, offered as the context menu's last entry
+ * @param itemActions - The tab's own context menu items for one item, drawn above Delete
  * @param toolbar - Controls for this tab's view, drawn above the grid
  * @param filter - Shows only the items it passes, and folders holding one. The view packs them in the saved
  *   order and turns off drag, resize, and folder edits, so it never rewrites the saved arrangement
@@ -228,6 +229,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates,
   onPublish,
   onDelete,
+  itemActions,
   toolbar,
   filter,
 }: {
@@ -252,6 +254,7 @@ export function LibraryTileGrid<T>({
   onCheckUpdates?: (id: string) => void;
   onPublish?: (id: string) => void;
   onDelete?: (id: string) => void;
+  itemActions?: (id: string) => React.ReactNode;
   toolbar?: React.ReactNode;
   filter?: (item: T) => boolean;
 }) {
@@ -719,6 +722,7 @@ export function LibraryTileGrid<T>({
         onCheckUpdates={onCheckUpdates}
         onPublish={onPublish}
         onDelete={onDelete}
+        itemActions={itemActions}
       >
           <div
             ref={(node) => {
