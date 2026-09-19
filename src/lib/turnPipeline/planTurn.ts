@@ -8,7 +8,6 @@ import { TURN_PASSES, effectiveActionFor } from './turnPasses';
  */
 export function planTurn(input: TurnPlanInput): TurnPlan {
   const writtenNarration = input.writtenNarration?.trim() ? input.writtenNarration : null;
-  // A written page one needs no router, planner or narrator: each exists only to shape the narration request.
   const due = TURN_PASSES.filter((pass) => pass.isDue(input));
   return {
     input,
@@ -17,6 +16,7 @@ export function planTurn(input: TurnPlanInput): TurnPlan {
     concurrency: input.settings.concurrentTurnRequests ? 'parallel' : 'serial',
     inlineThinking: input.settings.thinkingMode === 'inline',
     writtenNarration,
+    // A written page one needs no router, planner or narrator: each exists only to shape the narration request.
     passes: writtenNarration === null ? due : due.filter((pass) => pass.stage === 'postNarration'),
   };
 }

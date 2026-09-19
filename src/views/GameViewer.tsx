@@ -227,15 +227,29 @@ interface PendingTurn {
   action: string;
   /** An Opening Narration's resolved text; the turn plays it as page one. */
   writtenNarration?: string;
-  /** That opening's key in the session's shown list. */
-  openingKey?: string | null;
 }
 
-/** Where page one took place, read off the stored turn. */
-const pageOneLocationId = (history: readonly ChatMessage[]): string | undefined => {
+/** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
+interface OpeningSession {
+  /** The opening drawn last, unresolved. */
+  drawn: Opening | null;
+  /** Shown-list keys, newest last, so a page-one regenerate draws an opening not yet seen. */
+  shown: string[];
+  /** The Opening Action the legacy "START GAME" sentinel stands for when the draw was a narration. */
+  cue: Opening | null;
+  /** Where a new game started. Null on a loaded save, which reads it off the stored page one. */
+  startLocationId: string | null;
+}
+const newOpeningSession = (): OpeningSession => ({ drawn: null, shown: [], cue: null, startLocationId: null });
+
+/** Page one as stored. */
+const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
   const pageOne = history.find((m) => m.role === "assistant");
-  return pageOne ? parseTurnContent(pageOne.content)?.locationId : undefined;
+  return pageOne ? parseTurnContent(pageOne.content) : null;
 };
+/** Where page one took place. */
+const pageOneLocationId = (history: readonly ChatMessage[]) => pageOneTurn(history)?.locationId;
+const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(history)?.narration;
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
 type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues'>;
@@ -1099,45 +1113,27 @@ const GameViewer = ({
 
   // Re-generate the current turn: restore the snapshot from *before* it (which also rewinds the
   // message history past it), then re-send the same player action for a fresh response. The re-send is
-  // deferred via `regenerateNonce` below — sendGameAction reads game state from its render's closure,
+  // deferred via `pendingTurnNonce` below — sendGameAction reads game state from its render's closure,
   // so it must run after loadGameState has committed, not synchronously alongside it.
-  const pendingRegenerateRef = useRef<PendingTurn | null>(null);
+  const pendingTurnRef = useRef<PendingTurn | null>(null);
   // The real (editable) opening text last submitted, kept so re-generating the opening can re-fill the box
   // with it — history stores only the "START GAME" proxy (parity), which would otherwise lose the edit.
   const openingActionRef = useRef<string>("");
-  // The opening this session drew, unresolved. A new game draws at seed; a loaded save draws on first need,
-  // so the pre-fill, the page-one regenerate and the legacy start message all read one draw.
-  const sessionOpeningRef = useRef<Opening | null>(null);
-  // The openings this session has shown, newest last, so a page-one regenerate draws one not yet seen.
-  // Session state only: a loaded save starts with none.
-  const shownOpeningsRef = useRef<string[]>([]);
-  // The shown-list key of the Opening Narration that is page one now; null when the model wrote page one.
-  const pageOneOpeningKeyRef = useRef<string | null>(null);
+  // A new game draws at seed; a loaded save draws on first need.
+  const openingSessionRef = useRef<OpeningSession>(newOpeningSession());
   /** The rows this playthrough draws from: the world's, plus authored entities at the starting location. */
-  const sessionPool = (startingLocationId: string | null | undefined) =>
-    openingPool({ overview: worldOverview, entities, startingLocationId });
-  /** Draw this session's next opening, one it has not shown yet. Returns its shown-list key, or null for
-   *  the shipped default, which no pool row stands behind. */
-  const drawSessionOpening = (startingLocationId: string | null | undefined) => {
-    const pool = sessionPool(startingLocationId);
-    const next = drawUnseenOpening(pool, shownOpeningsRef.current, Math.random);
-    shownOpeningsRef.current = next.shown;
-    sessionOpeningRef.current = next.opening;
-    return { opening: next.opening, key: pool.length > 0 ? next.shown[next.shown.length - 1] : null };
-  };
-  // The Opening Action the legacy "START GAME" sentinel stands for. An Opening Narration is page one, never
-  // a directive to the narrator, so a session that drew one reads an action row here.
-  const openingCueRef = useRef<Opening | null>(null);
+  const sessionPool = () => openingPool({
+    overview: worldOverview,
+    entities,
+    startingLocationId: openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory),
+  });
+  // An Opening Narration is page one, never a directive to the narrator, so a session that drew one reads
+  // an action row here.
   const openingCue = () => {
-    const drawn = sessionOpeningRef.current;
-    if (drawn?.kind === "action") return drawn;
-    return (openingCueRef.current ??= drawOpening(
-      sessionPool(startLocationIdRef.current).filter((row) => row.opening.kind === "action"),
-      Math.random,
-    ));
+    const session = openingSessionRef.current;
+    if (session.drawn?.kind === "action") return session.drawn;
+    return (session.cue ??= drawOpening(sessionPool().filter((row) => row.opening.kind === "action"), Math.random));
   };
-  // Where this playthrough started: the location gate on entity openings reads it again at regenerate.
-  const startLocationIdRef = useRef<string | null>(null);
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
@@ -1168,7 +1164,7 @@ const GameViewer = ({
     // Only re-fire on a new committed turn — reading the latest setting/world at fire time is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnCommitNonce]);
-  const [regenerateNonce, setRegenerateNonce] = useState(0);
+  const [pendingTurnNonce, setPendingTurnNonce] = useState(0);
 
   /** Re-generate the turn on `page`, which Chat passes as the latest page. */
   const handleRegenerate = (page = currentPage) => {
@@ -1183,12 +1179,11 @@ const GameViewer = ({
     const action = lastTurnAction(fullMessageHistory);
     if (!previousState || action === null) return;
     // Page one draws again, before anything is restored: a pool of one Opening Narration has nothing else
-    // to show, so the page stays as it is. A loaded save reads its starting location off the stored page.
-    const priorOpening = sessionOpeningRef.current;
-    const redraw = page === 1
-      ? drawSessionOpening(startLocationIdRef.current ?? pageOneLocationId(fullMessageHistory))
-      : null;
-    if (redraw?.key && redraw.key === pageOneOpeningKeyRef.current) return;
+    // to show, so the page stays as it is. The draw is recorded only once the restore has succeeded.
+    const session = openingSessionRef.current;
+    const redraw = page === 1 ? drawUnseenOpening(sessionPool(), session.shown, Math.random) : null;
+    const redrawText = redraw ? resolvePH(redraw.opening.text) : "";
+    if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
     if (!loadGameState(previousState, locations, { keepLiveHistory: true })) return;
@@ -1204,23 +1199,24 @@ const GameViewer = ({
     // Re-generating the opening (page 1) returns to the not-started state. An Opening Narration then starts
     // the game again on its own; an Opening Action fills the box for the player to edit and submit.
     if (redraw) {
+      const priorOpening = session.drawn;
+      openingSessionRef.current = { ...session, drawn: redraw.opening, shown: redraw.shown };
       setIsGameStarted(false);
-      const text = resolvePH(redraw.opening.text);
       if (redraw.opening.kind === "narration") {
-        pendingRegenerateRef.current = { action: "START GAME", writtenNarration: text, openingKey: redraw.key };
-        setRegenerateNonce((n) => n + 1);
+        pendingTurnRef.current = { action: "START GAME", writtenNarration: redrawText };
+        setPendingTurnNonce((n) => n + 1);
         return;
       }
       // History holds the "START GAME" proxy, so the player's own edit of this same opening comes back from
       // the ref. A save from before the proxy kept the real text in history, and its first redraw keeps it.
       const sameRow = priorOpening === redraw.opening;
       setPlayerInput(
-        priorOpening === null && action !== "START GAME" ? action : (sameRow && openingActionRef.current) || text,
+        priorOpening === null && action !== "START GAME" ? action : (sameRow && openingActionRef.current) || redrawText,
       );
       return;
     }
-    pendingRegenerateRef.current = { action };
-    setRegenerateNonce((n) => n + 1);
+    pendingTurnRef.current = { action };
+    setPendingTurnNonce((n) => n + 1);
   };
 
   // Read the committed latest turn + its originating action, or null when a partial re-generate can't run
@@ -2035,7 +2031,7 @@ const GameViewer = ({
    * everything here is React state either feeding it (the `advance` derivations below) or receiving it
    * (the Turn Commit at the end).
    */
-  const sendGameAction = async (action: string, written?: Pick<PendingTurn, "writtenNarration" | "openingKey">) => {
+  const sendGameAction = async (action: string, writtenNarration?: string) => {
     setUserPage(null); // taking an action resumes following, so the player sees their new turn land
     stopCommandPreview(); // a real turn supersedes any command preview
     // On the opening turn, snapshot the pre-game state so page 1 can be re-generated later.
@@ -2050,7 +2046,7 @@ const GameViewer = ({
       destinationCount: destinations.length,
       locationCount: locations.length,
       hasCurrentLocation: !!currentLocation,
-      writtenNarration: written?.writtenNarration,
+      writtenNarration,
       settings: turnSettings(),
       prompts: turnPrompts(),
     });
@@ -2061,7 +2057,6 @@ const GameViewer = ({
     if (isOpeningTurn) {
       // A written page one was never the player's text, so there is no edit to bring back.
       openingActionRef.current = plan.writtenNarration === null ? action : "";
-      pageOneOpeningKeyRef.current = null;
     }
 
     // One AbortController for the whole turn, so Stop aborts every sub-request — not just the active one.
@@ -2296,7 +2291,6 @@ const GameViewer = ({
         if (event.at === "written") {
           // Page one as the author wrote it, stored the way a streamed narration's first write stores it,
           // so the page renders it through the normal path and Stop keeps it like any narration.
-          pageOneOpeningKeyRef.current = written?.openingKey ?? null;
           setFullMessageHistory((prev) => [...prev, {
             role: "assistant",
             content: JSON.stringify({ narration: event.narration, choices: [], stat_changes: [], turnId: currentTurnIdRef.current }),
@@ -2423,7 +2417,16 @@ const GameViewer = ({
       // The user stopping is an expected, silent exit (the `finally` resets waiting state).
       if (result.status === "aborted") return;
       if (result.status === "failed") {
-        reportFailure(result.kind, result.request ? !result.request.silent : false);
+        // A written page one is already the story, whatever failed after it: keep the turn as Stop keeps a
+        // narration that came through, so the next submit is a normal turn and not a second opening.
+        const pageOneStands = plan.writtenNarration !== null && result.run.material.narration !== "";
+        reportTurnFailure(result.kind, result.request ? !result.request.silent : false, isOpeningTurn && !pageOneStands);
+        if (pageOneStands) {
+          setIsGameStarted(true);
+          setChoicesReady(true);
+          beforeBoxUndoRef.current = null;
+          armTurnSnapshot();
+        }
         return;
       }
 
@@ -2473,13 +2476,13 @@ const GameViewer = ({
   // Fires the re-send half of a re-generate, once the restored pre-turn state has committed. A new game
   // that drew an Opening Narration starts through here too, once its seeded state has committed.
   useEffect(() => {
-    if (regenerateNonce === 0) return;
-    const pending = pendingRegenerateRef.current;
-    pendingRegenerateRef.current = null;
-    if (pending !== null) sendGameAction(pending.action, pending);
+    if (pendingTurnNonce === 0) return;
+    const pending = pendingTurnRef.current;
+    pendingTurnRef.current = null;
+    if (pending !== null) sendGameAction(pending.action, pending.writtenNarration);
     // sendGameAction is deliberately not a dependency — we want this render's (post-restore) closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [regenerateNonce]);
+  }, [pendingTurnNonce]);
 
   const handlePageChange = (page: number) => {
     // Paging to the latest page resumes following (null); paging back pins that page.
@@ -3924,19 +3927,15 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      startLocationIdRef.current = location?.id ?? null;
       const pool = openingPool({ overview: worldOverview, entities, startingLocationId: location?.id });
       const drawn = drawUnseenOpening(pool, [], Math.random);
-      sessionOpeningRef.current = drawn.opening;
-      shownOpeningsRef.current = drawn.shown;
+      openingSessionRef.current = {
+        ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
+      };
       const openingText = resolveWith(openingPins, drawn.opening.text);
       if (drawn.opening.kind === "narration") {
-        pendingRegenerateRef.current = {
-          action: "START GAME",
-          writtenNarration: openingText,
-          openingKey: drawn.shown[drawn.shown.length - 1] ?? null,
-        };
-        setRegenerateNonce((n) => n + 1);
+        pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };
+        setPendingTurnNonce((n) => n + 1);
       } else {
         setPlayerInput(openingText);
       }
@@ -4273,8 +4272,8 @@ const GameViewer = ({
   const handleMenuLoad = async (id: string, targetWorldId?: string) => {
     // A render from the outgoing session must not finish into the loaded one under a dead turn id.
     cancelSceneImage();
-    // The loaded save draws its own opening on first need.
-    sessionOpeningRef.current = null;
+    // The loaded save draws its own opening on first need, with nothing shown yet.
+    openingSessionRef.current = newOpeningSession();
     // A save from another (installed) world: swap GameData to that world first, then restore the save against
     // its locations — otherwise the save would run inside the current world's shell.
     if (targetWorldId && targetWorldId !== (worldId ? String(worldId) : undefined)) {
