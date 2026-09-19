@@ -49,7 +49,7 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
+  addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
   type PromptPresetStore, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -62,7 +62,7 @@ import {
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
-import type { AIRequestType } from '../types';
+import type { AIRequestType, CommunityLink } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
@@ -963,6 +963,32 @@ function useProvideSettings() {
     setPresetStore((s) => addFullPreset(s, id, content));
     return id;
   };
+  /**
+   * Store a community listing's preset under `id`, adding it or replacing the held copy in place so world and
+   * folder pins keep resolving. Tuning always comes along, missing prompt keys take the defaults, and a blank
+   * Author credits the uploader. The selection is left alone.
+   */
+  const storeDownloadedPreset = useCallback(
+    (id: string, imported: ImportedPreset, link: CommunityLink & { sourceId: string }, name: string) => {
+      const overview = imported.overview ?? EMPTY_OVERVIEW;
+      const uploader = link.sourceAuthorName?.trim() ?? '';
+      const author = overview.author.trim() ? overview.author : uploader;
+      const content: Omit<PromptPreset, 'id'> = {
+        name,
+        values: { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, imported.style), ...imported.values },
+        style: imported.style,
+        ...(imported.samplers ? { samplers: imported.samplers } : {}),
+        ...(imported.reasoning ? { reasoning: imported.reasoning } : {}),
+        ...(imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
+        ...(imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
+        ...(imported.verbatim ? { verbatim: imported.verbatim } : {}),
+        ...(imported.overview || author ? { overview: { ...overview, author } } : {}),
+        ...link,
+      };
+      setRawPresetStore((s) => putDownloadedPreset(s, id, content));
+    },
+    [setRawPresetStore],
+  );
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);
   // The hard-coded "continue" pseudo-choice offered under the generated ones (no AI request of its own).
@@ -1669,6 +1695,9 @@ function useProvideSettings() {
     exportActivePreset,
     linkPresetToListing,
     importPreset,
+    storeDownloadedPreset,
+    /** Every user preset with its community link, for the browser to find a listing's copy. */
+    userPromptPresets: presetStore.presets,
     imageGenDisabled,
     setImageGenDisabled,
     sceneImageAuto,

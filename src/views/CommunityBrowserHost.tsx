@@ -14,6 +14,7 @@ import AuthService from '@/services/AuthService';
 import type { BrowseTab } from '@/lib/browseTabs';
 import type { WorldRecord } from '@/components/WorldDetails';
 import type { EntityMetadata, DictionaryMetadata, ModelMetadata, ServerEvent } from '@/types';
+import type { PromptLibrary } from '@/lib/promptDownload';
 
 export interface CommunityBrowserHostProps {
   open: boolean;
@@ -40,6 +41,8 @@ export interface CommunityBrowserHostProps {
   detailsAction?: ReactNode;
   /** Starts an authentication flow when a guest chooses to Like a listing. */
   onGuestLike?: (world: WorldRecord) => void;
+  /** The preset store prompt listings download into. Absent offers no prompt download. */
+  promptLibrary?: PromptLibrary;
   /** DEV only: open the first listing's details and raise its likers list, for the dev route. */
   openLikersOnMount?: boolean;
   /** DEV only: raise the add-on review over the first world listing, for the dev route. */
@@ -65,7 +68,7 @@ export interface CommunityBrowserHostProps {
 export const CommunityBrowserHost = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, initialTab, openListing, onListingOpened,
   listing, onListingChange, onListingUnavailable, onGuestLike,
-  detailsAction,
+  detailsAction, promptLibrary,
   openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityBrowserHostProps) => {
   // The four local libraries, each driving its tab's download state.
@@ -231,6 +234,7 @@ export const CommunityBrowserHost = ({
         onListingChange={onListingChange}
         onListingUnavailable={onListingUnavailable}
         detailsAction={detailsAction}
+        promptLibrary={promptLibrary}
         openLikersOnMount={openLikersOnMount}
         openManageAddonsOnMount={openManageAddonsOnMount}
         events={events}

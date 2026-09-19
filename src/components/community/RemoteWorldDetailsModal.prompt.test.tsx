@@ -140,3 +140,27 @@ describe('a prompt listing’s details', () => {
     expect(screen.queryByRole('heading', { name: 'Models' })).not.toBeInTheDocument();
   });
 });
+
+describe('Use This Preset', () => {
+  it('selects the downloaded preset', async () => {
+    const onUse = vi.fn();
+    show({ downloadStateForWorld: () => 'refresh', onContextualDownload: vi.fn(), presetUse: { active: false, onUse } });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Use This Preset' }));
+    expect(onUse).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the active state when the preset is already selected', async () => {
+    show({ downloadStateForWorld: () => 'refresh', onContextualDownload: vi.fn(), presetUse: { active: true, onUse: vi.fn() } });
+
+    expect(await screen.findByRole('button', { name: 'Preset In Use' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Use This Preset' })).not.toBeInTheDocument();
+  });
+
+  it('is absent before the preset is downloaded', async () => {
+    show();
+
+    await waitFor(() => expect(WorldStorageService.fetchListingDetails).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /Use This Preset|Preset In Use/ })).not.toBeInTheDocument();
+  });
+});

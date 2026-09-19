@@ -88,6 +88,11 @@ export function parseSharedJson(raw: string, currentAppVersion: string): ParseRe
   return sanitize(obj, currentAppVersion);
 }
 
+/** Validate an artifact that is already decoded, such as a community listing's content. */
+export function parseSharedContent(obj: unknown, currentAppVersion: string): ParseResult {
+  return sanitize(obj, currentAppVersion);
+}
+
 /** Parse either form (a `.json` body or a share code) — JSON when the text starts with `{`, else a code. */
 export function parseSharedAny(text: string, currentAppVersion: string): ParseResult {
   return text.trim().startsWith('{') ? parseSharedJson(text, currentAppVersion) : parseSharedCode(text, currentAppVersion);

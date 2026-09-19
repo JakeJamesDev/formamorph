@@ -32,7 +32,8 @@ import { replaceCatalog, type CatalogWorld } from "@/lib/worldCatalog";
 import { useThumbnailPreload } from "@/lib/useCachedThumbnail";
 import { useContestWithdrawal } from "@/lib/useContestWithdrawal";
 import { useDownloadCoordinator, type DownloadPlan } from "@/lib/useDownloadCoordinator";
-import { useLibraryDownload } from "@/lib/useLibraryDownload";
+import { useLibraryDownload, type LibraryTarget } from "@/lib/useLibraryDownload";
+import type { PromptLibrary, PromptListingContent } from "@/lib/promptDownload";
 import { useDeviceDownload } from "@/lib/useDeviceDownload";
 import { useDownscalePrompt } from "@/lib/useDownscalePrompt";
 import EntityStorageService from "@/services/EntityStorageService";
@@ -83,6 +84,11 @@ import { useTutorial } from "@/lib/tutorials";
 // Persisted preference to force the single-column (portrait) layout of the details modal at any width.
 // Key string kept as-is so an existing user's saved preference survives the rename.
 const COMMUNITY_BROWSER_MODAL_COLLAPSED_KEY = 'FORMAMORPH_discoverModalCollapsed';
+
+/** The prompt target for a host without the preset store. `downloadFor` never hands it a listing. */
+const NO_PROMPT_LIBRARY: LibraryTarget<PromptListingContent> = {
+  kind: 'prompt', records: [], store: async () => {}, refresh: () => {},
+};
 
 /** A row in the section switcher: one per catalog kind, plus Contest while a contest exists. */
 type SwitcherSection = { key: BrowseTab; label: string; icon: LucideIcon };
@@ -191,6 +197,8 @@ interface CommunityCreationsBrowserProps {
   onListingUnavailable?: (listing: CommunityListing) => void;
   /** A read-only action shown in this surface's selected listing details. */
   detailsAction?: React.ReactNode;
+  /** The preset store prompt listings download into. Absent offers no prompt download. */
+  promptLibrary?: PromptLibrary;
   /** Running community events, announced in the header the same way the main menu announces them. */
   events?: ServerEvent[];
   /** Open the place an event's content lives — the contest tab, for a contest. */
@@ -207,7 +215,7 @@ const CommunityCreationsBrowser = ({
   open, onOpenChange, presentation = 'dialog', capabilities = APP_COMMUNITY_CAPABILITIES, filterPreferences, worlds, setWorlds, entities, dictionaries, models,
   refreshEntities, refreshDictionaries, refreshModels,
   isAuthenticated, currentUser, onGuestLike, openImageViewer, initialTab, openListing, onListingOpened, listing: controlledListing,
-  onListingChange, onListingUnavailable, detailsAction,
+  onListingChange, onListingUnavailable, detailsAction, promptLibrary,
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
   // The header's title element, which differs per shell (see PageHeading).
@@ -297,6 +305,8 @@ const CommunityCreationsBrowser = ({
     },
     refresh: refreshModels,
   });
+  // Prompt listings download into the preset store, which only the app host can reach.
+  const promptDownload = useLibraryDownload<PromptListingContent>(promptLibrary?.target ?? NO_PROMPT_LIBRARY);
   const deviceDownload = useDeviceDownload();
 
   /**
@@ -307,7 +317,8 @@ const CommunityCreationsBrowser = ({
    * importer written for a different shape.
    */
   const downloadFor = (kind: CatalogKind) => (
-    kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : kind === 'model' ? modelDownload : null
+    kind === 'entity' ? entityDownload : kind === 'dictionary' ? dictionaryDownload : kind === 'model' ? modelDownload
+      : kind === 'prompt' && promptLibrary ? promptDownload : null
   );
 
   /**
@@ -322,7 +333,7 @@ const CommunityCreationsBrowser = ({
     // A kind with no library holds no copy, so it is never downloaded and never out of date.
     return downloadFor(kind)?.downloadStateFor(record) ?? 'none';
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource, modelDownload.copyBySource]);
+  }, [localCopiesBySource, entityDownload.copyBySource, dictionaryDownload.copyBySource, modelDownload.copyBySource, promptDownload.copyBySource]);
 
   // Every in-flight bar, keyed by listing id — unique across kinds, so the four sources merge cleanly.
   const allDownloadProgress = {
@@ -330,6 +341,7 @@ const CommunityCreationsBrowser = ({
     ...entityDownload.downloadProgress,
     ...dictionaryDownload.downloadProgress,
     ...modelDownload.downloadProgress,
+    ...promptDownload.downloadProgress,
     ...deviceDownload.downloadProgress,
   };
 
@@ -342,6 +354,13 @@ const CommunityCreationsBrowser = ({
       return;
     }
     downloadFor(kind)?.startDownload(record);
+  };
+
+  /** Use This Preset for a prompt listing whose preset is downloaded; null for anything else. */
+  const presetUseFor = (record: WorldRecord | null) => {
+    const copy = record && promptLibrary && kindOf(record) === 'prompt' ? promptDownload.copyFor(record) : undefined;
+    if (!copy || !promptLibrary) return null;
+    return { active: promptLibrary.activeId === copy.id, onUse: () => promptLibrary.select(copy.id) };
   };
 
   /** Whether a listing of this kind can be saved into a local library at all. */
@@ -976,6 +995,14 @@ const CommunityCreationsBrowser = ({
         description={`You've edited your copy of "${dictionaryDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
         onConfirm={dictionaryDownload.confirmDirtyDownload}
       />
+
+      <ConfirmDialog
+        open={!!promptDownload.dirtyConfirm}
+        onOpenChange={(v) => { if (!v) promptDownload.setDirtyConfirm(null); }}
+        title="Replace your edited preset?"
+        description={`You've edited your copy of "${promptDownload.dirtyConfirm?.name ?? ''}". Downloading again replaces it with the published version, and your changes are lost.`}
+        onConfirm={promptDownload.confirmDirtyDownload}
+      />
       {/* Community Creations browser, in whichever shell the host asked for */}
       <BrowserShell presentation={presentation} open={open} onOpenChange={onOpenChange}>
           {/* The kind switcher lives in the header and its results below it, so one root spans both.
@@ -1191,6 +1218,7 @@ const CommunityCreationsBrowser = ({
             : undefined
         }
         onDeviceDownload={capabilities.deviceDownloads ? deviceDownload.download : undefined}
+        presetUse={presetUseFor(selectedRemoteWorld)}
         currentUser={currentUser}
         onLike={handleLike}
         onGuestLike={capabilities.likes ? onGuestLike : undefined}

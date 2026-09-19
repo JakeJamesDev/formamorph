@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
-import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff } from "lucide-react";
+import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -78,6 +78,8 @@ interface RemoteWorldDetailsModalProps {
   /** Opens another listing in place of this one, for the worlds a component names. Absent leaves those
    *  worlds plain names, which is what a surface with only one listing to show wants. */
   onOpenListing?: (listing: { id: string; kind: CatalogKind }) => void;
+  /** Selects this prompt listing's downloaded preset. Absent until the preset is downloaded. */
+  presetUse?: { active: boolean; onUse: () => void } | null;
 }
 
 /** The same cap a feedback comment carries, so the two comment boxes hold the same amount. */
@@ -97,7 +99,7 @@ export function RemoteWorldDetailsModal({
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
-  detailsAction, onOpenListing,
+  detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
   const [comments, setComments] = useState<WorldRecord[]>([]);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -408,13 +410,25 @@ export function RemoteWorldDetailsModal({
                   const extras = downloadPlan.count
                     ? ` + ${downloadPlan.count} ${downloadPlan.count === 1 ? 'Item' : 'Items'}`
                     : '';
-                  return capabilities.localLibrary && onContextualDownload ? (
+                  const download = (
                     <WorldActionButton
                       tone="sky"
-                      onClick={() => onContextualDownload(world, dlState, downloadPlan.plan)}
+                      onClick={() => onContextualDownload?.(world, dlState, downloadPlan.plan)}
                     >
                       <Icon className="mr-2 h-4 w-4" /> {label}{extras}
                     </WorldActionButton>
+                  );
+                  return capabilities.localLibrary && onContextualDownload ? (
+                    presetUse ? (
+                      <div className="space-y-2">
+                        {download}
+                        <WorldActionButton tone="amberSoft" disabled={presetUse.active} onClick={presetUse.onUse}>
+                          {presetUse.active
+                            ? <><Check className="mr-2 h-4 w-4" /> Preset In Use</>
+                            : <><Play className="mr-2 h-4 w-4" /> Use This Preset</>}
+                        </WorldActionButton>
+                      </div>
+                    ) : download
                   ) : capabilities.deviceDownloads && onDeviceDownload ? (
                     <WorldActionButton tone="sky" onClick={() => onDeviceDownload(world)}>
                       <ActionIcon.cloudDownload className="mr-2 h-4 w-4" /> Download {noun}

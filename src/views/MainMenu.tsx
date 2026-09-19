@@ -164,6 +164,7 @@ import {
 import { PromptDiff, PromptDiffModeToggle, type PromptDiffMode } from "@/components/game/PromptDiff";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
+import { promptLibraryTarget } from "@/lib/promptDownload";
 import PatreonIcon from "@/components/PatreonIcon";
 import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
@@ -265,8 +266,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const { showReadme, setShowReadme } = useReadmeVisibility();
   const { applyWorldPrompt, setApplyWorldPrompt } = useWorldPromptOptOut();
   const { worldPreset, setWorldPreset } = useWorldPromptPresets();
-  // Only the preset list is needed here; the pin is applied by GameViewer when the world opens.
-  const { builtinPresets, promptPresets } = useSettings();
+  // The preset list, and the store prompt listings download into; the pin is applied by GameViewer.
+  const { builtinPresets, promptPresets, userPromptPresets, storeDownloadedPreset, activePresetId, selectPreset } = useSettings();
+  const promptTarget = useMemo(
+    () => promptLibraryTarget({ presets: userPromptPresets, store: storeDownloadedPreset }),
+    [userPromptPresets, storeDownloadedPreset],
+  );
   /** A preset id as the player knows it, or undefined when nothing names that id any more. */
   const presetName = useCallback(
     (id: string | undefined) =>
@@ -3133,6 +3138,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             initialTab={communityTab ?? (devRoute?.modal === 'community' ? asBrowseTab(devRoute.tab) : undefined)}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
+            promptLibrary={{ target: promptTarget, activeId: activePresetId, select: selectPreset }}
             openLikersOnMount={devRoute?.modal === 'likers'}
             openManageAddonsOnMount={devRoute?.modal === 'manageAddons'}
           />
