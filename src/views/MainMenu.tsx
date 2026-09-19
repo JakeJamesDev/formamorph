@@ -86,6 +86,7 @@ import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
+import { importedDefaultPersona, isJsonFile, readStPersonaFiles, stPersonaReport } from '@/lib/stPersonaImport';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
@@ -1122,6 +1123,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const importEntityFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = filesFrom(event);
     if (!files.length) return;
+    const backups = files.filter(isJsonFile);
+    if (backups.length) {
+      await importStPersonas(backups, files.filter((file) => !isJsonFile(file)));
+      return;
+    }
 
     const parsed: { entity: Entity; book: Dictionary | null; links: ComponentFileLinks }[] = [];
     let skipped = 0;
@@ -1179,6 +1185,65 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     } else if (skipped) {
       toast.error(`Couldn't import ${skipped} character${skipped === 1 ? '' : 's'}.`);
     }
+  };
+
+  // Import a SillyTavern persona backup. The other picked files are its avatars, matched by filename.
+  const importStPersonas = async (backups: File[], images: File[]) => {
+    if (backups.length > 1) {
+      toast.error('Pick one persona backup at a time.');
+      return;
+    }
+    let backup: Awaited<ReturnType<typeof readStPersonaFiles>>;
+    try {
+      backup = await readStPersonaFiles(backups[0], images);
+    } catch (err) {
+      toast.error((err as Error).message);
+      return;
+    }
+    const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
+    const now = new Date().toISOString();
+    const failed = new Set<string>();
+    const total = mode === 'off' ? 0 : backup.personas.filter((p) => p.entity.images?.length).length;
+    const storeAll = async (tick: (done: number) => void) => {
+      let done = 0;
+      for (const { entity } of backup.personas) {
+        try {
+          const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
+          await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record });
+        } catch (err) {
+          console.error('Error storing persona:', entity.name, err);
+          failed.add(entity.id);
+        }
+      }
+    };
+    if (total) await withOptimizeProgress(total, storeAll);
+    else await storeAll(() => {});
+    await refreshEntities();
+
+    const storedDefault = backup.defaultId && !failed.has(backup.defaultId) ? backup.defaultId : undefined;
+    const libraryPersonas = new Set(entities.filter((entity) => entity.persona).map((entity) => entity.id));
+    const nextDefault = importedDefaultPersona(defaultPersona, libraryPersonas, storedDefault);
+    if (nextDefault) {
+      setDefaultPersona(nextDefault);
+      setDefaultPersonaId(nextDefault);
+    }
+
+    const stored = backup.personas.length - failed.size;
+    const summary = `Imported ${stored} persona${stored === 1 ? '' : 's'}${nextDefault ? ', and set the default persona' : ''}.`;
+    const report = stPersonaReport(backup, failed);
+    if (!report.length) {
+      toast.success(summary);
+      return;
+    }
+    toast.warning(
+      <div>
+        <p>{summary} Check these:</p>
+        <ul className="mt-1 list-disc pl-4">
+          {report.map((line, i) => <li key={i}>{line}</li>)}
+        </ul>
+      </div>,
+      { autoClose: false },
+    );
   };
 
   // Import one or more .vrm/.glb files into the model library. A file whose bytes are already stored asks
@@ -2014,7 +2079,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         type="file"
         ref={entityImportRef}
         onChange={importEntityFile}
-        accept="image/webp,image/png,.webp,.png"
+        accept="image/webp,image/png,image/jpeg,.webp,.png,.jpg,.jpeg,.json,application/json"
         multiple
         className="hidden"
       />

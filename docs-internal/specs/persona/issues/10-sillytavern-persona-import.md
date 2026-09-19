@@ -1,6 +1,7 @@
 # 10: SillyTavern Persona Import
 
-Status: ready-for-agent
+Status: in-progress
+Base: 7313b8b4
 Blocked by: 01, 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -14,7 +15,7 @@ Reasoning effort: high
 ## Acceptance criteria
 
 - [ ] A pure converter reads the backup's three keys: the map from avatar filename to name, the map from avatar filename to description data, and the default persona key.
-- [ ] An image matches a persona when its filename equals the persona's key. A matched image becomes the portrait through the existing image pipeline. An unmatched persona gets the initials placeholder.
+- [ ] An image matches a persona when its filename equals the persona's key. A matched image becomes the portrait through the existing image pipeline. An unmatched persona stores no image, and the import report names it.
 - [ ] Each persona becomes a library entity with the mark set and a fresh id.
 - [ ] In descriptions, the user macro becomes the persona's own name as plain text, and the char macro becomes "the other character". Other macros stay as written.
 - [ ] ST's position, depth, role, and title fields are dropped.
