@@ -2,12 +2,12 @@ import { toast } from 'react-toastify';
 import { APP_VERSION } from '@/lib/version';
 import { parseSharedContent, type ImportedPreset } from '@/lib/promptPresetShare';
 import type { LibraryRecord, LibraryTarget } from '@/lib/useLibraryDownload';
-import type { CommunityLink } from '@/types';
+import type { PresetDownloadLink } from '@/lib/promptPresets';
 
 /** The preset store as the settings context offers it: every user preset, and a way to store a download. */
 export interface PresetStoreAccess {
   presets: LibraryRecord[];
-  store: (id: string, imported: ImportedPreset, link: CommunityLink & { sourceId: string }, name: string) => void;
+  store: (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string) => void;
 }
 
 /** A prompt listing's content: the shared preset artifact, read through the share sanitizer on arrival. */

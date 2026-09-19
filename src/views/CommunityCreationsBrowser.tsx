@@ -977,7 +977,7 @@ const CommunityCreationsBrowser = ({
     <>
       {downscaleDialog}
 
-      {/* Updating an entity/dictionary replaces the single local copy, so an edited one asks first —
+      {/* Updating an entity, dictionary or preset replaces the single local copy, so an edited one asks first —
           there's no second copy for the edits to survive in (unlike worlds). ConfirmDialog holds its text
           while fading out, so the name doesn't vanish mid-animation. */}
       <ConfirmDialog

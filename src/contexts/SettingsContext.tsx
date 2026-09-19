@@ -50,7 +50,7 @@ import {
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
-  type PromptPresetStore, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
+  type PromptPresetStore, type PresetDownloadLink, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
 import { clampMaxOutput, isMaxOutputKind, shippedMaxOutput } from '../lib/promptMaxOutput';
@@ -62,7 +62,7 @@ import {
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
-import type { AIRequestType, CommunityLink } from '../types';
+import type { AIRequestType } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
@@ -235,6 +235,21 @@ function migratePromptTuning() {
     localStorage.removeItem(`${APP_ID}_${key}`);
   }
   localStorage.setItem(MARK, '1');
+}
+
+/** A shared preset as stored content: missing prompt keys take the defaults, tuning only when included. */
+function importedPresetContent(imported: ImportedPreset, name: string, includeTuning: boolean): Omit<PromptPreset, 'id'> {
+  return {
+    name,
+    values: { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, imported.style), ...imported.values },
+    style: imported.style,
+    ...(includeTuning && imported.samplers ? { samplers: imported.samplers } : {}),
+    ...(includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
+    ...(includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
+    ...(includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
+    ...(includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
+    ...(imported.overview ? { overview: imported.overview } : {}),
+  };
 }
 
 /**
@@ -947,17 +962,7 @@ function useProvideSettings() {
   const exportActivePreset = (appVersion: string): SharedPreset =>
     buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore) }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
-    const style = imported.style;
-    const values = { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, style), ...imported.values };
-    const content: Omit<PromptPreset, 'id'> = {
-      name: opts.name, values, style,
-      ...(opts.includeTuning && imported.samplers ? { samplers: imported.samplers } : {}),
-      ...(opts.includeTuning && imported.reasoning ? { reasoning: imported.reasoning } : {}),
-      ...(opts.includeTuning && imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
-      ...(opts.includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
-      ...(opts.includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
-      ...(imported.overview ? { overview: imported.overview } : {}),
-    };
+    const content = importedPresetContent(imported, opts.name, opts.includeTuning);
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
     const id = randomUUID();
     setPresetStore((s) => addFullPreset(s, id, content));
@@ -969,22 +974,16 @@ function useProvideSettings() {
    * Author credits the uploader. The selection is left alone.
    */
   const storeDownloadedPreset = useCallback(
-    (id: string, imported: ImportedPreset, link: CommunityLink & { sourceId: string }, name: string) => {
+    (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string) => {
       const overview = imported.overview ?? EMPTY_OVERVIEW;
       const uploader = link.sourceAuthorName?.trim() ?? '';
       const author = overview.author.trim() ? overview.author : uploader;
       const content: Omit<PromptPreset, 'id'> = {
-        name,
-        values: { ...buildStyledValues(PROMPT_TEXT_DEFAULTS, imported.style), ...imported.values },
-        style: imported.style,
-        ...(imported.samplers ? { samplers: imported.samplers } : {}),
-        ...(imported.reasoning ? { reasoning: imported.reasoning } : {}),
-        ...(imported.reasoningBudget ? { reasoningBudget: imported.reasoningBudget } : {}),
-        ...(imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
-        ...(imported.verbatim ? { verbatim: imported.verbatim } : {}),
+        ...importedPresetContent(imported, name, true),
         ...(imported.overview || author ? { overview: { ...overview, author } } : {}),
         ...link,
       };
+      // Raw, not pin-aware: the store op never touches the selection, and a download is not an edit.
       setRawPresetStore((s) => putDownloadedPreset(s, id, content));
     },
     [setRawPresetStore],

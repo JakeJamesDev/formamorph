@@ -197,6 +197,9 @@ export function replacePreset(store: PromptPresetStore, id: string, preset: Omit
   return { activeId: id, presets: store.presets.map((p) => (p.id === id ? { id, ...preset } : p)) };
 }
 
+/** The community link a downloaded preset is stored with. */
+export type PresetDownloadLink = CommunityLink & Required<Pick<CommunityLink, 'sourceId'>>;
+
 /** Store a downloaded preset under `id`: replaced in place when held, else added. The selection is left alone. */
 export function putDownloadedPreset(store: PromptPresetStore, id: string, preset: Omit<PromptPreset, 'id'>): PromptPresetStore {
   const held = store.presets.some((p) => p.id === id);
