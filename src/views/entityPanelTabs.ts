@@ -1,7 +1,7 @@
-/** The entity detail panel's own tabs, in order. Single source of truth: `EntityManager`'s `PanelTabsList`
- *  renders from this, and the dev-router ledger (`DEV_MODAL_TABS.worldEditorEntity`) is guarded against it in
- *  `devRouter.test.ts`. */
-import { AlignLeft, Braces, User } from 'lucide-react';
+/** The entity tabs, in order, for both entity editors. `EntityManager`'s `PanelTabsList` and the library
+ *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
+ *  `DEV_MODAL_TABS.entityEditor`) are guarded against them in `devRouter.test.ts`. */
+import { AlignLeft, Braces, Info, User } from 'lucide-react';
 
 import { tabForField } from './findFocus';
 
@@ -17,6 +17,15 @@ export type EntityPanelTab = (typeof ENTITY_PANEL_TABS)[number]['value'];
 export function entityPanelTabsFor(advanced: boolean) {
   return ENTITY_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
 }
+
+/** The library entity editor's tabs: Overview for publish information, then the panel's own. The library
+ *  editor sits outside the Simple/Advanced mode, so it shows every tab. */
+export const ENTITY_EDITOR_TABS = [
+  { value: 'overview', label: 'Overview', icon: Info },
+  ...ENTITY_PANEL_TABS,
+] as const;
+
+export type EntityEditorTab = (typeof ENTITY_EDITOR_TABS)[number]['value'];
 
 /** Which tab holds each searchable field. An alias arrives indexed, since the hit is on one chip, so it is
  *  listed in the bracket form `tabForField` matches those against. */

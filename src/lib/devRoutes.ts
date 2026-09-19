@@ -111,6 +111,9 @@ export const DEV_MODAL_TABS = {
   // slot over the Entities tab (`#dev?modal=worldEditor&tab=entities&subtab=descriptions`). It lands on the
   // panel, so pair it with a world that has an entity to select. `placeholders` is Advanced only.
   worldEditorEntity: ['profile', 'descriptions', 'placeholders'],
+  // The library entity editor (`#dev?modal=entityEditor&tab=descriptions`): Overview, then the entity
+  // panel's own tabs. It opens on a blank draft and is never in Simple mode, so every tab is reachable.
+  entityEditor: ['overview', 'profile', 'descriptions', 'placeholders'],
   // The World Editor's location panel does the same over the Locations tab
   // (`#dev?modal=worldEditor&tab=locations&subtab=presence`). It shares that tab's `subtab=…` slot with the
   // List/Canvas switch above, which is why no value may appear in both lists. `pins` is Advanced only.
