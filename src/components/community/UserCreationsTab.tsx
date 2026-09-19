@@ -1,25 +1,17 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { BookOpen, Download, Earth, EyeOff, MessageSquare, PersonStanding, User } from "lucide-react";
+import { Download, EyeOff, MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { LikeButton } from "@/components/community/LikeButton";
-import { CATALOG_KINDS, KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
 import UserService from "@/services/UserService";
 import { API_BASE_URL } from "@/lib/apiBase";
 import type { ProfileCreation } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { thumbFit } from "@/lib/thumbAspect";
-
-/** The icon each kind wears, matching the Community Creations header so the three read the same way. */
-const KIND_ICONS: Record<CatalogKind, typeof Earth> = {
-  world: Earth,
-  entity: User,
-  dictionary: BookOpen,
-  model: PersonStanding,
-};
 
 /** The list's own box: a fixed scroller in a dialog, nothing at all on a page. */
 function ListFrame({ layout, children }: { layout: 'dialog' | 'page'; children: ReactNode }) {
@@ -82,7 +74,7 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
   }, [userId]);
 
   const counts = useMemo(() => {
-    const tally = { world: 0, entity: 0, dictionary: 0, model: 0 } satisfies Record<CatalogKind, number>;
+    const tally = { world: 0, entity: 0, dictionary: 0, model: 0, prompt: 0 } satisfies Record<CatalogKind, number>;
     for (const row of creations) tally[row.kind] += 1;
 
     return tally;

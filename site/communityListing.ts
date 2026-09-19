@@ -1,7 +1,7 @@
 /** One community listing as represented in a website destination. */
 export interface CommunityListing {
   id: string;
-  kind: 'world' | 'entity' | 'dictionary' | 'model';
+  kind: 'world' | 'entity' | 'dictionary' | 'model' | 'prompt';
 }
 
 export type CommunityListingTarget =
@@ -9,7 +9,7 @@ export type CommunityListingTarget =
   | { status: 'listing'; listing: CommunityListing }
   | { status: 'invalid' };
 
-const COMMUNITY_LISTING = /^\/community\/(world|entity|dictionary|model)\/([^/]+)$/;
+const COMMUNITY_LISTING = /^\/community\/(world|entity|dictionary|model|prompt)\/([^/]+)$/;
 
 /** The canonical, shareable path for an individual public creation. */
 export function communityListingPath({ kind, id }: CommunityListing): string {
@@ -28,7 +28,7 @@ export function communityListingTarget(pathname: string): CommunityListingTarget
     if (!id) return { status: 'invalid' };
 
     const kind = match[1];
-    if (kind !== 'world' && kind !== 'entity' && kind !== 'dictionary') return { status: 'invalid' };
+    if (kind !== 'world' && kind !== 'entity' && kind !== 'dictionary' && kind !== 'prompt') return { status: 'invalid' };
 
     return { status: 'listing', listing: { kind, id } };
   } catch {

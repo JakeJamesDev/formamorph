@@ -9,6 +9,7 @@ export const PUBLISH_LIMITS: Record<CatalogKind, number> = {
   entity: 25 * 1024 * 1024,
   dictionary: 5 * 1024 * 1024,
   model: 64 * 1024 * 1024,
+  prompt: 1024 * 1024,
 };
 
 /** The server's own measure: the UTF-8 byte length of the content's compact JSON serialization. */

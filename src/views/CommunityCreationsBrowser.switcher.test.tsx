@@ -94,8 +94,8 @@ describe('the section switcher on landscape (the rail)', () => {
   it('lists the catalog kinds in kind order, with no header tabs', async () => {
     renderBrowser();
 
-    const rows = await screen.findAllByRole('button', { name: /^(Worlds|Entities|Dictionaries|Avatars)$/ });
-    expect(rows.map((r) => r.textContent)).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars']);
+    const rows = await screen.findAllByRole('button', { name: /^(Worlds|Entities|Dictionaries|Avatars|Prompts)$/ });
+    expect(rows.map((r) => r.textContent)).toEqual(['Worlds', 'Entities', 'Dictionaries', 'Avatars', 'Prompts']);
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 
@@ -150,6 +150,19 @@ describe('the section switcher on portrait (the dropdown)', () => {
     expect(trigger).toHaveTextContent('Entities');
   });
 
+  it('offers the Prompts section with its icon', async () => {
+    renderBrowser();
+
+    const trigger = await screen.findByRole('combobox');
+    await userEvent.click(trigger);
+
+    const prompts = screen.getByRole('option', { name: 'Prompts' });
+    expect(prompts.querySelector('svg')).not.toBeNull();
+    await userEvent.click(prompts);
+
+    expect(trigger).toHaveTextContent('Prompts');
+  });
+
   it('offers every catalog kind, Avatars included', async () => {
     renderBrowser();
 
@@ -201,5 +214,44 @@ describe('every catalog kind saves into its own library, never falls back to ano
 
     expect(await screen.findByText('A dictionary')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download this dictionary/i })).toBeInTheDocument();
+  });
+});
+
+describe('the Prompts section', () => {
+  beforeEach(() => stubMatchMedia(false));
+
+  const prompt = {
+    _id: 'p-1', id: 'p-1', name: 'Slow Burn', kind: 'prompt', description: 'Tuned for small models.',
+    tags: ['slow burn'], models: ['Cydonia-24B'], author: { id: 'a1', username: 'wren_hallow' },
+    // The server gives every kind a stand-in thumbnail file; a prompt card must not ask for it.
+    thumbnail_file: 'placeholder-prompt.png', downloads: 0, likes: 0,
+  };
+
+  it('shows a prompt listing as a card with the kind icon and no image request', async () => {
+    catalog.items = [prompt];
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Prompts' }));
+
+    expect(await screen.findByText('Slow Burn')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Prompt' })).toBeInTheDocument();
+    expect(document.querySelector('img')).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/thumbnails/'))).toBe(false);
+  });
+
+  it('keeps prompts out of the Worlds section', async () => {
+    catalog.items = [prompt];
+    renderBrowser();
+
+    await screen.findByRole('button', { name: 'Worlds' });
+    expect(screen.queryByText('Slow Burn')).not.toBeInTheDocument();
+  });
+
+  it('shows its empty state when the server has no prompts', async () => {
+    renderBrowser();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Prompts' }));
+
+    expect(await screen.findByText(/No prompts available/)).toBeInTheDocument();
   });
 });

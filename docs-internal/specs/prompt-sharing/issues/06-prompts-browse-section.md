@@ -1,6 +1,7 @@
 # 06: Prompts Browse Section
 
-Status: in-progress
+Status: ready-for-human
+Status note: done in formamorph (this commit) and FormamorphServer 21de6bf, server not deployed
 Base: c7feaa98
 Blocked by: 05
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -34,11 +35,23 @@ Until ticket 07 ships, seed a listing through the dev server to check the sectio
 
 ## Acceptance criteria
 
-- [ ] Kind drift-guard tests are green with `prompt` added
-- [ ] The section appears in the rail and in the portrait selector, in Simple and Advanced mode
-- [ ] A prompt card renders with the icon and no broken image request
-- [ ] Details show models, tags, author, description, and the made-for version
-- [ ] Filter state for the section persists separately from the other sections
-- [ ] Report and like work on a prompt listing against the dev server
-- [ ] Checked in the preview at desktop and mobile width, both themes
-- [ ] Changelog In-Progress entry added; four gates green
+- [x] Kind drift-guard tests are green with `prompt` added
+- [x] The section appears in the rail and in the portrait selector, in Simple and Advanced mode
+- [x] A prompt card renders with the icon and no broken image request
+- [x] Details show models, tags, author, description, and the made-for version
+- [x] Filter state for the section persists separately from the other sections
+- [x] Report and like work on a prompt listing against the dev server
+- [x] Checked in the preview at desktop and mobile width, both themes
+- [x] Changelog In-Progress entry added; four gates green
+
+## Comments
+
+**2026-09-19, ticket session:** Done. The server part is FormamorphServer `21de6bf`, not deployed.
+
+- The spec session ruled that `app_version` lives on the row. The server derives it at create and update of a prompt, and backfills existing prompt rows once. It keeps only a version-shaped string of 32 characters or fewer, so `v2.0.3` reads as null.
+- An update without content keeps the stored version.
+- Prompt cards and details never request the stand-in thumbnail that the server gives every row.
+- The website route accepts `/community/prompt/<id>` too, because the site uses the same browser. It still refuses `model`. That gap predates this ticket.
+- Simple mode: the browser has no Simple or Advanced gating. The live check ran in the default mode only.
+- Live check: a prompt seeded on the local dev server, then a like and a report on it. Both succeeded. Screenshots at desktop dark and mobile light.
+- Status facets work for prompts, but nothing can mark a prompt as downloaded until ticket 09.

@@ -9,7 +9,8 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { LikeButton } from "@/components/community/LikeButton";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasThumbnail } from "@/lib/catalogKinds";
+import { KindArt } from "@/components/community/KindArt";
 import { thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -174,7 +175,9 @@ export function RemoteWorldCard({
           </Tip>}
         </div>
       )}
-      thumbnail={world.thumbnail_file ? (
+      thumbnail={!kindHasThumbnail(kindOf(world)) ? (
+        <KindArt kind={kindOf(world)} />
+      ) : world.thumbnail_file ? (
         <CachedThumbnail
           file={world.thumbnail_file}
           url={`${WorldStorageService.API_URL}/thumbnails/${world.thumbnail_file}`}
