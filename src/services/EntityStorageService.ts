@@ -13,6 +13,7 @@ export type StoredEntityRecord = StoredRecord<Entity>;
 /** Singleton owning the local character library (IndexedDB `entitiesDB`/`entities`). The CRUD lives in
  *  `LibraryStore`; this names the operations in character terms. Default-exported as one shared instance. */
 class EntityStorageService {
+  private readonly listeners = new Set<(id: string) => void>();
   private readonly store = new LibraryStore<Entity, EntityMetadata>({
     dbName: 'entitiesDB',
     storeName: 'entities',
@@ -81,8 +82,6 @@ class EntityStorageService {
     await this.store.delete(id);
     this.notify(id);
   }
-
-  private readonly listeners = new Set<(id: string) => void>();
 
   /** Call `listener` with the id of each entity stored or deleted. Returns the unsubscribe. */
   subscribe(listener: (id: string) => void): () => void {

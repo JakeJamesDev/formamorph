@@ -1,15 +1,13 @@
-// Every in-play reader of the entity list takes the cast from lib/persona, through `useResolvedWorld`. The
-// game view is too large to mount, so this reads its source: it lists each reader and checks the list it is
-// handed, and it bans the raw authored list from every in-play file. GameplayContext.persona.test.tsx proves
-// that `useResolvedWorld().entities` is the module's cast.
+// A source scan, since the game view is too large to mount; GameplayContext.persona.test.tsx proves the cast.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
 
-const gameComponents = readdirSync(join(process.cwd(), 'src/components/game'))
-  .filter((f) => f.endsWith('.tsx') && !f.includes('.test.'))
+const gameComponents = (readdirSync(join(process.cwd(), 'src/components/game'), { recursive: true }) as string[])
+  .map((f) => f.replace(/\\/g, '/'))
+  .filter((f) => /\.tsx?$/.test(f) && !f.includes('.test.'))
   .map((f) => `src/components/game/${f}`);
 const inPlayFiles = ['src/views/GameViewer.tsx', ...gameComponents];
 
@@ -25,6 +23,8 @@ describe('entity readers in play', () => {
     const source = read(path);
     expect(destructuredFrom(source, 'useGameData')).toEqual([]);
     expect(source).not.toMatch(/useGameData\(\)\.entities|gameData\.entities/);
+    const handles = [...source.matchAll(/const (\w+) = useGameData\(\)/g)].map((m) => m[1]);
+    for (const handle of handles) expect(source).not.toMatch(new RegExp(`\\b${handle}\\.entities\\b`));
     expect(source).not.toMatch(/useResolvedAuthoredWorld\(/);
   });
 
