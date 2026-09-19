@@ -125,10 +125,20 @@ export function placeholderList(world: PlaceholderHomesWorld, home: PlaceholderH
   return owners?.find((o) => o.id === home.ownerId)?.placeholders ?? EMPTY;
 }
 
-/** An off-world item's whole pool: the placeholders it owns, then the shared ones it carries for its chips. */
+/** Joined pools by owned list, then shared list — so a pool keeps its identity across a keystroke. */
+const carriedCache = new WeakMap<Placeholder[], WeakMap<Placeholder[], Placeholder[]>>();
+
+/** An off-world item's whole pool: the placeholders it owns, then the shared ones it carries for its chips.
+ *  The same two lists always give the same array. */
 export function carriedPlaceholders(item: { placeholders?: Placeholder[]; sharedPlaceholders?: Placeholder[] }): Placeholder[] {
   const owned = item.placeholders ?? EMPTY;
-  return item.sharedPlaceholders?.length ? [...owned, ...item.sharedPlaceholders] : owned;
+  const shared = item.sharedPlaceholders;
+  if (!shared?.length) return owned;
+  let byShared = carriedCache.get(owned);
+  if (!byShared) carriedCache.set(owned, (byShared = new WeakMap()));
+  let pool = byShared.get(shared);
+  if (!pool) byShared.set(shared, (pool = [...owned, ...shared]));
+  return pool;
 }
 
 /** Placeholder id → the list holding it, for every placeholder the world has. */

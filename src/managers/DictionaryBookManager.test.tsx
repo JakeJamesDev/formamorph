@@ -3,9 +3,11 @@ import { render, screen } from '@testing-library/react';
 import DictionaryBookManager from './DictionaryBookManager';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { GameDataProvider } from '@/contexts/GameDataContext';
+import { placeholderStore, PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import type { Dictionary } from '@/types';
 
-/** Which host gets the book's own Placeholders section. The world store is app-wide, so the host says. */
+/** Which host gets the book's own Placeholders section: the world's store, and never a library book's own
+ *  store, even with the app-wide world store around it. */
 
 // The GameData provider opens IndexedDB on mount, which jsdom has none of.
 vi.mock('@/services/WorldStorageService', () => ({
@@ -27,22 +29,29 @@ if (typeof window.matchMedia !== 'function') {
 
 const book = { id: 'b1', name: 'Fen Lore', enabled: true, entries: [] } as unknown as Dictionary;
 
-const open = (inWorld: boolean) => render(
+const open = (host: 'world' | 'library') => render(
   <SettingsProvider>
     <GameDataProvider>
-      <DictionaryBookManager book={book} inWorld={inWorld} />
+      {host === 'world' ? (
+        <DictionaryBookManager book={book} />
+      ) : (
+        // A library modal binds a store over the book's own list, the way its modal does.
+        <PlaceholderStoreProvider value={placeholderStore([], () => {})}>
+          <DictionaryBookManager book={book} />
+        </PlaceholderStoreProvider>
+      )}
     </GameDataProvider>
   </SettingsProvider>,
 );
 
 describe('the book panel’s own Placeholders section', () => {
   it('shows in a world host', () => {
-    open(true);
+    open('world');
     expect(screen.getByText(/Placeholders of this dictionary/)).toBeInTheDocument();
   });
 
-  it('stays out of a host with no world', () => {
-    open(false);
+  it('stays out of a library book’s own store', () => {
+    open('library');
     expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
   });
 });

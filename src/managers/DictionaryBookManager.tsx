@@ -20,12 +20,7 @@ const EMPTY_PLACEHOLDERS: Placeholder[] = [];
  *  What the book *is*. What it looks like as a listing — its tags and cover — is the library editor's
  *  Overview tab (see DictionaryOverviewManager); those are set once on the way out, these are what you
  *  reach for while writing entries. */
-const DictionaryBookManager = ({ book, inWorld = false }: {
-  book: Dictionary;
-  /** The host edits a world, so the book's own placeholders are a list of that world. A library book keeps
-   *  them on its modal's Placeholders tab. */
-  inWorld?: boolean;
-}) => {
+const DictionaryBookManager = ({ book }: { book: Dictionary }) => {
   const { updateDictionary, dictionaries } = useDictionaryStore();
   const { advanced } = useEditorMode();
   // A book that owns placeholders is a node of the `placeholders` map, so renaming it moves the owner
@@ -76,7 +71,7 @@ const DictionaryBookManager = ({ book, inWorld = false }: {
         {book.entries.length} {book.entries.length === 1 ? 'entry' : 'entries'}. Add one with the + on this
         dictionary, then select it to edit.
       </Hint>
-      {inWorld && <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} />}
+      <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} />
     </div>
   );
 };

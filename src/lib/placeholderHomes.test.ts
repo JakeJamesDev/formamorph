@@ -365,6 +365,22 @@ describe('carriedPlaceholders', () => {
     expect(carriedPlaceholders({ placeholders: owned })).toBe(owned);
     expect(carriedPlaceholders({})).toEqual([]);
   });
+
+  it('keeps the pool’s identity while neither source list changes', () => {
+    const owned = [EYES];
+    const shared = [SHARED];
+    const pool = carriedPlaceholders({ placeholders: owned, sharedPlaceholders: shared });
+    // A keystroke rebuilds the item around the same two lists.
+    const edited = { name: 'edited', placeholders: owned, sharedPlaceholders: shared };
+    expect(carriedPlaceholders(edited)).toBe(pool);
+    expect(carriedPlaceholders({ placeholders: [EYES], sharedPlaceholders: shared })).not.toBe(pool);
+    expect(carriedPlaceholders({ placeholders: owned, sharedPlaceholders: [SHARED] })).not.toBe(pool);
+  });
+
+  it('keeps the pool’s identity for an item that owns nothing', () => {
+    const shared = [SHARED];
+    expect(carriedPlaceholders({ sharedPlaceholders: shared })).toBe(carriedPlaceholders({ sharedPlaceholders: shared }));
+  });
 });
 
 const chipIds = (text: string) => [...text.matchAll(/\{\{ph:[^}]+\}\}/g)].map((m) => decodePlaceholderToken(m[0])?.id);
