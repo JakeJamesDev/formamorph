@@ -110,7 +110,7 @@ import EntityEditorModal from "@/components/modals/EntityEditorModal";
 import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
-import { ENTITY_EDITOR_TABS } from "@/views/entityPanelTabs";
+import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS } from "@/views/entityPanelTabs";
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { useTutorial } from "@/lib/tutorials";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -2908,6 +2908,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         onClose={() => { setEditingEntityId(null); setDraftEntity(null); refreshEntities(); }}
         onPublish={isAuthenticated ? publishEntity : undefined}
         initialTab={devRoute?.modal === 'entityEditor' ? ENTITY_EDITOR_TABS.find((t) => t.value === devRoute.tab)?.value : undefined}
+        initialSubTab={devRoute?.modal === 'entityEditor' ? ENTITY_EDITOR_SUBTABS.find((t) => t.value === devRoute.subtab)?.value : undefined}
       />
 
       <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>

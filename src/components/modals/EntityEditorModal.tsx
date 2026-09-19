@@ -6,7 +6,12 @@ import { FieldColumn } from './FieldColumn';
 import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { EntityDescriptionFields, EntityProfileFields } from '@/managers/EntityFields';
 import { EntityOpenings } from '@/managers/OpeningsPanel';
-import { ENTITY_EDITOR_TABS, type EntityEditorTab } from '@/views/entityPanelTabs';
+import {
+  ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, entityEditorTabForField, type EntityEditorSubTab, type EntityEditorTab,
+} from '@/views/entityPanelTabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
@@ -23,7 +28,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
-import type { Entity, Placeholder } from '@/types';
+import type { Entity, FocusFieldHint, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
@@ -36,21 +41,33 @@ const ALWAYS_ADVANCED: EditorModeValue = { mode: 'advanced', advanced: true, set
  * Edit a single library character in place, bound to ISOLATED state (never the world store). Opens on an
  * existing `entityId` (loaded from storage) or a `draft` (a brand-new character not yet stored). Export
  * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
- * `onPublish` (when the user is signed in) hands the character up to the publish dialog. The tabs past
- * Overview are the World Editor entity panel's, over the same field bodies.
+ * `onPublish` (when the user is signed in) hands the character up to the publish dialog. The Entity tab's
+ * sub-tabs are the World Editor entity panel's, over the same field bodies. `focusField` opens the tab and
+ * sub-tab that hold a field.
  */
-const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = 'profile' }: {
+const EntityEditorModal = ({
+  entityId, draft, onClose, onPublish, initialTab = 'entity', initialSubTab = 'profile', focusField,
+}: {
   entityId: string | null;
   draft?: Entity | null;
   onClose: () => void;
   onPublish?: (entity: Entity) => void;
   initialTab?: EntityEditorTab;
+  initialSubTab?: EntityEditorSubTab;
+  focusField?: FocusFieldHint | null;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
-  // Opens on Profile rather than Overview: tags are the thing you set once, the entity itself is what you
-  // come back to edit.
   const [tab, setTab] = useState<EntityEditorTab>(initialTab);
+  const [subTab, setSubTab] = useState<EntityEditorSubTab>(initialSubTab);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
+  useEffect(() => { setSubTab(initialSubTab); }, [initialSubTab]);
+  // A key no tab claims leaves the editor where the author put it.
+  useEffect(() => {
+    const owning = focusField ? entityEditorTabForField(focusField.fieldKey) : null;
+    if (owning) { setTab(owning.tab); setSubTab(owning.subTab); }
+  }, [focusField]);
+  // Below `sm` the Tags column folds into the top of Profile.
+  const narrow = useIsMobile(640);
   const baselineRef = useRef('');
   // Reuses cached serialization for the entity's unchanged base64 image/model on each keystroke; matches
   // the JSON.stringify baseline byte-for-byte.
@@ -162,38 +179,45 @@ const EntityEditorModal = ({ entityId, draft, onClose, onPublish, initialTab = '
         onExport={handleExport}
         onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
       >
-        {entity && tab === 'overview' ? (
+        {entity && tab === 'entity' ? (
           <ScrollArea className="flex-1 min-h-0">
-            <FieldColumn>
-              <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
-            </FieldColumn>
-          </ScrollArea>
-        ) : entity && (tab === 'profile' || tab === 'descriptions' || tab === 'openings') ? (
-          <ScrollArea className="flex-1 min-h-0">
-            <FieldColumn>
-              <ChipInsertTargetProvider>
-                <PlaceholderPaletteBar placeholders={pool} />
-                <div className="space-y-4">
-                  {tab === 'profile' ? (
-                    <EntityProfileFields
-                      value={entity}
-                      onChange={handleChange}
-                      placeholders={pool}
-                      home="library"
-                      columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)]"
-                    />
-                  ) : tab === 'openings' ? (
-                    <EntityOpenings
-                      entity={entity}
-                      placeholders={pool}
-                      onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}
-                    />
-                  ) : (
-                    <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
-                  )}
+            <div className="flex flex-col sm:flex-row">
+              {!narrow && (
+                <div className="w-80 shrink-0 p-4 pr-0">
+                  <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
                 </div>
-              </ChipInsertTargetProvider>
-            </FieldColumn>
+              )}
+              <FieldColumn>
+                <Tabs value={subTab} onValueChange={(v) => setSubTab(v as EntityEditorSubTab)} className="space-y-4">
+                  {/* The right column is narrow until `lg`, so labels wait for it. */}
+                  <PanelTabsList tabs={ENTITY_EDITOR_SUBTABS} stripLabel="Entity Fields" labelClassName="hidden lg:inline" />
+                  <ChipInsertTargetProvider>
+                    <PlaceholderPaletteBar placeholders={pool} />
+                    <TabsContent value="profile" className="space-y-4">
+                      {narrow && <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />}
+                      <EntityProfileFields
+                        value={entity}
+                        onChange={handleChange}
+                        placeholders={pool}
+                        home="library"
+                        // Two columns need ~570px, which the field column has from `lg`.
+                        columnsClassName="lg:grid-cols-[18rem_minmax(0,1fr)]"
+                      />
+                    </TabsContent>
+                    <TabsContent value="descriptions" className="space-y-4">
+                      <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
+                    </TabsContent>
+                    <TabsContent value="openings">
+                      <EntityOpenings
+                        entity={entity}
+                        placeholders={pool}
+                        onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}
+                      />
+                    </TabsContent>
+                  </ChipInsertTargetProvider>
+                </Tabs>
+              </FieldColumn>
+            </div>
           </ScrollArea>
         ) : (
           // The same palette the field tabs get, over the value fields: a value is a chip field too.

@@ -55,6 +55,21 @@ async function expectPlaceholderPanesShareWidth(page: Page, width: number) {
   }
 }
 
+/** Every drawn sub-tab label stays inside its trigger. */
+async function expectSubTabLabelsFit(page: Page) {
+  const triggers = page.getByRole('tablist', { name: 'Entity Fields' }).getByRole('tab');
+  await expect(triggers).toHaveCount(3);
+  const overflows = await triggers.evaluateAll((tabs) => tabs.flatMap((tab) => {
+    const label = tab.querySelector('span');
+    if (!label || label.getBoundingClientRect().width === 0) return [];
+    const inner = tab.getBoundingClientRect();
+    const text = label.getBoundingClientRect();
+    return text.left < inner.left || text.right > inner.right
+      ? [tab.getAttribute('aria-label')] : [];
+  }));
+  expect(overflows).toEqual([]);
+}
+
 for (const width of WIDTHS) {
   test.describe(`library editors at ${width}px`, () => {
     test.beforeEach(async ({ page }) => {
@@ -65,13 +80,16 @@ for (const width of WIDTHS) {
     });
 
     test('the entity editor is 95vw to its cap, with capped fields and full-width placeholders', async ({ page }) => {
-      await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab: 'profile' });
+      await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab: 'entity', subtab: 'profile' });
       await expectDialogWidth(page, width);
 
-      for (const tab of ['profile', 'descriptions', 'openings']) {
-        await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab });
+      for (const subtab of ['profile', 'descriptions', 'openings']) {
+        await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab: 'entity', subtab });
+        await expect(page.getByRole('tablist', { name: 'Entity Fields' }).getByRole('tab', { selected: true }))
+          .toHaveAttribute('aria-label', subtab[0].toUpperCase() + subtab.slice(1));
         expect(await fieldColumnWidth(page)).toBeLessThanOrEqual(FIELD_MAX);
         await expectNoHorizontalOverflow(page);
+        await expectSubTabLabelsFit(page);
       }
 
       await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab: 'placeholders' });

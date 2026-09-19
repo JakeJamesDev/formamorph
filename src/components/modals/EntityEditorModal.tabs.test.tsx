@@ -10,8 +10,9 @@ import { entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs'
 import type { Entity } from '@/types';
 
 /**
- * The library entity editor and the World Editor's entity panel share one tab organization. Apart from the
- * library's Overview, both show the same tabs, and each field sits in the same tab in both.
+ * The library entity editor and the World Editor's entity panel share one tab organization. The library's
+ * Entity tab holds the panel's tabs as sub-tabs, with Placeholders on the top strip, and each field sits in
+ * the same tab in both.
  */
 
 vi.mock('@/services/EntityStorageService', () => ({
@@ -67,15 +68,25 @@ const WorldPanel = () => {
 const ownText = (el: Element) =>
   [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent).join('').trim();
 
-const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent?.trim());
+const namesOf = (tabs: HTMLElement[]) => tabs.map((t) => t.getAttribute('aria-label') ?? t.textContent?.trim());
+/** The entity field strip, which both editors label the same. */
+const fieldStrip = () => screen.getByRole('tablist', { name: 'Entity Fields' });
+const fieldTabNames = () => namesOf(within(fieldStrip()).getAllByRole('tab'));
+/** The library modal's own strip: every tab outside the field strip. */
+const topTabNames = () => namesOf(screen.getAllByRole('tab').filter((t) => !fieldStrip().contains(t)));
+/** The panel a tab controls. The library nests the field panels in its Entity panel, so a bare query is ambiguous. */
+const panelOf = (name: string) => document.getElementById(screen.getByRole('tab', { name }).getAttribute('aria-controls') ?? '')!;
 
-/** Each tab's name, then the field labels it shows, for whichever editor is on screen. */
+const renderLibrary = (ui = <EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />) =>
+  render(<SettingsProvider>{ui}</SettingsProvider>);
+
+/** Each field tab's name, then the field labels it shows, for whichever editor is on screen. */
 async function fieldsByTab(skip: string[] = []) {
   const out: Record<string, string[]> = {};
-  for (const name of tabNames()) {
+  for (const name of fieldTabNames()) {
     if (!name || skip.includes(name)) continue;
     await userEvent.click(screen.getByRole('tab', { name }));
-    const panel = screen.getByRole('tabpanel');
+    const panel = panelOf(name);
     // A checkbox row carries its hint inline, so a label reads by its own text, as the matcher does.
     out[name] = within(panel).queryAllByText(FIELD_LABELS).map(ownText);
   }
@@ -83,15 +94,17 @@ async function fieldsByTab(skip: string[] = []) {
 }
 
 describe('the two entity editors', () => {
-  it('show the same tabs apart from Overview, with Overview first in the library', () => {
-    render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
-    const library = tabNames();
+  it('show the same field tabs, with Placeholders on the library top strip after Entity', () => {
+    renderLibrary();
+    const libraryTop = topTabNames();
+    const librarySub = fieldTabNames();
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    const worldTabs = tabNames();
+    const worldTabs = fieldTabNames();
 
-    expect(library).toEqual(['Overview', 'Profile', 'Descriptions', 'Openings', 'Placeholders']);
-    expect(worldTabs).toEqual(library.slice(1));
+    expect(libraryTop).toEqual(['Entity', 'Placeholders']);
+    expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
+    expect(worldTabs).toEqual([...librarySub, 'Placeholders']);
   });
 
   it('drop Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -101,10 +114,11 @@ describe('the two entity editors', () => {
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(tabNames()).toEqual(['Profile', 'Descriptions']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
-    expect(tabNames()).toEqual(['Overview', 'Profile', 'Descriptions', 'Openings', 'Placeholders']);
+    expect(topTabNames()).toEqual(['Entity', 'Placeholders']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Openings']);
   });
 
   it('show Pronouns in both modes and Persona only in Advanced, with the always-Advanced library showing both', () => {
@@ -131,14 +145,15 @@ describe('the two entity editors', () => {
     expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', pronouns: 'x' });
   });
 
-  it('open the library editor on Profile, not Overview', () => {
-    render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
+  it('open the library editor on Entity and Profile', () => {
+    renderLibrary();
+    expect(screen.getByRole('tab', { name: 'Entity' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('put each field in the same tab, with Locations only in the World Editor', async () => {
-    render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
-    const library = await fieldsByTab(['Overview', 'Openings', 'Placeholders']);
+    renderLibrary();
+    const library = await fieldsByTab(['Openings']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
     const worldFields = await fieldsByTab(['Openings', 'Placeholders']);
@@ -158,10 +173,42 @@ describe('the two entity editors', () => {
     }
   });
 
-  it('keep Overview to publish information', async () => {
-    render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
-    await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
-    expect(within(screen.getByRole('tabpanel')).queryAllByText(FIELD_LABELS)).toEqual([]);
+  it('show Tags beside every library sub-tab', async () => {
+    renderLibrary();
+    for (const name of ['Profile', 'Descriptions', 'Openings']) {
+      await userEvent.click(screen.getByRole('tab', { name }));
+      expect([name, screen.getAllByText('Tags', { exact: true })]).toEqual([name, [expect.anything()]]);
+      // Beside the field panel, not inside it.
+      expect(within(panelOf(name)).queryByText('Tags', { exact: true })).toBeNull();
+    }
+  });
+
+  it('show Tags at the top of Profile only on a narrow screen', async () => {
+    const wide = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ ...wide(query), matches: true })) as typeof window.matchMedia;
+    try {
+      renderLibrary();
+      expect(within(panelOf('Profile')).getByText('Tags', { exact: true })).toBeInTheDocument();
+      for (const name of ['Descriptions', 'Openings']) {
+        await userEvent.click(screen.getByRole('tab', { name }));
+        expect([name, screen.queryByText('Tags', { exact: true })]).toEqual([name, null]);
+      }
+    } finally {
+      window.matchMedia = wide;
+    }
+  });
+
+  it('open the tab and sub-tab that hold a focused field', async () => {
+    const { rerender } = renderLibrary();
+    await userEvent.click(screen.getByRole('tab', { name: 'Placeholders' }));
+    rerender(
+      <SettingsProvider>
+        <EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} focusField={{ fieldKey: 'aiSummary', itemId: 'e1' }} />
+      </SettingsProvider>,
+    );
+    expect(screen.getByRole('tab', { name: 'Entity' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Descriptions' })).toHaveAttribute('aria-selected', 'true');
+    expect(within(panelOf('Descriptions')).getByText('AI-Facing Summary')).toBeInTheDocument();
   });
 
   it('show the same opening rows on the Openings tab, and write a new row to the entity', async () => {
@@ -172,14 +219,14 @@ describe('the two entity editors', () => {
     } as unknown as Entity;
     const rowsOn = async () => {
       await userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
-      const panel = screen.getByRole('tabpanel');
+      const panel = panelOf('Openings');
       return within(panel).getAllByTestId('opening-row').map((row) => [
         within(row).getByLabelText('Draw weight for Opening 1').getAttribute('value'),
         within(row).getByLabelText('Chance for Opening 1').textContent,
       ]);
     };
 
-    render(<SettingsProvider><EntityEditorModal entityId={null} draft={withOpenings} onClose={vi.fn()} /></SettingsProvider>);
+    renderLibrary(<EntityEditorModal entityId={null} draft={withOpenings} onClose={vi.fn()} />);
     const library = await rowsOn();
     cleanup();
     world.updateEntity.mockClear();
