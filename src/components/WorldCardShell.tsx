@@ -58,6 +58,8 @@ export function OverlayTitle({ name, className }: { name: string; className?: st
     <Tip tip={clipped ? name : undefined} labelsChild={false}>
       <h3
         ref={ref}
+        // The folder zoom fades every name on the board it is shrinking, and this is the name.
+        data-tile-title
         // Until the first measure sets the vars, max-height resolves to none and the clamp alone
         // clips — so there is no flash, just no slide yet.
         className={cn(

@@ -42,7 +42,7 @@ import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 import { FolderMiniature } from '@/components/library/FolderMiniature';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
-import { useFolderFlyIn } from '@/components/library/useFolderFlyIn';
+import { useFolderZoom } from '@/components/library/useFolderZoom';
 
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
 const GRID_MODIFIERS = [restrictToFirstScrollableAncestor];
@@ -328,9 +328,10 @@ export function LibraryTileGrid<T>({
     if (openGroupId && !openGroup) setOpenGroupId(null);
   }, [openGroupId, openGroup]);
 
-  // A click on a folder tile, and Open Group, zoom into the tile. The disband effect above keeps the
-  // direct setter: there is no tile left to zoom toward once the folder is gone.
-  const { openGroup: flyIntoGroup } = useFolderFlyIn({
+  // A click on a folder tile, Open Group, and Library all zoom between the tile and its board. The
+  // disband effect above keeps the direct setter: there is no tile left to zoom toward once the folder
+  // is gone.
+  const { openGroup: flyIntoGroup, closeGroup } = useFolderZoom({
     gridNode,
     tileNodes,
     openGroupId,
@@ -904,7 +905,7 @@ export function LibraryTileGrid<T>({
         <FolderHeader
           name={openGroup.name}
           settings={groupSettings?.(openGroup.id)}
-          onBack={() => setOpenGroupId(null)}
+          onBack={closeGroup}
           onRename={locked ? undefined : (name) => tiles.rename(openGroup.id, name)}
         />
       )}
