@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { buildPersonaContext, personaContextValues } from './personaContext';
+import { buildPersonaContext, knownPersonaLine, personaContextValues } from './personaContext';
+import type { ResolvedPersona } from './persona';
 import { renderEntityRoster } from './locationContext';
 import { renderPromptTemplate } from './promptTemplate';
 import { variableForToken, variableVariantIds, withVariant } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import type { Entity } from '@/types';
 
-const persona: Entity = {
+const entity: Entity = {
   id: 'p1',
   name: 'Traveler',
   aliases: ['the Wanderer'],
@@ -16,11 +17,13 @@ const persona: Entity = {
   // A persona never renders its locations: it is the player, not someone at a place.
   locations: ['loc1'],
 };
+const persona: ResolvedPersona = { entity, source: 'library' };
+const worldPersona: ResolvedPersona = { entity, source: 'world' };
 
 describe('buildPersonaContext', () => {
   it('renders Full as one entity block from the shared entity builder, in each format', () => {
     for (const format of ['simple', 'markdown', 'xml'] as const) {
-      expect(buildPersonaContext(persona, { format })).toBe(renderEntityRoster([persona.id], [persona], { format }));
+      expect(buildPersonaContext(persona, { format })).toBe(renderEntityRoster([entity.id], [entity], { format }));
     }
     const md = buildPersonaContext(persona, { format: 'markdown' });
     expect(md).toContain('- **Traveler**');
@@ -42,13 +45,40 @@ describe('buildPersonaContext', () => {
   });
 
   it('renders Name as the bare name when the persona has no pronouns', () => {
-    expect(buildPersonaContext({ ...persona, pronouns: '  ' }, { nameOnly: true })).toBe('Traveler');
+    expect(buildPersonaContext({ entity: { ...entity, pronouns: '  ' }, source: 'library' }, { nameOnly: true })).toBe('Traveler');
   });
 
   it('renders the empty placeholder with no persona, in every variant', () => {
     expect(buildPersonaContext(null)).toBe(NONE_PLACEHOLDER);
     expect(buildPersonaContext(null, { nameOnly: true })).toBe(NONE_PLACEHOLDER);
     expect(buildPersonaContext(null, { preferSummary: true, format: 'xml' })).toBe(NONE_PLACEHOLDER);
+  });
+});
+
+describe('the known-person line', () => {
+  it('follows the block of a world persona in Full and Summary, in each format', () => {
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      for (const preferSummary of [false, true]) {
+        const block = buildPersonaContext(persona, { format, preferSummary });
+        expect(buildPersonaContext(worldPersona, { format, preferSummary })).toBe(`${block}${knownPersonaLine('Traveler')}\n`);
+      }
+    }
+  });
+
+  it('says the world knows the persona, and that its name in world text means the player', () => {
+    const line = knownPersonaLine('Traveler');
+    expect(line).toMatch(/already knows Traveler\./);
+    expect(line).toMatch(/names Traveler, it means the player character/);
+  });
+
+  it('is absent for a library persona', () => {
+    for (const format of ['simple', 'markdown', 'xml'] as const) {
+      expect(buildPersonaContext(persona, { format })).not.toContain(knownPersonaLine('Traveler'));
+    }
+  });
+
+  it('stays out of Name, which sits inside a sentence', () => {
+    expect(buildPersonaContext(worldPersona, { nameOnly: true })).toBe('Traveler (they/them)');
   });
 });
 

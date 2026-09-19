@@ -83,7 +83,7 @@ const start = async (persona: Entity) => {
 
 /** The default narration prompt as a turn sends it: the persona chip's values, resolved like every value. */
 const narrationPrompt = (live: () => Live): string => {
-  const values = personaContextValues(live().world.persona?.entity ?? null);
+  const values = personaContextValues(live().world.persona);
   for (const k in values) values[k] = live().world.resolvePH(values[k]);
   return renderPromptTemplate(PROMPT_TEXT_DEFAULTS.systemPrompt, values);
 };
@@ -209,5 +209,31 @@ describe('drawing a persona’s rolls when it is set', () => {
 
     await waitFor(() => expect(live().world.persona?.entity.id).toBe(titled.id));
     expect(live().world.resolveOpening('{{user}} steps off the boat.')).toBe(pageOne);
+  });
+});
+
+describe('a world persona with placeholders of its own', () => {
+  const keeper: Entity = {
+    id: 'w-keeper', name: 'Keeper', persona: true, locations: ['dock'],
+    aiDescription: `Keeper has ${chip(EYES.id, 'k-eyes')} eyes.`,
+    placeholders: [EYES],
+  };
+
+  it('resolves them as it did in the cast, with the same roll', async () => {
+    await EntityStorageService.initialize();
+    const live = mount();
+    await act(async () => {
+      live().gameData.loadWorldData(worldFixture({ placeholders: [TOWN], entities: [keeper] }));
+      live().session.beginSession();
+    });
+    // A cast member's text resolves when a prompt reads it.
+    const resolvedInCast = () => live().world.resolvePH(live().world.entities[0]?.aiDescription ?? '');
+    await waitFor(() => expect(resolvedInCast()).toMatch(/^Keeper has hue-\d+ eyes\.$/));
+    const inCast = resolvedInCast();
+
+    await act(async () => { live().gameplay.setPersonaRef({ source: 'world', entityId: keeper.id }); });
+    await waitFor(() => expect(live().world.persona?.entity.id).toBe(keeper.id));
+    expect(narrationPrompt(live)).toContain(inCast);
+    expect(live().world.entities).toEqual([]);
   });
 });

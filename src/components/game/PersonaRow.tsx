@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PersonaPicker, type PersonaOption } from './PersonaPicker';
+import { personaOption } from '@/lib/persona';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -22,7 +23,7 @@ const sameRef = (a: PersonaRef, b: PersonaRef) =>
 export function PersonaRow() {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId } = useGameData();
-  const { persona, entities: cast } = useResolvedWorld();
+  const { persona, entities: cast, worldPersonas } = useResolvedWorld();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PersonaOption[]>([]);
   // Null until the player picks in this opening, so the picker starts on the current persona.
@@ -41,12 +42,14 @@ export function PersonaRow() {
     EntityStorageService.getEntityMetadata().then(
       (library) => {
         if (!mounted) return;
-        setOptions(inGamePersonas(library, cast, pickedAtStart(discoveredEntities)).map(({ id, name, image }) => ({ id, name, image })));
+        // The played world entity counts too: a library persona it copies stays out.
+        const world = persona?.source === 'world' ? [...cast, persona.entity] : cast;
+        setOptions(inGamePersonas(library, world, pickedAtStart(discoveredEntities)).map(({ id, name, image }) => ({ id, name, image })));
       },
       () => { if (mounted) setOptions([]); },
     );
     return () => { mounted = false; };
-  }, [open, cast, discoveredEntities]);
+  }, [open, cast, persona, discoveredEntities]);
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
@@ -75,7 +78,12 @@ export function PersonaRow() {
             <DialogDescription>Pick who you play. Memories written before the change keep the old name.</DialogDescription>
           </DialogHeader>
           <ScrollArea className="-mr-3 min-h-0 flex-1 pr-3">
-            <PersonaPicker library={options} value={choice} onChange={setDraft} />
+            <PersonaPicker
+              world={worldPersonas.map(personaOption)}
+              library={options}
+              value={choice}
+              onChange={setDraft}
+            />
           </ScrollArea>
           <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => showPicker(false)}>Cancel</Button>

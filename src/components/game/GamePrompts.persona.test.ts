@@ -6,7 +6,7 @@ import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from '@/
 import { decodeVariant, tokenVariant, variableForToken } from '@/lib/promptVariables';
 import { personaContextValues } from '@/lib/personaContext';
 import { SAMPLE_PREVIEW_VALUES } from '@/lib/previewValuePool';
-import type { Entity } from '@/types';
+import type { ResolvedPersona } from '@/lib/persona';
 
 // The spec's default coverage table, written out: the expectation must not come from the templates it checks.
 const FULL: PromptTextKey[] = [
@@ -15,11 +15,14 @@ const FULL: PromptTextKey[] = [
 const NAME: PromptTextKey[] = ['choicesPrompt', 'summaryPrompt', 'milestoneSelectPrompt', 'diaryPrompt'];
 const COVERED = new Set<PromptTextKey>([...FULL, ...NAME]);
 
-const persona: Entity = {
-  id: 'persona-fixture',
-  name: 'Persona Fixture',
-  pronouns: 'they/them',
-  aiDescription: 'A fixture description only the Full variant carries.',
+const persona: ResolvedPersona = {
+  source: 'library',
+  entity: {
+    id: 'persona-fixture',
+    name: 'Persona Fixture',
+    pronouns: 'they/them',
+    aiDescription: 'A fixture description only the Full variant carries.',
+  },
 };
 
 const PERSONA = variableForToken('<PERSONA>')!;

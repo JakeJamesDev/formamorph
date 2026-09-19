@@ -7,6 +7,7 @@ import { PersonaRow } from './PersonaRow';
 import { usePersonaNotice } from '@/lib/usePersonaNotice';
 import EntityStorageService from '@/services/EntityStorageService';
 import { readWorldPersona } from '@/lib/personaPick';
+import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import type { Entity, PersonaRef } from '@/types';
 
 vi.mock('@/views/VRMViewer', () => import('@/test/stubs/vrmViewer'));
@@ -105,5 +106,37 @@ describe('the persona row', () => {
     // A second load sets a fresh reference, so it gets its own notice.
     await act(async () => { h.gameplay().setPersonaRef({ source: 'library', entityId: 'l-gone' }); });
     await waitFor(() => expect(warn).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('world personas in the Change picker', () => {
+  const warden: Entity = { id: 'w-warden', name: 'Harbor Warden', persona: true, locations: ['dock'] };
+  const clerk: Entity = { id: 'w-clerk', name: 'Dock Clerk', locations: ['dock'] };
+  const world = { entities: [warden, clerk] };
+  // Reads the cast every in-play reader takes.
+  const CastProbe = () => <ul data-testid="cast">{useResolvedWorld().entities.map((e) => <li key={e.id}>{e.name}</li>)}</ul>;
+  const castNames = () => within(screen.getByTestId('cast')).queryAllByRole('listitem').map((li) => li.textContent);
+
+  it("lists the world's marked entities under their own heading, apart from the library personas", async () => {
+    await store(ash);
+    renderInGame(<PersonaRow />, { world });
+    const dialog = await openPicker();
+    await within(dialog).findByRole('radio', { name: 'Ash' });
+    const order = [...dialog.querySelectorAll('[role="radio"], h3')].map((el) => el.getAttribute('aria-label') ?? el.textContent);
+    expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Your Personas', 'Ash']);
+  });
+
+  it('takes a picked world persona out of the cast, and a switch away returns it', async () => {
+    await store(ash);
+    const h = renderInGame(<><PersonaRow /><CastProbe /></>, { world });
+    expect(castNames()).toEqual(['Harbor Warden', 'Dock Clerk']);
+
+    await pick(await openPicker(), 'Harbor Warden');
+    expect(h.gameplay().personaRef).toEqual({ source: 'world', entityId: 'w-warden' });
+    await waitFor(() => expect(within(row()).getByText('Harbor Warden')).toBeTruthy());
+    expect(castNames()).toEqual(['Dock Clerk']);
+
+    await pick(await openPicker(), 'Ash');
+    await waitFor(() => expect(castNames()).toEqual(['Harbor Warden', 'Dock Clerk']));
   });
 });

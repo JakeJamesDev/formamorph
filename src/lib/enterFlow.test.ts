@@ -6,6 +6,7 @@ const bare: EnterFlowWorld = {
   traitCount: 0,
   startingLocationCount: 1,
   hasLibraryAdditions: false,
+  hasWorldPersonas: false,
   use3DModel: false,
 };
 
@@ -28,6 +29,10 @@ describe('buildEnterFlow', () => {
   it('still shows the Introduction for a world with no traits', () => {
     expect(buildEnterFlow(world({ introReadme: '# Welcome', startingLocationCount: 3 }), 'newGame'))
       .toEqual(['intro', 'workspace']);
+  });
+
+  it('shows the workspace for world personas alone, so the player can pick one', () => {
+    expect(buildEnterFlow(world({ hasWorldPersonas: true }), 'newGame')).toEqual(['workspace']);
   });
 
   it('skips every step, Introduction included, on Quick Start', () => {

@@ -664,3 +664,49 @@ describe('the persona at world entry', () => {
     expect(readWorldPersona('entry-world')).toBeUndefined();
   });
 });
+
+describe('a world persona at world entry', () => {
+  const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
+  // One marked world entity whose only starting location is the second one, and no library persona.
+  beforeEach(async () => {
+    const record = world();
+    record.data.entities = [{
+      id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
+      persona: true, locations: ['inn', 'hill'],
+    }];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it('preselects its starting location on a pick, starts there, and remembers the pick', async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.getByRole('heading', { name: 'From This World' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: 'Harbor Keeper' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][3]).toBe('hill');
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
+    expect(readWorldPersona('entry-world')).toEqual(keeperRef);
+  });
+
+  it('opens the step on a remembered world persona with its location selected', async () => {
+    rememberWorldPersona('entry-world', keeperRef);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][3]).toBe('hill');
+  });
+
+  it('starts Quick Start at the remembered world persona\'s location', async () => {
+    rememberWorldPersona('entry-world', keeperRef);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, 'hill', null, null, { ref: keeperRef }));
+  });
+});
