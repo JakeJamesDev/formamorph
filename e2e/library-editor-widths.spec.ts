@@ -4,7 +4,7 @@ import { gotoDev, openApp } from './app';
 /** Mobile, the split's first desktop width, a laptop, and two widths past the modal's own cap. */
 const WIDTHS = [375, 820, 1280, 1600, 2560];
 
-/** Matches `LIBRARY_EDITOR_MAX_WIDTH` and `FIELD_COLUMN_MAX_WIDTH`; restated so a changed cap fails here. */
+/** The caps in `src/components/modals/libraryEditorLayout.ts`, restated so a changed cap fails here. */
 const MODAL_MAX = 1400;
 const FIELD_MAX = 800;
 
@@ -20,6 +20,10 @@ async function fieldColumnWidth(page: Page) {
   const column = page.getByRole('dialog').locator('[data-field-column]');
   await expect(column).toBeVisible();
   return column.evaluate((element) => element.getBoundingClientRect().width);
+}
+
+async function expectDialogWidth(page: Page, width: number) {
+  expect(Math.abs(await dialogWidth(page) - Math.min(width * 0.95, MODAL_MAX))).toBeLessThanOrEqual(1);
 }
 
 /** Nothing pushes the page sideways. */
@@ -62,8 +66,7 @@ for (const width of WIDTHS) {
 
     test('the entity editor is 95vw to its cap, with capped fields and full-width placeholders', async ({ page }) => {
       await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab: 'profile' });
-      const dialog = await dialogWidth(page);
-      expect(Math.abs(dialog - Math.min(width * 0.95, MODAL_MAX))).toBeLessThanOrEqual(1);
+      await expectDialogWidth(page, width);
 
       for (const tab of ['profile', 'descriptions', 'openings']) {
         await gotoDev(page, 'mainMenu', { modal: 'entityEditor', tab });
@@ -79,8 +82,7 @@ for (const width of WIDTHS) {
     test('the dictionary editor is 95vw to its cap, with capped fields and full-width placeholders', async ({ page }) => {
       // The dictionary editor has no tab slot in the dev router, so its tabs are clicked.
       await gotoDev(page, 'mainMenu', { modal: 'dictionaryEditor' });
-      const dialog = await dialogWidth(page);
-      expect(Math.abs(dialog - Math.min(width * 0.95, MODAL_MAX))).toBeLessThanOrEqual(1);
+      await expectDialogWidth(page, width);
 
       // Mobile opens on the book's detail, over the tree that holds the add button.
       const back = page.getByRole('dialog').getByRole('button', { name: 'Dictionary', exact: true });
