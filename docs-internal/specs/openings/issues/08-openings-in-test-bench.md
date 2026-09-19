@@ -1,6 +1,6 @@
 # 08: Openings In The Test Bench
 
-Status: in-progress
+Status: ready-for-human
 Base: 1a1a26dc
 Blocked by: 03, 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

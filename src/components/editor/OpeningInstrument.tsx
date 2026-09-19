@@ -326,26 +326,26 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChan
           </>
         ) : (
           <>
-          <SectionHeading label="First Prompt" note="what the model receives on turn one" />
-          <div className="space-y-1">
-            <PromptBlock
-              label="System Prompt"
-              text={data.system}
-              open={openBlocks.has('system')}
-              onToggle={() => toggle('system')}
-            />
-            <PromptBlock
-              label="Opening User Turn"
-              text={data.user}
-              open={openBlocks.has('user')}
-              onToggle={() => toggle('user')}
-            />
-          </div>
-          <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
-            <Sparkles className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
-            Assembled with the shipped default prompts and settings. Custom prompt presets are a global
-            setting and aren’t read here.
-          </p>
+            <SectionHeading label="First Prompt" note="what the model receives on turn one" />
+            <div className="space-y-1">
+              <PromptBlock
+                label="System Prompt"
+                text={data.system}
+                open={openBlocks.has('system')}
+                onToggle={() => toggle('system')}
+              />
+              <PromptBlock
+                label="Opening User Turn"
+                text={data.user}
+                open={openBlocks.has('user')}
+                onToggle={() => toggle('user')}
+              />
+            </div>
+            <p className="flex items-start gap-1 text-meta leading-snug text-muted-foreground">
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
+              Assembled with the shipped default prompts and settings. Custom prompt presets are a global
+              setting and aren’t read here.
+            </p>
           </>
         )}
       </div>
