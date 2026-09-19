@@ -26,7 +26,7 @@ When a player picks it:
 | The cast | The entity leaves it for that game. It returns when the player changes persona. |
 | The AI | Reads that everyone in the world already knows this person, and that your text about the entity means the player |
 | Starting location | The entity's first location that is a starting location is preselected. The player can change it. |
-| [Entity Openings](WorldEditor#entity-openings) | The entity's own openings leave the draw, so page one never greets the player as themselves |
+| [Entity Openings](World-Editor-Openings#entity-openings) | The entity's own openings leave the draw, so page one never greets the player as themselves |
 
 Only entities you select are playable. The checkbox is your statement that the entity reads correctly from the player's side.
 
@@ -87,13 +87,13 @@ Type `{` in a description, dictionary or opening field and pick **Player Name**.
 Both fallbacks take a capital at the start of a sentence. A possessive follows: "your", "the player's".
 
 - **The chip works in both modes**, in every prose field with the `{` menu. Name and keyword fields don't offer it.
-- **SillyTavern imports write it for you.** A card's or lorebook's `{{user}}` becomes this chip. See [SillyTavern cards](WorldEditor#sillytavern-cards).
+- **SillyTavern imports write it for you.** A card's or lorebook's `{{user}}` becomes this chip. See [SillyTavern cards](World-Editor-Entities#sillytavern-cards).
 - **Text imported before the chip existed** keeps its plain "the player". Replace it by hand where you want the name.
 
-> 💡 For what the chip does to page one, see [Openings](WorldEditor#openings).
+> 💡 For what the chip does to page one, see [Openings](World-Editor-Openings).
 
 ## Related
 
 - [🪪 Personas](Personas) — the player's side
-- [🛠️ World Editor](WorldEditor) — [Openings](WorldEditor#openings), [Entities](WorldEditor#entities) and [Placeholders](WorldEditor#placeholders)
+- [🛠️ World Editor](WorldEditor) — [Openings](World-Editor-Openings), [Entities](World-Editor-Entities) and [Placeholders](World-Editor-Placeholders)
 - [📐 World Format](WorldFormat) — the fields behind these controls

@@ -82,7 +82,7 @@ Characters written with **names** get picked up. Characters written with **prono
 
 ## How a Game Opens
 
-At **Start Game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](WorldEditor#openings) page explains how authors write them.
+At **Start Game**, the game draws one opening. **Quick Start** draws the same way. The [World Editor](World-Editor-Openings) page explains how authors write them.
 
 | At Enter World you pick | The draw uses |
 |---|---|
