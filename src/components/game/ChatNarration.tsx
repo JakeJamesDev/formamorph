@@ -16,8 +16,8 @@ import { useReadingLine } from './useReadingLine';
 import { READING_LINE } from '@/lib/chatReadingLine';
 import { hasNativeScrollAnchoring } from '@/lib/scrollAnchoring';
 import { ReasoningBlock } from './ReasoningBlock';
-import { BubbleActionRow } from './BubbleActionRow';
 import { BubbleMenu } from './BubbleMenu';
+import { TurnCard } from './TurnCard';
 import type { BubbleAction } from '@/lib/bubbleActions';
 import type { ChatMessage } from '@/types';
 
@@ -224,32 +224,29 @@ export function ChatNarration({ parseAssistantMessage, latestFooter, actionsFor,
                   </BubbleMenu>
                 )}
                 {(turn.narration || (showReasoning && reasoning?.text)) && (
-                  <BubbleMenu actions={narrationActions}>
-                    <div className="rounded-lg border border-border bg-card px-3.5 py-2.5" style={revealStyle}>
-                      {showReasoning && reasoning?.text && (
-                        <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
-                      )}
-                      {turn.narration && (
-                        <div data-testid="narration">
-                          {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
-                          <MarkdownRenderer
-                            key={liveReveal ? 'live' : `committed:${narrationText}`}
-                            text={narrationText}
-                            animate={liveReveal && revealOn}
-                            animation={revealAnim}
-                            easing={revealEasing}
-                            dialogue
-                          />
-                        </div>
-                      )}
-                      {images.length > 0 && (
-                        <div className="mt-2.5 flex flex-col gap-2">
-                          {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
-                        </div>
-                      )}
-                      {narrationActions.length > 0 && <BubbleActionRow turnNumber={item.index + 1} actions={narrationActions} />}
-                    </div>
-                  </BubbleMenu>
+                  <TurnCard actions={narrationActions} turnNumber={item.index + 1} live={liveReveal} style={revealStyle}>
+                    {showReasoning && reasoning?.text && (
+                      <ReasoningBlock text={reasoning.text} ms={reasoning.ms} active={reasoningLive && liveReasoning.active} />
+                    )}
+                    {turn.narration && (
+                      <div data-testid="narration">
+                        {/* Streamdown memoizes on source position, not text, so committed text keys by its content. */}
+                        <MarkdownRenderer
+                          key={liveReveal ? 'live' : `committed:${narrationText}`}
+                          text={narrationText}
+                          animate={liveReveal && revealOn}
+                          animation={revealAnim}
+                          easing={revealEasing}
+                          dialogue
+                        />
+                      </div>
+                    )}
+                    {images.length > 0 && (
+                      <div className="mt-2.5 flex flex-col gap-2">
+                        {images.map((src, i) => <InlineSceneImage key={i} src={src} />)}
+                      </div>
+                    )}
+                  </TurnCard>
                 )}
                 {isLatest && latestFooter}
                 <div data-content-end />
