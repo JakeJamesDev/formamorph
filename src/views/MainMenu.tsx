@@ -68,8 +68,8 @@ import {
 } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
-  clearDefaultPersona, preselectPersona, readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona,
-  withoutPersona, type PersonaPickContext,
+  clearDefaultPersona, hasPersonaChoice, offeredPersonas, preselectPersona, readDefaultPersona, readWorldPersona,
+  rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting, type PersonaPickContext,
 } from '@/lib/personaPick';
 import { personaOption } from '@/lib/persona';
 import type { PersonaPick } from '@/lib/persona';
@@ -1332,13 +1332,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       .map(personaOption),
     [resolvedWorldEntities],
   );
+  const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
+  /** What the step's Persona category lists under the world's player setting. */
+  const personaOffer = useMemo(
+    () => offeredPersonas(playerSetting, { world: worldPersonaOptions, library: personaOptions }),
+    [playerSetting, worldPersonaOptions, personaOptions],
+  );
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
     startingLocationIds: startingLocations(locations).map((location) => location.id),
   };
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
-    playerSetting: 'open',
+    playerSetting,
     remembered: readWorldPersona(worldId),
     globalDefault: defaultPersona,
     available: {
@@ -1393,7 +1399,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (entryRequest.current !== request) return;
       const dicts = finalizeSelection(draft.dictionaryItems, books);
       // Only a pick the step showed is remembered; a hidden category leaves room for a later default.
-      if (worldPersonaOptions.length + personaOptions.length > 0) rememberWorldPersona(selectedWorld!.id, draft.persona);
+      if (hasPersonaChoice(personaOffer)) rememberWorldPersona(selectedWorld!.id, draft.persona);
       setSelectedCharacters(chars);
       setSelectedDictionaries(dicts);
       setSelectedPersona(persona);
@@ -3044,8 +3050,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           libraryEntities={additionEntities}
           selectedEntityIds={entryDraft.entityIds}
           dictionaryItems={entryDraft.dictionaryItems}
-          worldPersonas={worldPersonaOptions}
-          personas={personaOptions}
+          worldPersonas={personaOffer.world}
+          personas={personaOffer.library}
+          personaNone={personaOffer.none}
           persona={entryDraft.persona}
           onPersonaChange={(ref) => reviseDraft((draft) => withPersonaPick(draft, ref, personaPickContext))}
           categoryIndex={entryDraft.traitSection}

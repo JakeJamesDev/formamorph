@@ -72,6 +72,12 @@ describe('worldUsesAdvancedFeatures', () => {
     expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, pronouns: 'she/her' }] }))).toBe(false);
   });
 
+  it('says yes about a player setting other than Open, and no about Open', () => {
+    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ playerSetting: 'fixed' }) }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ playerSetting: 'cast' }) }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ playerSetting: 'open' }) }))).toBe(false);
+  });
+
   it('says yes about a written opening, even with the list switched off', () => {
     expect(worldUsesAdvancedFeatures(plain({
       worldOverview: overview({

@@ -43,7 +43,7 @@ const WORLD: World = benchEditorWorld({
 
 /** Both column labels, so a label that moves between the columns fails rather than passing twice. */
 const FIELD_LABELS = new RegExp(
-  '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Background Music'
+  '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Persona Choice|Background Music'
   + '|World Description|Readme|System Prompt Addition|Custom Prompts)$',
 );
 
@@ -112,7 +112,7 @@ describe('the World Editor Overview columns', () => {
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
       'World Name', 'Author', 'Tags', 'Thumbnail', '3D Player Avatar', 'Custom Player Avatar',
-      'Background Music',
+      'Persona Choice', 'Background Music',
     ]);
   });
 
@@ -124,7 +124,7 @@ describe('the World Editor Overview columns', () => {
     ]);
   });
 
-  it('drops the avatar upload from the left column in Simple mode, keeping the order', async () => {
+  it('drops the avatar upload and the persona choice from the left column in Simple mode, keeping the order', async () => {
     renderWorldEditorBench(WORLD, 'simple');
     await screen.findByLabelText('World Name');
     expect(leftLabels()).toEqual([
@@ -152,6 +152,50 @@ describe('the World Editor Overview columns', () => {
     const box = await screen.findByRole('checkbox', { name: /3D Player Avatar/ });
     const row = box.closest('div');
     expect(within(row as HTMLElement).getByText('The player can customize it')).toBeInTheDocument();
+  });
+});
+
+describe('the Overview persona choice', () => {
+  const choice = () => screen.getByRole('radiogroup', { name: 'Persona Choice' });
+
+  it('reads an absent setting as Open and writes each value, with Open writing no field', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await screen.findByLabelText('World Name');
+    expect(within(choice()).getByRole('radio', { name: 'Open' })).toHaveAttribute('data-state', 'on');
+    expect(screen.getByText('Lets players pick any persona, or none')).toBeInTheDocument();
+
+    fireEvent.click(within(choice()).getByRole('radio', { name: 'Fixed' }));
+    await waitFor(() => expect(ctx().worldOverview.playerSetting).toBe('fixed'));
+    expect(screen.getByText('Starts new players with no persona. They can still pick one.')).toBeInTheDocument();
+
+    fireEvent.click(within(choice()).getByRole('radio', { name: 'Open' }));
+    await waitFor(() => expect(ctx().worldOverview.playerSetting).toBeUndefined());
+  });
+
+  it('keeps its value when the active item is clicked again', async () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    await screen.findByLabelText('World Name');
+    fireEvent.click(within(choice()).getByRole('radio', { name: 'Fixed' }));
+    fireEvent.click(within(choice()).getByRole('radio', { name: 'Fixed' }));
+    expect(ctx().worldOverview.playerSetting).toBe('fixed');
+  });
+
+  it('says Cast works as Fixed while no entity carries the Persona mark', async () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    await screen.findByLabelText('World Name');
+    fireEvent.click(within(choice()).getByRole('radio', { name: 'Cast' }));
+    expect(await screen.findByText('Works like Fixed until you select Persona on an entity')).toBeInTheDocument();
+  });
+
+  it("describes Cast once the world has a persona", async () => {
+    const world = benchEditorWorld({
+      ...WORLD,
+      worldOverview: { ...WORLD.worldOverview, playerSetting: 'cast' },
+      entities: [{ id: 'e1', name: 'Maren', playerDescription: '', aiDescription: '', persona: true }],
+    } as unknown as Partial<World>);
+    renderWorldEditorBench(world, 'advanced');
+    await screen.findByLabelText('World Name');
+    expect(screen.getByText("Limits players to this world's personas and starts on the first")).toBeInTheDocument();
   });
 });
 

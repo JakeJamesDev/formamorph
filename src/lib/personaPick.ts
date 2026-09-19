@@ -1,8 +1,34 @@
 import { createKeyedRecordStore, readStorageJson, writeStorageJson } from './keyedStorage';
-import type { Entity, PersonaRef } from '@/types';
+import type { Entity, PersonaRef, WorldOverview, WorldPlayerSetting } from '@/types';
 
-/** Who a world lets the player be. Only Open exists until the world gains its player setting. */
-export type WorldPlayerSetting = 'open';
+/** Every player setting, in the order the World Editor shows them. */
+export const PLAYER_SETTINGS: readonly WorldPlayerSetting[] = ['open', 'fixed', 'cast'];
+
+/** The world's player setting. An absent or unknown value is Open. */
+export function worldPlayerSetting(overview: Pick<WorldOverview, 'playerSetting'> | undefined): WorldPlayerSetting {
+  const value = overview?.playerSetting;
+  return value && PLAYER_SETTINGS.includes(value) ? value : 'open';
+}
+
+/** What a picker lists under the world's player setting. */
+export interface PersonaOffer<T> {
+  world: T[];
+  library: T[];
+  /** The picker offers None. */
+  none: boolean;
+}
+
+/** The personas a picker lists. Cast keeps only the world's personas and drops None; a Cast world with no
+ *  world persona offers what Fixed offers. */
+export function offeredPersonas<T>(setting: WorldPlayerSetting, available: { world: T[]; library: T[] }): PersonaOffer<T> {
+  if (setting === 'cast' && available.world.length > 0) return { world: available.world, library: [], none: false };
+  return { world: available.world, library: available.library, none: true };
+}
+
+/** A picker has something to pick: None alone is no choice. */
+export function hasPersonaChoice(offer: PersonaOffer<unknown>): boolean {
+  return offer.world.length + offer.library.length > 0;
+}
 
 /** The inputs of the preselect rule, shared by the enter-world step and Quick Start. */
 export interface PersonaChoices {
@@ -17,13 +43,16 @@ export interface PersonaChoices {
 
 const NONE: PersonaRef = { source: 'none' };
 
-/** The persona the picker starts on: the world's remembered pick, then the global default, then None. A pick
- *  that names an entity the picker does not offer falls through to the next rule. */
-export function preselectPersona({ remembered, globalDefault, available }: PersonaChoices): PersonaRef {
-  const offered = (ref: PersonaRef) => ref.source === 'none' || available[ref.source].includes(ref.entityId);
-  if (available.world.length === 0 && available.library.length === 0) return NONE;
+/** The persona the picker starts on: the world's remembered pick, then the rule of the world's player setting,
+ *  then the global default, then None. A pick the picker does not offer falls through to the next rule. */
+export function preselectPersona({ playerSetting, remembered, globalDefault, available }: PersonaChoices): PersonaRef {
+  const offer = offeredPersonas(playerSetting, available);
+  if (!hasPersonaChoice(offer)) return NONE;
+  const offered = (ref: PersonaRef) => (ref.source === 'none' ? offer.none : offer[ref.source].includes(ref.entityId));
   if (remembered && offered(remembered)) return remembered;
-  if (globalDefault && available.library.includes(globalDefault)) return { source: 'library', entityId: globalDefault };
+  if (!offer.none) return { source: 'world', entityId: offer.world[0] };
+  if (playerSetting !== 'open') return NONE;
+  if (globalDefault && offer.library.includes(globalDefault)) return { source: 'library', entityId: globalDefault };
   return NONE;
 }
 

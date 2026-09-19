@@ -21,6 +21,7 @@ import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/Dic
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
 import { worldPlacementLetters } from '@/lib/placementLetters';
+import { worldPlayerSetting } from '@/lib/personaPick';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -309,6 +310,7 @@ function useProvideGameData() {
 
     // Handle world overview with validation (migrateWorld already moved any legacy VRM into worldOverview).
     const overview = worldData.worldOverview || defaultOverview;
+    const playerSetting = worldPlayerSetting(overview);
     const normalizedOverview: WorldOverview = {
       name: overview.name || defaultOverview.name,
       description: overview.description || defaultOverview.description,
@@ -327,7 +329,9 @@ function useProvideGameData() {
       // Same allowlist rule. The switch is spread only when it is actually a boolean: absent means on.
       ...(Array.isArray(overview.openings) ? { openings: overview.openings } : {}),
       ...(overview.openingWeights ? { openingWeights: overview.openingWeights } : {}),
-      ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {})
+      ...(typeof overview.openingsEnabled === 'boolean' ? { openingsEnabled: overview.openingsEnabled } : {}),
+      // Open is the absent value, so only Fixed and Cast are carried.
+      ...(playerSetting !== 'open' ? { playerSetting } : {})
     };
     // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously
     // loaded world, leaking it into this one and into the next saveWorld.

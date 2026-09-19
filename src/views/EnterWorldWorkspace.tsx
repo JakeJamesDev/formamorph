@@ -58,6 +58,8 @@ export interface EnterWorldWorkspaceProps {
   worldPersonas?: PersonaOption[];
   /** The library personas on offer. The category hides when neither list has one. */
   personas?: PersonaOption[];
+  /** The picker offers None. Absent = yes. */
+  personaNone?: boolean;
   persona?: PersonaRef;
   onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
@@ -432,6 +434,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <PersonaPicker
                 world={props.worldPersonas}
                 library={personaOptions}
+                none={props.personaNone}
                 value={props.persona}
                 onChange={props.onPersonaChange}
               />

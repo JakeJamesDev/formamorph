@@ -394,7 +394,12 @@ export interface WorldOverview {
   openingWeights?: Record<string, number>;
   /** `false` keeps `openings` on the world without drawing them. Absent = on. */
   openingsEnabled?: boolean;
+  /** Who the player can be: any persona, None preselected, or only this world's personas. Absent = open. */
+  playerSetting?: WorldPlayerSetting;
 }
+
+/** The world's player setting. The pickers read it through lib/personaPick, which applies it. */
+export type WorldPlayerSetting = 'open' | 'fixed' | 'cast';
 
 /** Where an opening's text lands: `action` pre-fills the player's input box, `narration` is page one. */
 export type OpeningKind = 'action' | 'narration';
