@@ -591,6 +591,77 @@ The live reference renders four of the five production strips against their own 
 - Tab names come from the four production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
 - **Unverified:** the section headings "Three Tabs", "Four Tabs", "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Narration Turn
+
+**Purpose:** Show one turn of the story the same way in the Pages and Chat layouts, so a turn's actions and its scene image controls cannot differ between them.
+
+**Rule:**
+
+- One card renders a turn's narration in both layouts. The card owns its surface, its right-click menu, and its action row.
+- One action list feeds the row and the menu. Every row icon is also a menu item, and **More** opens that menu for the menu-only actions.
+- The row is absent while the turn streams and when the list is empty. It does not show disabled icons in place of a live turn.
+- A turn with no scene image shows no plate. There is no empty box.
+- Choices in Pages are numbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers.
+
+**Density:** Comfortable. The card uses the narration text size the player sets. The action row and the plate controls are compact icon buttons with tooltips.
+
+### Composition
+
+The three parts, in reading order for Pages:
+
+| Part | Holds | Notes |
+| --- | --- | --- |
+| **Turn Card** | The plate, the action line, the reasoning block, the narration, then the action row | The caller supplies the body. Chat puts the plate under the narration and keeps the action bubble outside the card. |
+| **Scene Plate** | One turn's images, newest in view | A click zooms. Hover or focus within shows previous, the count, next, and delete. One image shows delete only. |
+| **Choice rows** | A number cell and the choice text; the continue choice is the last row with a chevron | **Re-generate Choices** is an icon under the rows, on the latest page only. |
+
+- The action row starts with the turn number, then the icon actions, then **More** for the menu-only actions.
+- The action line in Pages is the player's text with a left rule in the primary color and the muted foreground. It is upright, so the player's italics and quote color show. It has its own right-click menu, and that event does not reach the card's menu.
+- A right-click on selected text keeps the browser menu.
+- The plate takes its box size from the image header, so the text below does not move when the image decodes.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Card surface, menu wrapper, and action row | `TurnCard` in [`TurnCard.tsx`](../src/components/game/TurnCard.tsx) |
+| Icon row and right-click menu | [`BubbleActionRow.tsx`](../src/components/game/BubbleActionRow.tsx) and [`BubbleMenu.tsx`](../src/components/game/BubbleMenu.tsx) |
+| The action lists: narration, player action, and choices | `bubbleActions`, `playerBubbleActions`, and `choicesActions` in [`bubbleActions.ts`](../src/lib/bubbleActions.ts) |
+| Scene image with zoom, browse, and delete | `ScenePlate` in [`ScenePlate.tsx`](../src/components/game/ScenePlate.tsx) |
+| Numbered choice rows | `ChoiceRows` in [`ChoiceRows.tsx`](../src/components/game/ChoiceRows.tsx) |
+| Chat's bubble choices and the shared choice text | `ChatChoices` and `ChoiceText` in [`ChatChoices.tsx`](../src/components/game/ChatChoices.tsx) |
+| Pages host, with the action line | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
+| Layout parity guard | [`GamePanels.pagesCard.test.tsx`](../src/components/game/GamePanels.pagesCard.test.tsx) |
+| Isolated reference | [`NarrationTurnReference.tsx`](../src/components/design-system/NarrationTurnReference.tsx) |
+
+### Responsive behavior
+
+The card and the rows fill the narration column at every width. Long choice text wraps inside its row, and the number cell keeps its width. The action row stays on one line; the full latest-page row, six icons and **More**, fits the card in a 375px window. The plate is at most 18rem tall and never wider than the card.
+
+On a touch screen, a long press opens the card's menu, and a long press on a choice row appends it. The plate controls show when focus is on one of them, so Tab from the image reaches them without a pointer.
+
+### State reference
+
+| State | Treatment |
+| --- | --- |
+| Default | Card on `bg-card` with a border. Rows on the panel with a divider between them. Plate controls hidden. |
+| Hover | A row takes a light primary tint. The plate shows its controls. |
+| Selected | A staged choice, or the choice taken on a past page, takes the primary fill. Its quoted text inherits the fill's foreground for contrast. |
+| Disabled | Past-page rows are disabled and dimmed, except the choice taken. An action whose job cannot start is disabled in the row and in the menu. **Previous image** and **Next image** disable at the ends. |
+| Busy | The action whose own job runs shows a spinner in place of its icon. |
+| Live | The turn streams, so the card has no action row and no menu actions. |
+| Focus | Rows, icons, and plate controls use the shared inset focus ring. On a selected row the ring takes the primary foreground. |
+| Empty | No image: no plate. No actions: no row. No choices and no choices action: no block. |
+| Destructive | **Rewind to Here** is the last menu section and opens the existing confirm. |
+
+The live reference renders the production card, plate, and rows with the production action lists. Its handlers write to a local status line. It never calls an endpoint, draws an image, or reads or writes a save.
+
+### Writing review
+
+- Action labels come from the action builders, and the plate's names come from `ScenePlate`, so the reference and the game cannot drift. Reuse does not certify those labels as fully ASD-STE100 compliant.
+- **Unverified:** the headings "Latest Page" and "Past Page", their two `Meta` lines, the status line, and **Restore Images** have terminology review only; vocabulary and grammar evidence is not recorded.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

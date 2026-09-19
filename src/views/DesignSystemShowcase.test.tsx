@@ -164,6 +164,20 @@ describe('main menu context menu reference', () => {
   });
 });
 
+describe('narration turn reference', () => {
+  it('registers the production Turn Card, Scene Plate, and choice rows in the showcase', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getByRole('tab', { name: 'Narration Turn' }));
+
+    const latest = screen.getByRole('region', { name: 'Latest Page' });
+    expect(within(latest).getByRole('button', { name: 'Zoom image' })).toBeInTheDocument();
+    expect(within(latest).getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    expect(within(latest).getByTestId('choice-rows')).toBeInTheDocument();
+  });
+});
+
 describe('rich list references', () => {
   it('registers the production-backed World Editor and Save/Load lists', async () => {
     const user = userEvent.setup();
