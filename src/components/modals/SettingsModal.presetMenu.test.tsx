@@ -6,6 +6,8 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { presetStoreCodec, type PromptPresetStore, type PromptValues } from '@/lib/promptPresets';
+import AuthService from '@/services/AuthService';
+import WorldStorageService from '@/services/WorldStorageService';
 
 // The bundled-engine panel talks to Electron IPC, and the embedding model is a worker download.
 vi.mock('@/components/modals/LocalModelPanel', () => ({ LocalModelPanel: () => null }));
@@ -135,5 +137,64 @@ describe('Settings → Prompts: preset header overflow menu', () => {
       .filter((n) => n.getAttribute('aria-label') !== 'Preset Actions')
       .map((n) => (n.getAttribute('role') === 'combobox' ? 'selector' : n.textContent));
     expect(names).toEqual(['Delete', 'Reset', 'selector', 'Rename', 'Export']);
+  });
+});
+
+describe('Settings → Prompts: Publish', () => {
+  const signIn = () => vi.spyOn(AuthService, 'isAuthenticated').mockReturnValue(true);
+  const rowNames = () => Array.from(screen.getByTestId('preset-header-row').querySelectorAll('button'))
+    .filter((n) => n.getAttribute('aria-label') !== 'Preset Actions')
+    .map((n) => (n.getAttribute('role') === 'combobox' ? 'selector' : n.textContent));
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([]);
+  });
+
+  it('puts Publish after Export in the menu and beside it on desktop for a user preset', async () => {
+    signIn();
+    seed('mine');
+    openPrompts();
+    expect(rowNames()).toEqual(['Delete', 'Reset', 'selector', 'Rename', 'Export', 'Publish']);
+    expect(await openMenu()).toEqual(['Rename', 'Export', 'Publish', '---', 'Reset', 'Delete']);
+  });
+
+  it('has no Publish for a built-in preset', async () => {
+    signIn();
+    seed('default');
+    openPrompts();
+    expect(rowNames()).not.toContain('Publish');
+    expect(await openMenu()).toEqual(['Export']);
+  });
+
+  it('blocks publish while Models is empty and leads to the Overview', async () => {
+    signIn();
+    seed('mine');
+    openPrompts();
+    fireEvent.click(within(screen.getByTestId('preset-header-row')).getByRole('button', { name: 'Publish' }));
+
+    const block = await screen.findByRole('alertdialog');
+    expect(block.textContent).toContain('Models');
+    expect(screen.queryByRole('dialog', { name: 'Publish Prompt' })).toBeNull();
+    fireEvent.click(within(block).getByRole('button', { name: 'Open Overview' }));
+
+    await waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toBe('Models'));
+  });
+
+  it('opens the publish dialog once Models names a model', async () => {
+    signIn();
+    const store: PromptPresetStore = {
+      activeId: 'mine',
+      presets: [{
+        id: 'mine', name: 'Mine', values: { systemPrompt: 'A' } as unknown as PromptValues, style: 'markdown',
+        overview: { author: '', description: '', tags: [], models: ['Cydonia-24B'] },
+      }],
+    };
+    localStorage.setItem(PROMPTS_KEY, presetStoreCodec.serialize(store));
+    openPrompts();
+    fireEvent.click(within(screen.getByTestId('preset-header-row')).getByRole('button', { name: 'Publish' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Publish Prompt' })).toBeTruthy();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 });

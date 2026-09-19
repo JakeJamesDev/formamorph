@@ -5,6 +5,7 @@ import { SettingsProvider, useSettings } from './SettingsContext';
 import { textEndpointPresetCodec, DEFAULT_TEXT_ENDPOINT_VALUES, BUILTIN_ENGINE_PRESET_ID, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
+import { serializeSharedCode, serializeSharedJson, SHARE_CODE_PREFIX } from '@/lib/promptPresetShare';
 
 // The provider resolves each endpoint's reasoning capability; keep the network out of it.
 // `resolveReasoningCapability` is the one routing calls lazily, so it stays a spy the cases below assert against.
@@ -201,6 +202,27 @@ describe('SettingsContext: per-prompt endpoint routing', () => {
 
     expect(storedRouting(id)).toBeUndefined();
     expect(result.current.resolveEndpointForKind('narration').model).toBe('big-24b');
+  });
+
+  // The community link lives on the same preset object, so the same careless spread would ship it.
+  it('never exports the community link in the file or the share code', () => {
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    const LINK_SENTINEL = 'zzz-listing-leak-canary-4k2p';
+    act(() => result.current.linkPresetToListing('mine', LINK_SENTINEL, `${LINK_SENTINEL}-stamp`, { id: `${LINK_SENTINEL}-id`, name: `${LINK_SENTINEL}-name` }));
+    act(() => result.current.setSystemPrompt('Edited after publish'));
+    expect(presetStoreCodec.parse(localStorage.getItem(PROMPTS_KEY)!).presets[0]).toMatchObject({ sourceId: LINK_SENTINEL, dirty: true });
+
+    const shared = result.current.exportActivePreset('2.9.2');
+    const file = serializeSharedJson(shared);
+    const code = serializeSharedCode(shared);
+    const decoded = new TextDecoder().decode(Uint8Array.from(atob(code.slice(SHARE_CODE_PREFIX.length)), (c) => c.charCodeAt(0)));
+
+    for (const text of [file, decoded]) {
+      expect(text).not.toContain(LINK_SENTINEL);
+      for (const key of ['sourceId', 'sourceUpdatedAt', 'sourceAuthorId', 'sourceAuthorName', 'downloadedAt', 'dirty', 'editedAt']) {
+        expect(text).not.toContain(`"${key}"`);
+      }
+    }
   });
 
   it('probes a routed endpoint once and then serves the detected window', async () => {

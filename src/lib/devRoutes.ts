@@ -92,6 +92,8 @@ export const DEV_MODAL_TABS = {
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
   // tab is reachable whether or not one is really running.
   community: ['world', 'entity', 'dictionary', 'model', 'prompt', 'contest'],
+  // The publish dialog's canned payload: a world by default, or a prompt with `tab=prompt`.
+  publish: ['world', 'prompt'],
   // The account dialog: admin messages, the follow feed, and the terms. Password and logout are header
   // buttons rather than tabs, so neither is routable.
   profile: ['messages', 'notifications', 'terms'],

@@ -3,7 +3,7 @@ import { ActionIcon } from '@/lib/actionIcons';
 
 /** One action in the Prompts preset header. The desktop row and the narrow overflow menu render the same list. */
 export interface PresetHeaderAction {
-  key: 'rename' | 'export' | 'reset' | 'delete';
+  key: 'rename' | 'export' | 'publish' | 'reset' | 'delete';
   label: string;
   icon: LucideIcon;
   section: 'file' | 'destructive';
@@ -14,6 +14,8 @@ export interface PresetHeaderAction {
 export interface PresetHeaderHandlers {
   rename: () => void;
   export: () => void;
+  /** Absent while publishing is unavailable, such as when signed out. */
+  publish?: () => void;
   reset: () => void;
   delete: () => void;
 }
@@ -23,6 +25,7 @@ export function presetHeaderActions(builtIn: boolean, h: PresetHeaderHandlers): 
   const actions: PresetHeaderAction[] = [];
   if (!builtIn) actions.push({ key: 'rename', label: 'Rename', icon: Pencil, section: 'file', run: h.rename });
   actions.push({ key: 'export', label: 'Export', icon: ActionIcon.export, section: 'file', run: h.export });
+  if (!builtIn && h.publish) actions.push({ key: 'publish', label: 'Publish', icon: ActionIcon.publish, section: 'file', run: h.publish });
   if (!builtIn) {
     actions.push({ key: 'reset', label: 'Reset', icon: RotateCcw, section: 'destructive', run: h.reset });
     actions.push({ key: 'delete', label: 'Delete', icon: Trash2, section: 'destructive', run: h.delete });

@@ -32,7 +32,7 @@ import { type ChangelogDraft } from "@/lib/listingChangelog";
 import { LinkedContentSection } from "@/components/menu/LinkedContentSection";
 import { CompatibleWorldsSection } from "@/components/menu/CompatibleWorldsSection";
 import { hasLinkedContent, type LinkedWorldContent } from "@/lib/publishLinks";
-import { usePublishLinks } from "@/lib/usePublishLinks";
+import { offersCompatibility, usePublishLinks } from "@/lib/usePublishLinks";
 import { AlertTriangle, ScrollText, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
 
@@ -47,22 +47,25 @@ interface PublishModalProps {
   /**
    * The local record this payload was built from. A world links itself to the listing it becomes, which
    * is what the community browser tracks and what carries a contest win back. A character or a dictionary
-   * names the library item its Compatible Worlds are derived from. An Avatar passes none.
+   * names the library item its Compatible Worlds are derived from, and a prompt names its preset. An
+   * Avatar passes none.
    */
   localId?: string;
   /** Called once a published world's link has been written, so the caller can re-read its library. */
   onLinked?: () => void;
+  /** Called after any successful publish with the listing it became, for a caller that links its own copy. */
+  onPublished?: (listing: { id: string; updatedAt?: string }) => void;
 }
 
 /**
- * Publish a world, character, or dictionary to the community server — as a new listing, or by replacing
+ * Publish a world, character, dictionary, Avatar, or prompt to the community server — as a new listing, or by replacing
  * one of the user's own. Kind-agnostic: it takes a ready payload and names itself from `payload.kind`, so
  * the mapping from each kind's fields lives in `lib/publishPayload` rather than here.
  *
  * The overwrite list is fetched per kind: your characters are never offered as targets for a world.
  */
 export function PublishModal({
-  open, onOpenChange, isAuthenticated, payload, events = [], localId, onLinked,
+  open, onOpenChange, isAuthenticated, payload, events = [], localId, onLinked, onPublished,
 }: PublishModalProps) {
   const [userWorlds, setUserWorlds] = useState<WorldRecord[]>([]);
   const [selectedWorldToOverride, setSelectedWorldToOverride] = useState<string | null>(null);
@@ -96,16 +99,19 @@ export function PublishModal({
   const [isAccepting, setIsAccepting] = useState(false);
 
   const kind = payload?.kind ?? 'world';
-  // Pure inspection of the payload — no request, so this is right the moment the modal opens.
+  // Pure inspection of the payload — no request, so this is right the moment the modal opens. A prompt
+  // carries no images, so a link in its text is not one.
   const expiringCount = useMemo(
-    () => (payload ? remoteImagesInContent(payload.contentData).filter(isExpiringImageHost).length : 0),
+    () => (payload && payload.kind !== 'prompt'
+      ? remoteImagesInContent(payload.contentData).filter(isExpiringImageHost).length
+      : 0),
     [payload],
   );
   const noun = KIND_LABELS[kind].one.toLowerCase();
-  // Whether this publish needs the target listing's relationships: a component always does, and a world
+  // Whether this publish needs the target listing's relationships: a component or a prompt always does, and a world
   // does once its content follows a source. Read from the payload, so it is settled before the library
   // loads. A world that follows nothing states an empty required set without reading anything.
-  const declaresRelationships = kind === 'entity' || kind === 'dictionary'
+  const declaresRelationships = offersCompatibility(kind)
     || (kind === 'world' && hasLinkedContent(payload?.contentData as LinkedWorldContent));
 
   /** The listing this publish would replace, or null when it is publishing something new. */
@@ -202,6 +208,7 @@ export function PublishModal({
         // download states from it — so without this the author's own listing offers them a first download.
         if (linked) onLinked?.();
       }
+      if (listingId) onPublished?.({ id: String(listingId), updatedAt: created?.updated_at });
 
       // Sent only now that the update is really up: an entry describing changes nobody received would be
       // a lie in the listing's own history, so a refused publish must leave the draft where it is. Its own
@@ -495,7 +502,7 @@ export function PublishModal({
               />
             )}
 
-            {(kind === 'entity' || kind === 'dictionary') && (
+            {offersCompatibility(kind) && (
               <CompatibleWorldsSection
                 visibility={links.visibility}
                 onVisibilityChange={links.setVisibility}
@@ -503,6 +510,7 @@ export function PublishModal({
                 onRowsChange={links.setCompatRows}
                 disabled={isPublishing}
                 noun={noun}
+                declared={kind === 'prompt'}
               />
             )}
 

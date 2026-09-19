@@ -473,7 +473,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // The publish dialog names itself from a payload, so it opens on a canned world rather than on
     // whatever the library happens to hold — it is reachable on an empty profile that way.
     if (devRoute?.modal === 'publish') {
-      void import('@/lib/devPublishSample').then(({ devPublishPayload }) => openPublish(devPublishPayload()));
+      void import('@/lib/devPublishSample').then(({ devPublishPayload }) => openPublish(devPublishPayload(devRoute.tab)));
     }
     // The connection step only opens partway through an add in the World Editor, so its dev route builds the
     // rows rather than the library item and the world that would raise them.

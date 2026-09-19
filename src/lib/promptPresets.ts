@@ -1,5 +1,5 @@
 import type { Codec } from './usePersistentState';
-import type { AIRequestType } from '@/types';
+import type { AIRequestType, CommunityLink } from '@/types';
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
 import type { PromptMaxOutputMap } from './promptMaxOutput';
@@ -71,8 +71,9 @@ export interface PresetOverview {
 export const EMPTY_OVERVIEW: PresetOverview = { author: '', description: '', tags: [], models: [] };
 
 /** A named set of prompt text. Built-ins are virtual (derived from the shipped canonical, never stored);
- *  a user preset stores a full value snapshot plus the section style it was authored in. */
-export interface PromptPreset {
+ *  a user preset stores a full value snapshot plus the section style it was authored in. The community link
+ *  fields are local-only, like a library item's. */
+export interface PromptPreset extends CommunityLink {
   id: string;
   name: string;
   values: PromptValues;
@@ -345,6 +346,33 @@ export function storedOverview(store: PromptPresetStore): PresetOverview | undef
 /** Patch the active preset's Overview. No-op under a built-in. */
 export function updateOverview(store: PromptPresetStore, patch: Partial<PresetOverview>): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, overview: normalizeOverview({ ...EMPTY_OVERVIEW, ...p.overview, ...patch }) }));
+}
+
+/**
+ * Mark preset `id` in `next` as edited at `now` when its content differs from `prev`. An unlinked preset, a
+ * write that changed nothing, or an id that names no preset is left as it is.
+ */
+export function markEdited(prev: PromptPresetStore, next: PromptPresetStore, id: string, now: string): PromptPresetStore {
+  const after = next.presets.find((p) => p.id === id);
+  if (!after?.sourceId) return next;
+  const before = prev.presets.find((p) => p.id === id);
+  if (JSON.stringify(before) === JSON.stringify(after)) return next;
+  return { ...next, presets: next.presets.map((p) => (p.id === id ? { ...p, dirty: true, editedAt: now } : p)) };
+}
+
+/** The listing a published preset links to. */
+export type PresetListingLink = Required<Pick<CommunityLink, 'sourceId'>> & Pick<CommunityLink, 'sourceUpdatedAt' | 'sourceAuthorId' | 'sourceAuthorName'>;
+
+/** Link a preset to the listing it was just published as. Any older link is replaced whole, and the copy is clean. */
+export function linkPreset(store: PromptPresetStore, id: string, link: PresetListingLink): PromptPresetStore {
+  return {
+    ...store,
+    presets: store.presets.map((p) => {
+      if (p.id !== id) return p;
+      const { sourceUpdatedAt: _s, sourceAuthorId: _a, sourceAuthorName: _n, editedAt: _e, downloadedAt: _d, ...content } = p;
+      return { ...content, ...link, dirty: false };
+    }),
+  };
 }
 
 /** One-time migration: fold the (previously global) tuning onto every user preset that lacks it, so switching
