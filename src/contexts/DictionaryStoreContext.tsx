@@ -110,7 +110,7 @@ export const useDictionaryStore = (): DictionaryStore => {
   return store;
 };
 
-/** Provides a `DictionaryStore` to the dictionary editing widgets below it. */
-export const DictionaryStoreProvider = ({ value, children }: { value: DictionaryStore; children: ReactNode }) => (
+/** Provides a `DictionaryStore` to the dictionary editing widgets below it; null hides the one above. */
+export const DictionaryStoreProvider = ({ value, children }: { value: DictionaryStore | null; children: ReactNode }) => (
   <DictionaryStoreContext.Provider value={value}>{children}</DictionaryStoreContext.Provider>
 );

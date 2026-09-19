@@ -20,8 +20,9 @@ import { followedLibraryId } from '@/lib/publishLinks';
 import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/DictionaryStoreContext';
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
-import { worldPlacementLetters } from '@/lib/placementLetters';
+import { EMPTY_LETTERS, worldPlacementLetters } from '@/lib/placementLetters';
 import { worldPlayerSetting } from '@/lib/personaPick';
+import { CodeRenameContext } from '@/lib/useCodeRename';
 import type {
   WorldMetadata,
   WorldOverview,
@@ -664,6 +665,21 @@ export const useGameData = () => {
  *  no world behind it. */
 // eslint-disable-next-line react-refresh/only-export-components
 export const useGameDataOptional = () => useContext(GameDataContext);
+
+/** Hides the loaded world from everything under it: optional reads get null, required reads throw, chips
+ *  letter from nothing, and a rename asks no offer. A library editor wraps its body in it and provides its
+ *  own stores inside. */
+export const NoWorld = ({ children }: { children: ReactNode }) => (
+  <GameDataContext.Provider value={null}>
+    <DictionaryStoreProvider value={null}>
+      <PlaceholderStoreProvider value={null}>
+        <PlacementLettersProvider letters={EMPTY_LETTERS}>
+          <CodeRenameContext.Provider value={null}>{children}</CodeRenameContext.Provider>
+        </PlacementLettersProvider>
+      </PlaceholderStoreProvider>
+    </DictionaryStoreProvider>
+  </GameDataContext.Provider>
+);
 
 /** Provides the world-editor data store (see `useGameData`); on mount it initializes storage and loads
  *  the world-metadata list. */

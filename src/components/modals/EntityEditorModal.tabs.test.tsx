@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -34,6 +34,7 @@ const world = {
 vi.mock('@/contexts/GameDataContext', () => ({
   useGameData: () => world,
   useGameDataOptional: () => world,
+  NoWorld: ({ children }: { children: ReactNode }) => children,
 }));
 
 // jsdom has no matchMedia; SettingsProvider reads it on mount for the theme.
