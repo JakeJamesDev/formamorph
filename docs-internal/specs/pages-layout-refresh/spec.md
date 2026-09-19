@@ -199,3 +199,7 @@ No Playwright case. Nothing here depends on scroll or animation.
   the action line; the real build gives each its own trigger. Its plate does not size its box before load.
   Its Chat delete is a stub. It reassigns a parameter in the scene panel.
 - This closes the open gap recorded in the Chat Layout spec: scene image controls in Chat.
+
+## Comments
+
+- **2026-09-19, build close-out.** The prototype branch and the verdict above did not change during the build. One premise was wrong: the Design System guide had no narration section, so ticket 07 created `## Pattern: Narration Turn` with one showcase reference for the Turn Card, the Scene Plate, and the choice rows. The reference leaves the Pages action line out, because that line is inline markup in the Pages host.

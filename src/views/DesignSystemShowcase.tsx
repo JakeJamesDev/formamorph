@@ -45,6 +45,7 @@ import { CodeTemplatesReference } from '@/components/design-system/CodeTemplates
 import { LocationsCanvasReference } from '@/components/design-system/LocationsCanvasReference';
 import { MainMenuContextMenuReference } from '@/components/design-system/MainMenuContextMenuReference';
 import { FooterActionOrderReference } from '@/components/design-system/FooterActionOrderReference';
+import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
 
@@ -436,6 +437,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Panel Tabs',
     description: 'Editor detail panel tab strips',
     Component: PanelTabStripReference,
+  },
+  {
+    id: 'narration-turn',
+    label: 'Narration Turn',
+    description: 'Turn Card, Scene Plate, and choice rows',
+    Component: NarrationTurnReference,
   },
 ];
 
