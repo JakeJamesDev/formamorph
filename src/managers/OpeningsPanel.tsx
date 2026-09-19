@@ -69,7 +69,7 @@ export function OpeningsPanel({ onOpenEntity }: {
               <Hint>No openings yet. Players start on the default opening.</Hint>
               <div
                 role="note"
-                aria-label="Default opening"
+                aria-label="Default Opening"
                 className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
               >
                 {DEFAULT_OPENING.text}
@@ -122,7 +122,7 @@ export function OpeningsPanel({ onOpenEntity }: {
       <Hint>
         {openingsEnabled(worldOverview)
           ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
-          : "Not applied until you switch the list on. Players start on the default opening. Chances show the odds you'll get once it's on."}
+          : "Not applied until you switch this one on. Players start on the default opening. Chances show the odds you'll get once it's on."}
       </Hint>
     </div>
   );
@@ -144,7 +144,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {"Drawn with the world's openings when a player starts at a location this entity is at. The world's switch turns them off too."}
+        {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
       </Hint>
     </div>
   );
@@ -251,7 +251,7 @@ const OpeningCard = ({
           type="single"
           value={opening.kind}
           onValueChange={(v) => { if (v) onKind(v as OpeningKind); }}
-          aria-label={`Opens as, ${a11yLabel}`}
+          aria-label={`Opens As, ${a11yLabel}`}
           className="h-6"
         >
           <ToggleGroupItem value="action" className="h-6 px-2 text-helper">Player Action</ToggleGroupItem>

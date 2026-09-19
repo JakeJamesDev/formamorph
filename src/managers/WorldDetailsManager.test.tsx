@@ -440,7 +440,7 @@ describe('the openings panel', () => {
   it('names the default opening and shows its text read-only when the list is empty', async () => {
     await browse();
     expect(screen.getByText(/Players start on the default opening/)).toBeInTheDocument();
-    expect(screen.getByRole('note', { name: 'Default opening' })).toHaveTextContent(OPENING_SCENE_CUE);
+    expect(screen.getByRole('note', { name: 'Default Opening' })).toHaveTextContent(OPENING_SCENE_CUE);
     expect(screen.queryByTestId('Opening 1')).not.toBeInTheDocument();
   });
 
@@ -452,7 +452,7 @@ describe('the openings panel', () => {
 
     edit('Opening 1', 'You wake in the reed-beds.');
     expect(world.overview.openings?.[0].text).toBe('You wake in the reed-beds.');
-    expect(screen.queryByRole('note', { name: 'Default opening' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('note', { name: 'Default Opening' })).not.toBeInTheDocument();
   });
 
   it('shows each row’s chance from its weight, and keeps a weight 0 row', async () => {
@@ -476,7 +476,7 @@ describe('the openings panel', () => {
   it('sets how a row opens with a two-value toggle, not tabs', async () => {
     world.overview.openings = ROWS;
     const user = await browse();
-    const opensAs = within(screen.getByRole('radiogroup', { name: 'Opens as, Opening 2' }));
+    const opensAs = within(screen.getByRole('radiogroup', { name: 'Opens As, Opening 2' }));
     expect(opensAs.getByRole('radio', { name: 'Player Action' })).toBeChecked();
     expect(screen.queryByRole('tab', { name: 'Narration' })).not.toBeInTheDocument();
 
@@ -505,7 +505,7 @@ describe('the openings panel', () => {
     expect(world.overview.openingsEnabled).toBe(false);
     expect(world.overview.openings).toEqual(ROWS);
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
-    expect(screen.getByText(/Not applied until you switch the list on/)).toBeInTheDocument();
+    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
 
     await user.click(openingsCheckbox());
     expect(world.overview.openingsEnabled).toBeUndefined();
@@ -636,7 +636,7 @@ describe('the mirrored openings panel', () => {
     world.overview = { ...world.overview, openingsEnabled: false };
     await open();
     expect(chance('Guide Opening 1')).toBe('33%');
-    expect(screen.getByText(/Not applied until you switch the list on/)).toBeInTheDocument();
+    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
   });
 
   it('opens the entity’s Openings tab from its group header', async () => {

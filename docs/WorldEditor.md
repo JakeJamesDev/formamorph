@@ -79,7 +79,7 @@ The **Opening** panel shows every opening in the world, grouped by owner:
 
 An edit in the panel changes the owner's opening. The switch covers the entity groups too.
 
-A chance is the share of the whole draw at one starting location. World rows and entity rows add up to 100% together. With several starting locations, the **Chances At** picker chooses the location. The pick is a view only and is not saved.
+A chance is the share of the whole draw at one starting location. World rows and entity rows add up to 100% together. With several starting locations, the **Chances At** picker chooses the location. The pick only changes what the panel shows, and it isn't saved with the world.
 
 | The chance shows | Means |
 |---|---|
@@ -291,13 +291,13 @@ Import a SillyTavern PNG card into your entity library, and it becomes an entity
 |---|---|
 | **First message** | The entity's first Opening Narration |
 | Each **alternate greeting** | One more Opening Narration, in card order, at weight 1 |
-| The card's name marker | The entity's name |
-| The user marker | "you" when the opening shows, or "You" at the start of a sentence |
-| The user marker with **'s** | "your", or "Your" at the start of a sentence |
+| The name macro, `{{char}}` | The entity's name |
+| The user macro, `{{user}}` | "you" when the opening shows, or "You" at the start of a sentence |
+| `{{user}}'s` | "your", or "Your" at the start of a sentence |
 
-When these openings are in the draw, page-one regenerate shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
+When these openings are in the draw, **Re-generate** on page one shows another greeting, like a swipe in SillyTavern. A card with no first message and no alternate greetings imports with no openings.
 
-> 💡 **The user marker stays in the stored text.** Only the shown page says "you". In the entity's descriptions, the marker becomes "the player" at import.
+> 💡 **`{{user}}` stays in the stored text.** Only the shown page says "you". In the entity's descriptions, the macro becomes "the player" at import.
 
 ### Getting started
 
