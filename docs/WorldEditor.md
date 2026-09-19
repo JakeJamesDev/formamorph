@@ -303,6 +303,19 @@ When these openings are in the draw, **Re-generate** on page one shows another g
 
 > 💡 **`{{user}}` stays in the stored text, as the Player Name chip.** The shown page says the persona's name, or "you" with no persona. The entity's descriptions and the card's lorebook keep the chip too, and there it reads "the player" with no persona.
 
+### In the library
+
+Open an entity in the library's **Entities** tab, and its editor has two tabs.
+
+| Tab | What it holds |
+|---|---|
+| **Entity** | **Tags** in a column on the left. On the right, the **Profile**, **Descriptions** and **Openings** tabs, with the same fields as the World Editor. |
+| **Placeholders** | The entity's own [placeholders](#placeholders), across the full width. |
+
+The editor opens on **Entity** at **Profile**. The tags stay in view on all three tabs. On mobile, the tags show at the top of **Profile** only.
+
+The library editor has no Simple or Advanced mode, so it always shows every tab.
+
 ### Getting started
 
 Write the AI-Facing Description first — it's the one that does the work, and it's safe to put things there the player shouldn't know yet. Add a Summary only if the entity turns up in reachable locations. Reach for the Player-Facing Description when you want the player to read something the AI has no use for.
@@ -519,6 +532,27 @@ By default Background sits earlier in the prompt than Foreground, but **you cont
 Books group related entries. Their order sets the order entries are injected, and disabling a book mutes everything inside it at once.
 
 A book's **enabled** state is a *default*, not a lock. Before starting, players may see a step where they can toggle and reorder your books — alongside any dictionaries from their own library. That step only appears when there's a real choice to make: more than one book in the world, or at least one dictionary saved in the player's library.
+
+Select a book in the tree to open its panel. It has two tabs.
+
+| Tab | What it holds |
+|---|---|
+| **Details** | **Name**, **Description**, **Enabled** and the entry count. |
+| **Placeholders** | The book's own [placeholders](#placeholders), across the full panel. **Advanced mode only.** |
+
+In Simple mode the panel shows the Details fields with no tabs. The tab you pick stays open when you select another book.
+
+### In the library
+
+A dictionary in your library is always one book, so its editor has no row for the book. It has three tabs.
+
+| Tab | What it holds |
+|---|---|
+| **Overview** | Everything about the book: **Tags** and **Cover Image**, beside **Name**, **Description** and **Enabled**. |
+| **Dictionary** | The entries only. The **+** button at the top of the list adds one. |
+| **Placeholders** | The book's own [placeholders](#placeholders), across the full width. |
+
+The editor opens on **Dictionary** with the first entry selected. An empty book shows a hint beside the **+** button. Rename the book on **Overview**. No world changes.
 
 ### Getting started
 
