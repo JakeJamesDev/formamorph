@@ -63,6 +63,13 @@ export const SAMPLE_MOMENTS = {
   ],
 };
 
+/** The entity the sample player plays: the same traveler the notes speak of. */
+const PERSONA = {
+  full: `Traveler - they/them - salt-stained and slow to speak, carrying a map they no longer trust.`,
+  summary: 'Traveler - they/them - a quiet, salt-stained wanderer.',
+  name: 'Traveler (they/them)',
+};
+
 const NOTES = `Traveler is looking for the person who sold them a false map.`;
 
 /** What a rewrite of the singled-out character's note adds: a later turn she took part in. */
@@ -187,6 +194,8 @@ function sampleFor(variable: PromptVariable, variantId: string | null): string {
       return format(byContent(LOCATIONS[sel.scope ?? ''] ?? LOCATIONS[''], sel.content), sel.format, 'location');
     case '<ENTITIES>':
       return format(byContent(ENTITIES[sel.scope ?? ''] ?? ENTITIES[''], sel.content), sel.format, 'entity');
+    case '<PERSONA>':
+      return format(byContent(PERSONA, sel.content), sel.format, 'entity');
     case '<NOTES>':
       return NOTES;
     case '<TIME>':

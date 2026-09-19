@@ -29,24 +29,38 @@ export type SerializedVariableNode = Spread<{ token: string }, SerializedLexical
 
 const FULL = 'full'; // switcher value sentinel for the default variant (null id)
 
+// A one-line input drops newlines, and a heading affix needs them, so the field shows each one as this mark.
+const NEWLINE_MARK = '↵';
+
 /** One affix field: the connective words that wrap a chip's value, stored literally. Leading and trailing
  *  spaces matter here and an input hides them, so the Preview tab is where you confirm the spacing. */
-function AffixInput({ label, value, disabled, onChange }: {
+export function AffixInput({ label, value, disabled, onChange }: {
   label: string;
   value: string;
   disabled: boolean;
   onChange: (v: string) => void;
 }) {
+  // The quote delimits the affix inside the token, so it's the one character that can't appear.
+  // Stripped on entry rather than rejected, so typing never silently does nothing.
+  const commit = (shown: string) =>
+    onChange(shown.split(AFFIX_FORBIDDEN).join('').split(NEWLINE_MARK).join('\n'));
   return (
     <label className="space-y-1">
       <span className="text-[11px] text-muted-foreground">{label}</span>
       <Input
-        value={value}
+        value={value.split('\n').join(NEWLINE_MARK)}
         disabled={disabled}
         maxLength={AFFIX_MAX_LENGTH}
-        // The quote delimits the affix inside the token, so it's the one character that can't appear.
-        // Stripped on entry rather than rejected, so typing never silently does nothing.
-        onChange={(e) => onChange(e.target.value.split(AFFIX_FORBIDDEN).join(''))}
+        onChange={(e) => commit(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          const input = e.currentTarget;
+          if (input.value.length >= AFFIX_MAX_LENGTH) return;
+          const start = input.selectionStart ?? input.value.length;
+          const end = input.selectionEnd ?? start;
+          commit(`${input.value.slice(0, start)}${NEWLINE_MARK}${input.value.slice(end)}`);
+        }}
         className="h-7 text-meta font-mono"
       />
     </label>

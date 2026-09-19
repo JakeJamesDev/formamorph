@@ -4,6 +4,7 @@ import {
   buildParentLocationContext, sublocationEntityIds, expandScopedTokens, type ContextOpts,
 } from './locationContext';
 import { entityIdsAt } from './entityPresence';
+import { personaContextValues } from './personaContext';
 import { buildStatContext } from './statContext';
 import { buildDictionaryContext, flattenEnabledBookEntries } from './dictionaryUtils';
 import { buildTraitContext } from './traitTree';
@@ -125,6 +126,8 @@ export function authoredPreviewValues(
     '<TRAITS DESCRIPTION>': traitsFor('simple'),
     '<TRAITS DESCRIPTION|markdown>': traitsFor('markdown'),
     '<TRAITS DESCRIPTION|xml>': traitsFor('xml'),
+    // A world has no persona of its own: the player picks one at entry.
+    ...personaContextValues(null),
     '<DICTIONARY>': loreBlock(lore.filter((entry) => entry.position !== 'before')),
     '<DICTIONARY|before>': loreBlock(lore.filter((entry) => entry.position === 'before')),
     ...expandScopedTokens('<LOCATION>', locationScopes),

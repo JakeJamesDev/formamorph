@@ -49,11 +49,40 @@ function wrapXml(text: string): string {
   return out.join('\n');
 }
 
-/** Rewrite markdown section headers in `text` into `style` (markdown = identity). */
+const toLabel = (text: string) => text.replace(HEADER_LINE, (_line, heading: string) => `${heading.toUpperCase()}:`);
+
+/** Restyle the headings inside a placement's affixes. In xml, each one opens a tag that closes at the end of
+ *  the placement, before the suffix's trailing whitespace, so the section vanishes with the value. */
+function restyleAffixes(token: string, style: Exclude<SectionStyle, 'markdown'>): string {
+  const parts = splitToken(token);
+  if (!parts || (!parts.pre && !parts.post)) return token;
+  if (style === 'labels') return joinToken({ ...parts, pre: toLabel(parts.pre), post: toLabel(parts.post) });
+  const opened: string[] = [];
+  const open = (text: string) => text.replace(HEADER_LINE, (_line, heading: string) => {
+    opened.push(xmlTag(heading));
+    return `<${xmlTag(heading)}>`;
+  });
+  const pre = open(parts.pre);
+  const tail = /\s*$/.exec(parts.post)![0];
+  const body = open(parts.post.slice(0, parts.post.length - tail.length));
+  const closes = opened.reverse().map((tag) => `\n</${tag}>`).join('');
+  return joinToken({ ...parts, pre, post: `${body}${closes}${tail}` });
+}
+
+// A token is masked while the line transforms run: an affix can span lines, and a heading inside one must
+// not be read as a header line of the template itself.
+const MASK = String.fromCharCode(0);
+const MASKED = new RegExp(`${MASK}([0-9]+)${MASK}`, 'g');
+
+/** Rewrite markdown section headers in `text` into `style` (markdown = identity), affixes included. */
 export function restyle(text: string, style: SectionStyle): string {
   if (style === 'markdown') return text;
-  if (style === 'xml') return wrapXml(text);
-  return text.replace(HEADER_LINE, (_line, heading: string) => `${heading.toUpperCase()}:`);
+  const tokens: string[] = [];
+  const masked = parsePromptTemplate(text)
+    .map((seg) => (seg.type === 'text' ? seg.value : `${MASK}${tokens.push(restyleAffixes(seg.token, style)) - 1}${MASK}`))
+    .join('');
+  const out = style === 'xml' ? wrapXml(masked) : toLabel(masked);
+  return out.replace(MASKED, (_m, i: string) => tokens[Number(i)]);
 }
 
 /** Set every format-bearing chip token's `format` axis to `format` (`null` = plain), leaving other axes

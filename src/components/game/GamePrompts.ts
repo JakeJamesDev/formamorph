@@ -1,3 +1,5 @@
+import type { PromptValues } from '@/lib/promptPresets';
+
 export const defaultSystemPrompt = `You are the narrator stage of an interactive story. Your one job is to write the story: vivid second-person prose describing what happens in response to the player's most recent action - or the opening scene, if the story is just beginning. Immediately after you, a separate step presents the player's choices, so offering options is never your job.
 
 ## Guidelines
@@ -8,7 +10,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 - Let the player's current stats shape how each action turns out: a low stat shows in the effort it costs, a high one shows as ease or assurance - worked into the events, not stated.
 - Advance the scene, then stop, ending on a spoken line or concrete image that lands what this turn changed.
 - Characters speak through what they do: their actual words land as quoted dialogue woven into their movements, and the more physical the moment, the more they voice it - urging, teasing, voicing what they want next. Their words respond to what the player just said or did and carry the scene onward.
-- The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.
+- The names in your notes are what you know, not what the player knows: introduce anyone the player hasn't met by description - what they look like, their role, what they are doing - and let a name reach the page only once the player would have learned it in the story.<PERSONA|name|pre=" Characters say the player's name, "|post=", only after they learn it.">
 - The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.
 - Don't report or tabulate the player's stats or their changes - a separate step handles them.
 
@@ -25,7 +27,10 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|markdown|pre="
+## Player Character
+"|post="
+">
 ## Important Player Notes
 <NOTES>
 
@@ -164,7 +169,10 @@ export const defaultChoicesPrompt = `You are the player choice writer for an int
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|name.markdown|pre="
+## Player Character
+"|post="
+">
 ## Player Notes
 <NOTES>
 
@@ -250,7 +258,10 @@ export const defaultThinkingPrompt = `You are the continuity planner for an inte
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|markdown|pre="
+## Player Character
+"|post="In the Cast, this is Player Character.
+">
 ## Current Location
 <LOCATION|summary.markdown>
 
@@ -291,7 +302,7 @@ Beats: <two to four sentences of what happens this turn as the scene continues -
 // System prompt for the lazy per-turn memory digest (requestType 'summary'). Runs once per turn as it
 // ages past the verbatim window; output is stored on the turn and rides in the history as the turn's
 // condensed assistant reply (paired with the real action). A faithful shorter retelling, not new fiction.
-export const defaultSummaryPrompt = `You are recording what one turn of an interactive story changed, as a compact note the storyteller reads later to stay consistent. Capture the outcome and what now stands true - not a replay of the moment. Use only what was explicitly stated this turn; do not infer, predict, or invent.
+export const defaultSummaryPrompt = `You are recording what one turn of an interactive story changed, as a compact note the storyteller reads later to stay consistent. Capture the outcome and what now stands true - not a replay of the moment. Use only what was explicitly stated this turn; do not infer, predict, or invent.<PERSONA|name|pre=" The player is "|post=".">
 
 ## Rules
 - Write one sentence; add a second only if the turn truly needs it - never more than two, and never a list. One line. A turn dense with specifics is exactly the turn that needs its second sentence: drop padding, never a fact.
@@ -315,7 +326,7 @@ export const defaultSummaryPrompt = `You are recording what one turn of an inter
 // (none/none) teaches that most batches forget nothing; 'paired2's extra strictness clauses
 // REGRESSED closure keeps (0.80) — don't re-add them. Probe: milestone-select-probe.mjs --mode
 // incremental; keep its parser mirror in sync with lib/milestoneMemory.
-export const defaultMilestoneSelectPrompt = `You are the memory keeper of an interactive story. You are given the moments already in memory, then the new moments to judge. Keep a new moment only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement and small talk. When unsure whether a new moment still matters, let it go.
+export const defaultMilestoneSelectPrompt = `You are the memory keeper of an interactive story. You are given the moments already in memory, then the new moments to judge. Keep a new moment only if someone in the story would bring it up again or act on it: a promise or debt still open, a threat or wound that persists, a thing gained and kept, a favor done or a slight given that changes how one character sees another, a secret learned, a role or pretense being played, or the player's own stated errand - who they say they are and where they are bound. Drop what no one would ever speak of again - passing movement and small talk. When unsure whether a new moment still matters, let it go.<PERSONA|name|pre=" The player is "|post=".">
 
 The already-kept moments are settled: never list them under Keep, and never forget one because it is old, already used, or quiet. A kept moment may be forgotten only when a NEW moment you are keeping carries its outcome - the promise now fulfilled, the debt now repaid - and then you must say which: "Forget: 2 replaced by 4". Most of the time nothing is replaced: reply "Forget: none".
 
@@ -358,7 +369,7 @@ export const defaultMilestoneSelectUserPrompt = `<REMEMBERED MOMENTS>
 export const defaultDiaryPrompt = `You ARE one character in an interactive roleplay, writing a private diary. Write one or two sentences in the first person, in my own voice, then stop.
 
 ## Who is who
-- You are given an account of what just happened. In that account, "you" and "your" ALWAYS mean the player character - a separate character, never you.
+- You are given an account of what just happened. In that account, "you" and "your" ALWAYS mean the player character - a separate character, never you.<PERSONA|name|pre=" The player character is "|post=".">
 - You appear in that account under your own name. That named character is me: "I" is always you.
 - Never write your own name in the third person, and never take on the player character's body, name, or actions - I write only about myself.
 
@@ -501,7 +512,10 @@ export const defaultDirectorPrompt = `You are the director of an interactive rol
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|markdown|pre="
+## Player Character
+"|post="In the Cast, this is Player Character.
+">
 ## Current Location
 <LOCATION|summary.markdown>
 
@@ -557,7 +571,10 @@ Refer to the player in the third person - "the player character" or "them" - nev
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|markdown|pre="
+## Player Character
+"|post="
+">
 ## Current Location
 <LOCATION|summary.markdown>
 
@@ -582,7 +599,10 @@ export const defaultStoryboardPrompt = `You are the storyboarder for an interact
 
 ## Traits
 <TRAITS DESCRIPTION|markdown>
-
+<PERSONA|markdown|pre="
+## Player Character
+"|post="
+">
 ## Current Location
 <LOCATION|summary.markdown>
 
@@ -608,7 +628,10 @@ Output only the beats - nothing else.`;
 // (lib/sceneTags), which is what keeps a world's look stable from one turn to the next. So the prompt's whole
 // job is to stop the model doing the parts it has not been asked for: left to itself it re-describes hair,
 // clothes and scenery, and those tags then fight the authored ones.
-export const defaultSceneTagsPrompt = `You are the storyboard artist for an illustrated story, and you write the danbooru tags an anime image model is given to draw it. You are given a passage and the people who are in the picture.
+export const defaultSceneTagsPrompt = `You are the storyboard artist for an illustrated story, and you write the danbooru tags an anime image model is given to draw it. You are given a passage and the people who are in the picture.<PERSONA|markdown|pre="
+
+The passage calls this person you:
+">
 
 Write one line of danbooru tags naming, in this order: what the people in frame are doing, their pose and expression, how the shot is framed, then the light and weather of the moment.
 
@@ -627,3 +650,37 @@ What happens:
 <NARRATION>
 
 Tag what is happening in the picture.`;
+
+/** The canonical prompt text every built-in preset derives from (see lib/sectionStyle). */
+export const PROMPT_TEXT_DEFAULTS: PromptValues = {
+  systemPrompt: defaultSystemPrompt,
+  narrationUserPrompt: defaultNarrationUserPrompt,
+  recapUserPrompt: defaultRecapUserPrompt,
+  rehydrateUserPrompt: defaultRehydrateUserPrompt,
+  oocDirectivePrompt: defaultOocDirectivePrompt,
+  choicesPrompt: defaultChoicesPrompt,
+  statUpdatesPrompt: defaultStatUpdatesPrompt,
+  locationChangePromptText: defaultLocationChangePrompt,
+  thinkingPrompt: defaultThinkingPrompt,
+  summaryPrompt: defaultSummaryPrompt,
+  diaryPrompt: defaultDiaryPrompt,
+  directorPrompt: defaultDirectorPrompt,
+  directorUserPrompt: defaultDirectorUserPrompt,
+  characterPrompt: defaultCharacterPrompt,
+  storyboardPrompt: defaultStoryboardPrompt,
+  choicesUserPrompt: defaultChoicesUserPrompt,
+  statUpdatesUserPrompt: defaultStatUpdatesUserPrompt,
+  locationChangeUserPrompt: defaultLocationChangeUserPrompt,
+  summaryUserPrompt: defaultSummaryUserPrompt,
+  milestoneSelectPrompt: defaultMilestoneSelectPrompt,
+  milestoneSelectUserPrompt: defaultMilestoneSelectUserPrompt,
+  nowLinePrompt: defaultNowLinePrompt,
+  timePassedPrompt: defaultTimePassedPrompt,
+  timePassedUserPrompt: defaultTimePassedUserPrompt,
+  openingTimePrompt: defaultOpeningTimePrompt,
+  openingTimeUserPrompt: defaultOpeningTimeUserPrompt,
+  sceneTagsPrompt: defaultSceneTagsPrompt,
+  sceneTagsUserPrompt: defaultSceneTagsUserPrompt,
+  discoverEntityPrompt: defaultDiscoverEntityPrompt,
+  discoverEntityUserPrompt: defaultDiscoverEntityUserPrompt,
+};
