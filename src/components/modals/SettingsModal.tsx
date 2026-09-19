@@ -22,6 +22,7 @@ import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
 import { computePromptTabAvailability } from '@/lib/promptTabAvailability';
 import { PresetOverviewPanel } from './PresetOverviewPanel';
+import { useEndpointModelSuggestions } from './useEndpointModelSuggestions';
 import { visibleGroups, SURFACE_LABELS, HUB_LABEL, HUB_ROUTE, OVERVIEW_LABEL, OVERVIEW_ROUTE, PROMPT_DESCRIPTIONS, PROMPT_LABELS, PROMPT_TAB_REQUESTS, isPromptTab, type PromptSurface } from '@/lib/promptGroups';
 import type { MessageField, PromptJumpTarget } from '@/lib/promptJump';
 import { revealEditorChip, cancelEditorReveals } from '@/lib/editorFieldFocus';
@@ -1067,6 +1068,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [overviewOpen, setOverviewOpen] = useState(initialPromptTab === OVERVIEW_ROUTE);
   useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab]);
   const showingOverview = overviewOpen && presetOverview !== null;
+  const endpointModels = useEndpointModelSuggestions();
   // The mobile selector's value for the Overview entry; prompt and surface entries use their own prefixes.
   const overviewOption = `preset:${OVERVIEW_ROUTE}`;
   // Names come from the shared map, so a jump that says where it goes and the rail row it lands on cannot
@@ -2730,7 +2732,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
               {showingOverview && presetOverview ? (
                 <ScrollArea className="flex-1 min-h-0">
-                  <PresetOverviewPanel overview={presetOverview} onChange={setPresetOverview} />
+                  <PresetOverviewPanel
+                    overview={presetOverview}
+                    onChange={setPresetOverview}
+                    modelSuggestions={endpointModels.suggestions}
+                    onModelsOpen={endpointModels.load}
+                  />
                 </ScrollArea>
               ) : (
               <>

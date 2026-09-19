@@ -1,12 +1,14 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SettingsModal } from './SettingsModal';
 import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
 import { OVERVIEW_LABEL } from '@/lib/promptGroups';
+import { resetEndpointModelCache } from '@/lib/endpointModels';
+import { resetProbeMemo } from '@/lib/probeMemo';
 
 // The bundled-engine panel talks to Electron IPC, and the embedding model is a worker download.
 vi.mock('@/components/modals/LocalModelPanel', () => ({ LocalModelPanel: () => null }));
@@ -108,6 +110,52 @@ describe('Settings → Prompts: preset Overview', () => {
     openPromptDropdown();
     expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
     expect(screen.queryByRole('option', { name: OVERVIEW_LABEL })).toBeNull();
+  });
+
+  describe('Models suggestions from the endpoint', () => {
+    beforeEach(() => {
+      resetEndpointModelCache();
+      resetProbeMemo();
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('lists the cleaned ids when the field opens, and free text still commits', async () => {
+      const doFetch = vi.fn(async () => new Response(JSON.stringify({ data: [
+        { id: 'cydonia-24b-v4.3@q4_k_m' }, { id: 'cydonia-24b-v4.3@q6_k' }, { id: 'g4-meromero-31b' },
+      ] }), { status: 200 }));
+      vi.stubGlobal('fetch', doFetch);
+      seed('mine');
+      openPrompts('overview');
+      expect(doFetch).not.toHaveBeenCalled();
+
+      const models = screen.getByLabelText('Models');
+      fireEvent.focus(models);
+      const picks = await screen.findAllByRole('button', { name: /cydonia|meromero/ });
+      expect(picks.map((b) => b.textContent)).toEqual(['cydonia-24b-v4.3', 'g4-meromero-31b']);
+
+      fireEvent.mouseDown(picks[0]);
+      expect(stored()?.overview?.models).toEqual(['cydonia-24b-v4.3']);
+      fireEvent.change(models, { target: { value: 'My-Model' } });
+      fireEvent.keyDown(models, { key: 'Enter' });
+      expect(stored()?.overview?.models).toEqual(['cydonia-24b-v4.3', 'My-Model']);
+    });
+
+    it('an unreachable endpoint leaves the field usable with no error', async () => {
+      const doFetch = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
+      vi.stubGlobal('fetch', doFetch);
+      seed('mine');
+      openPrompts('overview');
+
+      const models = screen.getByLabelText('Models');
+      fireEvent.focus(models);
+      await waitFor(() => expect(doFetch).toHaveBeenCalled());
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByText(/failed|error|unreachable/i)).toBeNull();
+
+      fireEvent.change(models, { target: { value: 'My-Model' } });
+      fireEvent.keyDown(models, { key: 'Enter' });
+      expect(stored()?.overview?.models).toEqual(['My-Model']);
+    });
   });
 
   it('picking a prompt leaves the Overview', () => {

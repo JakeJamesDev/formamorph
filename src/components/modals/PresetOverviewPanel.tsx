@@ -11,15 +11,17 @@ import { SETTINGS_COPY, type SettingCopy } from './settingsCopy';
 const NO_SUGGESTIONS: string[] = [];
 
 /** A free-form chip list, read as label, help, control. */
-function ChipField({ copy, values, onChange, suggestions, placeholder }: {
+function ChipField({ copy, values, onChange, suggestions, placeholder, onOpen }: {
   copy: SettingCopy;
   values: string[];
   onChange: (values: string[]) => void;
   suggestions: string[];
   placeholder: string;
+  /** Runs when the field takes focus; a field with it lists its suggestions before any typing. */
+  onOpen?: () => void;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" onFocus={onOpen}>
       <Label>{copy.label}</Label>
       <Hint>{copy.description}</Hint>
       <TokenAutocomplete
@@ -29,6 +31,7 @@ function ChipField({ copy, values, onChange, suggestions, placeholder }: {
         ariaLabel={copy.label}
         reorderable
         editable
+        openOnFocus={!!onOpen}
         placeholder={placeholder}
       />
     </div>
@@ -39,11 +42,13 @@ function ChipField({ copy, values, onChange, suggestions, placeholder }: {
  * A user preset's Overview: who wrote it, what it is for, and the models it fits. The store normalizes the
  * tag and model lists; this panel only writes the raw edit through.
  */
-export function PresetOverviewPanel({ overview, onChange, tagSuggestions = NO_SUGGESTIONS, modelSuggestions = NO_SUGGESTIONS }: {
+export function PresetOverviewPanel({ overview, onChange, tagSuggestions = NO_SUGGESTIONS, modelSuggestions = NO_SUGGESTIONS, onModelsOpen }: {
   overview: PresetOverview;
   onChange: (patch: Partial<PresetOverview>) => void;
   tagSuggestions?: string[];
   modelSuggestions?: string[];
+  /** Runs when the Models field opens, so its suggestions load on demand. */
+  onModelsOpen?: () => void;
 }) {
   const plainVocab = useMemo(() => plainVocabulary(), []);
   const { presetAuthor, presetDescription, presetTags, presetModels } = SETTINGS_COPY;
@@ -71,7 +76,7 @@ export function PresetOverviewPanel({ overview, onChange, tagSuggestions = NO_SU
         resizable
       />
       <ChipField copy={presetTags} values={overview.tags} onChange={(tags) => onChange({ tags })} suggestions={tagSuggestions} placeholder="Add tags" />
-      <ChipField copy={presetModels} values={overview.models} onChange={(models) => onChange({ models })} suggestions={modelSuggestions} placeholder="Add models" />
+      <ChipField copy={presetModels} values={overview.models} onChange={(models) => onChange({ models })} suggestions={modelSuggestions} placeholder="Add models" onOpen={onModelsOpen} />
     </div>
   );
 }
