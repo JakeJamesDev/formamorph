@@ -2,7 +2,7 @@ import { act, screen, fireEvent, waitFor, cleanup } from '@testing-library/react
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderMainMenu } from '@/test/mainMenu';
 import AuthService from '@/services/AuthService';
-import { AGE_GATE_VERSION, acceptAgeGate } from '@/lib/ageGate';
+import { AGE_GATE_VERSION, acceptAgeGate, isAccountAgeAttested, rememberAccountAgeGate } from '@/lib/ageGate';
 import { getCatalog, replaceCatalog } from '@/lib/worldCatalog';
 import { getThumb, putThumb } from '@/lib/thumbnailCache';
 import { getCachedImage, putCachedImage } from '@/lib/remoteImageCache';
@@ -39,6 +39,8 @@ let privacyPolicy: { title: string; body: string } | null = null;
 let acceptPrivacy: () => Promise<Response>;
 let accountPrivacyPending = false;
 let catalog: Record<string, unknown>[] = [];
+/** The profile `/auth/me` answers with, when the case stored one. */
+let storedProfile: { id: string; username: string } | null = null;
 
 /** What was asked of the community server — anything else (assets, the update check) is not its business. */
 const serverCalls = () => requested.filter((url) => url.startsWith(AuthService.API_URL));
@@ -61,6 +63,7 @@ beforeEach(() => {
   privacyPolicy = null;
   accountPrivacyPending = false;
   catalog = [];
+  storedProfile = null;
   window.history.replaceState(null, '', '/');
   acceptPrivacy = () => Promise.resolve(answer({ success: true, accepted: true }));
   readAccount = () => Promise.resolve(answer({ accepted: accountAccepted, requiredVersion: AGE_GATE_VERSION, acceptedAt: null }));
@@ -90,6 +93,7 @@ beforeEach(() => {
       }
       return answer({ token: 'signed-token', user: { id: 'u1', username: 'alice' } });
     }
+    if (url.endsWith('/auth/me') && storedProfile) return answer({ user: storedProfile });
     if (url.endsWith('/auth/register')) {
       return answer({ token: 'registered-token', user: { id: 'u1', username: 'alice' } });
     }
@@ -128,6 +132,18 @@ const withStoredSession = () => {
   localStorage.setItem('authToken', 'stored-token');
   AuthService.token = 'stored-token';
 };
+
+/** A returning player whose profile is on disk too, so the device knows which account holds the token. */
+const withStoredAccount = (id: string) => {
+  withStoredSession();
+  const user = { id, username: 'alice' };
+  storedProfile = user;
+  localStorage.setItem('currentUser', JSON.stringify(user));
+  AuthService.currentUser = user as typeof AuthService.currentUser;
+};
+
+/** An account lookup that never answers. */
+const stallAccountLookup = () => { readAccount = () => new Promise<Response>(() => {}); };
 
 const openCommunity = () => fireEvent.click(screen.getByRole('button', { name: /Community Creations/ }));
 const gate = () => screen.queryByRole('dialog', { name: /Adult Content Ahead/ });
@@ -236,6 +252,61 @@ describe('the account lookup at boot', () => {
 
     expect(gate()).toBeInTheDocument();
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('an account answer this device remembers', () => {
+  it('opens Community Creations before the server has answered', async () => {
+    withStoredAccount('u1');
+    rememberAccountAgeGate('u1');
+    stallAccountLookup();
+
+    renderMainMenu();
+    openCommunity();
+
+    expect(gate()).not.toBeInTheDocument();
+    expect(browser()).toBeInTheDocument();
+  });
+
+  it('is written once the server confirms the account', async () => {
+    accountAccepted = true;
+    withStoredAccount('u1');
+
+    renderMainMenu();
+
+    await waitFor(() => expect(isAccountAgeAttested('u1')).toBe(true));
+  });
+
+  it('does not unlock a different account', async () => {
+    rememberAccountAgeGate('u1');
+    withStoredAccount('u2');
+
+    renderMainMenu();
+
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+  });
+
+  it('is dropped, and the warning shown, once the server stops confirming it', async () => {
+    withStoredAccount('u1');
+    rememberAccountAgeGate('u1');
+
+    renderMainMenu();
+
+    expect(await screen.findByRole('dialog', { name: /Adult Content Ahead/ })).toBeInTheDocument();
+    expect(isAccountAgeAttested('u1')).toBe(false);
+  });
+
+  it('keeps the account in while the server cannot be reached', async () => {
+    withStoredAccount('u1');
+    rememberAccountAgeGate('u1');
+    readAccount = () => Promise.reject(new Error('offline'));
+
+    renderMainMenu();
+
+    await waitFor(() => expect(serverCalls().some(isAcceptanceLookup)).toBe(true));
+    openCommunity();
+    expect(gate()).not.toBeInTheDocument();
+    expect(browser()).toBeInTheDocument();
   });
 });
 
@@ -697,6 +768,30 @@ describe('what the gate throws away, and what it leaves alone', () => {
 
     await waitFor(() => expect(serverCalls().length).toBeGreaterThan(0));
     expect(await getCatalog()).toHaveLength(1);
+  });
+});
+
+describe('what an unresolved account lookup leaves alone', () => {
+  it('keeps the thumbnails of a signed-in player through the lookup', async () => {
+    accountAccepted = true;
+    withStoredSession();
+    await putThumb('thumb-1.webp', new Blob(['pixels']), 1);
+
+    renderMainMenu();
+
+    await waitFor(() => expect(localStorage.getItem(STORAGE_KEY)).toContain('"accepted":true'));
+    expect(await getThumb('thumb-1.webp')).not.toBeNull();
+  });
+
+  it('keeps them through a lookup that fails', async () => {
+    withStoredSession();
+    readAccount = () => Promise.reject(new Error('offline'));
+    await putThumb('thumb-1.webp', new Blob(['pixels']), 1);
+
+    renderMainMenu();
+
+    expect(await screen.findByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(await getThumb('thumb-1.webp')).not.toBeNull();
   });
 });
 

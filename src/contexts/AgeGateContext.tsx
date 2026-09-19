@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AgeGateDialog } from '@/components/community/AgeGateDialog';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
-import { AGE_GATE_VERSION, acceptAgeGate, isAgeAttested } from '@/lib/ageGate';
+import {
+  AGE_GATE_VERSION, acceptAgeGate, forgetAccountAgeGate, isAccountAgeAttested, isAgeAttested, rememberAccountAgeGate,
+} from '@/lib/ageGate';
 import { purgeCommunityCaches } from '@/lib/communityCaches';
 import { useDevRoute } from '@/lib/devRouter';
 import AuthService from '@/services/AuthService';
@@ -45,10 +47,22 @@ type GateState = 'accepted' | 'checking' | 'failed' | 'idle' | 'prompt';
 
 const sessionKey = () => `${AuthService.token ?? ''}:${AuthService.currentUser?.id ?? ''}`;
 
+/** The signed-in account's id, or null for a guest or a session whose profile is not held yet. */
+const accountId = (): string | null => {
+  const id = AuthService.currentUser?.id;
+  return AuthService.token && id != null ? String(id) : null;
+};
+
+/** Whether the server has already confirmed the signed-in account's answer on this device. */
+const accountRemembered = (): boolean => {
+  const id = accountId();
+  return id !== null && isAccountAgeAttested(id);
+};
+
 const initialState = (): GateState => {
   if (!COMMUNITY_ENABLED) return 'accepted';
-  // A device-local answer belongs to a guest. An account must prove its own answer before it unlocks.
-  if (AuthService.isAuthenticated()) return 'checking';
+  // A device-local answer belongs to a guest. An account unlocks on its own confirmed answer only.
+  if (AuthService.isAuthenticated()) return accountRemembered() ? 'accepted' : 'checking';
   return isAgeAttested() ? 'accepted' : 'idle';
 };
 
@@ -112,9 +126,11 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     authenticationAccountRef.current = null;
   }), []);
 
+  // An unresolved or failed lookup is not an answer, so it drops nothing.
+  const unattested = state === 'idle' || state === 'prompt';
   useEffect(() => {
-    if (COMMUNITY_ENABLED && !attested) void purgeCommunityCaches();
-  }, [attested]);
+    if (COMMUNITY_ENABLED && unattested) void purgeCommunityCaches();
+  }, [unattested]);
 
   useEffect(() => {
     setSaving(false);
@@ -162,7 +178,9 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     const resolutionKey = `${currentSession}:${bound?.id ?? 'lookup'}:${readAttempt}`;
     if (activeResolutionRef.current === resolutionKey) return;
     activeResolutionRef.current = resolutionKey;
-    setState('checking');
+    // A remembered answer unlocks at once; the lookup below still runs and overrules it.
+    const remembered = !bound && accountRemembered();
+    setState(remembered ? 'accepted' : 'checking');
 
     const resolveAcceptance = bound?.accountKey === currentSession
       ? completeAgeGateAuthentication(bound).then(() => ({
@@ -175,6 +193,8 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     resolveAcceptance
       .then((answer) => {
         if (!current || sessionKey() !== currentSession) return;
+        const id = accountId();
+        if (id && !(answer.accepted && answer.requiredVersion === AGE_GATE_VERSION)) forgetAccountAgeGate(id);
         if (answer.requiredVersion !== AGE_GATE_VERSION) {
           setReadError(answer.requiredVersion > AGE_GATE_VERSION
             ? 'Update Formamorph to review the current adult-content warning.'
@@ -186,6 +206,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
           setBoundAuthentication(null);
           authenticationFlowRef.current = null;
           acceptAgeGate();
+          if (id) rememberAccountAgeGate(id);
           setState('accepted');
           consumePendingRequest()?.onAccept?.();
           consumeAuthenticationCompletion();
@@ -195,6 +216,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
       })
       .catch((error: unknown) => {
         if (!current || sessionKey() !== currentSession) return;
+        if (remembered) return; // an unreachable server does not lock out a confirmed account
         setReadError((error as Error).message || 'Failed to check your content-warning answer');
         setState('failed');
       });
@@ -243,6 +265,8 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     }
     acceptAgeGate();
     if (AuthService.token) resolvedSessionRef.current = sessionKey();
+    const id = accountId();
+    if (id) rememberAccountAgeGate(id);
     setState('accepted');
     consumePendingRequest()?.onAccept?.();
     consumeAuthenticationCompletion();
