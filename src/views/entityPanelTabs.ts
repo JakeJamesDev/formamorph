@@ -1,7 +1,8 @@
 /** The entity tabs, in order, for both entity editors. `EntityManager`'s `PanelTabsList` and the library
  *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
- *  `DEV_MODAL_TABS.entityEditor`) are guarded against them in `devRouter.test.ts`. */
-import { AlignLeft, Braces, Info, Play, User } from 'lucide-react';
+ *  `DEV_MODAL_TABS.entityEditor`, `DEV_MODAL_TABS.entityEditorEntity`) are guarded against them in
+ *  `devRouter.test.ts`. */
+import { AlignLeft, Braces, Play, SquareUser, User } from 'lucide-react';
 
 import { isOpeningFieldKey } from '@/lib/openings';
 import { tabForField } from './findFocus';
@@ -20,11 +21,23 @@ export function entityPanelTabsFor(advanced: boolean) {
   return ENTITY_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
 }
 
-/** The library entity editor's tabs: Overview for publish information, then the panel's own. The library
- *  editor sits outside the Simple/Advanced mode, so it shows every tab. */
+/** The panel tab that the library entity editor puts on its top strip instead of the Entity sub-strip. */
+const LIBRARY_TOP_TAB = 'placeholders' satisfies EntityPanelTab;
+
+/** The library entity editor's sub-tabs, inside its Entity tab. It sits outside Simple and Advanced mode, so it
+ *  shows every one. */
+export const ENTITY_EDITOR_SUBTABS = ENTITY_PANEL_TABS.filter(
+  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB }> => t.value !== LIBRARY_TOP_TAB,
+);
+
+export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value'];
+
+/** The library entity editor's top tabs: Entity for the fields, then the panel's own Placeholders. */
 export const ENTITY_EDITOR_TABS = [
-  { value: 'overview', label: 'Overview', icon: Info },
-  ...ENTITY_PANEL_TABS,
+  { value: 'entity', label: 'Entity', icon: SquareUser },
+  ...ENTITY_PANEL_TABS.filter(
+    (t): t is Extract<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB }> => t.value === LIBRARY_TOP_TAB,
+  ),
 ] as const;
 
 export type EntityEditorTab = (typeof ENTITY_EDITOR_TABS)[number]['value'];
@@ -47,4 +60,10 @@ const TAB_BY_FIELD: Record<string, EntityPanelTab> = {
 export function entityTabForField(fieldKey: string): EntityPanelTab | null {
   if (isOpeningFieldKey(fieldKey)) return 'openings';
   return tabForField(fieldKey, TAB_BY_FIELD);
+}
+
+/** Where the library entity editor shows `fieldKey`: always the Entity tab, on the sub-tab that holds it. */
+export function entityEditorTabForField(fieldKey: string): { tab: 'entity'; subTab: EntityEditorSubTab } | null {
+  const owning = entityTabForField(fieldKey);
+  return owning && owning !== LIBRARY_TOP_TAB ? { tab: 'entity', subTab: owning } : null;
 }

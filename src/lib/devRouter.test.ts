@@ -7,7 +7,7 @@ import { PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
 import { LOCATION_VIEWS } from '@/views/locationViews';
-import { ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
+import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
@@ -130,6 +130,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the tabs the library entity editor switches between', () => {
     expect([...DEV_MODAL_TABS.entityEditor]).toEqual(ENTITY_EDITOR_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the sub-tabs the library entity editor’s Entity tab switches between', () => {
+    expect([...DEV_MODAL_TABS.entityEditorEntity]).toEqual(ENTITY_EDITOR_SUBTABS.map((t) => t.value));
   });
 
   it('ledger lists exactly the tabs the location panel switches between', () => {
