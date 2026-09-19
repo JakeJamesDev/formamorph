@@ -4,10 +4,15 @@
 // every pattern has false positives, so a person or an agent reads the snippet beside the rule and decides.
 // `--strict` exits 1 when anything is flagged, for a future gate.
 //
-// The rules it encodes are the Writing Guide's help-line test and the Design System's field help order
-// (docs/Writing-Guide.md, docs/Design-System.md). The noun half of the help-line test is a register lookup
-// a regex cannot do, so under each file the report lists the labels it found there: the agent checks the
-// hints' nouns against that list and the guide's term register.
+// The rules it encodes are the Writing Guide's help-line test, which follows Google's Material UX-writing
+// pattern, and the Design System's field help order (docs/Writing-Guide.md, docs/Design-System.md). A
+// control named in copy takes its on-screen casing, so under each file the report lists the labels it
+// found there.
+//
+// Copy comes in four kinds. A `label` is a control's caption. A `line` is brief help beside a control: a
+// description, a tooltip, a placeholder. A `popover` is a ⓘ body, which runs to several paragraphs.
+// `prose` is a docs paragraph or a changelog lead. The help-line rules read lines and popovers, the period
+// rule reads lines only, and the shared rules read everything but labels.
 //
 //   node scripts/copySweep.mjs                 files changed on the branch and in the working tree
 //   node scripts/copySweep.mjs src/managers    a directory, or one or more files
@@ -16,7 +21,8 @@
 
 import { execSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { extname, join, relative, sep } from 'node:path';
+import { extname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = process.cwd();
 
@@ -36,7 +42,9 @@ const EXTENSIONS = new Set(['.ts', '.tsx', '.md']);
 /** Attribute and property names whose string value is a control's own caption. */
 const LABEL_KEYS = ['label', 'stripLabel', 'title', 'aria-label', 'ariaLabel', 'backLabel'];
 /** Names whose string value explains a control: one line under a label, a tooltip, a popover body. */
-const HINT_KEYS = ['description', 'tip', 'hint', 'placeholder', 'emptyIndicator', 'info', 'sentWhen', 'body', 'line'];
+const HINT_KEYS = ['description', 'tip', 'hint', 'placeholder', 'emptyIndicator', 'sentWhen', 'line'];
+/** Names whose string value is a ⓘ popover body. */
+const POPOVER_KEYS = ['info', 'body'];
 /** JSX elements whose text children are captions or help. */
 const LABEL_TAGS = ['Label', 'SectionTitle', 'TabsTrigger', 'DialogTitle', 'CardTitle'];
 const HINT_TAGS = ['Hint', 'Meta', 'FieldError', 'DialogDescription', 'p'];
@@ -54,14 +62,14 @@ function lineOf(source, index) {
  *  reads are the handful the codebase uses for copy, and a miss is a quiet miss, not a wrong flag. */
 function extractSource(file, source) {
   const out = [];
-  const attr = new RegExp(`\\b(${[...LABEL_KEYS, ...HINT_KEYS].join('|')})\\s*[=:]\\s*(?:\\{\\s*)?(["'\`])([\\s\\S]*?)\\2`, 'g');
+  const attr = new RegExp(`\\b(${[...LABEL_KEYS, ...HINT_KEYS, ...POPOVER_KEYS].join('|')})\\s*[=:]\\s*(?:\\{\\s*)?(["'\`])([\\s\\S]*?)\\2`, 'g');
   for (const m of source.matchAll(attr)) {
-    const kind = LABEL_KEYS.includes(m[1]) ? 'label' : 'hint';
+    const kind = LABEL_KEYS.includes(m[1]) ? 'label' : POPOVER_KEYS.includes(m[1]) ? 'popover' : 'line';
     for (const para of m[3].split(/\n\s*\n/)) if (para.trim()) out.push(item(file, lineOf(source, m.index), kind, para));
   }
   const tag = new RegExp(`<(${[...LABEL_TAGS, ...HINT_TAGS].join('|')})(?:\\s[^>]*)?>([^<{]+)<`, 'g');
   for (const m of source.matchAll(tag)) {
-    const kind = LABEL_TAGS.includes(m[1]) ? 'label' : 'hint';
+    const kind = LABEL_TAGS.includes(m[1]) ? 'label' : 'line';
     out.push(item(file, lineOf(source, m.index), kind, m[2]));
   }
   // Checkbox captions: a text node directly after a closed control inside a <label>.
@@ -71,7 +79,7 @@ function extractSource(file, source) {
   // Popover bodies and other long copy held in a `*_INFO` template literal.
   for (const m of source.matchAll(/const\s+\w+_INFO\s*=\s*`([\s\S]*?)`/g)) {
     // Paragraphs and list items are each one piece of copy; a bullet list is not one long sentence.
-    for (const para of m[1].split(/\n\s*\n|\n(?=\s*- )/)) if (para.trim()) out.push(item(file, lineOf(source, m.index), 'hint', para.replace(/^\s*- /, '')));
+    for (const para of m[1].split(/\n\s*\n|\n(?=\s*- )/)) if (para.trim()) out.push(item(file, lineOf(source, m.index), 'popover', para.replace(/^\s*- /, '')));
   }
   return out;
 }
@@ -85,7 +93,7 @@ function extractChangelog(file, source) {
     if (/^## /.test(line)) inProgress = /In Progress/.test(line);
     if (!inProgress) return;
     const m = /^\s{2,}-\s+\*\*(.+?)\*\*/.exec(line);
-    if (m) out.push(item(file, i + 1, 'hint', m[1]));
+    if (m) out.push(item(file, i + 1, 'prose', m[1]));
   });
   return out;
 }
@@ -96,7 +104,7 @@ function extractMarkdown(file, source) {
   source.split('\n').forEach((line, i) => {
     const text = line.trim();
     if (!text || /^[#|>`\-*]/.test(text) || /^\d+\./.test(text)) return;
-    out.push(item(file, i + 1, 'hint', text));
+    out.push(item(file, i + 1, 'prose', text));
   });
   return out;
 }
@@ -118,21 +126,45 @@ function titleCaseProblem(text) {
   return bad.length ? `lowercase: ${bad.join(', ')}` : null;
 }
 
-/** Every rule: which kind it reads, how it matches, and the one-line reason the report prints. */
-const RULES = [
+/** The period rule for a line beside a control. Twin of `sentenceShapeViolation` in src/test/copyShape.ts,
+ *  which the copy tests enforce; keep the two in step. */
+export function sentenceShape(text) {
+  const line = text.trim();
+  // A caption built around an interpolation hides its own ending from the regex.
+  if (line.includes('${')) return null;
+  const multi = /[.!?]['’”)]?\s/.test(line);
+  if (multi && !/[.!?]$/.test(line)) return 'several sentences but no final period';
+  if (!multi && /\.$/.test(line)) return 'one sentence with a period';
+  return null;
+}
+
+/** The period rule with abbreviations set aside, so "e.g. a name" reads as one sentence. */
+function periodShape(text) {
+  return sentenceShape(text.replace(/\b(e\.g|i\.e|etc|vs)\./gi, '$1'));
+}
+
+/** Every rule: which kind it reads (see `reads`), how it matches, and the one-line reason the report prints. */
+export const RULES = [
   { name: 'label-case', kind: 'label', why: 'Control labels take AP title case.', test: titleCaseProblem },
   // A unit in parentheses, (%) or (ms), is part of the name, not an aside.
   { name: 'label-parenthetical', kind: 'label', why: 'A label names the field; the aside belongs in a Hint or a HintInfo.', re: /\((?!%\)|[a-z]{1,3}\)).*\)/ },
-  // Possessives share the apostrophe, so `'s` is only flagged on the pronouns that contract with it.
-  { name: 'contraction', kind: 'hint', why: 'Instructional copy is uncontracted; catalog and narration text keep contractions.', re: /\b(\w+['’](t|re|ll|ve|d|m)|(it|that|there|what|here|let|who|he|she)['’]s)\b/i },
+  // The help-line test's four rules, then its two extra checks.
+  { name: 'app-subject', kind: 'help', why: 'Second person or no subject: start with the verb, never "the app", "Formamorph" or "we".', re: /(^|[.!?]\s+)(the app|the game|formamorph|we)\b/i },
+  { name: 'on-off-preamble', kind: 'help', why: 'The label is the on state; state the effect once, then the trade-off.', re: /\b(when|while|if|with)\b[^.]{0,40}?\b(is|are) (turned |switched |set to )?(on|off|enabled|disabled|checked|unchecked)\b|^(when|if) (on|off|enabled|disabled|checked|unchecked)\b/i },
+  // "that is" and "you have" are left out: both are common as plain verbs ("a value that is one chip").
+  { name: 'uncontracted', kind: 'help', why: 'Help lines use contractions.', re: /\b(do not|does not|did not|is not|are not|was not|were not|will not|would not|should not|could not|cannot|can not|has not|have not|you will|you are|it is|there is|they are|they will)\b/i },
+  // The copy tests hold brief lines to this and leave popover bodies alone; so does the sweep.
+  { name: 'period-shape', kind: 'line', why: 'One sentence takes no period; two or more end with one.', test: periodShape },
+  { name: 'exclamation', kind: 'help', why: 'No exclamation marks.', re: /!(\s|$)/ },
+  { name: 'definition-cadence', kind: 'help', why: 'Never "A [noun] is [noun]"; write the action, with you as the subject or none.', re: /^(an?|the) [^.]{2,60}? (is|are) (an?|the) /i },
   { name: 'not-but', kind: 'hint', why: 'Say what it does, never "not X but Y".', re: /\bnot (just |only )?[^.]{0,40}\bbut\b/i },
   // A popover's `**Term** — definition` line is its definition-list form, which the guide allows.
   { name: 'em-dash', kind: 'hint', why: 'No asides; write a second sentence.', test: (t) => (/^\*\*[^*]+\*\* — /.test(t) ? null : (/—|--/.test(t) ? '—' : null)) },
   { name: 'ellipsis', kind: 'hint', why: 'Copy does not trail off.', re: /\.\.\.|…/ },
-  { name: 'filler', kind: 'hint', why: 'Drop the hedge or the courtesy.', re: /\b(please|just|simply|easily|basically|actually|really|quite|a bit|note that|keep in mind)\b/i },
-  { name: 'metaphor-verb', kind: 'hint', why: 'The help-line test: verbs name the literal operation (match, activate, inject, scan, add, remove, show, hide, run, send, set).', re: /\b(fires?|fired|firing|drives?|driven|mutes?|muted|live|lives|stands? in|in play|out of the way|for free|in reach|on the fly|under the hood|kicks? in|lights? up|wakes? up|goes? into)\b/i },
-  { name: 'undefined-noun', kind: 'hint', why: 'The help-line test: nouns are on-screen labels or registered terms.', re: /\b(the AI'?s? (mind|head|memory)|the story|the game world|the text|the system|the engine|the thing)\b/i },
-  { name: 'passive', kind: 'hint', why: 'Active voice; name the actor.', re: /\b(is|are|was|were|be|been|being) \w+(ed|en) by\b/i },
+  { name: 'filler', kind: 'hint', why: 'Drop the hedge or the courtesy.', re: /\b(please|just|simply|easy|easily|basically|actually|really|quite|a bit|note that|keep in mind)\b/i },
+  // Common words pass ("trash", "badge", "bandwidth"); only figurative language is out.
+  { name: 'figurative', kind: 'hint', why: 'Common words, no figurative language: name the operation the image stands for.', re: /\b(fires?|fired|firing|drives?|driven|mutes?|muted|live|lives|rides?|points? [^.]{0,20}\bat\b|stands? in|in play|out of the way|for free|in reach|on the fly|under the hood|kicks? in|lights? up|wakes? up|goes? into)\b/i },
+  { name: 'passive', kind: 'hint', why: 'Active voice.', re: /\b(is|are|was|were|be|been|being) \w+(ed|en) by\b/i },
   { name: 'long-sentence', kind: 'hint', why: 'One topic per sentence, about 20 words.', test: (t) => {
     const long = t.split(/(?<=[.!?])\s+/).filter((s) => s.split(/\s+/).length > 22);
     return long.length ? `${long[0].split(/\s+/).length} words` : null;
@@ -146,6 +178,26 @@ const RULES = [
   { name: 'term-picture', kind: 'any', why: 'The app says image.', re: /\bpictures?\b/i },
   { name: 'second-person-ai', kind: 'hint', why: 'Say what the AI receives, not what it sees or knows.', re: /\bthe AI (sees|knows|thinks|remembers|understands|forgets)\b/i },
 ];
+
+/** Whether a rule reads copy of this kind. `any` reads all. `hint` reads everything but labels. `help`
+ *  reads lines and popovers. A rule named for one kind reads that kind alone. */
+function reads(rule, kind) {
+  if (rule.kind === 'any') return true;
+  if (rule.kind === 'hint') return kind !== 'label';
+  if (rule.kind === 'help') return kind === 'line' || kind === 'popover';
+  return rule.kind === kind;
+}
+
+/** Every notice one piece of copy draws, as `{ rule, why, detail }`. */
+export function checkText(kind, text) {
+  const out = [];
+  for (const rule of RULES) {
+    if (!reads(rule, kind)) continue;
+    const detail = rule.test ? rule.test(text) : (rule.re.test(text) ? text.match(rule.re)[0] : null);
+    if (detail) out.push({ rule: rule.name, why: rule.why, detail });
+  }
+  return out;
+}
 
 /** Source-level checks that are about mechanism, not text: raw type roles and sizes outside the module
  *  that owns them. */
@@ -193,11 +245,7 @@ function sweep(files) {
         : extractSource(file, source);
     labelsByFile.set(file, [...new Set(items.filter((i) => i.kind === 'label').map((i) => i.text))]);
     for (const it of items) {
-      for (const rule of RULES) {
-        if (rule.kind !== 'any' && rule.kind !== it.kind) continue;
-        const detail = rule.test ? rule.test(it.text) : (rule.re.test(it.text) ? it.text.match(rule.re)[0] : null);
-        if (detail) findings.push({ ...it, rule: rule.name, why: rule.why, detail });
-      }
+      for (const hit of checkText(it.kind, it.text)) findings.push({ ...it, ...hit });
     }
     if (!file.endsWith('.md')) {
       for (const rule of SOURCE_RULES) {
@@ -223,16 +271,19 @@ function report({ findings, labelsByFile }, files) {
   }
   const withLabels = [...labelsByFile.entries()].filter(([, l]) => l.length);
   if (withLabels.length) {
-    console.log('Labels on each screen, for the noun check (a hint\'s nouns are these or registered terms):');
+    console.log('Labels on each screen (a control named in copy takes this exact casing):');
     for (const [file, labels] of withLabels) console.log(`   ${file}: ${labels.join(' · ')}`);
     console.log('');
   }
   console.log('Advisory: read each snippet against docs/Writing-Guide.md before changing it.');
 }
 
-const args = process.argv.slice(2);
-const files = targets(args);
-if (!files.length) { console.log('copy sweep: nothing to read.'); process.exit(0); }
-const result = sweep(files);
-report(result, files);
-process.exit(args.includes('--strict') && result.findings.length ? 1 : 0);
+// Run only as a command, so a test can import the rules.
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const args = process.argv.slice(2);
+  const files = targets(args);
+  if (!files.length) { console.log('copy sweep: nothing to read.'); process.exit(0); }
+  const result = sweep(files);
+  report(result, files);
+  process.exit(args.includes('--strict') && result.findings.length ? 1 : 0);
+}
