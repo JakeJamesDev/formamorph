@@ -5,6 +5,7 @@ import { canonicalStringify } from '@/lib/canonicalStringify';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
+import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
@@ -146,7 +147,8 @@ function useProvideGameData() {
   }, []);
 
   const removeLocation = useCallback((locationId: string) => {
-    setLocations(prevLocations => prevLocations.filter(location => location.id !== locationId));
+    // Sub-locations move up to the deleted location's parent, so a delete loses one location only.
+    setLocations(prevLocations => removeLocationPromotingChildren(prevLocations, locationId));
     // Membership is entity-owned, so a deleted location would otherwise stay listed on everyone who
     // belonged to it — invisible in every roster, but riding along into the exported world forever.
     setEntities(prevEntities => dropLocationFromEntities(locationId, prevEntities));
