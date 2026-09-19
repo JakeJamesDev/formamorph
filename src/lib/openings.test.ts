@@ -227,6 +227,58 @@ describe('the pool with entities', () => {
   });
 });
 
+describe('the pool with picked entities', () => {
+  const world = overview({ openings: [action('w1', 'The world opens.')] });
+  const guide: Entity = { id: 'guide', name: 'Guide', locations: ['dock'], openings: [action('g1', 'The guide waves.')] };
+  const pick = (id: string, openings: Opening[], openingWeights?: Record<string, number>): Entity =>
+    ({ id, name: id, openings, openingWeights });
+  const texts = (pool: { opening: Opening }[]) => pool.map((e) => e.opening.text);
+
+  it('draws only the picked entities’ rows when one of them has a drawable opening', () => {
+    const pool = openingPool({
+      overview: world, entities: [guide], startingLocationId: 'dock',
+      picked: [pick('bard', [action('b1', 'The bard tunes up.')])],
+    });
+    expect(texts(pool)).toEqual(['The bard tunes up.']);
+    expect(pool.map((e) => e.ownerId)).toEqual(['bard']);
+  });
+
+  it('pools several picked entities’ rows together by weight', () => {
+    const picked = [
+      pick('bard', [action('b1', 'Bard.')], { b1: 3 }),
+      pick('smith', [action('s1', 'Smith.')]),
+    ];
+    const pool = openingPool({ overview: world, picked });
+    expect(pool.map((e) => [e.ownerId, e.weight])).toEqual([['bard', 3], ['smith', 1]]);
+    const random = seeded(11);
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < 20000; i++) {
+      const text = drawOpening(pool, random).text;
+      counts[text] = (counts[text] ?? 0) + 1;
+    }
+    expect(counts['Bard.'] / 20000).toBeCloseTo(0.75, 1);
+    expect(counts['The world opens.']).toBeUndefined();
+  });
+
+  it('leaves the world’s pool in effect when no picked entity has a drawable opening', () => {
+    const picked = [
+      pick('plain', []),
+      { id: 'older', name: 'Older' },
+      pick('benched', [action('x1', 'Benched.')], { x1: 0 }),
+      pick('blank', [action('y1', '   ')]),
+    ];
+    const pool = openingPool({ overview: world, entities: [guide], startingLocationId: 'dock', picked });
+    expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
+  });
+
+  it('keeps the picked entities’ rows when the world switch is off', () => {
+    const off = overview({ openings: [action('w1')], openingsEnabled: false });
+    const pool = openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked: [pick('bard', [action('b1', 'Bard.')])] });
+    expect(texts(pool)).toEqual(['Bard.']);
+    expect(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked: [pick('plain', [])] })).toEqual([]);
+  });
+});
+
 describe('fresh opening ids', () => {
   it('re-mints every row and re-keys the weights to follow', () => {
     const next = remintOpenings({ openings: [action('a'), action('b')], openingWeights: { b: 5, gone: 2 } });
