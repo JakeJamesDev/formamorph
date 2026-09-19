@@ -4,7 +4,8 @@ import { primeRolls, weightedPick } from '@/lib/placeholders';
 import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
 import { entityTexts } from '@/lib/entityTexts';
 import { openingTexts } from '@/lib/openings';
-import type { PlaceholderRolls } from '@/types';
+import { personaPlaceholderSet, primePersonaRolls } from '@/lib/personaPlaceholders';
+import type { Entity, Placeholder, PlaceholderRolls } from '@/types';
 
 /**
  * A world session: the frozen placeholder rolls for one playthrough, and the lifecycle that decides when
@@ -15,8 +16,8 @@ import type { PlaceholderRolls } from '@/types';
  * not have one. The session begins earlier (at Enter World) and outlives the game view, so every screen
  * from the trait picker onward reads the same values.
  *
- * The session owns rolls **only**. Everything else about a playthrough still lives in `GameplayContext`
- * and still gets a fresh mount per game.
+ * The session owns rolls and the Placeholder Set they are drawn from, which a library persona extends.
+ * Everything else about a playthrough still lives in `GameplayContext` and still gets a fresh mount per game.
  *
  * A trait can *pin* a placeholder, but a pin is layered over a roll at resolve time and never overwrites
  * it — which is what makes rolling this early safe. A screen can show a rolled value and have it change
@@ -34,6 +35,14 @@ interface PlaceholderSession {
   beginSession: (initialRolls?: PlaceholderRolls) => void;
   /** End the playthrough and drop its rolls, so the next entry draws fresh ones. */
   endSession: () => void;
+  /** The Placeholder Set play resolves against: the world's list, then the library persona's own. */
+  placeholders: Placeholder[];
+  /**
+   * Set the library persona whose placeholders join the set, or null. Its Wildcards are drawn at once and
+   * returned, so a caller that renders in the same pass reads the rolls the session keeps. Earlier rolls stay,
+   * so a switch back reads the same values.
+   */
+  setPersona: (persona: Entity | null) => PlaceholderRolls;
 }
 
 const PlaceholderSessionContext = createContext<PlaceholderSession | undefined>(undefined);
@@ -52,9 +61,17 @@ function sameRolls(a: PlaceholderRolls, b: PlaceholderRolls): boolean {
 export function PlaceholderSessionProvider({ children }: { children: ReactNode }) {
   const [sessionActive, setSessionActive] = useState(false);
   const [rolls, setRolls] = useState<PlaceholderRolls>(NO_ROLLS);
+  const [persona, setPersonaState] = useState<Entity | null>(null);
   const {
-    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, placeholders,
+    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, placeholders: worldPlaceholders,
   } = useGameData();
+  const placeholders = useMemo(() => personaPlaceholderSet(worldPlaceholders, persona), [worldPlaceholders, persona]);
+
+  // `setPersona` draws against the latest rolls and world list without waiting for a render.
+  const rollsRef = useRef(rolls);
+  rollsRef.current = rolls;
+  const worldPlaceholdersRef = useRef(worldPlaceholders);
+  worldPlaceholdersRef.current = worldPlaceholders;
 
   // Read synchronously by `beginSession`, which can be called twice before React re-renders.
   const activeRef = useRef(false);
@@ -64,7 +81,10 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
   // rolls (a save resuming) always wins, since that is never the redundant call.
   const beginSession = useCallback((initialRolls?: PlaceholderRolls) => {
     if (initialRolls) setRolls(initialRolls);
-    else if (!activeRef.current) setRolls(NO_ROLLS);
+    else if (!activeRef.current) {
+      setRolls(NO_ROLLS);
+      setPersonaState(null);
+    }
     activeRef.current = true;
     setSessionActive(true);
   }, []);
@@ -73,6 +93,21 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     activeRef.current = false;
     setSessionActive(false);
     setRolls(NO_ROLLS);
+    setPersonaState(null);
+  }, []);
+
+  const setPersona = useCallback((next: Entity | null) => {
+    setPersonaState(next);
+    if (!next) return rollsRef.current;
+    const drawn = primePersonaRolls(worldPlaceholdersRef.current, next, rollsRef.current);
+    if (drawn === rollsRef.current) return drawn;
+    rollsRef.current = drawn;
+    // A roll already in state wins, so an update queued ahead of this one is never overwritten.
+    setRolls((prev) => ({
+      world: { ...drawn.world, ...prev.world },
+      unique: { ...drawn.unique, ...prev.unique },
+    }));
+    return drawn;
   }, []);
 
   // Eager priming: roll every Wildcard placement across the world's authored text once the session opens,
@@ -93,6 +128,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       ...stats.flatMap((s) => [s.name, s.description, ...(s.descriptors ?? []).map((d) => d.description)]),
       ...traits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
       ...traitGroups.flatMap((g) => [g.name, g.playerDescription, g.aiDescription]),
+      ...(persona ? entityTexts(persona) : []),
     ].filter((t): t is string => !!t);
     // Keep the previous object when nothing new was rolled. `primeRolls` always returns a fresh object, and
     // this effect depends on `rolls` so a save restoring mid-session gets its missing placements primed —
@@ -104,13 +140,13 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       const next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
       return sameRolls(prev, next) ? prev : next;
     });
-  }, [sessionActive, rolls, placeholders, entities, locations, dictionaries, stats, traits, traitGroups, worldOverview]);
+  }, [sessionActive, rolls, placeholders, entities, locations, dictionaries, stats, traits, traitGroups, worldOverview, persona]);
 
   return (
     <PlaceholderSessionContext.Provider
       value={useMemo(
-        () => ({ sessionActive, rolls, setRolls, beginSession, endSession }),
-        [sessionActive, rolls, beginSession, endSession],
+        () => ({ sessionActive, rolls, setRolls, beginSession, endSession, placeholders, setPersona }),
+        [sessionActive, rolls, beginSession, endSession, placeholders, setPersona],
       )}
     >
       {children}

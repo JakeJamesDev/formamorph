@@ -1,6 +1,7 @@
 # 09: Library Persona Placeholders
 
-Status: ready-for-agent
+Status: in-progress
+Base: 7313b8b4
 Blocked by: 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high

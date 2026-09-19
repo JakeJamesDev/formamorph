@@ -99,7 +99,7 @@ function useProvideGameplay() {
   // Frozen placeholder rolls for this playthrough (see lib/placeholders). Owned by the world session, which
   // opens before this provider mounts so the pre-game pickers share these values; re-exposed here because
   // the save envelope carries them and every gameplay reader already goes through this context.
-  const { rolls: placeholderRolls, setRolls: setPlaceholderRolls } = usePlaceholderSession();
+  const { rolls: placeholderRolls, setRolls: setPlaceholderRolls, setPersona: setSessionPersona } = usePlaceholderSession();
   // Milestone-memory player pins, keyed by turn id ('keep' resurrects a dropped digest, 'drop' removes a
   // kept one). Persisted in the save envelope.
   const [memoryPins, setMemoryPins] = useState<MemoryPinMap>({});
@@ -117,6 +117,11 @@ function useProvideGameplay() {
   const { entity: libraryPersona, pending: personaPending } = useLibraryEntity(
     personaRef?.source === 'library' ? personaRef.entityId : null,
   );
+  // A library persona's placeholders join the session's set, and its Wildcards are drawn when it lands.
+  useEffect(() => {
+    if (personaPending) return;
+    setSessionPersona(personaRef?.source === 'library' ? libraryPersona : null);
+  }, [personaRef, libraryPersona, personaPending, setSessionPersona]);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     return registerDevHook('setPersona', (ref: PersonaRef | undefined) => setPersonaRef(ref));

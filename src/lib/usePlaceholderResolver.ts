@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
+import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
@@ -8,7 +9,7 @@ import { usePersonaName } from '@/lib/useResolvedWorld';
 
 /**
  * A gameplay-bound placeholder resolver: replaces `{{ph…}}` chips in authored text with their frozen
- * per-playthrough values (the world's placeholders + the save's rolls). Rolls are primed eagerly when a save
+ * per-playthrough values (the session's Placeholder Set + the save's rolls). Rolls are primed eagerly when a save
  * activates, so this is a pure lookup — safe to call during render (no `setRoll`). Use at every boundary that
  * emits authored text to the player or the AI.
  *
@@ -17,7 +18,8 @@ import { usePersonaName } from '@/lib/useResolvedWorld';
  * underlying roll is untouched — leaving the source's condition brings it back.
  */
 export function usePlaceholderResolver(): (text: string) => string {
-  const { placeholders, traits, traitGroups, locations } = useGameData();
+  const { traits, traitGroups, locations } = useGameData();
+  const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
   // force on that turn, not whatever the player has toggled or walked into since.
   const { placeholderRolls, viewTraits, viewDisabledTraitIds, viewStats, viewLocationId, viewCodePins } = useGameplay();

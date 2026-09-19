@@ -60,7 +60,9 @@ describe('the game view renders every opening through resolveOpening', () => {
   const viewer = readFileSync(join(process.cwd(), 'src/views/GameViewer.tsx'), 'utf8');
 
   it('passes the first draw its persona, and renders no opening any other way', () => {
-    expect(viewer).toMatch(/resolveOpening\(drawn\.opening\.text, \{ extraPins: openingPins, persona: drawnPersona \}\)/);
+    expect(viewer).toMatch(
+      /resolveOpening\(drawn\.opening\.text, \{\s*extraPins: openingPins, persona: drawnPersona, rolls: personaRolls,\s*\}\)/,
+    );
     expect(viewer).toMatch(/resolveOpening\(redraw\.opening\.text\)/);
     expect(viewer).toMatch(/openingCue: resolveOpening\(openingCue\(\)\.text\)/);
     expect(viewer).not.toMatch(/renderUserMacro|resolve(PH|With|For)\([^)]*(opening\.text|openingCue\(\))/);
