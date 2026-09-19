@@ -561,6 +561,7 @@ describe('Opening a world after a library save', () => {
     expect(ctx().dictionaries[0].entries[0].value).toBe('Wetland.');
     expect(screen.queryByRole('button', { name: 'Open in Library' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeTruthy();
+    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked one copy whose library item is gone.');
   });
 
   it('keeps every link when the library cannot be read, which is not the same as deleted', async () => {
@@ -576,6 +577,7 @@ describe('Opening a world after a library save', () => {
     focusLinkFace();
     expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
     expect(ctx().dictionaries[0].link?.libraryId).toBe('lib-a');
+    expect(toast.info).not.toHaveBeenCalled();
   });
 
   it('keeps a copy of a deleted library item following the listing it also came from', async () => {
@@ -588,6 +590,7 @@ describe('Opening a world after a library save', () => {
 
     await waitFor(() => expect(ctx().dictionaries[0].link?.libraryId).toBeUndefined());
     expect(ctx().dictionaries[0].link?.sourceId).toBe('listing-9');
+    expect(toast.info).toHaveBeenCalledWith('Formamorph unlinked one copy whose library item is gone.');
     focusLinkFace();
     expect(await screen.findByText('Linked · Fen Lore')).toBeTruthy();
   });
