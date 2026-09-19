@@ -9,7 +9,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Entity, Dictionary, Opening } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
-import { canonicalUserMacro } from './userMacro';
+import { USER_MACRO_RE, canonicalUserMacro } from './userMacro';
 
 /** The subset of card fields we read. V2/V3 nest these under `data`; V1 is flat. */
 interface TavernData {
@@ -35,7 +35,7 @@ const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
 function substituteMacros(text: string, name: string): string {
   return text
     .replace(CHAR_MACRO_RE, name)
-    .replace(/\{\{\s*user\s*\}\}/gi, 'the player');
+    .replace(USER_MACRO_RE, 'the player');
 }
 
 /** The card's field object (unwrapping the V2/V3 `data` envelope), or null if the PNG carries no card. */
@@ -57,7 +57,8 @@ function readCardData(bytes: Uint8Array): TavernData | null {
 
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
-/** Build an entity from card fields: name, and description + personality + scenario folded into `aiDescription`. */
+/** Build an entity from card fields: name, description + personality + scenario folded into `aiDescription`,
+ *  and the greetings as openings. */
 function cardToEntity(data: TavernData): Entity {
   const name = str(data.name) || 'Imported Character';
   const parts: string[] = [];
