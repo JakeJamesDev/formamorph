@@ -38,11 +38,13 @@ const groupHeading = (label: string) => (
   <h3 className="col-span-full mt-2 text-meta font-medium tracking-wide text-muted-foreground">{label}</h3>
 );
 
-/** The persona choice: None, then the world's own personas, then the library personas, each group under its
+/** The persona choice: None when offered, then the world's own personas, then the library personas, each group under its
  *  own heading and each persona with its portrait and name. */
-export function PersonaPicker({ world = [], library, value, onChange }: {
+export function PersonaPicker({ world = [], library, none = true, value, onChange }: {
   world?: PersonaOption[];
   library: PersonaOption[];
+  /** Offer None. A Cast world does not. */
+  none?: boolean;
   value: PersonaRef;
   onChange: (ref: PersonaRef) => void;
 }) {
@@ -69,7 +71,7 @@ export function PersonaPicker({ world = [], library, value, onChange }: {
       onValueChange={(key) => onChange(refOf(key))}
       className="grid min-w-0 gap-3 xl:grid-cols-2"
     >
-      {row('none', 'None', (
+      {none && row('none', 'None', (
         <span className="min-w-0">
           <strong className="block text-label font-semibold">None</strong>
           <span className="mt-1 block text-helper text-muted-foreground">Play as the world describes the player</span>

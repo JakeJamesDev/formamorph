@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  clearDefaultPersona, locationForPersonaPick, personaStartLocation, preselectPersona, readDefaultPersona,
-  readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona, type PersonaChoices,
+  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, offeredPersonas, personaStartLocation,
+  preselectPersona, readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona,
+  worldPlayerSetting, type PersonaChoices,
 } from './personaPick';
 import type { Entity, PersonaRef } from '@/types';
 
@@ -37,6 +38,65 @@ describe('preselectPersona (step and Quick Start)', () => {
     ['world personas alone: the remembered world pick', { available: { world: ['w'], library: [] }, remembered: world('w') }, world('w')],
   ])('%s', (_label, over, expected) => {
     expect(preselectPersona(choices(over))).toEqual(expected);
+  });
+});
+
+// The world's player setting, for the step and Quick Start, with the remembered pick and the global default.
+describe('preselectPersona under the world player setting', () => {
+  const both = { world: ['w1', 'w2'], library: ['a', 'b'] };
+  it.each<[string, Partial<PersonaChoices>, PersonaRef]>([
+    ['open: the global default applies', { playerSetting: 'open', available: both, globalDefault: 'a' }, lib('a')],
+    ['open: the remembered pick wins', { playerSetting: 'open', available: both, remembered: world('w2'), globalDefault: 'a' }, world('w2')],
+    ['fixed: None over the global default', { playerSetting: 'fixed', available: both, globalDefault: 'a' }, NONE],
+    ['fixed: a remembered library pick wins', { playerSetting: 'fixed', available: both, remembered: lib('b'), globalDefault: 'a' }, lib('b')],
+    ['fixed: a remembered world pick wins', { playerSetting: 'fixed', available: both, remembered: world('w1') }, world('w1')],
+    ['fixed: a remembered pick of a deleted entity falls to None', { playerSetting: 'fixed', available: both, remembered: lib('gone'), globalDefault: 'a' }, NONE],
+    ['cast: the first world persona over the global default', { playerSetting: 'cast', available: both, globalDefault: 'a' }, world('w1')],
+    ['cast: a remembered world pick wins', { playerSetting: 'cast', available: both, remembered: world('w2') }, world('w2')],
+    ['cast: a remembered library pick is not offered', { playerSetting: 'cast', available: both, remembered: lib('a') }, world('w1')],
+    ['cast: a remembered None is not offered', { playerSetting: 'cast', available: both, remembered: NONE, globalDefault: 'a' }, world('w1')],
+    ['cast with no marked entity: None, as fixed', { playerSetting: 'cast', available: { world: [], library: ['a'] }, globalDefault: 'a' }, NONE],
+    ['cast with no marked entity: a remembered pick wins, as fixed', { playerSetting: 'cast', available: { world: [], library: ['a'] }, remembered: lib('a') }, lib('a')],
+  ])('%s', (_label, over, expected) => {
+    expect(preselectPersona(choices(over))).toEqual(expected);
+  });
+});
+
+// The step's category and the in-game Change dialog list what this offers.
+describe('offeredPersonas', () => {
+  const both = { world: ['w'], library: ['a'] };
+  it('open and fixed offer every persona and None', () => {
+    expect(offeredPersonas('open', both)).toEqual({ ...both, none: true });
+    expect(offeredPersonas('fixed', both)).toEqual({ ...both, none: true });
+  });
+
+  it("cast offers only the world's personas, with no None", () => {
+    expect(offeredPersonas('cast', both)).toEqual({ world: ['w'], library: [], none: false });
+  });
+
+  it('cast with no marked entity offers what fixed offers', () => {
+    expect(offeredPersonas('cast', { world: [], library: ['a'] })).toEqual({ world: [], library: ['a'], none: true });
+  });
+
+  it('leaves nothing to pick when no persona is on offer, whatever the setting', () => {
+    for (const setting of ['open', 'fixed', 'cast'] as const) {
+      expect(hasPersonaChoice(offeredPersonas(setting, { world: [], library: [] }))).toBe(false);
+    }
+    expect(hasPersonaChoice(offeredPersonas('cast', both))).toBe(true);
+    expect(hasPersonaChoice(offeredPersonas('fixed', { world: [], library: ['a'] }))).toBe(true);
+  });
+});
+
+describe('worldPlayerSetting', () => {
+  it('reads an absent or unknown value as open', () => {
+    expect(worldPlayerSetting({})).toBe('open');
+    expect(worldPlayerSetting({ playerSetting: 'bogus' as never })).toBe('open');
+    expect(worldPlayerSetting(undefined)).toBe('open');
+  });
+
+  it('reads fixed and cast', () => {
+    expect(worldPlayerSetting({ playerSetting: 'fixed' })).toBe('fixed');
+    expect(worldPlayerSetting({ playerSetting: 'cast' })).toBe('cast');
   });
 });
 

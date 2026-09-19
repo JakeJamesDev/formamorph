@@ -12,7 +12,7 @@ const worldOverview = {
 } as unknown as WorldOverview;
 
 vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({ worldOverview, updateWorldOverview: vi.fn() }),
+  useGameData: () => ({ worldOverview, updateWorldOverview: vi.fn(), entities: [] }),
 }));
 
 // The real panel is a three.js/WebGL surface; this test is about the bytes leaving it, so stand in a shell

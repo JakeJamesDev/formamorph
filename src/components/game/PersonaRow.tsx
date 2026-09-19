@@ -12,7 +12,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { inGamePersonas } from '@/lib/personaInGame';
 import { pickedAtStart } from '@/lib/runtimeCharacters';
 import { primaryImage } from '@/lib/entityImages';
-import { rememberWorldPersona } from '@/lib/personaPick';
+import { offeredPersonas, rememberWorldPersona, worldPlayerSetting } from '@/lib/personaPick';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { PersonaRef } from '@/types';
 
@@ -22,7 +22,7 @@ const sameRef = (a: PersonaRef, b: PersonaRef) =>
 /** The player's persona in the side panel: portrait, name, and a Change control that opens the picker. */
 export function PersonaRow() {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
-  const { worldId } = useGameData();
+  const { worldId, worldOverview } = useGameData();
   const { persona, entities: cast, worldPersonas } = useResolvedWorld();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PersonaOption[]>([]);
@@ -59,6 +59,7 @@ export function PersonaRow() {
     showPicker(false);
   };
 
+  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption), library: options });
   const image = primaryImage(persona?.entity);
   return (
     <div className="flex items-center gap-2 pl-2" data-testid="persona-row">
@@ -79,8 +80,9 @@ export function PersonaRow() {
           </DialogHeader>
           <ScrollArea className="-mr-3 min-h-0 flex-1 pr-3">
             <PersonaPicker
-              world={worldPersonas.map(personaOption)}
-              library={options}
+              world={offer.world}
+              library={offer.library}
+              none={offer.none}
               value={choice}
               onChange={setDraft}
             />

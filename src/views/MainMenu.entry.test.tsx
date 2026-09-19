@@ -12,7 +12,7 @@ import { encodePlaceholderToken } from '@/lib/placeholders';
 import { toast } from 'react-toastify';
 import { readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
-import type { PersonaRef } from '@/types';
+import type { PersonaRef, WorldOverview } from '@/types';
 
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -708,5 +708,64 @@ describe('a world persona at world entry', () => {
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, 'hill', null, null, { ref: keeperRef }));
+  });
+});
+
+describe("the world's player setting at world entry", () => {
+  const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
+  // A library persona set as the global default, and optionally one marked world entity.
+  const setUp = async (playerSetting: 'fixed' | 'cast', withKeeper: boolean) => {
+    const record = world();
+    (record.data.worldOverview as WorldOverview).playerSetting = playerSetting;
+    if (withKeeper) {
+      record.data.entities = [{
+        id: 'keeper', name: 'Harbor Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
+        persona: true, locations: ['inn', 'hill'],
+      }];
+    }
+    await WorldStorageService.storeWorld(record);
+    await EntityStorageService.storeEntity({
+      id: 'self', name: 'Self',
+      data: { id: 'self', name: 'Self', playerDescription: '', aiDescription: '', aiSummary: '', persona: true },
+    });
+    setDefaultPersona('self');
+  };
+  afterEach(async () => { await EntityStorageService.deleteEntity('self').catch(() => {}); });
+
+  it("cast lists only the world's personas, with no None, on the first", async () => {
+    await setUp('cast', true);
+    renderMainMenu();
+    await enter();
+    expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeChecked();
+    expect(screen.queryByRole('radio', { name: 'None' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Self' })).not.toBeInTheDocument();
+  });
+
+  it('cast gives Quick Start the first world persona over the global default', async () => {
+    await setUp('cast', true);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
+  });
+
+  it('fixed starts the step on None and still offers the global default', async () => {
+    await setUp('fixed', false);
+    renderMainMenu();
+    await enter();
+    expect(screen.getByRole('radio', { name: 'None' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Self' })).toBeInTheDocument();
+  });
+
+  it('cast with no marked entity behaves as fixed, for Quick Start too', async () => {
+    await setUp('cast', false);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
   });
 });

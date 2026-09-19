@@ -397,6 +397,14 @@ describe('loadWorldData', () => {
     expect(result.current.worldOverview.openings).toBeUndefined();
     expect(result.current.worldOverview.openingsEnabled).toBeUndefined();
   });
+
+  it("carries the world's player setting through the load, and does not leak it into the next world", () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(JSON.parse(JSON.stringify(world('a', { playerSetting: 'cast' })))); });
+    expect(result.current.worldOverview.playerSetting).toBe('cast');
+    act(() => { result.current.loadWorldData(world('b', {})); });
+    expect(result.current.worldOverview.playerSetting).toBeUndefined();
+  });
 });
 
 describe('renaming a placeholder value', () => {

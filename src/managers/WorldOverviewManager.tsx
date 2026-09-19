@@ -16,7 +16,9 @@ import { readVrmMeta } from '../lib/vrmMeta';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { ActionIcon } from '@/lib/actionIcons';
 import { useEditorMode } from '@/lib/editorMode';
-import type { VrmLicense } from '@/types';
+import { PLAYER_SETTINGS, worldPlayerSetting } from '@/lib/personaPick';
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import type { VrmLicense, WorldPlayerSetting } from '@/types';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -73,6 +75,46 @@ const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fil
         </Button>
       }
     />
+  );
+};
+
+const PLAYER_SETTING_LABELS: Record<WorldPlayerSetting, string> = { open: 'Open', fixed: 'Fixed', cast: 'Cast' };
+
+export const PLAYER_SETTING_HINTS: Record<WorldPlayerSetting, string> = {
+  open: 'Lets players pick any persona, or none',
+  fixed: 'Starts new players with no persona. They can still pick one.',
+  cast: "Limits players to this world's personas and starts on the first",
+};
+
+export const CAST_WITHOUT_PERSONAS_HINT = 'Works like Fixed until you select Persona on an entity';
+
+/** Who the player can be in this world. Advanced only; Open writes no field. */
+const PlayerSettingField = () => {
+  const { worldOverview, updateWorldOverview, entities } = useGameData();
+  const setting = worldPlayerSetting(worldOverview);
+  const hint = setting === 'cast' && !entities.some((entity) => entity.persona === true)
+    ? CAST_WITHOUT_PERSONAS_HINT
+    : PLAYER_SETTING_HINTS[setting];
+  return (
+    <div className="space-y-2">
+      <Label id="player-setting-label">Persona Choice</Label>
+      <ToggleGroup
+        type="single"
+        aria-labelledby="player-setting-label"
+        value={setting}
+        // A single ToggleGroup clears on a second click of the active item; the setting always has a value.
+        onValueChange={(v) => {
+          const next = PLAYER_SETTINGS.find((s) => s === v);
+          if (next) updateWorldOverview({ playerSetting: next === 'open' ? undefined : next });
+        }}
+        className="flex w-fit"
+      >
+        {PLAYER_SETTINGS.map((value) => (
+          <ToggleGroupItem key={value} value={value} className="px-3">{PLAYER_SETTING_LABELS[value]}</ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <Hint>{hint}</Hint>
+    </div>
   );
 };
 
@@ -222,6 +264,7 @@ const WorldOverviewManager = () => {
           )}
         </div>
       )}
+      {advanced && <PlayerSettingField />}
       <div className="space-y-2">
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
         {/* The world stores a bare data URL where a location stores a media record, so the shared widget

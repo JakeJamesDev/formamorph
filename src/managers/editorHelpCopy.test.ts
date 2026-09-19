@@ -5,6 +5,7 @@ import { STARTING_INFO } from './LocationManager';
 import { KIND_INFO } from './PlaceholderManager';
 import { AVAILABILITY_INFO } from './StatManager';
 import { PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
+import { CAST_WITHOUT_PERSONAS_HINT, PLAYER_SETTING_HINTS } from './WorldOverviewManager';
 
 /** Every World Editor ⓘ body that lives as a constant, by the field it sits beside. */
 const TIPS: Record<string, string> = {
@@ -30,5 +31,12 @@ describe('World Editor ⓘ tips', () => {
 
   it.each(Object.entries(TIPS))('%s has no em-dash aside', (_field, body) => {
     expect(body).not.toContain('—');
+  });
+});
+
+describe('World Editor help lines', () => {
+  const LINES = [...Object.values(PLAYER_SETTING_HINTS), CAST_WITHOUT_PERSONAS_HINT];
+  it.each(LINES)('"%s" follows the help-line period rule', (line) => {
+    expect(sentenceShapeViolation(line)).toBeNull();
   });
 });

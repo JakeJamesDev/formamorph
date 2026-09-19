@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useGameplay } from '@/contexts/GameplayContext';
-import { renderInGame, renderRightPanel, type TurnFixture } from '@/test/gamePanels';
+import { renderInGame, renderRightPanel, worldFixture, type TurnFixture } from '@/test/gamePanels';
 import { PersonaRow } from './PersonaRow';
 import { usePersonaNotice } from '@/lib/usePersonaNotice';
 import EntityStorageService from '@/services/EntityStorageService';
@@ -124,6 +124,25 @@ describe('world personas in the Change picker', () => {
     await within(dialog).findByRole('radio', { name: 'Ash' });
     const order = [...dialog.querySelectorAll('[role="radio"], h3')].map((el) => el.getAttribute('aria-label') ?? el.textContent);
     expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Your Personas', 'Ash']);
+  });
+
+  it("lists only the world's personas, with no None, in a Cast world", async () => {
+    await store(ash);
+    const overview = worldFixture().worldOverview;
+    renderInGame(<PersonaRow />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'cast' } } });
+    const dialog = await openPicker();
+    await within(dialog).findByRole('radio', { name: 'Harbor Warden' });
+    expect(within(dialog).queryByRole('radio', { name: 'None' })).toBeNull();
+    expect(within(dialog).queryByRole('radio', { name: 'Ash' })).toBeNull();
+  });
+
+  it('offers None and the library personas in a Fixed world', async () => {
+    await store(ash);
+    const overview = worldFixture().worldOverview;
+    renderInGame(<PersonaRow />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'fixed' } } });
+    const dialog = await openPicker();
+    await within(dialog).findByRole('radio', { name: 'Ash' });
+    expect(within(dialog).getByRole('radio', { name: 'None' })).toBeTruthy();
   });
 
   it('takes a picked world persona out of the cast, and a switch away returns it', async () => {

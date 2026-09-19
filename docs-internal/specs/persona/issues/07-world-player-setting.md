@@ -1,6 +1,7 @@
 # 07: World Player Setting
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4139c508
 Blocked by: 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
