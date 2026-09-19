@@ -111,4 +111,10 @@ describe('the library dictionary editor’s entry panel', () => {
     expect(panelStrip()).toBeNull();
     expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toBeInTheDocument();
   });
+
+  it('keeps the book’s placeholders on the Placeholders tab alone', () => {
+    // The book panel's own section edits a world's list, and a library book has no world behind it.
+    open();
+    expect(screen.queryByText(/Placeholders of this dictionary/)).toBeNull();
+  });
 });
