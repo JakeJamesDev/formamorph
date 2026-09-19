@@ -4,7 +4,7 @@ import type { ListingDetails } from '@/services/WorldStorageService';
 import WorldStorageService from '@/services/WorldStorageService';
 import type { CatalogKind } from '@/lib/catalogKinds';
 import {
-  compatibleWorldRows, declaresCompatibility, offeredWorldIds, type CompatibleWorldRow,
+  compatibleWorldRows, declaresCompatibility, offeredWorldIds, promptCompatibleRows, type CompatibleWorldRow,
 } from '@/lib/compatibleWorlds';
 import { libraryItemData, libraryItems, type LibraryItemSummary } from '@/lib/librarySources';
 import { linkLibraryItemToListing } from '@/lib/librarySources';
@@ -14,6 +14,7 @@ import {
   type LinkedContentRow, type LinkedWorldContent, type ListingVisibility,
 } from '@/lib/publishLinks';
 import { dictionaryPublishPayload, entityPublishPayload, type PublishPayload } from '@/lib/publishPayload';
+import { readWorldPromptPins } from '@/lib/worldPromptPreset';
 import type { Dictionary, Entity } from '@/types';
 
 /** One source this publish could not create a listing for. */
@@ -29,6 +30,9 @@ export type PublishOne = (payload: PublishPayload) => Promise<{ _id?: string; id
 /** Which kinds carry a Listing choice and Compatible Worlds. A world is always public, and an Avatar has
  *  no link to anything. */
 const isComponent = (kind: CatalogKind) => kind === 'entity' || kind === 'dictionary';
+/** Which kinds carry Compatible Worlds: the components, and a prompt, which offers itself but has no Listing
+ *  choice. */
+export const offersCompatibility = (kind: CatalogKind) => isComponent(kind) || kind === 'prompt';
 
 /**
  * The publish dialog's linked-content state: what a world declares as required, and what a component is
@@ -43,7 +47,7 @@ export function usePublishLinks({ open, kind, contentData, localId, overwriteTar
   kind: CatalogKind;
   /** The payload's content: a world for the world rows, ignored for a component. */
   contentData: unknown;
-  /** The local record this payload came from — a world, or the library item behind a component. */
+  /** The local record this payload came from: a world, the library item behind a component, or a preset. */
   localId?: string;
   overwriteTarget: string | null;
   listing: ListingDetails | null;
@@ -118,6 +122,26 @@ export function usePublishLinks({ open, kind, contentData, localId, overwriteTar
     })();
     return () => { live = false; };
   }, [open, kind, contentData, rowDefaults, listingPending]);
+
+  // A prompt's rows: every local world with a listing, the ones pinned to this preset checked when new.
+  useEffect(() => {
+    if (!open || kind !== 'prompt' || !localId || listingPending) return;
+    let live = true;
+    void (async () => {
+      try {
+        const worlds = await WorldStorageService.getWorldMetadata();
+        if (!live) return;
+        const pins = readWorldPromptPins();
+        const published = worlds.flatMap((world) => (
+          world.sourceId ? [{ listingId: world.sourceId, name: world.name, pinned: pins[world.id] === localId }] : []
+        ));
+        setCompatRows(promptCompatibleRows(published, overwriteTarget ? listing?.compatibleWorlds ?? [] : null));
+      } catch (error) {
+        console.error('Failed to read the local worlds for Compatible Worlds:', error);
+      }
+    })();
+    return () => { live = false; };
+  }, [open, kind, localId, overwriteTarget, listing, listingPending]);
 
   // A component's rows: the author's worlds that have a linked copy of it and a listing of their own.
   useEffect(() => {
@@ -199,7 +223,10 @@ export function usePublishLinks({ open, kind, contentData, localId, overwriteTar
       };
     }
 
-    if (!isComponent(payload.kind)) return payload;
+    if (!offersCompatibility(payload.kind)) return payload;
+    if (payload.kind === 'prompt') {
+      return declaresCompatibility(compatRows) ? { ...payload, compatibleWorlds: offeredWorldIds(compatRows) } : payload;
+    }
     return {
       ...payload,
       // Stated only where the author chose something other than what the listing already is. An

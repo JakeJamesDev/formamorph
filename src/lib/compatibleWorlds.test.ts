@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compatibleWorldRows, declaresCompatibility, offeredWorldIds } from './compatibleWorlds';
+import { compatibleWorldRows, declaresCompatibility, offeredWorldIds, promptCompatibleRows } from './compatibleWorlds';
 
 describe('compatibleWorldRows', () => {
   it('lists every linked world with a listing, unchecked until the author offers it', () => {
@@ -71,5 +71,33 @@ describe('declaresCompatibility', () => {
 
   it('clears an association the author has broken locally', () => {
     expect(declaresCompatibility(compatibleWorldRows([], [{ id: 'w9', name: 'Old World' }]))).toBe(true);
+  });
+});
+
+describe('promptCompatibleRows', () => {
+  const worlds = [
+    { listingId: 'w1', name: 'Sedge Landing', pinned: true },
+    { listingId: 'w2', name: 'The Long Dark', pinned: false },
+  ];
+
+  it('offers every published world, checking the ones pinned to the preset', () => {
+    expect(promptCompatibleRows(worlds, null)).toEqual([
+      { listingId: 'w1', name: 'Sedge Landing', linked: true, offered: true },
+      { listingId: 'w2', name: 'The Long Dark', linked: true, offered: false },
+    ]);
+  });
+
+  it('on an update, starts from what the listing already offers, not from the pins', () => {
+    const rows = promptCompatibleRows(worlds, [{ id: 'w2', name: 'The Long Dark', reviewState: 'approved' }]);
+    expect(rows).toEqual([
+      { listingId: 'w1', name: 'Sedge Landing', linked: true, offered: false },
+      { listingId: 'w2', name: 'The Long Dark', linked: true, offered: true, reviewState: 'approved' },
+    ]);
+  });
+
+  it('keeps an offer for a world this device has no copy of, still checked', () => {
+    const rows = promptCompatibleRows(worlds, [{ id: 'w9', name: 'Elsewhere' }]);
+    expect(rows[2]).toEqual({ listingId: 'w9', name: 'Elsewhere', linked: true, offered: true });
+    expect(offeredWorldIds(rows)).toEqual(['w9']);
   });
 });

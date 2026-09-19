@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
+import { DEV_PUBLISH_SAMPLES } from './devPublishSample';
 import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
@@ -167,6 +168,10 @@ describe('dev-router coverage guard', () => {
     // The browser renders one tab per catalog kind plus Contest, so a new one must be consciously
     // covered here too.
     expect([...DEV_MODAL_TABS.community]).toEqual([...BROWSE_TABS]);
+  });
+
+  it('covers every canned publish payload', () => {
+    expect([...DEV_MODAL_TABS.publish]).toEqual(Object.keys(DEV_PUBLISH_SAMPLES));
   });
 
   it('ledger lists exactly the library card tabs MainMenu renders', () => {

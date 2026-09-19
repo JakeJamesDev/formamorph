@@ -17,6 +17,7 @@ import TagField from '@/components/prompt/TagField';
 import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
 import { reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
+import { usePresetPublish } from '@/components/modals/usePresetPublish';
 import { type SharedPreset } from '@/lib/promptPresetShare';
 import { APP_VERSION } from '@/lib/version';
 import { normalizeEndpointUrl, endpointUrlWasCompleted } from '@/lib/endpointUrl';
@@ -973,9 +974,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
       opener.focus();
     },
   };
+  const presetPublish = usePresetPublish(() => {
+    setOverviewOpen(true);
+    setFocusModels((n) => n + 1);
+  });
   const presetActions = presetHeaderActions(activePresetIsBuiltIn, {
     rename: () => setPresetDialog({ mode: 'rename' }),
     export: () => setExportShared(exportActivePreset(APP_VERSION)),
+    ...(presetPublish.canPublish ? { publish: presetPublish.start } : {}),
     reset: () => askPresetConfirm('reset'),
     delete: () => askPresetConfirm('delete'),
   });
@@ -1096,6 +1102,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const [overviewOpen, setOverviewOpen] = useState(initialPromptTab === OVERVIEW_ROUTE);
   useEffect(() => { if (initialPromptTab) setOverviewOpen(initialPromptTab === OVERVIEW_ROUTE); }, [initialPromptTab]);
   const showingOverview = overviewOpen && presetOverview !== null;
+  // Bumped to put focus on the Overview's Models field, the way out of the empty-Models publish block.
+  const [focusModels, setFocusModels] = useState(0);
   const endpointModels = useEndpointModelSuggestions();
   // The mobile selector's value for the Overview entry; prompt and surface entries use their own prefixes.
   const overviewOption = `preset:${OVERVIEW_ROUTE}`;
@@ -2761,6 +2769,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                     onChange={setPresetOverview}
                     modelSuggestions={endpointModels.suggestions}
                     onModelsOpen={endpointModels.load}
+                    focusModels={focusModels}
                   />
                 </ScrollArea>
               ) : (
@@ -3138,6 +3147,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               onOpenChange={(o) => { if (!o) setExportShared(null); }}
               shared={exportShared}
             />
+            {presetPublish.dialogs}
             <ImportPresetDialog
               open={importOpen}
               onOpenChange={setImportOpen}

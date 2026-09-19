@@ -49,7 +49,7 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset, activeOverview, storedOverview, updateOverview,
+  addFullPreset, replacePreset, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
   type PromptPresetStore, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -735,6 +735,11 @@ function useProvideSettings() {
       return { ...fn({ ...s, activeId: pinned }), activeId: s.activeId };
     });
   }, [setRawPresetStore, sessionPresetId]);
+  /** `setPresetStore` for an edit to a preset's content, the active one unless `id` names another. A linked
+   *  preset the edit changes is marked dirty. */
+  const editPresetStore = useCallback((fn: (s: PromptPresetStore) => PromptPresetStore, id?: string) => {
+    setPresetStore((s) => markEdited(s, fn(s), id ?? s.activeId, new Date().toISOString()));
+  }, [setPresetStore]);
 
   const promptValues = useMemo(() => activeValues(effectiveStore, BUILTIN_VALUES), [effectiveStore]);
   const {
@@ -744,36 +749,36 @@ function useProvideSettings() {
     openingTimePrompt, openingTimeUserPrompt, sceneTagsPrompt, sceneTagsUserPrompt, discoverEntityPrompt, discoverEntityUserPrompt,
     milestoneSelectPrompt, milestoneSelectUserPrompt,
   } = promptValues;
-  const setSystemPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'systemPrompt', v));
-  const setNarrationUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
-  const setRecapUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'recapUserPrompt', v));
-  const setRehydrateUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'rehydrateUserPrompt', v));
-  const setOocDirectivePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'oocDirectivePrompt', v));
-  const setChoicesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesPrompt', v));
-  const setStatUpdatesPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
-  const setLocationChangePromptText = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
-  const setThinkingPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'thinkingPrompt', v));
-  const setSummaryPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryPrompt', v));
-  const setDiaryPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'diaryPrompt', v));
-  const setDirectorPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'directorPrompt', v));
-  const setDirectorUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'directorUserPrompt', v));
-  const setCharacterPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'characterPrompt', v));
-  const setStoryboardPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'storyboardPrompt', v));
-  const setChoicesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'choicesUserPrompt', v));
-  const setStatUpdatesUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
-  const setLocationChangeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
-  const setSummaryUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
-  const setMilestoneSelectPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'milestoneSelectPrompt', v));
-  const setMilestoneSelectUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'milestoneSelectUserPrompt', v));
-  const setNowLinePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'nowLinePrompt', v));
-  const setTimePassedPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedPrompt', v));
-  const setTimePassedUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
-  const setOpeningTimePrompt = (v: string) => setPresetStore((s) => updateValue(s, 'openingTimePrompt', v));
-  const setOpeningTimeUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'openingTimeUserPrompt', v));
-  const setSceneTagsPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsPrompt', v));
-  const setSceneTagsUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
-  const setDiscoverEntityPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'discoverEntityPrompt', v));
-  const setDiscoverEntityUserPrompt = (v: string) => setPresetStore((s) => updateValue(s, 'discoverEntityUserPrompt', v));
+  const setSystemPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'systemPrompt', v));
+  const setNarrationUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'narrationUserPrompt', v));
+  const setRecapUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'recapUserPrompt', v));
+  const setRehydrateUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'rehydrateUserPrompt', v));
+  const setOocDirectivePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'oocDirectivePrompt', v));
+  const setChoicesPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'choicesPrompt', v));
+  const setStatUpdatesPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'statUpdatesPrompt', v));
+  const setLocationChangePromptText = (v: string) => editPresetStore((s) => updateValue(s, 'locationChangePromptText', v));
+  const setThinkingPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'thinkingPrompt', v));
+  const setSummaryPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'summaryPrompt', v));
+  const setDiaryPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'diaryPrompt', v));
+  const setDirectorPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'directorPrompt', v));
+  const setDirectorUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'directorUserPrompt', v));
+  const setCharacterPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'characterPrompt', v));
+  const setStoryboardPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'storyboardPrompt', v));
+  const setChoicesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'choicesUserPrompt', v));
+  const setStatUpdatesUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'statUpdatesUserPrompt', v));
+  const setLocationChangeUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'locationChangeUserPrompt', v));
+  const setSummaryUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'summaryUserPrompt', v));
+  const setMilestoneSelectPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'milestoneSelectPrompt', v));
+  const setMilestoneSelectUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'milestoneSelectUserPrompt', v));
+  const setNowLinePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'nowLinePrompt', v));
+  const setTimePassedPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'timePassedPrompt', v));
+  const setTimePassedUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'timePassedUserPrompt', v));
+  const setOpeningTimePrompt = (v: string) => editPresetStore((s) => updateValue(s, 'openingTimePrompt', v));
+  const setOpeningTimeUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'openingTimeUserPrompt', v));
+  const setSceneTagsPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'sceneTagsPrompt', v));
+  const setSceneTagsUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'sceneTagsUserPrompt', v));
+  const setDiscoverEntityPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'discoverEntityPrompt', v));
+  const setDiscoverEntityUserPrompt = (v: string) => editPresetStore((s) => updateValue(s, 'discoverEntityUserPrompt', v));
 
   // Preset-scoped tuning derives from the active preset (built-ins → empty → defaults); setters patch the
   // active preset and no-op under a built-in, mirroring the text setters above.
@@ -849,37 +854,37 @@ function useProvideSettings() {
     [genTemperature, genRepetitionPenalty],
   );
   const setPromptSamplerCustom = useCallback((kind: AIRequestType, sampler: PromptSampler, custom: boolean) => {
-    setPresetStore((s) => updateSamplers(s, (prev) => {
+    editPresetStore((s) => updateSamplers(s, (prev) => {
       // Seed the custom value with the built-in default so it always starts as a real number, never undefined.
       const value = prev[kind]?.[sampler]?.value ?? defaultPromptSampler(kind, sampler, globalForSampler(sampler), true)!;
       return { ...prev, [kind]: { ...prev[kind], [sampler]: { custom, value } } };
     }));
-  }, [globalForSampler, setPresetStore]);
+  }, [globalForSampler, editPresetStore]);
   const setPromptSamplerValue = useCallback((kind: AIRequestType, sampler: PromptSampler, value: number) => {
-    setPresetStore((s) => updateSamplers(s, (prev) => ({
+    editPresetStore((s) => updateSamplers(s, (prev) => ({
       ...prev,
       [kind]: { ...prev[kind], [sampler]: { custom: prev[kind]?.[sampler]?.custom ?? true, value } },
     })));
-  }, [setPresetStore]);
+  }, [editPresetStore]);
   const setPromptReasoning = useCallback((kind: AIRequestType, value: PromptReasoningSetting) => {
-    setPresetStore((s) => updateReasoning(s, kind, value));
-  }, [setPresetStore]);
+    editPresetStore((s) => updateReasoning(s, kind, value));
+  }, [editPresetStore]);
   const setPromptReasoningBudget = useCallback((kind: AIRequestType, value: number) => {
-    setPresetStore((s) => updateReasoningBudget(s, kind, value));
-  }, [setPresetStore]);
+    editPresetStore((s) => updateReasoningBudget(s, kind, value));
+  }, [editPresetStore]);
   // The custom value is seeded from the shipped cap, so switching the row on starts where Auto was.
   const setPromptMaxOutputCustom = useCallback((kind: AIRequestType, custom: boolean) => {
     if (!isMaxOutputKind(kind)) return;
-    setPresetStore((s) => updateMaxOutput(s, (prev) => ({
+    editPresetStore((s) => updateMaxOutput(s, (prev) => ({
       ...prev, [kind]: { custom, value: prev[kind]?.value ?? shippedMaxOutput(kind) },
     })));
-  }, [setPresetStore]);
+  }, [editPresetStore]);
   const setPromptMaxOutputValue = useCallback((kind: AIRequestType, value: number) => {
     if (!isMaxOutputKind(kind)) return;
-    setPresetStore((s) => updateMaxOutput(s, (prev) => ({
+    editPresetStore((s) => updateMaxOutput(s, (prev) => ({
       ...prev, [kind]: { custom: prev[kind]?.custom ?? true, value: clampMaxOutput(value) },
     })));
-  }, [setPresetStore]);
+  }, [editPresetStore]);
 
   // Preset management (Settings → Prompts selector).
   const activePresetId = effectiveStore.activeId;
@@ -912,18 +917,29 @@ function useProvideSettings() {
     }
     return id;
   };
-  const renamePreset = (id: string, name: string) => setPresetStore((s) => renamePresetOp(s, id, name));
+  // The name is the listing name, so a rename is an edit.
+  const renamePreset = (id: string, name: string) => editPresetStore((s) => renamePresetOp(s, id, name), id);
   // Null under a built-in, which has no Overview; the setter no-ops there like the tuning setters.
   const presetOverview = useMemo(() => activeOverview(effectiveStore), [effectiveStore]);
   const setPresetOverview = useCallback(
-    (patch: Partial<PresetOverview>) => setPresetStore((s) => updateOverview(s, patch)),
-    [setPresetStore],
+    (patch: Partial<PresetOverview>) => editPresetStore((s) => updateOverview(s, patch)),
+    [editPresetStore],
   );
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
-  const resetPreset = (id: string) => setPresetStore((s) => {
+  const resetPreset = (id: string) => editPresetStore((s) => {
     const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';
     return resetPresetOp(s, id, buildStyledValues(PROMPT_TEXT_DEFAULTS, style));
-  });
+  }, id);
+  const linkPresetToListing = useCallback(
+    (id: string, listingId: string, sourceUpdatedAt?: string, author?: { id?: string; name?: string }) =>
+      setRawPresetStore((s) => linkPreset(s, id, {
+        sourceId: listingId,
+        ...(sourceUpdatedAt ? { sourceUpdatedAt } : {}),
+        ...(author?.id ? { sourceAuthorId: author.id } : {}),
+        ...(author?.name ? { sourceAuthorName: author.name } : {}),
+      })),
+    [setRawPresetStore],
+  );
   // Share (export/import). Export materializes the selected preset (built-ins → concrete text, empty tuning);
   // import adds a new preset or overwrites one by id, optionally including the shared tuning.
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
@@ -983,12 +999,12 @@ function useProvideSettings() {
   const statUpdatesVerbatimTurns = verbatimMap.statUpdates ?? 3;
   const locationChangeVerbatimTurns = verbatimMap.locationChange ?? 3;
   const summaryVerbatimTurns = verbatimMap.summary ?? 3;
-  const setNarrationVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'narration', n));
-  const setThinkingVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'thinking', n));
-  const setChoicesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'choices', n));
-  const setStatUpdatesVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'statUpdates', n));
-  const setLocationChangeVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'locationChange', n));
-  const setSummaryVerbatimTurns = (n: number) => setPresetStore((s) => updateVerbatim(s, 'summary', n));
+  const setNarrationVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'narration', n));
+  const setThinkingVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'thinking', n));
+  const setChoicesVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'choices', n));
+  const setStatUpdatesVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'statUpdates', n));
+  const setLocationChangeVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'locationChange', n));
+  const setSummaryVerbatimTurns = (n: number) => editPresetStore((s) => updateVerbatim(s, 'summary', n));
   // Hide every "Generate with AI" image affordance app-wide. Global (not per-preset) so the user can turn
   // image generation off entirely without losing their endpoint configs.
   const [imageGenDisabled, setImageGenDisabled] = usePersistentState<boolean>(`${APP_ID}_imageGenDisabled`, false, boolCodec);
@@ -1651,6 +1667,7 @@ function useProvideSettings() {
     presetOverview,
     setPresetOverview,
     exportActivePreset,
+    linkPresetToListing,
     importPreset,
     imageGenDisabled,
     setImageGenDisabled,

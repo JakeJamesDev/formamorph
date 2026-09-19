@@ -1114,7 +1114,8 @@ class WorldStorageService {
           // about relationships leaves the listing's own exactly as they are.
           ...(payload.visibility ? { visibility: payload.visibility } : {}),
           ...(payload.requiredDependencies ? { requiredDependencies: payload.requiredDependencies } : {}),
-          ...(payload.compatibleWorlds ? { compatibleWorlds: payload.compatibleWorlds } : {})
+          ...(payload.compatibleWorlds ? { compatibleWorlds: payload.compatibleWorlds } : {}),
+          ...(payload.models ? { models: payload.models } : {})
         })
       });
 

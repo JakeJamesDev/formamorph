@@ -56,19 +56,22 @@ export function resolveEffectivePreset(
   return { presetId: null, source: 'global' };
 }
 
+/** The stored per-world pins, world id to preset id. Unreadable storage reads as no pins. */
+export function readWorldPromptPins(): Record<string, string> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Per-world prompt-preset pins, keyed by world id. Local to this device: never exported with a world, never
  * published, and deliberately outside the Backup bundle — the same treatment the README flags get.
  */
 export function useWorldPromptPresets() {
-  const [pins, setPins] = useState<Record<string, string>>(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, string>) : {};
-    } catch {
-      return {};
-    }
-  });
+  const [pins, setPins] = useState<Record<string, string>>(readWorldPromptPins);
 
   useEffect(() => {
     try {

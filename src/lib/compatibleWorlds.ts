@@ -69,6 +69,52 @@ export function compatibleWorldRows(
   return rows;
 }
 
+/** A published world a prompt can be offered for. `pinned` says the world's own preset pin names the prompt. */
+export interface PromptWorld extends EligibleWorld {
+  pinned: boolean;
+}
+
+/**
+ * Build the Compatible Worlds rows for a prompt.
+ *
+ * A prompt has no linked copy, so the offer is the author's declaration: every published world is a row.
+ * A new listing checks the worlds pinned to the preset. An update starts from what the listing offers, and
+ * keeps an offer for a world this device has no copy of.
+ *
+ * @param worlds - The local worlds that have a listing
+ * @param associations - What the listing offers today, or null for a new listing
+ * @returns The rows to render, local worlds first
+ */
+export function promptCompatibleRows(
+  worlds: readonly PromptWorld[], associations: readonly WorldAssociation[] | null,
+): CompatibleWorldRow[] {
+  const offered = new Map((associations ?? []).map((row) => [row.id, row]));
+  const rows: CompatibleWorldRow[] = worlds.map((world) => {
+    const association = offered.get(world.listingId);
+    return {
+      listingId: world.listingId,
+      name: world.name,
+      linked: true,
+      offered: associations ? Boolean(association) : world.pinned,
+      ...(association?.reviewState ? { reviewState: association.reviewState } : {}),
+    };
+  });
+
+  const local = new Set(worlds.map((world) => world.listingId));
+  for (const association of associations ?? []) {
+    if (local.has(association.id)) continue;
+    rows.push({
+      listingId: association.id,
+      name: association.name,
+      linked: true,
+      offered: true,
+      ...(association.reviewState ? { reviewState: association.reviewState } : {}),
+    });
+  }
+
+  return rows;
+}
+
 /** The world listing ids this publish offers the component for. An unlisted component offers none: it is
  *  reachable only through a world that requires it, so it can never be an add-on. */
 export function offeredWorldIds(
