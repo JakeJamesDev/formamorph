@@ -2,6 +2,8 @@ import { randomUUID } from "@/lib/uuid";
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef, type ReactNode, type SetStateAction } from 'react';
 import WorldStorageService from '../services/WorldStorageService';
 import { canonicalStringify } from '@/lib/canonicalStringify';
+import { dirtyDiff } from '@/lib/dirtyDiff';
+import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
@@ -506,6 +508,11 @@ function useProvideGameData() {
     () => !!savedSnapshot && canonicalStringify(getWorldData(), stringifyCache.current) !== savedCanonical,
     [getWorldData, savedCanonical, savedSnapshot],
   );
+  // DEV: names what `isWorldDirty` is reacting to. Parses the stored snapshot, as the baseline above does.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    return registerDevHook('dirtyDiff', () => (savedSnapshot ? dirtyDiff(JSON.parse(savedSnapshot), getWorldData()) : []));
+  }, [savedSnapshot, getWorldData]);
 
   /**
    * Drop every pending edit and restore the last saved (or freshly loaded) world.
