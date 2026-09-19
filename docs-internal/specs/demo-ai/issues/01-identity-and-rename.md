@@ -1,6 +1,8 @@
 # 01: Demo AI Identity and Rename
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in 2c4a1eac + 54d755f2. A ghost active id counts as the Demo AI (spec ruling).
+Base: c05e7dc9
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
