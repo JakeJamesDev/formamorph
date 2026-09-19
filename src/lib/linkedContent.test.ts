@@ -366,6 +366,8 @@ describe('syncWorldContent', () => {
     const result = syncWorldContent(world, [source]);
     expect(result.updated).toBe(0);
     expect(result.unlinked).toBe(1);
+    // The copy's name in this world, not the deleted item's.
+    expect(result.unlinkedCopies).toEqual([{ id: 'book-2', name: 'My Notes' }]);
     expect(result.dictionaries[0].link).toBeUndefined();
     expect(result.dictionaries[0]).toMatchObject({ id: 'book-2', name: 'My Notes', entries: copy.entries });
   });
