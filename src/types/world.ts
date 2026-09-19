@@ -137,6 +137,11 @@ export interface Entity {
   /** Author-defined nicknames/other names (e.g. "Matron", "Em"). Detected in narration like the name
    *  (case-sensitive, word-bounded, plural-tolerant) and surfaced to the AI as "also known as". */
   aliases?: string[];
+  /** Free text, such as "she/her". The AI's entity context shows it for any entity that has it. */
+  pronouns?: string;
+  /** Marks the entity as a Persona. In the library it is one of the player's personas; in a world the
+   *  player can play as it. */
+  persona?: boolean;
   type?: string;
   /** Shown to the player in-game. */
   playerDescription?: string;
@@ -579,6 +584,8 @@ export interface EntityMetadata extends CommunityLink {
   lastAccessed?: string;
   /** Listing tags, shown on the library card the way a world's are. */
   tags?: string[];
+  /** The entity carries the Persona mark, so the tab's Personas filter shows it. */
+  persona?: boolean;
 }
 
 /** A find-bar hit handed to a detail panel, so the panel can open the tab that holds the field. `itemId`

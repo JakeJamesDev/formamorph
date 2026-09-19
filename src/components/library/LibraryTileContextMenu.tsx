@@ -38,6 +38,7 @@ export function LibraryTileContextMenu({
   layout,
   renderedIds,
   baseCols,
+  arrange = true,
   onOpenGroup,
   onCheckUpdates,
   onPublish,
@@ -50,6 +51,8 @@ export function LibraryTileContextMenu({
   layout: 'grid' | 'detailed';
   renderedIds: string[];
   baseCols: number;
+  /** Offers the size and folder actions. A filtered view turns them off, so it never rewrites the layout. */
+  arrange?: boolean;
   onOpenGroup: (groupId: string) => void;
   /** Checks this item for source updates, on the tabs whose tiles worlds can follow */
   onCheckUpdates?: (id: string) => void;
@@ -91,7 +94,7 @@ export function LibraryTileContextMenu({
       >
         <ScrollArea className="max-h-[min(calc(100dvh-1rem-2px),calc(var(--radix-context-menu-content-available-height)-2px))] p-1">
         {/* Size only affects the packed grid; detailed cards are uniform. */}
-        {layout === 'grid' && (
+        {arrange && layout === 'grid' && (
           <>
             <ContextMenuLabel>Tile Size</ContextMenuLabel>
             <ContextMenuRadioGroup
@@ -114,11 +117,13 @@ export function LibraryTileContextMenu({
             <ContextMenuItem onSelect={() => onOpenGroup(group.id)}>
               <ActionSpace /> Open Group
             </ContextMenuItem>
-            <ContextMenuItem onSelect={() => tiles.disband(group.id)}>
-              <ActionSpace /> Delete Group
-            </ContextMenuItem>
+            {arrange && (
+              <ContextMenuItem onSelect={() => tiles.disband(group.id)}>
+                <ActionSpace /> Delete Group
+              </ContextMenuItem>
+            )}
           </>
-        ) : (
+        ) : arrange && (
           <>
             <ContextMenuLabel>Add To Group</ContextMenuLabel>
             {tiles.groups
@@ -150,7 +155,7 @@ export function LibraryTileContextMenu({
             whose tiles can be published; Delete stays here because the card has no delete control. */}
         {!group && (onCheckUpdates || onPublish || onDelete) && (
           <>
-            <ContextMenuSeparator />
+            {arrange && <ContextMenuSeparator />}
             {onCheckUpdates && (
               <ContextMenuItem onSelect={() => onCheckUpdates(id)}>
                 <RefreshCw className="h-4 w-4 shrink-0" /> Check for Updates

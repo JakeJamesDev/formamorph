@@ -25,6 +25,9 @@ export interface EntityCardData {
   version: string;
   name: string;
   aliases?: string[];
+  pronouns?: string;
+  /** The Persona mark. A shared persona arrives as a persona. */
+  persona?: boolean;
   type?: string;
   playerDescription?: string;
   aiDescription?: string;
@@ -68,6 +71,8 @@ export function buildEntityCardData(
     version: APP_VERSION,
     name: entity.name,
     ...(entity.aliases?.length ? { aliases: entity.aliases } : {}),
+    ...(entity.pronouns ? { pronouns: entity.pronouns } : {}),
+    ...(entity.persona ? { persona: true } : {}),
     ...(entity.type ? { type: entity.type } : {}),
     ...(entity.playerDescription ? { playerDescription: entity.playerDescription } : {}),
     ...(entity.aiDescription ? { aiDescription: entity.aiDescription } : {}),
@@ -117,6 +122,8 @@ export function parseEntityCardData(raw: unknown): Entity {
     id: randomUUID(),
     name: typeof obj.name === 'string' && obj.name ? obj.name : 'Imported Character',
     ...(aliases.length ? { aliases } : {}),
+    ...(typeof obj.pronouns === 'string' && obj.pronouns ? { pronouns: obj.pronouns } : {}),
+    ...(obj.persona === true ? { persona: true } : {}),
     ...(typeof obj.type === 'string' && obj.type ? { type: obj.type } : {}),
     ...(typeof obj.playerDescription === 'string' && obj.playerDescription ? { playerDescription: obj.playerDescription } : {}),
     ...(typeof obj.aiDescription === 'string' && obj.aiDescription ? { aiDescription: obj.aiDescription } : {}),

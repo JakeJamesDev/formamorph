@@ -225,6 +225,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', entity.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
     add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', entity.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     add({ ...where, chipCapable: true }, 'aiSummary', 'AI-Facing Summary', entity.aiSummary, (r, v) => ({ ...r, aiSummary: v }));
+    add({ ...where, chipCapable: false }, 'pronouns', 'Pronouns', entity.pronouns, (r, v) => ({ ...r, pronouns: v }));
     add({ ...where, chipCapable: false }, 'type', 'Type', entity.type, (r, v) => ({ ...r, type: v }));
     add({ ...where, chipCapable: false }, 'imageTags', 'Image Tags', entity.imageTags, (r, v) => ({ ...r, imageTags: v }));
     (entity.openings ?? []).forEach((opening, i) => {

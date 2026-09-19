@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   collapseBoard,
+  filteredPlacements,
   prunePlacements,
   resolvePlacements,
   rowMajor,
@@ -119,6 +120,32 @@ describe('resolvePlacements', () => {
     const places = resolvePlacements(state, ['a'], 8);
 
     expect(places.a.col + spanAt('large', 8)).toBeLessThanOrEqual(8);
+  });
+});
+
+describe('filteredPlacements', () => {
+  // Four columns: a medium tile takes a 2×2 block, a small one a single cell.
+  const saved = org({
+    placements: { 4: homes([['a', 0, 0], ['b', 0, 2], ['c', 2, 0], ['d', 2, 2]]) },
+    sizes: sizes([['d', 'small']]),
+  });
+
+  it('draws only the shown tiles, packed in the saved reading order with no hole where a hidden one stood', () => {
+    expect(filteredPlacements(saved, ['a', 'b', 'c', 'd'], ['d', 'b'], 4))
+      .toEqual(homes([['b', 0, 0], ['d', 0, 2]]));
+  });
+
+  it('keeps each shown tile at its saved size', () => {
+    const large = org({ ...saved, sizes: sizes([['c', 'large']]) });
+    const placed = filteredPlacements(large, ['a', 'b', 'c', 'd'], ['c', 'd'], 4);
+    // The large tile fills the whole four-column width, so the next one starts below it.
+    expect(placed).toEqual(homes([['c', 0, 0], ['d', 4, 0]]));
+  });
+
+  it('never changes the saved arrangement', () => {
+    const before = JSON.stringify(saved);
+    filteredPlacements(saved, ['a', 'b', 'c', 'd'], ['c'], 4);
+    expect(JSON.stringify(saved)).toBe(before);
   });
 });
 

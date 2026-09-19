@@ -45,12 +45,13 @@ if (typeof window.matchMedia !== 'function') {
 }
 
 const FIELD_LABELS =
-  /^(Name|Aliases|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Image|Image Tags|3D Model)$/;
+  /^(Name|Aliases|Pronouns|Persona|Type|Player-Facing Description|AI-Facing Description|AI-Facing Summary|Locations|Image|Image Tags|3D Model)$/;
 
 /** The searchable fields' keys, as the find bar reports them. */
 const FIELD_KEYS: Record<string, string> = {
   Name: 'name',
   Aliases: 'aliases[0]',
+  Pronouns: 'pronouns',
   Type: 'type',
   'Image Tags': 'imageTags',
   'Player-Facing Description': 'playerDescription',
@@ -63,6 +64,9 @@ const WorldPanel = () => {
   return <EntityManager entity={entity} tab={tab} onTabChange={setTab} />;
 };
 
+const ownText = (el: Element) =>
+  [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE).map((n) => n.textContent).join('').trim();
+
 const tabNames = () => screen.getAllByRole('tab').map((t) => t.textContent?.trim());
 
 /** Each tab's name, then the field labels it shows, for whichever editor is on screen. */
@@ -72,7 +76,8 @@ async function fieldsByTab(skip: string[] = []) {
     if (!name || skip.includes(name)) continue;
     await userEvent.click(screen.getByRole('tab', { name }));
     const panel = screen.getByRole('tabpanel');
-    out[name] = within(panel).queryAllByText(FIELD_LABELS).map((el) => el.textContent ?? '');
+    // A checkbox row carries its hint inline, so a label reads by its own text, as the matcher does.
+    out[name] = within(panel).queryAllByText(FIELD_LABELS).map(ownText);
   }
   return out;
 }
@@ -102,6 +107,30 @@ describe('the two entity editors', () => {
     expect(tabNames()).toEqual(['Overview', 'Profile', 'Descriptions', 'Openings', 'Placeholders']);
   });
 
+  it('show Pronouns in both modes and Persona only in Advanced, with the always-Advanced library showing both', () => {
+    const simple = (ui: React.ReactNode) => (
+      <SettingsProvider>
+        <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: vi.fn() }}>{ui}</EditorModeContext.Provider>
+      </SettingsProvider>
+    );
+    render(simple(<WorldPanel />));
+    expect(screen.getByLabelText('Pronouns')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /^Persona/ })).toBeNull();
+    cleanup();
+    render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
+    expect(screen.getByLabelText('Pronouns')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /^Persona/ })).toBeInTheDocument();
+  });
+
+  it('write the Persona mark and pronouns to the entity in the World Editor', async () => {
+    world.updateEntity.mockClear();
+    render(<SettingsProvider><WorldPanel /></SettingsProvider>);
+    await userEvent.click(screen.getByRole('checkbox', { name: /^Persona/ }));
+    expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', persona: true });
+    await userEvent.type(screen.getByLabelText('Pronouns'), 'x');
+    expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', pronouns: 'x' });
+  });
+
   it('open the library editor on Profile, not Overview', () => {
     render(<SettingsProvider><EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} /></SettingsProvider>);
     expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
@@ -115,7 +144,7 @@ describe('the two entity editors', () => {
     const worldFields = await fieldsByTab(['Openings', 'Placeholders']);
 
     expect(library).toEqual({
-      Profile: ['Image', 'Name', 'Aliases', 'Type', 'Image Tags', '3D Model'],
+      Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Type', 'Persona', 'Image Tags', '3D Model'],
       Descriptions: ['Player-Facing Description', 'AI-Facing Description', 'AI-Facing Summary'],
     });
     expect({ ...worldFields, Profile: worldFields.Profile.filter((l) => l !== 'Locations') }).toEqual(library);

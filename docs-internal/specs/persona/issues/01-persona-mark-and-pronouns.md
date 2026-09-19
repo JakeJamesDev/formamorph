@@ -1,6 +1,8 @@
 # 01: Persona Mark and Pronouns
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: The filter's drag-off path has no automated test, because jsdom cannot drive a grid drag.
+Base: e76168c2
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -18,6 +20,8 @@ Reasoning effort: medium
 - [ ] Pronouns joins the field-to-tab map, and the World Editor find bar opens the Profile tab on a pronouns hit. The tab tests cover it.
 - [ ] In the World Editor the mark is an Advanced control, and an entity that carries it counts as Advanced data for the notice beside the mode switch. Pronouns shows in both modes. The library editor shows both.
 - [ ] The Entities tab filter shows all entities or only personas. The filter choice is device-local.
+- [ ] The filter is a view over the full saved tile arrangement, and the tile hook still receives every id. Persona tiles keep their saved order and size. A folder shows when it holds at least one persona, and it opens to show only its personas.
+- [ ] Drag, resize, and folder edits are off while the filter is on. A test turns the filter on and off and proves the saved arrangement is unchanged.
 - [ ] The entity context builder renders pronouns in the Simple, Markdown, and XML formats. An entity with no pronouns renders exactly as it does today. Builder tests cover each format.
 - [ ] An exported entity card and a published listing carry both fields. An import keeps them. Round-trip tests prove it.
 - [ ] A world export carries both fields on its entities. A world with neither field loads unchanged.

@@ -36,7 +36,7 @@ export function worldUsesAdvancedFeatures(w: AdvancedDataInput): boolean {
     hasValue(s.beforeCode) || hasValue(s.code) || hasValue(s.descriptors) ||
     s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax)) return true;
   if ((w.entities ?? []).some((e) =>
-    hasValue(e.aliases) || hasValue(e.aiSummary) || hasValue(e.type) || hasValue(e.model) ||
+    e.persona || hasValue(e.aliases) || hasValue(e.aiSummary) || hasValue(e.type) || hasValue(e.model) ||
     hasValue(e.imageTags) || openingTexts(e).length > 0)) return true;
   if ((w.locations ?? []).some((l) => hasValue(l.aiSummary) || hasValue(l.ambientSound) || hasValue(l.imageTags))) return true;
   if ((w.traits ?? []).some((t) => hasValue(t.statToggles) || hasValue(t.placeholderPins))) return true;

@@ -65,6 +65,13 @@ describe('worldUsesAdvancedFeatures', () => {
     }))).toBe(true);
   });
 
+  it('says yes about a Persona mark, and no about pronouns, which Simple shows', () => {
+    const entity = { id: 'e1', name: 'Wren' };
+    expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, persona: true }] }))).toBe(true);
+    expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, persona: false }] }))).toBe(false);
+    expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, pronouns: 'she/her' }] }))).toBe(false);
+  });
+
   it('says yes about a written opening, even with the list switched off', () => {
     expect(worldUsesAdvancedFeatures(plain({
       worldOverview: overview({

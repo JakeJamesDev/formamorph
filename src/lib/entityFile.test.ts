@@ -182,6 +182,31 @@ describe('embed → read → parse chain', () => {
   });
 });
 
+describe('a character card’s Persona mark and pronouns', () => {
+  const persona: Entity = { ...entity, persona: true, pronouns: 'she/her' };
+
+  it('travel through a WebP card and come back on the import', () => {
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(persona)), { w: 4, h: 4 });
+    const parsed = parseEntityCardData(JSON.parse(readEntityCard(bytes) as string));
+    expect(parsed.persona).toBe(true);
+    expect(parsed.pronouns).toBe('she/her');
+  });
+
+  it('are left off a card for an entity without them', () => {
+    const card = buildEntityCardData({ ...entity, persona: false, pronouns: '' });
+    expect(card).not.toHaveProperty('persona');
+    expect(card).not.toHaveProperty('pronouns');
+    expect(parseEntityCardData(card)).not.toHaveProperty('persona');
+    expect(parseEntityCardData(card)).not.toHaveProperty('pronouns');
+  });
+
+  it('drop junk values rather than import them', () => {
+    const parsed = parseEntityCardData({ formamorphKind: 'entity', name: 'X', persona: 'yes', pronouns: 7 });
+    expect(parsed).not.toHaveProperty('persona');
+    expect(parsed).not.toHaveProperty('pronouns');
+  });
+});
+
 /**
  * Listing tags on a character card.
  *

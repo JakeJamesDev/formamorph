@@ -132,6 +132,24 @@ export function resolvePlacements(
   );
 }
 
+/**
+ * The homes of a filtered view: `shown` packed in the order the full board reads, at their saved sizes.
+ * A hidden tile leaves no hole, and the saved arrangement is only read.
+ *
+ * @param ids - Every tile of this grid, which fixes the reading order
+ * @param shown - The tiles the filter lets through
+ */
+export function filteredPlacements(
+  org: LibraryTabOrganization,
+  ids: string[],
+  shown: string[],
+  columns: number,
+): PlacementMap {
+  const order = rowMajor(resolvePlacements(org, ids, columns), shown);
+  const packed = collapseBoard(packTiles(order, org.sizes, Math.max(1, Math.floor(columns))));
+  return Object.fromEntries(packed.map((tile) => [tile.id, { row: tile.row, col: tile.col }]));
+}
+
 /** The organization with one width's map replaced; every other width is left alone. */
 export function withPlacements(
   org: LibraryTabOrganization,
