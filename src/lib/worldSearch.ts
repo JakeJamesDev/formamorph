@@ -1,4 +1,4 @@
-import { OPENING_CUE_FIELD_KEY, setOpeningCue, storedOpeningCue } from '@/lib/openingCue';
+import { openingFieldKey, setOpeningText } from '@/lib/openings';
 import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } from '@/lib/placeholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { foldSeparators, labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
@@ -190,10 +190,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
     add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));
     add({ ...ovWhere, chipCapable: true }, 'readme', 'Readme (Gameplay)', ov.readme, (r, v) => ({ ...r, readme: v }));
-    // Registered only once the author has stored a cue: a field still tracking the shipped default holds
-    // no world text to find, and replacing into it would freeze a cue nobody wrote.
-    add({ ...ovWhere, chipCapable: true }, OPENING_CUE_FIELD_KEY, 'Opening Cue', storedOpeningCue(ov),
-      (r, v) => ({ ...r, ...setOpeningCue({ text: v }) }));
+    // Every row, switched on or not; the default opening is not world text and is never a target.
+    (ov.openings ?? []).forEach((opening, i) => {
+      add({ ...ovWhere, chipCapable: true }, openingFieldKey(opening.id), `Opening ${i + 1}`, opening.text,
+        (r, v) => ({ ...r, ...setOpeningText(r, opening.id, v) }));
+    });
     // One target per custom prompt the author has actually stored — a tab still tracking the preset holds
     // no world text to find, and replacing into it would silently freeze a prompt nobody wrote.
     WORLD_PROMPT_KINDS.forEach((kind) => {

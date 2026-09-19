@@ -24,6 +24,18 @@ _Avoid_: auto layout (as a live behavior), nudge
 Any world inhabitant the narrator can reference — person, creature, plant, or object.
 _Avoid_: character (too narrow)
 
+**Opening**:
+One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration.
+_Avoid_: cue, opening cue, greeting, first message (the SillyTavern term)
+
+**Opening Action**:
+An Opening that fills the player's input box at Start Game. The player can edit it before they send it, and the AI writes page one from it.
+_Avoid_: player action (unqualified), prompt
+
+**Opening Narration**:
+An Opening that is page one itself. Its text shows as written, and no narration request goes out for it.
+_Avoid_: scripted opening, greeting
+
 **Avatar**:
 A VRM 3D model — in the local Model Library, chosen for a world, or published as a listing. The kind id in code is `model`; "avatar" in code means Profile Picture.
 _Avoid_: model (in copy), VRM (the file format, not the thing)

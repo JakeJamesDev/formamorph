@@ -36,7 +36,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
-import { resolveOpeningCue } from "@/lib/openingCue";
+import { resolveOpening } from "@/lib/openings";
 import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
@@ -55,7 +55,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Opening } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -1090,6 +1090,10 @@ const GameViewer = ({
   // The real (editable) opening text last submitted, kept so re-generating the opening can re-fill the box
   // with it — history stores only the "START GAME" proxy (parity), which would otherwise lose the edit.
   const openingActionRef = useRef<string>("");
+  // The opening this session drew, unresolved. A new game draws at seed; a loaded save draws on first need,
+  // so the pre-fill, the page-one regenerate and the legacy start message all read one draw.
+  const sessionOpeningRef = useRef<Opening | null>(null);
+  const sessionOpening = () => (sessionOpeningRef.current ??= resolveOpening(worldOverview));
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
@@ -1151,9 +1155,9 @@ const GameViewer = ({
     if (page === 1) {
       setIsGameStarted(false);
       // History holds the "START GAME" proxy, so recover the player's real opening text from the ref (falling
-      // back to this world's cue for a loaded save, where it was never captured this session).
+      // back to this session's opening for a loaded save, where it was never captured).
       setPlayerInput(
-        openingActionRef.current || (action === "START GAME" ? resolvePH(resolveOpeningCue(worldOverview)) : action),
+        openingActionRef.current || (action === "START GAME" ? resolvePH(sessionOpening().text) : action),
       );
       return;
     }
@@ -1732,8 +1736,8 @@ const GameViewer = ({
     storyboard: storyboardPrompt,
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
-    // A world's own cue, resolved: an old save's history holds the sentinel rather than the text.
-    openingCue: resolvePH(resolveOpeningCue(worldOverview)),
+    // This session's opening, resolved: an old save's history holds the sentinel rather than the text.
+    openingCue: resolvePH(sessionOpening().text),
     choices: resolvedChoicesPrompt,
     choicesUser: choicesUserPrompt,
     statUpdates: resolvedStatUpdatesPrompt,
@@ -3836,10 +3840,10 @@ const GameViewer = ({
         );
       }
 
-      // Pre-fill the editable opening cue so the player can shape the first turn before submitting it. The
-      // world's own cue when it has one, resolved here (against the pins the traits above are about to
-      // impose) so the player reads and edits plain prose, never raw chips.
-      setPlayerInput(resolveWith(openingPins, resolveOpeningCue(worldOverview)));
+      // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
+      // here (against the pins the traits above are about to impose) so the player reads plain prose.
+      sessionOpeningRef.current = resolveOpening(worldOverview);
+      setPlayerInput(resolveWith(openingPins, sessionOpeningRef.current.text));
     }
   }, [
     initialSaveId,

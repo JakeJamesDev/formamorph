@@ -286,10 +286,15 @@ describe('the assembled first prompt', () => {
     expect(opening.user).toContain(OPENING_SCENE_CUE);
   });
 
-  it('sends the world’s own cue once the author switches it on, chips and all resolved', () => {
+  it('sends the world’s first drawable opening, chips and all resolved', () => {
     const cue = `You wake with ${chip('ph-hair', 'world', 'pl-h9')} hair and the tide already climbing.`;
     const w = world({
-      worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '', openingCue: cue } as WorldOverview,
+      worldOverview: {
+        name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null, systemPrompt: '',
+        use3DModel: false, tags: [],
+        openings: [{ id: 'o0', text: 'Benched.', kind: 'action' }, { id: 'o1', text: cue, kind: 'action' }],
+        openingWeights: { o0: 0 },
+      },
     });
     const opening = openingFor(w);
 
@@ -297,12 +302,13 @@ describe('the assembled first prompt', () => {
     expect(opening.user).not.toContain(OPENING_SCENE_CUE);
   });
 
-  it('keeps the shipped cue for a world whose cue is switched off or blank', () => {
+  it('keeps the shipped cue for a world whose openings are switched off or blank', () => {
     const ov = (over: Partial<WorldOverview>) =>
       world({ worldOverview: { name: 'W', description: '', systemPrompt: '', ...over } as WorldOverview });
-    expect(openingFor(ov({ openingCue: 'Never applied.', openingCueEnabled: false })).user)
-      .toContain(OPENING_SCENE_CUE);
-    expect(openingFor(ov({ openingCue: '   ', openingCueEnabled: true })).user).toContain(OPENING_SCENE_CUE);
+    expect(openingFor(ov({
+      openings: [{ id: 'o1', text: 'Never applied.', kind: 'action' }], openingsEnabled: false,
+    })).user).toContain(OPENING_SCENE_CUE);
+    expect(openingFor(ov({ openings: [{ id: 'o1', text: '   ', kind: 'action' }] })).user).toContain(OPENING_SCENE_CUE);
   });
 
   it('resolves chips through the active traits’ pins', () => {

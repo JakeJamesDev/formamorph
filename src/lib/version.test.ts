@@ -502,6 +502,51 @@ describe('migrateWorld — pre-rebuild start flag', () => {
   });
 });
 
+describe('migrateWorld — single opening cue to the openings list', () => {
+  const CUE = 'I wake in the reed-beds with the tide already climbing.';
+  const overviewOf = (worldOverview: Record<string, unknown>, version?: string) =>
+    migrateWorld({ ...(version ? { version } : {}), worldOverview }).worldOverview as unknown as Record<string, unknown>;
+
+  it('moves the cue into the list as one Opening Action and removes the old fields', () => {
+    const ov = overviewOf({ openingCue: CUE, openingCueEnabled: true }, APP_VERSION);
+    expect(ov.openings).toEqual([{ id: expect.any(String), text: CUE, kind: 'action' }]);
+    expect(ov.openingsEnabled).toBeUndefined();
+    expect('openingCue' in ov).toBe(false);
+    expect('openingCueEnabled' in ov).toBe(false);
+  });
+
+  it('treats a cue with no switch as on', () => {
+    const ov = overviewOf({ openingCue: CUE });
+    expect(ov.openings).toHaveLength(1);
+    expect(ov.openingsEnabled).toBeUndefined();
+  });
+
+  it('keeps a switched-off cue as a row and switches the list off', () => {
+    const ov = overviewOf({ openingCue: CUE, openingCueEnabled: false });
+    expect(ov.openings).toEqual([{ id: expect.any(String), text: CUE, kind: 'action' }]);
+    expect(ov.openingsEnabled).toBe(false);
+  });
+
+  it('adds no row for a blank cue, which opened on the default before', () => {
+    const ov = overviewOf({ openingCue: '  ', openingCueEnabled: true });
+    expect(ov.openings).toBeUndefined();
+    expect('openingCue' in ov).toBe(false);
+  });
+
+  it('is idempotent — a second run changes nothing', () => {
+    const once = migrateWorld({ worldOverview: { openingCue: CUE, openingCueEnabled: false } });
+    const twice = migrateWorld(structuredClone(once));
+    expect(twice.worldOverview).toEqual(once.worldOverview);
+  });
+
+  it('leaves a world already on the list untouched', () => {
+    const openings = [{ id: 'a', text: CUE, kind: 'action' }];
+    const ov = overviewOf({ openings, openingWeights: { a: 2 } });
+    expect(ov.openings).toStrictEqual(openings);
+    expect(ov.openingWeights).toEqual({ a: 2 });
+  });
+});
+
 describe('migrateWorld — dictionary keyword arrays', () => {
   type KeyedWorld = {
     dictionaries?: { entries: { key: string[]; secondaryKeys?: string[] }[] }[];
