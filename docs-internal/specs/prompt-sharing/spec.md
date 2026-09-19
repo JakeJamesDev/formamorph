@@ -1,7 +1,7 @@
 # Prompt Sharing — Spec
 
 Status: ready-for-agent
-Spec session: Prompt upload and sharing
+Spec session: Prompt Sharing — Spec
 
 A user prompt preset gets an **Overview**: author, description, tags, and the models it works with. The
 Overview travels with every export. Authors publish presets to the community catalog as a new `prompt`
