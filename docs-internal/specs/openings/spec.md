@@ -105,7 +105,9 @@ Both entity editors take the same tab layout, and both gain an **Openings** tab.
 - Owners are the world overview and each entity. Entities have no switch of their own.
 - The world overview carries one openings switch. Absent means on.
 - The old single cue and its switch leave the world shape. `migrateWorld` moves the cue into the list as one Player Action opening. A cue that was switched off sets the openings switch to off and keeps the row. The step is idempotent.
-- The entity card file and the published entity listing carry the entity's openings and weights. Card import restores them under fresh ids, as it does for entity-owned placeholders.
+- The entity card file and the published entity listing carry the entity's openings and weights. Card import restores them under fresh ids, as it does for entity-owned placeholders. Duplicating an entity also mints fresh ids.
+- A library or listing entity added to a world keeps its opening ids. A linked copy compares its authored content against its source, and new ids would read as a local edit. This matches how linked dictionary entries hold their ids.
+- An opening id is therefore unique within its owner only. The pool and the no-repeat list identify a row by owner plus opening id, so one library entity added twice to a world gives two separate sets of rows.
 - No save shape change. The no-repeat memory is session state.
 
 > **Export shape:** this changes the world export, the entity record, and the entity card file. The migration and any version change are timed by the project owner against a real release.
@@ -139,7 +141,8 @@ One new pure module owns every rule. It has no React and no storage.
 
 - **First ticket, no data change:** the library entity editor takes the World Editor's organization. Both editors show Profile, Descriptions, and Placeholders. The library editor keeps Overview, which holds publish information only. The field bodies stay shared.
   - Both editors build their tabs from one shared tab list, which also holds the field-to-tab map.
-  - Simple mode belongs to the World Editor only. The library editor stays outside the mode provider and is always Advanced, which is a recorded decision in the editor mode module. It shows every tab and every field. The shared list marks a tab as advanced-only, and only the World Editor applies that mark. This also holds for the Openings tab.
+  - Simple mode belongs to the World Editor only. The library editor stays outside the mode provider and is always Advanced, which is a recorded decision in the editor mode module. It shows every tab and every field. The shared list marks a tab as advanced-only, and only the World Editor applies that mark.
+  - The entity Openings tab is advanced-only in the World Editor, like Placeholders and like the world opening panel. An entity with openings counts as Advanced data for the notice beside the mode switch.
   - The library editor has no find bar, and this work adds none. The find bar criteria in this spec apply to the World Editor.
 - Both editors then gain an **Openings** tab. Each row has the text field with chip support, an **Opens As** toggle with the values **Player Action** and **Narration**, the weight, and the computed chance. The multiline weighted-value rows from the Placeholder editor are the model for the row.
 - The World Editor's opening panel becomes the mirrored list. It shows the world's rows first, then one group per authored entity. Edits write to the owner. The panel holds the world switch. The empty state names the default opening and shows its text read-only.
