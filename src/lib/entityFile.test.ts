@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildEntityCardData, parseEntityCardData, ENTITY_FILE_KIND } from './entityFile';
 import { embedEntityCard, readEntityCard } from './entityCard';
+import { USER_MACRO } from './userMacro';
 import type { Entity } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
@@ -242,6 +243,12 @@ describe('a character card’s openings', () => {
     expect(openings.map((o) => o.id)).not.toContain('o1');
     expect(openings.map((o) => o.id)).not.toContain('o2');
     expect(parsed.openingWeights).toEqual({ [openings[1].id]: 3 });
+  });
+
+  it('keep the stored user macro through a card round trip', () => {
+    const entity: Entity = { id: 'w', name: 'Wren', openings: [{ id: 'o1', text: `Wren greets ${USER_MACRO}.`, kind: 'narration' }] };
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity)), { w: 4, h: 4 });
+    expect(parseEntityCardData(JSON.parse(readEntityCard(bytes) as string)).openings?.[0].text).toBe('Wren greets {{user}}.');
   });
 
   it('carry the shared placeholders an opening’s chips use', () => {

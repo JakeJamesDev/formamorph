@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readTavernCard } from './tavernCard';
+import { openingWeight } from './openings';
+import { USER_MACRO } from './userMacro';
 
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const enc = new TextEncoder();
@@ -38,7 +40,7 @@ const v2Card = {
     description: '{{char}} greets {{user}} warmly by the fire.',
     personality: 'kind, curious',
     scenario: 'a riverside tavern',
-    first_mes: 'Hello, traveler!', // chat-only — must NOT appear in the entity
+    first_mes: 'Hello, traveler!', // an opening, never description text
     character_book: { entries: [{ keys: ['sword'], content: 'a keen blade' }] },
   },
 };
@@ -52,7 +54,7 @@ describe('readTavernCard', () => {
     expect(entity.aiDescription).toContain('Aria greets the player warmly by the fire.');
     expect(entity.aiDescription).toContain('Personality: kind, curious');
     expect(entity.aiDescription).toContain('Scenario: a riverside tavern');
-    expect(entity.aiDescription).not.toContain('Hello, traveler!'); // first_mes dropped
+    expect(entity.aiDescription).not.toContain('Hello, traveler!');
     expect(entity.id).toBeTruthy();
   });
 
@@ -84,5 +86,46 @@ describe('readTavernCard', () => {
 
   it('returns null for a PNG with no character chunk', () => {
     expect(readTavernCard(png('parameters', 'just an SD prompt'))).toBeNull();
+  });
+});
+
+describe('readTavernCard greetings', () => {
+  const read = (card: object, keyword = 'chara') => readTavernCard(png(keyword, b64(JSON.stringify(card))))!.entity;
+  const texts = (card: object, keyword?: string) => (read(card, keyword).openings ?? []).map((o) => o.text);
+
+  it('turns a V2 first message and its alternate greetings into Narration rows at weight 1, in card order', () => {
+    const entity = read({ spec: 'chara_card_v2', data: { name: 'Aria', first_mes: 'One.', alternate_greetings: ['Two.', 'Three.'] } });
+    expect(entity.openings?.map((o) => [o.text, o.kind])).toEqual([['One.', 'narration'], ['Two.', 'narration'], ['Three.', 'narration']]);
+    for (const o of entity.openings!) expect(openingWeight(entity.openingWeights, o.id)).toBe(1);
+    expect(new Set(entity.openings!.map((o) => o.id)).size).toBe(3);
+  });
+
+  it('reads a V3 card from its ccv3 chunk', () => {
+    expect(texts({ spec: 'chara_card_v3', data: { name: 'Aria', first_mes: 'V3 hello.', alternate_greetings: ['V3 again.'] } }, 'ccv3'))
+      .toEqual(['V3 hello.', 'V3 again.']);
+  });
+
+  it('reads a flat V1 first message', () => {
+    expect(texts({ name: 'Bram', first_mes: 'The forge hisses.' })).toEqual(['The forge hisses.']);
+  });
+
+  it('skips blank and non-string greetings and keeps the rest in order', () => {
+    expect(texts({ data: { name: 'Aria', first_mes: '   ', alternate_greetings: ['A.', '', 7, '\n\t', 'B.'] } })).toEqual(['A.', 'B.']);
+  });
+
+  it('writes the name into openings and stores every user macro spelling in its one canonical form', () => {
+    const [text] = texts({ data: { name: 'Aria', first_mes: '{{char}} smiles at {{user}}. {{ Char }} waves to {{User}} and {{ USER }}.' } });
+    expect(text).toBe(`Aria smiles at ${USER_MACRO}. Aria waves to ${USER_MACRO} and ${USER_MACRO}.`);
+  });
+
+  it('leaves the description macro handling as it is', () => {
+    expect(read({ data: { name: 'Aria', description: '{{char}} likes {{user}}.', first_mes: 'Hi {{user}}.' } }).aiDescription)
+      .toBe('Aria likes the player.');
+  });
+
+  it('imports a card with no greetings with no openings', () => {
+    const entity = read({ data: { name: 'Bram', description: 'a smith', alternate_greetings: [] } });
+    expect(entity).not.toHaveProperty('openings');
+    expect(entity).not.toHaveProperty('openingWeights');
   });
 });
