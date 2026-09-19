@@ -23,6 +23,8 @@ interface CommunityFilterBarProps {
   clearFilters: () => void;
   allAuthors: string[];
   allTags: string[];
+  /** The Models filter, for the sections whose listings name models. Absent elsewhere. */
+  models?: { filter: string[]; setFilter: (values: string[]) => void; options: string[] };
   /** Whether the reader has an account — the Liked and Mine facets need one, so without it they're absent
    *  rather than shown as controls that can only ever return nothing. */
   signedIn: boolean;
@@ -38,7 +40,7 @@ interface CommunityFilterBarProps {
 }
 
 /**
- * Every applied narrowing in one row: status facets, authors, and tags as removable chips, with one
+ * Every applied narrowing in one row: status facets, authors, tags, and models as removable chips, with one
  * popover to add more.
  *
  * The chips are the state — an "Add filter" panel that closed on a filter the reader can't see is how a
@@ -46,11 +48,12 @@ interface CommunityFilterBarProps {
  */
 export function CommunityFilterBar({
   authorFilter, setAuthorFilter, tagFilter, setTagFilter, tagMode, setTagMode,
-  statusFilter, toggleStatus, clearFilters, allAuthors, allTags, signedIn, children,
+  statusFilter, toggleStatus, clearFilters, allAuthors, allTags, models, signedIn, children,
   centered, trailing, addFilterTutorial, tutorialNav,
 }: CommunityFilterBarProps) {
   const facets = availableFacets(signedIn);
-  const activeCount = statusFilter.length + authorFilter.length + tagFilter.length;
+  const modelFilter = models?.filter ?? [];
+  const activeCount = statusFilter.length + authorFilter.length + tagFilter.length + modelFilter.length;
 
   const addFilter = (
       <Popover>
@@ -119,6 +122,20 @@ export function CommunityFilterBar({
               openOnFocus
             />
           </div>
+
+          {models && (
+            <div className="space-y-1">
+              <span className="text-meta font-medium text-muted-foreground">Models</span>
+              <TokenAutocomplete
+                values={models.filter}
+                onChange={models.setFilter}
+                options={models.options}
+                placeholder="model…"
+                ariaLabel="Filter by model"
+                openOnFocus
+              />
+            </div>
+          )}
         </PopoverContent>
       </Popover>
   );
@@ -175,6 +192,15 @@ export function CommunityFilterBar({
               removeLabel={tag}
               tip={`Tag filter: ${tag}`}
               onRemove={() => setTagFilter(tagFilter.filter((t) => t !== tag))}
+            />
+          ))}
+          {modelFilter.map((model) => (
+            <Chip
+              key={`model-${model}`}
+              label={`model: ${model}`}
+              removeLabel={model}
+              tip={`Model filter: ${model}`}
+              onRemove={() => models?.setFilter(modelFilter.filter((m) => m !== model))}
             />
           ))}
           <Button variant="ghost" size="sm" className="h-7 px-2 text-meta" onClick={clearFilters}>

@@ -1,10 +1,17 @@
 import { asStatusFacet, type StatusFacet } from '@/lib/communityStatusFacets';
 
-/** A filter typed into the search box as `author:`/`tag:`/`status:` rather than clicked. */
+/** A filter typed into the search box as `author:`/`tag:`/`status:`/`model:` rather than clicked. */
 export type FilterPrefix =
   | { kind: 'author'; value: string }
   | { kind: 'tag'; value: string }
+  | { kind: 'model'; value: string }
   | { kind: 'status'; value: StatusFacet };
+
+/** Prefixes that only some sections offer. */
+export interface PrefixOptions {
+  /** Take `model:`; a section without the Models filter leaves it as search text. */
+  model?: boolean;
+}
 
 export interface PrefixExtraction {
   /** The prefixes that are finished and should become chips. */
@@ -50,34 +57,35 @@ function unquote(value: string): string {
 }
 
 /** Read a token as a filter prefix, or null when it is ordinary search text. */
-function asPrefix(token: string): FilterPrefix | null {
-  const match = /^(author|tag|status):(.*)$/i.exec(token);
+function asPrefix(token: string, options: PrefixOptions): FilterPrefix | null {
+  const match = /^(author|tag|status|model):(.*)$/i.exec(token);
   if (!match) return null;
   const value = unquote(match[2]).trim();
   if (!value) return null; // `tag:` alone is still being typed
   const kind = match[1].toLowerCase();
+  if (kind === 'model' && !options.model) return null;
   if (kind === 'status') {
     const facet = asStatusFacet(value);
     // An unknown status stays as typed text rather than disappearing into a chip that filters nothing.
     return facet ? { kind: 'status', value: facet } : null;
   }
-  return { kind: kind as 'author' | 'tag', value };
+  return { kind: kind as 'author' | 'tag' | 'model', value };
 }
 
 /**
- * Pull finished `author:`/`tag:`/`status:` tokens out of the search text so the caller can turn them into
+ * Pull finished `author:`/`tag:`/`status:`/`model:` tokens out of the search text so the caller can turn them into
  * filter chips.
  *
  * A token only counts once it is finished — followed by a space, or `commitTrailing` set because Enter was
  * pressed. Converting mid-word would eat the value a letter at a time as it is typed.
  */
-export function extractFilterPrefixes(text: string, commitTrailing = false): PrefixExtraction {
+export function extractFilterPrefixes(text: string, commitTrailing = false, options: PrefixOptions = {}): PrefixExtraction {
   const prefixes: FilterPrefix[] = [];
   const cuts: Array<[number, number]> = [];
 
   for (const token of tokenize(text)) {
     if (!token.terminated && !commitTrailing) continue;
-    const prefix = asPrefix(token.text);
+    const prefix = asPrefix(token.text, options);
     if (!prefix) continue;
     prefixes.push(prefix);
     cuts.push([token.start, token.end]);

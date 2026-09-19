@@ -62,4 +62,18 @@ describe('extractFilterPrefixes', () => {
   it('leaves an unrelated colon alone', () => {
     expect(extractFilterPrefixes('chapter 2: the swamp ').prefixes).toEqual([]);
   });
+
+  it('takes model: only where the section has a Models filter', () => {
+    expect(extractFilterPrefixes('model:Cydonia-24B ', false, { model: true }).prefixes)
+      .toEqual([{ kind: 'model', value: 'Cydonia-24B' }]);
+    expect(extractFilterPrefixes('model:cydonia ')).toEqual({ prefixes: [], rest: 'model:cydonia ' });
+  });
+
+  it('takes model: beside tag: and author:', () => {
+    expect(extractFilterPrefixes('model:siren tag:romance author:Wren', true, { model: true }).prefixes).toEqual([
+      { kind: 'model', value: 'siren' },
+      { kind: 'tag', value: 'romance' },
+      { kind: 'author', value: 'Wren' },
+    ]);
+  });
 });

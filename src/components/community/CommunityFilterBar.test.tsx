@@ -76,4 +76,23 @@ describe('CommunityFilterBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /clear/i }));
     expect(baseProps.clearFilters).toHaveBeenCalled();
   });
+
+  it('offers the Models filter only when the section passes one', () => {
+    const { unmount } = render(<CommunityFilterBar {...baseProps} />);
+    expect(within(openPanel()).queryByText('Models')).not.toBeInTheDocument();
+    unmount();
+
+    render(<CommunityFilterBar {...baseProps} models={{ filter: [], setFilter: vi.fn(), options: ['Cydonia-24B'] }} />);
+    const panel = openPanel();
+    expect(within(panel).getByText('Models')).toBeInTheDocument();
+    expect(within(panel).getByLabelText('Filter by model')).toBeInTheDocument();
+  });
+
+  it('shows model chips and removes one from its chip', () => {
+    const setFilter = vi.fn();
+    render(<CommunityFilterBar {...baseProps} models={{ filter: ['cydonia', 'siren'], setFilter, options: [] }} />);
+    expect(screen.getByText('model: cydonia')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove cydonia' }));
+    expect(setFilter).toHaveBeenCalledWith(['siren']);
+  });
 });
