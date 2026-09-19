@@ -142,13 +142,15 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - The reference sits on the save envelope beside the dictionary set chosen at world entry. It does not roll back with turns.
 - Persona content is read live. A world persona reads from the authored world. A library persona reads from the entity library at load and when the library changes.
 - This differs from library entities added as characters, which are copied into the save. The rule is: a character is a frozen copy, a persona is a live read. The spec states this so that a later reader does not unify them by accident.
-- A reference that no longer resolves gives no persona and raises one notice per load.
+- A reference resolves by id only. The Persona mark gates the pickers, not resolution. A save keeps its persona when the author or the player later removes the mark, because the save made a choice and an unmark is not a delete.
+- A reference that no longer resolves, because its entity is deleted or absent on this device, gives no persona and raises one notice per load.
 
 ### One module owns persona resolution
 
 - A new pure module resolves the persona and filters the cast. It takes the save's reference, the authored world's entities, and the library entities. It returns the resolved persona or none, and the cast without the played entity.
 - Every reader of the entity list goes through this module: the roster chip, the prose parse for entity participation, diaries, discovery matching, scene tags, the staged planner's cast, and the in-game entity panel. No reader applies its own filter.
 - The same module supplies the player-name list for cast classification: the persona's name and aliases. Trait names leave that list.
+- The persona's name and aliases also join the exclusions of the narration name extractor, so discovery never promotes the player's own name to a new character.
 - Gameplay never writes the authored world. The cast filter is a runtime view.
 
 ### Defaults and memory
