@@ -1,6 +1,6 @@
 # 🛠️ World Editor
 
-A guide to each tab in the World Editor — what it does, why it exists, and the settings that aren't obvious from the screen.
+A guide to each tab in the World Editor: what it does, why it exists, and the settings that aren't clear from the screen.
 
 > 💡 Every tab has a **?** button beside its search box with a short version of its page. These pages are the long version.
 
