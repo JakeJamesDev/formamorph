@@ -65,6 +65,8 @@ export type TurnRequestAdapter = (request: TurnPassRequest, context: TurnRequest
 export type TurnAdvanceEvent =
   /** Before a stage's passes are built, so the caller can scope what they render against. */
   | { at: 'stage'; stage: TurnStage }
+  /** A written page one is in the material, where a narration pass would have answered. */
+  | { at: 'written'; narration: string }
   /** After a pass has answered — all of its subjects, for a fan-out pass. */
   | { at: 'pass'; outcomes: TurnPassOutcome[] };
 
@@ -194,6 +196,12 @@ export async function runTurn(input: TurnRunnerInput): Promise<TurnResult> {
     for (const stage of STAGES) {
       if (signal.aborted) return { status: 'aborted', run: run() };
       await applyAdvance({ at: 'stage', stage });
+      if (stage === 'narration' && plan.writtenNarration !== null) {
+        material = { ...material, narration: plan.writtenNarration };
+        await applyAdvance({ at: 'written', narration: plan.writtenNarration });
+        if (signal.aborted) return { status: 'aborted', run: run() };
+        continue;
+      }
       const stagePasses = plan.passes.filter((pass) => pass.stage === stage);
       if (stagePasses.length === 0) continue;
 

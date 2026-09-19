@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { BROWSE_TABS } from './browseTabs';
-import { DEV_FIXTURES, loadDevFixture } from './devFixtures';
+import { DEV_FIXTURES, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { PROMPT_SURFACE_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
@@ -217,10 +217,18 @@ describe('mid-game boot fixtures', () => {
     try {
       for (const name of DEV_FIXTURES) expect(await loadDevFixture(name), name).not.toBeNull();
       const long = await loadDevFixture('thousandTurns');
-      expect(Object.values(long!.save.sceneImages!)[0][0]).toMatch(/^data:image\/jpeg;base64,/);
+      expect(Object.values(long!.save!.sceneImages!)[0][0]).toMatch(/^data:image\/jpeg;base64,/);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('the written-opening fixture is a new game whose one opening is a Narration', async () => {
+    const fx = await loadDevFixture('writtenOpening');
+    expect(fx?.save).toBeUndefined();
+    expect(fx?.world.worldOverview.openings).toEqual([
+      { id: 'written-opening', text: WRITTEN_OPENING_TEXT, kind: 'narration' },
+    ]);
   });
 
   it('white-room world has a location to start in', () => {
