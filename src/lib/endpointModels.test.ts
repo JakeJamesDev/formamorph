@@ -86,44 +86,44 @@ describe('loadEndpointModels', () => {
       url.includes('/api/v0/') ? new Response('', { status: 404 }) : ok({ data: [{ id: 'm@q4_k_m' }] }));
     const target = { url: 'http://localhost:1234/v1/chat/completions', token: '' };
 
-    expect(await loadEndpointModels(target, doFetch)).toEqual(['m']);
-    expect(await loadEndpointModels(target, doFetch)).toEqual(['m']);
+    expect(await loadEndpointModels(target, { doFetch })).toEqual(['m']);
+    expect(await loadEndpointModels(target, { doFetch })).toEqual(['m']);
     const calls = doFetch.mock.calls.length;
     expect(calls).toBe(2); // the LM Studio list 404s once, then the OpenAI list answers
 
-    await loadEndpointModels({ url: 'http://localhost:11434/v1/chat/completions', token: '' }, doFetch);
+    await loadEndpointModels({ url: 'http://localhost:11434/v1/chat/completions', token: '' }, { doFetch });
     expect(doFetch.mock.calls.length).toBe(calls + 2);
   });
 
   it('shares one request between concurrent callers', async () => {
     const doFetch = vi.fn(async () => ok({ data: [{ id: 'a' }] }));
     const target = { url: 'http://localhost:1234/v1/chat/completions', token: '' };
-    await Promise.all([loadEndpointModels(target, doFetch), loadEndpointModels(target, doFetch)]);
+    await Promise.all([loadEndpointModels(target, { doFetch }), loadEndpointModels(target, { doFetch })]);
     expect(doFetch).toHaveBeenCalledTimes(1);
   });
 
   it('uses the LM Studio list when it answers', async () => {
     const doFetch = vi.fn(async () => ok({ data: [{ id: 'a', type: 'llm' }, { id: 'e', type: 'embeddings' }] }));
-    expect(await loadEndpointModels({ url: 'http://localhost:1234/v1/chat/completions', token: 't' }, doFetch)).toEqual(['a']);
+    expect(await loadEndpointModels({ url: 'http://localhost:1234/v1/chat/completions', token: 't' }, { doFetch })).toEqual(['a']);
     expect(doFetch).toHaveBeenCalledWith('http://localhost:1234/api/v0/models', { headers: { Authorization: 'Bearer t' } });
   });
 
   it('gives an empty list when the endpoint is unreachable', async () => {
     const doFetch = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
-    expect(await loadEndpointModels({ url: 'http://localhost:9/v1/chat/completions', token: '' }, doFetch)).toEqual([]);
+    expect(await loadEndpointModels({ url: 'http://localhost:9/v1/chat/completions', token: '' }, { doFetch })).toEqual([]);
   });
 
   it('asks again after a failure, so a server started later is found', async () => {
     const target = { url: 'http://localhost:1234/v1/chat/completions', token: '' };
     const down = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
-    expect(await loadEndpointModels(target, down)).toEqual([]);
+    expect(await loadEndpointModels(target, { doFetch: down })).toEqual([]);
     const up = vi.fn(async () => ok({ data: [{ id: 'a' }] }));
-    expect(await loadEndpointModels(target, up)).toEqual(['a']);
+    expect(await loadEndpointModels(target, { doFetch: up })).toEqual(['a']);
   });
 
   it('gives an empty list for an invalid endpoint URL without fetching', async () => {
     const doFetch = vi.fn();
-    expect(await loadEndpointModels({ url: 'not a url', token: '' }, doFetch)).toEqual([]);
+    expect(await loadEndpointModels({ url: 'not a url', token: '' }, { doFetch })).toEqual([]);
     expect(doFetch).not.toHaveBeenCalled();
   });
 
@@ -131,14 +131,14 @@ describe('loadEndpointModels', () => {
     const doFetch = vi.fn();
     const listEngine = vi.fn(async () => ['Cydonia-24B-v4.3-Q4_K_M.gguf', 'Cydonia-24B-v4.3-Q6_K.gguf']);
     const target = { url: 'http://localhost:8977/v1/chat/completions', token: '', localEngine: true };
-    expect(await loadEndpointModels(target, doFetch, listEngine)).toEqual(['Cydonia-24B-v4.3']);
-    await loadEndpointModels(target, doFetch, listEngine);
+    expect(await loadEndpointModels(target, { doFetch, listEngine })).toEqual(['Cydonia-24B-v4.3']);
+    await loadEndpointModels(target, { doFetch, listEngine });
     expect(listEngine).toHaveBeenCalledTimes(1);
     expect(doFetch).not.toHaveBeenCalled();
   });
 
   it('gives an empty list when the engine list fails', async () => {
     const listEngine = vi.fn(async () => { throw new Error('no bridge'); });
-    expect(await loadEndpointModels({ url: 'x', token: '', localEngine: true }, vi.fn(), listEngine)).toEqual([]);
+    expect(await loadEndpointModels({ url: 'x', token: '', localEngine: true }, { doFetch: vi.fn(), listEngine })).toEqual([]);
   });
 });

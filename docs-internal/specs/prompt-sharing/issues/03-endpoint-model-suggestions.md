@@ -1,6 +1,7 @@
 # 03: Endpoint Model Suggestions
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: b7a07ebc
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium

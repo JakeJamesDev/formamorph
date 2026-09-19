@@ -2,9 +2,6 @@ import { useCallback, useRef, useState } from 'react';
 import type { AIRequestType } from '@/types';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cleanModelNames, loadEndpointModels, type ModelListTarget } from '@/lib/endpointModels';
-import { isDesktop, listLocalModels } from '@/lib/imageGen/desktop';
-
-const NO_ENGINE = () => Promise.reject(new Error('no desktop engine'));
 
 /**
  * Model names reported by the active endpoint and every endpoint a prompt is routed to. Nothing is fetched
@@ -13,7 +10,7 @@ const NO_ENGINE = () => Promise.reject(new Error('no desktop engine'));
 export function useEndpointModelSuggestions(): { suggestions: string[]; load: () => void } {
   const { activeEndpointUrl, activeApiToken, localModelActive, promptEndpoints, resolveEndpointForKind } = useSettings();
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const latest = useRef(0);
+  const latestRun = useRef(0);
 
   const load = useCallback(() => {
     const targets: ModelListTarget[] = [{ url: activeEndpointUrl, token: activeApiToken, localEngine: localModelActive }];
@@ -21,10 +18,9 @@ export function useEndpointModelSuggestions(): { suggestions: string[]; load: ()
       const routed = resolveEndpointForKind(kind);
       targets.push({ url: routed.url, token: routed.apiToken, localEngine: routed.localEngine });
     }
-    const listEngine = isDesktop() ? listLocalModels : NO_ENGINE;
-    const run = ++latest.current;
-    void Promise.all(targets.map((t) => loadEndpointModels(t, undefined, listEngine))).then((lists) => {
-      if (run === latest.current) setSuggestions(cleanModelNames(lists.flat()));
+    const run = ++latestRun.current;
+    void Promise.all(targets.map((t) => loadEndpointModels(t))).then((lists) => {
+      if (run === latestRun.current) setSuggestions(cleanModelNames(lists.flat()));
     });
   }, [activeEndpointUrl, activeApiToken, localModelActive, promptEndpoints, resolveEndpointForKind]);
 
