@@ -197,6 +197,15 @@ export function replacePreset(store: PromptPresetStore, id: string, preset: Omit
   return { activeId: id, presets: store.presets.map((p) => (p.id === id ? { id, ...preset } : p)) };
 }
 
+/** Store a downloaded preset under `id`: replaced in place when held, else added. The selection is left alone. */
+export function putDownloadedPreset(store: PromptPresetStore, id: string, preset: Omit<PromptPreset, 'id'>): PromptPresetStore {
+  const held = store.presets.some((p) => p.id === id);
+  return {
+    ...store,
+    presets: held ? store.presets.map((p) => (p.id === id ? { id, ...preset } : p)) : [...store.presets, { id, ...preset }],
+  };
+}
+
 /** Rename a user preset in place; leaves the active selection unchanged. */
 export function renamePreset(store: PromptPresetStore, id: string, name: string): PromptPresetStore {
   return { ...store, presets: store.presets.map((p) => (p.id === id ? { ...p, name } : p)) };
