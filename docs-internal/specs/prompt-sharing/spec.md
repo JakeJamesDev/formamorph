@@ -162,6 +162,10 @@ model has no way to find a preset that was written for that model.
   download.
 - The server stores `models` as a string array on the listing row and returns it in list and detail
   responses. The list endpoint accepts a model substring filter.
+- The server also refuses a `prompt` with no valid model. The description is optional for the kind.
+- `prompt` is compatible-only, not a component kind. It can declare compatible worlds and shows on a world
+  where compatible offers already show. A world cannot require it, and unlisted visibility is refused,
+  because unlisted exists for required components.
 
 ### Publish
 
