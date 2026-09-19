@@ -195,6 +195,18 @@ describe('Settings → Prompts: preset Overview', () => {
       expect(picks).toEqual(['Cydonia-24B', 'local-only']);
     });
 
+    it('picks up a catalog cached after the Overview first opened', async () => {
+      seed('mine');
+      openPrompts('overview');
+      await waitFor(() => expect(screen.getByLabelText('Tags')).toBeTruthy());
+      fireEvent.click(screen.getAllByRole('button', { name: 'Narration' }).at(-1)!);
+      await replaceCatalog([{ id: 'p1', kind: 'prompt', tags: ['slow burn'], models: [] }]);
+      fireEvent.click(screen.getByRole('button', { name: OVERVIEW_LABEL }));
+
+      typeInto('Tags', 'slow');
+      expect(await screen.findByRole('button', { name: 'slow burn' })).toBeTruthy();
+    });
+
     it('with no catalog and no network, opening makes no request and both fields take free text', async () => {
       const doFetch = vi.fn(async () => { throw new TypeError('Failed to fetch'); });
       vi.stubGlobal('fetch', doFetch);

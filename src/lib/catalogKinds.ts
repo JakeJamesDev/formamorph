@@ -75,6 +75,11 @@ export function listingModels(record: { models?: unknown }): string[] {
   return Array.isArray(record.models) ? record.models.filter((m): m is string => typeof m === 'string' && m !== '') : [];
 }
 
+/** A listing's tags; a malformed field reads as none. */
+export function listingTags(record: { tags?: unknown }): string[] {
+  return Array.isArray(record.tags) ? record.tags.filter((t): t is string => typeof t === 'string') : [];
+}
+
 /** The app version a listing was made for, or null when the server sent none. */
 export function listingAppVersion(record: { app_version?: unknown }): string | null {
   return typeof record.app_version === 'string' && record.app_version !== '' ? record.app_version : null;

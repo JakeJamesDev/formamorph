@@ -5,43 +5,43 @@ const prompt = (tags: string[], models: string[]) => ({ id: crypto.randomUUID(),
 
 describe('collectPromptSuggestions', () => {
   it('ranks tags and models by how many listings use them', () => {
-    const { tags, models } = collectPromptSuggestions([
+    const { tags, modelCounts } = collectPromptSuggestions([
       prompt(['rare'], ['Solo']),
       prompt(['common', 'mid'], ['Cydonia', 'Mid']),
       prompt(['common', 'mid'], ['Cydonia', 'Mid']),
       prompt(['common'], ['Cydonia']),
     ]);
     expect(tags).toEqual(['common', 'mid', 'rare']);
-    expect(models).toEqual(['Cydonia', 'Mid', 'Solo']);
+    expect(modelCounts.map((m) => m.name)).toEqual(['Cydonia', 'Mid', 'Solo']);
   });
 
   it('merges model spellings without regard to case and keeps the more common casing', () => {
-    const { models } = collectPromptSuggestions([
+    const { modelCounts } = collectPromptSuggestions([
       prompt([], ['cydonia']),
       prompt([], ['Cydonia']),
       prompt([], ['Cydonia']),
     ]);
-    expect(models).toEqual(['Cydonia']);
+    expect(modelCounts.map((m) => m.name)).toEqual(['Cydonia']);
   });
 
   it('counts a value once per listing', () => {
-    const { tags, models } = collectPromptSuggestions([
+    const { tags, modelCounts } = collectPromptSuggestions([
       prompt(['a', 'A', ' a '], ['M', 'm']),
       prompt(['b'], ['N']),
       prompt(['b'], ['N']),
     ]);
     expect(tags).toEqual(['b', 'a']);
-    expect(models).toEqual(['N', 'M']);
+    expect(modelCounts.map((m) => m.name)).toEqual(['N', 'M']);
   });
 
   it('ignores listings of other kinds and malformed fields', () => {
-    const { tags, models } = collectPromptSuggestions([
+    const { tags, modelCounts } = collectPromptSuggestions([
       { id: '1', kind: 'world', tags: ['fantasy'], models: ['WorldModel'] },
       { id: '2', tags: ['untyped'] },
       { id: '3', kind: 'prompt', tags: 'not-a-list', models: [7, '', 'Kept'] },
     ]);
     expect(tags).toEqual([]);
-    expect(models).toEqual(['Kept']);
+    expect(modelCounts.map((m) => m.name)).toEqual(['Kept']);
   });
 });
 
