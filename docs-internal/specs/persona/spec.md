@@ -134,6 +134,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 - Both entity editors build their tabs from one shared tab list, which also maps each searchable field to its tab. The mark and the pronouns field go on the Profile tab through the shared field body, and pronouns joins the field-to-tab map so that the find bar opens the correct tab.
 - In the World Editor, the mark is an Advanced control, like the Openings and Placeholders tabs. An entity that carries the mark counts as Advanced data for the notice beside the mode switch. Pronouns shows in both modes. The library editor is always Advanced and shows both.
 - "Convert entity to persona" is the act of setting the mark. No copy is made.
+- The Personas filter in the Entities tab is a view over the full saved tile arrangement. Persona tiles keep their saved order and size. A folder shows when it holds at least one persona, and it opens to show only its personas. Drag, resize, and folder edits are off while the filter is on, so a filtered view never rewrites the saved layout.
 
 ### The persona reference
 
