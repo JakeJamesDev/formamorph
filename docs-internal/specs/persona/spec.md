@@ -118,7 +118,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 57. As an ST user, I want to import ST's persona backup file, so that all my personas arrive in one action.
 58. As an ST user, I want to pick my avatar image files with the backup file, so that each persona gets its portrait.
-59. As an ST user, I want a persona with no matching image to get the initials placeholder, so that the import never fails on a missing file.
+59. As an ST user, I want a persona with no matching image to import with no portrait, so that the import never fails on a missing file.
 60. As an ST user, I want `{{user}}` in a persona description to become that persona's own name, so that the text reads correctly here.
 61. As an ST user, I want `{{char}}` in a persona description to become "the other character", so that no raw macro remains.
 62. As an ST user, I want ST's default persona to become my global default when I have none, so that my setup carries over.
@@ -245,7 +245,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 
 - A pure converter reads ST's persona backup JSON: a map from avatar filename to name, a map from avatar filename to description data, and a default persona key.
 - The import accepts the JSON file plus any number of image files in one pick. An image matches a persona when its filename equals the persona's key.
-- Each persona becomes a marked library entity with a fresh id. A matched image becomes the portrait through the existing image pipeline. An unmatched persona gets the initials placeholder.
+- Each persona becomes a marked library entity with a fresh id. A matched image becomes the portrait through the existing image pipeline. An unmatched persona stores no image and looks like any other imageless entity. The import does not generate an initials image: a stored one would show in the in-game gallery and could not be told apart from a picture the player chose. Card export still draws initials on demand.
 - In descriptions, `{{user}}` becomes the persona's own name as plain text. `{{char}}` becomes "the other character". Other macros stay as written.
 - ST's position, depth, role, and title fields are dropped. ST's default persona becomes the global default only when none is set.
 - The import reports each skipped or imageless persona.
