@@ -14,10 +14,10 @@ import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTrait
 import { listablePlayerTraits } from '@/lib/traitRuntime';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
-import { ChatNarration, type ChatBubbleTurn } from './ChatNarration';
+import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
 import { ChatChoices } from './ChatChoices';
 import { TurnCard } from './TurnCard';
-import { BubbleActionButton } from './BubbleMenu';
+import { BubbleActionButton, BubbleMenu } from './BubbleMenu';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { toast } from 'react-toastify';
@@ -695,6 +695,10 @@ export const MiddlePanel = ({
       },
     );
   };
+  const playerActionsFor = (turn: ChatPlayerTurn) => playerBubbleActions({ live: turn.live, busy: isWaitingForAI }, {
+    edit: () => { setEditTarget({ kind: 'action', page: turn.index + 1, text: turn.text }); setIsEditMode(true); },
+    copy: () => copyText(turn.text),
+  });
 
   // Pages shows the viewed turn. The opening's user message is the hidden start proxy, so page 1 has no action line.
   const actionLine = currentPage > 1 ? displayedMessages.find((m) => m.role === 'user')?.content : undefined;
@@ -708,6 +712,10 @@ export const MiddlePanel = ({
   const pageActions = currentAssistantMessage ? actionsFor({
     index: currentPage - 1, isLatest: !isViewingPast, live: pageLive, hasImage: sceneImages.length > 0, text: pageNarration,
   }) : [];
+  // The turn is live from submit, before its narration exists, until the reveal ends.
+  const actionLineActions = actionLine === undefined ? [] : playerActionsFor({
+    index: currentPage - 1, live: !isViewingPast && (pageLive || (isWaitingForAI && !currentAssistantMessage)), text: actionLine,
+  });
   /** The choices block's actions, for a block that shows `hasChoices`. */
   const regenChoicesActions = (hasChoices: boolean) => choicesActions(
     { canRegenerate: canRegenChoices, hasChoices, busy: disabled || isWaitingForAI || isRevealingNarration, regenerating: choicesRegenerating && isWaitingForAI },
@@ -813,10 +821,7 @@ export const MiddlePanel = ({
               <ChatNarration
                 parseAssistantMessage={parseAssistantMessage}
                 actionsFor={actionsFor}
-                playerActionsFor={(turn) => playerBubbleActions({ live: turn.live, busy: isWaitingForAI }, {
-                  edit: () => { setEditTarget({ kind: 'action', page: turn.index + 1, text: turn.text }); setIsEditMode(true); },
-                  copy: () => copyText(turn.text),
-                })}
+                playerActionsFor={playerActionsFor}
                 latestFooter={
                   <ChatChoices
                     choices={latestChoices}
@@ -837,9 +842,16 @@ export const MiddlePanel = ({
               <TurnCard actions={pageActions} turnNumber={currentPage} live={pageLive} style={revealStyle}>
                 {actionLine !== undefined && (
                   // Upright, so the player's own italics and quote styling show.
-                  <div data-testid="action-line" className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground">
-                    <MarkdownRenderer text={actionLine} dialogue />
-                  </div>
+                  <BubbleMenu actions={actionLineActions}>
+                    {/* The line has its own menu: a right-click here never reaches the card's. */}
+                    <div
+                      data-testid="action-line"
+                      className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+                      onContextMenu={(event) => event.stopPropagation()}
+                    >
+                      <MarkdownRenderer text={actionLine} dialogue />
+                    </div>
+                  </BubbleMenu>
                 )}
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />

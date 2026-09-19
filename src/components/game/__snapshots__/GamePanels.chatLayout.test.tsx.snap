@@ -80,6 +80,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
               >
                 <div
                   class="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+                  data-state="closed"
                   data-testid="action-line"
                 >
                   <div
@@ -580,6 +581,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
               >
                 <div
                   class="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
+                  data-state="closed"
                   data-testid="action-line"
                 >
                   <div
