@@ -118,7 +118,11 @@ One new pure module owns every rule. It has no React and no storage.
 
 - **Pool:** given the world overview, the authored entities, the chosen starting location, and the picked entities, it returns the rows that can be drawn. Picked entities with at least one drawable row replace the world pool. The world switch removes the world's rows and the authored entities' rows, and never the picked entities' rows.
 - **Draw:** given a pool, a shown set, and a random source, it returns one opening by weight from the rows not yet shown. When every row has been shown, the shown set starts over. An empty pool returns the shipped default Player Action.
-- **Editor view:** given the world, it returns all openings grouped by owner, with the computed chance for each row and a flag for an entity that is at no starting location.
+- **Editor view:** given the world and one starting location, it returns all openings grouped by owner, with the computed chance for each row and a flag for an entity that is at no starting location.
+  - A chance is a row's share of the whole pool at that location, so world rows and entity rows total 100 percent together. It is the chance the player meets, not a share within one owner.
+  - A row whose entity is not at that location has no chance value. The panel shows a dash and names the location. 0 percent means weight 0 only, so the author can tell a benched row from an absent entity.
+  - With several starting locations, the panel has a picker for the described location. It is view state and is never stored.
+  - With the world switch off, the view still returns the chances the list would have. The switch is a draft control, and the author drafts against those numbers. The panel shows the off state and does not blank the column.
 - Entity presence at a location is read through the existing entity presence helper, per ADR-0003.
 - The existing opening cue resolver keeps its role as the single place every fallback reads. It resolves through this module.
 
