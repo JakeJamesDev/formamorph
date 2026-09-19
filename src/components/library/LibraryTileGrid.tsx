@@ -42,6 +42,7 @@ import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 import { FolderMiniature } from '@/components/library/FolderMiniature';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
+import { useFolderFlyIn } from '@/components/library/useFolderFlyIn';
 
 /** The scroll-viewport clamp alone; a grid drag moves in both axes, so no vertical-list clamp. */
 const GRID_MODIFIERS = [restrictToFirstScrollableAncestor];
@@ -326,6 +327,17 @@ export function LibraryTileGrid<T>({
     // view back to the library rather than leaving an empty room open.
     if (openGroupId && !openGroup) setOpenGroupId(null);
   }, [openGroupId, openGroup]);
+
+  // A click on a folder tile, and Open Group, zoom into the tile. The disband effect above keeps the
+  // direct setter: there is no tile left to zoom toward once the folder is gone.
+  const { openGroup: flyIntoGroup } = useFolderFlyIn({
+    gridNode,
+    tileNodes,
+    openGroupId,
+    setOpenGroupId,
+    busy: activeId !== null,
+    enabled: layout === 'grid',
+  });
 
   const locked = !!filter;
   const allIds = useMemo(() => new Set(items.map(idOf)), [items, idOf]);
@@ -758,7 +770,7 @@ export function LibraryTileGrid<T>({
         renderedIds={renderedIds}
         baseCols={baseCols}
         arrange={!locked}
-        onOpenGroup={setOpenGroupId}
+        onOpenGroup={flyIntoGroup}
         onCheckUpdates={onCheckUpdates}
         onPublish={onPublish}
         onDelete={onDelete}
@@ -817,7 +829,7 @@ export function LibraryTileGrid<T>({
                 fill={layout === 'grid'}
                 compact={compact}
                 presetName={groupPresetName?.(group.id)}
-                onOpen={setOpenGroupId}
+                onOpen={flyIntoGroup}
               />
             ) : (
               renderCard(item as T, { layout, fill: layout === 'grid', compact })
