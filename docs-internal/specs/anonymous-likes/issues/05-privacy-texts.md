@@ -1,6 +1,7 @@
 # 05: Privacy texts
 
-Status: ready-for-agent
+Status: in-progress
+Base: 43b0faaf
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -21,4 +22,7 @@ The server's Privacy Policy source text and the public privacy page both say wha
 - [ ] It says how to remove an Anonymous Like: press the heart again on the same copy of the app.
 - [ ] It says that signing in moves those likes to the account.
 - [ ] The paragraph reads the same in both places. The user reviews the wording before it goes live.
+- [ ] Both "Last updated" stamps read 20 September 2026 (the user's ruling).
+- [ ] The public page gains the optional-email paragraph and the Resend processor paragraph from the server text, so the two texts match in full (the user's ruling). The hand-over names the paragraphs carried over.
+- [ ] The draft copy under the abuse-signals spec folder stays as it is; the hand-over names it as stale.
 - [ ] The policy version is not bumped by the agent; whether existing users see the prompt again is the user's call. Say so in the hand-over.

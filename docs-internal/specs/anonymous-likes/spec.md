@@ -9,7 +9,7 @@ A person who is not signed in can like a listing, and a downloaded world asks fo
 
 ## Problem Statement
 
-Very few downloads become likes. A person who only downloads and plays has little reason to make an account, and the heart sends every guest to sign-in. Most of them stop there. The like button also lives only in the community browser, and a player who downloads a world plays it in the app and never returns to the listing. Good listings look unloved, and authors get little feedback.
+Very few downloads become likes. A person who only downloads and plays has little reason to make an account, and a guest cannot like: the app shows a guest a static count, and the website sends them to sign-in. Most of them stop there. The like button also lives only in the community browser, and a player who downloads a world plays it in the app and never returns to the listing. Good listings look unloved, and authors get little feedback.
 
 ## Solution
 
@@ -36,7 +36,7 @@ The public website keeps sending guests to sign-in.
 7. As a guest on a shared connection where three people already liked a listing, I want a plain message instead of a broken heart, so that I know to sign in to like it.
 8. As a guest, I want no sign-in wall on the heart in the app, so that liking takes one press.
 9. As a website visitor, I want the heart to take me to sign-in and back to the listing, so that the website behaves as it does today.
-10. As a guest when the feature is switched off, I want the heart to take me to sign-in as before, so that nothing looks broken.
+10. As a guest when the feature is switched off, I want a press on the heart to open the sign-in dialog, so that the heart still leads somewhere. The dialog opens only on a press, and closing it leaves me where I was.
 11. As a guest on an old build, I want nothing to change, so that the update is not forced on me by this feature.
 
 ### The in-game prompt
