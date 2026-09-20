@@ -9,6 +9,8 @@ Reasoning effort: medium
 
 **Work tree:** the FormamorphServer repo.
 
+**From 01:** both paths are already reachable and already lossy. `podiumSnippet` and `podiumBroadcast` emit one "First place:" line per tied world instead of joining them, and the edit route's audit loop is still `for (const place of PLACES)` with a `.find` by place, so an edit that ties a place logs one holder and silently drops the co-holder's row. The shipped client cannot build a tie until 03–05, so the window is API-only, but it is open from the moment 01 deploys.
+
 **What to build:** The results broadcast writes one line per place. Worlds that share a place are joined on that line: "First place: A by X and B by Y", and with three or more, "A by X, B by Y and C by Z". The audit snippet for an announcement uses the same form, and its target user is the author of the first 1st-place world by position. A podium edit writes one audit row per world whose place changed, which includes a world that joined or left the podium. A change of position alone writes nothing. The existing body clamp handles an extreme tie; no new cap is needed.
 
 - [ ] A tied announce posts one broadcast with one line per place and the tied names joined
