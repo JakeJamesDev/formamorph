@@ -3,7 +3,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
-  drawUnseenOpening, hasDrawableOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
+  drawUnseenOpening, hasAuthoredOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   setOpeningText, setOpeningWeight,
 } from './openings';
 
@@ -49,16 +49,27 @@ describe('the draw', () => {
     expect(ov.openings).toHaveLength(1);
   });
 
-  it('reads whether an owner brings a row that can come up', () => {
-    expect(hasDrawableOpenings({ openings: [action('a')] })).toBe(true);
-    expect(hasDrawableOpenings(undefined)).toBe(false);
-    expect(hasDrawableOpenings({ openings: [] })).toBe(false);
-    expect(hasDrawableOpenings({ openings: [action('a', '   ')] })).toBe(false);
-    expect(hasDrawableOpenings({ openings: [action('a')], openingWeights: { a: 0 } })).toBe(false);
+  it('reads whether an owner has written an opening, counting a benched row', () => {
+    expect(hasAuthoredOpenings({ openings: [action('a')] })).toBe(true);
+    // Weight 0 benches one row, not the list, so it still counts as written.
+    expect(hasAuthoredOpenings({ openings: [action('a')], openingWeights: { a: 0 } })).toBe(true);
+    expect(hasAuthoredOpenings(undefined)).toBe(false);
+    expect(hasAuthoredOpenings({ openings: [] })).toBe(false);
+    expect(hasAuthoredOpenings({ openings: [action('a', '   ')] })).toBe(false);
   });
 
-  it('counts an absent switch as on', () => {
-    expect(openingsEnabled(overview())).toBe(true);
+  it('derives off for a world that has no opening anywhere, and on once one exists', () => {
+    expect(openingsEnabled(overview())).toBe(false);
+    expect(openingsEnabled(overview({ openings: [action('a', '   ')] }))).toBe(false);
+    expect(openingsEnabled(overview({ openings: [action('a')] }))).toBe(true);
+    // An entity's opening switches the world's list on by itself.
+    expect(openingsEnabled(overview(), [{ openings: [action('e1')] }])).toBe(true);
+    // The author's off still wins over both.
+    expect(openingsEnabled(overview({ openings: [action('a')], openingsEnabled: false }))).toBe(false);
+  });
+
+  it('draws an authored opening under an absent switch, which the rows themselves turn on', () => {
+    expect(openingsEnabled(overview({ openings: [action('a')] }))).toBe(true);
     expect(resolveOpening(overview({ openings: [action('a')] }), seeded(1)).id).toBe('a');
   });
 

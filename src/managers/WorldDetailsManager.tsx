@@ -120,6 +120,10 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
 
   if (!advanced) return null;
 
+  // Nothing to switch until an opening exists: the box derives off, so a click would write a flag that
+  // reads off again. The world plays the default opening either way.
+  const noOpenings = !openingsEnabled(worldOverview, entities) && worldOverview.openingsEnabled !== false;
+
   const write = (kind: WorldPromptKind, update: { text?: string; enabled?: boolean }) =>
     updateWorldOverview({ promptOverrides: setWorldPromptOverride(worldOverview.promptOverrides, kind, update) });
 
@@ -177,7 +181,8 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
             >
               <Checkbox
                 className="shrink-0"
-                checked={kind === 'opening' ? openingsEnabled(worldOverview) : worldPromptEnabled(worldOverview, kind)}
+                checked={kind === 'opening' ? openingsEnabled(worldOverview, entities) : worldPromptEnabled(worldOverview, kind)}
+                disabled={kind === 'opening' && noOpenings}
                 onCheckedChange={(c) => toggle(kind, c === true)}
                 aria-label={kind === 'opening'
                   ? "Use this world's openings"

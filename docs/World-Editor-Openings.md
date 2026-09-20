@@ -29,13 +29,15 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 
 The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including an entity the player picks at Enter World.
 
+**The box starts unchecked and is disabled until an opening exists.** Write one here or on an entity and it checks itself. There is nothing to switch before that: a world with no openings plays the default opening either way.
+
 > 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
 
-> ✅ **Adding an entity with openings switches it back on.** Add an entity that brings an opening while the switch is off, and the switch turns on with a message saying which entity brought it. Its openings would never draw otherwise.
+> ✅ **Adding an entity with openings checks the box.** Add an entity that brings an opening and the box checks itself, with a message naming the entity. Its openings would never draw otherwise.
 
 ## The default opening
 
-A world with no openings, or with the switch off, starts on the default opening. This is an Opening Action with a general instruction to write the opening scene. The empty list shows its text.
+A world with no openings, or with the switch off, starts on the default opening. A world with no openings reads unchecked, because the box follows whether openings exist. This is an Opening Action with a general instruction to write the opening scene. The empty list shows its text.
 
 ## Every opening in one place
 
@@ -68,6 +70,7 @@ An entity at no starting location shows a **No Starting Location** badge. Its op
 - **The Player Name chip works in openings.** Type `{` and pick **Player Name**. Page one then says the [persona](Persona-Authoring#the-player-name-chip)'s name, or "you" when the player has none. A page one that is already written keeps its text when the player changes persona.
 - **Search and replace reaches every opening**, on the world and on each entity.
 - **A world saved with one pre-filled opening** loads with it as an Opening Action. If that opening was switched off, the list switch starts off, and the text stays.
+- **A world saved before openings existed** has none, so the box reads unchecked and the world plays the default opening. Nothing is stored and nothing is lost.
 
 > ⚠️ **An Opening Action is sent as written.** Nothing is added to it. The default opening tells the AI not to ask the player what to do next. Keep a line like that in your own Opening Actions, or the AI may open by offering options.
 
@@ -78,7 +81,7 @@ An entity at no starting location shows a **No Starting Location** badge. Its op
 | Rule | Effect |
 |---|---|
 | **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
-| **The world switch** | The world's **Openings** checkbox turns the entity's openings off too. An entity has no switch of its own. |
+| **The world switch** | The world's **Openings** checkbox turns the entity's openings off too, and an entity's openings check that box. An entity has no switch of its own. |
 | **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#make-an-entity-playable), its openings leave the draw for that game. |

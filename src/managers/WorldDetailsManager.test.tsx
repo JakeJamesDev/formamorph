@@ -430,18 +430,32 @@ describe('the openings panel', () => {
     expect(screen.queryByRole('radio', { name: 'Openings' })).not.toBeInTheDocument();
   });
 
-  it('counts an absent switch as on, and browsing writes nothing', async () => {
+  it('reads off and takes no click while the world has no opening, and browsing writes nothing', async () => {
     const before = world.overview;
     await browse();
-    expect(openingsCheckbox()).toBeChecked();
+    // Nothing to switch: a click would write a flag that derives off again, so the box is disabled.
+    expect(openingsCheckbox()).not.toBeChecked();
+    expect(openingsCheckbox()).toBeDisabled();
     expect(world.overview).toBe(before);
   });
 
-  it('names the default opening and shows its text read-only when the list is empty', async () => {
+  it('shows the default opening text read-only when the list is empty', async () => {
     await browse();
-    expect(screen.getByText(/Players start on the default opening/)).toBeInTheDocument();
+    expect(screen.getByText(/starts on the text below/)).toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Default Opening' })).toHaveTextContent(OPENING_SCENE_CUE);
     expect(screen.queryByTestId('Opening 1')).not.toBeInTheDocument();
+  });
+
+  it('switches on and takes clicks as soon as the author writes an opening', async () => {
+    const user = await browse();
+    await user.click(screen.getByRole('button', { name: /Add Opening/ }));
+    edit('Opening 1', 'You wake in the reed-beds.');
+
+    expect(openingsCheckbox()).toBeChecked();
+    expect(openingsCheckbox()).toBeEnabled();
+    await user.click(openingsCheckbox());
+    expect(world.overview.openingsEnabled).toBe(false);
+    expect(openingsCheckbox()).not.toBeChecked();
   });
 
   it('adds a row and writes its text, chips palette and all', async () => {
@@ -505,7 +519,7 @@ describe('the openings panel', () => {
     expect(world.overview.openingsEnabled).toBe(false);
     expect(world.overview.openings).toEqual(ROWS);
     expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
-    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
+    expect(screen.getByText(/Switched off, so players start on the default opening/)).toBeInTheDocument();
 
     await user.click(openingsCheckbox());
     expect(world.overview.openingsEnabled).toBeUndefined();
@@ -636,7 +650,7 @@ describe('the mirrored openings panel', () => {
     world.overview = { ...world.overview, openingsEnabled: false };
     await open();
     expect(chance('Guide Opening 1')).toBe('33%');
-    expect(screen.getByText(/Not applied until you switch this one on/)).toBeInTheDocument();
+    expect(screen.getByText(/Switched off, so players start on the default opening/)).toBeInTheDocument();
   });
 
   it('opens the entity’s Openings tab from its group header', async () => {

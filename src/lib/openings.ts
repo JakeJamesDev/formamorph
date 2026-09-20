@@ -31,9 +31,19 @@ export interface PoolEntry {
 type Overview = WorldOverview | null | undefined;
 type MaybeOwner = OpeningOwner | null | undefined;
 
-/** Whether the world's list is switched on. Absent means on. */
-export function openingsEnabled(overview: Overview): boolean {
-  return overview?.openingsEnabled !== false;
+/**
+ * Whether the world's list is switched on. `false` is the author switching it off. Absent derives: on once
+ * any owner has written an opening, so a world that has none reads off and plays the default opening.
+ * `owners` is the world's entities; the overview counts as an owner of its own.
+ */
+export function openingsEnabled(overview: Overview, owners: readonly MaybeOwner[] = []): boolean {
+  if (overview?.openingsEnabled === false) return false;
+  return hasAuthoredOpenings(overview) || owners.some(hasAuthoredOpenings);
+}
+
+/** Whether this owner has written an opening. Weight 0 benches one row, so it still counts here. */
+export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
+  return (owner?.openings ?? []).some((o) => o.text.trim().length > 0);
 }
 
 /** A row's relative weight: 1 unless the author set one. Negatives count as 0. */
@@ -48,11 +58,6 @@ function drawable(owner: MaybeOwner, ownerId: string | null): PoolEntry[] {
     .filter((o) => o.text.trim())
     .map((opening) => ({ ownerId, opening, weight: openingWeight(owner?.openingWeights, opening.id) }))
     .filter((e) => e.weight > 0);
-}
-
-/** Whether this owner has a row that can come up, so adding it to a switched-off world would bench it. */
-export function hasDrawableOpenings(owner: MaybeOwner): boolean {
-  return drawable(owner, null).length > 0;
 }
 
 /** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
@@ -70,7 +75,7 @@ export interface PoolSources {
  * of the authored entities present at the starting location, in cast order.
  */
 export function openingPool({ overview, entities = [], startingLocationId, picked = [] }: PoolSources): PoolEntry[] {
-  if (!openingsEnabled(overview)) return [];
+  if (!openingsEnabled(overview, entities)) return [];
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
   const present = new Set(entityIdsAt(startingLocationId, [...entities]));
