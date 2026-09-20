@@ -20,5 +20,6 @@ After a guest signs in, signs up, or adopts a session, the likes given on this I
 - [ ] A failed Claim never blocks or delays sign-in. It retries on the next session change.
 - [ ] No Claim call is made when the Install id does not exist yet.
 - [ ] After sign-out, a listing the account Likes shows a filled heart and a press does not raise the count.
+- [ ] The server answers that press with a 200 that carries a code and `liked: true`. The heart stays filled on a like press and on a clear press, with no error toast.
 - [ ] Tests over mocked fetch: Claim on each session event; failure does not block; no call without an Install.
 - [ ] Four gates green.
