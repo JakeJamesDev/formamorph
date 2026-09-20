@@ -48,23 +48,26 @@ describe('reading the setting', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://server.test/api/settings/anonymous_likes');
   });
 
-  it('leaves the box unpressable until the answer lands, rather than reading off', () => {
-    // An unread setting is not an off one. Enabled-and-unchecked invites a press that turns on what is
-    // already on, and the write that follows is the emergency stop going the wrong way.
+  it('shows no box at all until the server answers, rather than an empty one', () => {
+    // An unread setting is not an off one. An empty box reads as off, and a press on it writes on what
+    // may already be on: the emergency stop applied in the wrong direction.
     fetchMock.mockReturnValueOnce(never());
 
     render(<ServerSettingsTab active />);
 
-    expect(anonymousLikes().hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText('Anonymous Likes')).toBeTruthy();
   });
 
-  it('reports a read it could not make', async () => {
+  it('reports a read it could not make, and still shows no box', async () => {
+    // A dimmed empty box after a failed read is indistinguishable from a setting that is off.
     fetchMock.mockResolvedValueOnce(refusal('Not staff'));
 
     render(<ServerSettingsTab active />);
 
     await waitFor(() => expect(toastError).toHaveBeenCalledWith('Not staff'));
-    expect(anonymousLikes().hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getByText('This server didn’t answer for this setting')).toBeTruthy();
   });
 
   it('asks for nothing while the tab is not the one on screen', () => {
@@ -127,13 +130,28 @@ describe('writing the setting', () => {
   });
 });
 
-describe('the help line', () => {
-  it('says the stop is not destructive, because switching off asks for no confirmation', () => {
+describe('the copy', () => {
+  it('keeps the brief line to what the box does', async () => {
     fetchMock.mockResolvedValueOnce(settingBody(true));
 
     render(<ServerSettingsTab active />);
 
-    const hint = screen.getByText(/Switching off keeps the likes already given/);
-    expect(hint.textContent).toContain('people can still take theirs back');
+    await waitFor(() => expect(screen.getByText('Takes a like from anyone, signed in or not')).toBeTruthy());
+  });
+
+  it('puts the two facts about switching off behind the row’s information control', async () => {
+    // Switching off asks for no confirmation, so the administrator has to be able to learn on this row
+    // that the stop keeps what was given and leaves the way back open.
+    fetchMock.mockResolvedValueOnce(settingBody(true));
+
+    render(<ServerSettingsTab active />);
+    await waitFor(() => expect(anonymousLikes()).toBeTruthy());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'More info' })[0]);
+
+    await waitFor(() => {
+      const body = screen.getByText(/Likes already given stay counted/);
+      expect(body.textContent).toContain('take their own like back');
+    });
   });
 });

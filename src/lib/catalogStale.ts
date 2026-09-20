@@ -1,33 +1,32 @@
 /**
- * When the catalog this app holds stops describing the server.
+ * When the cached catalog no longer describes the server.
  *
- * The catalog response carries more than rows: it carries the server settings a reader's controls follow,
- * such as whether a guest's like is taken. An administrator who changes one of those has made what is held
- * wrong, and nothing else would ask for the catalog again — the reader has not changed, and no Claim has
- * moved a mark. This is how they say so.
+ * The catalog response carries the server settings a reader's controls follow, such as whether the server
+ * accepts a guest's like. An administrator write to one of those makes the cached copy wrong. Nothing else
+ * asks for the catalog again: the reader is unchanged and no Claim has moved a mark.
  */
 
-/** How many times the catalog in hand has been called out of date. */
+/** How many times the cached catalog has been marked out of date. */
 let marks = 0;
 
-/** Told when it happens. */
+/** Notified on each mark. */
 const listeners = new Set<() => void>();
 
 /** What a reader of the catalog needs from this. */
 export interface StaleWatch {
-  /** Listen for a mark. Returns the unsubscribe. */
+  /** Subscribe to marks. Returns the unsubscribe. */
   subscribe: (listener: () => void) => () => void;
-  /** How many marks there have been, which changes when the catalog in hand goes out of date. */
+  /** The mark count, which changes when the cached catalog goes out of date. */
   marked: () => number;
 }
 
-/** Say that what every reader holds no longer describes the server. */
+/** Mark every cached catalog out of date. */
 export function markCatalogStale(): void {
   marks += 1;
   listeners.forEach((listener) => listener());
 }
 
-/** The real one, which every reader but a test takes. */
+/** The real one. Every reader but a test uses it. */
 export const catalogStale: StaleWatch = {
   subscribe: (listener) => {
     listeners.add(listener);
@@ -36,7 +35,7 @@ export const catalogStale: StaleWatch = {
   marked: () => marks,
 };
 
-/** Forget everything, listeners included. For tests, whose module state would otherwise carry over. */
+/** Reset the count and the listeners. For tests, whose module state persists across cases. */
 export function resetCatalogStale(): void {
   marks = 0;
   listeners.clear();
