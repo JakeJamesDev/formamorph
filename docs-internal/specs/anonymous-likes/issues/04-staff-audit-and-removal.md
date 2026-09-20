@@ -20,6 +20,8 @@ Staff see how many Anonymous Likes a listing has, see them grouped by shared add
 - [ ] An Anonymous Like joins a group through its hash. Rows with a blank hash are listed ungrouped.
 - [ ] A single Anonymous Like that shares the author's address is reported, even though a group of one is otherwise dropped.
 - [ ] Account rows carry the claimed marker from ticket 03 and the original time.
+- [ ] The marker is the claim-time column ticket 03 added to the Like table: null for a like given as an account. The Like's created time is already the original press.
+- [ ] The Like table is now in the boot-schema drift guard's oldest shape. Any column this ticket adds to an existing table must pass that guard, so an existing database gets it too.
 - [ ] The audit route still writes no audit entry.
 - [ ] One staff route removes one address group's Anonymous Likes from a listing. One removes all Anonymous Likes from a listing.
 - [ ] Each removal writes a new audit action, only when rows went, behind the same moderation check as the existing removal.
