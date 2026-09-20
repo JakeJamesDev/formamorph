@@ -1,7 +1,7 @@
 # Spec: Contest Ties — Shared Places on the Podium
 
 Status: ready-for-agent
-Spec session: Contest Ties
+Spec session: Spec: Contest Ties — Shared Places on the Podium
 
 ## Problem Statement
 
