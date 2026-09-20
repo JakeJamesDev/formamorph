@@ -22,10 +22,10 @@ const rowTexts = () => rows().getAllByRole('button').filter((b) => b.hasAttribut
 const continueAlways = (settings: Settings) => settings.setContinueChoiceMode('always');
 
 describe('Pages: choice rows', () => {
-  it('numbers the latest page choices, the continue choice last', async () => {
+  it('shows the latest page choices without numbers, the continue choice last', async () => {
     renderMiddlePanel({}, { turns: TURNS });
     await screen.findByTestId('narration');
-    expect(rowTexts()).toEqual(['1.Leave', '2.Say "hello, gull"', CONTINUE_CHOICE]);
+    expect(rowTexts()).toEqual(['Leave', 'Say "hello, gull"', CONTINUE_CHOICE]);
   });
 
   it('stages a clicked choice and appends on Ctrl+click', async () => {
@@ -68,7 +68,7 @@ describe('Pages: choice rows', () => {
   it('puts the continue choice last with no number', async () => {
     renderMiddlePanel({}, { turns: TURNS, settings: continueAlways });
     await screen.findByTestId('narration');
-    expect(rowTexts()).toEqual(['1.Leave', '2.Say "hello, gull"', CONTINUE_CHOICE]);
+    expect(rowTexts()).toEqual(['Leave', 'Say "hello, gull"', CONTINUE_CHOICE]);
     fireEvent.click(row(CONTINUE_CHOICE));
     expect(input().value).toBe(CONTINUE_CHOICE);
   });
@@ -95,7 +95,7 @@ describe('Pages: choice rows', () => {
     const continued = [TURNS[0], TURNS[1], { ...TURNS[2], action: CONTINUE_CHOICE }];
     renderMiddlePanel({}, { turns: continued, page: 2 });
     await screen.findByTestId('narration');
-    expect(rowTexts()).toEqual(['1.Look around', '2.Go back', CONTINUE_CHOICE]);
+    expect(rowTexts()).toEqual(['Look around', 'Go back', CONTINUE_CHOICE]);
     expect(row(CONTINUE_CHOICE)).toBeDisabled();
     expect(row(CONTINUE_CHOICE).getAttribute('aria-pressed')).toBe('true');
     expect(row('Look around').getAttribute('aria-pressed')).toBe('false');
