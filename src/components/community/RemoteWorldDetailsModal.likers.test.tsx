@@ -115,7 +115,7 @@ describe('who is told the likers exist', () => {
   it('records a guest\'s like here too, so the window and the tile agree', async () => {
     const onLike = vi.fn(async () => {});
     const onGuestLike = vi.fn();
-    show({ currentUser: null, isAuthenticated: false, onLike, onGuestLike, guestLikes: true });
+    show({ currentUser: null, isAuthenticated: false, onLike, onGuestLike, guestLikes: true, serverTakesLikes: true });
 
     fireEvent.click(await screen.findByRole('button', { name: /Like — 3 likes/ }));
 

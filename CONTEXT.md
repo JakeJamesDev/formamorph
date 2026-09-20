@@ -73,8 +73,8 @@ One copy of the app's local storage, named by a random id. Made on first need, n
 _Avoid_: device, client id, install id (the id is the Install)
 
 **Anonymous Like**:
-One Install's revocable mark on a listing, given without an account. It counts toward the public number exactly as a Like does.
-_Avoid_: guest like, anonymous vote
+One Install's revocable mark on a listing, given without an account. It counts toward the public number exactly as a Like does. Code names the actor rather than the mark: a "guest like" is a press, an Anonymous Like is what it stores.
+_Avoid_: anonymous vote, guest vote
 
 **Claim**:
 Moving an Install's Anonymous Likes to an account, and linking the two. It runs when somebody signs in, and the link is what stops signing out from giving a second like.

@@ -45,7 +45,7 @@ import type { ListingVisibility } from "@/lib/publishLinks";
 import type { WorldAssociation } from "@/lib/compatibleWorlds";
 import type { ServerEvent, VrmLicense } from "@/types";
 import type { CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
-import { guestMayPress } from '@/lib/anonymousLikes';
+import { mayPressHeart } from '@/lib/anonymousLikes';
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -68,8 +68,10 @@ interface RemoteWorldDetailsModalProps {
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** Starts authentication for a guest Like without mutating the listing. */
   onGuestLike?: (world: WorldRecord) => void;
-  /** Whether a guest may press the heart here. Off sends them to `onGuestLike` as before. */
+  /** Whether this shell takes a signed-out reader's like at all. Off sends them to `onGuestLike`. */
   guestLikes?: boolean;
+  /** Whether the server takes one right now. Off still lets a filled heart clear. */
+  serverTakesLikes?: boolean;
   /** Reports what this listing's response said about guest likes, which is the fresher answer. */
   onAnonymousLikes?: (on: boolean) => void;
   /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
@@ -102,7 +104,7 @@ const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
-  currentUser, onLike, onGuestLike, guestLikes = false, onAnonymousLikes,
+  currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
   contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
@@ -517,10 +519,11 @@ export function RemoteWorldDetailsModal({
                         likes={world.likes || 0}
                         liked={world.liked}
                         size="md"
-                        // Static on your own listing, which the server refuses. A guest's own listing is
-                        // the server's to spot, from the account that claimed this Install.
-                        onToggle={capabilities.likes && onLike
-                          && (isAuthenticated ? !isOwnListing : guestMayPress(guestLikes, world.liked))
+                        // Static on your own listing, which the server refuses.
+                        onToggle={capabilities.likes && onLike && mayPressHeart({
+                          signedIn: isAuthenticated, ownListing: isOwnListing,
+                          guestLikes, serverTakesLikes, liked: world.liked,
+                        })
                           ? (next) => onLike(world, next)
                           : capabilities.likes && !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
                         // Staff read the count as a way into who is behind it; everybody else keeps the

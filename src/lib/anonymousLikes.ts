@@ -2,12 +2,12 @@
  * What an Anonymous Like is addressed by: this copy of the app.
  *
  * An account Like is one account's mark. An Anonymous Like is one **Install's** — a random id made once
- * and kept in local storage, sent in a header. It names a copy of the app and nothing else, which is the
- * whole of why a guest can press the heart without an account.
+ * and kept in local storage, sent in a header. It names a copy of the app and nothing else, which is why
+ * a guest can press the heart without an account.
  *
  * This file mirrors the server's `config/anonymousLikes.js`. The header name and the refusal codes are
- * that file's, copied rather than guessed: a code the client does not recognize reads as an unexplained
- * refusal, and a header the server does not read is no header at all.
+ * copied from it rather than guessed: an unrecognized code reads as an unexplained refusal, and a header
+ * the server does not read is no header at all.
  */
 
 /** Where the id lives, under the prefix every other browser-stored value here uses. */
@@ -16,12 +16,7 @@ export const INSTALL_STORAGE_KEY = 'FORMAMORPH_installId';
 /** The header the id travels in, spelled as the server's CORS allow-list spells it. */
 export const INSTALL_HEADER_NAME = 'X-Formamorph-Install';
 
-/**
- * Why a press was refused, so each one gets the answer it deserves.
- *
- * A switched-off server sends the guest where the heart used to send them. A listing that has gone quiet
- * needs no message at all. Only the cap has anything to say, because signing in is a way past it.
- */
+/** Why a press was refused, so each refusal gets the answer it deserves. */
 export const ANONYMOUS_LIKE_CODES = {
   OFF: 'anonymous_likes_off',
   NOT_VISIBLE: 'listing_not_visible',
@@ -34,27 +29,44 @@ export const ANONYMOUS_LIKE_CODES = {
 } as const;
 
 /**
- * Whether a signed-out reader may press this heart.
- *
- * A filled heart is always theirs to empty. The privacy text promises that pressing again takes an
- * Anonymous Like back, so somebody who liked before the operator switched the feature off keeps the way
- * out they were promised. Only an empty heart is sent to sign-in.
- *
- * @param guestLikes - Whether this shell and this server both take a guest's like
- * @param liked - Whether this reader already likes the listing
+ * How many Anonymous Likes one connection may give one listing. The server holds the same number, and
+ * refuses the fourth.
  */
-export const guestMayPress = (guestLikes: boolean, liked: boolean | undefined): boolean =>
-  guestLikes || liked === true;
+export const ADDRESS_CAP = 3;
+
+/**
+ * Whether this reader may press the heart.
+ *
+ * An account may press any listing but its own. A signed-out reader may press only where this shell
+ * takes a guest's like at all, and there they may always empty a heart they filled: the privacy text
+ * promises that pressing again takes an Anonymous Like back, so a switch-off must not strand somebody
+ * who already liked. A shell that takes none, such as the website, sends every guest press to sign-in.
+ *
+ * Whether a signed-out reader owns the listing is the server's to answer, from the account that claimed
+ * the Install. It refuses that press and the heart goes back.
+ *
+ * @param reader - Their session, whose listing it is, whether this shell takes a guest's like, whether
+ *   the server takes one right now, and whether they already like it
+ */
+export function mayPressHeart(reader: {
+  signedIn: boolean;
+  ownListing: boolean;
+  guestLikes: boolean;
+  serverTakesLikes: boolean;
+  liked: boolean | undefined;
+}): boolean {
+  if (reader.signedIn) return !reader.ownListing;
+  return reader.guestLikes && (reader.serverTakesLikes || reader.liked === true);
+}
 
 /**
  * What the heart does about a refusal.
  *
- * `signIn` hands the press to the guest handler, which is where the heart sent a guest before this
- * feature existed. `cap` is the one refusal worth a message, because signing in is a way past it.
- * `silent` puts the heart back and says nothing: a listing that has gone quiet, a suspension, an
- * author's own listing and a malformed header are each either not the reader's business or the
- * client's own bug. Anything else is `report`, so a server fault reaches the reader as an error
- * rather than a heart that springs back for no stated reason.
+ * `signIn` hands the press to the guest handler. `cap` is the one refusal worth a message, because
+ * signing in is a way past it. `silent` puts the heart back and says nothing: a listing that has gone
+ * quiet, a suspension, an author's own listing and a malformed header are each either not the reader's
+ * business or the client's own bug. Anything else is `report`, so a server fault reaches the reader as
+ * an error rather than a heart that springs back unexplained.
  */
 export type RefusalAnswer = 'signIn' | 'cap' | 'silent' | 'report';
 
@@ -81,12 +93,9 @@ export function refusalAnswer(code: string): RefusalAnswer {
 }
 
 /** A UUID as `crypto.randomUUID()` writes one. The server checks the same shape and refuses anything else. */
-const INSTALL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INSTALL_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * The id in hand this session, so a browser that refuses to store keeps one Install for as long as it is
- * open rather than a new one per press.
- */
+/** The id in hand, so a browser that refuses to store keeps one Install for as long as it is open. */
 let held: string | null = null;
 
 /**
@@ -102,7 +111,7 @@ export function installId(): string {
 
   try {
     const stored = localStorage.getItem(INSTALL_STORAGE_KEY);
-    if (stored && INSTALL_ID.test(stored)) {
+    if (stored && INSTALL_ID_SHAPE.test(stored)) {
       held = stored.toLowerCase();
       return held;
     }

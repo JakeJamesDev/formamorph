@@ -30,13 +30,16 @@ export type CatalogFetch =
  * A press the server would not take, named by its code.
  *
  * The code and not the wording, so each refusal gets the answer it deserves: the cap is worth a message,
- * a switched-off server sends the guest where the heart used to send them, and a listing that has gone
- * quiet needs nothing said about it.
+ * a switched-off server sends the guest to sign-in, and a listing that has gone quiet needs nothing said
+ * about it.
  */
 export class AnonymousLikeRefused extends Error {
-  constructor(public readonly code: string, message: string) {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
     super(message);
     this.name = 'AnonymousLikeRefused';
+    this.code = code;
   }
 }
 
