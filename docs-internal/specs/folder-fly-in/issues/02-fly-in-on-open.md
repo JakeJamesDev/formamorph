@@ -55,3 +55,11 @@ Decisions from the spec:
 - [ ] Works on all four library tabs
 - [ ] Static checks in the preview use paused frames or DOM reads, not watched motion
 - [ ] Four gates green; no export-shape change
+
+## Comments
+
+### Superseded in part
+
+Ticket 04 changes the camera scale from the board width to the region width, moves the outer fade to
+60% progress, and replaces the opening clip with a staged reveal. The hook, the two layers, the `d`
+term, the guards, and the cleanup from this ticket stay.
