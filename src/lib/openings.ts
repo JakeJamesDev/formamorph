@@ -50,6 +50,11 @@ function drawable(owner: MaybeOwner, ownerId: string | null): PoolEntry[] {
     .filter((e) => e.weight > 0);
 }
 
+/** Whether this owner has a row that can come up, so adding it to a switched-off world would bench it. */
+export function hasDrawableOpenings(owner: MaybeOwner): boolean {
+  return drawable(owner, null).length > 0;
+}
+
 /** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
 export interface PoolSources {
   overview: Overview;
@@ -60,14 +65,14 @@ export interface PoolSources {
 }
 
 /**
- * The rows a new playthrough draws from. Picked entities with a drawable row replace everything else, and
- * the world switch never removes them. Otherwise the world's own rows, then those of the authored entities
- * present at the starting location, in cast order; the world switch removes both.
+ * The rows a new playthrough draws from. The world switch benches every row, whoever owns it. With it on,
+ * picked entities with a drawable row replace everything else; otherwise the world's own rows, then those
+ * of the authored entities present at the starting location, in cast order.
  */
 export function openingPool({ overview, entities = [], startingLocationId, picked = [] }: PoolSources): PoolEntry[] {
+  if (!openingsEnabled(overview)) return [];
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
-  if (!openingsEnabled(overview)) return [];
   const present = new Set(entityIdsAt(startingLocationId, [...entities]));
   return [
     ...drawable(overview, null),

@@ -16,13 +16,17 @@ const empty: ConnectionPlan = { placeholders: {}, locations: {}, newLocations: [
 /** Store one world with the sections `storeWorld` insists on, plus whatever the case needs. */
 async function storeWorld(over: {
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
+  openingsEnabled?: boolean;
 } = {}) {
   await WorldStorageService.storeWorld({
     id: 'w-1',
     name: 'Sedge Landing',
     author: 'Ann',
     data: {
-      worldOverview: { name: 'Sedge Landing' },
+      worldOverview: {
+        name: 'Sedge Landing',
+        ...(over.openingsEnabled === false ? { openingsEnabled: false } : {}),
+      },
       stats: [], traits: [], statUpdates: [],
       entities: (over.entities ?? []) as unknown as unknown[],
       dictionaries: (over.dictionaries ?? []) as unknown as unknown[],
@@ -33,6 +37,7 @@ async function storeWorld(over: {
 }
 
 async function storedWorld(): Promise<{
+  worldOverview?: { openingsEnabled?: boolean };
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
 }> {
   return await WorldStorageService.getWorldData('w-1') as never;
@@ -180,5 +185,33 @@ describe('addCopyToStoredWorld', () => {
   it('refuses a world that is gone rather than writing anywhere else', async () => {
     await expect(addCopyToStoredWorld('missing', { id: 'c', name: 'Wren' }, source, empty))
       .rejects.toThrow();
+  });
+});
+
+describe('a copy that brings openings', () => {
+  beforeEach(async () => {
+    for (const id of await WorldStorageService.getWorldIds()) await WorldStorageService.deleteWorld(id);
+  });
+
+  const opener = (text: string): Entity => ({
+    id: 'lib-o',
+    name: 'Tall Marn',
+    openings: [{ id: 'o1', text, kind: 'action' }],
+  });
+
+  it('switches a benched list back on, so the arriving rows can draw', async () => {
+    await storeWorld({ openingsEnabled: false });
+
+    await addCopyToStoredWorld('w-1', opener('Marn hails you from the jetty.'), source, empty);
+
+    expect((await storedWorld()).worldOverview?.openingsEnabled).toBeUndefined();
+  });
+
+  it('leaves the switch alone for a copy with no row that could come up', async () => {
+    await storeWorld({ openingsEnabled: false });
+
+    await addCopyToStoredWorld('w-1', opener('   '), source, empty);
+
+    expect((await storedWorld()).worldOverview?.openingsEnabled).toBe(false);
   });
 });
