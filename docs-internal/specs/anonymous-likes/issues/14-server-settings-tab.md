@@ -23,7 +23,7 @@ No server change. The staff read and write routes for settings already exist: a 
 - [ ] The control is the approved `CheckRow` with a new `disabled` prop, not a new switch primitive. "Switch" below means this control.
 - [ ] The tab reads the setting when it opens and shows one switch, **Anonymous Likes**, in its real state. While the read is pending the switch is disabled, never shown as off.
 - [ ] A press writes the new value, and the switch follows the server's answer, not the press. A failed write restores the switch and shows the error.
-- [ ] Switching off asks for no confirmation: it is the emergency stop. The help line says that stored likes still count and that people can still take a like back.
+- [ ] Switching off asks for no confirmation: it is the emergency stop. The row's copy is two layers, as the Design System requires: a brief line of at most 12 words with no on/off preamble, and an ⓘ popover that says stored likes still count and that anyone can still take their own like back.
 - [ ] After a successful write, the catalog is read again, so this session's hearts follow the new `anonymousLikes` flag without a reload.
 - [ ] The tab is built so a second setting is one more row, but this ticket adds no other setting. `client_minimums` stays out.
 - [ ] Copy follows the help-copy pattern; the label is title case.
