@@ -1,6 +1,8 @@
 # 08: In-game like prompt
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built as `1aecd599`, review findings folded into the same commit (it was still HEAD and unpushed). Four gates green on it: typecheck 0 errors, lint 0 errors, 12 052 tests pass in 153 s, build succeeds. Verified live on `#dev?view=gameViewer&fixture=whiteRoom&modal=likePrompt`, both themes and at 375x812. The review found two traps, both now covered by tests that fail when reverted: a 500 or 429 read as "listing gone" and spent the one ask, and the card never returned within a session because its read effect keyed on a listing id the trigger kept re-setting.
+Base: 000ba0ef
 Blocked by: 06
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
