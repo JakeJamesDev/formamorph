@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Heart, Loader2, Trophy, X } from "lucide-react";
 import {
@@ -11,22 +11,24 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { Meta } from "@/components/ui/typography";
+import { cn, listNames } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { entriesOf } from "@/lib/contests";
 import { entryBlockReason } from "@/lib/adminEvents";
 import { placementsOf } from "@/lib/serverEvents";
 import {
-  clearRow, cyclePodium, placementsFrom, placesOf, rowsFromPlacements, toggleTie,
+  canToggleTie, clearRow, cyclePodium, placementsFrom, podiumLines, podiumPlacesOf,
+  rowsFromPlacements, toggleTie,
 } from "@/lib/podiumRanking";
 import type { PodiumRow } from "@/lib/podiumRanking";
-import { PLACE_COLORS, PLACE_LABELS, PLACE_PLATES } from "@/lib/placeLabels";
+import { BROADCAST_PLACE_LABELS, PLACE_COLORS, PLACE_LABELS, PLACE_PLATES } from "@/lib/placeLabels";
 import { isQuarantined } from "@/lib/quarantine";
 import AuthService from "@/services/AuthService";
 import EventService from "@/services/EventService";
 import WorldStorageService from "@/services/WorldStorageService";
 import type { WorldRecord } from "@/components/WorldDetails";
-import type { ContestPlace, ServerEvent } from "@/types";
+import type { ServerEvent } from "@/types";
 import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
 
 /**
@@ -36,6 +38,14 @@ import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
  * whichever entries fell past it — and an entry the judge cannot see is one that cannot place.
  */
 const ENTRY_PAGE = 1000;
+
+/**
+ * What a drafted world reads as when the grid has no entry for it.
+ *
+ * A published placement whose listing was deleted seeds a row that no catalog entry answers. Saving over
+ * one is refused, so this is what a judge reads while they look at why.
+ */
+const UNKNOWN_WORLD = 'Unknown world';
 
 interface PodiumDialogProps {
   open: boolean;
@@ -72,22 +82,6 @@ interface Entry {
 type Draft = PodiumRow[];
 
 /**
- * The ordinals the results broadcast writes, which are not the ones a badge wears.
- *
- * The preview's whole job is to show the message before it is sent, so it mirrors the server's wording
- * rather than the client's own place labels.
- */
-const BROADCAST_PLACE_LABELS: Record<ContestPlace, string> = {
-  1: 'First place',
-  2: 'Second place',
-  3: 'Third place',
-};
-
-/** The tied worlds on one line, as the broadcast joins them: "A by X, B by Y and C by Z". */
-const joinNames = (names: string[]): string =>
-  names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-
-/**
  * Assemble a contest's podium and publish it.
  *
  * Judging is a browsing task, not an id-typing one, so the entries arrive as a grid of what they actually
@@ -118,14 +112,15 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
   // must not cost.
   const lost = editing ? announced.filter((placement) => !placement.worldId) : [];
 
-  // The published podium as a plain string rather than the event itself, so the staging effect below
-  // re-seeds when the podium actually changes and not merely when the list behind the dialog re-renders
-  // and hands down a fresh object — which would throw away a podium half assembled. The tie flags are in
-  // it, and they are the places, so a correction that only shares a place re-seeds too.
-  const publishedRows = useMemo(
-    () => JSON.stringify(rowsFromPlacements(placementsOf(contest))),
-    [contest],
-  );
+  // The staging effect below re-seeds when the published podium actually changes, not merely when the
+  // list behind the dialog re-renders and hands down a fresh event object, which would throw away a
+  // podium half assembled. So it watches a signature and reads the rows off a ref. The tie flags are in
+  // the signature, and they are the places, so a correction that only shares a place re-seeds too.
+  const publishedRows = useMemo(() => rowsFromPlacements(placementsOf(contest)), [contest]);
+  const publishedSignature = publishedRows
+    .map((row) => `${row.tiedWithAbove ? '=' : ''}${row.worldId}`).join(',');
+  const seed = useRef(publishedRows);
+  seed.current = publishedRows;
 
   useEffect(() => {
     if (!open) return;
@@ -134,7 +129,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
     setLoading(true);
     // Reopened over an announced podium, the staging starts from what is already published, ties and
     // all, so an edit that means to move one place does not silently drop the other two.
-    setDraft(JSON.parse(publishedRows) as Draft);
+    setDraft(seed.current);
 
     const judgeId = String(AuthService.getCurrentUser()?.id ?? '') || null;
 
@@ -167,23 +162,19 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
       .finally(() => { if (current) setLoading(false); });
 
     return () => { current = false; };
-  }, [open, contestId, publishedRows]);
+  }, [open, contestId, publishedSignature]);
 
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
-  const places = placesOf(draft);
+  const places = podiumPlacesOf(draft);
   const podium = draft.map((row, index) => ({
-    row, place: places[index] as ContestPlace, entry: byId.get(row.worldId) ?? null,
+    row, place: places[index], entry: byId.get(row.worldId) ?? null,
   }));
 
-  // The preview's lines: one per place, with the worlds sharing it gathered onto it. Walked rather than
-  // grouped by key, because the rows are already in place order and tied rows are always neighbors.
-  const previewLines: { place: ContestPlace; names: string[] }[] = [];
-  podium.forEach(({ place, entry }) => {
-    const name = `${entry?.name} by ${entry?.authorName}`;
-    const open = previewLines[previewLines.length - 1];
-    if (open && open.place === place) open.names.push(name);
-    else previewLines.push({ place, names: [name] });
-  });
+  /** How the broadcast will credit one world. A drafted world is normally in the grid it came from. */
+  const credit = (worldId: string): string => {
+    const entry = byId.get(worldId);
+    return entry ? `${entry.name} by ${entry.authorName}` : UNKNOWN_WORLD;
+  };
 
   const assign = (worldId: string) => setDraft((held) => cyclePodium(held, worldId));
 
@@ -244,8 +235,8 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             ) : podium.map(({ row, place, entry }, index) => {
               const name = entry?.name ?? `row ${index + 1}`;
               // Breaking a tie can push the row past the last step, and there is no podium to stage it
-              // on. The checkbox says so by being unavailable; the way out is to clear the row.
-              const tieRefused = toggleTie(draft, index) === draft;
+              // on, so the checkbox is unavailable there and says why.
+              const tieRefused = index > 0 && !canToggleTie(draft, index);
 
               return (
                 <li
@@ -259,7 +250,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                         {PLACE_LABELS[place]}
                       </div>
                       <div className="text-label truncate">
-                        {entry ? entry.name : <span className="text-muted-foreground">Unknown world</span>}
+                        {entry ? entry.name : <span className="text-muted-foreground">{UNKNOWN_WORLD}</span>}
                       </div>
                     </div>
                     <Button
@@ -288,6 +279,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                       >
                         Tie With Above
                       </label>
+                      {tieRefused && <Meta>The podium ends at 3rd place</Meta>}
                     </div>
                   )}
                 </li>
@@ -311,7 +303,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             >
               {entries.map((entry) => {
                 const staged = draft.findIndex((row) => row.worldId === entry.id);
-                const place = staged === -1 ? null : places[staged] as ContestPlace;
+                const place = staged === -1 ? null : places[staged];
 
                 return (
                   <button
@@ -382,9 +374,9 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               </div>
               <div className="text-label font-semibold">{contest.title} — the results</div>
               <div className="text-meta">{contest.title} has been judged.</div>
-              {previewLines.map(({ place, names }) => (
+              {podiumLines(draft).map(({ place, worldIds }) => (
                 <div key={place} className="text-meta">
-                  {BROADCAST_PLACE_LABELS[place]}: {joinNames(names)}
+                  {BROADCAST_PLACE_LABELS[place]}: {listNames(worldIds.map(credit))}
                 </div>
               ))}
               <div className="text-meta">

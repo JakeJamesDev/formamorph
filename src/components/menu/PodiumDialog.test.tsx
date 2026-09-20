@@ -376,6 +376,10 @@ describe('sharing a place', () => {
     ]);
 
     expect(tie('Fourth Wall').disabled).toBe(true);
+    // A control that is unavailable says why, rather than leaving a judge to guess at a grey box.
+    expect(within(rows()[3]).getByText('The podium ends at 3rd place')).toBeTruthy();
+    expect(within(rows()[2]).queryByText('The podium ends at 3rd place')).toBeNull();
+
     fireEvent.click(tie('Fourth Wall'));
     expect(staged()[3]).toBe('1st Place / Fourth Wall');
   });

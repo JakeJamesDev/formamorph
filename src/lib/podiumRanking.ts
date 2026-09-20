@@ -52,6 +52,17 @@ export function fitsPodium(rows: PodiumRow[]): boolean {
   return placesOf(rows).every((place) => place <= LAST_PLACE);
 }
 
+/**
+ * Each row's place, as a place rather than a number.
+ *
+ * The one narrowing in the module, so the assertion is made once and argued once: every mutator here
+ * refuses a result that does not fit, so a draft assembled through them only ever derives 1, 2 or 3.
+ * `placesOf` stays wide because the guards are what test it, and a guard needs to see the 4 it refuses.
+ */
+export function podiumPlacesOf(rows: PodiumRow[]): ContestPlace[] {
+  return placesOf(rows) as ContestPlace[];
+}
+
 /** The podium after this row is cleared, with everything below it closing up. */
 export function clearRow(rows: PodiumRow[], index: number): PodiumRow[] {
   return normalize(rows.filter((_, at) => at !== index));
@@ -96,33 +107,74 @@ export function cyclePodium(rows: PodiumRow[], worldId: string): PodiumRow[] {
  * @returns The new podium, or the one given when the result would not fit
  */
 export function toggleTie(rows: PodiumRow[], index: number): PodiumRow[] {
-  if (index <= 0 || index >= rows.length) return rows;
+  const next = flipped(rows, index);
+  return next && fitsPodium(next) ? next : rows;
+}
 
+/** Whether this row's tie flag can be flipped at all — what the checkbox reads to know it is available. */
+export function canToggleTie(rows: PodiumRow[], index: number): boolean {
+  const next = flipped(rows, index);
+  return Boolean(next && fitsPodium(next));
+}
+
+/** This podium with one row's flag flipped, or null where there is no flag to flip. */
+const flipped = (rows: PodiumRow[], index: number): PodiumRow[] | null => {
+  if (index <= 0 || index >= rows.length) return null;
   const next = [...rows];
   next[index] = { ...next[index], tiedWithAbove: !next[index].tiedWithAbove };
-  return fitsPodium(next) ? next : rows;
-}
+  return next;
+};
 
 /**
  * The rows a published podium seeds, so an edit opens on the ties it already announced.
  *
  * A placement whose listing has since been deleted carries no id to stage, so it is dropped here. Saving
  * over one is refused separately: the point of dropping it is that the draft still reads as a podium.
+ *
+ * The flag is read against the last placement actually kept, not the one before it in the published
+ * list. A podium of 1, 2, 2 whose silver was deleted would otherwise seat its survivor tied with a row
+ * that is gone, and the dialog would open showing a 1st place neither world holds.
  */
 export function rowsFromPlacements(placements: EventPlacement[]): PodiumRow[] {
   const rows: PodiumRow[] = [];
-  placements.forEach((placement, index) => {
+  let above: ContestPlace | null = null;
+
+  placements.forEach((placement) => {
     if (!placement.worldId) return;
-    rows.push({
-      worldId: placement.worldId,
-      tiedWithAbove: index > 0 && placement.place === placements[index - 1].place,
-    });
+    rows.push({ worldId: placement.worldId, tiedWithAbove: placement.place === above });
+    above = placement.place;
   });
+
   return normalize(rows);
+}
+
+/** One line of the podium: a place, and the rows that share it. Tied rows are always neighbors. */
+export interface PodiumLine {
+  place: ContestPlace;
+  worldIds: string[];
+}
+
+/**
+ * The podium gathered a line per place, which is how the results broadcast writes it.
+ *
+ * Walked rather than grouped by key: the rows are already in place order, so a row either opens a new
+ * line or joins the one above it.
+ */
+export function podiumLines(rows: PodiumRow[]): PodiumLine[] {
+  const places = podiumPlacesOf(rows);
+  const lines: PodiumLine[] = [];
+
+  rows.forEach((row, index) => {
+    const open = lines[lines.length - 1];
+    if (open && open.place === places[index]) open.worldIds.push(row.worldId);
+    else lines.push({ place: places[index], worldIds: [row.worldId] });
+  });
+
+  return lines;
 }
 
 /** The podium as the announce and edit routes take it: one entry per world, with places repeating. */
 export function placementsFrom(rows: PodiumRow[]): PodiumPlacement[] {
-  const places = placesOf(rows);
-  return rows.map((row, index) => ({ place: places[index] as ContestPlace, worldId: row.worldId }));
+  const places = podiumPlacesOf(rows);
+  return rows.map((row, index) => ({ place: places[index], worldId: row.worldId }));
 }
