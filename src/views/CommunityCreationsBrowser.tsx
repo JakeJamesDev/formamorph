@@ -102,6 +102,10 @@ export interface CommunityListing {
   kind: CatalogKind;
 }
 
+/** One comparable value for a controlled listing, which separates no listing from an uncontrolled one. */
+const controlledKey = (listing: CommunityListing | null | undefined): string =>
+  (listing ? `${listing.kind}:${listing.id}` : String(listing));
+
 /**
  * Controls the actions a shell may expose without forking the shared browser.
  *
@@ -655,6 +659,9 @@ const CommunityCreationsBrowser = ({
     handleViewRemoteWorldDetails(found);
   };
 
+  // What a controlled surface last pointed at, so the effect below can tell a move apart from a repeat.
+  const lastControlledKey = useRef(controlledKey(controlledListing));
+
   // A listing named from outside — a notification feed row. The catalog is one request for every kind, so
   // there is nothing to fetch: switch to its tab and open it once the catalog is in hand. The list at
   // arrival may be last visit's snapshot (or still empty), so a lookup miss only counts once a refresh
@@ -666,8 +673,13 @@ const CommunityCreationsBrowser = ({
       return;
     }
     const requestedListing = controlledListing === undefined ? openListing : controlledListing;
+    // Only a move to no-listing closes the details. A controller that is still on none says so on every
+    // render, and a card click opens the details a render before its router reports the new path — so
+    // reading the value rather than the move would close what the click just opened.
+    const controlledMoved = controlledKey(controlledListing) !== lastControlledKey.current;
+    lastControlledKey.current = controlledKey(controlledListing);
     if (!requestedListing) {
-      if (controlledListing === null) {
+      if (controlledListing === null && controlledMoved) {
         setSelectedRemoteWorld(null);
         setShowRemoteWorldDetailsModal(false);
       }

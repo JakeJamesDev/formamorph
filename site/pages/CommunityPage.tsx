@@ -37,6 +37,11 @@ export function CommunityPage() {
     navigateSite(listing ? communityListingPath(listing) : '/community');
   }, [target]);
 
+  // Held identities: the host's listing effect lists these among its inputs, so a fresh function each
+  // render would re-run it while the router is still a render behind the click.
+  const closeBrowser = useCallback((nextOpen: boolean) => { if (!nextOpen) leaveTo('/'); }, []);
+  const markUnavailable = useCallback(() => setUnavailable(true), []);
+
   const signInToLike = useCallback((world: WorldRecord) => {
     leaveTo(signInTo(communityListingPath({
       id: String(world._id || world.id),
@@ -66,13 +71,13 @@ export function CommunityPage() {
         )}
         <CommunityBrowserHost
           open
-          onOpenChange={(open) => { if (!open) leaveTo('/'); }}
+          onOpenChange={closeBrowser}
           presentation="embedded"
           filterPreferences={{ storageKey: 'FORMAMORPH_websiteCommunityFilters', defaultSortField: 'likes' }}
           capabilities={WEBSITE_COMMUNITY_CAPABILITIES}
           listing={unavailable ? null : listing}
           onListingChange={setListing}
-          onListingUnavailable={() => setUnavailable(true)}
+          onListingUnavailable={markUnavailable}
           onGuestLike={signInToLike}
           detailsAction={listing && !unavailable ? <CommunityOpenInAppLink listing={listing} /> : undefined}
         />
