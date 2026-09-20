@@ -10,12 +10,17 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { entriesOf } from "@/lib/contests";
 import { entryBlockReason } from "@/lib/adminEvents";
 import { placementsOf } from "@/lib/serverEvents";
-import { PLACES, PLACE_COLORS, PLACE_LABELS, PLACE_PLATES } from "@/lib/placeLabels";
+import {
+  clearRow, cyclePodium, placementsFrom, placesOf, rowsFromPlacements, toggleTie,
+} from "@/lib/podiumRanking";
+import type { PodiumRow } from "@/lib/podiumRanking";
+import { PLACE_COLORS, PLACE_LABELS, PLACE_PLATES } from "@/lib/placeLabels";
 import { isQuarantined } from "@/lib/quarantine";
 import AuthService from "@/services/AuthService";
 import EventService from "@/services/EventService";
@@ -56,31 +61,31 @@ interface Entry {
 }
 
 /**
- * The podium being staged: world ids in podium order, first is gold.
+ * The podium being staged: an ordered list of rows, each either taking its own step or sharing the one
+ * above it.
  *
- * A list rather than a place-to-world map, which is what makes contiguity structural. There is no way to
- * express a silver with no gold, so no click, clear or reorder can stage a podium the server would then
- * refuse — the rule is held by the shape instead of by a check somebody has to remember to run.
+ * A list rather than a place-to-world map, which is what makes the ranking rule structural. There is no
+ * way to express a silver with no gold, or a 1, 1, 2, so no click, clear or toggle can stage a podium the
+ * server would then refuse — the rule is held by the shape instead of by a check somebody has to
+ * remember to run. `podiumRanking` derives the places from it.
  */
-type Draft = string[];
+type Draft = PodiumRow[];
 
 /**
- * The podium after this world's card is clicked.
+ * The ordinals the results broadcast writes, which are not the ones a badge wears.
  *
- * Clicking cycles. An unplaced world joins at the first free place; a placed one trades places with the
- * step below it; and one already on the bottom step leaves. That keeps the whole assembly on the same
- * click the old single pick used, and means a mistake is undone by clicking again rather than by hunting
- * for a control — while the two worlds swapping is what stops a click from opening a hole in the middle.
+ * The preview's whole job is to show the message before it is sent, so it mirrors the server's wording
+ * rather than the client's own place labels.
  */
-const cycle = (draft: Draft, worldId: string): Draft => {
-  const at = draft.indexOf(worldId);
-  if (at === -1) return draft.length < PLACES.length ? [...draft, worldId] : draft;
-  if (at === draft.length - 1) return draft.filter((id) => id !== worldId);
-
-  const next = [...draft];
-  [next[at], next[at + 1]] = [next[at + 1], next[at]];
-  return next;
+const BROADCAST_PLACE_LABELS: Record<ContestPlace, string> = {
+  1: 'First place',
+  2: 'Second place',
+  3: 'Third place',
 };
+
+/** The tied worlds on one line, as the broadcast joins them: "A by X, B by Y and C by Z". */
+const joinNames = (names: string[]): string =>
+  names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 
 /**
  * Assemble a contest's podium and publish it.
@@ -115,9 +120,10 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
 
   // The published podium as a plain string rather than the event itself, so the staging effect below
   // re-seeds when the podium actually changes and not merely when the list behind the dialog re-renders
-  // and hands down a fresh object — which would throw away a podium half assembled.
-  const publishedIds = useMemo(
-    () => placementsOf(contest).map((placement) => placement.worldId ?? '').filter(Boolean).join(','),
+  // and hands down a fresh object — which would throw away a podium half assembled. The tie flags are in
+  // it, and they are the places, so a correction that only shares a place re-seeds too.
+  const publishedRows = useMemo(
+    () => JSON.stringify(rowsFromPlacements(placementsOf(contest))),
     [contest],
   );
 
@@ -126,9 +132,9 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
 
     let current = true;
     setLoading(true);
-    // Reopened over an announced podium, the staging starts from what is already published, so an edit
-    // that means to move one place does not silently drop the other two.
-    setDraft(publishedIds ? publishedIds.split(',') : []);
+    // Reopened over an announced podium, the staging starts from what is already published, ties and
+    // all, so an edit that means to move one place does not silently drop the other two.
+    setDraft(JSON.parse(publishedRows) as Draft);
 
     const judgeId = String(AuthService.getCurrentUser()?.id ?? '') || null;
 
@@ -161,22 +167,35 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
       .finally(() => { if (current) setLoading(false); });
 
     return () => { current = false; };
-  }, [open, contestId, publishedIds]);
+  }, [open, contestId, publishedRows]);
 
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
-  const podium = draft.map((worldId, index) => ({
-    place: PLACES[index], entry: byId.get(worldId) ?? null,
+  const places = placesOf(draft);
+  const podium = draft.map((row, index) => ({
+    row, place: places[index] as ContestPlace, entry: byId.get(row.worldId) ?? null,
   }));
 
-  const assign = (worldId: string) => setDraft((held) => cycle(held, worldId));
+  // The preview's lines: one per place, with the worlds sharing it gathered onto it. Walked rather than
+  // grouped by key, because the rows are already in place order and tied rows are always neighbors.
+  const previewLines: { place: ContestPlace; names: string[] }[] = [];
+  podium.forEach(({ place, entry }) => {
+    const name = `${entry?.name} by ${entry?.authorName}`;
+    const open = previewLines[previewLines.length - 1];
+    if (open && open.place === place) open.names.push(name);
+    else previewLines.push({ place, names: [name] });
+  });
+
+  const assign = (worldId: string) => setDraft((held) => cyclePodium(held, worldId));
 
   // Everything below closes up behind it, so clearing gold promotes silver rather than leaving a hole.
-  const clear = (place: ContestPlace) => setDraft((held) => held.filter((_, index) => index !== place - 1));
+  const clear = (index: number) => setDraft((held) => clearRow(held, index));
+
+  const tie = (index: number) => setDraft((held) => toggleTie(held, index));
 
   const handleSave = async () => {
     if (draft.length === 0 || lost.length > 0) return;
 
-    const placements = draft.map((worldId, index) => ({ place: PLACES[index], worldId }));
+    const placements = placementsFrom(draft);
 
     setSaving(true);
     try {
@@ -207,48 +226,74 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
           </DialogTitle>
           <DialogDescription>
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}. Click an entry to place it, and
-            again to step it down. Your own entry and quarantined worlds can&apos;t be placed.
+            again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share the
+            place above it, and the places below follow. Your own entry and quarantined worlds
+            can&apos;t be placed.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 py-2">
-          {/* The podium as it stands, above the grid it is assembled from. */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" aria-label="Podium">
-            {PLACES.map((place) => {
-              const entry = byId.get(draft[place - 1]) ?? null;
+          {/* The podium as it stands, above the grid it is assembled from. One row per placed world
+              rather than three fixed slots: a place is derived from the row's position and its tie
+              flag, so any number of worlds can share one. */}
+          <ol className="space-y-2" aria-label="Podium">
+            {podium.length === 0 ? (
+              <li className="rounded-lg border border-dashed bg-muted/30 px-3 py-4 text-center text-label text-muted-foreground">
+                Click an entry to start the podium
+              </li>
+            ) : podium.map(({ row, place, entry }, index) => {
+              const name = entry?.name ?? `row ${index + 1}`;
+              // Breaking a tie can push the row past the last step, and there is no podium to stage it
+              // on. The checkbox says so by being unavailable; the way out is to clear the row.
+              const tieRefused = toggleTie(draft, index) === draft;
 
               return (
-                <div
-                  key={place}
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg border px-3 py-2 min-w-0',
-                    entry ? PLACE_PLATES[place] : 'border-dashed bg-muted/30',
-                  )}
+                <li
+                  key={row.worldId}
+                  className={cn('rounded-lg border px-3 py-2 min-w-0', PLACE_PLATES[place])}
                 >
-                  <Trophy className={cn('h-4 w-4 shrink-0', entry ? PLACE_COLORS[place] : 'text-muted-foreground')} aria-hidden />
-                  <div className="min-w-0 flex-1">
-                    <div className={cn('text-meta font-semibold', entry ? PLACE_COLORS[place] : 'text-muted-foreground')}>
-                      {PLACE_LABELS[place]}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Trophy className={cn('h-4 w-4 shrink-0', PLACE_COLORS[place])} aria-hidden />
+                    <div className="min-w-0 flex-1">
+                      <div className={cn('text-meta font-semibold', PLACE_COLORS[place])}>
+                        {PLACE_LABELS[place]}
+                      </div>
+                      <div className="text-label truncate">
+                        {entry ? entry.name : <span className="text-muted-foreground">Unknown world</span>}
+                      </div>
                     </div>
-                    <div className="text-label truncate">
-                      {entry ? entry.name : <span className="text-muted-foreground">Empty</span>}
-                    </div>
-                  </div>
-                  {entry && (
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6 shrink-0"
-                      aria-label={`Clear ${PLACE_LABELS[place]}`}
-                      onClick={() => clear(place)}
+                      aria-label={`Clear ${name}`}
+                      onClick={() => clear(index)}
                     >
                       <X className="h-3.5 w-3.5" aria-hidden />
                     </Button>
+                  </div>
+
+                  {index > 0 && (
+                    <div className="mt-1.5 flex items-center gap-2 pl-6">
+                      <Checkbox
+                        id={`tie-${row.worldId}`}
+                        checked={row.tiedWithAbove}
+                        disabled={tieRefused}
+                        aria-label={`Tie With Above: ${name}`}
+                        onCheckedChange={() => tie(index)}
+                      />
+                      <label
+                        htmlFor={`tie-${row.worldId}`}
+                        className={cn('text-meta', tieRefused ? 'text-muted-foreground' : 'cursor-pointer')}
+                      >
+                        Tie With Above
+                      </label>
+                    </div>
                   )}
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ol>
 
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-12 text-label text-muted-foreground">
@@ -265,8 +310,8 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
             >
               {entries.map((entry) => {
-                const staged = draft.indexOf(entry.id);
-                const place = staged === -1 ? null : PLACES[staged];
+                const staged = draft.findIndex((row) => row.worldId === entry.id);
+                const place = staged === -1 ? null : places[staged] as ContestPlace;
 
                 return (
                   <button
@@ -337,9 +382,9 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               </div>
               <div className="text-label font-semibold">{contest.title} — the results</div>
               <div className="text-meta">{contest.title} has been judged.</div>
-              {podium.map(({ place, entry }) => (
+              {previewLines.map(({ place, names }) => (
                 <div key={place} className="text-meta">
-                  {PLACE_LABELS[place]}: {entry?.name} by {entry?.authorName}
+                  {BROADCAST_PLACE_LABELS[place]}: {joinNames(names)}
                 </div>
               ))}
               <div className="text-meta">
