@@ -114,6 +114,12 @@ export interface LikerRow {
   createdAt: string;
   /** When they liked, as a server timestamp. The list is newest-first by this. */
   likedAt: string;
+  /**
+   * When a Claim moved this like onto the account, or null when it was given as an account.
+   *
+   * `likedAt` stays the first press either way, so the pair reads as "liked then, arrived here later".
+   */
+  claimedAt?: string | null;
   /** The gap between the two, as the server counted it. Absent on a server that predates the field. */
   accountAgeAtLikeSeconds?: number;
   /**
@@ -143,6 +149,40 @@ export interface LikerAuditRow extends LikerRow {
   groupId: number | null;
   /** Whether this account acted from an address the listing's author also acted from. */
   linkedToAuthor: boolean;
+}
+
+/**
+ * One Anonymous Like on a listing, as the audit shows it.
+ *
+ * There is no account behind one, so the address it came from is the only thing that can tie it to
+ * anything else on the screen. It sits in the same groups the accounts do and reads as a row with no
+ * name: a time, the browser family, and whatever the grouping made of it.
+ */
+export interface AnonymousLikeRow {
+  /** When the like was given, as a server timestamp. The list is newest-first by this. */
+  likedAt: string;
+  /** Which browser family it came from, in the same words the linked-moments list uses. */
+  browserFamily: string | null;
+  /** Which shared-address group it belongs to, on the same numbering the account rows use. */
+  groupId: number | null;
+  /** Whether it came from an address the listing's author also acted from. */
+  linkedToAuthor: boolean;
+  /**
+   * What the removal names this row's address by: a digest the server can turn back into one address
+   * on this listing alone. Null once the retention sweep has emptied the hash, which leaves the row
+   * with nothing to remove it by on its own.
+   */
+  addressKey: string | null;
+}
+
+/** What either Anonymous Like removal answers with: what went, and the two numbers the screen shows. */
+export interface AnonymousLikesRemoved {
+  /** How many rows went. Zero means another moderator got there first. */
+  removed: number;
+  /** The listing's summed like count after the removal. */
+  likes: number;
+  /** How many Anonymous Likes the listing has left. */
+  anonymous: number;
 }
 
 /** One listing an account has liked, as the profile's Likes tab lists it. Staff-only, like `LikerRow`. */
