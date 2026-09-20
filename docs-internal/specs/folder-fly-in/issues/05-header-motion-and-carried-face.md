@@ -1,6 +1,7 @@
 # 05: Header Motion And Carried Face
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 4aea4283
 Blocked by: 04
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: medium
@@ -39,16 +40,43 @@ Decisions from the spec:
 
 ## Acceptance criteria
 
-- [ ] On an animated open the header is at zero opacity and raised until the reveal point, and at rest at the end
-- [ ] On a fly-out a frozen header plays the same keyframes in reverse, and no header clone remains afterwards
-- [ ] The board's first-frame position is the same as before this ticket; the camera unit test and the scroll restore still pass
-- [ ] The header slide is clipped to the header's rectangle
-- [ ] The header takes no pointer input during the motion, and the name field is usable as soon as the motion ends
-- [ ] Under a drag, reduced motion, the detailed layout, and an unmeasurable tile, the header appears with no motion
-- [ ] A back during a fly-in, and an open during a fly-out, leave one header, no clone, and no inline style on it
-- [ ] A dragged folder tile in the grid layout draws the face's members under the pointer, not four mosaic cells; a jsdom test pins it and fails when the mosaic returns
-- [ ] The carried tile keeps half opacity with no shadow, ring, or name bar; the detailed layout keeps the mosaic
-- [ ] The library drag parity and library tiles suites stay green
-- [ ] Static checks in the preview use paused frames or DOM reads, not watched motion
-- [ ] `docs/Changelog.md` In-Progress entry for the folder zoom is corrected in place, with no new churn entry
-- [ ] Four gates green; no export-shape change
+- [x] On an animated open the header is at zero opacity and raised until the reveal point, and at rest at the end
+- [x] On a fly-out a frozen header plays the same keyframes in reverse, and no header clone remains afterwards
+- [x] The board's first-frame position is the same as before this ticket; the camera unit test and the scroll restore still pass
+- [x] The header slide is clipped to the header's rectangle
+- [x] The header takes no pointer input during the motion, and the name field is usable as soon as the motion ends
+- [x] Under a drag, reduced motion, the detailed layout, and an unmeasurable tile, the header appears with no motion
+- [x] A back during a fly-in, and an open during a fly-out, leave one header, no clone, and no inline style on it
+- [x] A dragged folder tile in the grid layout draws the face's members under the pointer, not four mosaic cells; a jsdom test pins it and fails when the mosaic returns
+- [x] The carried tile keeps half opacity with no shadow, ring, or name bar; the detailed layout keeps the mosaic
+- [~] The library drag parity and library tiles suites stay green — **already red at `Base:`**, 29 of 40 failing before this change. Reproduced with a clean tree at 4aea4283. Recorded as a follow-up, not fixed here
+- [x] Static checks in the preview use paused frames or DOM reads, not watched motion
+- [x] `docs/Changelog.md` In-Progress entry for the folder zoom is corrected in place, with no new churn entry
+- [x] Four gates green; no export-shape change
+
+## Comments
+
+Review against `Base: 4aea4283` ran on both axes. Folded in:
+
+- The face is drawn by one `renderFace` call that the tile and the drag overlay both use, so the two
+  pictures cannot drift apart by a missed edit.
+- The carried face reads the board's own `folderFaces` map alone. The second source it had was
+  unreachable: a folder never stands inside a folder, so a carried folder is always on the library board.
+- The header branch reads the frozen copy first, which settles which header it is without asking the
+  direction three times.
+- Two comments that claimed more than the code did were corrected.
+- The interruption tests now pin that the live header carries no inline style afterwards, and the
+  fly-out guard cases pin that nothing of the header is left. The fly-in guard check bites; the fly-out
+  guard one is defensive, because a guarded run does nothing at all.
+
+Kept, against the spec's letter: the carried tile takes the folder tile's own `border-2 border-border`.
+The spec lists "no shadow, no ring, no name bar", and a border is none of those. The face is drawn to
+sit under that frame, so without it the face bleeds past the carried tile's rounded corner. The test now
+asserts the border on both the tile and the carried copy rather than passing by omission. Say so if the
+frame should go and the face should be inset instead.
+
+Open, and not this ticket's: `e2e/library-drag-parity.spec.ts` and `e2e/library-tiles.spec.ts` are red
+at `Base:` — 29 of 40 failing, reproduced on a clean tree at 4aea4283. The suites identify a tile by a
+non-empty `img` `alt`, which the cropped face (ticket 04) no longer gives them. Because this change
+touches the drag overlay, the carried tile has no drag-suite evidence either way until they are green.
+

@@ -15,6 +15,30 @@ const REVEAL_AT = 0.6;
 const viewportOf = (grid: HTMLElement): HTMLElement | null =>
   grid.closest<HTMLElement>('[data-radix-scroll-area-viewport]');
 
+/**
+ * A frame for something frozen on screen: fixed at the rectangle it stood in, and clipping to it, so
+ * whatever moves inside never reaches the toolbar or the tabs.
+ *
+ * @param kind - What the frame holds, which is how a test and a debugger tell two of them apart
+ */
+const raisedFrame = (box: DOMRect, kind: 'board' | 'header'): HTMLElement => {
+  const frame = document.createElement('div');
+  frame.setAttribute('aria-hidden', 'true');
+  frame.setAttribute('inert', '');
+  frame.dataset.folderOverlay = kind;
+  Object.assign(frame.style, {
+    position: 'fixed',
+    left: `${box.left}px`,
+    top: `${box.top}px`,
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    zIndex: '40',
+  });
+  return frame;
+};
+
 /** One element's part of the motion, written in the fly-in sense. */
 interface Move {
   el: HTMLElement;
@@ -34,6 +58,8 @@ interface Snapshot {
   cloneRect: DOMRect;
   /** The folder tile, on a fly-in. A fly-out has no tile on screen yet, so it measures after the swap. */
   tileRect?: DOMRect;
+  /** The folder header, frozen on a fly-out, which is the one direction the swap takes it away. */
+  header?: { clone: HTMLElement; rect: DOMRect };
   /** The region the folder's face shows, read from the board the click landed on. */
   region: { width: number; hidden: string[] };
 }
@@ -53,6 +79,7 @@ interface Snapshot {
  * the grid layout, and whenever the folder tile cannot be measured.
  *
  * @param gridNode - The grid element, which is both the layer to clone and the layer that stays
+ * @param headerNode - The folder header, which the swap mounts on the way in and takes on the way out
  * @param tileNodes - The tile elements by id, which is where the folder tile is measured from
  * @param openGroupId - The folder the grid is showing, which is what the motion is keyed on
  * @param setOpenGroupId - The grid's own setter. The disband path keeps calling it directly, so a folder
@@ -62,9 +89,10 @@ interface Snapshot {
  * @param regionOf - The part of a folder's board its face shows, and the members that face leaves out
  */
 export function useFolderZoom({
-  gridNode, tileNodes, openGroupId, setOpenGroupId, busy, enabled, regionOf,
+  gridNode, headerNode, tileNodes, openGroupId, setOpenGroupId, busy, enabled, regionOf,
 }: {
   gridNode: React.RefObject<HTMLDivElement | null>;
+  headerNode: React.RefObject<HTMLDivElement | null>;
   tileNodes: React.MutableRefObject<Map<string, HTMLDivElement>>;
   openGroupId: string | null;
   setOpenGroupId: (id: string | null) => void;
@@ -92,17 +120,24 @@ export function useFolderZoom({
     // A fly-in has the tile on screen, so it can rule the camera out here. A fly-out cannot: the tile
     // comes back with the swap, so the effect measures it and drops the snapshot when it has no box.
     if (direction === 'in' && !tileRect?.width) return;
+    // The header goes with the folder, so a fly-out is the one direction that has to keep a copy: by
+    // the time the camera runs, the swap has already taken the live one off screen.
+    const header = direction === 'out' ? headerNode.current : null;
+    const headerRect = header?.getBoundingClientRect();
     pending.current = {
       groupId,
       direction,
       clone: grid.cloneNode(true) as HTMLElement,
       cloneRect: grid.getBoundingClientRect(),
       tileRect,
+      header: header && headerRect?.height
+        ? { clone: header.cloneNode(true) as HTMLElement, rect: headerRect }
+        : undefined,
       // Read here rather than in the effect below: either way round, this is the one moment both
       // boards are described by the same arrangement, with no swap between them.
       region: latest.current.regionOf(groupId),
     };
-  }, [gridNode]);
+  }, [gridNode, headerNode]);
 
   const openGroup = useCallback((groupId: string) => {
     // A motion already in flight lands on its end state first, so a fast back-and-forth never leaves
@@ -165,19 +200,9 @@ export function useFolderZoom({
 
     // The frozen board, raised out of the document and clipped to the board area, so a board blown up
     // eight times never reaches the toolbar or the tabs.
-    const overlay = document.createElement('div');
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.setAttribute('inert', '');
-    Object.assign(overlay.style, {
-      position: 'fixed',
-      left: `${viewportRect.left}px`,
-      top: `${viewportRect.top}px`,
-      width: `${viewportRect.width}px`,
-      height: `${viewportRect.height}px`,
-      overflow: 'hidden',
-      pointerEvents: 'none',
-      zIndex: '40',
-    });
+    const frames: HTMLElement[] = [];
+    const overlay = raisedFrame(viewportRect, 'board');
+    frames.push(overlay);
     Object.assign(snap.clone.style, {
       position: 'absolute',
       margin: '0',
@@ -187,7 +212,6 @@ export function useFolderZoom({
       height: `${snap.cloneRect.height}px`,
     });
     overlay.appendChild(snap.clone);
-    document.body.appendChild(overlay);
 
     const camera = folderCamera({ tile, outer, inner, regionWidth: snap.region.width });
     const moves: Move[] = [];
@@ -269,8 +293,51 @@ export function useFolderZoom({
       });
     }
 
+    // The folder header, which arrives with the rest of the folder rather than at the first frame: it
+    // would otherwise stand against the very tile the camera flies into. On a fly-in it is the real
+    // one, which the swap has already mounted, so its layout space is there from the first frame and
+    // the camera's `d` term covers it. On a fly-out the swap has taken it, so a frozen copy stands in.
+    // Only a fly-out ever froze one, so the copy settles which header this is without asking again.
+    const frozenHeader = snap.header;
+    const headerEl = frozenHeader?.clone ?? headerNode.current;
+    const headerBox = frozenHeader?.rect ?? headerEl?.getBoundingClientRect();
+    if (headerEl && headerBox?.height) {
+      const height = headerBox.height;
+      if (frozenHeader) {
+        const headerFrame = raisedFrame(frozenHeader.rect, 'header');
+        Object.assign(headerEl.style, {
+          position: 'absolute',
+          margin: '0',
+          left: '0px',
+          top: '0px',
+          width: `${frozenHeader.rect.width}px`,
+          height: `${height}px`,
+        });
+        headerFrame.appendChild(headerEl);
+        frames.push(headerFrame);
+      } else {
+        // A control the player cannot see is a control they must not be able to press.
+        applyStyle(headerEl, { pointerEvents: 'none', willChange: 'transform, opacity' });
+      }
+      // One header height above its place, with that same distance cut off the top, so the part of
+      // the slide standing over the toolbar is never drawn.
+      const raised = `translateY(-${height}px)`;
+      const cropped = `inset(${height}px 0px 0px 0px)`;
+      moves.push({
+        el: headerEl,
+        keyframes: [
+          { transform: raised, clipPath: cropped, opacity: 0 },
+          { transform: raised, clipPath: cropped, opacity: 0, offset: REVEAL_AT },
+          { transform: 'translateY(0px)', clipPath: 'inset(0px 0px 0px 0px)', opacity: 1 },
+        ],
+      });
+    }
+
     // A click on a moving board would start a drag against cells that are not where they look.
     applyStyle(viewport, { pointerEvents: 'none' });
+
+    // Both frames go up in one paint, so the frozen header never shows a step ahead of the board.
+    frames.forEach((frame) => document.body.appendChild(frame));
 
     const animations = moves.map(({ el, keyframes, easing }) => el.animate(keyframes, {
       duration: DURATION_MS,
@@ -289,7 +356,7 @@ export function useFolderZoom({
       // state, so the cancel that releases it has to follow.
       animations.forEach((animation) => { animation.finish(); animation.cancel(); });
       restore.forEach((undo) => undo());
-      overlay.remove();
+      frames.forEach((frame) => frame.remove());
     };
     cleanupRef.current = cleanup;
     Promise.all(animations.map((animation) => animation.finished)).then(cleanup, cleanup);
