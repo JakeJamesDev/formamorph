@@ -40,7 +40,7 @@ import {
 import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
-import { FolderMiniature } from '@/components/library/FolderMiniature';
+import { FolderFace } from '@/components/library/FolderFace';
 import { folderRegion, type FolderRegion } from '@/lib/folderRegion';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
 import { useFolderZoom } from '@/components/library/useFolderZoom';
@@ -823,8 +823,8 @@ export function LibraryTileGrid<T>({
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
                 })}
-                miniature={face && (
-                  <FolderMiniature
+                face={face && (
+                  <FolderFace
                     members={face.members}
                     places={face.places}
                     hidden={face.hidden}
@@ -838,7 +838,7 @@ export function LibraryTileGrid<T>({
                     boardWidth={width}
                     rowHeight={rowHeight}
                     gap={GAP}
-                    tileWidth={spanOf(id) * cellWidth + (spanOf(id) - 1) * GAP}
+                    tileWidth={face.tileWidth}
                     fit={thumbFit(aspect)}
                   />
                 )}

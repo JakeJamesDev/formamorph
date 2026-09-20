@@ -237,8 +237,8 @@ describe('the folder face', () => {
   const tileOf = (groupId: string) => document.querySelector(`[data-tile-id="${groupId}"]`) as HTMLElement;
   /** What one folder tile's face draws, by member, at the cell it draws it in. */
   const faceOf = (groupId = 'gF') => Object.fromEntries(
-    [...tileOf(groupId).querySelectorAll('[data-miniature-member]')]
-      .map((node) => [node.getAttribute('data-miniature-member'), cell(node)]),
+    [...tileOf(groupId).querySelectorAll('[data-face-member]')]
+      .map((node) => [node.getAttribute('data-face-member'), cell(node)]),
   );
   /** The `+N` badge's count on one folder tile, or null where the face leaves nobody out. */
   const badgeOf = (groupId = 'gF') =>
@@ -303,7 +303,7 @@ describe('the folder face', () => {
     expect(faceOf('gN')).toEqual({ n1: '1 / span 2 | 1 / span 2' });
     expect(badgeOf('gN')).toBeNull();
     // One medium column is exactly the medium tile's own width, so the face draws it at full size.
-    const board = tileOf('gN').querySelector<HTMLElement>('[data-folder-miniature] > div');
+    const board = tileOf('gN').querySelector<HTMLElement>('[data-folder-face] > div');
     expect(board?.style.transform).toBe('scale(1)');
   });
 
@@ -317,7 +317,7 @@ describe('the folder face', () => {
     const gap = 16;
     const cellWidth = (1000 - 7 * gap) / 8;
     const largeWidth = 4 * cellWidth + 3 * gap;
-    const board = tileOf('gS').querySelector<HTMLElement>('[data-folder-miniature] > div');
+    const board = tileOf('gS').querySelector<HTMLElement>('[data-folder-face] > div');
     expect(board?.style.transform).toBe(`scale(${cellWidth / largeWidth})`);
   });
 
@@ -343,7 +343,7 @@ describe('the folder face', () => {
 
   it('keeps the mosaic in the detailed layout', () => {
     render(<FaceGrid layout="detailed" />);
-    expect(document.querySelector('[data-folder-miniature]')).toBeNull();
+    expect(document.querySelector('[data-folder-face]')).toBeNull();
     expect(document.querySelector('[data-folder-mosaic]')).not.toBeNull();
   });
 });

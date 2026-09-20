@@ -17,6 +17,8 @@ export interface FolderRegion {
   width: number;
   /** The region's height in board pixels: the tile's own shape, grown to the region's width. */
   height: number;
+  /** The folder tile's own width in px, which the face shrinks the region to. */
+  tileWidth: number;
   /** Members the face leaves out, in the order they were given. The `+N` badge counts them. */
   hidden: string[];
 }
@@ -58,10 +60,11 @@ export function folderRegion({
   const corner = cornerId ? spanOf(cornerId) : 1;
   const cols = Math.min(baseCols, Math.max(Math.min(used, tileSpan * 2), corner));
 
-  if (cellWidth <= 0 || rowHeight <= 0) return { cols, width: 0, height: 0, hidden: [] };
+  if (cellWidth <= 0 || rowHeight <= 0) return { cols, width: 0, height: 0, tileWidth: 0, hidden: [] };
 
+  const tileWidth = sideOf(tileSpan, cellWidth, gap);
   const width = sideOf(cols, cellWidth, gap);
-  const height = sideOf(tileSpan, rowHeight, gap) * (width / sideOf(tileSpan, cellWidth, gap));
+  const height = sideOf(tileSpan, rowHeight, gap) * (width / tileWidth);
   const bottomLimit = height * (1 + BOTTOM_SLACK);
   const hidden = members.filter((id) => id !== cornerId && (
     !places[id]
@@ -69,5 +72,5 @@ export function folderRegion({
     || sideOf(places[id].row + spanOf(id), rowHeight, gap) > bottomLimit
   ));
 
-  return { cols, width, height, hidden };
+  return { cols, width, height, tileWidth, hidden };
 }

@@ -42,7 +42,7 @@ interface Snapshot {
  * Open and leave a folder with a camera zoom between the folder tile and the folder's own board.
  *
  * The library board and the folder board are two layers of one camera: the library zooms toward the
- * tile and fades out while the folder board grows out of the tile to full size, so the tile's miniature
+ * tile and fades out while the folder board grows out of the tile to full size, so the tile's face
  * becomes the board with no jump. Leaving the folder plays the same keyframes in reverse.
  *
  * The board that is about to leave the screen is frozen as a clone and raised into a fixed overlay
@@ -134,7 +134,7 @@ export function useFolderZoom({
     const grid = gridNode.current;
     const viewport = grid && viewportOf(grid);
     // The two boards share one scroll viewport, so the swap has to say where each of them stands. The
-    // folder opens at its top, whether or not the camera runs, because the miniature the player clicked
+    // folder opens at its top, whether or not the camera runs, because the face the player clicked
     // shows the board's first rows; leaving the folder puts the library back where they left it. The
     // detailed layout never saves an offset, so it keeps the scroll it always had. This runs before the
     // camera measures anything, because a fly-out lands on a tile the restored scroll has just moved.

@@ -92,7 +92,7 @@ describe('the Personas filter', () => {
   });
 });
 
-describe('a folder miniature in a filtered view', () => {
+describe('a folder face in a filtered view', () => {
   const faceItems = [
     { id: 'p2', name: 'Filed Persona', persona: true },
     { id: 'n2', name: 'Filed Entity' },
@@ -130,10 +130,16 @@ describe('a folder miniature in a filtered view', () => {
 
   it('draws only passing members, packed as the filtered folder board packs them', async () => {
     render(<FaceGrid />);
-    const face = cells('[data-miniature-member]', 'data-miniature-member');
+    const face = cells('[data-face-member]', 'data-face-member');
     expect(face).toEqual({ p2: '1 / span 2 | 1 / span 2', p3: '3 / span 2 | 1 / span 2' });
-    // A region built from the members the filter drops would leave p3 outside its right edge.
+    // A region built from the members the filter drops would run six columns wide and leave p3
+    // outside its right edge, so the face would shrink further and the badge would count one.
     expect(document.querySelector('[data-folder-badge]')).toBeNull();
+    const gap = 16;
+    const cellWidth = (1000 - 7 * gap) / 8;
+    const side = (span: number) => span * cellWidth + (span - 1) * gap;
+    const board = document.querySelector<HTMLElement>('[data-folder-face] > div');
+    expect(board?.style.transform).toBe(`scale(${side(2) / side(4)})`);
 
     await userEvent.click(screen.getByText('Mixed Folder'));
     expect(cells('[data-tile-id]', 'data-tile-id')).toEqual(face);

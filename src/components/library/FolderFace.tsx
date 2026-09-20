@@ -18,7 +18,7 @@ const TILE_BORDER = 2;
  * @param regionWidth - The board-space width of the region, which the face shrinks to the tile's width
  * @param tileWidth - The folder tile's own width, in px
  */
-export function FolderMiniature({
+export function FolderFace({
   members, places, hidden, spanOf, thumbnailOf, columns, boardWidth, regionWidth, rowHeight, gap,
   tileWidth, fit,
 }: {
@@ -42,7 +42,7 @@ export function FolderMiniature({
 
   return (
     <div
-      data-folder-miniature
+      data-folder-face
       className="pointer-events-none absolute overflow-hidden bg-background"
       style={{ inset: -TILE_BORDER }}
     >
@@ -69,7 +69,7 @@ export function FolderMiniature({
           return (
             <div
               key={id}
-              data-miniature-member={id}
+              data-face-member={id}
               className="overflow-hidden rounded-lg border-2 border-border bg-muted"
               style={{
                 gridColumn: `${places[id].col + 1} / span ${spanOf(id)}`,

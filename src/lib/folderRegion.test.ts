@@ -101,6 +101,7 @@ describe('folderRegion', () => {
     expect(wide.cols).toBe(4);
     const tileWidth = 2 * CELL.cellWidth + CELL.gap;
     const tileHeight = 2 * CELL.rowHeight + CELL.gap;
+    expect(wide.tileWidth).toBeCloseTo(tileWidth, 6);
     expect(wide.height).toBeCloseTo(tileHeight * (wide.width / tileWidth), 6);
   });
 
