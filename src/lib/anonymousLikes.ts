@@ -99,14 +99,18 @@ const INSTALL_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 let held: string | null = null;
 
 /**
- * This copy of the app's Install id, made on first need.
+ * This copy of the app's Install id if it has one already, without making one.
  *
- * A stored value that is not a UUID is replaced rather than sent: the server refuses it, and the column
- * it would be stored in is the key a Claim later moves rows by.
+ * For a reader whose question is about the Install rather than addressed by it. A Claim asks whether
+ * there are Anonymous Likes to move, and an app that has never needed an id has none: making one to ask
+ * would make the very thing the question is about, and would link a fresh Install to the account.
  *
- * @returns The id, which is always a UUID
+ * A stored value that is not a UUID is no id: the server refuses it, and the column it would be stored
+ * in is the key a Claim moves rows by.
+ *
+ * @returns The id in lower case, or null when this copy of the app has never needed one
  */
-export function installId(): string {
+export function storedInstallId(): string | null {
   if (held) return held;
 
   try {
@@ -116,8 +120,20 @@ export function installId(): string {
       return held;
     }
   } catch {
-    // A browser that refuses to read still gets an Install; it just gets a new one next launch.
+    // A browser that refuses to read has nothing to answer with.
   }
+
+  return null;
+}
+
+/**
+ * This copy of the app's Install id, made on first need.
+ *
+ * @returns The id, which is always a UUID
+ */
+export function installId(): string {
+  const existing = storedInstallId();
+  if (existing) return existing;
 
   held = crypto.randomUUID().toLowerCase();
   try {

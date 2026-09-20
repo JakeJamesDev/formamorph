@@ -4,6 +4,7 @@ import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
 import { installId } from "@/lib/anonymousLikes";
+import { claimSettled } from "@/lib/anonymousLikeClaim";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -66,6 +67,12 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
       const stored = cached.length ? await getCatalogTag() : null;
       if (!isCurrent()) return;
       const tag = !force && stored && stored.reader === reader ? stored.tag : null;
+
+      // A sign-in changes the reader and starts a Claim in the same breath, and this refresh is the one
+      // the change asked for. Ask before the marks have moved and the answer is missing the hearts the
+      // Claim is busy turning into Likes.
+      await claimSettled();
+      if (!isCurrent()) return;
 
       // One request returns the entire catalog, every kind; replace the cache wholesale (which also drops
       // anything removed server-side).

@@ -207,6 +207,38 @@ describe('where a guest\'s press goes', () => {
   });
 });
 
+describe('a heart the account behind this Install already filled', () => {
+  // Signing out is not a second like. The server answers the press 200 with a code, `liked: true` and the
+  // count it already had, because the listing really is liked — by the account that claimed this Install.
+
+  it('leaves the heart filled and the count alone on a clear press', async () => {
+    sync.items = [{ ...listing, liked: true, likes: 9 }];
+    anonymousRoute().mockResolvedValue({ liked: true, likes: 9 });
+    renderBrowser();
+
+    press();
+
+    await waitFor(() => expect(anonymousRoute()).toHaveBeenCalledWith('w1', false));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Unlike — 9 likes/ })).toBeTruthy());
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('raises no count on a like press, and says nothing about it', async () => {
+    // The heart reads empty only against a catalog read before the Claim landed. The press still answers
+    // with the truth, so the number the reader ends on is the one the listing has.
+    sync.items = [{ ...listing, liked: false, likes: 9 }];
+    anonymousRoute().mockResolvedValue({ liked: true, likes: 9 });
+    renderBrowser();
+
+    press();
+
+    await waitFor(() => expect(anonymousRoute()).toHaveBeenCalledWith('w1', true));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Unlike — 9 likes/ })).toBeTruthy());
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+});
+
 describe('what a refusal does to the heart', () => {
   it('puts the heart back and sends the guest to sign-in when the setting went off mid-visit', async () => {
     refuse(ANONYMOUS_LIKE_CODES.OFF);

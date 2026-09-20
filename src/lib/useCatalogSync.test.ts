@@ -32,6 +32,12 @@ vi.mock('@/services/AuthService', () => ({
   },
 }));
 
+/** A Claim in the air, resolvable by hand, so the ordering between it and the refresh is the test's. */
+const claim = vi.hoisted(() => ({ finish: null as null | (() => void) }));
+vi.mock('@/lib/anonymousLikeClaim', () => ({
+  claimSettled: () => (claim.finish ? new Promise<void>((res) => { claim.finish = res; }) : Promise.resolve()),
+}));
+
 /** The server fetch, resolvable by hand so the settling moment is the test's to pick. */
 const server = vi.hoisted(() => ({
   resolve: null as null | ((result: unknown) => void),
@@ -57,6 +63,7 @@ beforeEach(() => {
   server.resolve = null;
   server.sentTag = undefined;
   server.calls = 0;
+  claim.finish = null;
   // The catalog is a listing of what other players published, so the hook waits on the age attestation.
   // Every case below is about what happens after that, so they arrive holding one.
   localStorage.clear();
@@ -275,6 +282,29 @@ describe('the freshness tag', () => {
 
     await act(async () => resolveSecond({ status: 'fresh', data: [{ ...world, liked: false }], tag: 'W/"second"' }));
     expect(result.current.remoteWorlds).toEqual([{ ...world, liked: false }]);
+  });
+});
+
+describe('the likes a sign-in is still moving', () => {
+  it('asks for no catalog until the Claim has settled', async () => {
+    // Signing in changes the reader and starts a Claim at the same moment, and this refresh is what the
+    // change asked for. Ask too early and the answer is missing the hearts the Claim is turning into
+    // Likes, so a person who just signed in sees their own likes as somebody else's.
+    claim.finish = () => {};
+    renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(claim.finish).not.toBe(null));
+    expect(server.calls).toBe(0);
+
+    await act(async () => { claim.finish?.(); });
+
+    await waitFor(() => expect(server.calls).toBe(1));
+  });
+
+  it('asks straight away when no Claim is in the air, which is every other visit', async () => {
+    renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(server.calls).toBe(1));
   });
 });
 

@@ -18,6 +18,12 @@ const fresh = async () => {
   return (await import('./anonymousLikes')).installId;
 };
 
+/** The same, for the reader that will not make one. */
+const freshStored = async () => {
+  vi.resetModules();
+  return (await import('./anonymousLikes')).storedInstallId;
+};
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -69,6 +75,39 @@ describe('the Install id', () => {
 
     expect(id).toMatch(UUID);
     expect(installId()).toBe(id);
+  });
+});
+
+describe('the Install id a reader may only look at', () => {
+  it('answers nothing on a copy of the app that has never needed one', async () => {
+    // A Claim asks first. An app that has never addressed an Anonymous Like has none to move, and
+    // making an id to ask about it would be making the thing the question is about.
+    const storedInstallId = await freshStored();
+
+    expect(storedInstallId()).toBeNull();
+    expect(localStorage.getItem(INSTALL_STORAGE_KEY)).toBeNull();
+  });
+
+  it('answers the id once one exists', async () => {
+    localStorage.setItem(INSTALL_STORAGE_KEY, 'AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE');
+
+    expect((await freshStored())()).toBe('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee');
+  });
+
+  it('answers the id this session made when storage refuses to keep it', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    vi.resetModules();
+    const { installId, storedInstallId } = await import('./anonymousLikes');
+
+    const id = installId();
+
+    expect(storedInstallId()).toBe(id);
+  });
+
+  it('answers nothing for a stored value the server would refuse', async () => {
+    localStorage.setItem(INSTALL_STORAGE_KEY, 'not-a-uuid');
+
+    expect((await freshStored())()).toBeNull();
   });
 });
 
