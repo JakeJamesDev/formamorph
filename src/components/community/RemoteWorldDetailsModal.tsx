@@ -36,6 +36,7 @@ import { defaultChangelogTab, type ChangelogEntry, type ChangelogTab } from "@/l
 import { WorldActionButton } from "@/components/WorldActionButton";
 import { DownloadLinkedContent } from "@/components/community/DownloadLinkedContent";
 import { useWorldDownloadPlan } from "@/lib/useWorldDownloadPlan";
+import { useMountedRef } from "@/lib/useMountedRef";
 import type { DownloadPlan } from "@/lib/useDownloadCoordinator";
 import { PlaceBadges } from "@/components/PlaceBadges";
 import { placementsBy } from "@/lib/contests";
@@ -163,6 +164,10 @@ export function RemoteWorldDetailsModal({
   /** The same guard for the changelog fetch, which races the same way. */
   const changelogReqRef = useRef(0);
 
+  // Neither request id survives an unmount: a modal closed with the app still holds the newest id, so
+  // the late answer passes its own guard and sets state on a tree that is gone.
+  const mountedRef = useMountedRef();
+
   /**
    * Read the first `wanted` comments — the whole window on screen, not the next page of it.
    *
@@ -174,13 +179,13 @@ export function RemoteWorldDetailsModal({
     setCommentsLoading(true);
     try {
       const res = await WorldStorageService.fetchComments(worldId, 1, wanted);
-      if (reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
+      if (!mountedRef.current || reqId !== commentsReqRef.current) return; // superseded by a newer world's fetch
       setCommentsTotal(res.total);
       setCommentsHasMore(!!res.pagination?.next);
       setCommentsShown(wanted);
       setComments(res.data);
     } finally {
-      if (reqId === commentsReqRef.current) setCommentsLoading(false);
+      if (mountedRef.current && reqId === commentsReqRef.current) setCommentsLoading(false);
     }
   };
 
@@ -242,7 +247,7 @@ export function RemoteWorldDetailsModal({
   const loadListingDetails = async (worldId: string, forWorld: WorldRecord) => {
     const reqId = ++changelogReqRef.current;
     const details = await WorldStorageService.fetchListingDetails(worldId);
-    if (reqId !== changelogReqRef.current) return;
+    if (!mountedRef.current || reqId !== changelogReqRef.current) return;
 
     // The fresher answer about the setting: this response was read now, and the catalog may be a visit
     // old. A failed request says nothing about it, so nothing is reported.

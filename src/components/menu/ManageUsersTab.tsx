@@ -24,6 +24,7 @@ import { useUserProfile } from "@/contexts/userProfileStore";
 import { type WorldRecord } from "@/components/WorldDetails";
 import type { LinkedAccount, SentMessage } from "@/types";
 import { Tip } from "@/components/ui/tooltip";
+import { useMountedRef } from "@/lib/useMountedRef";
 
 /** Prefill offered after a suspension, so the user learns why without the admin retyping it. */
 const SUSPENSION_TEMPLATE = {
@@ -84,6 +85,8 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
   const [directTotal, setDirectTotal] = useState(0);
   // Tokens each fetch so a stale one can't overwrite the table (page change / re-search mid-flight).
   const fetchReqRef = useRef(0);
+  // The request id still matches after an unmount, so it alone cannot stop a late answer.
+  const mountedRef = useMountedRef();
 
   // Selection carries id → username rather than ids alone: it survives paging and re-searching, and a
   // user picked on an earlier page is no longer on screen to look their name up from at send time.
@@ -183,7 +186,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       }
 
       const result = await response.json();
-      if (reqId !== fetchReqRef.current) return; // superseded by a newer fetch (page change / re-search)
+      if (!mountedRef.current || reqId !== fetchReqRef.current) return; // superseded by a newer fetch (page change / re-search)
 
       if (result.success) {
         setUsers(result.data);
@@ -199,12 +202,12 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       }
     } catch (error) {
       console.error('Error in fetchUsers:', error);
-      if (reqId === fetchReqRef.current) {
+      if (mountedRef.current && reqId === fetchReqRef.current) {
         toast.error((error as Error).message || 'Failed to connect to server');
         setUsers([]);
       }
     } finally {
-      if (reqId === fetchReqRef.current) setIsLoadingUsers(false);
+      if (mountedRef.current && reqId === fetchReqRef.current) setIsLoadingUsers(false);
     }
   };
 

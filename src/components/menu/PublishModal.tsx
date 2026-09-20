@@ -35,6 +35,7 @@ import { hasLinkedContent, type LinkedWorldContent } from "@/lib/publishLinks";
 import { offersCompatibility, usePublishLinks } from "@/lib/usePublishLinks";
 import { AlertTriangle, ScrollText, Trophy } from "lucide-react";
 import type { ServerEvent } from "@/types";
+import { useMountedRef } from "@/lib/useMountedRef";
 
 interface PublishModalProps {
   open: boolean;
@@ -82,6 +83,8 @@ export function PublishModal({
   const [changelogSupported, setChangelogSupported] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const changelogReqRef = useRef(0);
+  // The request id still matches after an unmount, so it alone cannot stop a late answer.
+  const mountedRef = useMountedRef();
   /** The answer, once one listing has given it. Null until then, and again on the next opening. */
   const changelogSupportRef = useRef<boolean | null>(null);
 
@@ -339,14 +342,14 @@ export function PublishModal({
     const reqId = ++changelogReqRef.current;
     setListingPending(true);
     void WorldStorageService.fetchListingDetails(overwriteTarget).then((details) => {
-      if (reqId !== changelogReqRef.current) return;
+      if (!mountedRef.current || reqId !== changelogReqRef.current) return;
       const supported = (details?.changelog ?? null) !== null;
       changelogSupportRef.current = supported;
       setChangelogSupported(supported);
       setListing(details);
       setListingPending(false);
     });
-  }, [overwriteTarget, declaresRelationships]);
+  }, [overwriteTarget, declaresRelationships, mountedRef]);
 
   // Load the user's listings when the publish modal is opened, or when the kind changes under it.
   useEffect(() => {

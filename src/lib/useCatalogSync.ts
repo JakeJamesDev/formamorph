@@ -53,11 +53,21 @@ export function useCatalogSync(open: boolean, readerKey = currentReader(), claim
   const lastReaderKey = useRef(readerKey);
   const lastClaimsMoved = useRef(claimsMoved);
   const requestGeneration = useRef(0);
+  // Declared here rather than through the shared hook: exhaustive-deps treats a ref from a custom
+  // hook as unstable, which would pull `loadCatalog` into the open/reader effect's dependencies.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const loadCatalog = async (force = false) => {
     const request = ++requestGeneration.current;
     const reader = currentReader();
-    const isCurrent = () => requestGeneration.current === request && currentReader() === reader;
+    // Unmounted counts as superseded: the generation and the reader both still match a browser that
+    // has closed, so a late answer would pass the guard and set state on a tree that is gone.
+    const isCurrent = () => mountedRef.current
+      && requestGeneration.current === request && currentReader() === reader;
 
     try {
       const cached = await getCatalog();

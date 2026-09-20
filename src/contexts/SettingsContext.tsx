@@ -75,6 +75,7 @@ import {
   observeReply, observationAnswer, observationMayCorrect, type ReasoningObservation,
 } from '../lib/reasoningObservation';
 import type { SettingsTabId } from '@/components/modals/settingsTabs';
+import { useMountedRef } from '@/lib/useMountedRef';
 
 /** A request to open the Settings modal at a given tab (and, for `endpoints`, a given sub-tab). The nonce
  *  distinguishes two identical requests so the second one still re-opens the modal. */
@@ -576,13 +577,15 @@ function useProvideSettings() {
     : DEFAULT_CONTEXT_WINDOW;
 
   const detectReqRef = useRef(0);
+  // The request id still matches after an unmount, so it alone cannot stop a late answer.
+  const mountedRef = useMountedRef();
   const detectContextWindow = useCallback(async (force = false) => {
     // Token this probe so a slow one for a since-abandoned endpoint can't overwrite a newer endpoint's
     // detected window: switching A→B fires a new probe (higher token), and A's late result is discarded.
     const reqId = ++detectReqRef.current;
     setDetectStatus('detecting');
     const detected = await fetchContextLength(activeEndpointUrl, activeApiToken, activeModelName);
-    if (reqId !== detectReqRef.current) return; // superseded by a newer detect
+    if (!mountedRef.current || reqId !== detectReqRef.current) return; // superseded by a newer detect
     if (detected !== null) {
       setDetectedContextWindow(detected);
       if (force) setContextWindowOverride(null); // snap the field back to the detected value
@@ -590,7 +593,7 @@ function useProvideSettings() {
     } else {
       setDetectStatus(force ? 'error' : 'idle'); // auto-attempts fail quietly
     }
-  }, [activeEndpointUrl, activeApiToken, activeModelName, setDetectedContextWindow, setContextWindowOverride]);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, setDetectedContextWindow, setContextWindowOverride, mountedRef]);
 
   // Auto-detect on connect (custom endpoint only); debounced so editing the URL doesn't fire per keystroke.
   useEffect(() => {
