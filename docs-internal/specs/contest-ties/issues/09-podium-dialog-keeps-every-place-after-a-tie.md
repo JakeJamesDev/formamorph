@@ -1,6 +1,8 @@
 # 09: Podium Dialog Keeps Every Place After a Tie
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: the live 1, 1, 2 E2E run is open; the local server had no running contest, so both contest tests skipped (24 s)
+Base: 000ba0ef
 Blocked by: 04, 05, 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -13,13 +15,13 @@ A click on an unplaced entry is still never refused. It appends untied while the
 
 The dev event sample and any fixture that shows 1, 1, 3 change to a podium with no gap. The E2E journey from ticket 06 announces 1, 1 only; extend it to 1, 1, 2 where the seed allows, so one run proves a shared place and a sole place. A live save of 1, 1, 2 needs ticket 08 on the server; the component tests mock the service.
 
-- [ ] The derivation helper passes the spec's new example table; `1,1,3` cannot be built
-- [ ] Two tied rows then an untied row derive 1, 1, 2; a further untied row derives 3; a further click joins 3rd place tied
-- [ ] Switching off a tie is refused only when a row would pass 3rd place
-- [ ] Removal, run order, and the step-down click still hold under the new derivation, each with a test
-- [ ] Edit mode opens a published `1,1,2,3` podium with its ties intact
-- [ ] The dev event sample and fixtures hold no gap
+- [x] The derivation helper passes the spec's new example table; `1,1,3` cannot be built
+- [x] Two tied rows then an untied row derive 1, 1, 2; a further untied row derives 3; a further click joins 3rd place tied
+- [x] Switching off a tie is refused only when a row would pass 3rd place
+- [x] Removal, run order, and the step-down click still hold under the new derivation, each with a test
+- [x] Edit mode opens a published `1,1,2,3` podium with its ties intact
+- [x] The dev event sample and fixtures hold no gap
 - [ ] The E2E journey announces 1, 1, 2 where the seed allows, and asserts the silver badge; `npm run test:e2e` result and run time stated
-- [ ] Dialog copy that describes a skipped place is corrected, following the help-copy pattern
-- [ ] Each changed guard is proven to fail when its rule is removed
-- [ ] Changelog In-Progress entry corrected, not duplicated; four gates green, test run time stated
+- [x] Dialog copy that describes a skipped place is corrected, following the help-copy pattern
+- [x] Each changed guard is proven to fail when its rule is removed
+- [x] Changelog In-Progress entry corrected, not duplicated; four gates green, test run time stated

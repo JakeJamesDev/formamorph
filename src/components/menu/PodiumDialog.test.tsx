@@ -42,6 +42,8 @@ const listing = (over: Record<string, unknown> = {}) => ({
 });
 
 /** Three placeable entries, in the order the tests name them. */
+const fourth = () => listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } });
+
 const three = () => [
   listing(),
   listing({ _id: 'w2', name: 'Ninth Wave Shoals', author: { id: 'u3', username: 'corrin' } }),
@@ -311,7 +313,7 @@ describe('assembling the podium', () => {
   it('seats a fourth entry on the bottom step rather than inventing a 4th place', async () => {
     // The podium holds three steps, not three worlds. A fourth click cannot take 4th place, so it
     // shares 3rd — which is the only reading that leaves 1, 2, 3, 3 reachable.
-    catalog([...three(), listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } })]);
+    catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Fourth Wall');
@@ -419,9 +421,8 @@ describe('sharing a place', () => {
 
   it('follows a tie with 2nd, then 3rd, and seats the next click tied on 3rd', async () => {
     // A tie takes no place away, so the judge decides how many winners there are.
-    const fourth = listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } });
     const fifth = listing({ _id: 'w5', name: 'Fifth Season', author: { id: 'u6', username: 'wren' } });
-    catalog([...three(), fourth, fifth]);
+    catalog([...three(), fourth(), fifth]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Fifth Season');
@@ -478,7 +479,7 @@ describe('sharing a place', () => {
   it('refuses a break that would leave a row with no place at all', async () => {
     // Two worlds share 3rd. Untie the last and it is 4th, which is no step on this podium — so the
     // checkbox is unavailable and the way out is to clear the row.
-    catalog([...three(), listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } })]);
+    catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Fourth Wall');
@@ -500,7 +501,7 @@ describe('sharing a place', () => {
   it('refuses a break higher up that would push the bottom row past 3rd place', async () => {
     // 1, 1, 2, 3 with the tie for 1st broken is 1, 2, 3, 4. The row that loses its place is not the
     // one toggled, and the refusal still lands on the checkbox a judge is about to use.
-    catalog([...three(), listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } })]);
+    catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Fourth Wall');
@@ -517,7 +518,7 @@ describe('sharing a place', () => {
 
   it('breaks a tie while every row still has a place, however many rows there are', async () => {
     // Four worlds share 1st. Untie the last and it takes 2nd: the tie took no place away.
-    catalog([...three(), listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } })]);
+    catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
     await screen.findByText('Fourth Wall');
@@ -780,7 +781,7 @@ describe('editing an announced podium', () => {
         { place: 3, worldId: 'w4', worldName: 'Fourth Wall', authorName: 'lark' },
       ],
     });
-    catalog([...three(), listing({ _id: 'w4', name: 'Fourth Wall', author: { id: 'u5', username: 'lark' } })]);
+    catalog([...three(), fourth()]);
 
     render(<PodiumDialog open onOpenChange={() => {}} contest={tied} />);
     await screen.findByText('Salt-Bright Reaches');

@@ -240,8 +240,8 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first. A{' '}
             <strong>Tied</strong> badge marks entries that share a like count. Click an entry to place it,
             and again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share
-            the place above it. The row after a tie takes the next place, so two worlds on 1st are followed
-            by 2nd. Your own entry and quarantined worlds can&apos;t be placed.
+            the place above it. A tie doesn&apos;t use up a place, so the row after two worlds on 1st takes
+            2nd. Your own entry and quarantined worlds can&apos;t be placed.
           </DialogDescription>
         </DialogHeader>
 
