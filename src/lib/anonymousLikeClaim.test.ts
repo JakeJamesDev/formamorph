@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import AuthService from '@/services/AuthService';
 import WorldStorageService from '@/services/WorldStorageService';
 import { INSTALL_STORAGE_KEY } from '@/lib/anonymousLikes';
-import { claimSettled, watchSessionForClaim } from './anonymousLikeClaim';
+import { claimSettled, claimWatch, resetClaimState, watchSessionForClaim } from './anonymousLikeClaim';
 
 /**
  * Where a guest's likes become an account's.
@@ -30,6 +30,7 @@ let stopWatching: () => void;
 
 beforeEach(() => {
   AuthService.logout();
+  resetClaimState();
   localStorage.clear();
   localStorage.setItem(INSTALL_STORAGE_KEY, AN_INSTALL);
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(res({ token: 'a-token', user: { id: 7, username: 'bosun' } })));
@@ -39,10 +40,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  // Signed out while the seam is still listening, because that is what clears the session it remembers.
-  // Stop watching first and the next case inherits this one's session and asks for no Claim at all.
-  AuthService.logout();
   stopWatching();
+  AuthService.logout();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -110,12 +109,70 @@ describe('claiming a guest\'s likes', () => {
   });
 });
 
+describe('telling a reader the marks have moved', () => {
+  it('says so once a Claim moved marks, so the catalog is read again', async () => {
+    const heard = vi.fn();
+    claimWatch.subscribe(heard);
+    claim.mockResolvedValue(2);
+
+    await AuthService.login('bosun', 'hunter22');
+    await claimSettled();
+
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(claimWatch.moved()).toBe(1);
+  });
+
+  it('says nothing for a Claim that moved nothing, which is the ordinary sign-in', async () => {
+    // Re-reading the whole catalog over a Claim that changed no heart would blank the grid for nothing.
+    const heard = vi.fn();
+    claimWatch.subscribe(heard);
+    claim.mockResolvedValue(0);
+
+    await AuthService.login('bosun', 'hunter22');
+    await claimSettled();
+
+    expect(heard).not.toHaveBeenCalled();
+    expect(claimWatch.moved()).toBe(0);
+  });
+
+  it('says nothing when the Claim failed', async () => {
+    const heard = vi.fn();
+    claimWatch.subscribe(heard);
+    claim.mockRejectedValue(new Error('the server is down'));
+
+    await AuthService.login('bosun', 'hunter22');
+    await claimSettled();
+
+    expect(heard).not.toHaveBeenCalled();
+  });
+
+  it('stops telling a reader that unsubscribed', async () => {
+    const heard = vi.fn();
+    claimWatch.subscribe(heard)();
+    claim.mockResolvedValue(2);
+
+    await AuthService.login('bosun', 'hunter22');
+    await claimSettled();
+
+    expect(heard).not.toHaveBeenCalled();
+  });
+});
+
 describe('a Claim that fails', () => {
   it('lets the sign-in through', async () => {
     claim.mockRejectedValue(new Error('the server is down'));
 
     await expect(AuthService.login('bosun', 'hunter22')).resolves.toEqual({ deletionCancelled: false });
     await claimSettled();
+  });
+
+  it('does not delay the sign-in when it hangs', async () => {
+    // Nothing on the sign-in path awaits the Claim, so a server that never answers this request must
+    // still leave the person signed in.
+    claim.mockReturnValue(new Promise<number>(() => {}));
+
+    await expect(AuthService.login('bosun', 'hunter22')).resolves.toEqual({ deletionCancelled: false });
+    expect(AuthService.isAuthenticated()).toBe(true);
   });
 
   it('settles rather than handing its failure to whoever waited', async () => {

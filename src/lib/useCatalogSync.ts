@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
 import { installId } from "@/lib/anonymousLikes";
-import { claimSettled } from "@/lib/anonymousLikeClaim";
+import { claimWatch, type ClaimWatch } from "@/lib/anonymousLikeClaim";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -30,8 +30,12 @@ const currentReader = (): string => {
  * The one request asks for every kind, and callers split the result by `kind` in memory — the same way
  * search and pagination already work here. Records cached before kinds existed have no `kind` field;
  * `kindOf` reads those as worlds, so a stale cache renders correctly until the refresh lands.
+ *
+ * @param open - Whether the community browser is on screen
+ * @param readerKey - Who is asking, so a change of reader forces a refresh rather than showing theirs
+ * @param claim - The Claim to read around, so a sign-in's moved likes are in what the server answers
  */
-export function useCatalogSync(open: boolean, readerKey = currentReader()) {
+export function useCatalogSync(open: boolean, readerKey = currentReader(), claim: ClaimWatch = claimWatch) {
   const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
@@ -41,7 +45,13 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
   // Whether this server takes a guest's like. Read from the cache first, so the heart is a control from
   // the first frame rather than after the refresh lands.
   const [anonymousLikes, setAnonymousLikes] = useState(false);
+  // Claims that have moved marks. A change means the catalog in hand predates them.
+  const claimsMoved = useSyncExternalStore(claim.subscribe, claim.moved);
+  // Held rather than closed over, so the loader below is not rebuilt for a watch that never changes.
+  const settled = useRef(claim.settled);
+  useEffect(() => { settled.current = claim.settled; }, [claim]);
   const lastReaderKey = useRef(readerKey);
+  const lastClaimsMoved = useRef(claimsMoved);
   const requestGeneration = useRef(0);
 
   const loadCatalog = async (force = false) => {
@@ -71,7 +81,7 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
       // A sign-in changes the reader and starts a Claim in the same breath, and this refresh is the one
       // the change asked for. Ask before the marks have moved and the answer is missing the hearts the
       // Claim is busy turning into Likes.
-      await claimSettled();
+      await settled.current();
       if (!isCurrent()) return;
 
       // One request returns the entire catalog, every kind; replace the cache wholesale (which also drops
@@ -108,16 +118,20 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
   useEffect(() => {
     if (open && COMMUNITY_ENABLED && isAgeAttested()) {
       const readerChanged = lastReaderKey.current !== readerKey;
+      // A Claim that landed since the last read leaves every heart it moved wrong in what is held. It
+      // is its own reason to ask again, because the retry that ran it changed no reader.
+      const claimLanded = lastClaimsMoved.current !== claimsMoved;
       lastReaderKey.current = readerKey;
+      lastClaimsMoved.current = claimsMoved;
       // A liked mark belongs to its reader. Do not show the old reader's catalog while the forced
       // request that replaces it is in flight.
       if (readerChanged) setRemoteWorlds([]);
-      void loadCatalog(readerChanged);
+      void loadCatalog(readerChanged || claimLanded);
     } else if (!open) {
       // The next open must wait for its own refresh before a lookup miss means anything.
       setCatalogSettled(false);
     }
-  }, [open, readerKey]);
+  }, [open, readerKey, claimsMoved]);
 
   return {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,

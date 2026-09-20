@@ -32,12 +32,6 @@ vi.mock('@/services/AuthService', () => ({
   },
 }));
 
-/** A Claim in the air, resolvable by hand, so the ordering between it and the refresh is the test's. */
-const claim = vi.hoisted(() => ({ finish: null as null | (() => void) }));
-vi.mock('@/lib/anonymousLikeClaim', () => ({
-  claimSettled: () => (claim.finish ? new Promise<void>((res) => { claim.finish = res; }) : Promise.resolve()),
-}));
-
 /** The server fetch, resolvable by hand so the settling moment is the test's to pick. */
 const server = vi.hoisted(() => ({
   resolve: null as null | ((result: unknown) => void),
@@ -63,7 +57,6 @@ beforeEach(() => {
   server.resolve = null;
   server.sentTag = undefined;
   server.calls = 0;
-  claim.finish = null;
   // The catalog is a listing of what other players published, so the hook waits on the age attestation.
   // Every case below is about what happens after that, so they arrive holding one.
   localStorage.clear();
@@ -75,6 +68,27 @@ afterEach(() => {
 });
 
 const world = { id: 'w1', name: 'Sedge Landing' };
+
+/** A Claim with nothing in the air and nothing moved, which is what most of these cases want. */
+const idleClaim = {
+  settled: () => Promise.resolve(),
+  subscribe: () => () => {},
+  moved: () => 0,
+};
+
+/** A Claim whose marks the test moves by hand, so the reader hears about it the way the real one would. */
+const movingClaim = () => {
+  const listeners = new Set<() => void>();
+  let moves = 0;
+  return {
+    watch: {
+      settled: () => Promise.resolve(),
+      subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
+      moved: () => moves,
+    },
+    move: () => { moves += 1; listeners.forEach((l) => l()); },
+  };
+};
 
 describe('catalogSettled', () => {
   it('stays false while the refresh is in flight, even with a cached snapshot showing', async () => {
@@ -290,19 +304,73 @@ describe('the likes a sign-in is still moving', () => {
     // Signing in changes the reader and starts a Claim at the same moment, and this refresh is what the
     // change asked for. Ask too early and the answer is missing the hearts the Claim is turning into
     // Likes, so a person who just signed in sees their own likes as somebody else's.
-    claim.finish = () => {};
-    renderHook(() => useCatalogSync(true));
+    const held = { finish: null as null | (() => void) };
+    const watch = { ...idleClaim, settled: () => new Promise<void>((res) => { held.finish = res; }) };
+    renderHook(() => useCatalogSync(true, guest(), watch));
 
-    await waitFor(() => expect(claim.finish).not.toBe(null));
+    // Waited on, and still waiting: the request has not gone out.
+    await waitFor(() => expect(held.finish).not.toBe(null));
     expect(server.calls).toBe(0);
 
-    await act(async () => { claim.finish?.(); });
+    await act(async () => { held.finish?.(); });
 
     await waitFor(() => expect(server.calls).toBe(1));
   });
 
-  it('asks straight away when no Claim is in the air, which is every other visit', async () => {
+  it('asks straight away when nothing is in the air, which is every other visit', async () => {
     renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(server.calls).toBe(1));
+  });
+
+  it('asks again, and asks unconditionally, when a Claim moves marks under an unchanged reader', async () => {
+    // The retry after a failed Claim runs on a session change that leaves the reader alone, so nothing
+    // else asks for the catalog again. The held copy predates the marks that moved, so its tag would
+    // have the server answer 'unchanged' and the moved hearts would stay wrong.
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const claim = movingClaim();
+    const { rerender } = renderHook(() => useCatalogSync(true, guest(), claim.watch));
+    await waitFor(() => expect(server.calls).toBe(1));
+    expect(server.sentTag).toBe('W/"one"');
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    await act(async () => { claim.move(); });
+    rerender();
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    expect(server.sentTag).toBe(null);
+  });
+
+  it('asks again on the next open when the Claim landed while it was closed', async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const claim = movingClaim();
+    const { rerender } = renderHook(
+      ({ open }) => useCatalogSync(open, guest(), claim.watch),
+      { initialProps: { open: true } },
+    );
+    await waitFor(() => expect(server.calls).toBe(1));
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    rerender({ open: false });
+    await act(async () => { claim.move(); });
+    rerender({ open: true });
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    expect(server.sentTag).toBe(null);
+  });
+
+  it('leaves the catalog alone for a Claim that moved nothing, which is the ordinary sign-in', async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const claim = movingClaim();
+    const { rerender } = renderHook(() => useCatalogSync(true, guest(), claim.watch));
+    await waitFor(() => expect(server.calls).toBe(1));
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    // A Claim that moved nothing tells nobody, so nothing here changes.
+    rerender();
 
     await waitFor(() => expect(server.calls).toBe(1));
   });

@@ -19,6 +19,12 @@ let claimedFor: string | null = null;
 /** The Claim in the air, so a catalog read can wait for it rather than answering with stale hearts. */
 let inFlight: Promise<void> | null = null;
 
+/** How many times a Claim has moved marks here, so a reader can tell that what it holds is out of date. */
+let moves = 0;
+
+/** Told when a Claim moves marks. */
+const movedListeners = new Set<() => void>();
+
 /** The held session as one string. An avatar write changes the user and not this. */
 const sessionIdentity = (): string =>
   `${AuthService.token ?? ''}:${AuthService.getCurrentUser()?.id ?? ''}`;
@@ -40,7 +46,13 @@ function claimForSession(): void {
   claimedFor = session;
 
   const run: Promise<void> = WorldStorageService.claimAnonymousLikes()
-    .then(() => {})
+    .then((claimed) => {
+      // Only when something moved. A Claim that moves nothing is the ordinary case, and re-reading the
+      // whole catalog over it would blank the grid on every sign-in for nothing.
+      if (claimed < 1) return;
+      moves += 1;
+      movedListeners.forEach((listener) => listener());
+    })
     .catch((error) => {
       claimedFor = null;
       console.error('Failed to claim the likes given before sign-in:', error);
@@ -75,4 +87,39 @@ export function watchSessionForClaim(): () => void {
 export async function claimSettled(): Promise<void> {
   const pending = inFlight;
   if (pending) await pending;
+}
+
+/**
+ * What a reader of the catalog needs from the Claim.
+ *
+ * Both questions together, because one alone leaves a gap. Waiting covers the ordinary sign-in, where
+ * the reader changes and the refresh that follows must not overtake the Claim. Being told covers the
+ * retry, which runs on a session change that leaves the reader as it was — an avatar write, say — so
+ * nothing else would ask for the catalog again and the moved hearts would stay stale.
+ */
+export interface ClaimWatch {
+  /** Wait for a Claim in the air. */
+  settled: () => Promise<void>;
+  /** Listen for a Claim that moved marks. Returns the unsubscribe. */
+  subscribe: (listener: () => void) => () => void;
+  /** How many Claims have moved marks, which changes when the catalog in hand goes out of date. */
+  moved: () => number;
+}
+
+/** The real one, which every reader but a test takes. */
+export const claimWatch: ClaimWatch = {
+  settled: claimSettled,
+  subscribe: (listener) => {
+    movedListeners.add(listener);
+    return () => { movedListeners.delete(listener); };
+  },
+  moved: () => moves,
+};
+
+/** Forget everything, listeners included. For tests, whose module state would otherwise carry over. */
+export function resetClaimState(): void {
+  claimedFor = null;
+  inFlight = null;
+  moves = 0;
+  movedListeners.clear();
 }
