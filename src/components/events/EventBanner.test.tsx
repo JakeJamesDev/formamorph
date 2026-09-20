@@ -60,7 +60,7 @@ describe('EventBanner', () => {
       placements: [
         { place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' },
         { place: 1, worldId: 'w2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
-        { place: 3, worldId: 'w3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
+        { place: 2, worldId: 'w3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
       ],
     })]} />);
 

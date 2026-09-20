@@ -28,7 +28,9 @@ describe('deriving the places', () => {
   // validator answers the same table; the two must agree or a dialog stages what the server refuses.
   it.each([
     { name: 'a plain podium', built: rows('a', 'b', 'c'), places: [1, 2, 3] },
-    { name: 'a tie for 1st', built: rows('a', 'b=', 'c'), places: [1, 1, 3] },
+    { name: 'a tie for 1st', built: rows('a', 'b=', 'c'), places: [1, 1, 2] },
+    { name: 'a tie for 1st over a full podium', built: rows('a', 'b=', 'c', 'd'), places: [1, 1, 2, 3] },
+    { name: 'two shared places', built: rows('a', 'b=', 'c', 'd=', 'e'), places: [1, 1, 2, 2, 3] },
     { name: 'three sharing 1st', built: rows('a', 'b=', 'c='), places: [1, 1, 1] },
     { name: 'a tie for 2nd', built: rows('a', 'b', 'c='), places: [1, 2, 2] },
     { name: 'a tie for 3rd', built: rows('a', 'b', 'c', 'd='), places: [1, 2, 3, 3] },
@@ -45,11 +47,20 @@ describe('deriving the places', () => {
     expect(placesOf(rows('a=', 'b'))).toEqual([1, 2]);
   });
 
-  it('cannot spell 1, 1, 2 at all', () => {
-    // The shape holds the rule: a row either shares the place above it or takes its own index. There is
-    // no third option, so dense ranking has nowhere to come from.
-    expect(placesOf(rows('a', 'b=', 'c'))).not.toEqual([1, 1, 2]);
-    expect(placesOf(rows('a', 'b', 'c'))).not.toEqual([1, 1, 2]);
+  it('cannot build a gap, whatever the flags', () => {
+    // The shape holds the rule: a row shares the place above it or takes the next one. Every flag
+    // spelling of up to five rows is walked, so 1, 1, 3 has nowhere to come from.
+    for (let length = 1; length <= 5; length++) {
+      for (let flags = 0; flags < 2 ** length; flags++) {
+        const built = Array.from({ length }, (_, at) => `w${at}${(flags >> at) & 1 ? '=' : ''}`);
+        const places = placesOf(rows(...built));
+
+        expect(places[0]).toBe(1);
+        places.slice(1).forEach((place, at) => {
+          expect([places[at], places[at] + 1]).toContain(place);
+        });
+      }
+    }
   });
 });
 
@@ -59,8 +70,10 @@ describe('what the podium holds', () => {
     { built: rows('a', 'b=', 'c='), fits: true },
     { built: rows('a', 'b', 'c', 'd=', 'e='), fits: true },
     { built: rows('a', 'b=', 'c=', 'd='), fits: true },
+    { built: rows('a', 'b=', 'c=', 'd'), fits: true },
+    { built: rows('a', 'b=', 'c', 'd'), fits: true },
     { built: rows('a', 'b', 'c', 'd'), fits: false },
-    { built: rows('a', 'b=', 'c=', 'd'), fits: false },
+    { built: rows('a', 'b=', 'c', 'd', 'e'), fits: false },
     { built: rows('a', 'b', 'c', 'd', 'e='), fits: false },
   ])('reads $built as fits=$fits', ({ built, fits }) => {
     expect(fitsPodium(built)).toBe(fits);
@@ -72,12 +85,27 @@ describe('clicking an entry', () => {
     expect(spell(cyclePodium(rows('a'), 'b'))).toEqual(['a', 'b']);
   });
 
-  it('joins tied when its own place would be past the podium', () => {
-    // A fourth world cannot take 4th, so the click that used to do nothing now shares the bottom step
-    // instead — which is how every podium the ranking rule accepts stays reachable by clicking.
-    expect(spell(cyclePodium(rows('a', 'b=', 'c='), 'd'))).toEqual(['a', 'b=', 'c=', 'd=']);
+  it('appends untied while the last row is above 3rd place, however many rows there are', () => {
+    // A tie takes no place away: two worlds on 1st are followed by 2nd, then 3rd.
+    const second = cyclePodium(rows('a', 'b='), 'c');
+    expect(spell(second)).toEqual(['a', 'b=', 'c']);
+    expect(placesOf(second)).toEqual([1, 1, 2]);
+
+    const third = cyclePodium(second, 'd');
+    expect(spell(third)).toEqual(['a', 'b=', 'c', 'd']);
+    expect(placesOf(third)).toEqual([1, 1, 2, 3]);
+
+    expect(placesOf(cyclePodium(rows('a', 'b=', 'c='), 'd'))).toEqual([1, 1, 1, 2]);
+  });
+
+  it('joins tied when the last row already holds 3rd place', () => {
+    // A further world cannot take 4th, so it shares the bottom step instead — which is how every podium
+    // the ranking rule accepts stays reachable by clicking.
     expect(spell(cyclePodium(rows('a', 'b', 'c'), 'd'))).toEqual(['a', 'b', 'c', 'd=']);
-    expect(spell(cyclePodium(rows('a', 'b=', 'c'), 'd'))).toEqual(['a', 'b=', 'c', 'd=']);
+
+    const joined = cyclePodium(rows('a', 'b=', 'c', 'd'), 'e');
+    expect(spell(joined)).toEqual(['a', 'b=', 'c', 'd', 'e=']);
+    expect(placesOf(joined)).toEqual([1, 1, 2, 3, 3]);
   });
 
   it('never stages a place past the podium, however many join', () => {
@@ -103,7 +131,7 @@ describe('clicking an entry', () => {
     // straight back and the click would do nothing. The step is to the next place down.
     const traded = cyclePodium(rows('a', 'b=', 'c'), 'a');
     expect(spell(traded)).toEqual(['c', 'b=', 'a']);
-    expect(placesOf(traded)).toEqual([1, 1, 3]);
+    expect(placesOf(traded)).toEqual([1, 1, 2]);
   });
 
   it('takes a world on the bottom place off, even with a row still under it', () => {
@@ -128,7 +156,7 @@ describe('the tie toggle', () => {
   it('makes a tie and derives every later place again', () => {
     const tied = toggleTie(rows('a', 'b', 'c'), 1);
     expect(spell(tied)).toEqual(['a', 'b=', 'c']);
-    expect(placesOf(tied)).toEqual([1, 1, 3]);
+    expect(placesOf(tied)).toEqual([1, 1, 2]);
   });
 
   it('breaks a tie again', () => {
@@ -136,18 +164,30 @@ describe('the tie toggle', () => {
   });
 
   it('refuses a break that would push a row past the podium', () => {
-    // Four worlds share 1st. Untie the last and it is 4th, which is no place at all — so the podium is
+    // Two worlds share 3rd. Untie the last and it is 4th, which is no place at all — so the podium is
     // left as it stands and the way out is to clear the row.
-    const four = rows('a', 'b=', 'c=', 'd=');
-    expect(spell(toggleTie(four, 3))).toEqual(spell(four));
-    expect(spell(toggleTie(rows('a', 'b', 'c', 'd='), 3))).toEqual(['a', 'b', 'c', 'd=']);
+    const shared = rows('a', 'b', 'c', 'd=');
+    expect(toggleTie(shared, 3)).toBe(shared);
+  });
+
+  it('refuses a break higher up that would push a row below it past the podium', () => {
+    // 1, 1, 2, 3 with the tie for 1st broken is 1, 2, 3, 4: the row refused is not the one toggled.
+    const full = rows('a', 'b=', 'c', 'd');
+    expect(toggleTie(full, 1)).toBe(full);
+  });
+
+  it('breaks a tie whenever every row still has a place', () => {
+    // Four worlds share 1st. Untie the last and it takes 2nd: a tie took no place away, so there is room.
+    const broken = toggleTie(rows('a', 'b=', 'c=', 'd='), 3);
+    expect(spell(broken)).toEqual(['a', 'b=', 'c=', 'd']);
+    expect(placesOf(broken)).toEqual([1, 1, 1, 2]);
   });
 
   it('takes the rows still chained to a broken tie down with it', () => {
-    // Four sharing 1st, and the third breaks away: it takes 3rd, and the fourth, still tied, shares it.
+    // Four sharing 1st, and the third breaks away: it takes 2nd, and the fourth, still tied, shares it.
     const broken = toggleTie(rows('a', 'b=', 'c=', 'd='), 2);
     expect(spell(broken)).toEqual(['a', 'b=', 'c', 'd=']);
-    expect(placesOf(broken)).toEqual([1, 1, 3, 3]);
+    expect(placesOf(broken)).toEqual([1, 1, 2, 2]);
   });
 
   it('leaves the first row alone, which has nothing to tie with', () => {
@@ -157,9 +197,11 @@ describe('the tie toggle', () => {
 
 describe('seeding from a published podium', () => {
   it('sets the flag where two neighbors share a place', () => {
-    const seeded = rowsFromPlacements([placement(1, 'a'), placement(1, 'b'), placement(3, 'c')]);
-    expect(spell(seeded)).toEqual(['a', 'b=', 'c']);
-    expect(placesOf(seeded)).toEqual([1, 1, 3]);
+    const seeded = rowsFromPlacements([
+      placement(1, 'a'), placement(1, 'b'), placement(2, 'c'), placement(3, 'd'),
+    ]);
+    expect(spell(seeded)).toEqual(['a', 'b=', 'c', 'd']);
+    expect(placesOf(seeded)).toEqual([1, 1, 2, 3]);
   });
 
   it('leaves a podium with no ties flat', () => {
@@ -183,8 +225,8 @@ describe('seeding from a published podium', () => {
   });
 
   it('keeps a tie whose own partner survived the deletion', () => {
-    // The guard above must not drop every flag: 1, 1, 3 with the bronze deleted is still a tie for 1st.
-    const seeded = rowsFromPlacements([placement(1, 'a'), placement(1, 'b'), placement(3, null)]);
+    // The guard above must not drop every flag: 1, 1, 2 with the silver deleted is still a tie for 1st.
+    const seeded = rowsFromPlacements([placement(1, 'a'), placement(1, 'b'), placement(2, null)]);
 
     expect(spell(seeded)).toEqual(['a', 'b=']);
     expect(placesOf(seeded)).toEqual([1, 1]);
@@ -195,7 +237,7 @@ describe('the podium as lines', () => {
   it('gathers the worlds that share a place onto one line', () => {
     expect(podiumLines(rows('a', 'b=', 'c'))).toEqual([
       { place: 1, worldIds: ['a', 'b'] },
-      { place: 3, worldIds: ['c'] },
+      { place: 2, worldIds: ['c'] },
     ]);
   });
 
@@ -216,7 +258,9 @@ describe('whether the toggle is available', () => {
   it('follows what the toggle would do', () => {
     // One answer, two readings: the checkbox asks before, the mutator refuses after. They must agree,
     // or a checkbox offers a change that then does nothing.
-    const cases = [rows('a', 'b', 'c'), rows('a', 'b=', 'c='), rows('a', 'b=', 'c=', 'd=')];
+    const cases = [
+      rows('a', 'b', 'c'), rows('a', 'b=', 'c='), rows('a', 'b=', 'c', 'd'), rows('a', 'b', 'c', 'd='),
+    ];
     cases.forEach((podium) => {
       podium.forEach((_, index) => {
         expect(canToggleTie(podium, index)).toBe(toggleTie(podium, index) !== podium);
@@ -230,8 +274,9 @@ describe('whether the toggle is available', () => {
   });
 
   it('says no where breaking the tie would leave the row with no place', () => {
-    expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 3)).toBe(false);
-    expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 2)).toBe(true);
+    expect(canToggleTie(rows('a', 'b', 'c', 'd='), 3)).toBe(false);
+    expect(canToggleTie(rows('a', 'b=', 'c', 'd'), 1)).toBe(false);
+    expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 3)).toBe(true);
   });
 });
 
@@ -280,7 +325,7 @@ describe('the order inside a shared place', () => {
     // The flag belongs to the row, so moving ids inside a run must not change the podium's shape.
     const ordered = orderTiedRows(rows('a', 'b=', 'c'), published({ a: 300, b: 100, c: 200 }));
     expect(spell(ordered)).toEqual(['b', 'a=', 'c']);
-    expect(placesOf(ordered)).toEqual([1, 1, 3]);
+    expect(placesOf(ordered)).toEqual([1, 1, 2]);
   });
 
   it('never moves a world across a place', () => {
@@ -322,7 +367,7 @@ describe('the request body', () => {
     expect(placementsFrom(rows('a', 'b=', 'c'))).toEqual([
       { place: 1, worldId: 'a' },
       { place: 1, worldId: 'b' },
-      { place: 3, worldId: 'c' },
+      { place: 2, worldId: 'c' },
     ]);
   });
 

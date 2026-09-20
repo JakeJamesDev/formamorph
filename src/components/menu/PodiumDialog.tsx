@@ -75,11 +75,11 @@ interface Entry {
 }
 
 /**
- * The podium being staged: an ordered list of rows, each either taking its own step or sharing the one
+ * The podium being staged: an ordered list of rows, each either taking the next step or sharing the one
  * above it.
  *
  * A list rather than a place-to-world map, which is what makes the ranking rule structural. There is no
- * way to express a silver with no gold, or a 1, 1, 2, so no click, clear or toggle can stage a podium the
+ * way to express a silver with no gold, or a 1, 1, 3, so no click, clear or toggle can stage a podium the
  * server would then refuse — the rule is held by the shape instead of by a check somebody has to
  * remember to run. `podiumRanking` derives the places from it.
  */
@@ -240,8 +240,8 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first. A{' '}
             <strong>Tied</strong> badge marks entries that share a like count. Click an entry to place it,
             and again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share
-            the place above it, and the places below follow. Your own entry and quarantined worlds
-            can&apos;t be placed.
+            the place above it. The row after a tie takes the next place, so two worlds on 1st are followed
+            by 2nd. Your own entry and quarantined worlds can&apos;t be placed.
           </DialogDescription>
         </DialogHeader>
 
@@ -256,8 +256,8 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               </li>
             ) : podium.map(({ row, place, entry }, index) => {
               const name = entry?.name ?? `row ${index + 1}`;
-              // Breaking a tie can push the row past the last step, and there is no podium to stage it
-              // on, so the checkbox is unavailable there and says why.
+              // Breaking a tie can push this row, or one below it, past the last step, and there is no
+              // podium to stage it on, so the checkbox is unavailable there and says why.
               const tieRefused = index > 0 && !canToggleTie(draft, index);
 
               return (

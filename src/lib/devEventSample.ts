@@ -66,14 +66,13 @@ const DEV_PODIUM: EventPlacement[] = [
 /**
  * The same podium with 1st place shared, which is what the banner, the poster and the bar are served.
  *
- * Competition ranking skips the place a tie consumed, so a shared 1st is followed by 3rd and silver
- * cannot appear beside it. The sole-winner podium above stays in the fixture set for that reason: a
- * single sample can show a tie or all three metals, never both.
+ * A tie takes no place away, so a shared 1st is followed by 2nd. The sole-winner podium above stays in
+ * the fixture set because it is the one that shows all three metals.
  */
 const DEV_PODIUM_TIED: EventPlacement[] = [
   { place: 1, worldId: 'dev-world', worldName: 'The Long Thaw', authorName: 'sedgewright' },
   { place: 1, worldId: 'dev-world-2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
-  { place: 3, worldId: 'dev-world-3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
+  { place: 2, worldId: 'dev-world-3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
 ];
 
 /**
