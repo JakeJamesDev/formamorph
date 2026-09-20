@@ -171,6 +171,7 @@ A good test here drives a public seam and asserts what a person or staff member 
 
 ## Further Notes
 
+- **Deploy the server before any client build that carries ticket 06 reaches a guest.** The client sends the Install header on guest catalog requests, and a server without the header on its CORS allow list refuses the preflight, which fails the whole catalog. Ticket 13 adds a retry without the header so a wrong order costs only the like.
 - Rollout order: server with the setting off, then both privacy texts live, then the client release, then the operator switches the setting on. The last step is the operator's.
 - `CONTEXT.md` needs **Install**, **Anonymous Like**, and **Claim**, and a changed **Like** entry. The abuse-signals effort still owes its six terms; add these in the same pass.
 - The cap of three and the 15-turn threshold are single named constants, one on each side.
