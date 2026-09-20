@@ -61,7 +61,7 @@
 
 <main>
   <h1>Privacy Policy</h1>
-  <p class="stamp"><strong>Last updated: 4 September 2026</strong></p>
+  <p class="stamp"><strong>Last updated: 20 September 2026</strong></p>
 
   <p>This policy says what Formamorph stores about you, why, for how long, and who else handles it. It
     covers the community server: accounts, published worlds, comments, likes, follows, and feedback. It
@@ -78,8 +78,8 @@
   <h2>What we store</h2>
   <p><strong>Your account.</strong> Your username, a hash of your password, your email address if you gave
     one, and your avatar image if you uploaded one. We never store the password itself.</p>
-  <p><strong>Your email address is used for nothing today.</strong> We do not mail it, we do not share it,
-    and no password reset uses it. It is stored only because the sign-up form offers it.</p>
+  <p><strong>Your email address is optional.</strong> If you add one, we use it to send you a verification
+    link. Once verified, it can also receive password-reset links. We do not use it for marketing.</p>
   <p><strong>What you publish.</strong> Every world you upload, with its description, tags, thumbnail,
     content file, and update history. Your comments. The listings you like. The accounts you follow. Your
     contest entries and their placements.</p>
@@ -121,13 +121,34 @@
   <p>We also use your network address to <strong>rate limit</strong> requests, so no single source can
     flood the server. That use stores nothing.</p>
 
+  <h2>Liking while signed out</h2>
+  <p>In the app you can like a listing without an account. We store the like against your
+    <strong>Install</strong>: a random id the app makes once and keeps in your browser's local storage. It
+    names that copy of the app and nothing else. It carries nothing about you or your device, we never
+    show it to you, and it never goes in a link.</p>
+  <p>Beside the like we store <strong>a salted hash of your network address, and a coarse browser
+    family</strong> such as <code>Chrome/Windows</code>. We derive both the way we derive a Signal, and we
+    do not store the address.</p>
+  <p>The hash has one purpose: <strong>to limit and detect abuse</strong>. It caps how many of these likes
+    one connection may give one listing, and it lets staff see a number that was inflated from one place.
+    Nothing else uses it.</p>
+  <p><strong>We blank the hash after 90 days.</strong> The like stays and still counts. Only where it came
+    from goes.</p>
+  <p><strong>To take one of these likes back, press the heart again on the same copy of the app.</strong></p>
+  <p><strong>Signing in moves these likes to your account.</strong> They become ordinary Likes. We record
+    which account took the Install, so signing out again does not let the same copy of the app like a
+    listing twice. Deleting your account deletes that record too.</p>
+
   <h2>Who else handles your data</h2>
   <p><strong>Hetzner</strong> hosts the server in <strong>Helsinki, Finland</strong>. Your data lives
     there.</p>
   <p><strong>Cloudflare</strong> runs the domain's DNS, sits in front of the server as a proxy, and stores
     the published files. Cloudflare is the proxy, so <strong>it handles every request you make</strong>,
     including your network address.</p>
-  <p>No one else receives your data. We do not sell it, and we do not use it for advertising.</p>
+  <p><strong>Resend</strong> delivers verification and password-reset email. When we send one, Resend
+    receives your email address and the message.</p>
+  <p>Except as described above, no one else receives your data. We do not sell it, and we do not use it
+    for advertising.</p>
 
   <h2>The AI is not ours</h2>
   <p>Formamorph sends your play to the AI service you choose in Settings. <strong>That text never reaches
@@ -141,6 +162,8 @@
   <ul>
     <li><strong>Your account and what you published:</strong> until you delete it.</li>
     <li><strong>Signals:</strong> 90 days.</li>
+    <li><strong>The address hash beside a like you gave while signed out:</strong> 90 days. The like
+      itself stays.</li>
     <li><strong>Nightly copies of the database:</strong> up to 30 days.</li>
     <li><strong>Published files:</strong> mirrored to Cloudflare storage for as long as the listing
       exists.</li>
@@ -155,7 +178,7 @@
     they stay under a fixed <strong>[deleted user]</strong> name with no profile behind it. Your name is
     gone even where your work stays. Contest placements keep the listing's name and drop yours.</p>
   <p>A <strong>seven-day Grace Period</strong> follows. Nothing is hidden during it. <strong>Logging back
-    in cancels the deletion</strong>, and the app tells you that it cancelled. After seven days we erase
+    in cancels the deletion</strong>, and the app tells you that it canceled. After seven days we erase
     the account and everything attached to it, Signals included. You do not have to come back to finish
     it.</p>
   <p><strong>Moderation records keep your username afterwards.</strong> If staff acted on your account, the
