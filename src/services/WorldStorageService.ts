@@ -227,6 +227,27 @@ class WorldStorageService {
   }
 
   /**
+   * Where one stored world came from: its listing and when this copy was downloaded.
+   *
+   * The whole record is read and only these two fields are handed back, so a caller that needs the
+   * provenance never holds a world's megabytes of embedded art. A world stored by any other route has no
+   * listing, which is exactly the answer.
+   *
+   * @param worldId - The local record's id
+   * @returns The listing link, empty when the world has none or the record is gone
+   */
+  async getWorldListingLink(worldId: string): Promise<{ sourceId?: string; downloadedAt?: string }> {
+    await this.ensureInitialized();
+    if (!worldId) return {};
+
+    const transaction = this.db!.transaction([this.storeName], 'readonly');
+    const record = await promisifyRequest<{ sourceId?: string; downloadedAt?: string } | undefined>(
+      transaction.objectStore(this.storeName).get(worldId),
+    );
+    return { sourceId: record?.sourceId, downloadedAt: record?.downloadedAt };
+  }
+
+  /**
    * The local worlds holding a copy that follows `libraryId`.
    *
    * This is what a component's Compatible Worlds section is derived from, so it reads the whole stored
@@ -743,6 +764,53 @@ class WorldStorageService {
     }
 
     return body.data as { liked: boolean; likes: number };
+  }
+
+  /**
+   * What the in-game like prompt needs to know about a listing before it shows.
+   *
+   * The same listing request {@link fetchListingDetails} makes, read for two other fields: whether this
+   * reader already likes it, and whether the server takes a like from somebody who is not signed in. The
+   * server fills the liked flag for a guest from the Install header, so it answers for both readers.
+   *
+   * Separate from `fetchListingDetails` because of what the two do with a refusal. That one answers null
+   * either way, and the prompt has to tell the two apart: a listing that has gone quiet is answered and
+   * never asked about again, while a dead network is not the player's fault and must leave the question
+   * open for a later turn.
+   *
+   * `ownListing` answers for a signed-in reader, whose account the response's author is compared against.
+   * A guest has no account to compare, so their own listing is the server's to refuse on the press.
+   *
+   * @param worldId - The listing's server id
+   * @returns The reader's state, the word that the listing is not theirs to see, or that nothing answered
+   */
+  async fetchListingLikeState(worldId: string): Promise<
+    | { status: 'ok'; liked: boolean; ownListing: boolean; anonymousLikes: boolean }
+    | { status: 'gone' }
+    | { status: 'unreachable' }
+  > {
+    try {
+      const response = await fetch(`${this.API_URL}/worlds/${worldId}`, { headers: this.readerHeaders() });
+      // Only the two refusals that mean the listing is not this reader's to see are an answer. A 500, a
+      // 429 or anything else is the server having a bad day, and reading that as "gone" would spend the
+      // one ask a player gets on a deploy that was over a minute later.
+      if (response.status === 403 || response.status === 404) return { status: 'gone' };
+      if (!response.ok) return { status: 'unreachable' };
+
+      const body = await response.json();
+      const me = AuthService.getCurrentUser();
+      const author = body.data?.author;
+      return {
+        status: 'ok',
+        liked: body.data?.liked === true,
+        ownListing: Boolean(me && author && (author.id === me.id || author.username === me.username)),
+        // Absent against a server that predates the feature, which reads as off — the same answer the
+        // route itself gives there.
+        anonymousLikes: body.anonymousLikes === true,
+      };
+    } catch {
+      return { status: 'unreachable' };
+    }
   }
 
   /**

@@ -72,7 +72,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService, { AnonymousLikeRefused } from '../services/WorldStorageService';
-import { ADDRESS_CAP, installId, refusalAnswer } from '@/lib/anonymousLikes';
+import { ADDRESS_CAP_REACHED, installId, refusalAnswer } from '@/lib/anonymousLikes';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -645,7 +645,7 @@ const CommunityCreationsBrowser = ({
         case 'cap':
           toast.info(
             <div className="flex flex-col items-start gap-2">
-              <span>One connection can give a listing {ADDRESS_CAP} likes. Log in to add yours.</span>
+              <span>{ADDRESS_CAP_REACHED} Log in to add yours.</span>
               {onGuestLike && (
                 <Button size="sm" variant="secondary" onClick={() => onGuestLike(world)}>Login</Button>
               )}

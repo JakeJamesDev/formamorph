@@ -35,6 +35,14 @@ export const ANONYMOUS_LIKE_CODES = {
 export const ADDRESS_CAP = 3;
 
 /**
+ * What the reader is told when their connection has given the listing its share.
+ *
+ * The refusal only, without the way past it: signing in is the way past everywhere, but where to sign in
+ * differs by surface, so each one adds its own recovery sentence after this.
+ */
+export const ADDRESS_CAP_REACHED = `One connection can give a listing ${ADDRESS_CAP} likes.`;
+
+/**
  * Whether this reader may press the heart.
  *
  * An account may press any listing but its own. A signed-out reader may press only where this shell
