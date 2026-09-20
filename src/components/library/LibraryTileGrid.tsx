@@ -18,6 +18,7 @@ import { arrayMove, type SortingStrategy } from '@dnd-kit/sortable';
 import { getEventCoordinates } from '@dnd-kit/utilities';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { sameIds } from '@/lib/useSortableIds';
+import { useMountedRef } from '@/lib/useMountedRef';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -318,6 +319,15 @@ export function LibraryTileGrid<T>({
   const readingRef = useRef<GestureReading | null>(null);
   const keyRef = useRef<string | null>(null);
   const restRef = useRef<number | null>(null);
+  const mountedRef = useMountedRef();
+  // A drag cut short by an unmount leaves the rest countdown running. Nothing else clears it:
+  // `disarm` runs on a drag that ends, and a drag that never ends never calls it.
+  useEffect(() => () => {
+    if (restRef.current !== null) {
+      clearTimeout(restRef.current);
+      restRef.current = null;
+    }
+  }, []);
   // Where the pointer actually is. dnd-kit's own delta is the MODIFIED translate, so the carried
   // tile's clamp to the scroll viewport bleeds into it: near the bottom of a list the read stops
   // short of the hand and every far-side rest reads as a near-side one. The pointer is never clamped.
@@ -617,6 +627,7 @@ export function LibraryTileGrid<T>({
     disarm();
     restRef.current = window.setTimeout(() => {
       restRef.current = null;
+      if (!mountedRef.current) return;
       setPreview({
         // A blocked reading and a folder reading both leave the board alone: one because it cannot
         // happen, the other because grouping is not a rearrangement.

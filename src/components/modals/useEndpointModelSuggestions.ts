@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { AIRequestType } from '@/types';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cleanModelNames, loadEndpointModels, type ModelListTarget } from '@/lib/endpointModels';
+import { useMountedRef } from '@/lib/useMountedRef';
 
 /**
  * Model names reported by the active endpoint and every endpoint a prompt is routed to. Nothing is fetched
@@ -11,6 +12,7 @@ export function useEndpointModelSuggestions(): { suggestions: string[]; load: ()
   const { activeEndpointUrl, activeApiToken, localModelActive, promptEndpoints, resolveEndpointForKind } = useSettings();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const latestRun = useRef(0);
+  const mountedRef = useMountedRef();
 
   const load = useCallback(() => {
     const targets: ModelListTarget[] = [{ url: activeEndpointUrl, token: activeApiToken, localEngine: localModelActive }];
@@ -20,9 +22,10 @@ export function useEndpointModelSuggestions(): { suggestions: string[]; load: ()
     }
     const run = ++latestRun.current;
     void Promise.all(targets.map((t) => loadEndpointModels(t))).then((lists) => {
+      if (!mountedRef.current) return;
       if (run === latestRun.current) setSuggestions(cleanModelNames(lists.flat()));
     });
-  }, [activeEndpointUrl, activeApiToken, localModelActive, promptEndpoints, resolveEndpointForKind]);
+  }, [activeEndpointUrl, activeApiToken, localModelActive, promptEndpoints, resolveEndpointForKind, mountedRef]);
 
   return { suggestions, load };
 }
