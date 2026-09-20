@@ -183,8 +183,9 @@ class WorldStorageService {
    * which costs the guest their like and nothing else. Two failures mean the network, and the caller
    * sees exactly what it saw before this existed.
    *
-   * The refusal is only recorded when the second request answers. A dead network must not cost a guest
-   * their hearts for the rest of the session.
+   * The refusal is only recorded when the second request answers, and not when it answers with a fault
+   * of the server's own. A dead network and a bad minute must neither cost a guest their hearts for the
+   * rest of the session.
    *
    * @param url - Where to ask
    * @param init - The request, whose headers decide whether there is anything to fall back from
@@ -201,7 +202,7 @@ class WorldStorageService {
       const headers = { ...init.headers };
       delete headers[INSTALL_HEADER_NAME];
       const response = await fetch(url, { ...init, headers });
-      noteInstallHeaderRefused();
+      if (response.status < 500) noteInstallHeaderRefused();
       return response;
     }
   }

@@ -18,6 +18,12 @@ const fresh = async () => {
   return (await import('./anonymousLikes')).installId;
 };
 
+/** The whole module, for a case that needs more of it than one function. */
+const freshModule = async () => {
+  vi.resetModules();
+  return import('./anonymousLikes');
+};
+
 /** The same, for the reader that will not make one. */
 const freshStored = async () => {
   vi.resetModules();
@@ -166,5 +172,29 @@ describe('what the heart does about a refusal', () => {
   it('reports a refusal it cannot name, so a server fault is not swallowed', () => {
     expect(refusalAnswer('')).toBe('report');
     expect(refusalAnswer('something_new')).toBe('report');
+  });
+});
+
+describe('who the catalog in hand belongs to', () => {
+  it('names the account when there is a session', async () => {
+    const { readerKey } = await freshModule();
+
+    expect(readerKey(true, 'u1')).toBe('u1');
+  });
+
+  it('names the Install for a guest, so two guests on one machine keep their own hearts', async () => {
+    const { readerKey, installId } = await freshModule();
+
+    expect(readerKey(false, 'u1')).toBe(`install:${installId()}`);
+  });
+
+  it('names the one guest where nothing may name an Install, and makes no id to do it', async () => {
+    // The website's visitors are one reader with no hearts to keep apart. Asking for an id here would
+    // store one in the browser of somebody the feature is switched off for.
+    const { readerKey, setShellOffersGuestLikes } = await freshModule();
+    setShellOffersGuestLikes(false);
+
+    expect(readerKey(false, null)).toBe('guest');
+    expect(localStorage.getItem(INSTALL_STORAGE_KEY)).toBeNull();
   });
 });

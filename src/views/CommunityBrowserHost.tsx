@@ -2,7 +2,6 @@ import type { CommunityFilterPreferences } from '@/lib/useCommunityBrowserFilter
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import CommunityCreationsBrowser, { type BrowserPresentation, type CommunityListing } from './CommunityCreationsBrowser';
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
-import { setShellOffersGuestLikes } from '@/lib/anonymousLikes';
 import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { useActiveEvents } from '@/lib/useActiveEvents';
 import { isContestEvent } from '@/lib/serverEvents';
@@ -72,11 +71,6 @@ export const CommunityBrowserHost = ({
   detailsAction, promptLibrary,
   openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityBrowserHostProps) => {
-  // Stated in render rather than an effect: the browser below is a child, and its first catalog request
-  // goes out in an effect of its own, which React runs before any effect here could say whether this
-  // shell is an Install at all.
-  setShellOffersGuestLikes(capabilities.guestLikes);
-
   // The four local libraries, each driving its tab's download state.
   const [worlds, setWorlds] = useState<WorldRecord[]>([]);
   const [entities, setEntities] = useState<EntityMetadata[]>([]);

@@ -170,6 +170,22 @@ describe('a network that is simply down', () => {
     expect(out).toMatchObject({ anonymousLikes: true });
   });
 
+  it('keeps them through a bad minute at the server, which proves nothing about the header', async () => {
+    // The retry answered, so the network is fine, but a 500 is the server in trouble rather than the
+    // server refusing this header. Reading it as a refusal would cost the guest their hearts over it.
+    const { service } = await freshModules();
+    vi.mocked(fetch)
+      .mockRejectedValueOnce(unreachable())
+      .mockResolvedValueOnce(res({}, false, 500))
+      .mockResolvedValue(res({ data: [], anonymousLikes: true }));
+
+    await service.fetchCatalog();
+    const out = await service.fetchCatalog();
+
+    expect(sentHeaders(2)[INSTALL_HEADER_NAME]).toBe(localStorage.getItem(INSTALL_STORAGE_KEY));
+    expect(out).toMatchObject({ anonymousLikes: true });
+  });
+
   it('costs a signed-in reader nothing, because their request carried no header to drop', async () => {
     const { service, auth } = await freshModules();
     vi.spyOn(auth, 'isAuthenticated').mockReturnValue(true);
