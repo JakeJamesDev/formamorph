@@ -16,6 +16,7 @@ import { EventsTab } from "@/components/menu/EventsTab";
 import { FeedbackTab } from "@/components/menu/FeedbackTab";
 import { ReportsTab } from "@/components/menu/ReportsTab";
 import { AuditLogTab } from "@/components/menu/AuditLogTab";
+import { ServerSettingsTab } from "@/components/menu/ServerSettingsTab";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { type AdminPanelTab } from "@/components/menu/adminPanelTabs";
 import { type PoliciesTab as PoliciesSubTab } from "@/components/menu/policiesTabs";
@@ -46,8 +47,10 @@ export function AdminPanelDialog({
   open, onOpenChange, initialTab = 'users', initialPoliciesTab, initialFeedbackTab,
   onOpenListing, onReportsChanged,
 }: AdminPanelDialogProps) {
-  // Broadcasts and Policies are an administrator's: speaking to everyone at once and writing what the
-  // site requires are not moderation. The rest of the panel is the everyday work, open to any staff —
+  // Broadcasts, Policies and Server are an administrator's: speaking to everyone at once, writing what
+  // the site requires, and changing what the server does are not moderation. The server's own routes
+  // allow any staff, so hiding the tab is a courtesy rather than the guard.
+  // The rest of the panel is the everyday work, open to any staff —
   // Events included: the calendar is worth reading whether or not a viewer may act on it.
   const owner = isAdmin(AuthService.getCurrentUser());
 
@@ -77,7 +80,7 @@ export function AdminPanelDialog({
   // A moderator pointed at a tab they cannot see — by the dev-router, or by a panel left open through a
   // demotion — lands on Users rather than on an empty dialog.
   useEffect(() => {
-    if (!owner && (tab === 'broadcasts' || tab === 'policies')) setTab('users');
+    if (!owner && (tab === 'broadcasts' || tab === 'policies' || tab === 'serverSettings')) setTab('users');
   }, [owner, tab]);
 
   return (
@@ -96,7 +99,7 @@ export function AdminPanelDialog({
           onValueChange={(value) => setTab(value as AdminPanelTab)}
           className="w-full min-w-0 flex flex-col flex-1 min-h-0"
         >
-          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-7' : 'grid-cols-5')}>
+          <TabsList className={cn('grid w-full flex-shrink-0', owner ? 'grid-cols-8' : 'grid-cols-5')}>
             <TabsTrigger value="users">Users</TabsTrigger>
             {owner && <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>}
             {owner && <TabsTrigger value="policies">Policies</TabsTrigger>}
@@ -106,6 +109,9 @@ export function AdminPanelDialog({
                 floating badge on one trigger shifts every other one's text off center. */}
             <TabsTrigger value="reports">Reports{openReports > 0 && ` (${openReports > 9 ? '9+' : openReports})`}</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
+            {/* "Server", not "Server Settings": the strip is a fixed grid and the longer name overflows
+                its cell at eight. The panel's own heading carries the full name. */}
+            {owner && <TabsTrigger value="serverSettings">Server</TabsTrigger>}
           </TabsList>
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
@@ -159,6 +165,14 @@ export function AdminPanelDialog({
               <AuditLogTab active={open && tab === 'log'} />
             </ScrollArea>
           </TabsContent>
+
+          {owner && (
+            <TabsContent value="serverSettings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <ServerSettingsTab active={open && tab === 'serverSettings'} />
+              </ScrollArea>
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

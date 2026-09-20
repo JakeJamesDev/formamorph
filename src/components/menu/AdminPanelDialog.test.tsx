@@ -16,6 +16,7 @@ vi.mock('./BroadcastsTab', () => ({ BroadcastsTab: () => <div data-testid="broad
 vi.mock('./PoliciesTab', () => ({ PoliciesTab: () => <div data-testid="policies" /> }));
 vi.mock('./AuditLogTab', () => ({ AuditLogTab: () => <div data-testid="log" /> }));
 vi.mock('./EventsTab', () => ({ EventsTab: () => <div data-testid="events" /> }));
+vi.mock('./ServerSettingsTab', () => ({ ServerSettingsTab: () => <div data-testid="server-settings" /> }));
 vi.mock('./FeedbackQueueTab', () => ({
   FeedbackQueueTab: ({ type }: { type: string }) => <div data-testid={`queue-${type}`} />,
 }));
@@ -69,6 +70,15 @@ describe('the tab strip', () => {
     expect(screen.getByTestId('events')).toBeTruthy();
   });
 
+  it('carries the server settings, which only an administrator reaches', () => {
+    render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="serverSettings" />);
+
+    // "Server", not "Server Settings": eight triggers share one fixed grid, and the panel's own heading
+    // carries the full name.
+    expect(screen.getByRole('tab', { name: 'Server' })).toBeTruthy();
+    expect(screen.getByTestId('server-settings')).toBeTruthy();
+  });
+
   it('carries the record of what was done', () => {
     render(<AdminPanelDialog open onOpenChange={() => {}} initialTab="log" />);
 
@@ -102,6 +112,7 @@ describe('what a moderator sees', () => {
     expect(screen.getByRole('tab', { name: 'Log' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Broadcasts' })).toBeNull();
     expect(screen.queryByRole('tab', { name: 'Policies' })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Server' })).toBeNull();
   });
 
   it('keeps the events calendar, which is worth reading whether or not a viewer may act on it', async () => {
