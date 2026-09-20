@@ -43,15 +43,15 @@ function GroupMosaic({ thumbnails, aspect, className }: {
  * opens the folder view rather than a popup.
  *
  * @param thumbnails - Member thumbnails in member order; the detailed card shows the first four
- * @param miniature - The folder's own board at tile scale, which the grid layout draws as the face
+ * @param face - The top-left region of the folder's own board, which the grid layout draws on the tile
  * @param presetName - The prompt preset this folder applies, when it carries one
  */
 export function LibraryGroupTile({
-  group, thumbnails, miniature, aspect, layout, fill, compact, presetName, onOpen,
+  group, thumbnails, face, aspect, layout, fill, compact, presetName, onOpen,
 }: {
   group: LibraryGroup;
   thumbnails: (string | undefined)[];
-  miniature?: ReactNode;
+  face?: ReactNode;
   /** The shape of the member art, which is what the mosaic's crops anchor by. */
   aspect: ThumbAspect;
   layout: 'grid' | 'detailed';
@@ -108,7 +108,7 @@ export function LibraryGroupTile({
       )}
       onClick={() => onOpen(group.id)}
     >
-      {miniature}
+      {face}
       {!compact && (
         <div
           data-folder-title
@@ -122,6 +122,6 @@ export function LibraryGroupTile({
     </div>
   );
 
-  // A small folder tile keeps only the miniature, so its name and count reach the player as a tip.
+  // A small folder tile keeps only the face, so its name and count reach the player as a tip.
   return compact ? <Tip tip={`${group.name} — ${count}`}>{tile}</Tip> : tile;
 }

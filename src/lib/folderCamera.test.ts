@@ -3,8 +3,8 @@ import { cameraAt, folderCamera, type CameraRect, type CameraTransform } from '.
 
 /** A scrolled library board: the grid's corner sits above the viewport, so `top` is negative. */
 const OUTER: CameraRect = { left: 16, top: -240, width: 960, height: 1400 };
-/** The folder board, pushed down by the folder header and starting at its own scroll top. */
-const INNER: CameraRect = { left: 16, top: 92, width: 960, height: 1100 };
+/** The folder board, pushed down by the folder header and in from the library's own corner. */
+const INNER: CameraRect = { left: 44, top: 92, width: 960, height: 1100 };
 /** A medium folder tile, three rows down the scrolled library. */
 const TILE: CameraRect = { left: 340, top: 180, width: 224, height: 150 };
 /** The part of the folder board the tile's face shows: its top-left corner, well short of the board. */
@@ -46,7 +46,7 @@ const expectLocked = (
 describe('folderCamera', () => {
   const camera = folderCamera({ tile: TILE, outer: OUTER, inner: INNER, regionWidth: REGION_WIDTH });
   /** The face that shows the whole board, which is what a folder narrower than its cap gives. */
-  const full = folderCamera({ tile: TILE, outer: OUTER, inner: INNER });
+  const full = folderCamera({ tile: TILE, outer: OUTER, inner: INNER, regionWidth: INNER.width });
 
   it.each([0, 0.5, 1])('locks the tile to the region at progress %s', (progress) => {
     expectLocked(camera, progress, { regionWidth: REGION_WIDTH });
@@ -72,10 +72,11 @@ describe('folderCamera', () => {
     expect(camera.scale).toBeLessThan(full.scale);
   });
 
-  it('reads a region wider than the board as the whole board', () => {
-    const overwide = folderCamera({ tile: TILE, outer: OUTER, inner: INNER, regionWidth: INNER.width * 2 });
-    expect(overwide.scale).toBeCloseTo(full.scale, 6);
-    expect(overwide.clipRight).toBe(0);
+  it('zooms by the whole board when the region is not known yet', () => {
+    // A board too early to have been measured reports a width of zero rather than a region.
+    const unmeasured = folderCamera({ tile: TILE, outer: OUTER, inner: INNER, regionWidth: 0 });
+    expect(unmeasured.scale).toBeCloseTo(full.scale, 6);
+    expect(unmeasured.clipRight).toBe(0);
   });
 
   it('clips the inner board to the tile shape at the start', () => {
@@ -87,7 +88,7 @@ describe('folderCamera', () => {
     // Two members make a board shorter than the tile's own shape once it is zoomed down, so there is
     // no overhang to hide and a clip would only pull the board's own bottom edge in.
     const short = { ...INNER, height: 480 };
-    const fits = folderCamera({ tile: TILE, outer: OUTER, inner: short });
+    const fits = folderCamera({ tile: TILE, outer: OUTER, inner: short, regionWidth: short.width });
     expect(short.height / fits.scale).toBeLessThan(TILE.height);
     expect(fits.clipBottom).toBe(0);
     expect(fits.clipRight).toBe(0);

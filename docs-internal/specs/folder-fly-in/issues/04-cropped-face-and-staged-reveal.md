@@ -1,7 +1,7 @@
 # 04: Cropped Face And Staged Reveal
 
 Status: ready-for-human
-Status note: built. Paused frames were sampled in the live app by driving the animations' own clock, because the preview pane holds `document.hidden` true and freezes every animation at time 0. Over 28 frames the folder tile's rectangle in the outer layer matched the region's rectangle in the inner layer exactly, and no frame showed the clip open or a left-out member while the library board had opacity. The Playwright version is ticket 05.
+Status note: built. The two paused-frame criteria stay open for ticket 05: jsdom has no layout engine, so the tests here pin the keyframes the hook asks for rather than what a frame shows. As a check, the frames were sampled by hand in the live app, driving the animations' own clock because the preview pane holds `document.hidden` true and freezes every animation at time 0. Over 28 frames the folder tile's rectangle in the outer layer matched the region's rectangle in the inner layer exactly, and no frame showed the clip open or a left-out member while the library board had opacity. That is evidence, not the test the criteria ask for.
 Base: ad22ccee
 Blocked by: 03
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -47,8 +47,8 @@ Decisions from the spec:
 - [x] A large member on a small folder tile shows whole
 - [x] A filtered view builds the region from the members the filter passes
 - [x] The camera unit test holds the lock for a region narrower than the board and for a full-width region, and still fails when the `d` term is removed
-- [x] Paused frames show no part of the inner layer past the tile's frame while the outer layer has any opacity
-- [x] Paused frames after the reveal point show every left-out member at the same opacity
+- [ ] Paused frames show no part of the inner layer past the tile's frame while the outer layer has any opacity — **ticket 05**; jsdom has no layout engine, so the keyframes are pinned here instead
+- [ ] Paused frames after the reveal point show every left-out member at the same opacity — **ticket 05**, same reason
 - [x] The fly-out plays the same keyframes in reverse; the guards, cleanup, and scroll restore from tickets 02 and 03 still pass
 - [x] The jsdom tests from ticket 01 are updated to the cropped face, and each still fails when its behavior is broken
 - [x] `docs/Changelog.md` In-Progress entries from tickets 01 and 03 are corrected in place, with no new churn entry
@@ -67,3 +67,10 @@ The region is built around that member, so it is never left out: leaving it out 
 which user story 37 rejects. It is drawn instead, and the tile's own frame crops its bottom edge.
 Measured in the live app at 1440 px: a large member on a small folder tile drew 92 px tall in an 87 px
 tile, so 5 px were cropped. Every other member on every face measured inside the tile's box.
+
+### For ticket 05: measure the clip, not the member's box
+
+The inner clip is the region rectangle, so the bottom sliver of an exempt corner member shows when the
+clip opens at the reveal point. That is accepted. The "no part of the inner layer shows past the tile's
+frame" guard must therefore measure the clip rather than the member's box, or it fails on a small
+folder tile whose corner member is large. Ruling from the spec session, `f933b766`.

@@ -55,16 +55,16 @@ const offset = (rect: CameraRect, from: CameraRect) => ({ x: rect.left - from.le
  * @param tile - The folder tile's box on screen
  * @param outer - The library board's box on screen
  * @param inner - The folder board's box on screen
- * @param regionWidth - The board-space width of the region the tile's face shows. Anything outside the
- *   board's own width, zero included, stands for the whole board
+ * @param regionWidth - The board-space width of the region the tile's face shows. A board too early to
+ *   have been measured reports nothing to zoom by, which stands for the whole board
  */
 export function folderCamera({ tile, outer, inner, regionWidth }: {
   tile: CameraRect;
   outer: CameraRect;
   inner: CameraRect;
-  regionWidth?: number;
+  regionWidth: number;
 }): FolderCamera {
-  const region = regionWidth && regionWidth > 0 ? Math.min(regionWidth, inner.width) : inner.width;
+  const region = regionWidth > 0 ? regionWidth : inner.width;
   const scale = region / tile.width;
   const o = offset(tile, outer);
   const i = offset(tile, inner);
