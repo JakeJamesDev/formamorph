@@ -1,6 +1,6 @@
 # 06: Motion E2E Spec
 
-Status: in-progress
+Status: ready-for-human
 Base: 3e40afa3
 Blocked by: 05
 Recommended model: Claude Opus 5 (`claude-opus-5`)
@@ -139,3 +139,45 @@ starting, not a handle the run leaves open.
 
 Four gates, run this turn: `typecheck` 0 errors · `lint` 0 errors (one pre-existing warning in
 `WorldOverviewManager.tsx`) · `test` 11796 passed, 3 skipped in 95.6s · `build` succeeded in 20.4s.
+
+### Reviewed
+
+Both axes against `Base: 3e40afa3`, limited to this unit's commit. Folded in:
+
+- **The first sampled frame of each clip test was vacuous.** The folder layer fades in over the first
+  third of the motion, so on the earliest frames it painted nothing anywhere and a clean strip beside the
+  tile said nothing about the clip. Each clip test now runs its positive control **per frame**: the layer
+  has to be painting where it should before a strip where it should not is read. A frame that fails the
+  control is skipped and not counted, and each test pins how many frames and how many strips it measured.
+  The same fault was in the fly-out board-area test, on its first reading.
+- **The cut-at-the-top guard now reads past the reveal point.** The library layer has gone by then, but
+  the folder board is still growing out of the strip the header took and can still lose its first rows.
+  `heldCamera` returns four readings from the first frame past the reveal to the end of the motion.
+- **`expectNothingLeftBehind` built its expectation from the value it was checking**, so an empty query
+  result passed. It now pins that a board was found.
+- **Speculative generality**: `Frame.t`, `Frame.innerOpacity`, `Held.duration` and `CameraApi.animations`
+  were recorded or exposed and never read. Gone.
+- **`__camHeld` meant two things.** The reduced-motion watcher wrote `[]` into it to mean "a camera was
+  seen". It has its own `__camSeen` / `__camWatching` pair now.
+- **Duplication**: the page-side surface grew `tile()`, `viewport()` and `box()`, which removes a repeated
+  `boxOf`, five copies of the face-to-tile walk and four viewport selectors. `expectLocked` and
+  `expectHeaderHeldBack` replace the two copies of those assertions across the motion tests.
+
+Kept, with the reason recorded rather than changed:
+
+- **The acceptance criterion says the fly-out clip "rests on the scroll viewport's own `overflow`".**
+  Measured, it does not: loosening that one property changes nothing on screen, because the scroll area's
+  root clips on the same line. The guard turns red only when every clip between the board and the body
+  goes. The criterion names one ancestor where there are two; the guard covers the real fault.
+- **One bounding-rect assertion inside the cut-at-the-top test.** It reads whether the board area reaches
+  the layer at all, which is a claim about *where* a layer stands, and the ticket allows a rect for that.
+  The pixel strip beside it makes the claim about what shows.
+
+The three reworked guards were run again against their faults and each went red: the clip open from the
+first frame (20ms), the clip walk stopping at the nearest ancestor (the folder board's top edge at 102ms),
+and every clip removed (paint below the board area at 318ms).
+
+After the rework: 14 passed in **2m 09s**. Four gates re-run — `typecheck` 0 errors, `lint` 0 errors,
+`build` 22.2s, `test` 11796 passed. One `npm run test` run in between reported a single failing file with
+no name in the summary; the two runs on either side of it were clean and this change touches no file under
+`src/`, so it is recorded as a flake rather than a result.
