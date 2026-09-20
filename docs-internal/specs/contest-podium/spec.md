@@ -71,7 +71,7 @@ Contests award a podium of up to three places — 1st (gold), 2nd (silver), 3rd 
 
 ## Out of Scope
 
-- Ties, shared places, or more than three places.
+- More than three places. Shared places are specified in the contest-ties spec, which supersedes the "Strict podium" decision here.
 - Server-side draft podiums or multi-session judging state.
 - Re-broadcasting on podium edits.
 - Any placement data in world exports or save envelopes.
