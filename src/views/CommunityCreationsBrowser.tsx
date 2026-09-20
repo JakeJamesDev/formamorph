@@ -72,7 +72,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService, { AnonymousLikeRefused } from '../services/WorldStorageService';
-import { ADDRESS_CAP_REACHED, installId, refusalAnswer } from '@/lib/anonymousLikes';
+import { ADDRESS_CAP_REACHED, readerKey, refusalAnswer, setShellOffersGuestLikes } from '@/lib/anonymousLikes';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -223,13 +223,15 @@ const CommunityCreationsBrowser = ({
   onListingChange, onListingUnavailable, detailsAction, promptLibrary,
   events = [], onOpenEvent, openLikersOnMount = false, openManageAddonsOnMount = false,
 }: CommunityCreationsBrowserProps) => {
+  // Stated here rather than in an effect, because the catalog request below goes out in an effect of
+  // its own: a shell that sends its guests to sign-in is not an Install and must name none.
+  setShellOffersGuestLikes(capabilities.guestLikes);
+
   // The header's title element, which differs per shell (see PageHeading).
   const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   // The same identity the catalog cache tag is stored under: a guest's hearts are their Install's.
-  const catalogReader = isAuthenticated
-    ? String(currentUser?.id ?? AuthService.token ?? '')
-    : `install:${installId()}`;
+  const catalogReader = readerKey(isAuthenticated, currentUser?.id ?? AuthService.token);
   const {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
     anonymousLikes, setAnonymousLikes,

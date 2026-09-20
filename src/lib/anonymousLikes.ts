@@ -196,3 +196,25 @@ export function installHeaderInUse(): boolean {
 export function readerInstallId(): string | null {
   return installHeaderInUse() ? installId() : null;
 }
+
+/**
+ * Who the catalog in hand belongs to: a signed-in reader's id, or this Install.
+ *
+ * A guest has hearts of their own now, and the server marks them from the Install header, so two
+ * guests on one machine would otherwise read each other's. The Install is what tells them apart.
+ *
+ * Where nothing may name an Install, every guest is the one guest. That shell's catalog carries no
+ * hearts to keep apart, and asking for an id would make one for a reader who has no use for it.
+ *
+ * Here rather than beside the catalog cache it keys, because it is the Install that answers it and two
+ * spellings of one key would store two caches for one reader.
+ *
+ * @param signedIn - Whether there is a session
+ * @param account - What identifies that session, when there is one
+ */
+export function readerKey(signedIn: boolean, account?: unknown): string {
+  if (signedIn && account != null) return String(account);
+
+  const install = readerInstallId();
+  return install ? `install:${install}` : 'guest';
+}

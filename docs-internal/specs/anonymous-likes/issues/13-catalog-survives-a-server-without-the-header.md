@@ -1,6 +1,6 @@
 # 13: The catalog survives a server that refuses the Install header
 
-Status: in-progress
+Status: ready-for-human
 Base: 1745a81f
 Blocked by: 06
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -35,4 +35,13 @@ Whether a request may name an Install is one decision, held in `anonymousLikes.t
 
 Ticket 06 did send the header from the website: `readerHeaders()` keyed off the session alone, and the website catalog runs through the same service. That is what the capability now gates.
 
-Four gates run: typecheck 0 errors, lint 0 errors (1 pre-existing warning elsewhere), build succeeds, and 12 084 tests pass in 117 s.
+Review findings folded in as a second commit:
+
+- The retry recorded the refusal on any answer. A 500 on the second ask says the server is having a bad minute, not that it refuses the header, so only an answer below 500 now records one.
+- The browser named its catalog reader with a raw `installId()` of its own, so the website stored an id even while sending no header. Both callers now go through `readerKey` in the Install module, which answers `guest` where nothing may name an Install.
+- The capability statement moved from the host to `CommunityCreationsBrowser`, which is the component that owns `capabilities` and drives the catalog, so a shell that mounts the browser directly is covered too.
+
+Two notes for whoever reads this next:
+
+- The first commit swept another session's in-flight staff-likes work in `WorldStorageService.ts` into itself, because `git add` on a shared file takes the whole file. It is not ticket 13 work and its types live in `src/types/users.ts`, still uncommitted, so that commit does not typecheck standalone. It was not rewritten: another session had already committed on top, and rewriting under live parallel sessions cost more than it saved.
+- Four gates run on the finished unit: typecheck 0 errors, lint 0 errors (1 pre-existing warning elsewhere), build succeeds, and 12 097 tests pass in 154 s.
