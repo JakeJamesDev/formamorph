@@ -3,6 +3,8 @@ import { Capacitor } from '@capacitor/core';
 import { ThemeProvider } from "./components/theme-provider";
 import { AndroidBackHandler } from './components/AndroidBackHandler';
 import { recordView } from './lib/backAction';
+import { watchSessionForClaim } from './lib/anonymousLikeClaim';
+import { COMMUNITY_ENABLED } from './lib/featureFlags';
 import { useDevRoute, installDevRouter, registerDevHook } from './lib/devRouter';
 import { installViewportHeightVar, APP_HEIGHT_VAR } from './lib/viewportHeight';
 import { type DevView } from './lib/devRoutes';
@@ -72,6 +74,14 @@ function AppViews() {
   // DEV dev-router: install `window.__fmDev` and let a `#dev?view=…` hash drive the top-level screen so
   // preview verification can land in one call (see `devRouter.ts`). No-op / tree-shaken in production.
   useEffect(() => installDevRouter(), []);
+
+  // Move the likes given before sign-in onto the account that just arrived. Here rather than in the
+  // community browser, because signing in happens on the menu and in another tab, and a guest who never
+  // opens the browser again would otherwise lose the hearts they filled.
+  useEffect(() => {
+    if (!COMMUNITY_ENABLED) return;
+    return watchSessionForClaim();
+  }, []);
 
   // Track the visual viewport into `--app-h` so full-height screens shrink for the on-screen keyboard
   // (see `viewportHeight.ts`). The DEV hook fakes the iOS case — a keyboard the layout viewport doesn't

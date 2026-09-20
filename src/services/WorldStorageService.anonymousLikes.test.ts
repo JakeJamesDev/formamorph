@@ -164,3 +164,49 @@ describe('a guest\'s press', () => {
     expect(await WorldStorageService.setAnonymousWorldLiked('w1', false)).toEqual({ liked: true, likes: 9 });
   });
 });
+
+describe('the Claim', () => {
+  it('asks the account route with both the session and the Install', async () => {
+    // The one request that carries the two together, because it is the one that joins them: the account
+    // it moves the marks to, and the Install it moves them from.
+    signIn();
+    vi.mocked(fetch).mockResolvedValue(res({ data: { claimed: 2 } }));
+
+    expect(await WorldStorageService.claimAnonymousLikes()).toBe(2);
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(String(url)).toMatch(/\/users\/me\/anonymous-likes\/claim$/);
+    expect((init as RequestInit).method).toBe('POST');
+    expect(sentHeaders()['Authorization']).toBe('Bearer a-token');
+    expect(sentHeaders()[INSTALL_HEADER_NAME]).toBe(installId());
+  });
+
+  it('asks nothing of the server when this copy of the app has no Install', async () => {
+    // A Claim would make one to send, link it to the account, and move nothing. Nothing to move is the
+    // ordinary case for somebody who has never pressed a heart. Imported afresh, because this file has
+    // already made an Install by now and the module holds it.
+    vi.resetModules();
+    localStorage.clear();
+    const service = (await import('./WorldStorageService')).default;
+    signIn();
+
+    expect(await service.claimAnonymousLikes()).toBe(0);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('answers zero for a Claim that moved nothing, which is the ordinary case', async () => {
+    signIn();
+    vi.mocked(fetch).mockResolvedValue(res({ data: { claimed: 0 } }));
+
+    expect(await WorldStorageService.claimAnonymousLikes()).toBe(0);
+  });
+
+  it('throws when the server refuses, so the seam knows to try again', async () => {
+    signIn();
+    vi.mocked(fetch).mockResolvedValue(
+      res({ code: ANONYMOUS_LIKE_CODES.BAD_INSTALL, error: 'This request carried no usable install id' }, false, 400),
+    );
+
+    await expect(WorldStorageService.claimAnonymousLikes()).rejects.toThrow('This request carried no usable install id');
+  });
+});

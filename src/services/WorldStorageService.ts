@@ -15,7 +15,7 @@ import type { ListingVisibility } from '@/lib/publishLinks';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
-import { INSTALL_HEADER_NAME, installId } from '@/lib/anonymousLikes';
+import { INSTALL_HEADER_NAME, installId, storedInstallId } from '@/lib/anonymousLikes';
 
 /**
  * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
@@ -743,6 +743,39 @@ class WorldStorageService {
     }
 
     return body.data as { liked: boolean; likes: number };
+  }
+
+  /**
+   * Move this Install's Anonymous Likes onto the account now signed in.
+   *
+   * The one request that carries a session and an Install together, because joining them is what it is
+   * for. Everywhere else the two would name two readers of one answer; here they name the account the
+   * marks go to and the Install they come from.
+   *
+   * A copy of the app that has never needed an Install has no marks to move, so it asks nothing. Making
+   * an id to ask with would link a fresh Install to the account and move nothing.
+   *
+   * The server runs this in one transaction and repeating it changes nothing, so a caller may call it on
+   * every sign-in rather than remembering whether it has.
+   *
+   * @returns How many marks became account Likes. Zero is the ordinary answer
+   */
+  async claimAnonymousLikes(): Promise<number> {
+    const install = storedInstallId();
+    if (!install) return 0;
+
+    const response = await fetch(`${this.API_URL}/users/me/anonymous-likes/claim`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AuthService.token}`,
+        [INSTALL_HEADER_NAME]: install,
+      },
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || body.message || 'Failed to claim those likes');
+
+    return Number(body.data?.claimed) || 0;
   }
 
   /**
