@@ -122,7 +122,8 @@ The public website keeps sending guests to sign-in.
 - The per-viewer liked flag, absent for guests today, is present for a guest request that carries an Install header. It is true when the Install holds an Anonymous Like or its linked account holds a Like.
 - The hourly sweep gains a step that blanks Anonymous Like hashes older than the Signal retention period. The step is separate from the Signal purge and fails on its own.
 - The likes audit gains Anonymous Like rows. The address grouping takes a second kind of node, so an Anonymous Like joins a group through its hash. A single Anonymous Like that shares the author's address is reported even though a group of one is otherwise dropped. The audit route still writes no audit entry.
-- Two staff removal routes: by address group on a listing, and all Anonymous Likes on a listing. Each writes a new audit action when rows went.
+- No staff response carries an Install id or a raw address hash. Staff act on an address through a per-listing key derived from the hash, which means nothing on another listing.
+- Two staff removal routes: by address on a listing (a group that spans two addresses takes two presses), and all Anonymous Likes on a listing. Each writes a new audit action when rows went.
 - A new declared setting, default off, gates the route. The server has no public settings read, and that stays. The catalog list response and the listing detail response each carry one top-level boolean that follows the setting, the same for every viewer. The "setting off" refusal on the route is the fallback for a stale flag.
 - A route-specific rate limiter keyed by client address covers both like routes.
 - The server's policy text gains the Anonymous Like paragraph.
