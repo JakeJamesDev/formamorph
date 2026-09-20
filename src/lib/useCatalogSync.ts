@@ -28,7 +28,7 @@ const currentReader = (): string =>
  * @param open - Whether the community browser is on screen
  * @param readerKey - Who is asking, so a change of reader forces a refresh rather than showing theirs
  * @param claim - The Claim to read around, so a sign-in's moved likes are in what the server answers
- * @param stale - Who says the catalog in hand no longer describes the server, such as a settings write
+ * @param stale - Who reports that the cached catalog no longer describes the server, such as a settings write
  */
 export function useCatalogSync(
   open: boolean,
@@ -47,7 +47,9 @@ export function useCatalogSync(
   const [anonymousLikes, setAnonymousLikes] = useState(false);
   // Claims that have moved marks. A change means the catalog in hand predates them.
   const claimsMoved = useSyncExternalStore(claim.subscribe, claim.moved);
-  // Marks that the catalog in hand is out of date. A change means a setting it carries has moved.
+  // Marks that the cached catalog is out of date. A change means a setting it carries was written.
+  // Only a mounted reader sees a mark; the community host stays mounted while closed, so a mark raised
+  // while it is closed still forces the read on the next open.
   const staleMarks = useSyncExternalStore(stale.subscribe, stale.marked);
   // Held rather than closed over, so the loader below is not rebuilt for a watch that never changes.
   const settled = useRef(claim.settled);
@@ -134,8 +136,8 @@ export function useCatalogSync(
       // A Claim that landed since the last read leaves every heart it moved wrong in what is held. It
       // is its own reason to ask again, because the retry that ran it changed no reader.
       const claimLanded = lastClaimsMoved.current !== claimsMoved;
-      // A setting the catalog carries has moved since the last read, so the tag beside the rows in hand
-      // would win a request that must not be won.
+      // A setting the catalog carries was written since the last read. The stored tag would have the
+      // server answer 'unchanged' and the old value would persist.
       const wentStale = lastStaleMarks.current !== staleMarks;
       lastReaderKey.current = readerKey;
       lastClaimsMoved.current = claimsMoved;

@@ -103,15 +103,15 @@ export function AdminPanelDialog({
             <TabsTrigger value="users">Users</TabsTrigger>
             {owner && <TabsTrigger value="broadcasts">Broadcasts</TabsTrigger>}
             {owner && <TabsTrigger value="policies">Policies</TabsTrigger>}
+            {/* "Server", not "Server Settings": the strip is a fixed grid, and the longer name needs
+                133px in a 105px cell. The panel's own heading carries the full name. */}
+            {owner && <TabsTrigger value="serverSettings">Server</TabsTrigger>}
             <TabsTrigger value="events">Events</TabsTrigger>
             <TabsTrigger value="feedback">Feedback</TabsTrigger>
             {/* The count rides the label rather than a badge beside it: the strip is a fixed grid, and a
                 floating badge on one trigger shifts every other one's text off center. */}
             <TabsTrigger value="reports">Reports{openReports > 0 && ` (${openReports > 9 ? '9+' : openReports})`}</TabsTrigger>
             <TabsTrigger value="log">Log</TabsTrigger>
-            {/* "Server", not "Server Settings": the strip is a fixed grid and the longer name overflows
-                its cell at eight. The panel's own heading carries the full name. */}
-            {owner && <TabsTrigger value="serverSettings">Server</TabsTrigger>}
           </TabsList>
 
           {/* Only the panel body scrolls; the title and tab strip stay put. */}
@@ -134,6 +134,14 @@ export function AdminPanelDialog({
             <TabsContent value="policies" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
               <ScrollArea className="flex-1 min-h-0 px-1">
                 <PoliciesTab active={open && tab === 'policies'} initialTab={initialPoliciesTab} />
+              </ScrollArea>
+            </TabsContent>
+          )}
+
+          {owner && (
+            <TabsContent value="serverSettings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
+              <ScrollArea className="flex-1 min-h-0 px-1">
+                <ServerSettingsTab active={open && tab === 'serverSettings'} />
               </ScrollArea>
             </TabsContent>
           )}
@@ -166,13 +174,6 @@ export function AdminPanelDialog({
             </ScrollArea>
           </TabsContent>
 
-          {owner && (
-            <TabsContent value="serverSettings" className="flex-1 min-h-0 data-[state=active]:flex flex-col">
-              <ScrollArea className="flex-1 min-h-0 px-1">
-                <ServerSettingsTab active={open && tab === 'serverSettings'} />
-              </ScrollArea>
-            </TabsContent>
-          )}
         </Tabs>
       </DialogContent>
     </Dialog>
