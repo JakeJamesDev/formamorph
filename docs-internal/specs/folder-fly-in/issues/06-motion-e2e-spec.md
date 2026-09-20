@@ -48,3 +48,94 @@ So every assertion here about something being cut off, or not cut off, reads pai
 Playwright's `toHaveScreenshot`, a clipped `page.screenshot` compared per frame, or
 `page.evaluate` with `elementFromPoint` all respect every ancestor clip. A bounding rect is fine for
 *where* a layer stands, which is what the camera lock is about, and is never enough for *whether it shows*.
+
+## Comments
+
+### Built
+
+`e2e/folder-fly-in.spec.ts`, 14 tests across the two projects. Two groups.
+
+**The recorder** samples one frame per `requestAnimationFrame` and writes the folder tile's rectangle in
+the library layer, the region's rectangle in the folder layer, both layers' opacity, the header's opacity
+and lift, and every member tile's opacity. The library layer is whichever board draws the folder's face,
+so one recorder reads both directions with no flag. The reveal point is not a number the test is told: it
+is the first frame the library layer reaches zero opacity, which is the one thing about it a player sees.
+
+**The clip group** holds the camera on a frame, photographs a strip, hides one layer with `visibility`,
+photographs the same strip again, and compares the two images. A third photograph with the layer back
+raises if anything else on the page moved, which would void the reading. Holding the camera pauses every
+animation in the document, because the endpoint indicator pulses green right above the board area and its
+four pixels sat inside the first strip that was tried.
+
+**The fixture** is a small folder of five worlds in the board's top-left cell. Small on purpose: the face
+is then two base columns wide, so the region is a fraction of the board in both axes and the clip has
+something real to hold back, and the member in the board's corner is wider than the tile — the sliver case
+the clip guard must not read off that member's own box. Four members are left out, so the staged reveal is
+on screen. The scrolled tests shorten the window and grow the one loose world, because five of six worlds
+are inside the folder and a board of default sizes is one row deep.
+
+### The region is measured, not recomputed
+
+The region's width is the tile's **grid track** divided by the face's own scale, and its shape is the tile's
+**painted box**. The two readings are deliberately different. Chromium snaps a grid item's painted box to a
+device pixel, so the tile paints 141.22px wide inside a 140.625px track, while the face's scale is built
+from the track. Taking both from one reading drifts the region by 1.25px and the lock check fails on a
+product that is correct. Measured with the tracks and the box as above, the corners lock to 0.000px and the
+sizes to under 0.01px.
+
+That 0.6px is a real, invisible inconsistency in the product: the face is drawn 0.42% small for its own box,
+so a sliver of background stands at the face's right edge. Not worth a change, and not this ticket's code.
+
+### Each guard against its reinstated fault
+
+| Guard | Fault put back | Result |
+| --- | --- | --- |
+| The layers stay locked | `folderCamera` drops the `d` origin-offset term | Red — 1.1px on the first fly-in frame, 90px on the first fly-out frame |
+| The sizes are real | Each layer's first keyframe set to its last | Red — 0 intermediate sizes, both directions |
+| The header is held back | Header keyframes start at rest | Red — opacity 1 over the library, both directions |
+| Left-out members wait for the reveal | Their keyframes start at opacity 1 | Red — a left-out member showed over the library |
+| Left-out members hold one opacity | Their offsets staggered 0.15 apart | Red — 0.086 between the highest and the lowest |
+| The folder board stays inside the tile frame | The face clip replaced by the open clip | Red — paint outside the frame at 20ms |
+| Neither board is cut at the top | The clip walk stops at the nearest ancestor | Red — the folder board lost its top edge at 102ms |
+| Neither board is cut at the top | The board area cut to the viewport the swap leaves | Red — the library board stood 47px above the board area |
+| A fly-out stays in the board area | Every clip between the board and the body removed | Red — paint below the board area at 277ms |
+| The library scroll comes back | The restore branch removed | Red — 0 where 42 was expected |
+| Reduced motion gives the instant swap | `reduce` dropped from the guard | Red — a camera ran |
+| Nothing is left behind | `animation.cancel()` dropped from cleanup | Red — a board kept the transform the camera put it in |
+| A tile still drags after a zoom | `restore` dropped from cleanup | Red — the board never took pointer input again |
+
+One negative worth keeping: setting `overflow: visible` on the scroll viewport alone, during a fly-out,
+changes **nothing** on screen, so that guard stays green. The scroll area's own root stands on the same
+rectangle and goes on clipping at the identical line. Same lesson as ticket 05, now measured from the
+other side. The guard needs every clip between the board and the body removed before it turns red, which
+is the fault it is actually there for.
+
+### Two faults in the test itself, found by measurement
+
+- **A locator click undid the scroll it was testing.** Playwright scrolls a partly hidden element fully
+  into view before clicking, and on a scrolled library that is the folder tile. The fly-in ran from an
+  unscrolled board and proved nothing about the `d` term; the fly-out then found the offset back at 0 and
+  read it as a broken restore. The tile is now pressed with the real mouse where it stands.
+- **The hold latched a CSS transition instead of the camera.** A control inside the folder header runs its
+  own transition when the back button is pressed, and it matched the same selector. Every seek after that
+  meant a different clock and the camera ran to the end unheld. The hold now waits for the raised frame and
+  takes only script-driven `Animation` objects.
+
+### Not covered here
+
+`library-drag-parity.spec.ts` and `library-tiles.spec.ts` are untouched, per the spec session's ruling: the
+parity suite has to run unchanged against the pre-tile-board commit. The drag-after-a-zoom guard lives in
+this file instead. Both suites were run as they stand and are green.
+
+### Wall-clock
+
+| Run | Result | Time |
+| --- | --- | --- |
+| `npx playwright test folder-fly-in` (both projects) | 14 passed | **2m 03s** |
+| `folder-fly-in` + `library-tiles` + `library-drag-parity` | 52 passed, 2 skipped | **4m 55s** |
+
+The three suites' own tests sum to about 250s against a 295s total. The gap is the four dev servers
+starting, not a handle the run leaves open.
+
+Four gates, run this turn: `typecheck` 0 errors · `lint` 0 errors (one pre-existing warning in
+`WorldOverviewManager.tsx`) · `test` 11796 passed, 3 skipped in 95.6s · `build` succeeded in 20.4s.
