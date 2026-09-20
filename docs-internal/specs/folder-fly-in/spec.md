@@ -105,6 +105,13 @@ thing, so no zoom between them can look correct.
   bottom edge is inside `regionHeight`, with about 6% slack for the few pixels by which a span-4 tile's
   ratio differs from a span-2 tile's. Every other member is a **left-out member**. The `+N` badge shows
   their count.
+- **The corner member is never left out.** The region is built around the member at row 0, col 0, so that
+  member is exempt from the whole-tile test. Where its span differs from the tile's span, the two
+  height-to-width ratios differ by more than the slack: a span-4 member on a span-1 tile is about 10% over
+  at desktop widths and about 12% on a phone-width board. The tile's frame crops the few pixels at its
+  bottom. This keeps story 37 (the face is never empty). Story 34 is about a tile that a region edge cuts
+  through, not about this sliver. A wider region was tried and rejected: it leaves dead space beside the
+  member.
 - **Fly-in module.** A hook owns the transition. The grid hands it the grid element, the tile elements, the
   open folder id, the setter, and a busy flag. The grid's open and back handlers call the hook; the
   disband effect keeps the direct setter.
