@@ -1,6 +1,7 @@
 # 06: Install id and the guest heart
 
-Status: in-progress
+Status: ready-for-human
+Status note: Built as `19b8cc2f`, review findings folded in as `baae96ea` (a separate commit, because another session committed in between). Four gates run: typecheck 0 errors, lint 0 errors, build succeeds. The suite is 11 948 passing with 1-2 intermittent failures per run in unrelated files (`MainMenu.entry`, `SettingsModal.promptOptions`); the failing set changes run to run and both pass in isolation, so it is parallel-load flakiness, not this unit. Verified live in the preview, both themes. The preflight hazard found there is now ticket 13.
 Base: 43b0faaf
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
