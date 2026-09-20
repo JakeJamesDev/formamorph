@@ -143,8 +143,8 @@ interface Entry {
 /**
  * The contest's other entries, oldest listing first — which is the order the server stores a tie in.
  *
- * Empty when this run's world is the only one. A tie needs two worlds, so the flow reports that as a
- * skip rather than inventing a second entrant.
+ * Empty when this run's world is the only one. A tie needs two worlds, and the caller fails on that
+ * rather than inventing a second entrant or passing quietly.
  *
  * @param mine - The listing id to exclude
  */
@@ -177,7 +177,7 @@ async function entriesOtherThan(mine: string): Promise<Entry[]> {
  * that is still open — so the window is moved rather than waited out. It is the same transition a
  * contest makes on its own; only the clock is skipped.
  */
-async function closeTheContest(): Promise<void> {
+async function closeContest(): Promise<void> {
   const closed = await fetch(`${API}/events/${contest!.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
@@ -218,12 +218,12 @@ async function signOut(page: Page): Promise<void> {
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
 /**
- * The one off-machine address the app reaches for on its own: the public reasoning catalog, read once
- * per launch to learn which model ids think. It is still cut off — nothing here needs it — but it is not
- * what the assertion is watching for, so it does not fail the run. Imported rather than written out
- * again, so moving the catalog re-opens this decision instead of quietly widening it.
+ * The one off-machine address this flow ignores: the public reasoning catalog, which the app reads once
+ * per launch to learn which model ids think. Ignored, not allowed — it is cut off like everything else,
+ * and nothing asserts that it was asked for. Imported rather than written out again, so moving the
+ * catalog re-opens this decision instead of quietly widening it.
  */
-const EXPECTED_OFF_MACHINE = new Set([REASONING_CATALOG_URL]);
+const IGNORED_OFF_MACHINE = new Set([REASONING_CATALOG_URL]);
 
 /**
  * Refuse every off-machine request, and remember the ones nobody expected.
@@ -237,7 +237,7 @@ async function pinToLocalApi(page: Page): Promise<string[]> {
   await page.route('**/*', (route) => {
     const url = route.request().url();
     if (LOCAL_HOSTS.has(new URL(url).hostname)) return route.continue();
-    if (!EXPECTED_OFF_MACHINE.has(url)) stray.push(url);
+    if (!IGNORED_OFF_MACHINE.has(url)) stray.push(url);
     return route.abort();
   });
   return stray;
@@ -352,10 +352,15 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   // This run's world publishes last, so the entry it ties with is always the older of the two — which
   // makes the band's order an assertion with a right answer rather than whichever way it came out.
   const others = await entriesOtherThan(listingId!);
-  test.skip(others.length === 0, 'a tie needs a second entry — run the entry flow against this contest first');
+  // A failure rather than a skip, unlike the preconditions above. Those say this machine cannot run the
+  // flow; this one says the contest is short an entry the suite itself publishes one test earlier. A skip
+  // here would report green while the tie — the whole subject — went unexercised.
+  expect(others.length,
+    'the contest has no second entry to tie with — run the entry flow against it first (see e2e/README.md)')
+    .toBeGreaterThan(0);
   const partner = others[0];
 
-  await closeTheContest();
+  await closeContest();
 
   // The judge is not the entrant. Announcing is an admin's, and the server refuses an admin their own
   // entry, so the dialog half of this flow runs on the other account.
@@ -379,10 +384,10 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
 
   const rows = podiumDialog.getByRole('list', { name: 'Podium' }).getByRole('listitem');
   await expect(rows).toHaveCount(2);
-  // The second row takes its own step until the toggle shares the one above it.
+  // Only the second row is asserted, before and after. The first derives 1st from its position whatever
+  // the toggle does, so reading it proves nothing the shape does not already guarantee.
   await expect(rows.nth(1)).toContainText('2nd Place');
   await rows.nth(1).getByRole('checkbox').check();
-  await expect(rows.nth(0)).toContainText('1st Place');
   await expect(rows.nth(1)).toContainText('1st Place');
 
   await podiumDialog.getByRole('button', { name: 'Announce Results' }).click();
@@ -412,11 +417,18 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
 
   // Each tied world's catalog card, one author at a time: the grid pages, and both entries carry the same
   // world name, so a search by author is the only way to be sure which card the badge is on.
-  const search = page.getByPlaceholder('Search entries…', { exact: false });
+  const goldBadge = page.getByText(`1st Place — ${running.title}`);
+  // Scoped to the grid, because the menu behind the browser is still in the page and the author's own
+  // library card wears this badge too.
+  const catalogBadge = page.getByRole('tabpanel').getByText(`1st Place — ${running.title}`);
+  // A decided contest pins its podium to the front of the entry list, so both tied cards are on the first
+  // page however many others were entered — and both stay there under an author search, which is why this
+  // counts rather than narrowing to one card at a time. Exactly two: a badge that reached only one of the
+  // tied worlds leaves one, and a badge that ignored the podium and marked an entry that did not place
+  // leaves three or more.
+  await expect(catalogBadge).toHaveCount(2);
   for (const author of [username, partner.author]) {
-    await search.fill(`author:${author} `);
     await expect(page.getByText(`By ${author}`, { exact: true })).toBeVisible();
-    await expect(page.getByText(`1st Place — ${running.title}`).first()).toBeVisible();
   }
 
   // And the author's own downloaded copy, on a fresh launch. Nothing about the placement is stored
@@ -428,7 +440,7 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   // that finds them there says nothing.
   const libraryCard = page.getByText(worldName, { exact: true }).first();
   await libraryCard.waitFor();
-  await expect(page.getByText(`1st Place — ${running.title}`).first()).toBeVisible();
+  await expect(goldBadge.first()).toBeVisible();
 
   // And again one click in: the details modal is where the honor used to be lost.
   await libraryCard.click();
