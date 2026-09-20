@@ -202,6 +202,12 @@ open, so the window is moved rather than waited out.
 That podium is valid under both the ranking rule in force today and the one replacing it, so the journey
 says nothing about whether a place after a tie is skipped. Extra entries in the contest are left unplaced.
 
+⚠️ **Re-seed rather than reuse.** The entry flow's catalog assertion narrows the grid to this run's
+author, and on a scratch server that has accumulated a few dozen listings across many runs it starts
+missing the listing it just published — measured at roughly one failure in three past about twenty-five
+entries, both before and after the catalog-sync work that landed beside this. On a server seeded fresh it
+passes every time. So throw the database away between sessions instead of resetting the contest in place.
+
 ⚠️ **The credential budget.** This flow spends six of the server's twenty calls per quarter hour per
 address: one admin token in `beforeAll`, the account it registers, that account's sign-in and API token,
 the admin's sign-in for the dialog, and the author's sign-in again for the player surfaces. Two full runs
