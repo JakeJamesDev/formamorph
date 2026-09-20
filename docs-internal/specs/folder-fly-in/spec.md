@@ -167,11 +167,30 @@ thing, so no zoom between them can look correct.
 - **Folder header motion.** In the fly-in sense the header holds zero opacity and sits one header height
   above its place until the reveal point. Then it slides down and fades to rest, on the camera's easing.
   The header mounts at the swap as it does today, so its layout space is there from the first frame and
-  the `d` term already covers it. On a fly-out the header unmounts at the swap, so the hook freezes it the
+  the `d` term covers where the two layers stand. It does **not** cover what clips them, which is the
+  separate decision below. On a fly-out the header unmounts at the swap, so the hook freezes it the
   way it freezes the board: a clone in a fixed overlay at the header's old rectangle, played in reverse.
   The overlay clips to that rectangle, so the slide never covers the toolbar or the tabs. The header takes
   no pointer input during the motion. Every guard that gives the instant swap also gives the header with
   no motion.
+- **The header moves the board area, so both layers' clips move with it.** The header takes its place out
+  of the scroll viewport, so the viewport measured after the swap starts one header height lower than the
+  board on either side of it. Left alone, that cuts a straight line across the top of both layers for the
+  whole motion: the frozen board loses its top rows in the very first frame, and the arriving board is cut
+  where it grows out of a tile that stood in the strip the header now holds. The **board area** is the
+  union of the viewport on either side of the swap, and it is what both layers are clipped to.
+  - The frozen board's frame is built from that union. The board's own rectangle is deliberately not part
+    of it: a scrolled library stands well above the board area, and growing the frame to it would reach
+    over the toolbar.
+  - The arriving board is the live grid, and it is clipped by **every** ancestor between it and the board
+    area, not by the nearest one. The scroll viewport and the scroll area's own root stand on the same
+    rectangle, so widening one alone leaves the other cutting on the identical line and nothing changes on
+    screen. Each clip between the two gives way, keeping its own left, right and bottom edges, so the only
+    thing that changes is how far up the board may show. The walk stops at the first frame that already
+    covers the board area, which is the one holding the app off the toolbar.
+  - A fly-out needs none of this. The library viewport it lands in is the wider of the two, so the union is
+    the viewport, the walk stops there, and the scroll offset is never at risk.
+
 - **Carried folder tile.** The drag overlay's stand-in for a folder draws the same face component from the
   same region function as the tile, at the overlay's size, in the grid layout. It keeps the overlay's
   rules: half opacity, no shadow, no ring, no name bar. The face draws plain thumbnails and registers no
@@ -184,6 +203,12 @@ thing, so no zoom between them can look correct.
 
 A good test here checks what the player can see: rectangles, opacity, and what is left in the DOM. It does
 not check keyframe lists or internal refs.
+
+**A clip is only proved by painted truth.** `getBoundingClientRect` reports an element's own box and knows
+nothing about an ancestor's clip, so a check built on it confirms the clip that was written rather than what
+reaches the screen. A fix that widened one clip while an ancestor went on cutting passed exactly such a
+check and changed nothing on screen. Hit testing (`elementFromPoint`) and pixel sampling respect every
+ancestor clip; use one of them for any claim about what is or is not cut off.
 
 - **Camera geometry (unit).** For sample values of tile, outer, and inner rectangles, including a scrolled
   outer layer and a header offset, the tile's image under the outer transform equals the region's
