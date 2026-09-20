@@ -80,10 +80,20 @@ The two library Playwright suites were red at `Base:` — 29 of 40 failing, repr
 `63ffa392` found three unrelated causes and records that every tile the suites read still carries its own
 name. Both suites pass with this change on top.
 
-A second pass fixed the same clipping fault on the other layer. The folder board grows out of a tile that
-stood in the strip the header now occupies, and the scroll viewport clipped its top rows off along a
-straight edge for the whole motion. Measured: the tile sat at y 80, the viewport started at y 128, and 48px
-of the arriving board was cut. The viewport's clip now reaches back to the board area for a fly-in, which
-is the one direction that needs it. Across every sampled frame the board is cut by nothing and reaches
-past nothing.
+The same clipping fault was on the other layer, and it took two passes to land. The folder board grows out
+of a tile that stood in the strip the header now takes, so everything above the board area's new top edge
+was cut along one straight line for the whole motion. Measured: the tile at y 80, the viewport at y 128,
+48px of the arriving board gone.
+
+The first pass widened the scroll viewport's clip and changed nothing on screen. The board is clipped by
+**every** ancestor between it and the board area, not by the nearest one: the viewport and the scroll
+area's own root stand on the same rectangle, so the root went on cutting at the identical line. Each clip
+between the two now gives way, keeping its own left, right and bottom edges, and the walk stops at the
+first frame that already covers the board area.
+
+The reason the first pass shipped: it was verified with `getBoundingClientRect`, which reports an
+element's box and knows nothing about an ancestor's clip, so the check confirmed the clip-path that had
+been written rather than what reached the screen. **A clip is only proved by painted truth.** The A/B that
+settled it used `elementFromPoint` at one point 42px above the viewport's top: the corner member is
+painted with both widened, and is not painted with only the viewport widened.
 
