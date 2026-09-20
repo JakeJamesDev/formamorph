@@ -1,38 +1,44 @@
 import { cn } from '@/lib/utils';
 import type { PlacementMap } from '@/lib/libraryOrganization';
 
-/** The folder tile's border, which the miniature draws under so it aligns to the tile's border box. */
+/** The folder tile's border, which the face draws under so it aligns to the tile's border box. */
 const TILE_BORDER = 2;
 
 /**
- * A folder's own board at tile scale: every member at the cell and span the open folder gives it, drawn
- * at the board's real pixel size and shrunk by one transform so the board width equals the tile width.
+ * A folder's board at tile scale: the top-left region of it, with every member at the cell and span the
+ * open folder gives it, drawn at the board's real pixel size and shrunk by one transform so the region's
+ * width equals the tile width.
  *
- * Plain thumbnails rather than the tab's cards, because a card registers a sortable. Only the rows that
- * reach into the tile are drawn.
+ * Plain thumbnails rather than the tab's cards, because a card registers a sortable. The face draws
+ * whole tiles only; a `+N` badge counts the members the region leaves out.
  *
  * @param members - The members the open folder draws, in its reading order
  * @param places - The open folder board's homes for those members, at `columns`
- * @param tile - The folder tile's own box, in px
+ * @param hidden - The members the region leaves out, which the badge counts and the face skips
+ * @param regionWidth - The board-space width of the region, which the face shrinks to the tile's width
+ * @param tileWidth - The folder tile's own width, in px
  */
 export function FolderMiniature({
-  members, places, spanOf, thumbnailOf, columns, boardWidth, rowHeight, gap, tile, fit,
+  members, places, hidden, spanOf, thumbnailOf, columns, boardWidth, regionWidth, rowHeight, gap,
+  tileWidth, fit,
 }: {
   members: string[];
   places: PlacementMap;
+  hidden: string[];
   spanOf: (id: string) => number;
   thumbnailOf: (id: string) => string | undefined;
   columns: number;
   boardWidth: number;
+  regionWidth: number;
   rowHeight: number;
   gap: number;
-  tile: { width: number; height: number };
+  tileWidth: number;
   /** The `object-*` classes the member art takes on the full board. */
   fit: string;
 }) {
-  if (boardWidth <= 0 || tile.width <= 0) return <div className="h-full w-full bg-muted" />;
-  const scale = tile.width / boardWidth;
-  const rows = Math.ceil(tile.height / scale / (rowHeight + gap));
+  if (boardWidth <= 0 || tileWidth <= 0 || regionWidth <= 0) return <div className="h-full w-full bg-muted" />;
+  const scale = tileWidth / regionWidth;
+  const left = new Set(hidden);
 
   return (
     <div
@@ -40,6 +46,14 @@ export function FolderMiniature({
       className="pointer-events-none absolute overflow-hidden bg-background"
       style={{ inset: -TILE_BORDER }}
     >
+      {hidden.length > 0 && (
+        <span
+          data-folder-badge
+          className="absolute right-1.5 top-1.5 z-10 rounded bg-overlay/70 px-1.5 py-0.5 text-meta text-white"
+        >
+          +{hidden.length}
+        </span>
+      )}
       <div
         className="grid origin-top-left"
         style={{
@@ -50,7 +64,7 @@ export function FolderMiniature({
           transform: `scale(${scale})`,
         }}
       >
-        {members.filter((id) => places[id] && places[id].row < rows).map((id) => {
+        {members.filter((id) => places[id] && !left.has(id)).map((id) => {
           const thumbnail = thumbnailOf(id);
           return (
             <div

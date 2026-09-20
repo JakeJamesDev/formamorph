@@ -67,6 +67,8 @@ function installAnimate() {
 const BOARD = { left: 24, top: 60, width: 800, height: 600 };
 /** The folder tile's box: a quarter of the board's width, so the zoom is a number no other box gives. */
 const TILE = { left: 120, top: 260, width: 200, height: 150 };
+/** Camera progress at which the library board is gone and the rest of the folder may show. */
+const REVEAL_AT = 0.6;
 
 /** The scroll offset each folder tile measurement was taken at, oldest first. */
 const tileReads: number[] = [];
@@ -83,13 +85,32 @@ function installRects(unmeasurable: string[] = []) {
   };
 }
 
-const MEMBER_IDS = ['m1', 'm2'];
+const MEMBER_IDS = ['m1', 'm2', 'm3'];
+/** The face's region: half the board's width, so the camera's scale is a number no box alone gives. */
+const REGION_WIDTH = 400;
+/** The members the face leaves out, which is what the staged reveal is measured on. */
+const LEFT_OUT = ['m2', 'm3'];
 
-function ZoomHarness({ busy = false, enabled = true }: { busy?: boolean; enabled?: boolean }) {
+interface HarnessProps {
+  busy?: boolean;
+  enabled?: boolean;
+  /** The face's own region, which a folder whose members all fit reports as the whole board. */
+  region?: { width: number; hidden: string[] };
+}
+
+function ZoomHarness({ busy = false, enabled = true, region }: HarnessProps) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const gridNode = useRef<HTMLDivElement | null>(null);
   const tileNodes = useRef(new Map<string, HTMLDivElement>());
-  const { openGroup, closeGroup } = useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId, busy, enabled });
+  const { openGroup, closeGroup } = useFolderZoom({
+    gridNode,
+    tileNodes,
+    openGroupId,
+    setOpenGroupId,
+    busy,
+    enabled,
+    regionOf: () => region ?? { width: REGION_WIDTH, hidden: LEFT_OUT },
+  });
 
   return (
     <>
@@ -144,7 +165,7 @@ const finishAll = async () => {
   });
 };
 
-const flyIn = async (props: { busy?: boolean; enabled?: boolean } = {}) => {
+const flyIn = async (props: HarnessProps = {}) => {
   const user = userEvent.setup();
   render(<ZoomHarness {...props} />);
   await user.click(screen.getByRole('button', { name: 'Open Favorites' }));
@@ -152,7 +173,7 @@ const flyIn = async (props: { busy?: boolean; enabled?: boolean } = {}) => {
 };
 
 /** Open the folder, let the camera land, then start the trip back with a clean list. */
-const flyOut = async (props: { busy?: boolean; enabled?: boolean } = {}) => {
+const flyOut = async (props: HarnessProps = {}) => {
   const user = userEvent.setup();
   const { rerender } = render(<ZoomHarness />);
   await user.click(screen.getByRole('button', { name: 'Open Favorites' }));
@@ -178,9 +199,54 @@ describe('folder fly-in', () => {
     expect(raised?.querySelector('[data-folder-title]')).not.toBeNull();
   });
 
-  it('moves both layers, the frozen folder tile, and its name bar', async () => {
+  it('moves both layers, the frozen folder tile, its name bar, and every left-out member', async () => {
     await flyIn();
+    expect(movedTargets().sort()).toEqual([
+      'frozen board', 'live board', 'name bar', 'tile:g0', 'tile:m2', 'tile:m3',
+    ]);
+    // The member the face already draws flies in as part of the board, so nothing moves it on its own.
+    expect(movedTargets()).not.toContain('tile:m1');
+  });
+
+  it('zooms by the region the face shows, not by the whole board', async () => {
+    await flyIn();
+    expect(moveFor('frozen board').keyframes.at(-1)?.transform)
+      .toContain(`scale(${REGION_WIDTH / TILE.width})`);
+    expect(moveFor('frozen board').keyframes.at(-1)?.transform)
+      .not.toContain(`scale(${BOARD.width / TILE.width})`);
+  });
+
+  it('holds the folder board on the tile frame until the library board is gone', async () => {
+    await flyIn();
+    // The library reaches zero opacity at the reveal point, which is what the clip waits for.
+    expect(moveFor('frozen board').keyframes[1]).toEqual({ opacity: 0, offset: REVEAL_AT });
+
+    const { keyframes } = moveFor('live board');
+    // The region's own rectangle: the board's width less the region, its height less the tile's shape,
+    // at the tile's corner radius grown by the camera's scale.
+    const face = 'inset(0px 400px 300px 0px round 16px)';
+    const open = 'inset(0px 0px 0px 0px round 0px)';
+    expect(keyframes[0].clipPath).toBe(face);
+    // Held to the reveal point, then opened in one step at that same point rather than wiped across.
+    expect(keyframes[2]).toEqual({ clipPath: face, offset: REVEAL_AT });
+    expect(keyframes[3]).toEqual({ clipPath: open, offset: REVEAL_AT });
+    expect(keyframes.at(-1)?.clipPath).toBe(open);
+  });
+
+  it('fades every left-out member in together once the library board is gone', async () => {
+    await flyIn();
+    const shared = [{ opacity: 0 }, { opacity: 0, offset: REVEAL_AT }, { opacity: 1 }];
+    // One value for all of them, so the reveal reads as a fade rather than a growing slice.
+    expect(LEFT_OUT.map((id) => moveFor(`tile:${id}`).keyframes)).toEqual(LEFT_OUT.map(() => shared));
+    expect(LEFT_OUT.map((id) => moveFor(`tile:${id}`).options.easing))
+      .toEqual(LEFT_OUT.map(() => moveFor('live board').options.easing));
+  });
+
+  it('moves no member on its own when the face leaves none out', async () => {
+    await flyIn({ region: { width: BOARD.width, hidden: [] } });
     expect(movedTargets().sort()).toEqual(['frozen board', 'live board', 'name bar', 'tile:g0']);
+    // The board fills the tile's shape at this width, so the clip is the tile's corners alone.
+    expect(moveFor('live board').keyframes[0].clipPath).toBe('inset(0px 0px 0px 0px round 32px)');
   });
 
   it('leaves member names at full opacity for the whole trip in', async () => {
@@ -297,10 +363,19 @@ describe('folder fly-out', () => {
   it('moves both layers, the live folder tile, its name bar, and every member name', async () => {
     await flyOut();
     expect(movedTargets().sort()).toEqual([
-      'frozen board', 'live board', 'member name', 'member name', 'name bar', 'tile:g0',
+      'frozen board', 'live board', 'member name', 'member name', 'member name', 'name bar',
+      'tile:g0', 'tile:m2', 'tile:m3',
     ]);
     // The library's own names are not on the board that is shrinking, so they are left alone.
     expect(movedTargets()).not.toContain('member name (library)');
+  });
+
+  it('takes the left-out members off the board before the camera pulls away', async () => {
+    await flyOut();
+    const shared = [{ opacity: 0 }, { opacity: 0, offset: REVEAL_AT }, { opacity: 1 }];
+    // The same keyframes as the trip in, played backwards: they are gone first, and all at one value.
+    expect(LEFT_OUT.map((id) => moveFor(`tile:${id}`).keyframes)).toEqual(LEFT_OUT.map(() => shared));
+    expect(running.every(({ options }) => options.direction === 'reverse')).toBe(true);
   });
 
   it('fades member names on the camera, so distance takes them rather than the clock', async () => {
@@ -325,8 +400,9 @@ describe('folder fly-out', () => {
 
   it('flies to the folder tile, not to the board it sits on', async () => {
     await flyOut();
-    // The camera scales the library layer by board width over tile width, which the boxes make 4.
-    expect(moveFor('live board').keyframes.at(-1)?.transform).toContain(`scale(${BOARD.width / TILE.width})`);
+    // The library layer scales by the face's region over the tile's width, which the boxes make 2.
+    expect(moveFor('live board').keyframes.at(-1)?.transform).toContain(`scale(${REGION_WIDTH / TILE.width})`);
+    expect(moveFor('live board').keyframes.at(-1)?.transform).not.toContain(`scale(${BOARD.width / TILE.width})`);
   });
 
   it('measures the folder tile only after the library scroll is back', async () => {
