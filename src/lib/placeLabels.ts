@@ -21,6 +21,18 @@ export const PLACE_LABELS: Record<ContestPlace, string> = {
 };
 
 /**
+ * The ordinals the results broadcast writes, which are not the ones a badge wears.
+ *
+ * The server spells them out in the message it posts. The dialog's preview mirrors that wording rather
+ * than the plate's, because its whole job is to show the message before it is sent.
+ */
+export const BROADCAST_PLACE_LABELS: Record<ContestPlace, string> = {
+  1: 'First place',
+  2: 'Second place',
+  3: 'Third place',
+};
+
+/**
  * How a shared 1st place reads where a status line would otherwise name the winner.
  *
  * A count rather than the names: the surfaces that read this are one line each, and a line that lists

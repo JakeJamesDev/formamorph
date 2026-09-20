@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  clearRow, cyclePodium, fitsPodium, placementsFrom, placesOf, rowsFromPlacements, toggleTie,
+  canToggleTie, clearRow, cyclePodium, fitsPodium, placementsFrom, placesOf, podiumLines,
+  rowsFromPlacements, toggleTie,
 } from './podiumRanking';
 import type { PodiumRow } from './podiumRanking';
 import type { EventPlacement } from '@/types';
@@ -153,6 +154,68 @@ describe('seeding from a published podium', () => {
     // The snapshot survives a deletion but the id does not. Saving is refused separately; the draft
     // must still read as a podium rather than as one that begins tied with nothing.
     expect(spell(rowsFromPlacements([placement(1, null), placement(1, 'b')]))).toEqual(['b']);
+  });
+
+  it('does not seat a survivor tied with the deleted row above it', () => {
+    // A published 1, 2, 2 whose silver was deleted leaves one world on 1st and one on 2nd. Reading the
+    // flag off the published neighbor rather than the last kept one would open the dialog showing both
+    // on 1st — a place neither world holds, on a podium nobody edited.
+    const seeded = rowsFromPlacements([placement(1, 'a'), placement(2, null), placement(2, 'c')]);
+
+    expect(spell(seeded)).toEqual(['a', 'c']);
+    expect(placesOf(seeded)).toEqual([1, 2]);
+  });
+
+  it('keeps a tie whose own partner survived the deletion', () => {
+    // The guard above must not drop every flag: 1, 1, 3 with the bronze deleted is still a tie for 1st.
+    const seeded = rowsFromPlacements([placement(1, 'a'), placement(1, 'b'), placement(3, null)]);
+
+    expect(spell(seeded)).toEqual(['a', 'b=']);
+    expect(placesOf(seeded)).toEqual([1, 1]);
+  });
+});
+
+describe('the podium as lines', () => {
+  it('gathers the worlds that share a place onto one line', () => {
+    expect(podiumLines(rows('a', 'b=', 'c'))).toEqual([
+      { place: 1, worldIds: ['a', 'b'] },
+      { place: 3, worldIds: ['c'] },
+    ]);
+  });
+
+  it('gives a podium with no ties one line each', () => {
+    expect(podiumLines(rows('a', 'b', 'c'))).toEqual([
+      { place: 1, worldIds: ['a'] },
+      { place: 2, worldIds: ['b'] },
+      { place: 3, worldIds: ['c'] },
+    ]);
+  });
+
+  it('has nothing to say about an empty podium', () => {
+    expect(podiumLines(rows())).toEqual([]);
+  });
+});
+
+describe('whether the toggle is available', () => {
+  it('follows what the toggle would do', () => {
+    // One answer, two readings: the checkbox asks before, the mutator refuses after. They must agree,
+    // or a checkbox offers a change that then does nothing.
+    const cases = [rows('a', 'b', 'c'), rows('a', 'b=', 'c='), rows('a', 'b=', 'c=', 'd=')];
+    cases.forEach((podium) => {
+      podium.forEach((_, index) => {
+        expect(canToggleTie(podium, index)).toBe(toggleTie(podium, index) !== podium);
+      });
+    });
+  });
+
+  it('says no on the first row and past the end', () => {
+    expect(canToggleTie(rows('a', 'b'), 0)).toBe(false);
+    expect(canToggleTie(rows('a', 'b'), 2)).toBe(false);
+  });
+
+  it('says no where breaking the tie would leave the row with no place', () => {
+    expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 3)).toBe(false);
+    expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 2)).toBe(true);
   });
 });
 
