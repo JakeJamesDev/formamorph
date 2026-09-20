@@ -38,15 +38,12 @@ interface Box { x: number; y: number; width: number; height: number }
 
 /** One animation frame of the camera, recorded inside the page. */
 interface Frame {
-  t: number;
   /** The folder tile's painted rectangle inside the library layer. */
   tile: Box;
   /** The region's painted rectangle inside the folder layer. */
   region: Box;
   /** The library layer's own opacity. Above zero for exactly as long as it is on screen. */
   outerOpacity: number;
-  /** The folder layer's own opacity. */
-  innerOpacity: number;
   /** The folder header: how transparent it is, and how far above its place it stands, in px. */
   header: { opacity: number; raised: number; height: number } | null;
   /** Every member tile in the folder layer, by id, at the opacity it is painted with. */
@@ -57,8 +54,12 @@ interface Frame {
 interface CameraApi {
   /** The two boards on screen: the one carrying the folder's face, and the other one. */
   layers(): { outer: HTMLElement; inner: HTMLElement } | null;
-  /** Every animation the camera is running right now. */
-  animations(): Animation[];
+  /** The folder tile, which is the one tile on the library board drawing a folder's face. */
+  tile(): HTMLElement | null;
+  /** The scroll viewport the library board sits in. */
+  viewport(): HTMLElement | null;
+  /** One element's painted rectangle, so a transform on it or on an ancestor is included. */
+  box(el: Element): Box;
   /** Hold the next camera at its first frame, so it can be read one frame at a time. */
   hold(): void;
   /** Put the held camera on one frame, and answer with the library layer's opacity there. */
@@ -75,6 +76,9 @@ declare global {
     __camFrames?: Frame[];
     __camOn?: boolean;
     __camHeld?: Animation[] | null;
+    /** The reduced-motion watcher: true once a raised frame has been seen, which must never happen. */
+    __camSeen?: boolean;
+    __camWatching?: boolean;
   }
 }
 
@@ -109,9 +113,9 @@ async function newFolder(page: Page): Promise<void> {
  * is wider than the tile, which is the case the clip guard must not read off that member's own box. Five
  * members leave four of them off the face, so the staged reveal is on screen.
  *
- * @param scrolling - Shorten the window and grow the one loose world, so the board overflows and the
- *   library can be scrolled. Five of six worlds are in the folder, so a board of default sizes is one
- *   row deep and cannot scroll at any window height the app still lays out properly in
+ * @param opts - `scrolling` shortens the window and grows the one loose world, so the board overflows
+ *   and the library can be scrolled. Five of six worlds are in the folder, so a board of default sizes
+ *   is one row deep and cannot scroll at any window height the app still lays out properly in
  */
 async function libraryWithFolder(page: Page, opts: { scrolling?: boolean } = {}): Promise<void> {
   if (opts.scrolling) {
@@ -191,7 +195,17 @@ async function installCamera(page: Page): Promise<void> {
         const inner = boards.find((board) => board !== outer);
         return outer && inner ? { outer, inner } : null;
       },
-      animations,
+      tile() {
+        return document.querySelector<HTMLElement>('[data-folder-face]')
+          ?.closest<HTMLElement>('[data-tile-id]') ?? null;
+      },
+      viewport() {
+        return document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+      },
+      box(el) {
+        const rect = el.getBoundingClientRect();
+        return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+      },
       hold() {
         window.__camHeld = null;
         const arm = () => {
@@ -236,20 +250,16 @@ function startRecording(page: Page, region: { width: number; height: number }): 
   return page.evaluate((size) => {
     window.__camFrames = [];
     window.__camOn = true;
-    const boxOf = (el: Element): Box => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left, y: r.top, width: r.width, height: r.height };
-    };
     const scaleOf = (el: Element) => new DOMMatrixReadOnly(getComputedStyle(el).transform).a;
     const liftOf = (el: Element) => -new DOMMatrixReadOnly(getComputedStyle(el).transform).f;
 
     const tick = () => {
-      const pair = window.__cam?.layers();
-      const face = pair?.outer.querySelector('[data-folder-face]');
-      const tile = face?.closest<HTMLElement>('[data-tile-id]');
-      if (pair && tile) {
-        const innerBox = boxOf(pair.inner);
-        const k = scaleOf(pair.inner);
+      const cam = window.__cam;
+      const pair = cam?.layers();
+      const tile = cam?.tile();
+      if (cam && pair && tile) {
+        const innerBox = cam.box(pair.inner);
+        const layerScale = scaleOf(pair.inner);
         // The frozen copy first: on a fly-out the live header is already gone.
         const headers = [...document.querySelectorAll<HTMLElement>('[data-folder-header]')];
         const header = headers.find((el) => el.closest('[data-folder-overlay]')) ?? headers[0];
@@ -258,12 +268,15 @@ function startRecording(page: Page, region: { width: number; height: number }): 
           members[member.dataset.tileId ?? ''] = Number(getComputedStyle(member).opacity);
         }
         window.__camFrames?.push({
-          t: performance.now(),
-          tile: boxOf(tile),
+          tile: cam.box(tile),
           // The region stands at the folder layer's own corner, and scales with it.
-          region: { x: innerBox.x, y: innerBox.y, width: size.width * k, height: size.height * k },
+          region: {
+            x: innerBox.x,
+            y: innerBox.y,
+            width: size.width * layerScale,
+            height: size.height * layerScale,
+          },
           outerOpacity: Number(getComputedStyle(pair.outer).opacity),
-          innerOpacity: Number(getComputedStyle(pair.inner).opacity),
           header: header
             ? {
               opacity: Number(getComputedStyle(header).opacity),
@@ -302,17 +315,17 @@ function recorded(page: Page): Promise<Frame[]> {
  */
 function regionOf(page: Page): Promise<{ width: number; height: number }> {
   return page.evaluate(() => {
-    const face = document.querySelector<HTMLElement>('[data-folder-face]');
-    const tile = face?.closest<HTMLElement>('[data-tile-id]');
-    const board = face?.querySelector<HTMLElement>('.grid');
+    const cam = window.__cam;
+    const tile = cam?.tile();
+    const board = tile?.querySelector<HTMLElement>('[data-folder-face] .grid');
     const grid = tile?.closest<HTMLElement>('[data-library-focus-root]');
-    if (!face || !tile || !board || !grid) throw new Error('no folder face on the board');
+    if (!cam || !tile || !board || !grid) throw new Error('no folder face on the board');
     const scale = new DOMMatrixReadOnly(getComputedStyle(board).transform).a;
     const boardStyle = getComputedStyle(grid);
     const gap = parseFloat(boardStyle.columnGap) || 0;
     const cell = parseFloat(boardStyle.gridTemplateColumns.split(' ')[0]);
     const span = Number(getComputedStyle(tile).gridColumnEnd.replace('span ', '')) || 1;
-    const box = tile.getBoundingClientRect();
+    const box = cam.box(tile);
     const width = (span * cell + (span - 1) * gap) / scale;
     return { width, height: box.height * (width / box.width) };
   });
@@ -325,8 +338,8 @@ function faceMembers(page: Page): Promise<string[]> {
 }
 
 /** The library board's scroll offset. */
-const scrollOffset = (page: Page): Promise<number> => page.evaluate(() =>
-  document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]')?.scrollTop ?? -1);
+const scrollOffset = (page: Page): Promise<number> =>
+  page.evaluate(() => window.__cam?.viewport()?.scrollTop ?? -1);
 
 /* -------------------------------------------------------------------------- */
 /* Reading the camera one paused frame at a time                               */
@@ -334,11 +347,12 @@ const scrollOffset = (page: Page): Promise<number> => page.evaluate(() =>
 
 /** A camera held at its first frame, with the clock readings the strip tests need. */
 interface Held {
-  duration: number;
   /** Clock readings at which the library layer still has opacity. Dense, ending at the reveal point. */
   lit: number[];
   /** The first whole frame past the reveal point, where the library layer has gone. */
   dark: number;
+  /** Readings from that frame to the end, where the folder board is alone on screen. */
+  past: number[];
 }
 
 /** One screen refresh at 60Hz, which is what "the next frame" means on the camera's clock. */
@@ -378,7 +392,13 @@ async function heldCamera(page: Page): Promise<Held> {
     // instant opacity rounds to zero, which is a hair short of the reveal, and the clip steps open
     // exactly there. A frame later is the first frame a player sees the open clip on.
     const step = startLit ? frameMs : -frameMs;
-    return { duration, lit: readings, dark: Math.min(duration, Math.max(0, off + step)) };
+    const dark = Math.min(duration, Math.max(0, off + step));
+    // Four more from there to the end of the motion, for the claims that outlive the library layer.
+    const past: number[] = [];
+    for (let i = 0; i <= 3; i++) {
+      past.push(dark + ((startLit ? duration : 0) - dark) * (i / 3));
+    }
+    return { lit: readings, dark, past };
   }, FRAME_MS);
 }
 
@@ -397,19 +417,15 @@ function atFrame(page: Page, t: number): Promise<Paused> {
   return page.evaluate((time) => {
     const cam = window.__cam;
     const pair = cam?.layers();
+    const tile = cam?.tile();
     const frame = document.querySelector<HTMLElement>('[data-folder-overlay="board"]');
-    const tile = pair?.outer.querySelector('[data-folder-face]')?.closest<HTMLElement>('[data-tile-id]');
     if (!cam || !pair || !frame || !tile) throw new Error('the camera is not on screen');
     cam.seek(time);
-    const boxOf = (el: Element): Box => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left, y: r.top, width: r.width, height: r.height };
-    };
     return {
-      tile: boxOf(tile),
-      outer: boxOf(pair.outer),
-      inner: boxOf(pair.inner),
-      area: boxOf(frame),
+      tile: cam.box(tile),
+      outer: cam.box(pair.outer),
+      inner: cam.box(pair.inner),
+      area: cam.box(frame),
       opacity: {
         outer: Number(getComputedStyle(pair.outer).opacity),
         inner: Number(getComputedStyle(pair.inner).opacity),
@@ -484,6 +500,37 @@ function intermediateSizes(frames: Frame[]): number {
   return seen.size;
 }
 
+/**
+ * The lock itself: the tile's picture in the library layer and the region's picture in the folder layer
+ * are one rectangle on every frame, and the sizes in between are real sizes rather than a swap.
+ */
+function expectLocked(frames: Frame[]): void {
+  expect(frames.length, 'the camera must have run').toBeGreaterThan(8);
+  for (const frame of frames) expect(lockError(frame)).toBeLessThanOrEqual(LOCK_TOLERANCE);
+  expect(intermediateSizes(frames)).toBeGreaterThanOrEqual(4);
+  const widths = frames.map((frame) => frame.tile.width);
+  expect(Math.max(...widths)).toBeGreaterThan(Math.min(...widths) * 1.3);
+}
+
+/**
+ * The header waits for the library to go. Until then it is invisible and stands a header's height above
+ * its place, so it never sits against the tile the camera is flying into. `atRest` is the frame it has
+ * arrived on: the last one of a fly-in, the first one of a fly-out.
+ */
+function expectHeaderHeldBack(frames: Frame[], atRest: Frame): void {
+  const lit = frames.filter((frame) => frame.outerOpacity > 0);
+  expect(lit.length).toBeGreaterThan(4);
+  for (const frame of lit) {
+    expect(frame.header).not.toBeNull();
+    expect(frame.header?.opacity, 'the header showed over the library').toBeLessThan(0.01);
+    expect(frame.header?.raised, 'the header stood in its place over the library')
+      .toBeGreaterThan((frame.header?.height ?? 0) * 0.9);
+  }
+  expect(atRest.header?.opacity, 'the header never arrived').toBeGreaterThan(0.5);
+  expect(atRest.header?.raised, 'the header never came down')
+    .toBeLessThan((atRest.header?.height ?? 0) * 0.25);
+}
+
 /** Everything the camera has to hand back when it lands, either way round. */
 async function expectNothingLeftBehind(page: Page): Promise<void> {
   await expect(page.locator('[data-folder-overlay]')).toHaveCount(0);
@@ -493,6 +540,8 @@ async function expectNothingLeftBehind(page: Page): Promise<void> {
   const leftovers = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>(
     '[data-library-focus-root], [data-folder-header]',
   )].map((el) => `${el.style.transform}|${getComputedStyle(el).transform}`));
+  // There is always a board to read, so an empty list means the query missed rather than that all is well.
+  expect(leftovers.length, 'no board was found to check').toBeGreaterThan(0);
   expect(leftovers, 'a board was left standing where the camera put it')
     .toEqual(leftovers.map(() => '|none'));
 }
@@ -504,13 +553,13 @@ async function expectNothingLeftBehind(page: Page): Promise<void> {
 /** Scroll the library, and prove it really moved: an unscrolled board tests nothing that needs one. */
 async function scrollLibrary(page: Page): Promise<number> {
   const room = await page.evaluate(() => {
-    const viewport = document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+    const viewport = window.__cam?.viewport();
     return viewport ? viewport.scrollHeight - viewport.clientHeight : 0;
   });
   expect(room, 'the library board must overflow, or the scroll proves nothing').toBeGreaterThan(30);
   const offset = Math.min(60, Math.round(room / 2));
   await page.evaluate((to) => {
-    const viewport = document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+    const viewport = window.__cam?.viewport();
     if (viewport) viewport.scrollTop = to;
   }, offset);
   expect(await scrollOffset(page)).toBe(offset);
@@ -529,29 +578,10 @@ test.describe('the camera carries the tile into the board', () => {
     await cameraSettled(page);
     const frames = await recorded(page);
 
-    expect(frames.length, 'the camera must have run').toBeGreaterThan(8);
-    // The lock itself: the tile's picture in the library layer and the region's picture in the folder
-    // layer are one rectangle on every frame. Dropping the camera's origin-offset term pulls them apart
-    // by the library's scroll offset plus the header's own height.
-    for (const frame of frames) expect(lockError(frame)).toBeLessThanOrEqual(LOCK_TOLERANCE);
-    // Real travel, not a swap dressed as one.
-    expect(intermediateSizes(frames)).toBeGreaterThanOrEqual(4);
-    const widths = frames.map((frame) => frame.tile.width);
-    expect(Math.max(...widths)).toBeGreaterThan(Math.min(...widths) * 1.3);
-
-    // The header waits for the library to go. Until then it is invisible and stands a header's height
-    // above its place, so it never sits against the tile the camera is flying into.
-    const lit = frames.filter((frame) => frame.outerOpacity > 0);
-    expect(lit.length).toBeGreaterThan(4);
-    for (const frame of lit) {
-      expect(frame.header).not.toBeNull();
-      expect(frame.header?.opacity, 'the header showed over the library').toBeLessThan(0.01);
-      expect(frame.header?.raised, 'the header stood in its place over the library')
-        .toBeGreaterThan((frame.header?.height ?? 0) * 0.9);
-    }
-    const last = frames[frames.length - 1];
-    expect(last.header?.opacity, 'the header never arrived').toBeGreaterThan(0.5);
-    expect(last.header?.raised, 'the header never came down').toBeLessThan((last.header?.height ?? 0) * 0.25);
+    // Dropping the camera's origin-offset term pulls the two rectangles apart by the library's scroll
+    // offset plus the header's own height.
+    expectLocked(frames);
+    expectHeaderHeldBack(frames, frames[frames.length - 1]);
 
     // The members the face leaves out wait for the same moment, and they arrive together rather than in
     // a growing slice. One opacity between them on every frame is what makes it a fade and not a wipe.
@@ -584,20 +614,9 @@ test.describe('the camera carries the tile into the board', () => {
     await cameraSettled(page);
     const frames = await recorded(page);
 
-    expect(frames.length, 'the camera must have run').toBeGreaterThan(8);
-    for (const frame of frames) expect(lockError(frame)).toBeLessThanOrEqual(LOCK_TOLERANCE);
-    expect(intermediateSizes(frames)).toBeGreaterThanOrEqual(4);
-
+    expectLocked(frames);
     // Mirrored: the header leaves first, so it has already gone by the time the library has any opacity.
-    const lit = frames.filter((frame) => frame.outerOpacity > 0);
-    expect(lit.length).toBeGreaterThan(4);
-    for (const frame of lit) {
-      expect(frame.header?.opacity).toBeLessThan(0.01);
-      expect(frame.header?.raised).toBeGreaterThan((frame.header?.height ?? 0) * 0.9);
-    }
-    const first = frames[0];
-    expect(first.header?.opacity).toBeGreaterThan(0.5);
-    expect(first.header?.raised).toBeLessThan((first.header?.height ?? 0) * 0.25);
+    expectHeaderHeldBack(frames, frames[0]);
 
     await expectNothingLeftBehind(page);
     expect(await scrollOffset(page)).toBe(before);
@@ -634,6 +653,14 @@ test.describe('what the clips let through, in pixels', () => {
     return strips;
   }
 
+  /** The part of the tile's frame the folder board fills, which is where it must paint to be readable. */
+  const inside = (tile: Box): Box => ({
+    x: tile.x + 3,
+    y: tile.y + 3,
+    width: Math.max(8, tile.width - 6),
+    height: Math.max(8, tile.height - 6),
+  });
+
   test('the folder board never shows past the tile frame while the library is on screen', async ({ page }) => {
     await libraryWithFolder(page);
 
@@ -641,28 +668,25 @@ test.describe('what the clips let through, in pixels', () => {
     await openFolder(page);
     const held = await heldCamera(page);
 
-    let measured = 0;
+    const measured = { frames: 0, strips: 0 };
     for (const t of held.lit) {
       const { tile, inner, area } = await atFrame(page, t);
+      // The control comes first, on the same frame and by the same method: the folder board has to be
+      // painting inside the tile's frame before a clean strip beside it means anything. It is not on the
+      // early frames — the layer fades in over the first third — and a check there would read clean
+      // whatever the clip did.
+      if (!await paintsIn(page, 'inner', inside(tile))) continue;
+      measured.frames++;
       for (const strip of beside(tile, inner, area)) {
-        measured++;
+        measured.strips++;
         expect(await paintsIn(page, 'inner', strip),
           `the folder board reached past the tile frame at ${Math.round(t)}ms`).toBe(false);
       }
     }
-    // A guard that measured nothing would pass here too, so pin how much of it was measured.
-    expect(measured, 'no strip stood outside the tile frame, so nothing was measured')
-      .toBeGreaterThanOrEqual(held.lit.length);
-
-    // The positive control, on the same frames and by the same method: inside the tile's frame the
-    // folder board does paint. Without it, a layer that painted nothing at all would pass every check.
-    const mid = await atFrame(page, held.lit[held.lit.length - 1]);
-    expect(await paintsIn(page, 'inner', {
-      x: mid.tile.x + 3,
-      y: mid.tile.y + 3,
-      width: Math.max(8, mid.tile.width - 6),
-      height: Math.max(8, mid.tile.height - 6),
-    }), 'the folder board painted nothing inside the tile frame either').toBe(true);
+    expect(measured.frames, 'the folder board never painted, so nothing was measured')
+      .toBeGreaterThanOrEqual(3);
+    expect(measured.strips, 'no strip stood outside the tile frame, so nothing was measured')
+      .toBeGreaterThanOrEqual(3);
 
     // And the step: one frame past the reveal point the clip is open, so the board reaches the strip it
     // was held out of. This is what fails when the clip opens as a wipe, or from the first frame.
@@ -680,11 +704,11 @@ test.describe('what the clips let through, in pixels', () => {
     // The board's top row, unscrolled: the only place the header's own strip can cut a layer.
     expect(await scrollOffset(page)).toBe(0);
     const corner = await page.evaluate(() => {
-      const tile = document.querySelector<HTMLElement>('[data-folder-face]')
-        ?.closest<HTMLElement>('[data-tile-id]');
+      const cam = window.__cam;
+      const tile = cam?.tile();
       const board = tile?.closest<HTMLElement>('[data-library-focus-root]');
-      if (!tile || !board) throw new Error('no folder tile on the board');
-      return Math.round(tile.getBoundingClientRect().top - board.getBoundingClientRect().top);
+      if (!cam || !tile || !board) throw new Error('no folder tile on the board');
+      return Math.round(cam.box(tile).y - cam.box(board).y);
     });
     expect(corner, 'the folder tile must stand in the board top row').toBeLessThan(2);
 
@@ -693,7 +717,9 @@ test.describe('what the clips let through, in pixels', () => {
     const held = await heldCamera(page);
 
     const measured = { outer: 0, inner: 0 };
-    for (const t of held.lit) {
+    // Past the reveal point as well: the library layer has gone by then, but the folder board is still
+    // growing out of the strip the header took and can still lose its first rows to a clip laid there.
+    for (const t of [...held.lit, ...held.past]) {
       const at = await atFrame(page, t);
       for (const layer of ['outer', 'inner'] as Layer[]) {
         // A layer still fading in paints nothing anywhere, so it can say nothing about its own top.
@@ -718,7 +744,7 @@ test.describe('what the clips let through, in pixels', () => {
     }
     // Each board has to have been read on its own, or one of them was never guarded at all.
     expect(measured.outer, 'the library board was never read at its top edge').toBeGreaterThanOrEqual(3);
-    expect(measured.inner, 'the folder board was never read at its top edge').toBeGreaterThanOrEqual(3);
+    expect(measured.inner, 'the folder board was never read at its top edge').toBeGreaterThanOrEqual(4);
 
     await releaseCamera(page);
   });
@@ -738,36 +764,37 @@ test.describe('what the clips let through, in pixels', () => {
     const held = await heldCamera(page);
 
     const windowHeight = page.viewportSize()?.height ?? 0;
-    let measured = 0;
+    const measured = { frames: 0, strips: 0 };
+    // Only the window the library layer is on screen for. Past the reveal point it is gone, so it can
+    // paint outside nothing and a strip read there would be clean whatever any clip did.
     for (const t of held.lit) {
       const at = await atFrame(page, t);
+      // The control first, on the same frame and by the same method: the library board has to be
+      // painting inside the board area before a clean strip outside it means anything.
+      const control = {
+        x: at.area.x + 2, y: at.area.y + 2, width: Math.min(60, at.area.width - 4), height: 20,
+      };
+      if (!await paintsIn(page, 'outer', control)) continue;
+      measured.frames++;
       // The library board arrives blown up by the zoom factor, so without the scroll viewport's own
       // overflow it would reach over the tabs above the board and past the window below it.
       const above = { x: at.area.x + 2, y: at.area.y - 6, width: at.area.width - 4, height: 5 };
       if (above.y >= 0) {
-        measured++;
+        measured.strips++;
         expect(await paintsIn(page, 'outer', above),
           `the library board reached above the board area at ${Math.round(t)}ms`).toBe(false);
       }
       const below = { x: at.area.x + 2, y: at.area.y + at.area.height + 1, width: at.area.width - 4, height: 5 };
       if (below.y + below.height <= windowHeight) {
-        measured++;
+        measured.strips++;
         expect(await paintsIn(page, 'outer', below),
           `the library board reached below the board area at ${Math.round(t)}ms`).toBe(false);
       }
     }
-    expect(measured, 'the board area filled the window, so nothing was measured')
-      .toBeGreaterThanOrEqual(held.lit.length);
-
-    // The positive control: on the same frame and by the same method, the blown-up library board does
-    // paint inside the board area. Without it a layer painting nothing at all would pass every check.
-    const inside = await atFrame(page, held.lit[held.lit.length - 1]);
-    expect(await paintsIn(page, 'outer', {
-      x: inside.area.x + 2,
-      y: inside.area.y + 2,
-      width: Math.min(60, inside.area.width - 4),
-      height: 20,
-    }), 'the library board painted nothing inside the board area either').toBe(true);
+    expect(measured.frames, 'the library board never painted, so nothing was measured')
+      .toBeGreaterThanOrEqual(3);
+    expect(measured.strips, 'the board area filled the window, so nothing was measured')
+      .toBeGreaterThanOrEqual(3);
 
     await releaseCamera(page);
   });
@@ -778,17 +805,19 @@ test.describe('what the clips let through, in pixels', () => {
 /* -------------------------------------------------------------------------- */
 
 test.describe('reduced motion', () => {
+  // Browser-only, although it reads as a DOM check: the hook also falls back to the instant swap where
+  // `Element.animate` is missing, which is every jsdom run. A Vitest version of this passes either way.
   test('opens and leaves the folder with no camera at all', async ({ page }) => {
     // Emulated before the app loads, so the first render already reads the query the hook watches.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await libraryWithFolder(page);
     // A watcher rather than a check afterwards: a camera that ran and finished leaves nothing to find.
     await page.evaluate(() => {
-      window.__camOn = true;
-      window.__camHeld = null;
+      window.__camWatching = true;
+      window.__camSeen = false;
       const tick = () => {
-        if (document.querySelector('[data-folder-overlay]')) window.__camHeld = [];
-        if (window.__camOn) requestAnimationFrame(tick);
+        if (document.querySelector('[data-folder-overlay]')) window.__camSeen = true;
+        if (window.__camWatching) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     });
@@ -799,8 +828,8 @@ test.describe('reduced motion', () => {
     await expect(folderTile(page)).toHaveCount(1);
 
     const raised = await page.evaluate(() => {
-      window.__camOn = false;
-      return window.__camHeld !== null;
+      window.__camWatching = false;
+      return window.__camSeen === true;
     });
     expect(raised, 'a camera ran under reduced motion').toBe(false);
     await expectNothingLeftBehind(page);
