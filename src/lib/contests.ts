@@ -131,18 +131,57 @@ export function shuffleWithSeed<T>(items: T[], seed: number): T[] {
 const likesOf = (record: WorldRecord): number => Number(record.likes ?? 0) || 0;
 
 /**
- * When a listing was published, as an instant.
+ * What a stamp that cannot be read counts as, so it sorts last rather than first.
  *
- * A stamp that cannot be read sorts last rather than first, and a finite sentinel rather than infinity:
- * two unreadable stamps must still compare as level, and `Infinity - Infinity` is not a number at all.
+ * A finite sentinel rather than infinity: two unreadable stamps must still compare as level, and
+ * `Infinity - Infinity` is not a number at all.
  */
-const publishedAt = (record: WorldRecord): number => {
+export const UNKNOWN_PUBLISH_TIME = Number.MAX_SAFE_INTEGER;
+
+/** When a listing was published, as an instant. */
+export const publishedAtOf = (record: WorldRecord): number => {
   // Checked for a string first: the catalog row is untyped, `parseServerDate` takes one, and a record
   // built from a publish body rather than fetched carries no stamp at all.
   const stamp = record.created_at;
   const parsed = typeof stamp === 'string' ? parseServerDate(stamp) : null;
-  return parsed?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  return parsed?.getTime() ?? UNKNOWN_PUBLISH_TIME;
 };
+
+/** What a standings order reads off one contest entry. */
+export interface Standing {
+  likes: number;
+  /** When the listing was published, in milliseconds. `UNKNOWN_PUBLISH_TIME` where no stamp reads. */
+  publishedAt: number;
+}
+
+/**
+ * Contest entries in standings order: most likes first, and the earliest published first among equals.
+ *
+ * Likes alone leave level entries in whatever order the catalog handed them over in, which is a list
+ * that reshuffles itself between two visits that changed nothing — and a contest whose entries are
+ * level is exactly when that is most visible.
+ */
+export function standingsOrder<T extends Standing>(entries: readonly T[]): T[] {
+  return [...entries].sort((a, b) => b.likes - a.likes || a.publishedAt - b.publishedAt);
+}
+
+/**
+ * The like counts that two or more entries share.
+ *
+ * What the Podium dialog marks an entry by. Sorted neighbors say which entry leads, not whether the
+ * two are level or a single like apart, and a judge has to see every tie before they announce one.
+ */
+export function tiedLikeCounts(entries: readonly Standing[]): Set<number> {
+  const seen = new Set<number>();
+  const shared = new Set<number>();
+
+  entries.forEach(({ likes }) => {
+    if (seen.has(likes)) shared.add(likes);
+    else seen.add(likes);
+  });
+
+  return shared;
+}
 
 /**
  * The order a contest's entries are shown in.
@@ -166,7 +205,9 @@ export function orderContestEntries(
   if (!event) return entries;
   if (contestPhase(event, now) === 'live') return shuffleWithSeed(entries, seed);
 
-  const byLikes = [...entries].sort((a, b) => likesOf(b) - likesOf(a) || publishedAt(a) - publishedAt(b));
+  const byLikes = standingsOrder(entries.map((record) => ({
+    record, likes: likesOf(record), publishedAt: publishedAtOf(record),
+  }))).map(({ record }) => record);
   const placed: WorldRecord[] = [];
 
   // Walked in podium order rather than filtered, so the placed worlds lead in the order they placed

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  canToggleTie, clearRow, cyclePodium, fitsPodium, placementsFrom, placesOf, podiumLines,
+  canToggleTie, clearRow, cyclePodium, fitsPodium, orderTiedRows, placementsFrom, placesOf, podiumLines,
   rowsFromPlacements, toggleTie,
 } from './podiumRanking';
 import type { PodiumRow } from './podiumRanking';
@@ -92,10 +92,24 @@ describe('clicking an entry', () => {
 
   it('trades a placed world with the row below, leaving the flags where they are', () => {
     // The flag belongs to the row, not to the world in it, so a trade moves the names and keeps the
-    // podium's shape: 1, 1, 3 before and 1, 1, 3 after.
+    // podium's shape: 1, 2, 3 before and 1, 2, 3 after.
+    const traded = cyclePodium(rows('a', 'b', 'c'), 'a');
+    expect(spell(traded)).toEqual(['b', 'a', 'c']);
+    expect(placesOf(traded)).toEqual([1, 2, 3]);
+  });
+
+  it('steps a world down to the next place rather than inside the place it already shares', () => {
+    // `orderTiedRows` keeps a shared place in publish order, so a trade within one would be sorted
+    // straight back and the click would do nothing. The step is to the next place down.
     const traded = cyclePodium(rows('a', 'b=', 'c'), 'a');
-    expect(spell(traded)).toEqual(['b', 'a=', 'c']);
+    expect(spell(traded)).toEqual(['c', 'b=', 'a']);
     expect(placesOf(traded)).toEqual([1, 1, 3]);
+  });
+
+  it('takes a world on the bottom place off, even with a row still under it', () => {
+    // The bottom place has nowhere below it, so every world sharing it cycles off rather than trading.
+    // The row that was under it keeps its own flag, exactly as the clear button leaves it.
+    expect(spell(cyclePodium(rows('a', 'b', 'c='), 'b'))).toEqual(['a', 'c=']);
   });
 
   it('takes the bottom row off the podium', () => {
@@ -216,6 +230,55 @@ describe('whether the toggle is available', () => {
   it('says no where breaking the tie would leave the row with no place', () => {
     expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 3)).toBe(false);
     expect(canToggleTie(rows('a', 'b=', 'c=', 'd='), 2)).toBe(true);
+  });
+});
+
+describe('the order inside a shared place', () => {
+  const published = (times: Record<string, number>) => new Map(Object.entries(times));
+
+  it('puts the earliest published first inside each shared place', () => {
+    const ordered = orderTiedRows(rows('a', 'b=', 'c='), published({ a: 300, b: 100, c: 200 }));
+    expect(spell(ordered)).toEqual(['b', 'c=', 'a=']);
+  });
+
+  it('leaves the flags and the places exactly where they were', () => {
+    // The flag belongs to the row, so moving ids inside a run must not change the podium's shape.
+    const ordered = orderTiedRows(rows('a', 'b=', 'c'), published({ a: 300, b: 100, c: 200 }));
+    expect(spell(ordered)).toEqual(['b', 'a=', 'c']);
+    expect(placesOf(ordered)).toEqual([1, 1, 3]);
+  });
+
+  it('never moves a world across a place', () => {
+    // The earliest-published world of all three sits on the bottom step. Sorting the whole list rather
+    // than each run would hand it 1st place, off an order nobody chose.
+    const ordered = orderTiedRows(rows('a', 'b=', 'c'), published({ a: 300, b: 200, c: 100 }));
+    expect(spell(ordered)).toEqual(['b', 'a=', 'c']);
+  });
+
+  it('sorts each shared place on its own', () => {
+    const ordered = orderTiedRows(rows('a', 'b=', 'c', 'd='), published({ a: 300, b: 100, c: 900, d: 400 }));
+    expect(spell(ordered)).toEqual(['b', 'a=', 'd', 'c=']);
+  });
+
+  it('sorts a world with no stamp last, keeping the ones with none in the order they were in', () => {
+    const ordered = orderTiedRows(rows('a', 'b=', 'c=', 'd='), published({ c: 500 }));
+    expect(spell(ordered)).toEqual(['c', 'a=', 'b=', 'd=']);
+  });
+
+  it('changes nothing on a podium where no place is shared', () => {
+    const plain = rows('a', 'b', 'c');
+    expect(spell(orderTiedRows(plain, published({ a: 300, b: 200, c: 100 })))).toEqual(['a', 'b', 'c']);
+  });
+
+  it('is settled after one pass, so a second action cannot reshuffle the list', () => {
+    const once = orderTiedRows(rows('a', 'b=', 'c='), published({ a: 300, b: 100, c: 200 }));
+    expect(spell(orderTiedRows(once, published({ a: 300, b: 100, c: 200 })))).toEqual(spell(once));
+  });
+
+  it('leaves the rows it was given alone', () => {
+    const given = rows('a', 'b=');
+    orderTiedRows(given, published({ a: 300, b: 100 }));
+    expect(spell(given)).toEqual(['a', 'b=']);
   });
 });
 

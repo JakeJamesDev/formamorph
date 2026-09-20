@@ -60,6 +60,16 @@ const entry = (name: string) =>
 const rows = () => within(screen.getByLabelText('Podium')).getAllByRole('listitem');
 
 /**
+ * The grid's cards in the order it draws them, named from the worlds a test put in the catalog.
+ *
+ * Read off each card's own heading rather than its whole text, which also carries the author, the
+ * like count and whatever badges the card is wearing.
+ */
+const gridOrder = (names: string[]): string[] =>
+  within(screen.getByRole('group', { name: 'Entries' })).getAllByRole('button')
+    .map((card) => names.find((name) => within(card).queryByText(name)) ?? 'unknown');
+
+/**
  * The podium as it reads, top down: one `1st Place / Pearl of the Undertow` per row.
  *
  * An empty podium is one row carrying the line that says how to start one, and no clear button — so it
@@ -115,6 +125,88 @@ describe('the gallery', () => {
 
     expect(staged()).toEqual([]);
     expect(screen.getByText('Click an entry to start the podium')).toBeTruthy();
+  });
+});
+
+describe('the standings in the grid', () => {
+  const names = ['Pearl of the Undertow', 'Ninth Wave Shoals', 'Salt-Bright Reaches'];
+
+  /** The three entries with like counts of their own, handed over in no particular order. */
+  const ranked = (over: Record<string, Record<string, unknown>> = {}) => [
+    listing({ likes: 4, ...over.w1 }),
+    listing({ _id: 'w2', name: 'Ninth Wave Shoals', likes: 12, ...over.w2 }),
+    listing({ _id: 'w3', name: 'Salt-Bright Reaches', likes: 9, ...over.w3 }),
+  ];
+
+  it('leads with the most-liked entry, so the standings are the first thing read', async () => {
+    catalog(ranked());
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(gridOrder(names)).toEqual([
+      'Ninth Wave Shoals', 'Salt-Bright Reaches', 'Pearl of the Undertow',
+    ]);
+  });
+
+  it('breaks a level count by publish time, earliest first', async () => {
+    // Likes alone leave level entries in whatever order the catalog arrived in, which is an order that
+    // can change between two visits that changed nothing.
+    catalog(ranked({
+      w1: { likes: 12, created_at: '2026-07-14T09:00:00.000Z' },
+      w2: { created_at: '2026-07-20T09:00:00.000Z' },
+      w3: { likes: 12, created_at: '2026-07-02T09:00:00.000Z' },
+    }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(gridOrder(names)).toEqual([
+      'Salt-Bright Reaches', 'Pearl of the Undertow', 'Ninth Wave Shoals',
+    ]);
+  });
+
+  it('marks every entry level with another, and leaves a count of its own unmarked', async () => {
+    catalog(ranked({ w1: { likes: 12 } }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(within(entry('Pearl of the Undertow')).getByText('Tied')).toBeTruthy();
+    expect(within(entry('Ninth Wave Shoals')).getByText('Tied')).toBeTruthy();
+    expect(within(entry('Salt-Bright Reaches')).queryByText('Tied')).toBeNull();
+  });
+
+  it('marks nothing when every entry has a count of its own', async () => {
+    // The guard above must not simply mark every card.
+    catalog(ranked());
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(within(screen.getByRole('group', { name: 'Entries' })).queryByText('Tied')).toBeNull();
+  });
+
+  it('says the mark in words, so it does not rest on a color alone', async () => {
+    catalog(ranked({ w1: { likes: 12 } }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(screen.getByRole('button', { name: /Pearl of the Undertow.*Tied on 12 likes/s })).toBeTruthy();
+  });
+
+  it('sorts an entry nobody may place with the rest, still wearing its reason', async () => {
+    // A blocked entry is still a standing. Dropping it to the bottom would misreport the contest, and
+    // a judge who cannot see it leads is a judge who cannot see the tie under it either.
+    catalog(ranked({ w2: { author: { id: 'judge', username: 'an-admin' } } }));
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    expect(gridOrder(names)[0]).toBe('Ninth Wave Shoals');
+    expect((entry('Ninth Wave Shoals') as HTMLButtonElement).disabled).toBe(true);
+    expect(within(entry('Ninth Wave Shoals')).getByText('Your entry')).toBeTruthy();
   });
 });
 
@@ -403,6 +495,53 @@ describe('sharing a place', () => {
       '1st Place / Pearl of the Undertow',
       '1st Place / Salt-Bright Reaches',
       '3rd Place / Ninth Wave Shoals',
+    ]);
+  });
+
+  it('shows the worlds sharing a place in publish order, whatever order they were clicked', async () => {
+    // The server sorts a shared place by publish time before it stores the positions, so a dialog left
+    // in click order would show an order the save then changes.
+    catalog([
+      listing({ created_at: '2026-07-20T09:00:00.000Z' }),
+      listing({
+        _id: 'w2', name: 'Ninth Wave Shoals', author: { id: 'u3', username: 'corrin' },
+        created_at: '2026-07-05T09:00:00.000Z',
+      }),
+    ]);
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    fireEvent.click(entry('Pearl of the Undertow'));
+    fireEvent.click(entry('Ninth Wave Shoals'));
+    fireEvent.click(tie('Ninth Wave Shoals'));
+
+    expect(staged()).toEqual([
+      '1st Place / Ninth Wave Shoals',
+      '1st Place / Pearl of the Undertow',
+    ]);
+  });
+
+  it('leaves the order of places nobody shares alone', async () => {
+    // The guard above must sort inside a shared place only. The earliest-published world here holds
+    // 2nd, and a sort over the whole list would hand it 1st off an order nobody chose.
+    catalog([
+      listing({ created_at: '2026-07-20T09:00:00.000Z' }),
+      listing({
+        _id: 'w2', name: 'Ninth Wave Shoals', author: { id: 'u3', username: 'corrin' },
+        created_at: '2026-07-05T09:00:00.000Z',
+      }),
+    ]);
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    fireEvent.click(entry('Pearl of the Undertow'));
+    fireEvent.click(entry('Ninth Wave Shoals'));
+
+    expect(staged()).toEqual([
+      '1st Place / Pearl of the Undertow',
+      '2nd Place / Ninth Wave Shoals',
     ]);
   });
 
