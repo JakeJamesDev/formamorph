@@ -1,6 +1,7 @@
 # 14: Server Settings tab with the Anonymous Likes switch
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3af76e23
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -18,6 +19,8 @@ No server change. The staff read and write routes for settings already exist: a 
 ## Acceptance criteria
 
 - [ ] The Admin panel gains a **Server Settings** tab, shown to administrators only, as the Policies tab is.
+- [ ] The tab trigger reads "Server", so eight triggers fit the strip and it does not read as the app's own Settings. The heading inside the panel reads "Server Settings". If eight still overflow at the dialog's real width or at mobile width, report the measurement; restyling the strip is outside this ticket.
+- [ ] The control is the approved `CheckRow` with a new `disabled` prop, not a new switch primitive. "Switch" below means this control.
 - [ ] The tab reads the setting when it opens and shows one switch, **Anonymous Likes**, in its real state. While the read is pending the switch is disabled, never shown as off.
 - [ ] A press writes the new value, and the switch follows the server's answer, not the press. A failed write restores the switch and shows the error.
 - [ ] Switching off asks for no confirmation: it is the emergency stop. The help line says that stored likes still count and that people can still take a like back.
