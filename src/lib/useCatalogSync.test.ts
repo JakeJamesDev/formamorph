@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useCatalogSync } from './useCatalogSync';
 import { acceptAgeGate } from './ageGate';
 import { installId } from './anonymousLikes';
+import { markCatalogStale, resetCatalogStale } from './catalogStale';
 
 /** Who a signed-out reader is: their Install, because their liked marks are addressed by it. */
 const guest = () => `install:${installId()}`;
@@ -57,6 +58,7 @@ beforeEach(() => {
   server.resolve = null;
   server.sentTag = undefined;
   server.calls = 0;
+  resetCatalogStale();
   // The catalog is a listing of what other players published, so the hook waits on the age attestation.
   // Every case below is about what happens after that, so they arrive holding one.
   localStorage.clear();
@@ -430,5 +432,53 @@ describe('whether this server takes a guest\'s like', () => {
     await act(async () => server.resolve?.({ status: 'fresh', data: [world], tag: null, anonymousLikes: false }));
 
     expect(result.current.anonymousLikes).toBe(false);
+  });
+});
+
+describe('a setting the catalog carries', () => {
+  const world = { id: 'w1', title: 'One' };
+
+  it('has the catalog asked for again, unconditionally, when an administrator changes one', async () => {
+    // The reader has not changed and no Claim has moved a mark, so nothing else would ask. The tag beside
+    // the rows in hand would have the server answer 'unchanged' and the old flag would stand.
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const { rerender } = renderHook(() => useCatalogSync(true));
+    await waitFor(() => expect(server.calls).toBe(1));
+    expect(server.sentTag).toBe('W/"one"');
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    await act(async () => { markCatalogStale(); });
+    rerender();
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    expect(server.sentTag).toBe(null);
+  });
+
+  it('asks again on the next open when the change landed while the browser was closed', async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const { rerender } = renderHook(({ open }) => useCatalogSync(open), { initialProps: { open: true } });
+    await waitFor(() => expect(server.calls).toBe(1));
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    rerender({ open: false });
+    await act(async () => { markCatalogStale(); });
+    rerender({ open: true });
+
+    await waitFor(() => expect(server.calls).toBe(2));
+    expect(server.sentTag).toBe(null);
+  });
+
+  it('leaves the catalog alone while nothing has been changed', async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"one"', reader: guest() };
+    const { rerender } = renderHook(() => useCatalogSync(true));
+    await waitFor(() => expect(server.calls).toBe(1));
+    await act(async () => server.resolve?.({ status: 'unchanged' }));
+
+    rerender();
+
+    await waitFor(() => expect(server.calls).toBe(1));
   });
 });

@@ -233,10 +233,12 @@ export function ValueSlider({ id, value, onChange, min, max, step, format, ariaL
 
 /** A checkbox row matching the settings tabs: right-anchored label + checkbox + secondary text beside it.
  *  `info` takes an affordance (e.g. `HintInfo`) rendered at the label boundary, so a row wanting the long
- *  explanation on demand doesn't have to be hand-built to get it. */
-export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experimental }: {
+ *  explanation on demand doesn't have to be hand-built to get it.
+ *  `disabled` is for a row whose value is not the reader's to set yet — one still being read from a
+ *  server, or one a write is in flight for. The hint keeps its normal weight; the box alone dims. */
+export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experimental, disabled }: {
   label: string; htmlFor: string; checked: boolean; onChange: (v: boolean) => void; hint: string;
-  info?: ReactNode; experimental?: boolean;
+  info?: ReactNode; experimental?: boolean; disabled?: boolean;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] items-start gap-4">
@@ -245,7 +247,13 @@ export function CheckRow({ label, htmlFor, checked, onChange, hint, info, experi
         {/* The box is shorter than the line of text beside it, so a `1lh` sleeve centers it on that line —
             top-aligning it instead leaves its center above the label's and reads as a row out of true. */}
         <span className="flex h-[1lh] shrink-0 items-center">
-          <Checkbox id={htmlFor} checked={checked} onCheckedChange={(c) => onChange(c === true)} className="shrink-0" />
+          <Checkbox
+            id={htmlFor}
+            checked={checked}
+            disabled={disabled}
+            onCheckedChange={(c) => onChange(c === true)}
+            className="shrink-0"
+          />
         </span>
         <Hint as="span">{hint}</Hint>
       </div>

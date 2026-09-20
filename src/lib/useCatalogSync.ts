@@ -5,6 +5,7 @@ import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
 import { readerKey } from "@/lib/anonymousLikes";
 import { claimWatch, type ClaimWatch } from "@/lib/anonymousLikeClaim";
+import { catalogStale, type StaleWatch } from "@/lib/catalogStale";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -27,8 +28,14 @@ const currentReader = (): string =>
  * @param open - Whether the community browser is on screen
  * @param readerKey - Who is asking, so a change of reader forces a refresh rather than showing theirs
  * @param claim - The Claim to read around, so a sign-in's moved likes are in what the server answers
+ * @param stale - Who says the catalog in hand no longer describes the server, such as a settings write
  */
-export function useCatalogSync(open: boolean, readerKey = currentReader(), claim: ClaimWatch = claimWatch) {
+export function useCatalogSync(
+  open: boolean,
+  readerKey = currentReader(),
+  claim: ClaimWatch = claimWatch,
+  stale: StaleWatch = catalogStale,
+) {
   const [remoteWorlds, setRemoteWorlds] = useState<WorldRecord[]>([]);
   const [isLoadingRemoteWorlds, setIsLoadingRemoteWorlds] = useState(false);
   const [isSyncingCatalog, setIsSyncingCatalog] = useState(false);
@@ -40,11 +47,14 @@ export function useCatalogSync(open: boolean, readerKey = currentReader(), claim
   const [anonymousLikes, setAnonymousLikes] = useState(false);
   // Claims that have moved marks. A change means the catalog in hand predates them.
   const claimsMoved = useSyncExternalStore(claim.subscribe, claim.moved);
+  // Marks that the catalog in hand is out of date. A change means a setting it carries has moved.
+  const staleMarks = useSyncExternalStore(stale.subscribe, stale.marked);
   // Held rather than closed over, so the loader below is not rebuilt for a watch that never changes.
   const settled = useRef(claim.settled);
   useEffect(() => { settled.current = claim.settled; }, [claim]);
   const lastReaderKey = useRef(readerKey);
   const lastClaimsMoved = useRef(claimsMoved);
+  const lastStaleMarks = useRef(staleMarks);
   const requestGeneration = useRef(0);
   // Declared here rather than through the shared hook: exhaustive-deps treats a ref from a custom
   // hook as unstable, which would pull `loadCatalog` into the open/reader effect's dependencies.
@@ -124,17 +134,21 @@ export function useCatalogSync(open: boolean, readerKey = currentReader(), claim
       // A Claim that landed since the last read leaves every heart it moved wrong in what is held. It
       // is its own reason to ask again, because the retry that ran it changed no reader.
       const claimLanded = lastClaimsMoved.current !== claimsMoved;
+      // A setting the catalog carries has moved since the last read, so the tag beside the rows in hand
+      // would win a request that must not be won.
+      const wentStale = lastStaleMarks.current !== staleMarks;
       lastReaderKey.current = readerKey;
       lastClaimsMoved.current = claimsMoved;
+      lastStaleMarks.current = staleMarks;
       // A liked mark belongs to its reader. Do not show the old reader's catalog while the forced
       // request that replaces it is in flight.
       if (readerChanged) setRemoteWorlds([]);
-      void loadCatalog(readerChanged || claimLanded);
+      void loadCatalog(readerChanged || claimLanded || wentStale);
     } else if (!open) {
       // The next open must wait for its own refresh before a lookup miss means anything.
       setCatalogSettled(false);
     }
-  }, [open, readerKey, claimsMoved]);
+  }, [open, readerKey, claimsMoved, staleMarks]);
 
   return {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
