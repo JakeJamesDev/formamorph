@@ -444,8 +444,8 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
     await expect(page.getByText(`By ${author}`, { exact: true })).toBeVisible();
   }
 
-  // The sole place after the tie: silver on the band and one silver badge in the grid. A server that
-  // stored the old 1, 1, 3 leaves bronze here instead.
+  // The sole place after the tie: silver on the band and one silver badge in the grid. A stored
+  // 1, 1, 3 shows bronze here instead.
   if (runnerUp) {
     await expect(band.nth(2)).toContainText('2nd Place');
     await expect(band.nth(2)).toContainText(`by ${runnerUp.author}`);

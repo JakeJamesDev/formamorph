@@ -93,7 +93,7 @@ describe('firstPlaceOf', () => {
     placements: [
       { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'a' },
       { place: 1, worldId: 'w2', worldName: 'Also Gold', authorName: 'b' },
-      { place: 3, worldId: 'w3', worldName: 'Bronze', authorName: 'c' },
+      { place: 2, worldId: 'w3', worldName: 'Silver', authorName: 'c' },
     ],
   });
 

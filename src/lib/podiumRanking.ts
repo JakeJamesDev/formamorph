@@ -43,8 +43,8 @@ const normalize = (rows: PodiumRow[]): PodiumRow[] =>
 export function placesOf(rows: PodiumRow[]): number[] {
   const places: number[] = [];
   rows.forEach((row, index) => {
-    const above = index > 0 ? places[index - 1] : 0;
-    places.push(index > 0 && row.tiedWithAbove ? above : above + 1);
+    if (index === 0) places.push(1);
+    else places.push(row.tiedWithAbove ? places[index - 1] : places[index - 1] + 1);
   });
   return places;
 }
