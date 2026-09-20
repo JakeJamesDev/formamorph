@@ -1,6 +1,7 @@
 # 12: A clear press always works
 
-Status: ready-for-agent
+Status: in-progress
+Base: 1745a81f
 Blocked by: 01, 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -21,7 +22,9 @@ When the press is a clear and the Install holds an Anonymous Like on that listin
 - [ ] A clear press removes the Install's own Anonymous Like on a listing that is unlisted or quarantined.
 - [ ] A clear press with no stored row follows the normal order, so a hidden listing the Install never liked still answers as not found.
 - [ ] The guest `liked` flag is still returned while the setting is off, so the client can show a filled heart that can be cleared. Add the test if none exists.
-- [ ] The header check still runs first; a malformed Install header is refused as before.
+- [ ] The early clear is a narrow pass-through: a well-formed Install header, a clear press, and a stored row. Every other request falls through to today's order unchanged. A malformed header while the setting is off still answers the off code, so the existing "answers the switch before anything else" test stays as it is.
+- [ ] When a row exists, the early clear always deletes it. If the Install's account holds the account Like, the answer stays the 200 with `liked: true` and the already-liked code, with the count after the delete. Otherwise the answer is `liked: false`.
+- [ ] Tests: setting off + malformed header + clear press answers the off code; setting off + stored row + clear removes it; account holds the Like + stored row removes the row and answers liked true.
 - [ ] The answer keeps the route's shape.
 - [ ] Each new path has a test that fails when the early clear is removed.
 - [ ] `npm test` green. State the run time in the hand-over.
