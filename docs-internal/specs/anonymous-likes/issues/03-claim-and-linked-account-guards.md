@@ -20,7 +20,7 @@ A signed-in request with an Install header performs a **Claim**: the Install's A
 - [ ] The Like table gains one nullable column that marks a claimed Like. The claimed Like keeps the time the Anonymous Like was given.
 - [ ] Claim runs in one transaction. For each Anonymous Like: insert a claimed Like unless the account already Likes the listing or wrote it; delete the Anonymous Like either way.
 - [ ] Claim writes one `like` Signal for the account and upserts the link.
-- [ ] Claim is idempotent, and listing totals are the same before and after it.
+- [ ] Claim is idempotent. A mark that becomes a Like leaves its listing's total unchanged. Each skipped mark (overlap, own listing) lowers that total by exactly one. A second Claim changes no total.
 - [ ] Claim sits behind the normal authenticated gate, so an account that has not accepted the Privacy Policy cannot claim.
 - [ ] The anonymous route refuses, in the spec's order: linked account suspended; linked account wrote the listing; linked account already Likes the listing (answers liked, not an error).
 - [ ] The `like` Signal is written only when the Claim inserted at least one claimed Like. The link upsert runs on every call.

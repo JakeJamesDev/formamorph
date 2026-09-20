@@ -58,7 +58,7 @@ The public website keeps sending guests to sign-in.
 
 24. As a guest who signs up, I want the likes I gave on this Install to become my account's Likes, so that my account starts with my history.
 25. As a guest who signs in to an existing account, I want the same, and I want a listing both had liked to count once, so that the total never double counts.
-26. As a user, I want the listing totals to stay the same when my likes move, so that a claim changes nothing public.
+26. As a user, I want a listing's total to stay the same when my like moves to my account, so that a claim never invents or loses a like. A total drops by one only where the claim removes a double count or a like on my own listing.
 27. As a user who signs out, I want hearts I liked on my account to show filled and refuse a second like, so that signing out is not a way to like twice.
 28. As an author who signs out, I want the heart on my own listings to refuse, so that I cannot like my own work.
 29. As a user on a shared computer, I want to still like things when the last person has signed out, so that the app works for guests there.
