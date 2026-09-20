@@ -179,6 +179,31 @@ describe('the line under the title', () => {
     expect(adminEventSummary(full, NOW)).toBe('1st Place: Lantern Reef — suneater (+2 more)');
   });
 
+  it('counts a shared 1st instead of naming one of its winners', () => {
+    const tied = decided({
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' },
+        { place: 1, worldId: 'w2', worldName: 'Nine Bells', authorName: 'marrowmoss' },
+        { place: 3, worldId: 'w3', worldName: 'Kindling', authorName: 'ashgrove' },
+      ],
+    });
+
+    // The place prefix is dropped on a tie: the count already says which place is shared.
+    expect(adminEventSummary(tied, NOW)).toBe('2 worlds tied for 1st (+1 more)');
+  });
+
+  it('counts only the worlds below 1st, so a three-way tie has nothing left to count', () => {
+    const tied = decided({
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' },
+        { place: 1, worldId: 'w2', worldName: 'Nine Bells', authorName: 'marrowmoss' },
+        { place: 1, worldId: 'w3', worldName: 'Kindling', authorName: 'ashgrove' },
+      ],
+    });
+
+    expect(adminEventSummary(tied, NOW)).toBe('3 worlds tied for 1st');
+  });
+
   it('says a closed contest is waiting on its results', () => {
     expect(adminEventSummary(event({ startsAt: at(-9), endsAt: at(-1) }), NOW))
       .toBe('Closed for entries — waiting on the results');

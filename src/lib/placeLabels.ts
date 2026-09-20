@@ -17,6 +17,19 @@ export const PLACE_LABELS: Record<ContestPlace, string> = {
   3: '3rd Place',
 };
 
+/**
+ * How a shared 1st place reads where a status line would otherwise name the winner.
+ *
+ * A count rather than the names: the surfaces that read this are one line each, and a line that lists
+ * every tied world pushes whatever it sits above off the screen.
+ *
+ * @param count - How many worlds took 1st
+ */
+export const tiedForFirstLine = (count: number): string => `${count} worlds tied for 1st`;
+
+/** The same result as a heading, which takes title case. */
+export const tiedForFirstTitle = (count: number): string => `${count} Worlds Tied for 1st`;
+
 /** The metal each place is colored by, as the theme's own tokens. */
 export const PLACE_COLORS: Record<ContestPlace, string> = {
   1: 'text-gold',

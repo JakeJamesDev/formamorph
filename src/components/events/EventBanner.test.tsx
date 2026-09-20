@@ -54,6 +54,20 @@ describe('EventBanner', () => {
     expect(screen.getByText(/Results announced — The Long Thaw by sedgewright/)).toBeInTheDocument();
   });
 
+  it('counts a shared 1st place rather than naming one of the worlds that won it', () => {
+    render(<Banners events={[event({
+      resultsAnnouncedAt: daysFrom(-1),
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' },
+        { place: 1, worldId: 'w2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
+        { place: 3, worldId: 'w3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
+      ],
+    })]} />);
+
+    expect(screen.getByText('Results announced — 2 worlds tied for 1st')).toBeInTheDocument();
+    expect(screen.queryByText(/The Long Thaw/)).not.toBeInTheDocument();
+  });
+
   it('takes the player to the entries', () => {
     const onOpenEvent = vi.fn();
     render(<Banners events={[event()]} onOpenEvent={onOpenEvent} />);

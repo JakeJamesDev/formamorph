@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { EventPosterBand } from '@/components/events/EventPosterBand';
 import MessageService from '@/services/MessageService';
-import { eventPhase, isContestEvent, phaseMessageId, placementsOf, resultsAnnounced } from '@/lib/serverEvents';
+import { eventPhase, firstPlaceOf, isContestEvent, phaseMessageId, resultsAnnounced } from '@/lib/serverEvents';
+import { tiedForFirstTitle } from '@/lib/placeLabels';
 import { isEventAcknowledged, markEventAcknowledged } from '@/lib/eventSeenStore';
 import { useEventProse } from '@/lib/useEventProse';
 import type { ServerEvent } from '@/types';
@@ -62,15 +63,18 @@ export function EventAckModal({ events, isAuthenticated, onOpenEvent, held = fal
   const Icon = phase === 'end' ? Trophy : Megaphone;
 
   const decided = resultsAnnounced(event);
-  const [gold] = placementsOf(event);
+  // The poster's headline is the result, so a shared 1st is the headline: naming one of two winners here
+  // is the first thing a player reads about the contest, and it would be wrong.
+  const first = firstPlaceOf(event);
+  const result = first.length > 1
+    ? tiedForFirstTitle(first.length)
+    : (first[0] ? `“${first[0].worldName}” by ${first[0].authorName}` : null);
 
   const eyebrow = phase === 'end'
     ? (decided ? 'Results Announced' : 'This Event Has Ended')
     : (contest ? 'A Contest Has Started' : 'An Announcement');
 
-  const title = phase === 'end' && decided && gold
-    ? `“${gold.worldName}” by ${gold.authorName}`
-    : event.title;
+  const title = phase === 'end' && decided && result ? result : event.title;
 
   const acknowledge = () => {
     markEventAcknowledged(event.id, phase);

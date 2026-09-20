@@ -8,8 +8,8 @@
  * moment a window closed between two reads.
  */
 import { parseServerDate } from './serverDate';
-import { PLACE_LABELS } from './placeLabels';
-import { isContestEvent, placementsOf, resultsAnnounced } from './serverEvents';
+import { PLACE_LABELS, tiedForFirstLine } from './placeLabels';
+import { firstPlaceOf, isContestEvent, placementsOf, resultsAnnounced } from './serverEvents';
 import type { ServerEvent } from '@/types';
 
 /**
@@ -167,11 +167,14 @@ export function adminEventSummary(event: ServerEvent, now: Date = new Date()): s
   if (state === 'active') return isContestEvent(event) ? 'Open for entries' : 'Banner live';
 
   const podium = placementsOf(event);
-  if (isContestEvent(event) && podium.length > 0) {
-    const [gold] = podium;
-    const runnersUp = podium.length - 1;
-    return `${PLACE_LABELS[1]}: ${gold.worldName} — ${gold.authorName}`
-      + (runnersUp > 0 ? ` (+${runnersUp} more)` : '');
+  const first = firstPlaceOf(event);
+  if (isContestEvent(event) && first.length > 0) {
+    const runnersUp = podium.length - first.length;
+    const rest = runnersUp > 0 ? ` (+${runnersUp} more)` : '';
+    // A tie drops the place prefix rather than repeating it: "1st Place: 2 worlds tied for 1st" says
+    // the same thing twice in a line that has room for neither.
+    if (first.length > 1) return tiedForFirstLine(first.length) + rest;
+    return `${PLACE_LABELS[1]}: ${first[0].worldName} — ${first[0].authorName}${rest}`;
   }
   return 'Over';
 }

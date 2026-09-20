@@ -131,11 +131,29 @@ export function shuffleWithSeed<T>(items: T[], seed: number): T[] {
 const likesOf = (record: WorldRecord): number => Number(record.likes ?? 0) || 0;
 
 /**
+ * When a listing was published, as an instant.
+ *
+ * A stamp that cannot be read sorts last rather than first, and a finite sentinel rather than infinity:
+ * two unreadable stamps must still compare as level, and `Infinity - Infinity` is not a number at all.
+ */
+const publishedAt = (record: WorldRecord): number => {
+  // Checked for a string first: the catalog row is untyped, `parseServerDate` takes one, and a record
+  // built from a publish body rather than fetched carries no stamp at all.
+  const stamp = record.created_at;
+  const parsed = typeof stamp === 'string' ? parseServerDate(stamp) : null;
+  return parsed?.getTime() ?? Number.MAX_SAFE_INTEGER;
+};
+
+/**
  * The order a contest's entries are shown in.
  *
  * While the contest runs the order is shuffled per visit, so entering early is not itself an advantage.
  * Once judging starts the shuffle would only obscure the standings, so entries settle by likes — and the
- * podium is pinned to the front of them, gold then silver then bronze.
+ * podium is pinned to the front of them, in the order the podium itself is stored in.
+ *
+ * Level like counts break by publish time, earliest first. Likes alone leave their order to however the
+ * catalog happened to arrive, which is a list that reshuffles itself between two visits that changed
+ * nothing — and a contest whose entries are level is exactly when that is most visible.
  *
  * @param seed - The visit's shuffle seed; only read while the contest is live
  */
@@ -148,11 +166,12 @@ export function orderContestEntries(
   if (!event) return entries;
   if (contestPhase(event, now) === 'live') return shuffleWithSeed(entries, seed);
 
-  const byLikes = [...entries].sort((a, b) => likesOf(b) - likesOf(a));
+  const byLikes = [...entries].sort((a, b) => likesOf(b) - likesOf(a) || publishedAt(a) - publishedAt(b));
   const placed: WorldRecord[] = [];
 
-  // Walked in podium order rather than filtered, so the three lead in the order they placed rather than
-  // in whatever order likes happened to leave them.
+  // Walked in podium order rather than filtered, so the placed worlds lead in the order they placed
+  // rather than in whatever order likes happened to leave them. The array order is the display order,
+  // shared place and all, so worlds that tied keep the order the server stored them in.
   placementsOf(event).forEach((placement) => {
     const record = byLikes.find((entry) => String(entry._id || entry.id) === placement.worldId);
     if (record) placed.push(record);

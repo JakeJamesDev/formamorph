@@ -85,6 +85,24 @@ const decided = (
 });
 
 
+/**
+ * The same contest decided with the places spelled out, for a podium that shares one.
+ *
+ * `decided` derives the place from the position, which is exactly what a tie breaks: two worlds in 1st
+ * are followed by a 3rd, and no position can say that.
+ */
+const decidedWithPlaces = (
+  event: ServerEvent,
+  podium: Array<[place: 1 | 2 | 3, worldId: string | null, worldName: string, authorName?: string]>,
+): ServerEvent => ({
+  ...event,
+  resultsAnnouncedAt: at(-1),
+  resultsMessageId: 'm-results',
+  placements: podium.map(([place, worldId, worldName, authorName]) => ({
+    place, worldId, worldName, authorName: authorName ?? 'sedgewright',
+  })),
+});
+
 const listing = (name: string, over: Record<string, unknown> = {}) => ({
   _id: name, id: name, name, kind: 'world', description: `${name} description`,
   thumbnail_file: `${name}.webp`, tags: [], downloads: 0, likes: 0, comment_count: 0,
@@ -258,6 +276,77 @@ describe('what the contest grid shows in each of its three states', () => {
     await openContestTab();
 
     expect(await screen.findByText('Won by Saltmarsh — sedgewright · 1 more placed')).toBeInTheDocument();
+  });
+
+  it('counts a shared 1st in the status line, and counts only the worlds below it', async () => {
+    server.events = [decidedWithPlaces(
+      contest({ startsAt: at(-20), endsAt: at(-2) }),
+      [[1, 'Saltmarsh', 'Saltmarsh'], [1, 'Coldkeep', 'Coldkeep'], [3, 'Thawline', 'Thawline']],
+    )];
+    catalog.items = [listing('Saltmarsh', { contest_event_id: 'e1' })];
+    renderBrowser();
+    await openContestTab();
+
+    expect(await screen.findByText('2 worlds tied for 1st · 1 more placed')).toBeInTheDocument();
+  });
+
+  it('says only that the results are out when the archive row kept no podium', async () => {
+    // What a slim archive row from a server that predates the podium looks like: decided, with nobody
+    // named. There is no winner to count, so the bar says the one thing it knows.
+    server.events = [decidedWithPlaces(contest({ startsAt: at(-20), endsAt: at(-2) }), [])];
+    catalog.items = [listing('Saltmarsh', { contest_event_id: 'e1' })];
+    renderBrowser();
+    await openContestTab();
+
+    expect(await screen.findByText('Results announced')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('podium-card')).toHaveLength(0);
+  });
+
+  it('gives every placed world its own card and its own metal, deleted listings included', async () => {
+    // Four cards where the old band had three columns keyed by place: two golds whose place repeats, and
+    // two bronzes whose listings are gone, so neither the place nor a missing id can be the key.
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    server.events = [decidedWithPlaces(
+      contest({ startsAt: at(-20), endsAt: at(-2) }),
+      [
+        [1, 'Saltmarsh', 'Saltmarsh'], [1, 'Coldkeep', 'Coldkeep'],
+        [3, null, 'Gone North'], [3, null, 'Gone South'],
+      ],
+    )];
+    catalog.items = [listing('Saltmarsh', { contest_event_id: 'e1' })];
+    renderBrowser();
+    await openContestTab();
+
+    const cards = await screen.findAllByTestId('podium-card');
+    expect(cards).toHaveLength(4);
+    expect(cards.map((card) => within(card).getByText(/^Gone|^Saltmarsh$|^Coldkeep$/).textContent))
+      .toEqual(['Saltmarsh', 'Coldkeep', 'Gone North', 'Gone South']);
+    expect(cards.map((card) => card.className.includes('border-gold/50')))
+      .toEqual([true, true, false, false]);
+    expect(cards.map((card) => card.className.includes('border-bronze/50')))
+      .toEqual([false, false, true, true]);
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/same key/);
+    warn.mockRestore();
+  });
+
+  it('badges each world that shares 1st place, and orders the grid by the podium', async () => {
+    server.events = [decidedWithPlaces(
+      contest({ startsAt: at(-20), endsAt: at(-2) }),
+      [[1, 'Saltmarsh', 'Saltmarsh'], [1, 'Coldkeep', 'Coldkeep'], [3, 'Thawline', 'Thawline']],
+    )];
+    // Saltmarsh is last by likes and last in the catalog, so only the podium's array order can lead.
+    catalog.items = [
+      listing('Thawline', { contest_event_id: 'e1', likes: 9 }),
+      listing('Coldkeep', { contest_event_id: 'e1', likes: 5 }),
+      listing('Saltmarsh', { contest_event_id: 'e1', likes: 2 }),
+    ];
+    renderBrowser();
+    await openContestTab();
+
+    await waitFor(() => expect(gridNames()).toEqual(['Saltmarsh', 'Coldkeep', 'Thawline']));
+    expect(screen.getAllByText(/1st Place —/)).toHaveLength(2);
+    expect(screen.getAllByText(/3rd Place —/)).toHaveLength(1);
+    expect(screen.queryByText(/2nd Place —/)).not.toBeInTheDocument();
   });
 
   it('carries the place badge into the ordinary catalog, where the world also lives', async () => {

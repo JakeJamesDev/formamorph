@@ -52,7 +52,7 @@ export function devEventSample(phase: ServerEventPhase = 'start'): ServerEvent {
     endMessageId: ended ? 'dev-message-end' : null,
     resultsMessageId: ended ? 'dev-message-results' : null,
     resultsAnnouncedAt: ended ? new Date(now - DAY_MS).toISOString() : null,
-    placements: ended ? DEV_PODIUM : [],
+    placements: ended ? DEV_PODIUM_TIED : [],
   };
 }
 
@@ -64,9 +64,23 @@ const DEV_PODIUM: EventPlacement[] = [
 ];
 
 /**
- * A canned set of contests for the Community Creations contest tab: one running, two archived, one of
- * them decided with a full podium — enough for the tab, its slim bar and its archive selector. The entries themselves come
- * from the real catalog, so a dev machine with no contest entries sees the tab's empty state.
+ * The same podium with 1st place shared, which is what the banner, the poster and the bar are served.
+ *
+ * Competition ranking skips the place a tie consumed, so a shared 1st is followed by 3rd and silver
+ * cannot appear beside it. The sole-winner podium above stays in the fixture set for that reason: a
+ * single sample can show a tie or all three metals, never both.
+ */
+const DEV_PODIUM_TIED: EventPlacement[] = [
+  { place: 1, worldId: 'dev-world', worldName: 'The Long Thaw', authorName: 'sedgewright' },
+  { place: 1, worldId: 'dev-world-2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
+  { place: 3, worldId: 'dev-world-3', worldName: 'The Kindling Hour', authorName: 'ashgrove' },
+];
+
+/**
+ * A canned set of contests for the Community Creations contest tab: one running and three archived, two
+ * of them decided — one with a sole winner and one with 1st place shared, so the bar's two status lines
+ * and both shapes of the podium band are one selector click apart. The entries themselves come from the
+ * real catalog, so a dev machine with no contest entries sees the tab's empty state.
  */
 export function devContestSamples(): ServerEvent[] {
   const now = Date.now();
@@ -86,6 +100,16 @@ export function devContestSamples(): ServerEvent[] {
     },
     {
       ...running,
+      id: 'dev-contest-tied',
+      title: 'Midwinter Lanterns Contest',
+      startsAt: new Date(now - 120 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 90 * DAY_MS).toISOString(),
+      resultsMessageId: 'dev-message-results',
+      resultsAnnouncedAt: new Date(now - 89 * DAY_MS).toISOString(),
+      placements: DEV_PODIUM_TIED,
+    },
+    {
+      ...running,
       id: 'dev-contest-judging',
       title: 'Spring Tides Contest',
       startsAt: new Date(now - 20 * DAY_MS).toISOString(),
@@ -96,7 +120,9 @@ export function devContestSamples(): ServerEvent[] {
 
 /**
  * A canned calendar for the admin Events tab: one of every state the tab groups by, so all three
- * groups, both role views and every row control are reachable without a live server.
+ * groups, both role views and every row control are reachable without a live server. Two of them are
+ * over with their results out, one won outright and one tied, because the row's one-liner reads
+ * differently for each.
  *
  * Dates are relative, and the states are the ones the tab derives from them rather than stamped —
  * a fixture whose state was asserted rather than derived would hide a bug in the derivation.
@@ -141,6 +167,16 @@ export function devAdminEventSamples(): ServerEvent[] {
       resultsMessageId: 'dev-message-results',
       resultsAnnouncedAt: new Date(now - 29 * DAY_MS).toISOString(),
       placements: DEV_PODIUM,
+    },
+    {
+      ...base,
+      id: 'dev-event-ended-tied',
+      title: 'Midwinter Lanterns Contest',
+      startsAt: new Date(now - 120 * DAY_MS).toISOString(),
+      endsAt: new Date(now - 90 * DAY_MS).toISOString(),
+      resultsMessageId: 'dev-message-results',
+      resultsAnnouncedAt: new Date(now - 89 * DAY_MS).toISOString(),
+      placements: DEV_PODIUM_TIED,
     },
     {
       ...base,

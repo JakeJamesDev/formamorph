@@ -44,6 +44,20 @@ export function placeOf(event: ServerEvent, worldId: string | null | undefined):
 }
 
 /**
+ * The worlds that took 1st place — one on an ordinary podium, several when the place is shared.
+ *
+ * The one answer every surface that names a winner reads. Four of them are a single line each and none
+ * can list a whole podium, so each falls back to a count when this returns more than one; sharing the
+ * lookup is what keeps the four from drifting into four different accounts of the same result.
+ *
+ * Filtered by place rather than taken off the front of the list, so a podium whose order is not the
+ * server's own still answers with the worlds that actually won.
+ */
+export function firstPlaceOf(event: ServerEvent): EventPlacement[] {
+  return placementsOf(event).filter((placement) => placement.place === 1);
+}
+
+/**
  * Which phase to show for an event: its ending once the window has closed or its results are out, its
  * opening until then.
  *
