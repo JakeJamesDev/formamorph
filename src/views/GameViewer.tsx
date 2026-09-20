@@ -173,6 +173,8 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { AiSetupGate } from "../components/AiSetupGate";
 import { DemoAIBadge, DemoAINotice, type DemoAINoticeHandle } from "../components/game/DemoAINotice";
 import { useDemoAIDialogPending } from "../components/game/demoAISeen";
+import { LikePrompt } from "../components/game/LikePrompt";
+import { useLikePrompt } from "../components/game/useLikePrompt";
 import { nextEntryDialog } from "@/lib/entryDialogOrder";
 import { useAiReachable } from "../lib/useAiReachable";
 
@@ -1176,6 +1178,10 @@ const GameViewer = ({
     // Only re-fire on a new committed turn — reading the latest setting/world at fire time is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnCommitNonce]);
+
+  // Ask once, after enough turns, whether this downloaded world is worth a like. On the same committed
+  // turn as the autosave above, so a save restored past the threshold is asked on its next turn.
+  const likeAsk = useLikePrompt(worldId ? String(worldId) : null, turnCommitNonce, fullMessageHistory);
   const [pendingTurnNonce, setPendingTurnNonce] = useState(0);
 
   /** Re-generate the turn on `page`, which Chat passes as the latest page. */
@@ -4196,6 +4202,21 @@ const GameViewer = ({
     );
   })();
 
+  // DEV dev-router: `#dev?modal=likePrompt` asks about a canned listing, because a dev world has no
+  // listing and the card's answer comes from the server. Tree-shaken in prod.
+  const devLikePrompt = import.meta.env.DEV && devRoute?.modal === 'likePrompt';
+  const likePromptCard = (
+    <LikePrompt
+      listingId={devLikePrompt ? 'dev-listing' : likeAsk.listingId}
+      worldName={worldOverview.name}
+      onClosed={likeAsk.closed}
+      readListing={devLikePrompt
+        ? async () => ({ status: 'ok' as const, liked: false, ownListing: false, anonymousLikes: true })
+        : undefined}
+      className="w-full max-w-xl"
+    />
+  );
+
   // AI location-change suggestion (rendered at the bottom of the center panel, above pagination).
   const locationSuggestion = suggestedLocation ? (
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-30 flex items-center justify-center gap-2 whitespace-nowrap rounded-md border bg-background px-3 py-2 text-label shadow-lg">
@@ -4272,6 +4293,7 @@ const GameViewer = ({
       ttsProgress={ttsProgress}
       memoryBar={memoryBar}
       progressBar={progressBar}
+      likePrompt={likePromptCard}
       locationSuggestion={locationSuggestion}
       commandPreview={commandPreview}
       onDismissCommandPreview={stopCommandPreview}
