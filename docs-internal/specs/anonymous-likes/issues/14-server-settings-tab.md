@@ -1,6 +1,6 @@
 # 14: Server Settings tab with the Anonymous Likes switch
 
-Status: in-progress
+Status: ready-for-human
 Base: 3af76e23
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -37,3 +37,25 @@ No server change. The staff read and write routes for settings already exist: a 
 
 - The server's settings routes allow every staff role, so a moderator can still write the setting by hand. Tightening the route to administrators is a server decision for the user.
 - Whether a settings write should reach the audit log.
+
+## Comments
+
+**Built 2026-09-20.** Commits `1d102d02` and `5159b4c7`. Four gates green: typecheck 0 errors, lint 0 errors, 12114 tests pass in 89.28s, build succeeds.
+
+Measured in the preview with an administrator session against a throwaway mock API:
+
+| Measurement | Value |
+| --- | --- |
+| Strip at the dialog's real width | 851px, eight cells of 105px, no trigger clips |
+| "Server Settings" as a trigger | needs 133px, so it was cut to "Server" |
+| Strip at 375px, eight triggers | 326px, cells of 40px, six of eight clip |
+| Strip at 375px, seven triggers | cells of 95px, grid overflows its 326px box by 339px |
+
+The mobile strip was already broken at seven triggers. Restyling it is a separate ticket.
+
+Checked live: pending read shows a placeholder and no box; a server without the settings routes reports that on the row; a press takes the stored value; a refused write leaves the box as it was and shows the server's message; both themes read correctly.
+
+Two duplications named and not taken, because both are extractions across other tickets' files:
+
+- `ServerSettingsService` copies `PolicyService`'s envelope helpers verbatim, as `ReportService` already does. Three copies now.
+- `catalogStale` repeats `anonymousLikeClaim`'s counter-watch shape.
