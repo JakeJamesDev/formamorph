@@ -1,6 +1,7 @@
 # 03: Claim and linked-account guards
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3a06ed47
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -22,6 +23,9 @@ A signed-in request with an Install header performs a **Claim**: the Install's A
 - [ ] Claim is idempotent, and listing totals are the same before and after it.
 - [ ] Claim sits behind the normal authenticated gate, so an account that has not accepted the Privacy Policy cannot claim.
 - [ ] The anonymous route refuses, in the spec's order: linked account suspended; linked account wrote the listing; linked account already Likes the listing (answers liked, not an error).
+- [ ] The `like` Signal is written only when the Claim inserted at least one claimed Like. The link upsert runs on every call.
+- [ ] The "already Likes" answer is a 200 with its code, `liked: true`, and the count, and stores nothing. A clear press on that listing gets the same answer.
+- [ ] The suspended and own-listing guards fire on a like press only. A clear press always removes the Install's own Anonymous Like. Test: suspended linked account with an existing Anonymous Like; the clear succeeds and a new like is refused.
 - [ ] Each new refusal code joins the shared codes export that ticket 01 made in the anonymous-likes config.
 - [ ] The server repo's `CONTEXT.md` gains **Claim**.
 - [ ] The guest `liked` flag is true when the linked account Likes the listing.
