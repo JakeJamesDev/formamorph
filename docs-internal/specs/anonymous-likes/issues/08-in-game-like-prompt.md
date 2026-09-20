@@ -22,7 +22,7 @@ A player who reaches 15 turns in a world downloaded from the community sees one 
 - [ ] The heart writes an account Like for a signed-in player and an Anonymous Like for a guest.
 - [ ] The prompted mark lives in app storage keyed by listing id, outside the world record and the save. No export shape changes.
 - [ ] The mark is set on like, on dismiss, and on a not-visible or own-listing refusal. It is not set on a network failure or a cap refusal.
-- [ ] Offline, the card does not show. With the server setting off, a guest gets no card.
+- [ ] Offline, the card does not show. With the server setting off, a guest gets no card. The card reads the setting from the `anonymousLikes` flag on the detail response it already fetches.
 - [ ] The card is non-blocking, follows the once-only notice pattern, and respects reduced motion.
 - [ ] A dev-router entry reaches the card in one `goto`. The drift guard stays green.
 - [ ] Copy follows the player-facing voice and the help-copy pattern.

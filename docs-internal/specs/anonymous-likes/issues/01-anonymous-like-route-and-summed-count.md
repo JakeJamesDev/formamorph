@@ -1,6 +1,7 @@
 # 01: Anonymous Like route and summed count
 
-Status: ready-for-agent
+Status: in-progress
+Base: b37a29e7
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -27,6 +28,7 @@ The cap, the Claim, and the linked-account guards are tickets 02 and 03. This ti
 - [ ] A guest catalog or detail request with an Install header gets `liked`; without the header the flag stays absent.
 - [ ] The Install header is on the CORS allow list, and responses that read it vary on it. A preflight test proves it.
 - [ ] A route limiter keyed by client address covers the account like route and the new route.
-- [ ] The new setting is declared with a validator, defaults to off, and is readable where the client already reads settings.
+- [ ] The new setting is declared with a validator and defaults to off. No public settings read is added.
+- [ ] The catalog list response and the listing detail response each carry a top-level `anonymousLikes` boolean that follows the setting, the same for every viewer. A test proves it on both.
 - [ ] With the setting off, stored Anonymous Likes still count.
 - [ ] Tests run through HTTP over the in-memory database. Each guard has a test that fails when the guard is removed.

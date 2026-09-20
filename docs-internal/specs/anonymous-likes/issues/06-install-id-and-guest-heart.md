@@ -19,7 +19,8 @@ A guest in the app presses the heart and it fills, on the tile and in the detail
 - [ ] Catalog, detail, and like requests carry the Install header only when no session exists.
 - [ ] The reader part of the catalog cache tag includes the Install id, so guest and account caches never mix.
 - [ ] The browser capabilities gain a guest-likes field: true for the app, false for the website.
-- [ ] The heart toggles for a guest when the capability and the server setting are both on. Otherwise the existing guest handler runs.
+- [ ] The client learns the server setting from the `anonymousLikes` boolean on the catalog and detail responses. A missing flag means off. It is kept with the catalog cache.
+- [ ] The heart toggles for a guest when the capability and the server setting are both on. Otherwise the existing guest handler runs. A "setting off" refusal on a press also falls back to the guest handler.
 - [ ] The like coordinator picks the account route or the anonymous route by session. The update is optimistic, and the count comes from the response.
 - [ ] The cap refusal shows a short toast that offers sign-in. Other refusals restore the heart silently. A network failure toasts.
 - [ ] An own listing still shows a static count for a guest whose linked account wrote it (the server refusal restores the heart).
