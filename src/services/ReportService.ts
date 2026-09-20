@@ -1,11 +1,6 @@
 import AuthService from './AuthService';
+import { authHeaders, unwrap, type ErrorBody } from './staffApi';
 import { serverSupportsReports, type ReportGroup } from '@/lib/contentReports';
-
-/** Server error envelope: this API answers with `error`, older handlers elsewhere read `message`. */
-interface ErrorBody {
-  error?: string;
-  message?: string;
-}
 
 /** The caps and lists this server will accept, and — by existing at all — that it takes reports. */
 export interface ReportMeta {
@@ -39,20 +34,6 @@ class ReportService {
     return AuthService.API_URL;
   }
 
-  private authHeaders(withBody = false): HeadersInit {
-    const headers: Record<string, string> = { Authorization: `Bearer ${AuthService.token}` };
-    if (withBody) headers['Content-Type'] = 'application/json';
-    return headers;
-  }
-
-  private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as ErrorBody;
-      throw new Error(body.error || body.message || fallback);
-    }
-    return (await response.json()) as T;
-  }
-
   /**
    * What this server accepts, or null when it has never heard of reports — and `undefined` when the
    * question could not be answered at all.
@@ -66,7 +47,7 @@ class ReportService {
    */
   async fetchMeta(): Promise<ReportMeta | null | undefined> {
     try {
-      const response = await fetch(`${this.apiUrl}/reports/meta`, { headers: this.authHeaders() });
+      const response = await fetch(`${this.apiUrl}/reports/meta`, { headers: authHeaders() });
       // 404 is the feature being absent, which is a real answer. Anything else that failed — 401 on a
       // retired token, a 5xx, a proxy hiccup — is the question going unanswered.
       if (response.status === 404) return null;
@@ -94,7 +75,7 @@ class ReportService {
   }): Promise<FiledReport> {
     const response = await fetch(`${this.apiUrl}/reports`, {
       method: 'POST',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify(input),
     });
 
@@ -103,15 +84,15 @@ class ReportService {
       throw new AlreadyReportedError(body.error || 'You have already reported this.');
     }
 
-    const body = await this.unwrap<{ data: FiledReport }>(response, 'Failed to send this report');
+    const body = await unwrap<{ data: FiledReport }>(response, 'Failed to send this report');
 
     return body.data;
   }
 
   /** The open queue, one entry per reported target (staff only). */
   async fetchQueue(): Promise<ReportGroup[]> {
-    const response = await fetch(`${this.apiUrl}/reports`, { headers: this.authHeaders() });
-    const body = await this.unwrap<{ data: ReportGroup[] }>(response, 'Failed to load the report queue');
+    const response = await fetch(`${this.apiUrl}/reports`, { headers: authHeaders() });
+    const body = await unwrap<{ data: ReportGroup[] }>(response, 'Failed to load the report queue');
 
     return body.data || [];
   }
@@ -125,7 +106,7 @@ class ReportService {
    */
   async fetchOpenCount(): Promise<number> {
     try {
-      const response = await fetch(`${this.apiUrl}/reports/open-count`, { headers: this.authHeaders() });
+      const response = await fetch(`${this.apiUrl}/reports/open-count`, { headers: authHeaders() });
       if (!response.ok) return 0;
 
       const body = (await response.json()) as { open?: number };
@@ -150,11 +131,11 @@ class ReportService {
   }): Promise<{ resolved: number; notified: number }> {
     const response = await fetch(`${this.apiUrl}/reports/resolve`, {
       method: 'POST',
-      headers: this.authHeaders(true),
+      headers: authHeaders(true),
       body: JSON.stringify(input),
     });
 
-    const body = await this.unwrap<{ data: { resolved: number; notified: number } }>(
+    const body = await unwrap<{ data: { resolved: number; notified: number } }>(
       response,
       'Failed to resolve these reports',
     );
