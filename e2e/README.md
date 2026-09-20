@@ -123,6 +123,19 @@ Two caveats worth knowing:
   `mouse.wheel` reproduces the reflow (the list jumped 334 → 358px before the fix). Any future scroll
   spec has to use real input.
 
+[folder-fly-in.spec.ts](e2e/folder-fly-in.spec.ts) — the folder camera, in numbers. One recorder samples every
+animation frame of a fly-in and a fly-out on a scrolled library: the folder tile's rectangle in the library
+layer against the region's rectangle in the folder layer (one pixel apart, both directions), the sizes in
+between, the header's opacity and lift, and the left-out members' one shared opacity. A second group proves
+the clips in pixels. Each guard was verified by putting its fault back and watching the test go red.
+
+> **A clip is only proved by painted truth.** `getBoundingClientRect` reports an element's own box and knows
+> nothing about an ancestor's clip — a fix that widened one clip while an ancestor went on cutting at the
+> identical line passed exactly such a check and changed nothing on screen. `elementFromPoint` is no use
+> here either: the raised frame and the scroll viewport both carry `pointer-events: none` while the camera
+> runs, so a hit test returns neither layer. So the clip tests pause the camera on a frame, photograph a
+> strip, hide one layer, photograph the same strip again, and compare the two images.
+
 [site-pages.spec.ts](e2e/site-pages.spec.ts) — the formamorph.ai account pages: the login page inside a
 phone's width with no horizontal overflow, the register page and the not-found fallback, the palette,
 the shared Profile / Account Settings / Sign Out header at desktop and phone sizes, the one-time canceled
