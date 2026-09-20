@@ -44,3 +44,11 @@ Decisions from the spec:
 - [x] jsdom tests in the existing grid test files cover the cell/span match, the filtered view, and the detailed layout, and each fails when its behavior is broken
 - [x] `docs/Changelog.md` In-Progress entry added
 - [x] Four gates green; no export-shape change
+
+## Comments
+
+### Superseded in part
+
+The full-width miniature was not legible on screen. Ticket 04 replaces it with the cropped face: the
+board's top-left region, whole tiles only, with the `+N` badge back. The placement source and the
+transform approach from this ticket stay.
