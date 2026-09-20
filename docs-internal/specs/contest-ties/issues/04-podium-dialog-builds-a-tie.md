@@ -1,6 +1,7 @@
 # 04: Podium Dialog Builds a Tie
 
-Status: ready-for-agent
+Status: in-progress
+Base: d1785716
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
