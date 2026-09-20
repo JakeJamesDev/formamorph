@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 2.20.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.20.0** — the latest released version.
+> ✅ **2.0.0 – 2.19.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **2.19.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,12 +10,7 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.20.0** (just released below)._
-
----
-
-<details>
-<summary><strong>✅ 2.20.0 — Released 2026-09-20</strong> — Personas you play as, with pronouns and a Player Name chip — weighted Openings on worlds and entities — a Chat narration layout — shared prompt presets in Community Creations — likes without an account — Native Reasoning controls per endpoint (click to expand)</summary>
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **2.19.0** (just released below)._
 
 ### Minor Changes
 
@@ -157,8 +152,6 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **⚙️ Backend**
   - **The editor's preview rolls store keeps each roll by value id and takes a directed set.** `EditorPreviewRolls.setRoll(placement, valueId)` rolls one value for one placement and bumps `version`. A World placement moves every chip of its placeholder; a Unique placement moves only itself. The session store and the Test Bench's Opening rolls still key by text.
-
-</details>
 
 ---
 
