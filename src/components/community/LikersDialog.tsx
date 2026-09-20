@@ -29,7 +29,7 @@ type AuditMarks = Record<string, Pick<LikerAuditRow, 'groupId' | 'linkedToAuthor
  * A group the audit drew may span two addresses, so a box can hold more than one of these. A cluster
  * with no key is what the retention sweep left behind: rows to read, with nothing to remove them by.
  */
-interface MarkCluster {
+interface AnonCluster {
   addressKey: string | null;
   rows: AnonymousLikeRow[];
 }
@@ -54,36 +54,60 @@ interface LikersDialogProps {
 }
 
 /** "3 Anonymous Likes", or "1 Anonymous Like". */
-const countMarks = (count: number) => `${count} Anonymous ${count === 1 ? 'Like' : 'Likes'}`;
+const countAnon = (count: number) => `${count} Anonymous ${count === 1 ? 'Like' : 'Likes'}`;
 
 /** What a box of rows sharing an address calls itself, counting whichever kinds are in it. */
-const describeGroup = (accounts: number, marks: number) => {
+const describeGroup = (accounts: number, anonymous: number) => {
   const parts = [
     accounts > 0 && `${accounts} ${accounts === 1 ? 'account' : 'accounts'}`,
-    marks > 0 && countMarks(marks),
+    anonymous > 0 && countAnon(anonymous),
   ].filter(Boolean);
 
   return `${parts.join(' and ')} share a network address`;
 };
 
 /** Split rows into one cluster per address, with the keyless ones gathered at the end. */
-const clusterByAddress = (marks: AnonymousLikeRow[]): MarkCluster[] => {
+const clusterByAddress = (anonymous: AnonymousLikeRow[]): AnonCluster[] => {
   const byKey = new Map<string, AnonymousLikeRow[]>();
   const keyless: AnonymousLikeRow[] = [];
 
-  for (const mark of marks) {
-    if (!mark.addressKey) {
-      keyless.push(mark);
+  for (const anon of anonymous) {
+    if (!anon.addressKey) {
+      keyless.push(anon);
       continue;
     }
-    if (!byKey.has(mark.addressKey)) byKey.set(mark.addressKey, []);
-    byKey.get(mark.addressKey)?.push(mark);
+    if (!byKey.has(anon.addressKey)) byKey.set(anon.addressKey, []);
+    byKey.get(anon.addressKey)?.push(anon);
   }
 
-  const clusters: MarkCluster[] = [...byKey].map(([addressKey, rows]) => ({ addressKey, rows }));
+  const clusters: AnonCluster[] = [...byKey].map(([addressKey, rows]) => ({ addressKey, rows }));
   if (keyless.length > 0) clusters.push({ addressKey: null, rows: keyless });
 
   return clusters;
+};
+
+/**
+ * Split rows into the groups still worth drawing and the ones standing alone.
+ *
+ * Both kinds of row partition the same way, over one shared set of group numbers, so the rule that a
+ * group needs two members lives here rather than twice.
+ */
+const partitionByGroup = <T,>(items: T[], groupOf: (item: T) => number | null | undefined,
+  grouped: (id: number | null | undefined) => id is number) => {
+  const groups = new Map<number, T[]>();
+  const alone: T[] = [];
+
+  for (const item of items) {
+    const id = groupOf(item);
+    if (!grouped(id)) {
+      alone.push(item);
+      continue;
+    }
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id)?.push(item);
+  }
+
+  return { groups, alone };
 };
 
 /**
@@ -153,6 +177,22 @@ export function LikersDialog({
   const mayRemove = (row: LikerRow) =>
     canModerate(currentUser, { id: row.id, accountType: row.role ?? 'normal' });
 
+  /** Read the plain list again, quietly. Answers for another listing are dropped, as the audit's are. */
+  const refreshList = useCallback(async () => {
+    if (!listingId) return;
+
+    const asked = listingId;
+    try {
+      const result = await WorldStorageService.fetchLikers(asked);
+      if (shown.current !== asked) return;
+      setRows(result.rows);
+      setTotal(result.total);
+      setAnonymous(result.anonymous);
+    } catch {
+      // A failed re-read leaves what is on screen. The removal itself already answered.
+    }
+  }, [listingId]);
+
   const remove = async (row: LikerRow) => {
     if (!listingId) return;
 
@@ -204,10 +244,11 @@ export function LikersDialog({
    *
    * Both numbers on screen come from the answer rather than from arithmetic here: another moderator may
    * have been working the same listing, and an answer of nothing removed means they got there first. The
-   * rows are then read again rather than reported as a failure.
+   * rows are then read again rather than reported as a failure — the plain list when nobody has asked
+   * for an audit, because a race must not file a look at the people in the list.
    */
-  const removeMarks = async (action: Pending) => {
-    if (!listingId || action.kind === 'like') return;
+  const removeAnonymous = async (action: Exclude<Pending, { kind: 'like' }>) => {
+    if (!listingId) return;
 
     const asked = listingId;
     try {
@@ -221,7 +262,7 @@ export function LikersDialog({
       onLikesChanged?.(result.likes);
 
       if (result.removed === 0) {
-        void runAudit();
+        void (marks ? runAudit() : refreshList());
         return;
       }
 
@@ -250,46 +291,29 @@ export function LikersDialog({
       if (typeof id === 'number') size.set(id, (size.get(id) ?? 0) + 1);
     };
     for (const row of rows) count(marks[row.id]?.groupId);
-    for (const mark of anonymousRows) count(mark.groupId);
+    for (const anon of anonymousRows) count(anon.groupId);
 
     /** A group number only means something while two rows still hold it. */
     const grouped = (id: number | null | undefined): id is number =>
       typeof id === 'number' && (size.get(id) ?? 0) >= 2;
 
-    const members = new Map<number, LikerRow[]>();
-    const alone: LikerRow[] = [];
-    for (const row of rows) {
-      const id = marks[row.id]?.groupId;
-      if (!grouped(id)) {
-        alone.push(row);
-        continue;
-      }
-      if (!members.has(id)) members.set(id, []);
-      members.get(id)?.push(row);
-    }
+    const accounts = partitionByGroup(rows, (row) => marks[row.id]?.groupId, grouped);
+    const anonymous = partitionByGroup(anonymousRows, (anon) => anon.groupId, grouped);
 
-    const groupMarks = new Map<number, AnonymousLikeRow[]>();
-    const aloneMarks: AnonymousLikeRow[] = [];
-    for (const mark of anonymousRows) {
-      if (!grouped(mark.groupId)) {
-        aloneMarks.push(mark);
-        continue;
-      }
-      if (!groupMarks.has(mark.groupId)) groupMarks.set(mark.groupId, []);
-      groupMarks.get(mark.groupId)?.push(mark);
-    }
-
-    const ids = [...new Set([...members.keys(), ...groupMarks.keys()])].sort((a, b) => a - b);
+    const ids = [...new Set([...accounts.groups.keys(), ...anonymous.groups.keys()])]
+      .sort((a, b) => a - b);
 
     return {
       groups: ids.map((id) => ({
         id,
-        members: members.get(id) ?? [],
-        clusters: clusterByAddress(groupMarks.get(id) ?? []),
+        members: accounts.groups.get(id) ?? [],
+        clusters: clusterByAddress(anonymous.groups.get(id) ?? []),
       })),
-      alone,
-      aloneClusters: clusterByAddress(aloneMarks),
-      linkedToAuthor: rows.filter((row) => marks[row.id]?.linkedToAuthor).length,
+      alone: accounts.alone,
+      aloneClusters: clusterByAddress(anonymous.alone),
+      // Both kinds count: a listing whose only author-address rows are anonymous still found something.
+      linkedToAuthor: rows.filter((row) => marks[row.id]?.linkedToAuthor).length
+        + anonymousRows.filter((anon) => anon.linkedToAuthor).length,
     };
   }, [marks, rows, anonymousRows]);
 
@@ -383,11 +407,11 @@ export function LikersDialog({
   };
 
   /** One Anonymous Like: a time, a browser family, and whatever the grouping made of it. */
-  const markListItem = (mark: AnonymousLikeRow, index: number) => (
+  const anonListItem = (anon: AnonymousLikeRow, index: number) => (
     <li
-      key={`${mark.addressKey ?? 'ungrouped'}-${mark.likedAt}-${index}`}
+      key={`${anon.addressKey ?? 'ungrouped'}-${anon.likedAt}-${index}`}
       data-anonymous="true"
-      data-linked-to-author={mark.linkedToAuthor || undefined}
+      data-linked-to-author={anon.linkedToAuthor || undefined}
       className="flex items-center gap-3 rounded-md border border-dashed bg-background p-2 min-w-0"
     >
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -397,21 +421,21 @@ export function LikersDialog({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span className="text-label font-medium">Anonymous Like</span>
-          {mark.linkedToAuthor
+          {anon.linkedToAuthor
             && linkedBadge('This like came from an address the author also acted from')}
         </div>
         <p className="text-meta text-muted-foreground">
-          Liked {formatServerDateTime(mark.likedAt)}
-          {mark.browserFamily ? ` — ${mark.browserFamily}` : ''}
+          Liked {formatServerDateTime(anon.likedAt)}
+          {anon.browserFamily ? ` — ${anon.browserFamily}` : ''}
         </p>
       </div>
     </li>
   );
 
   /** The Anonymous Likes from one address, with the action that takes them off. */
-  const markClusterBlock = ({ addressKey, rows: marked }: MarkCluster, index: number) => (
+  const anonClusterBlock = ({ addressKey, rows: marked }: AnonCluster, index: number) => (
     <div key={addressKey ?? `ungrouped-${index}`} className="space-y-2">
-      <ul className="space-y-2">{marked.map(markListItem)}</ul>
+      <ul className="space-y-2">{marked.map(anonListItem)}</ul>
       {addressKey ? (
         <Button
           variant="outline"
@@ -420,7 +444,7 @@ export function LikersDialog({
           onClick={() => setPending({ kind: 'address', addressKey, count: marked.length })}
         >
           <HeartOff className="mr-2 h-4 w-4" />
-          Remove {countMarks(marked.length)} from this address
+          Remove {countAnon(marked.length)} from this address
         </Button>
       ) : (
         // Past ninety days the sweep has emptied the hash, so there is no address left to act on.
@@ -442,12 +466,12 @@ export function LikersDialog({
     if (pending.kind === 'address') {
       return {
         title: 'Remove these Anonymous Likes?',
-        description: `${countMarks(pending.count)} from this address come off this listing. No account like is touched.`,
+        description: `${countAnon(pending.count)} from this address come off this listing. No account like is touched.`,
       };
     }
     return {
       title: 'Remove every Anonymous Like?',
-      description: `All ${countMarks(pending.count)} come off this listing, including the ones the audit cannot group. No account like is touched.`,
+      description: `All ${countAnon(pending.count)} come off this listing, including the ones the audit cannot group. No account like is touched.`,
     };
   };
 
@@ -498,12 +522,13 @@ export function LikersDialog({
             {audited && (
               <p className="text-meta text-muted-foreground">
                 {audited.groups.length === 0 && audited.linkedToAuthor === 0
-                  ? 'No two of these accounts share a network address.'
+                  ? 'No two of these likes share a network address.'
                   : [
                       audited.groups.length > 0
                         && `${audited.groups.length} ${audited.groups.length === 1 ? 'group shares' : 'groups share'} an address`,
+                      // "Like" rather than "liker": a mark counts here and has nobody behind it.
                       audited.linkedToAuthor > 0
-                        && `${audited.linkedToAuthor} ${audited.linkedToAuthor === 1 ? 'liker shares' : 'likers share'} one with the author`,
+                        && `${audited.linkedToAuthor} ${audited.linkedToAuthor === 1 ? 'like shares' : 'likes share'} one with the author`,
                     ].filter(Boolean).join(' · ')}
               </p>
             )}
@@ -541,13 +566,13 @@ export function LikersDialog({
                     {group.members.length > 0 && (
                       <ul className="space-y-2">{group.members.map(likerListItem)}</ul>
                     )}
-                    {group.clusters.map(markClusterBlock)}
+                    {group.clusters.map(anonClusterBlock)}
                   </div>
                 ))}
                 {audited.alone.length > 0 && (
                   <ul className="space-y-2">{audited.alone.map(likerListItem)}</ul>
                 )}
-                {audited.aloneClusters.map(markClusterBlock)}
+                {audited.aloneClusters.map(anonClusterBlock)}
               </div>
             ) : (
               <ul className="space-y-2 pr-3">{rows.map(likerListItem)}</ul>
@@ -565,7 +590,7 @@ export function LikersDialog({
             setPending(null);
             if (!action) return;
             if (action.kind === 'like') void remove(action.row);
-            else void removeMarks(action);
+            else void removeAnonymous(action);
           }}
           onCancel={() => setPending(null)}
         />
