@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { dragBetween, dragTile, openLibrary, tileOrder, tiles } from './tileDrag';
+import { cameraSettled, dragBetween, dragTile, openLibrary, tileOrder, tiles } from './tileDrag';
 
 /**
  * Folders in the library, and what a drag may not do to them.
@@ -34,6 +34,13 @@ function cellCenter(page: Page, index: number): Promise<{ x: number; y: number }
   }, index);
 }
 
+/**
+ * The menu's own label for Create New Group. The trailing ellipsis is the app's mark for an entry that
+ * opens a dialog rather than acting at once, and the picks below match a label exactly — so the real
+ * character belongs here, once, rather than in every caller.
+ */
+const CREATE_NEW_GROUP = 'Create New Group…';
+
 /** Open one tile's context menu and pick an entry from it. */
 async function pickFromTileMenu(page: Page, tileIndex: number, item: string): Promise<void> {
   await tiles(page).nth(tileIndex).click({ button: 'right' });
@@ -41,10 +48,31 @@ async function pickFromTileMenu(page: Page, tileIndex: number, item: string): Pr
   await expect(page.getByRole('menu')).toHaveCount(0);
 }
 
-/** Fold the named tile into a fresh folder through the menu — the only way one is ever made. */
-async function newGroupFrom(page: Page, tileIndex: number): Promise<void> {
-  await pickFromTileMenu(page, tileIndex, 'Create New Group');
-  await expect(page.getByRole('heading', { name: 'New Group' })).toBeVisible();
+/**
+ * Fold the named tile into a fresh folder through the menu — the only way one is ever made.
+ *
+ * The menu entry opens the group picker on its create panel, so the folder is named before it exists.
+ * Every check below reads the folder back by its name, so the name is given here rather than defaulted
+ * by the app.
+ */
+async function newGroupFrom(page: Page, tileIndex: number, name = 'New Group'): Promise<void> {
+  await pickFromTileMenu(page, tileIndex, CREATE_NEW_GROUP);
+  await page.getByRole('textbox', { name: 'Group Name' }).fill(name);
+  await page.getByRole('button', { name: 'Create Group' }).click();
+  // Exact, so the picker's own "Create New Group" title cannot answer for the folder's name bar.
+  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+}
+
+/** Open a folder by its name bar and wait for the camera to land on its board. */
+async function openFolder(page: Page, name = 'New Group'): Promise<void> {
+  await page.getByRole('heading', { name, exact: true }).click();
+  await cameraSettled(page);
+}
+
+/** Leave the open folder and wait for the camera to land back on the library board. */
+async function backToLibrary(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Library' }).click();
+  await cameraSettled(page);
 }
 
 test.describe('folders are made from the menu', () => {
@@ -58,13 +86,13 @@ test.describe('folders are made from the menu', () => {
     expect((await boardOrder(page))[0]).toBe('New Group');
     expect(await tileOrder(page)).toEqual(names.slice(1));
 
-    await page.getByRole('heading', { name: 'New Group' }).click();
+    await openFolder(page);
 
     // The folder view is a room, not a popup: a way back, the name editable in place, and the members.
     await expect(page.getByRole('textbox', { name: 'Group name' })).toHaveValue('New Group');
     await expect(page.getByRole('img', { name: names[0] })).toBeVisible();
 
-    await page.getByRole('button', { name: 'Library' }).click();
+    await backToLibrary(page);
 
     await expect(page.getByRole('textbox', { name: 'Group name' })).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'New Group' })).toBeVisible();
@@ -79,7 +107,7 @@ test.describe('folders are made from the menu', () => {
     await pickFromTileMenu(page, 0, 'New Group');
 
     expect(await tileOrder(page)).toEqual(names.slice(2));
-    await page.getByRole('heading', { name: 'New Group' }).click();
+    await openFolder(page);
     await expect(page.getByRole('img', { name: names[0] })).toBeVisible();
     await expect(page.getByRole('img', { name: names[1] })).toBeVisible();
 
@@ -87,7 +115,7 @@ test.describe('folders are made from the menu', () => {
     await pickFromTileMenu(page, 1, 'Remove From Group');
     await expect(page.getByRole('img', { name: names[1] })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Library' }).click();
+    await backToLibrary(page);
     expect(await tileOrder(page)).toEqual(names.slice(1));
   });
 
@@ -98,7 +126,7 @@ test.describe('folders are made from the menu', () => {
     await newGroupFrom(page, 0);
     await pickFromTileMenu(page, 0, 'New Group');
     await pickFromTileMenu(page, 0, 'New Group');
-    await page.getByRole('heading', { name: 'New Group' }).click();
+    await openFolder(page);
     expect(await tileOrder(page)).toEqual(names.slice(0, 3));
 
     await dragTile(page, 2, 0);
@@ -106,8 +134,8 @@ test.describe('folders are made from the menu', () => {
     expect(await tileOrder(page)).toEqual(arranged);
 
     // Leaving the room and coming back is the cheapest proof the order was committed, not just drawn.
-    await page.getByRole('button', { name: 'Library' }).click();
-    await page.getByRole('heading', { name: 'New Group' }).click();
+    await backToLibrary(page);
+    await openFolder(page);
     expect(await tileOrder(page)).toEqual(arranged);
   });
 });
@@ -126,7 +154,7 @@ test.describe('a folder that can make way is moved, not filled', () => {
     // The folder took the drop as a neighbor would: it moved along, and its one member stayed its own.
     expect(await boardOrder(page)).toEqual([loose[0], 'New Group', ...loose.slice(1)]);
     expect(await tileOrder(page)).toEqual(loose);
-    await page.getByRole('heading', { name: 'New Group' }).click();
+    await openFolder(page);
     expect(await tileOrder(page)).toEqual([names[0]]);
   });
 
@@ -169,7 +197,7 @@ test.describe('tile sizes', () => {
 
     await tiles(page).first().click({ button: 'right' });
 
-    await expect(page.getByRole('menuitem', { name: 'Create New Group' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: CREATE_NEW_GROUP, exact: true })).toBeVisible();
     await expect(page.getByText('Tile Size')).toHaveCount(0);
   });
 });

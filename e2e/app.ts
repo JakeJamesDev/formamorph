@@ -48,9 +48,14 @@ export async function openApp(
   const seed = { ...BASE_SEED } as Record<string, string>;
   for (const [k, v] of Object.entries(extra)) seed[k] = typeof v === 'string' ? v : JSON.stringify(v);
   // A live event's poster is modal over the Main Menu and its id isn't known statically, so it can't be
-  // pre-dismissed through the seed like the intro and tutorials — answer the fetch with no events instead.
+  // pre-dismissed through the seed like the intro and tutorials — answer the fetches with no events
+  // instead. Both feeds, because the menu's poster reads two: `/events/active` for what is running and
+  // `/events?slim=1` for the contests waiting on results. Leaving the second live lets a real judging
+  // contest raise a modal over every spec that only wanted the Main Menu.
   // Contest specs, which are about events, opt back in with `liveEvents`.
-  if (!opts.liveEvents) await page.route('**/events/active*', (route) => route.fulfill({ json: [] }));
+  if (!opts.liveEvents) {
+    await page.route(/\/events(\/active)?(\?|$)/, (route) => route.fulfill({ json: { data: [] } }));
+  }
   await page.addInitScript((s: Record<string, string>) => {
     for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
   }, seed);
