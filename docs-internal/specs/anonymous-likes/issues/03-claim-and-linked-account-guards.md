@@ -22,6 +22,8 @@ A signed-in request with an Install header performs a **Claim**: the Install's A
 - [ ] Claim is idempotent, and listing totals are the same before and after it.
 - [ ] Claim sits behind the normal authenticated gate, so an account that has not accepted the Privacy Policy cannot claim.
 - [ ] The anonymous route refuses, in the spec's order: linked account suspended; linked account wrote the listing; linked account already Likes the listing (answers liked, not an error).
+- [ ] Each new refusal code joins the shared codes export that ticket 01 made in the anonymous-likes config.
+- [ ] The server repo's `CONTEXT.md` gains **Claim**.
 - [ ] The guest `liked` flag is true when the linked account Likes the listing.
 - [ ] A token for an account that has not accepted the Privacy Policy is handled as a guest request on the anonymous route.
 - [ ] Tests: overlap; own listing; Claim twice; signed-out refusal after a Claim; suspended linked account; erasure removing the link; unchanged totals.

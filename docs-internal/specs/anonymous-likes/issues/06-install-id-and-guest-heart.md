@@ -16,6 +16,8 @@ A guest in the app presses the heart and it fills, on the tile and in the detail
 ## Acceptance criteria
 
 - [ ] One module owns the Install id: `crypto.randomUUID()`, made on first need, stored under the existing key prefix, safe when storage throws.
+- [ ] The server accepts only a strict UUID in the Install header and answers `install_header_invalid` to anything else. Send the `crypto.randomUUID()` value unchanged. A stored id that is not a UUID is replaced.
+- [ ] Read the header name and the refusal codes from the server repo's anonymous-likes config (commit `48dd31d`). The codes so far: `anonymous_likes_off`, `listing_not_visible`, `install_header_invalid`, `liked_invalid`. Tickets 02 and 03 add the cap and linked-account codes.
 - [ ] Catalog, detail, and like requests carry the Install header only when no session exists.
 - [ ] The reader part of the catalog cache tag includes the Install id, so guest and account caches never mix.
 - [ ] The browser capabilities gain a guest-likes field: true for the app, false for the website.
