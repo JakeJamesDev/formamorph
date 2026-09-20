@@ -1,6 +1,8 @@
 # 01: Server Stores and Validates Shared Places
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in the FormamorphServer repo, commits `347b566` and `845b210` (unpushed). Key chosen: (event_id, place, position). All 1,596 server tests pass in 37 s wall time. Not deployed — the deploy log in `docs-internal/server.md` is the user's to write.
+Base: 6f797f86
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
