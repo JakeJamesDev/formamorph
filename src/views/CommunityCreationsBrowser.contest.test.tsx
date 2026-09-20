@@ -8,7 +8,7 @@ import EventService from '@/services/EventService';
 import { toast } from 'react-toastify';
 import { daysFrom, serverEvent, stubMatchMedia, withoutProse } from '@/test/serverEvents';
 import type { WorldRecord } from '@/components/WorldDetails';
-import type { ServerEvent } from '@/types';
+import type { ContestPlace, ServerEvent } from '@/types';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -93,7 +93,7 @@ const decided = (
  */
 const decidedWithPlaces = (
   event: ServerEvent,
-  podium: Array<[place: 1 | 2 | 3, worldId: string | null, worldName: string, authorName?: string]>,
+  podium: Array<[place: ContestPlace, worldId: string | null, worldName: string, authorName?: string]>,
 ): ServerEvent => ({
   ...event,
   resultsAnnouncedAt: at(-1),
@@ -303,9 +303,9 @@ describe('what the contest grid shows in each of its three states', () => {
   });
 
   it('gives every placed world its own card and its own metal, deleted listings included', async () => {
-    // Four cards where the old band had three columns keyed by place: two golds whose place repeats, and
-    // two bronzes whose listings are gone, so neither the place nor a missing id can be the key.
-    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Two golds whose place repeats, and two bronzes whose listings are gone, so neither the place nor a
+    // missing id can serve as the key.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     server.events = [decidedWithPlaces(
       contest({ startsAt: at(-20), endsAt: at(-2) }),
       [
@@ -325,8 +325,8 @@ describe('what the contest grid shows in each of its three states', () => {
       .toEqual([true, true, false, false]);
     expect(cards.map((card) => card.className.includes('border-bronze/50')))
       .toEqual([false, false, true, true]);
-    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/same key/);
-    warn.mockRestore();
+    expect(consoleError.mock.calls.flat().join(' ')).not.toMatch(/same key/);
+    consoleError.mockRestore();
   });
 
   it('badges each world that shares 1st place, and orders the grid by the podium', async () => {
