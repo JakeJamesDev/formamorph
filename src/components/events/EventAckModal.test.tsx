@@ -158,6 +158,24 @@ describe('EventAckModal', () => {
     await waitFor(() => expect(markRead).toHaveBeenCalledWith('m-results'));
   });
 
+  it('heads a tied result with the count, in the title case a heading takes', () => {
+    // The poster's headline is the first thing a player reads about the result, so naming one of two
+    // winners there is the one place a wrong summary cannot be corrected by reading on.
+    const tied = event({
+      resultsAnnouncedAt: daysFrom(-1),
+      resultsMessageId: 'm-results',
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'The Long Thaw', authorName: 'sedgewright' },
+        { place: 1, worldId: 'w2', worldName: 'Nine Frozen Bells', authorName: 'marrowmoss' },
+      ],
+    });
+
+    render(<EventAckModal events={[tied]} isAuthenticated />);
+
+    expect(screen.getByRole('heading', { name: '2 Worlds Tied for 1st' })).toBeInTheDocument();
+    expect(screen.queryByText(/The Long Thaw/)).not.toBeInTheDocument();
+  });
+
   it('posts that judging has begun for a contest closed with its results still to come', async () => {
     const markRead = vi.spyOn(MessageService, 'markRead').mockResolvedValue();
     // The one a player who launched the app after the deadline gets: closed, undecided, unacknowledged.

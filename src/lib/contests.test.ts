@@ -11,8 +11,13 @@ import type { WorldRecord } from '@/components/WorldDetails';
 
 const at = (offsetDays: number) => daysFrom(offsetDays);
 
-const entry = (id: string, likes: number, eventId: string | null = 'e1'): WorldRecord => ({
-  _id: id, name: id, likes, contest_event_id: eventId,
+const entry = (
+  id: string,
+  likes: number,
+  eventId: string | null = 'e1',
+  createdAt?: string,
+): WorldRecord => ({
+  _id: id, name: id, likes, contest_event_id: eventId, created_at: createdAt,
 });
 
 /** A podium out of world ids, gold first — the server's shape, minus the snapshots nobody asserts. */
@@ -161,6 +166,25 @@ describe('which listings belong to a contest', () => {
     expect(placementsBy(entry('w2', 0), [announcement])).toEqual([]);
   });
 
+  it('badges each world that shares a place with the place it shares, listing and local copy alike', () => {
+    // Two golds and the bronze that competition ranking puts after them. The lookup is by world, so a
+    // shared place is meant to need nothing new — this is what says so.
+    const tied = event({
+      resultsAnnouncedAt: at(0),
+      placements: [
+        { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'an author' },
+        { place: 1, worldId: 'w2', worldName: 'Also Gold', authorName: 'an author' },
+        { place: 3, worldId: 'w3', worldName: 'Bronze', authorName: 'an author' },
+      ],
+    });
+
+    expect(placementsBy(entry('w1', 0), [tied]).map((p) => p.place)).toEqual([1]);
+    expect(placementsBy(entry('w2', 0), [tied]).map((p) => p.place)).toEqual([1]);
+    expect(placeInContest(entry('w3', 0), tied)).toBe(3);
+    expect(placementsBy({ id: 'local-copy', name: 'Also Gold', sourceId: 'w2' }, [tied]).map((p) => p.place))
+      .toEqual([1]);
+  });
+
   it('never badges a world whose place lost its listing id', () => {
     // The snapshot survives a deletion; the id does not, and a record with no id must not answer to it.
     const decided = decidedWith([null], { id: 'won' });
@@ -209,6 +233,38 @@ describe('the order entries are shown in', () => {
   it('leaves the likes order alone when no placed world is in the catalog', () => {
     expect(orderContestEntries(entries, decidedWith(['gone']), 0.42).map((w) => w._id))
       .toEqual(['w2', 'w5', 'w3', 'w1', 'w4']);
+  });
+
+  it('pins worlds that share a place in the order the podium stores them, not in likes order', () => {
+    // w4 has the fewest likes of all five and w1 the second fewest, and both took 1st. Nothing but the
+    // podium's own array order can put w4 in front of w1 here.
+    const tied = event({
+      resultsAnnouncedAt: at(0),
+      placements: [
+        { place: 1, worldId: 'w4', worldName: 'w4', authorName: 'an author' },
+        { place: 1, worldId: 'w1', worldName: 'w1', authorName: 'an author' },
+        { place: 3, worldId: 'w3', worldName: 'w3', authorName: 'an author' },
+      ],
+    });
+
+    expect(orderContestEntries(entries, tied, 0.42).map((w) => w._id))
+      .toEqual(['w4', 'w1', 'w3', 'w2', 'w5']);
+  });
+
+  it('breaks level like counts by publish time, earliest first', () => {
+    const level = [entry('late', 5, 'e1', at(-2)), entry('early', 5, 'e1', at(-9)), entry('middle', 5, 'e1', at(-5))];
+    const judging = event({ startsAt: at(-20), endsAt: at(-2) });
+
+    expect(orderContestEntries(level, judging, 0.42).map((w) => w._id)).toEqual(['early', 'middle', 'late']);
+  });
+
+  it('sorts a listing whose publish time cannot be read last, rather than scrambling the rest', () => {
+    // A stamp that cannot be read must not beat one that can, and two of them must still compare level —
+    // which a sentinel of infinity would not, because the difference of two infinities is not a number.
+    const level = [entry('junk', 5, 'e1', 'not a date'), entry('none', 5), entry('dated', 5, 'e1', at(-9))];
+    const judging = event({ startsAt: at(-20), endsAt: at(-2) });
+
+    expect(orderContestEntries(level, judging, 0.42).map((w) => w._id)).toEqual(['dated', 'junk', 'none']);
   });
 });
 

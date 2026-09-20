@@ -2,7 +2,8 @@ import { Megaphone, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatServerDate } from '@/lib/serverDate';
-import { eventChipMarker, eventPhase, isContestEvent, placementsOf, resultsAnnounced } from '@/lib/serverEvents';
+import { eventChipMarker, eventPhase, firstPlaceOf, isContestEvent, resultsAnnounced } from '@/lib/serverEvents';
+import { tiedForFirstLine } from '@/lib/placeLabels';
 import type { EventBanners } from './useEventBanners';
 import type { ServerEvent } from '@/types';
 
@@ -37,9 +38,14 @@ function EventBannerCard(
   const Icon = bannerIcon(event);
 
   const dateRange = `${formatServerDate(event.startsAt)} – ${formatServerDate(event.endsAt)}`;
-  const [gold] = placementsOf(event);
+  // A shared 1st place is counted rather than listed: this line truncates on a narrow card, so two names
+  // in it are two names nobody reads the end of.
+  const first = firstPlaceOf(event);
+  const winner = first.length > 1
+    ? tiedForFirstLine(first.length)
+    : (first[0] ? `${first[0].worldName} by ${first[0].authorName}` : '');
   const line = eventPhase(event) === 'end' && resultsAnnounced(event)
-    ? `Results announced${gold ? ` — ${gold.worldName} by ${gold.authorName}` : ''}`
+    ? `Results announced${winner ? ` — ${winner}` : ''}`
     : `${dateRange} · ${event.bannerText}`;
 
   // The whole card leads where its own action does: a contest's entries. An announcement has nowhere to

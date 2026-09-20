@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  daysRemaining, eventChipMarker, eventPhase, isContestEvent, phaseMessageId, placeOf, placementsOf,
-  resultsAnnounced,
+  daysRemaining, eventChipMarker, eventPhase, firstPlaceOf, isContestEvent, phaseMessageId, placeOf,
+  placementsOf, resultsAnnounced,
 } from './serverEvents';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
 import type { ServerEvent } from '@/types';
@@ -84,6 +84,43 @@ describe('placeOf', () => {
     // The snapshot keeps the name; the id does not survive, and a null must not answer to a null.
     expect(placeOf(podium, null)).toBeNull();
     expect(placeOf(podium, undefined)).toBeNull();
+  });
+});
+
+describe('firstPlaceOf', () => {
+  const tied = event({
+    resultsAnnouncedAt: at(0),
+    placements: [
+      { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'a' },
+      { place: 1, worldId: 'w2', worldName: 'Also Gold', authorName: 'b' },
+      { place: 3, worldId: 'w3', worldName: 'Bronze', authorName: 'c' },
+    ],
+  });
+
+  it('hands back the one winner of an ordinary podium', () => {
+    expect(firstPlaceOf(decided()).map((p) => p.worldId)).toEqual(['w1']);
+  });
+
+  it('hands back every world that shares 1st, in the order the podium stores them', () => {
+    expect(firstPlaceOf(tied).map((p) => p.worldId)).toEqual(['w1', 'w2']);
+  });
+
+  it('reads the place rather than the front of the list, so a reordered podium still answers', () => {
+    // Filtering by place is what makes this safe against an archive row whose order is not the
+    // server's own; taking the head would name bronze the winner here.
+    const reordered = event({
+      resultsAnnouncedAt: at(0),
+      placements: [
+        { place: 3, worldId: 'w3', worldName: 'Bronze', authorName: 'c' },
+        { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'a' },
+      ],
+    });
+
+    expect(firstPlaceOf(reordered).map((p) => p.worldId)).toEqual(['w1']);
+  });
+
+  it('is empty for a contest with no podium at all', () => {
+    expect(firstPlaceOf(event())).toEqual([]);
   });
 });
 

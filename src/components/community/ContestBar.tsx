@@ -8,8 +8,8 @@ import {
 import { ContestRulesDialog } from '@/components/community/ContestRulesDialog';
 import { formatServerDate } from '@/lib/serverDate';
 import { contestPhase, contestSections, type ContestPhase } from '@/lib/contests';
-import { daysRemaining, placementsOf } from '@/lib/serverEvents';
-import { PLACE_COLORS, PLACE_LABELS } from '@/lib/placeLabels';
+import { daysRemaining, firstPlaceOf, placementsOf } from '@/lib/serverEvents';
+import { PLACE_COLORS, PLACE_LABELS, PLACE_PLATES, tiedForFirstLine } from '@/lib/placeLabels';
 import type { ServerEvent } from '@/types';
 
 interface ContestBarProps {
@@ -26,13 +26,16 @@ interface ContestBarProps {
 function statusLine(contest: ServerEvent, phase: ContestPhase): string {
   if (phase === 'decided') {
     // The gold name with a count of the rest, rather than the whole podium: the band below spells it out,
-    // and a bar that lists three worlds pushes the entries it sits above off the screen.
+    // and a bar that lists three worlds pushes the entries it sits above off the screen. A shared 1st is
+    // the same argument one step further — a count stands in for the names there too.
     const podium = placementsOf(contest);
-    if (podium.length === 0) return 'Results announced';
-    const [gold] = podium;
-    const runnersUp = podium.length - 1;
-    return `Won by ${gold.worldName} — ${gold.authorName}`
-      + (runnersUp > 0 ? ` · ${runnersUp} more placed` : '');
+    const first = firstPlaceOf(contest);
+    if (first.length === 0) return 'Results announced';
+    const runnersUp = podium.length - first.length;
+    const lead = first.length > 1
+      ? tiedForFirstLine(first.length)
+      : `Won by ${first[0].worldName} — ${first[0].authorName}`;
+    return lead + (runnersUp > 0 ? ` · ${runnersUp} more placed` : '');
   }
   if (phase === 'judging') return `Closed ${formatServerDate(contest.endsAt)} — being judged`;
   const days = daysRemaining(contest);
@@ -108,17 +111,25 @@ interface ContestPodiumProps {
  * Every announced place in order, so results read like results rather than like one name with the rest
  * left implied. Reads the snapshots the announcement stamped onto the contest rather than the entry grid:
  * a placed world that has since been deleted still placed, and the archive says so.
+ *
+ * A wrapping row rather than three columns, because a podium is no longer three worlds: a shared place
+ * puts any number on it, and a fixed column count would either crush them or drop the extras. Each card
+ * wears its own metal, which is the only thing telling two worlds that share a place from two that did
+ * not — the plate is the answer, and tied cards are deliberately identical.
  */
 export function ContestPodium({ contest }: ContestPodiumProps) {
   const podium = placementsOf(contest);
   if (podium.length === 0) return null;
 
   return (
-    <div className="shrink-0 mx-6 mt-4 grid gap-2 sm:grid-cols-3">
-      {podium.map(({ place, worldName, authorName }) => (
+    <div className="shrink-0 mx-6 mt-4 flex flex-wrap gap-2">
+      {podium.map(({ place, worldId, worldName, authorName }, index) => (
+        // Keyed by world rather than by place, which repeats on a tie. A deleted listing hands back no
+        // id at all, so the position stands in for it there.
         <div
-          key={place}
-          className="flex items-center gap-3 rounded-lg border bg-muted/40 px-4 py-3 min-w-0"
+          key={worldId ?? `placed-${index}`}
+          data-testid="podium-card"
+          className={cn('flex grow basis-64 items-center gap-3 rounded-lg border px-4 py-3 min-w-0', PLACE_PLATES[place])}
         >
           <Trophy className={cn('h-6 w-6 shrink-0', PLACE_COLORS[place])} aria-hidden />
           <div className="min-w-0">
