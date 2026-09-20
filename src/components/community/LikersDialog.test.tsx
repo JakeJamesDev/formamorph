@@ -207,7 +207,7 @@ describe('removing one like', () => {
     show({ onLikesChanged });
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
     await waitFor(() => expect(removeLike).toHaveBeenCalledWith('w1', 'u1'));
     // The row leaves, the header total drops with it, and the parent gets the server's own count.
@@ -224,7 +224,7 @@ describe('removing one like', () => {
     show();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('You cannot moderate them'));
     expect(screen.getByText('wren_hallow')).toBeTruthy();
@@ -372,7 +372,7 @@ describe('auditing the network record behind the likes', () => {
     await pressAudit();
 
     expect(await screen.findByText(/1 group shares an address/)).toBeTruthy();
-    expect(screen.getByText(/1 liker shares one with the author/)).toBeTruthy();
+    expect(screen.getByText(/1 like shares one with the author/)).toBeTruthy();
   });
 
   it('counts more than one of each in the summary', async () => {
@@ -388,7 +388,7 @@ describe('auditing the network record behind the likes', () => {
     await pressAudit();
 
     expect(await screen.findByText(/2 groups share an address/)).toBeTruthy();
-    expect(screen.getByText(/2 likers share one with the author/)).toBeTruthy();
+    expect(screen.getByText(/2 likes share one with the author/)).toBeTruthy();
   });
 
   it('throws away an audit that lands after the dialog moved to another listing', async () => {
@@ -435,7 +435,7 @@ describe('auditing the network record behind the likes', () => {
     show();
     await pressAudit();
 
-    expect(await screen.findByText('No two of these accounts share a network address.')).toBeTruthy();
+    expect(await screen.findByText('No two of these likes share a network address.')).toBeTruthy();
     expect(screen.queryByText(/accounts share a network address$/)).toBeNull();
   });
 
@@ -449,7 +449,7 @@ describe('auditing the network record behind the likes', () => {
     await screen.findByText('ring_1');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove the like by ring_1' }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
     await waitFor(() => expect(removeLike).toHaveBeenCalledWith('w1', 'r1'));
     // The row leaves, the group counts itself again, and none of it costs another look at the record.
@@ -472,11 +472,11 @@ describe('auditing the network record behind the likes', () => {
     await screen.findByText('2 accounts share a network address');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove the like by pair_1' }));
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
     // One account cannot share an address with anybody, so the box it was in is no longer a finding.
     await waitFor(() => expect(screen.queryByText('2 accounts share a network address')).toBeNull());
-    expect(screen.getByText('No two of these accounts share a network address.')).toBeTruthy();
+    expect(screen.getByText('No two of these likes share a network address.')).toBeTruthy();
     expect(screen.getByText('pair_2')).toBeTruthy();
   });
 
@@ -545,7 +545,7 @@ describe('the Anonymous Likes on a listing', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Audit the likes/ }));
 
   const confirm = async () =>
-    fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
   /** The anonymous rows on screen, which carry no name to find them by. */
   const markEls = () => screen.queryAllByRole('listitem').filter((el) => el.dataset.anonymous === 'true');
@@ -797,5 +797,69 @@ describe('the Anonymous Likes on a listing', () => {
     expect(within(claimed).getByText(/^Liked/)).toBeTruthy();
     expect(within(claimed).getByText(/^Claimed \w/)).toBeTruthy();
     expect(within(plain).queryByText('Claimed')).toBeNull();
+  });
+});
+
+describe('what the audit summary counts, and what a race re-reads', () => {
+  const anonRow = (over: Partial<AnonymousLikeRow> = {}): AnonymousLikeRow => ({
+    likedAt: '2026-08-30 12:00:00',
+    browserFamily: 'Chrome',
+    groupId: null,
+    linkedToAuthor: false,
+    addressKey: 'key-a',
+    ...over,
+  });
+
+  const withList = (rows: LikerRow[], anonymous = 0, total = rows.length) =>
+    vi.spyOn(WorldStorageService, 'fetchLikers').mockResolvedValue({ total, rows, anonymous });
+
+  const withAudit = (anonymousRows: AnonymousLikeRow[], anonymous = anonymousRows.length) =>
+    vi.spyOn(WorldStorageService, 'fetchLikersAudit')
+      .mockResolvedValue({ total: 0, rows: [], anonymous, anonymousRows });
+
+  it('counts an anonymous like that came from the author’s address in the summary', async () => {
+    withList([], 1, 0);
+    withAudit([anonRow({ linkedToAuthor: true })]);
+
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: /Audit the likes/ }));
+
+    // With no account in the list, an author match lives entirely on the anonymous side. A summary
+    // reading only the accounts would report nothing found while a flagged row sits under it.
+    expect(await screen.findByText(/1 like shares one with the author/)).toBeTruthy();
+    expect(screen.queryByText('No two of these likes share a network address.')).toBeNull();
+  });
+
+  it('adds the two kinds together in that count', async () => {
+    vi.spyOn(WorldStorageService, 'fetchLikers')
+      .mockResolvedValue({ total: 1, rows: [liker()], anonymous: 1 });
+    vi.spyOn(WorldStorageService, 'fetchLikersAudit').mockResolvedValue({
+      total: 1,
+      rows: [{ ...liker(), groupId: null, linkedToAuthor: true }],
+      anonymous: 1,
+      anonymousRows: [anonRow({ linkedToAuthor: true })],
+    });
+
+    show();
+    fireEvent.click(await screen.findByRole('button', { name: /Audit the likes/ }));
+
+    expect(await screen.findByText(/2 likes share one with the author/)).toBeTruthy();
+  });
+
+  it('re-reads the plain list, not the audit, when a race hits before anybody audited', async () => {
+    const fetchLikers = withList([], 2, 0);
+    const fetchAudit = withAudit([anonRow(), anonRow()]);
+    vi.spyOn(WorldStorageService, 'removeAnonymousLikes')
+      .mockResolvedValue({ removed: 0, likes: 0, anonymous: 0 });
+
+    show();
+
+    // Clearing them all is reachable without ever pressing Audit, so the quiet re-read on a race must
+    // not file a look at the people in the list.
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove all Anonymous Likes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
+
+    await waitFor(() => expect(fetchLikers).toHaveBeenCalledTimes(2));
+    expect(fetchAudit).not.toHaveBeenCalled();
   });
 });
