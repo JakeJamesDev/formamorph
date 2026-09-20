@@ -856,7 +856,7 @@ describe('fetchCatalog', () => {
     vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }, 200, 'W/"new"'));
 
     expect(await WorldStorageService.fetchCatalog()).toEqual({
-      status: 'fresh', data: [{ id: 'w1' }], tag: 'W/"new"',
+      status: 'fresh', data: [{ id: 'w1' }], tag: 'W/"new"', anonymousLikes: false,
     });
   });
 
@@ -864,7 +864,7 @@ describe('fetchCatalog', () => {
     vi.mocked(fetch).mockResolvedValue(catalogRes({ data: [{ id: 'w1' }] }));
 
     expect(await WorldStorageService.fetchCatalog()).toEqual({
-      status: 'fresh', data: [{ id: 'w1' }], tag: null,
+      status: 'fresh', data: [{ id: 'w1' }], tag: null, anonymousLikes: false,
     });
   });
 

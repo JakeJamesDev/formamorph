@@ -105,7 +105,7 @@ const pickDate = (day: string) => {
  */
 const serveChangelog = (entries: ChangelogEntry[] | null) =>
   vi.spyOn(WorldStorageService, 'fetchListingDetails')
-    .mockResolvedValue({ changelog: entries === null ? null : changelogOf({ changelog: entries }) });
+    .mockResolvedValue({ anonymousLikes: false, changelog: entries === null ? null : changelogOf({ changelog: entries }) });
 
 const show = (props: Record<string, unknown> = {}) =>
   render(

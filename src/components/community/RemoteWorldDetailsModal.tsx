@@ -45,6 +45,7 @@ import type { ListingVisibility } from "@/lib/publishLinks";
 import type { WorldAssociation } from "@/lib/compatibleWorlds";
 import type { ServerEvent, VrmLicense } from "@/types";
 import type { CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
+import { guestMayPress } from '@/lib/anonymousLikes';
 
 interface RemoteWorldDetailsModalProps {
   open: boolean;
@@ -67,6 +68,10 @@ interface RemoteWorldDetailsModalProps {
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** Starts authentication for a guest Like without mutating the listing. */
   onGuestLike?: (world: WorldRecord) => void;
+  /** Whether a guest may press the heart here. Off sends them to `onGuestLike` as before. */
+  guestLikes?: boolean;
+  /** Reports what this listing's response said about guest likes, which is the fresher answer. */
+  onAnonymousLikes?: (on: boolean) => void;
   /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
   contests?: ServerEvent[];
   /** Records a new like count after a staff removal, so the card behind this modal agrees. */
@@ -97,7 +102,8 @@ const APP_DETAILS_CAPABILITIES: Pick<CommunityBrowserCapabilities, 'localLibrary
 export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
-  currentUser, onLike, onGuestLike, contests = [], onLikesChanged, openLikersOnMount = false,
+  currentUser, onLike, onGuestLike, guestLikes = false, onAnonymousLikes,
+  contests = [], onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -235,6 +241,10 @@ export function RemoteWorldDetailsModal({
     const reqId = ++changelogReqRef.current;
     const details = await WorldStorageService.fetchListingDetails(worldId);
     if (reqId !== changelogReqRef.current) return;
+
+    // The fresher answer about the setting: this response was read now, and the catalog may be a visit
+    // old. A failed request says nothing about it, so nothing is reported.
+    if (details) onAnonymousLikes?.(details.anonymousLikes);
 
     const entries = details?.changelog ?? null;
     setChangelog(entries);
@@ -507,8 +517,10 @@ export function RemoteWorldDetailsModal({
                         likes={world.likes || 0}
                         liked={world.liked}
                         size="md"
-                        // Static on your own listing, which the server refuses.
-                        onToggle={capabilities.likes && onLike && isAuthenticated && !isOwnListing
+                        // Static on your own listing, which the server refuses. A guest's own listing is
+                        // the server's to spot, from the account that claimed this Install.
+                        onToggle={capabilities.likes && onLike
+                          && (isAuthenticated ? !isOwnListing : guestMayPress(guestLikes, world.liked))
                           ? (next) => onLike(world, next)
                           : capabilities.likes && !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
                         // Staff read the count as a way into who is behind it; everybody else keeps the
