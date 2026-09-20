@@ -11,7 +11,7 @@ The Podium dialog also hides the standings. Its entry grid is in catalog order, 
 
 ## Solution
 
-Staff can give the same place to two or more worlds. Places follow competition ranking: two worlds in 1st place make the next world 3rd (1, 1, 3). A world can be on the podium when its place is 3 or lower, so three worlds tied for 1st make a full podium, and 1, 2, 3, 3, 3 is valid. No limit applies to how many worlds share a place.
+Staff can give the same place to two or more worlds. A tie never removes a place. Places run 1st, 2nd, 3rd with no gaps, and staff decide how many worlds hold each one: two worlds in 1st place are followed by 2nd place (1, 1, 2, 3). No limit applies to how many worlds share a place, so staff alone decide how many winners a contest has.
 
 Staff decide ties by judgment. The server does not compare like counts, so staff can also share a place after they discount suspect likes.
 
@@ -24,10 +24,10 @@ In the Podium dialog, the podium is an ordered list. Each row below the first ha
 1. As an admin, I want to give 1st place to two worlds, so that a tied contest has an honest result.
 2. As an admin, I want to share 2nd or 3rd place in the same way, so that a tie anywhere on the podium has one answer.
 3. As an admin, I want any number of worlds to share a place, so that a five-way tie does not stop me.
-4. As an admin, I want the place after a tie to skip (1, 1, 3), so that the podium follows the ranking rule players know from sport.
+4. As an admin, I want 2nd and 3rd place to stay available after a tie (1, 1, 2, 3), so that I decide how many winners a contest has and no ranking rule decides it for me.
 5. As an admin, I want a **Tie With Above** toggle on each podium row below the first, so that I make a tie with one action.
-6. As an admin, I want the dialog to derive the places from my list, so that I cannot build 1, 1, 2 by mistake.
-7. As an admin, I want the dialog to refuse a world whose derived place is above 3, so that a full podium stays full.
+6. As an admin, I want the dialog to derive the places from my list, so that I cannot build a podium with a gap by mistake.
+7. As an admin, I want a world added after 3rd place to share 3rd place, so that no click is refused and no 4th place exists.
 8. As an admin, I want 1, 2, 3, 3 to be allowed, so that a tie for 3rd place does not cost a world its place.
 9. As an admin, I want the entry grid sorted by likes, highest first, so that I see the standings while I judge.
 10. As an admin, I want entries with equal like counts marked in the grid, so that I see every tie before I announce.
@@ -64,7 +64,7 @@ In the Podium dialog, the podium is an ordered list. Each row below the first ha
 **Ranking rule**
 
 - A podium is a list of placements. Each placement has a place of 1, 2, or 3. The `ContestPlace` type stays `1 | 2 | 3`.
-- A podium is valid when its places follow competition ranking. Sort the placements by place. The first place must be 1. Each later placement has the same place as the one before it, or a place equal to its 1-based index in the sorted list. Any place above 3 is invalid. Examples: `1,1,3` valid; `1,1,1` valid; `1,2,3,3,3` valid; `1,1,2` invalid; `2` invalid; `1,1,1,3` invalid (index 4).
+- A podium is valid when its places run from 1 with no gaps (dense ranking). Sort the placements by place. The first place must be 1. Each later placement has the same place as the one before it, or that place plus 1. Any place above 3 is invalid. Examples: `1,1,2` valid; `1,1,2,3` valid; `1,1,1` valid; `1,2,3,3,3` valid; `1,1,2,2,3` valid; `1,1,3` invalid (gap); `2` invalid; `1,3` invalid. This replaces competition ranking (1, 1, 3), which tickets 01 and 04 built first; tickets 08 and 09 make the change.
 - One place per world stays a hard rule. One world per place is removed.
 - The rule is one pure function on each side: the server validator and a client helper that derives places from the dialog's list. The two must agree; tests on both sides use the same example table.
 
@@ -96,7 +96,7 @@ In the Podium dialog, the podium is an ordered list. Each row below the first ha
 
 - The draft is an ordered list of rows, each with a world id and a tied-with-above flag. The first row's flag is always off. A pure helper derives the place of each row by the ranking rule.
 - The fixed three-slot strip becomes a list of rows. Each row shows its derived place with the metal plate, the world name, a clear button, and (below the first row) the **Tie With Above** toggle.
-- A world can join the draft when some valid place exists for it. A click appends the row untied when its derived place would be 3 or lower. When the untied place would be above 3 and the tied place fits, the row joins tied with the row above: from 1, 1, 1 a fourth click gives 1, 1, 1, 1, and from 1, 2, 3 it gives 1, 2, 3, 3. Every podium the ranking rule accepts is reachable by clicks and toggles. A tied append always fits, because it shares the last row's place, so a click on an unplaced entry is never refused and the podium has no size limit. Only the toggle refuses. A toggle that would push any row past 3rd place is refused, which includes switching off the tie on such a row.
+- A world can join the draft when some valid place exists for it. A click appends the row untied when its derived place would be 3 or lower. An untied row takes the place of the row above plus 1, so from 1, 1, 1 a fourth click gives 1, 1, 1, 2. When the last row already holds 3rd place, the new row joins tied with it: from 1, 2, 3 a click gives 1, 2, 3, 3. Every podium the ranking rule accepts is reachable by clicks and toggles. A tied append always fits, because it shares the last row's place, so a click on an unplaced entry is never refused and the podium has no size limit. Only the toggle refuses. A toggle that would push any row past 3rd place is refused, which includes switching off the tie on such a row.
 - The announcement preview uses the server broadcast's own labels ("First place", "Second place", "Third place"), not the badge labels, because the preview must match the message players receive.
 - Click-to-place stays: a click on an unplaced entry appends it, a click on a placed entry trades it with the row below, and a click on the last row removes it. The tied flag stays with the row position, not with the world, so a trade never changes the shape of the podium. Removal has one exception: when the removed row opened a run (its flag was off) and the next row was tied to it, the next row becomes the opener and its flag goes off. The survivors of a run keep their place; they never join the run above. From 1, 2, 2, removing the first 2nd-place world leaves 1, 2.
 - The dialog shows tied rows in publish-time order, so it matches what the server will store. After every action, a pure function sorts the world ids inside each run of rows that share a place by the listing's `created_at`, earliest first. A missing time sorts last and keeps its relative order. Because a trade inside a run would be sorted straight back, a click on a placed world trades it with the first row below its run, and a click on a world in the last run removes it.
@@ -131,11 +131,11 @@ In the Podium dialog, the podium is an ordered list. Each row below the first ha
 - **Server schema seam** (prior art: the event placements migration suite). Cover: two rows with the same place accepted, the `position` column, existing rows migrated with position 0, the step safe to run twice, a deleted world's row kept with its place and position, and the place check still refusing 4.
 - **Client pure-lib seam** (primary; prior art: the contests, server-events, and admin-events unit tests). Cover: the place-derivation helper against the same example table, the 1st-place helper, the status lines for one winner and for a tie, the entry order with a shared place, and the publish-time tiebreaker.
 - **Client component seam** (RTL with service mocks; prior art: the Podium dialog suite and the badge rendering tests). Cover: the toggle makes a tie and the places derive again, a toggle or click that would pass 3rd place is refused, a trade keeps the podium shape, clear closes the gap, edit mode opens with ties intact, the request body carries repeated places, the grid sorts by likes and marks equal counts, the preview shows the joined line, and the band renders N cards with no duplicate-key warning. Replace the "never lets one world hold two places" style tests that assert the old slot model where they conflict; keep the one-place-per-world assertion.
-- **E2E**: extend the contest journey with one tied announce that shows on the band and on a card badge. This runs outside the four gates. The tied announce replaces the journey's existing announce, because a contest announces once: one contest, one announce, driven through the Podium dialog. Where the seeded contest has enough entries, the podium is 1, 1, 3, so the same run proves a shared place and a sole place. The untied-only podium is covered at the component and lib seams, not in the journey.
+- **E2E**: extend the contest journey with one tied announce that shows on the band and on a card badge. This runs outside the four gates. The tied announce replaces the journey's existing announce, because a contest announces once: one contest, one announce, driven through the Podium dialog. Where the seeded contest has enough entries, the podium is 1, 1, 2, so the same run proves a shared place and a sole place. The untied-only podium is covered at the component and lib seams, not in the journey.
 
 ## Out of Scope
 
-- A place above 3rd, or dense ranking (1, 1, 2).
+- A place above 3rd, competition ranking (1, 1, 3), or a podium with a gap.
 - A server check that tied worlds have equal like counts.
 - A tie marker in any player-facing label or badge.
 - A real contest-entry timestamp on listings. Publish time stands in for it.
