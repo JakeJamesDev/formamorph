@@ -1,7 +1,7 @@
 # 11: Cutover: switch Anonymous Likes on
 
 Status: ready-for-human
-Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12
+Blocked by: 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 12, 13
 Recommended model: N/A — human task, no code
 Reasoning effort: N/A
 Spec: ../spec.md (Further Notes › Rollout order)
