@@ -19,7 +19,7 @@ import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/li
 import { isContestEvent } from "@/lib/serverEvents";
 import { useContests } from "@/lib/useContests";
 import { ContestBar, ContestPodium } from "@/components/community/ContestBar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pager } from "@/components/ui/pagination";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
@@ -813,7 +813,7 @@ const CommunityCreationsBrowser = ({
         const active = browseTab === key;
         return (
           <React.Fragment key={key}>
-            {key === 'contest' && <div className="my-2 h-px bg-border" />}
+            {(key === 'prompt' || key === 'contest') && <div role="separator" className="my-2 h-hairline bg-border" />}
             <button
               onClick={() => setBrowseTab(key)}
               aria-current={active ? 'true' : undefined}
@@ -851,12 +851,15 @@ const CommunityCreationsBrowser = ({
       </SelectTrigger>
       <SelectContent>
         {sections.map(({ key, label, icon: Icon }) => (
-          <SelectItem key={key} value={key}>
-            <span className="flex items-center gap-2">
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </span>
-          </SelectItem>
+          <React.Fragment key={key}>
+            {(key === 'prompt' || key === 'contest') && <SelectSeparator />}
+            <SelectItem value={key}>
+              <span className="flex items-center gap-2">
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </span>
+            </SelectItem>
+          </React.Fragment>
         ))}
       </SelectContent>
     </Select>

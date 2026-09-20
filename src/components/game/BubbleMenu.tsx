@@ -20,7 +20,7 @@ export function BubbleActionIcon({ action }: { action: BubbleAction }) {
 }
 
 /** One action as a row icon button, with its label as tooltip and accessible name. */
-export function BubbleActionButton({ action }: { action: BubbleAction }) {
+export function BubbleActionButton({ action, className }: { action: BubbleAction; className?: string }) {
   return (
     <Tip tip={action.label}>
       <Button
@@ -30,7 +30,7 @@ export function BubbleActionButton({ action }: { action: BubbleAction }) {
         aria-busy={action.spinning || undefined}
         disabled={action.disabled}
         onClick={action.run}
-        className={cn('h-8 w-8', action.section === 'destructive' && 'text-destructive hover:text-destructive')}
+        className={cn('h-8 w-8', action.section === 'destructive' && 'text-destructive hover:text-destructive', className)}
       >
         <BubbleActionIcon action={action} />
       </Button>

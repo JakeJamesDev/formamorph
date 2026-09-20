@@ -27,8 +27,9 @@ export interface EntityFieldGroupProps {
   ownerId?: string;
 }
 
-/** Name, Aliases, and Type: who the entity is. Aliases and Type are Advanced only. */
-export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers }: EntityFieldGroupProps & {
+/** Identity fields, with Advanced-only Aliases, Persona, and Type. */
+export const EntityIdentityFields = ({ value, onChange, placeholders = [], ownerId, nameHandlers, home }: EntityFieldGroupProps & {
+  home: EntityHome;
   /** What reports a committed rename of this entity, so the code that reaches its placeholders by path can
    *  follow. Absent outside the World Editor, where there is no world code to rewrite. */
   nameHandlers?: RenameFieldHandlers;
@@ -69,9 +70,10 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
           id={`entity-pronouns-${value.id}`}
           value={value.pronouns || ''}
           onChange={(e) => onChange('pronouns', e.target.value)}
-          placeholder="she/her, he/him, they/them"
+          placeholder="she/her, he/him, it/its"
         />
       </div>
+      <EntityPersonaField value={value} onChange={onChange} home={home} />
       {advanced && (
         <div className="space-y-2">
           <Label>Type</Label>
@@ -253,8 +255,7 @@ export const EntityProfileFields = ({ columnsClassName, nameHandlers, locations,
       <div className={`grid gap-4 ${columnsClassName}`}>
         <ImageGallery />
         <div className="space-y-4">
-          <EntityIdentityFields {...props} nameHandlers={nameHandlers} />
-          <EntityPersonaField {...props} home={home} />
+          <EntityIdentityFields {...props} nameHandlers={nameHandlers} home={home} />
           <ImageTags />
         </div>
       </div>
