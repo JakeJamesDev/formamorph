@@ -154,8 +154,8 @@ same test origin and `localStorage` just as it does on formamorph.ai.
 ## The contest flow needs a server
 
 [contest-entry.spec.ts](e2e/contest-entry.spec.ts) publishes a world into a running contest and finds it
-again in the Contest tab — then, in a second flow, has an admin announce a podium with that entry on it
-and checks the place badge reaches the author's own library. It is the one spec that talks to a real
+again in the Contest tab — then, in a second flow, an admin builds a **tied** podium in the Podium dialog
+and the results are read back on the surfaces a player sees. It is the one spec that talks to a real
 [FormamorphServer](https://github.com/JakeJamesDev/FormamorphServer), so it **skips unless you point it at
 one** — `npm run test:e2e` on a machine without one reports it as a skip, never a failure.
 
@@ -186,15 +186,27 @@ in the future (`type: "contest"`, plus `title`, `bannerText`, `body`). The spec 
 Each flow registers its own account, because a contest takes one entry per creator — so the spec is
 repeatable, but the server's credential limiter (20 per 15 minutes per IP) caps a debugging loop.
 
-**The results half needs two more things**, and skips with a note when either is missing:
+**The results half needs three more things**, and skips with a note when any is missing:
 
 | Needs | Why | How |
 | --- | --- | --- |
 | An **admin** account | Only admins may announce results, and never their own entry — moderators are refused | The seeding recipe's `e2eadmin`; override with `E2E_ADMIN_USERNAME` / `E2E_ADMIN_PASSWORD` |
 | A contest that has not announced yet | The server refuses a second announcement | Seed a fresh contest for each run of this flow |
+| A **second entry** in that contest | A tie needs two worlds, and this run publishes one of them | Run the first flow against the same contest first — each run enters a fresh account's world |
 
-💡 With a second entry already in the contest, the flow awards this run's world **2nd place** rather
-than 1st — gold is the one place a badge that ignored the podium would still get right.
+The flow closes the contest itself, by moving its `endsAt` into the past through the admin API. Announcing
+is offered on a contest that has stopped taking entries, and this run publishes into one that is still
+open, so the window is moved rather than waited out.
+
+💡 **The podium is 1, 1 and nothing else.** Two worlds share 1st and no world is placed under them.
+That podium is valid under both the ranking rule in force today and the one replacing it, so the journey
+says nothing about whether a place after a tie is skipped. Extra entries in the contest are left unplaced.
+
+⚠️ **The credential budget.** This flow spends six of the server's twenty calls per quarter hour per
+address: one admin token in `beforeAll`, the account it registers, that account's sign-in and API token,
+the admin's sign-in for the dialog, and the author's sign-in again for the player surfaces. Two full runs
+inside fifteen minutes will hit the limiter, and a limited admin login reads as a skip with a note.
+Restarting the server clears the counter.
 
 ## CI
 
