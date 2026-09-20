@@ -49,7 +49,7 @@ Decisions from the spec:
 - [x] A back during a fly-in, and an open during a fly-out, leave one header, no clone, and no inline style on it
 - [x] A dragged folder tile in the grid layout draws the face's members under the pointer, not four mosaic cells; a jsdom test pins it and fails when the mosaic returns
 - [x] The carried tile keeps half opacity with no shadow, ring, or name bar; the detailed layout keeps the mosaic
-- [~] The library drag parity and library tiles suites stay green — **already red at `Base:`**, 29 of 40 failing before this change. Reproduced with a clean tree at 4aea4283. Recorded as a follow-up, not fixed here
+- [x] The library drag parity and library tiles suites stay green — red at `Base:` for reasons outside this ticket, fixed in `63ffa392`, and green with this change on top
 - [x] Static checks in the preview use paused frames or DOM reads, not watched motion
 - [x] `docs/Changelog.md` In-Progress entry for the folder zoom is corrected in place, with no new churn entry
 - [x] Four gates green; no export-shape change
@@ -75,8 +75,15 @@ sit under that frame, so without it the face bleeds past the carried tile's roun
 asserts the border on both the tile and the carried copy rather than passing by omission. Say so if the
 frame should go and the face should be inset instead.
 
-Open, and not this ticket's: `e2e/library-drag-parity.spec.ts` and `e2e/library-tiles.spec.ts` are red
-at `Base:` — 29 of 40 failing, reproduced on a clean tree at 4aea4283. The suites identify a tile by a
-non-empty `img` `alt`, which the cropped face (ticket 04) no longer gives them. Because this change
-touches the drag overlay, the carried tile has no drag-suite evidence either way until they are green.
+The two library Playwright suites were red at `Base:` — 29 of 40 failing, reproduced on a clean tree at
+4aea4283. I guessed the cropped face had broken their `img` `alt` locators. That was wrong: the fix in
+`63ffa392` found three unrelated causes and records that every tile the suites read still carries its own
+name. Both suites pass with this change on top.
+
+A second pass fixed the same clipping fault on the other layer. The folder board grows out of a tile that
+stood in the strip the header now occupies, and the scroll viewport clipped its top rows off along a
+straight edge for the whole motion. Measured: the tile sat at y 80, the viewport started at y 128, and 48px
+of the arriving board was cut. The viewport's clip now reaches back to the board area for a fly-in, which
+is the one direction that needs it. Across every sampled frame the board is cut by nothing and reaches
+past nothing.
 

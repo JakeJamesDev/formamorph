@@ -1,6 +1,7 @@
 # 01: Extract the Turn Card from Chat
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 8a0092b5
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

@@ -68,6 +68,12 @@ function installAnimate() {
 
 /** The board's box, which every element falls back to. */
 const BOARD = { left: 24, top: 60, width: 800, height: 600 };
+/**
+ * The scroll viewport, which is the board area itself and so is not the board's own box: the folder
+ * header stands above it, so the viewport's top edge is one header height lower while a folder is
+ * open. Its bottom edge does not move, because the board area is what gives way.
+ */
+const VIEWPORT = { library: BOARD, folder: { ...BOARD, top: BOARD.top + 44, height: BOARD.height - 44 } };
 /** The folder tile's box: a quarter of the board's width, so the zoom is a number no other box gives. */
 const TILE = { left: 120, top: 260, width: 200, height: 150 };
 /** The folder header's box, which sits above the board area and is the slide's own travel. */
@@ -84,9 +90,22 @@ function installRects(unmeasurable: string[] = []) {
     const id = this.getAttribute('data-tile-id');
     if (id === 'g0') tileReads.push(document.querySelector<HTMLElement>('[data-testid="viewport"]')?.scrollTop ?? 0);
     const header = this.hasAttribute('data-folder-header');
+    const testid = this.getAttribute('data-testid');
+    // The viewport is read on both sides of the swap, so it reports the edge it has at that moment.
+    // The scroll area's root stands on the same rectangle, which is why it cuts on the same line.
+    const viewport = testid === 'viewport' || testid === 'scroll-root'
+      ? (document.querySelector('[data-folder-header]') ? VIEWPORT.folder : VIEWPORT.library)
+      : null;
+    // The app frame starts above the board area, so it already covers it and is left alone.
+    const appFrame = testid === 'app-frame' ? { left: 0, top: 0, width: 1000, height: 800 } : null;
+    // A scrolled board reports a top edge above its viewport's, which is what a frame grown to the
+    // board itself rather than to the board area would reach over.
+    const scrolled = this.getAttribute('data-testid') === 'grid'
+      ? { ...BOARD, top: BOARD.top - (document.querySelector<HTMLElement>('[data-testid="viewport"]')?.scrollTop ?? 0) }
+      : null;
     const box = (id !== null && unmeasurable.includes(id)) || (header && unmeasurable.includes('header'))
       ? { left: 0, top: 0, width: 0, height: 0 }
-      : header ? HEADER : id === 'g0' ? TILE : BOARD;
+      : header ? HEADER : appFrame ?? viewport ?? scrolled ?? (id === 'g0' ? TILE : BOARD);
     return { ...box, right: box.left + box.width, bottom: box.top + box.height, x: box.left, y: box.top, toJSON: () => box } as DOMRect;
   };
 }
@@ -128,6 +147,10 @@ function ZoomHarness({ busy = false, enabled = true, region }: HarnessProps) {
           <input aria-label="Group name" defaultValue="Favorites" />
         </div>
       )}
+      {/* The app frame, which starts above the board area and so keeps the clip that holds the app
+          in. Inside it the scroll area's root and its viewport clip on the very same rectangle. */}
+      <div data-testid="app-frame">
+      <div data-testid="scroll-root">
       <div data-radix-scroll-area-viewport="" data-testid="viewport">
         <div ref={gridNode} data-testid="grid">
           {openGroupId ? MEMBER_IDS.map((id) => (
@@ -146,6 +169,8 @@ function ZoomHarness({ busy = false, enabled = true, region }: HarnessProps) {
             </div>
           )}
         </div>
+      </div>
+      </div>
       </div>
       {/* Outside the viewport, as the context menu's Open Group is: the motion turns pointer input off
           inside the board area, so a control drawn in there could not reach the hook twice. */}
@@ -225,6 +250,33 @@ describe('folder fly-in', () => {
     // The frozen copy, with the folder tile the player clicked still in it.
     expect(raised?.querySelector('[data-tile-id="g0"]')).not.toBeNull();
     expect(raised?.querySelector('[data-folder-title]')).not.toBeNull();
+  });
+
+  it('keeps the whole frozen library inside the frame, including the strip the header takes', async () => {
+    await flyIn();
+    // The swap gives the header its place out of the board area, so the viewport the camera measures
+    // afterwards starts one header height lower than the board it is freezing. A frame cut to that
+    // viewport would clip the library's top rows away in the first frame, leaving a bare strip until
+    // the header slid into it. The frame is the board area in either state, so nothing is cut.
+    expect(overlay()?.style.top).toBe(`${VIEWPORT.library.top}px`);
+    expect(overlay()?.style.height).toBe(`${VIEWPORT.library.height}px`);
+    const clone = overlay()?.firstElementChild as HTMLElement;
+    expect(clone.style.top).toBe('0px');
+    expect(clone.style.left).toBe('0px');
+  });
+
+  it('stops the frame at the board area even when the library it freezes is scrolled past it', async () => {
+    const user = userEvent.setup();
+    render(<ZoomHarness />);
+    const viewport = screen.getByTestId('viewport');
+    viewport.scrollTop = 420;
+    await user.click(screen.getByRole('button', { name: 'Open Favorites' }));
+    // A scrolled board's own top edge stands well above the board area. The frame is grown to cover
+    // the area in either state, never to the board, so it still stops short of the toolbar and tabs.
+    expect(overlay()?.style.top).toBe(`${VIEWPORT.library.top}px`);
+    expect(overlay()?.style.height).toBe(`${VIEWPORT.library.height}px`);
+    // The rows the player had scrolled away stay above the frame, and the frame cuts them off.
+    expect((overlay()?.firstElementChild as HTMLElement).style.top).toBe('-420px');
   });
 
   it('moves both layers, the header, the frozen folder tile, its name bar, and every left-out member', async () => {
@@ -328,6 +380,31 @@ describe('folder fly-in', () => {
     expect(running.every(({ options }) => options.direction === 'normal')).toBe(true);
   });
 
+  it('lets the arriving board show in the strip the header took, and clips it to the board area', async () => {
+    await flyIn();
+    const viewport = screen.getByTestId('viewport');
+    const escape = VIEWPORT.folder.top - VIEWPORT.library.top;
+    // The folder board grows out of a tile that stood in the strip the header now occupies. The
+    // viewport starts below that strip, so its own clip would cut the board's top rows off along a
+    // straight edge for the whole motion. The clip reaches back up to the board area instead, and
+    // every other edge stays where the viewport had it.
+    expect(viewport.style.overflow).toBe('visible');
+    expect(viewport.style.clipPath).toBe(`inset(${-escape}px 0px 0px 0px)`);
+    // The scroll area's own root clips too, at the same rectangle. Widening the viewport alone left
+    // the root cutting on the very same line, which is why the first attempt changed nothing.
+    const root = viewport.parentElement as HTMLElement;
+    expect(root.style.overflow).toBe('visible');
+    expect(root.style.clipPath).toBe(`inset(${-escape}px 0px 0px 0px)`);
+    // The frame above them already covers the board area, so it keeps the clip that holds the app in.
+    const appFrame = root.parentElement as HTMLElement;
+    expect(appFrame.style.overflow).toBe('');
+    await finishAll();
+    expect(viewport.style.overflow).toBe('');
+    expect(viewport.style.clipPath).toBe('');
+    expect(root.style.overflow).toBe('');
+    expect(root.style.clipPath).toBe('');
+  });
+
   it('takes no pointer input while the motion runs, and hands it back after', async () => {
     await flyIn();
     const viewport = screen.getByTestId('viewport');
@@ -428,6 +505,16 @@ describe('folder fly-out', () => {
     expect(raised?.querySelector('[data-tile-id="g0"]')).toBeNull();
     // The folder tile it flies to is the real one, back on the live board.
     expect(screen.getByTestId('viewport').querySelector('[data-tile-id="g0"]')).not.toBeNull();
+  });
+
+  it('leaves the library viewport its own clip, which is already the board area', async () => {
+    await flyOut();
+    // The library the camera zooms into the tile is the wider of the two viewports, so nothing it
+    // draws stands outside. Widening the clip here would only let the blown-up board reach the tabs.
+    const viewport = screen.getByTestId('viewport');
+    expect(viewport.style.overflow).toBe('');
+    expect(viewport.style.clipPath).toBe('');
+    expect(screen.getByTestId('scroll-root').style.overflow).toBe('');
   });
 
   it('plays the trip-in keyframes in reverse', async () => {

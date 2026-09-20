@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
-import { cameraCss, folderCamera } from '@/lib/folderCamera';
+import { cameraCss, folderCamera, type CameraRect } from '@/lib/folderCamera';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 
 /** How long the camera takes to travel between the tile and the folder board. */
@@ -21,7 +21,7 @@ const viewportOf = (grid: HTMLElement): HTMLElement | null =>
  *
  * @param kind - What the frame holds, which is how a test and a debugger tell two of them apart
  */
-const raisedFrame = (box: DOMRect, kind: 'board' | 'header'): HTMLElement => {
+const raisedFrame = (box: CameraRect, kind: 'board' | 'header'): HTMLElement => {
   const frame = document.createElement('div');
   frame.setAttribute('aria-hidden', 'true');
   frame.setAttribute('inert', '');
@@ -37,6 +37,18 @@ const raisedFrame = (box: DOMRect, kind: 'board' | 'header'): HTMLElement => {
     zIndex: '40',
   });
   return frame;
+};
+
+/** The smallest rectangle that covers both, which is how the board area is read across a swap. */
+const union = (a: CameraRect, b: CameraRect): CameraRect => {
+  const left = Math.min(a.left, b.left);
+  const top = Math.min(a.top, b.top);
+  return {
+    left,
+    top,
+    width: Math.max(a.left + a.width, b.left + b.width) - left,
+    height: Math.max(a.top + a.height, b.top + b.height) - top,
+  };
 };
 
 /** One element's part of the motion, written in the fly-in sense. */
@@ -60,6 +72,8 @@ interface Snapshot {
   tileRect?: DOMRect;
   /** The folder header, frozen on a fly-out, which is the one direction the swap takes it away. */
   header?: { clone: HTMLElement; rect: DOMRect };
+  /** The board area as it stood before the swap, which the header's own space moves. */
+  viewportRect?: DOMRect;
   /** The region the folder's face shows, read from the board the click landed on. */
   region: { width: number; hidden: string[] };
 }
@@ -130,6 +144,7 @@ export function useFolderZoom({
       clone: grid.cloneNode(true) as HTMLElement,
       cloneRect: grid.getBoundingClientRect(),
       tileRect,
+      viewportRect: viewportOf(grid)?.getBoundingClientRect(),
       header: header && headerRect?.height
         ? { clone: header.cloneNode(true) as HTMLElement, rect: headerRect }
         : undefined,
@@ -200,14 +215,21 @@ export function useFolderZoom({
 
     // The frozen board, raised out of the document and clipped to the board area, so a board blown up
     // eight times never reaches the toolbar or the tabs.
+    //
+    // The board area is read across the swap, not after it: the folder header takes its place out of
+    // that area, so the viewport measured afterwards starts one header height lower than the library
+    // this is freezing. Cut to that, the frame would clip the library's top rows away in the very
+    // first frame and leave a bare strip until the header slid into it. The union is the board area
+    // in either state, which still stops short of the toolbar and the tabs in both.
+    const boardArea = union(viewportRect, snap.viewportRect ?? viewportRect);
     const frames: HTMLElement[] = [];
-    const overlay = raisedFrame(viewportRect, 'board');
+    const overlay = raisedFrame(boardArea, 'board');
     frames.push(overlay);
     Object.assign(snap.clone.style, {
       position: 'absolute',
       margin: '0',
-      left: `${snap.cloneRect.left - viewportRect.left}px`,
-      top: `${snap.cloneRect.top - viewportRect.top}px`,
+      left: `${snap.cloneRect.left - boardArea.left}px`,
+      top: `${snap.cloneRect.top - boardArea.top}px`,
       width: `${snap.cloneRect.width}px`,
       height: `${snap.cloneRect.height}px`,
     });
@@ -331,6 +353,25 @@ export function useFolderZoom({
           { transform: 'translateY(0px)', clipPath: 'inset(0px 0px 0px 0px)', opacity: 1 },
         ],
       });
+    }
+
+    // The arriving folder board is the live grid, and the scroll viewport is what clips it. The
+    // header takes its strip out of that viewport, so a folder tile that stood in the strip is
+    // outside the viewport once the swap lands, and the board growing out of that tile is cut off
+    // along the viewport's top edge for the whole motion. Letting the layer escape and re-clipping
+    // to the board area puts the clip back where the tile was. Every other edge stays where the
+    // viewport had it, so the zoom still cannot reach the toolbar or the tabs, and the scroll
+    // offset is safe because this only ever applies to a fly-in, which opens the board at its top.
+    // Every clip between the board and the board area gives way, not just the nearest one: the scroll
+    // viewport and the scroll area's own root stand on the same rectangle, so widening one alone
+    // leaves the other cutting on the very same line. Each keeps its own left, right and bottom
+    // edges, so the only thing that changes is how far up the board may show. The walk stops at the
+    // first frame that already covers the board area, which is the one holding the app off the
+    // toolbar, and on a fly-out it stops at the viewport, whose board area is the wider of the two.
+    for (let el: HTMLElement | null = viewport; el && el !== document.body; el = el.parentElement) {
+      const up = el.getBoundingClientRect().top - boardArea.top;
+      if (up <= 0) break;
+      applyStyle(el, { overflow: 'visible', clipPath: `inset(${-up}px 0px 0px 0px)` });
     }
 
     // A click on a moving board would start a drag against cells that are not where they look.
