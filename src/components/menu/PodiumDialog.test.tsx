@@ -545,6 +545,33 @@ describe('sharing a place', () => {
     ]);
   });
 
+  it('leaves the survivors of a shared place on that place when the row above them is cleared', async () => {
+    // Clearing one of two 2nd places must not promote the other to a shared 1st. The removal was meant
+    // to take one world off the podium, not to award another a place nobody gave it.
+    catalog(three());
+
+    render(<PodiumDialog open onOpenChange={() => {}} contest={contest} />);
+    await screen.findByText('Pearl of the Undertow');
+
+    fireEvent.click(entry('Pearl of the Undertow'));
+    fireEvent.click(entry('Ninth Wave Shoals'));
+    fireEvent.click(entry('Salt-Bright Reaches'));
+    fireEvent.click(tie('Salt-Bright Reaches'));
+
+    expect(staged()).toEqual([
+      '1st Place / Pearl of the Undertow',
+      '2nd Place / Ninth Wave Shoals',
+      '2nd Place / Salt-Bright Reaches',
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Ninth Wave Shoals' }));
+
+    expect(staged()).toEqual([
+      '1st Place / Pearl of the Undertow',
+      '2nd Place / Salt-Bright Reaches',
+    ]);
+  });
+
   it('sends the repeated place in the request body, one row per world', async () => {
     const announce = vi.spyOn(EventService, 'announceResults').mockResolvedValue(contest);
     catalog(three());
