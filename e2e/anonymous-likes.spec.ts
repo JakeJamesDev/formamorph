@@ -38,9 +38,19 @@ interface Server {
   likedBy: Set<string>;
   /** Every request that reached no stub. A run that touches the live API leaves one here. */
   stray: string[];
-  /** The Install header each write carried, in order. */
-  writes: { install: string | undefined; liked: boolean }[];
+  /** Each write, with the listing it named and the Install it came from, in order. */
+  writes: { url: string; install: string | undefined; liked: boolean }[];
+  /** How many times a reader has asked for the listing's own row. */
+  reads: number;
 }
+
+/**
+ * The API base this run's app was built against.
+ *
+ * Read the same way the runner decides it: `E2E_API_URL` overrides the live host, and a spec that
+ * guarded only the live host would let every request through under that override.
+ */
+const API_ORIGIN = new URL(process.env.E2E_API_URL ?? 'https://api.formamorph.ai').origin;
 
 /** The Install header off a request, under the lower-case name a browser sends it as. */
 const installOf = (route: Route): string | undefined =>
@@ -59,9 +69,9 @@ function listingFor(install: string | undefined, server: Server) {
  * most recently added handler. Anything left for the catch-all is a request this spec did not expect.
  */
 async function stubServer(page: Page): Promise<Server> {
-  const server: Server = { likedBy: new Set(), stray: [], writes: [] };
+  const server: Server = { likedBy: new Set(), stray: [], writes: [], reads: 0 };
 
-  await page.route('https://api.formamorph.ai/**', (route) => {
+  await page.route(`${API_ORIGIN}/**`, (route) => {
     server.stray.push(route.request().url());
     return route.fulfill({ status: 599, json: { error: 'no stub for this request' } });
   });
@@ -71,15 +81,19 @@ async function stubServer(page: Page): Promise<Server> {
     json: { success: true, anonymousLikes: true, data: [listingFor(installOf(route), server)], total: 1 },
   }));
 
-  // One listing's own row, which is what the in-game card reads before it shows.
-  await page.route(`**/worlds/${LISTING.id}`, (route) => route.fulfill({
-    json: { success: true, anonymousLikes: true, data: listingFor(installOf(route), server) },
-  }));
+  // One listing's own row, which is what the in-game card reads before it shows. The count is what
+  // says whether the card was offered again: it reads once per offer and never otherwise.
+  await page.route(`**/worlds/${LISTING.id}`, (route) => {
+    server.reads += 1;
+    return route.fulfill({
+      json: { success: true, anonymousLikes: true, data: listingFor(installOf(route), server) },
+    });
+  });
 
   await page.route('**/worlds/*/anonymous-like', (route) => {
     const install = installOf(route);
     const { liked } = route.request().postDataJSON() as { liked: boolean };
-    server.writes.push({ install, liked });
+    server.writes.push({ url: route.request().url(), install, liked });
     if (!install) {
       return route.fulfill({ status: 400, json: { code: 'install_header_invalid', error: 'No Install' } });
     }
@@ -92,12 +106,35 @@ async function stubServer(page: Page): Promise<Server> {
 }
 
 /**
- * Whether an element is actually painted where it says it is.
+ * What the page actually paints where an element sits, against the same strip with that element
+ * hidden.
  *
- * A box says only that layout gave it room. Hit-testing its center asks the renderer what is drawn
- * there, which is what catches a card covered by an overlay or clipped away by an ancestor.
+ * A box says only that layout gave it room, and a computed style says only what the rule resolved to.
+ * Photographing the strip twice is what proves something reached the screen: identical pixels mean the
+ * element paints nothing there, whatever its box and its styles claim.
+ *
+ * @returns Whether the two photographs differ
  */
-async function paintedAt(locator: Locator): Promise<boolean> {
+async function paintsWithin(page: Page, locator: Locator): Promise<boolean> {
+  const box = await locator.boundingBox();
+  if (!box) return false;
+  const clip = { x: box.x, y: box.y, width: Math.max(1, box.width), height: Math.max(1, box.height) };
+
+  const shown = await page.screenshot({ clip });
+  await locator.evaluate((el) => { (el as HTMLElement).style.visibility = 'hidden'; });
+  const hidden = await page.screenshot({ clip });
+  await locator.evaluate((el) => { (el as HTMLElement).style.visibility = ''; });
+
+  return !shown.equals(hidden);
+}
+
+/**
+ * Whether the renderer answers with this element at its own center.
+ *
+ * Separate from the photograph: that one proves something is painted, this one proves nothing is
+ * covering it. A card behind an overlay paints its strip and still cannot be read or pressed.
+ */
+async function hitTestsAt(locator: Locator): Promise<boolean> {
   const box = await locator.boundingBox();
   if (!box) return false;
   return locator.evaluate((el, point) => {
@@ -106,7 +143,7 @@ async function paintedAt(locator: Locator): Promise<boolean> {
   }, { x: box.x + box.width / 2, y: box.y + box.height / 2 });
 }
 
-/** The heart's painted fill. An unfilled lucide heart paints `none`; the liked class paints a color. */
+/** The heart's fill rule. An unfilled lucide heart resolves `none`; the liked class resolves a color. */
 const heartFill = (button: Locator): Promise<string> =>
   button.locator('svg').first().evaluate((el) => getComputedStyle(el).fill);
 
@@ -118,19 +155,28 @@ test.describe('a guest liking a listing', () => {
 
     const empty = page.getByRole('button', { name: `Like — ${LISTING.likes} likes` });
     await expect(empty).toBeVisible();
-    const emptyFill = await heartFill(empty);
-    expect(emptyFill).toBe('none');
+    expect(await heartFill(empty)).toBe('none');
+    // The heart's own glyph, whose strip keeps its size while the count beside it grows.
+    const glyph = empty.locator('svg').first();
+    const emptyShape = await page.screenshot({ clip: (await glyph.boundingBox())! });
 
     await empty.click();
 
     const filled = page.getByRole('button', { name: `Unlike — ${LISTING.likes + 1} likes` });
     await expect(filled).toBeVisible();
     await expect(filled).toHaveAttribute('aria-pressed', 'true');
-    expect(await heartFill(filled)).not.toBe(emptyFill);
+    // A resolved color, not merely something other than `none`: a fill that lost its color would still
+    // differ from the empty heart while painting nothing a reader would call filled.
+    expect(await heartFill(filled)).toMatch(/^rgba?\(/);
+    // And the color reached the screen. A rule that resolves and never paints leaves these equal.
+    const filledShape = await page.screenshot({ clip: (await filled.locator('svg').first().boundingBox())! });
+    expect(filledShape.equals(emptyShape)).toBe(false);
+    expect(await hitTestsAt(filled)).toBe(true);
 
-    // The write named this copy of the app, and named it with the id local storage kept.
+    // The write named this copy of the app and the listing under the heart.
     expect(server.writes).toHaveLength(1);
     expect(server.writes[0].liked).toBe(true);
+    expect(server.writes[0].url).toContain(`/worlds/${LISTING.id}/anonymous-like`);
     const stored = await page.evaluate(() => localStorage.getItem('FORMAMORPH_installId'));
     expect(server.writes[0].install).toBe(stored);
 
@@ -142,7 +188,7 @@ test.describe('a guest liking a listing', () => {
     const afterReload = page.getByRole('button', { name: `Unlike — ${LISTING.likes + 1} likes` });
     await expect(afterReload).toBeVisible();
     await expect(afterReload).toHaveAttribute('aria-pressed', 'true');
-    expect(await heartFill(afterReload)).not.toBe(emptyFill);
+    expect(await heartFill(afterReload)).toMatch(/^rgba?\(/);
     // No second write: the fill came back from the server, not from a press this reload made.
     expect(server.writes).toHaveLength(1);
 
@@ -154,7 +200,7 @@ test.describe('a guest liking a listing', () => {
 const WORLD_ID = 'e2e-anon-like-world';
 
 /** The world fixture with an id, and a playthrough one turn short of the threshold. */
-async function servePlayedFixture(page: Page): Promise<{ world: Record<string, unknown>; name: string }> {
+async function servePlayedFixture(page: Page): Promise<Record<string, unknown> & { worldOverview: { name: string } }> {
   const world = {
     ...JSON.parse(readFileSync('src/lib/devFixtures/whiteRoomWorld.json', 'utf8')),
     id: WORLD_ID,
@@ -164,9 +210,10 @@ async function servePlayedFixture(page: Page): Promise<{ world: Record<string, u
   const save = buildLongSave(base, {
     turns: LIKE_PROMPT_TURNS - 1,
     narrations,
-    // One 1x1 pixel, because the builder always gives turn one an image.
+    // One 1x1 pixel on turn one, which the builder always images. Nothing here reads a scene image, so
+    // the interval only has to outrun the history.
     images: ['data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'],
-    imageEvery: LIKE_PROMPT_TURNS,
+    imageEvery: 1000,
   });
 
   for (const [kind, body] of [['World', world], ['Save', save]] as const) {
@@ -174,7 +221,7 @@ async function servePlayedFixture(page: Page): Promise<{ world: Record<string, u
       contentType: 'application/javascript', body: `export default ${JSON.stringify(body)}`,
     }));
   }
-  return { world, name: world.worldOverview.name };
+  return world;
 }
 
 /** Answer narration for every chat call, and report how many turns have been narrated. */
@@ -241,8 +288,8 @@ test.describe('the in-game like prompt', () => {
   test('asks on the fifteenth turn, takes the like, and does not come back', async ({ page }) => {
     page.on('pageerror', (error) => console.error(error.message));
     const server = await stubServer(page);
-    const { world, name } = await servePlayedFixture(page);
-    const narrations = await mockNarration(page);
+    const world = await servePlayedFixture(page);
+    const narrationCalls = await mockNarration(page);
 
     await openApp(page, settings, { url: '/#dev?view=gameViewer&fixture=whiteRoom' });
     await recordDownload(page, world);
@@ -252,8 +299,10 @@ test.describe('the in-game like prompt', () => {
 
     const card = page.getByTestId('like-prompt');
     await expect(card).toBeVisible();
-    expect(await paintedAt(card)).toBe(true);
-    await expect(card.getByText(`Enjoying ${name}?`)).toBeVisible();
+    await expect(card.getByText(`Enjoying ${world.worldOverview.name}?`)).toBeVisible();
+    expect(await paintsWithin(page, card)).toBe(true);
+    expect(await hitTestsAt(card)).toBe(true);
+    expect(server.reads).toBe(1);
 
     await card.getByRole('button', { name: 'Like', exact: true }).click();
     await expect(card).toHaveCount(0);
@@ -261,11 +310,16 @@ test.describe('the in-game like prompt', () => {
     // The like was an Anonymous Like against this copy of the app, for the listing being played.
     expect(server.writes).toHaveLength(1);
     expect(server.writes[0].liked).toBe(true);
+    expect(server.writes[0].url).toContain(`/worlds/${LISTING.id}/anonymous-like`);
     expect(server.likedBy.has(server.writes[0].install!)).toBe(true);
 
-    // A sixteenth turn commits and asks nothing: the answer this device gave is the end of it.
+    // A sixteenth turn commits and asks nothing. A turn that asks nothing signals nothing, so this
+    // waits the chain out rather than racing it: the card would read the listing a second time before
+    // it could return, and that read is what the count catches.
     await playTurn(page, 'I look back at the room.');
-    await expect.poll(narrations).toBe(2);
+    await expect.poll(narrationCalls).toBe(2);
+    await page.waitForTimeout(1000);
+    expect(server.reads).toBe(1);
     await expect(card).toHaveCount(0);
 
     expect(server.stray).toEqual([]);

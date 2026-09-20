@@ -151,6 +151,27 @@ the open app without a reload, app sign-out reaches the site, and smaller app-to
 the storage listeners. The site-pages server proxies a second app below `/play/`, so every page shares the
 same test origin and `localStorage` just as it does on formamorph.ai.
 
+[anonymous-likes.spec.ts](e2e/anonymous-likes.spec.ts) — the two places a guest gives a like. In the
+community browser a press fills the heart and raises the count, and a reload finds it still filled,
+because the Install id in `localStorage` is what the stub server keys its rows by. In a game, a world
+downloaded from a listing asks once on the fifteenth turn, takes the like, and does not ask again. Each
+guard was verified by putting its fault back and watching the test go red.
+
+> **The fifteenth turn is reached by rebuilding the save, not by playing fifteen turns.** `buildLongSave`
+> puts the `whiteRoom` fixture one turn short of `LIKE_PROMPT_TURNS`, so one scripted turn is the
+> fifteenth. The fixture world is served with an id, and the download link (`sourceId`, `downloadedAt`)
+> goes onto the stored record rather than into the world, because it is wrapper metadata.
+
+> **A catch-all route over the API origin goes on first, so the named routes win.** Playwright matches
+> the most recently added handler, so anything the catch-all sees is a request the spec did not expect,
+> and it fails the run instead of reaching a real server. The origin comes from `E2E_API_URL` when the
+> runner sets one, because a pattern pinned to the live host would match nothing under that override.
+
+> **A card that paints nothing still passes `toBeVisible`.** `opacity: 0` keeps the box and the
+> visibility, so the card and the heart are both photographed twice — once as they stand, once with the
+> element hidden — and the two strips must differ. A hit test runs beside it for the other half: painted
+> and covered are different failures.
+
 ## The contest flow needs a server
 
 [contest-entry.spec.ts](e2e/contest-entry.spec.ts) publishes a world into a running contest and finds it
