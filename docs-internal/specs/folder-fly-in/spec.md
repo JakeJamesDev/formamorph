@@ -210,6 +210,16 @@ reaches the screen. A fix that widened one clip while an ancestor went on cuttin
 check and changed nothing on screen. Hit testing (`elementFromPoint`) and pixel sampling respect every
 ancestor clip; use one of them for any claim about what is or is not cut off.
 
+**During the motion, pixel sampling is the only one that works.** The raised frame and the scroll viewport
+both carry `pointer-events: none`, so a hit test returns neither layer and passes for the wrong reason.
+Clip claims are proved on paused frames: drive the animations' `currentTime`, take a clipped screenshot,
+hide the layer under test with `visibility`, take a second one, and compare. The same buffers mean that
+layer paints nothing in the strip. The keyframes are a pure function of `currentTime`, so a paused frame
+is the frame the player sees. "Every frame" for a clip claim means a dense sample, not the rAF recorder:
+at least eight times across the window where the outer layer has opacity, and always the first frame, the
+last frame before the reveal point, and the first frame after it. The rect lock and the opacity claims
+stay on the per-frame rAF recorder.
+
 - **Camera geometry (unit).** For sample values of tile, outer, and inner rectangles, including a scrolled
   outer layer and a header offset, the tile's image under the outer transform equals the region's
   rectangle in the inner layer at progress 0, 0.5, and 1, for a region narrower than the board and for a
@@ -230,8 +240,10 @@ ancestor clip; use one of them for any claim about what is or is not cut off.
   the header's opacity and offset: zero and raised while the outer layer has any opacity, at rest at the end.
 - **Carried folder tile (jsdom).** A dragged folder's overlay draws the face's members, not four mosaic
   cells, in the grid layout.
-- **Drag regression.** `library-drag-parity.spec.ts` and `library-tiles.spec.ts` stay green with a folder
-  opened and closed before the drag.
+- **Drag regression.** The motion spec holds the guard: it flies into a folder and out again, then drags
+  one tile and checks the cell it lands in. `library-drag-parity.spec.ts` and `library-tiles.spec.ts` are
+  not edited, because the parity suite must run unchanged against the pre-tile-board commit. Both run as
+  they are and stay green.
 
 ## Out of Scope
 
