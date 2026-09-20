@@ -235,9 +235,9 @@ describe('the folder face', () => {
     return style ? `${style.gridColumn} | ${style.gridRow}` : null;
   };
   const tileOf = (groupId: string) => document.querySelector(`[data-tile-id="${groupId}"]`) as HTMLElement;
-  /** What one folder tile's face draws, by member, at the cell it draws it in. */
-  const faceOf = (groupId = 'gF') => Object.fromEntries(
-    [...tileOf(groupId).querySelectorAll('[data-face-member]')]
+  /** What one face draws, by member, at the cell it draws it in: a folder tile's, or the carried one's. */
+  const faceOf = (groupId: string | Element = 'gF') => Object.fromEntries(
+    [...(typeof groupId === 'string' ? tileOf(groupId) : groupId).querySelectorAll('[data-face-member]')]
       .map((node) => [node.getAttribute('data-face-member'), cell(node)]),
   );
   /** The `+N` badge's count on one folder tile, or null where the face leaves nobody out. */
@@ -345,5 +345,51 @@ describe('the folder face', () => {
     render(<FaceGrid layout="detailed" />);
     expect(document.querySelector('[data-folder-face]')).toBeNull();
     expect(document.querySelector('[data-folder-mosaic]')).not.toBeNull();
+  });
+
+  /** The carried tile's box, which jsdom reports as nothing until a test says otherwise. */
+  const CARRIED = { left: 0, top: 0, width: 240, height: 180 };
+
+  /** Pick a tile up and move far enough for the mouse sensor's distance constraint to let go. */
+  const carry = (groupId: string) => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      ...CARRIED, right: CARRIED.width, bottom: CARRIED.height, x: 0, y: 0, toJSON: () => CARRIED,
+    } as DOMRect);
+    fireEvent.mouseDown(tileOf(groupId).querySelector('[role="button"]') ?? tileOf(groupId));
+    fireEvent.mouseMove(document, { clientX: 80, clientY: 80 });
+    // The first move past the constraint starts the drag; the overlay is sized by the one after it.
+    fireEvent.mouseMove(document, { clientX: 96, clientY: 96 });
+  };
+  const carried = () => document.querySelector<HTMLElement>('[data-drag-overlay]');
+
+  it('carries the folder tile under the pointer as the face, not as four mosaic cells', () => {
+    render(<FaceGrid />);
+    carry('gF');
+    const overlay = carried();
+    expect(overlay).not.toBeNull();
+    expect(overlay?.querySelector('[data-folder-mosaic]')).toBeNull();
+    // The same members at the same cells the tile draws, because both read one region function.
+    expect(faceOf(overlay!)).toEqual(faceOf('gF'));
+  });
+
+  it('keeps the carried tile at half opacity with no shadow, ring, or name bar', () => {
+    render(<FaceGrid />);
+    carry('gF');
+    const frame = carried()?.firstElementChild;
+    expect(frame?.className).toContain('opacity-50');
+    expect(frame?.className).not.toMatch(/shadow|ring-/);
+    expect(carried()?.querySelector('[data-folder-title]')).toBeNull();
+    // The tile's own border, which is not chrome the overlay adds: the face is drawn to sit under
+    // it, so dropping it would let the face bleed past the carried tile's rounded corner.
+    expect(frame?.className).toContain('border-2');
+    expect(tileOf('gF').querySelector('[data-folder-face]')?.parentElement?.className)
+      .toContain('border-2');
+  });
+
+  it('carries the mosaic in the detailed layout', () => {
+    render(<FaceGrid layout="detailed" />);
+    carry('gF');
+    expect(carried()?.querySelector('[data-folder-mosaic]')).not.toBeNull();
+    expect(carried()?.querySelector('[data-folder-face]')).toBeNull();
   });
 });

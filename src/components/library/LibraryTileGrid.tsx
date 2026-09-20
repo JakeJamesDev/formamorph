@@ -291,6 +291,8 @@ export function LibraryTileGrid<T>({
   // The column count rides along, because a cell only means a distance on the board it was read from;
   // so does each tile's span, because a resize has to be animated from the size that was on screen.
   const tileNodes = useRef(new Map<string, HTMLDivElement>());
+  // The folder header, which the zoom slides in with the rest of the folder and freezes on the way out.
+  const headerNode = useRef<HTMLDivElement | null>(null);
   const paintedRef = useRef<{
     columns: number;
     places: PlacementMap;
@@ -410,11 +412,36 @@ export function LibraryTileGrid<T>({
     return faces;
   }, [layout, openGroup, renderedIds, tiles, faceOf]);
 
+  /**
+   * One folder's face, drawn the same way wherever that folder stands: on the board, and under the
+   * pointer while it is carried. Both read one call, so the two pictures cannot drift apart.
+   */
+  const renderFace = (face: ReturnType<typeof faceOf>) => (
+    <FolderFace
+      members={face.members}
+      places={face.places}
+      hidden={face.hidden}
+      regionWidth={face.width}
+      spanOf={spanOf}
+      thumbnailOf={(memberId) => {
+        const member = byId.get(memberId);
+        return member ? thumbnailOf(member) : undefined;
+      }}
+      columns={baseCols}
+      boardWidth={width}
+      rowHeight={rowHeight}
+      gap={GAP}
+      tileWidth={face.tileWidth}
+      fit={thumbFit(aspect)}
+    />
+  );
+
   // A click on a folder tile, Open Group, and Library all zoom between the tile and its board. The
   // disband effect above keeps the direct setter: there is no tile left to zoom toward once the folder
   // is gone.
   const { openGroup: flyIntoGroup, closeGroup } = useFolderZoom({
     gridNode,
+    headerNode,
     tileNodes,
     openGroupId,
     setOpenGroupId,
@@ -823,25 +850,7 @@ export function LibraryTileGrid<T>({
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
                 })}
-                face={face && (
-                  <FolderFace
-                    members={face.members}
-                    places={face.places}
-                    hidden={face.hidden}
-                    regionWidth={face.width}
-                    spanOf={spanOf}
-                    thumbnailOf={(memberId) => {
-                      const member = byId.get(memberId);
-                      return member ? thumbnailOf(member) : undefined;
-                    }}
-                    columns={baseCols}
-                    boardWidth={width}
-                    rowHeight={rowHeight}
-                    gap={GAP}
-                    tileWidth={face.tileWidth}
-                    fit={thumbFit(aspect)}
-                  />
-                )}
+                face={face && renderFace(face)}
                 layout={layout}
                 fill={layout === 'grid'}
                 compact={compact}
@@ -864,9 +873,14 @@ export function LibraryTileGrid<T>({
     : {};
 
   /**
-   * The overlay's stand-in for the carried tile: the thumbnail — or a folder's mosaic — in a box the
+   * The overlay's stand-in for the carried tile: the thumbnail — or a folder's own face — in a box the
    * size the tile had. The real card components register sortables, which the overlay must not, so
    * this is a plain clone rather than a second render of the card.
+   *
+   * A folder in the grid layout draws the face component from the same region function as its tile, so
+   * the picture under the hand is the picture the player picked up. The face draws plain thumbnails and
+   * registers nothing, which is what makes it safe here. The detailed layout has no face to draw, so it
+   * keeps the mosaic.
    *
    * Half opacity, and nothing else: the flat grid carried the card itself at exactly this, with no
    * shadow or ring under the hand. The one exception is a spot that cannot take the tile, which says so
@@ -877,13 +891,18 @@ export function LibraryTileGrid<T>({
     const group = stored && shownGroup(stored);
     const item = byId.get(id);
     const thumb = item ? thumbnailOf(item) : undefined;
+    // The board's own face for this folder. A folder never stands inside a folder, so a drag that
+    // carries one is always on the library board, which is where `folderFaces` is filled.
+    const face = group && folderFaces.get(id);
     return (
       <div className={cn(
-        'h-full w-full overflow-hidden rounded-lg bg-card opacity-50',
+        'relative h-full w-full overflow-hidden rounded-lg bg-card opacity-50',
+        // The tile's own frame, which the face is drawn to sit under.
+        face && 'border-2 border-border',
         preview.blocked && 'ring-2 ring-inset ring-destructive',
       )}>
-        {group ? (
-          <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
+        {face ? renderFace(face) : group ? (
+          <div data-folder-mosaic className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px">
             {Array.from({ length: 4 }, (_, i) => {
               const member = byId.get(group.members[i] ?? '');
               const memberThumb = member ? thumbnailOf(member) : undefined;
@@ -918,12 +937,14 @@ export function LibraryTileGrid<T>({
     >
       {toolbar && <div className="px-4 pb-3 flex items-center gap-2">{toolbar}</div>}
       {openGroup && (
-        <FolderHeader
-          name={openGroup.name}
-          settings={groupSettings?.(openGroup.id)}
-          onBack={closeGroup}
-          onRename={locked ? undefined : (name) => tiles.rename(openGroup.id, name)}
-        />
+        <div ref={headerNode} data-folder-header>
+          <FolderHeader
+            name={openGroup.name}
+            settings={groupSettings?.(openGroup.id)}
+            onBack={closeGroup}
+            onRename={locked ? undefined : (name) => tiles.rename(openGroup.id, name)}
+          />
+        </div>
       )}
       <ScrollArea className="flex-1 min-h-0 px-4">
         {renderedIds.length === 0 && !openGroup ? emptyState : (
@@ -950,6 +971,7 @@ export function LibraryTileGrid<T>({
         {activeId && overlaySize && (
           <div
             style={overlaySize}
+            data-drag-overlay
             className="pointer-events-none"
             data-drag-blocked={preview.blocked ? '' : undefined}
           >
