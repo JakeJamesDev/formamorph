@@ -41,6 +41,7 @@ import type { LibraryTiles } from '@/lib/useLibraryTiles';
 import { THUMB_RATIO, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 import { LibraryGroupTile } from '@/components/library/LibraryGroupTile';
 import { FolderMiniature } from '@/components/library/FolderMiniature';
+import { folderRegion, type FolderRegion } from '@/lib/folderRegion';
 import { LibraryTileContextMenu } from '@/components/library/LibraryTileContextMenu';
 import { useFolderZoom } from '@/components/library/useFolderZoom';
 
@@ -328,18 +329,6 @@ export function LibraryTileGrid<T>({
     if (openGroupId && !openGroup) setOpenGroupId(null);
   }, [openGroupId, openGroup]);
 
-  // A click on a folder tile, Open Group, and Library all zoom between the tile and its board. The
-  // disband effect above keeps the direct setter: there is no tile left to zoom toward once the folder
-  // is gone.
-  const { openGroup: flyIntoGroup, closeGroup } = useFolderZoom({
-    gridNode,
-    tileNodes,
-    openGroupId,
-    setOpenGroupId,
-    busy: activeId !== null,
-    enabled: layout === 'grid',
-  });
-
   const locked = !!filter;
   const allIds = useMemo(() => new Set(items.map(idOf)), [items, idOf]);
   // What the grid draws: every item, or only the ones the filter passes.
@@ -381,20 +370,6 @@ export function LibraryTileGrid<T>({
     [layout, locked, tiles.organization, gridIds, renderedIds, baseCols],
   );
 
-  // Each folder tile's face: the board the folder opens to, read the same way as `homes` above.
-  const folderBoards = useMemo(() => {
-    const boards = new Map<string, { members: string[]; places: PlacementMap }>();
-    if (layout !== 'grid' || openGroup) return boards;
-    for (const id of renderedIds) {
-      const group = tiles.group(id);
-      if (!group) continue;
-      const ids = membersOf(group);
-      const members = shownOf(ids);
-      boards.set(id, { members, places: boardHomes(tiles.organization, ids, members, baseCols, locked) });
-    }
-    return boards;
-  }, [layout, openGroup, renderedIds, tiles, membersOf, shownOf, baseCols, locked]);
-
   // The board on screen right now. While a grid drag runs this IS the preview: tiles hold real cells at
   // every moment, and the slide effect below animates them when those cells change.
   const live = preview.board ?? homes;
@@ -406,6 +381,47 @@ export function LibraryTileGrid<T>({
   const cellHeight = cellWidth > 0 ? ((2 * cellWidth + GAP) / THUMB_RATIO[aspect] - GAP) / 2 : 0;
   const pitch = { x: cellWidth + GAP, y: cellHeight + GAP };
   const rowHeight = Math.max(1, Math.round(cellHeight));
+
+  // The part of a folder's board its tile stands for: the board itself, read the same way as `homes`
+  // above, and the top-left region of it the face draws. Answered for any folder on the tab, the open
+  // one included, because a fly-out zooms out to a tile that is not on screen when it is asked for.
+  const faceOf = useCallback((groupId: string): {
+    members: string[];
+    places: PlacementMap;
+  } & FolderRegion => {
+    const group = tiles.group(groupId);
+    const ids = group ? membersOf(group) : [];
+    const members = shownOf(ids);
+    const places = group ? boardHomes(tiles.organization, ids, members, baseCols, locked) : {};
+    return {
+      members,
+      places,
+      ...folderRegion({
+        members, places, spanOf, tileSpan: spanOf(groupId), baseCols, cellWidth, rowHeight, gap: GAP,
+      }),
+    };
+  }, [tiles, membersOf, shownOf, baseCols, locked, spanOf, cellWidth, rowHeight]);
+
+  // Each folder tile's face, held for the tiles the library is drawing right now.
+  const folderFaces = useMemo(() => {
+    const faces = new Map<string, ReturnType<typeof faceOf>>();
+    if (layout !== 'grid' || openGroup) return faces;
+    for (const id of renderedIds) if (tiles.group(id)) faces.set(id, faceOf(id));
+    return faces;
+  }, [layout, openGroup, renderedIds, tiles, faceOf]);
+
+  // A click on a folder tile, Open Group, and Library all zoom between the tile and its board. The
+  // disband effect above keeps the direct setter: there is no tile left to zoom toward once the folder
+  // is gone.
+  const { openGroup: flyIntoGroup, closeGroup } = useFolderZoom({
+    gridNode,
+    tileNodes,
+    openGroupId,
+    setOpenGroupId,
+    busy: activeId !== null,
+    enabled: layout === 'grid',
+    regionOf: faceOf,
+  });
 
   // The slide, run before the browser paints the new cells: each moved tile is pushed back to where it
   // was, the push is forced into the layout, and then released. Doing it here rather than through state
@@ -749,7 +765,7 @@ export function LibraryTileGrid<T>({
     if (!group && !item) return null;
 
     const spot = live[id];
-    const board = folderBoards.get(id);
+    const face = folderFaces.get(id);
     const size = tiles.size(id);
     const compact = layout === 'grid' && size === 'small';
     // `transform` and `transition` are left out on purpose: the slide effect owns both, and a value
@@ -807,9 +823,12 @@ export function LibraryTileGrid<T>({
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
                 })}
-                miniature={board && (
+                miniature={face && (
                   <FolderMiniature
-                    {...board}
+                    members={face.members}
+                    places={face.places}
+                    hidden={face.hidden}
+                    regionWidth={face.width}
                     spanOf={spanOf}
                     thumbnailOf={(memberId) => {
                       const member = byId.get(memberId);
@@ -819,10 +838,7 @@ export function LibraryTileGrid<T>({
                     boardWidth={width}
                     rowHeight={rowHeight}
                     gap={GAP}
-                    tile={{
-                      width: spanOf(id) * cellWidth + (spanOf(id) - 1) * GAP,
-                      height: spanOf(id) * cellHeight + (spanOf(id) - 1) * GAP,
-                    }}
+                    tileWidth={spanOf(id) * cellWidth + (spanOf(id) - 1) * GAP}
                     fit={thumbFit(aspect)}
                   />
                 )}

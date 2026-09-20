@@ -187,24 +187,35 @@ describe('library group flow', () => {
   });
 });
 
-describe('the folder miniature', () => {
-  // 1000 px at a 200 px medium tile is 4 medium columns, so 8 base columns.
+describe('the folder face', () => {
+  // 1000 px at a 200 px medium tile is 4 medium columns, so 8 base columns. A medium folder tile's
+  // region is capped at four of them; a small one's at two, which its corner member can override.
   const MEMBERS = ['m1', 'm2', 'm3', 'm4', 'm5'];
-  const faceItems = ['loose', ...MEMBERS].map((id) => ({ id, name: `Item ${id}` }));
+  const faceItems = ['loose', ...MEMBERS, 'n1', 's1', 's2'].map((id) => ({ id, name: `Item ${id}` }));
   let resize: ((width: number) => void) | null = null;
   let latest: LibraryTiles | null = null;
 
   const seedFolder = () => saveTabOrganization('worlds', {
     ...emptyTabOrganization(),
-    order: ['loose', 'gF'],
-    groups: { gF: { id: 'gF', name: 'Packed Folder', members: MEMBERS, settings: {} } },
-    sizes: { m1: 'large', m2: 'small', m4: 'large', m5: 'large' },
-    // m2 and m3 leave holes at (1,4), (0,5), and (1,5); m5 starts below what the tile shows.
+    order: ['loose', 'gF', 'gN', 'gS'],
+    groups: {
+      // Packed Folder fills the cap and runs past it in both directions.
+      gF: { id: 'gF', name: 'Packed Folder', members: MEMBERS, settings: {} },
+      // Narrow Folder uses one medium column, which is less than its tile's own width.
+      gN: { id: 'gN', name: 'Narrow Folder', members: ['n1'], settings: {} },
+      // Small Folder is a small tile whose corner member is large.
+      gS: { id: 'gS', name: 'Small Folder', members: ['s1', 's2'], settings: {} },
+    },
+    sizes: { m2: 'small', gS: 'small', s1: 'large' },
+    // m2 leaves a hole at (0,3); m3 leaves one at (2,2) and (2,3). m4 runs past the region's right
+    // edge and m5 starts below its bottom, so the face leaves both out.
     placements: {
       8: {
-        loose: { row: 0, col: 0 }, gF: { row: 0, col: 2 },
-        m1: { row: 0, col: 0 }, m2: { row: 0, col: 4 }, m3: { row: 2, col: 4 },
-        m4: { row: 4, col: 0 }, m5: { row: 8, col: 0 },
+        loose: { row: 0, col: 0 }, gF: { row: 0, col: 2 }, gN: { row: 0, col: 4 }, gS: { row: 0, col: 6 },
+        m1: { row: 0, col: 0 }, m2: { row: 0, col: 2 }, m3: { row: 2, col: 0 },
+        m4: { row: 0, col: 4 }, m5: { row: 4, col: 0 },
+        n1: { row: 0, col: 0 },
+        s1: { row: 0, col: 0 }, s2: { row: 0, col: 4 },
       },
     },
   });
@@ -223,11 +234,16 @@ describe('the folder miniature', () => {
     const style = (node as HTMLElement | null)?.style;
     return style ? `${style.gridColumn} | ${style.gridRow}` : null;
   };
-  const miniature = () => Object.fromEntries(
-    [...document.querySelectorAll('[data-miniature-member]')]
+  const tileOf = (groupId: string) => document.querySelector(`[data-tile-id="${groupId}"]`) as HTMLElement;
+  /** What one folder tile's face draws, by member, at the cell it draws it in. */
+  const faceOf = (groupId = 'gF') => Object.fromEntries(
+    [...tileOf(groupId).querySelectorAll('[data-miniature-member]')]
       .map((node) => [node.getAttribute('data-miniature-member'), cell(node)]),
   );
-  const folderTile = () => document.querySelector('[data-tile-id="gF"]') as HTMLElement;
+  /** The `+N` badge's count on one folder tile, or null where the face leaves nobody out. */
+  const badgeOf = (groupId = 'gF') =>
+    tileOf(groupId).querySelector('[data-folder-badge]')?.textContent ?? null;
+  const folderTile = () => tileOf('gF');
   /** The open folder board's cells for the members it draws. */
   const openBoard = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(within(folderTile()).getByText('Packed Folder'));
@@ -259,34 +275,58 @@ describe('the folder miniature', () => {
     latest = null;
   });
 
-  it('draws each member at the cell and span the open folder gives it, holes included', async () => {
+  it('draws each member that fits whole at the cell and span the open folder gives it', async () => {
     const user = userEvent.setup();
     render(<FaceGrid />);
-    const face = miniature();
-    expect(face).toMatchObject({
-      m1: '1 / span 4 | 1 / span 4',
-      m2: '5 / span 1 | 1 / span 1',
-      m3: '5 / span 2 | 3 / span 2',
+    const face = faceOf();
+    expect(face).toEqual({
+      m1: '1 / span 2 | 1 / span 2',
+      m2: '3 / span 1 | 1 / span 1',
+      m3: '1 / span 2 | 3 / span 2',
     });
     const board = await openBoard(user);
-    const { m5: _belowTheTile, ...shown } = board;
-    expect(face).toEqual(shown);
+    const { m4: _pastTheEdge, m5: _belowTheEdge, ...whole } = board;
+    expect(face).toEqual(whole);
   });
 
-  it('draws only the rows the tile shows, and no count badge', () => {
+  it('leaves out a member an edge would cut and counts it in the badge', () => {
     render(<FaceGrid />);
-    expect(Object.keys(miniature())).toEqual(['m1', 'm2', 'm3', 'm4']);
-    expect(within(folderTile()).queryByText(/^\+\d/)).toBeNull();
+    // m4 starts inside the region and runs past its right edge; m5 starts below its bottom.
+    expect(Object.keys(faceOf())).toEqual(['m1', 'm2', 'm3']);
+    expect(badgeOf()).toBe('+2');
     expect(within(folderTile()).getByText('Packed Folder')).toBeInTheDocument();
     expect(within(folderTile()).getByText(String(MEMBERS.length))).toBeInTheDocument();
+  });
+
+  it('fills the tile width for a folder narrower than the cap, with no badge', () => {
+    render(<FaceGrid />);
+    expect(faceOf('gN')).toEqual({ n1: '1 / span 2 | 1 / span 2' });
+    expect(badgeOf('gN')).toBeNull();
+    // One medium column is exactly the medium tile's own width, so the face draws it at full size.
+    const board = tileOf('gN').querySelector<HTMLElement>('[data-folder-miniature] > div');
+    expect(board?.style.transform).toBe('scale(1)');
+  });
+
+  it('shows a large member whole on a small folder tile', () => {
+    render(<FaceGrid />);
+    // A small tile's own cap is two base columns, which would cut a large member in half.
+    expect(Object.keys(faceOf('gS'))).toEqual(['s1']);
+    expect(faceOf('gS').s1).toBe('1 / span 4 | 1 / span 4');
+    expect(badgeOf('gS')).toBe('+1');
+    // The region widens to the corner member, so the face shrinks it to exactly the tile's width.
+    const gap = 16;
+    const cellWidth = (1000 - 7 * gap) / 8;
+    const largeWidth = 4 * cellWidth + 3 * gap;
+    const board = tileOf('gS').querySelector<HTMLElement>('[data-folder-miniature] > div');
+    expect(board?.style.transform).toBe(`scale(${cellWidth / largeWidth})`);
   });
 
   it('repacks with the board when the column count changes', async () => {
     const user = userEvent.setup();
     render(<FaceGrid />);
-    const wide = miniature();
+    const wide = faceOf();
     act(() => resize?.(500));
-    const narrow = miniature();
+    const narrow = faceOf();
     expect(narrow).not.toEqual(wide);
     const board = await openBoard(user);
     expect(board).toMatchObject(narrow);
@@ -296,9 +336,9 @@ describe('the folder miniature', () => {
     const user = userEvent.setup();
     render(<FaceGrid />);
     act(() => latest?.setSize('m2', 'medium'));
-    expect(miniature().m2).toMatch(/span 2 \| .* span 2$/);
+    expect(faceOf().m2).toMatch(/span 2 \| .* span 2$/);
     const board = await openBoard(user);
-    expect(board.m2).toBe(miniature().m2);
+    expect(board.m2).toBe(faceOf().m2);
   });
 
   it('keeps the mosaic in the detailed layout', () => {

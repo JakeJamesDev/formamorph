@@ -115,14 +115,15 @@ describe('a folder miniature in a filtered view', () => {
   );
 
   beforeEach(() => {
-    // 1000 px at a 200 px medium tile is 8 base columns. Unfiltered, p3 stands under p2; filtered, it
-    // packs into the row n2 leaves.
+    // 1000 px at a 200 px medium tile is 8 base columns, and a medium folder tile's region is capped
+    // at four of them. Unfiltered, p3 stands in the fifth column, past that edge; filtered, it packs
+    // into the columns n2 leaves and comes inside the region.
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
     saveTabOrganization('entities', {
       ...emptyTabOrganization(),
       order: ['gA'],
       groups: { gA: { id: 'gA', name: 'Mixed Folder', members: ['p2', 'n2', 'p3'], settings: {} } },
-      placements: { 8: { gA: { row: 0, col: 0 }, p2: { row: 0, col: 0 }, n2: { row: 0, col: 2 }, p3: { row: 2, col: 0 } } },
+      placements: { 8: { gA: { row: 0, col: 0 }, p2: { row: 0, col: 0 }, n2: { row: 0, col: 2 }, p3: { row: 0, col: 4 } } },
     });
   });
   afterEach(() => vi.restoreAllMocks());
@@ -131,6 +132,8 @@ describe('a folder miniature in a filtered view', () => {
     render(<FaceGrid />);
     const face = cells('[data-miniature-member]', 'data-miniature-member');
     expect(face).toEqual({ p2: '1 / span 2 | 1 / span 2', p3: '3 / span 2 | 1 / span 2' });
+    // A region built from the members the filter drops would leave p3 outside its right edge.
+    expect(document.querySelector('[data-folder-badge]')).toBeNull();
 
     await userEvent.click(screen.getByText('Mixed Folder'));
     expect(cells('[data-tile-id]', 'data-tile-id')).toEqual(face);

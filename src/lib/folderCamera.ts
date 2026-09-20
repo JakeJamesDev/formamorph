@@ -24,10 +24,12 @@ export interface FolderCamera {
   outer: CameraTrip;
   /** The folder board: inside the tile at tile scale, then at rest. */
   inner: CameraTrip;
-  /** How many times the tile fits across the library board. */
-  zoom: number;
+  /** How many times the tile fits across the region it stands for. */
+  scale: number;
   /** The inner board's overhang below the tile's shape, which the opening clip cuts away. */
   clipBottom: number;
+  /** The inner board's overhang to the right of the region, which the same clip cuts away. */
+  clipRight: number;
 }
 
 /** A layer's offset from another layer's corner. */
@@ -37,8 +39,11 @@ const offset = (rect: CameraRect, from: CameraRect) => ({ x: rect.left - from.le
  * The two transforms that carry a folder tile into its own board, as one camera.
  *
  * Both layers scale about their top-left corner. Linear interpolation of each pair keeps the tile's
- * image in the outer layer standing at the inner layer's own corner and width at every progress value,
- * so the miniature becomes the board with no jump.
+ * image in the outer layer standing at the region's own corner and width at every progress value, so
+ * the face becomes the board with no jump.
+ *
+ * The tile shows a region of the inner board rather than all of it, so the camera zooms by that
+ * region's width. The rest of the board is behind the clip until the reveal point.
  *
  * The `d` term — the inner layer's corner less the outer layer's — is what makes that true for a
  * scrolled library and for the folder header, which both move the inner corner away from the outer one.
@@ -50,13 +55,17 @@ const offset = (rect: CameraRect, from: CameraRect) => ({ x: rect.left - from.le
  * @param tile - The folder tile's box on screen
  * @param outer - The library board's box on screen
  * @param inner - The folder board's box on screen
+ * @param regionWidth - The board-space width of the region the tile's face shows. Anything outside the
+ *   board's own width, zero included, stands for the whole board
  */
-export function folderCamera({ tile, outer, inner }: {
+export function folderCamera({ tile, outer, inner, regionWidth }: {
   tile: CameraRect;
   outer: CameraRect;
   inner: CameraRect;
+  regionWidth?: number;
 }): FolderCamera {
-  const zoom = outer.width / tile.width;
+  const region = regionWidth && regionWidth > 0 ? Math.min(regionWidth, inner.width) : inner.width;
+  const scale = region / tile.width;
   const o = offset(tile, outer);
   const i = offset(tile, inner);
   const d = offset(inner, outer);
@@ -64,14 +73,15 @@ export function folderCamera({ tile, outer, inner }: {
   return {
     outer: {
       from: { x: 0, y: 0, scale: 1 },
-      to: { x: d.x - o.x * zoom, y: d.y - o.y * zoom, scale: zoom },
+      to: { x: d.x - o.x * scale, y: d.y - o.y * scale, scale },
     },
     inner: {
-      from: { x: i.x, y: i.y, scale: 1 / zoom },
+      from: { x: i.x, y: i.y, scale: 1 / scale },
       to: { x: 0, y: 0, scale: 1 },
     },
-    zoom,
-    clipBottom: Math.max(0, inner.height - tile.height * zoom),
+    scale,
+    clipBottom: Math.max(0, inner.height - tile.height * scale),
+    clipRight: Math.max(0, inner.width - region),
   };
 }
 

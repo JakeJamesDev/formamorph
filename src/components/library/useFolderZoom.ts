@@ -8,6 +8,8 @@ const DURATION_MS = 420;
 const EASING = 'cubic-bezier(0.45, 0, 0.15, 1)';
 /** The tile's own corner radius, in px. Matches `rounded-lg`, which the folder tile sets in CSS. */
 const TILE_RADIUS = 8;
+/** Camera progress at which the library board is gone and the rest of the folder may show. */
+const REVEAL_AT = 0.6;
 
 /** The scroll viewport the library board sits in, which the zoom is clipped to. */
 const viewportOf = (grid: HTMLElement): HTMLElement | null =>
@@ -32,6 +34,8 @@ interface Snapshot {
   cloneRect: DOMRect;
   /** The folder tile, on a fly-in. A fly-out has no tile on screen yet, so it measures after the swap. */
   tileRect?: DOMRect;
+  /** The region the folder's face shows, read from the board the click landed on. */
+  region: { width: number; hidden: string[] };
 }
 
 /**
@@ -55,14 +59,18 @@ interface Snapshot {
  *   that vanishes under the player drops back to the library with no motion
  * @param busy - True while a drag runs
  * @param enabled - False in the detailed layout, which keeps the instant swap
+ * @param regionOf - The part of a folder's board its face shows, and the members that face leaves out
  */
-export function useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId, busy, enabled }: {
+export function useFolderZoom({
+  gridNode, tileNodes, openGroupId, setOpenGroupId, busy, enabled, regionOf,
+}: {
   gridNode: React.RefObject<HTMLDivElement | null>;
   tileNodes: React.MutableRefObject<Map<string, HTMLDivElement>>;
   openGroupId: string | null;
   setOpenGroupId: (id: string | null) => void;
   busy: boolean;
   enabled: boolean;
+  regionOf: (groupId: string) => { width: number; hidden: string[] };
 }): { openGroup: (groupId: string) => void; closeGroup: () => void } {
   const reduceMotion = usePrefersReducedMotion();
   const pending = useRef<Snapshot | null>(null);
@@ -73,8 +81,8 @@ export function useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId
 
   // What the motion needs to know as the click lands, read before React commits the swap. Held in a ref
   // so the handlers never have to change identity for it.
-  const latest = useRef({ busy, enabled, reduceMotion, openGroupId });
-  latest.current = { busy, enabled, reduceMotion, openGroupId };
+  const latest = useRef({ busy, enabled, reduceMotion, openGroupId, regionOf });
+  latest.current = { busy, enabled, reduceMotion, openGroupId, regionOf };
 
   /** Freeze the board on screen, if the guards allow a camera at all. */
   const snapshot = useCallback((groupId: string, direction: Direction, tileRect?: DOMRect) => {
@@ -90,6 +98,9 @@ export function useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId
       clone: grid.cloneNode(true) as HTMLElement,
       cloneRect: grid.getBoundingClientRect(),
       tileRect,
+      // Read here rather than in the effect below: either way round, this is the one moment both
+      // boards are described by the same arrangement, with no swap between them.
+      region: latest.current.regionOf(groupId),
     };
   }, [gridNode]);
 
@@ -178,7 +189,7 @@ export function useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId
     overlay.appendChild(snap.clone);
     document.body.appendChild(overlay);
 
-    const camera = folderCamera({ tile, outer, inner });
+    const camera = folderCamera({ tile, outer, inner, regionWidth: snap.region.width });
     const moves: Move[] = [];
     const restore: (() => void)[] = [];
     /** Write inline styles the motion needs, remembering what they were so cleanup can hand them back. */
@@ -192,30 +203,41 @@ export function useFolderZoom({ gridNode, tileNodes, openGroupId, setOpenGroupId
     applyStyle(snap.clone, { transformOrigin: '0 0', willChange: 'transform, opacity' });
     applyStyle(grid, { transformOrigin: '0 0', willChange: 'transform, opacity' });
 
-    // The library board: at rest, then zoomed into the tile. It is gone before the zoom ends, because a
-    // board blown up that far is soft long before it reaches full scale.
+    // The library board: at rest, then zoomed into the tile. It is gone at the reveal point, which is
+    // what lets the rest of the folder show without drawing over library tiles still on screen.
     moves.push({
       el: outerEl,
       keyframes: [
         { transform: cameraCss(camera.outer.from), opacity: 1 },
-        { opacity: 0, offset: 0.75 },
+        { opacity: 0, offset: REVEAL_AT },
         { transform: cameraCss(camera.outer.to), opacity: 0 },
       ],
     });
 
-    // The folder board: inside the tile at tile scale, clipped to the tile's shape, then at rest.
+    // The folder board: inside the tile at tile scale, clipped to the region the face shows, then at
+    // rest. The clip is constant in board space, so it stays on the tile's frame while the camera
+    // moves, and it opens in one step at the reveal point rather than wiping across the board.
+    const faceClip = `inset(0px ${camera.clipRight}px ${camera.clipBottom}px 0px round ${TILE_RADIUS * camera.scale}px)`;
+    const openClip = 'inset(0px 0px 0px 0px round 0px)';
     moves.push({
       el: innerEl,
       keyframes: [
-        {
-          transform: cameraCss(camera.inner.from),
-          opacity: 0,
-          clipPath: `inset(0px 0px ${camera.clipBottom}px 0px round ${TILE_RADIUS * camera.zoom}px)`,
-        },
+        { transform: cameraCss(camera.inner.from), opacity: 0, clipPath: faceClip },
         { opacity: 1, offset: 0.35 },
-        { transform: cameraCss(camera.inner.to), opacity: 1, clipPath: 'inset(0px 0px 0px 0px round 0px)' },
+        { clipPath: faceClip, offset: REVEAL_AT },
+        { clipPath: openClip, offset: REVEAL_AT },
+        { transform: cameraCss(camera.inner.to), opacity: 1, clipPath: openClip },
       ],
     });
+
+    // Members the face leaves out have no place on the tile to come from, so they wait for the empty
+    // board and then all fade in at one value. A wipe would show them arriving in a growing slice.
+    for (const id of snap.region.hidden) {
+      const member = innerEl.querySelector<HTMLElement>(`[data-tile-id="${CSS.escape(id)}"]`);
+      if (member) {
+        moves.push({ el: member, keyframes: [{ opacity: 0 }, { opacity: 0, offset: REVEAL_AT }, { opacity: 1 }] });
+      }
+    }
 
     // The folder tile in the library layer gives way early, so the growing board shows inside its frame
     // rather than through it. Reversed, it is the last thing back on a fly-out.
