@@ -4,6 +4,9 @@
  * One place for both, because a place is a label and a metal together — a surface that names second place
  * without silvering it, or silvers a step without saying which, is half an answer. Everything that shows
  * a placement reads from here: the badge, the podium band, the dialog's slots and the admin summary.
+ *
+ * The wording a shared place takes lives here too, for the same reason: a count that four surfaces each
+ * phrase for themselves is four accounts of one result.
  */
 import type { ContestPlace } from '@/types';
 

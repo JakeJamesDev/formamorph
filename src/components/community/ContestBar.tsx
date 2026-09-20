@@ -112,10 +112,10 @@ interface ContestPodiumProps {
  * left implied. Reads the snapshots the announcement stamped onto the contest rather than the entry grid:
  * a placed world that has since been deleted still placed, and the archive says so.
  *
- * A wrapping row rather than three columns, because a podium is no longer three worlds: a shared place
- * puts any number on it, and a fixed column count would either crush them or drop the extras. Each card
- * wears its own metal, which is the only thing telling two worlds that share a place from two that did
- * not — the plate is the answer, and tied cards are deliberately identical.
+ * A wrapping row rather than a fixed column count, because a shared place puts any number of worlds on
+ * a podium: columns would either crush them or drop the extras. Each card wears its own metal, which is
+ * the only thing telling two worlds that share a place from two that did not — the plate is the answer,
+ * and tied cards are deliberately identical.
  */
 export function ContestPodium({ contest }: ContestPodiumProps) {
   const podium = placementsOf(contest);
