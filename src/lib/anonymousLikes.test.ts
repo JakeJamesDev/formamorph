@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { INSTALL_STORAGE_KEY } from './anonymousLikes';
+import { ANONYMOUS_LIKE_CODES, INSTALL_STORAGE_KEY, mayPressHeart, refusalAnswer } from './anonymousLikes';
 
 /**
  * The Install id.
@@ -69,5 +69,63 @@ describe('the Install id', () => {
 
     expect(id).toMatch(UUID);
     expect(installId()).toBe(id);
+  });
+});
+
+describe('who may press the heart', () => {
+  const press = (over: Partial<Parameters<typeof mayPressHeart>[0]> = {}) =>
+    mayPressHeart({ signedIn: false, ownListing: false, guestLikes: true, serverTakesLikes: true, liked: undefined, ...over });
+
+  it('lets an account press somebody else\'s listing', () => {
+    expect(press({ signedIn: true })).toBe(true);
+  });
+
+  it('leaves an account a plain count on its own listing', () => {
+    expect(press({ signedIn: true, ownListing: true })).toBe(false);
+  });
+
+  it('lets a guest press where this shell and this server both take one', () => {
+    expect(press()).toBe(true);
+  });
+
+  it('sends a guest to sign-in while the server takes none', () => {
+    expect(press({ serverTakesLikes: false })).toBe(false);
+  });
+
+  it('still lets a guest empty a heart they filled while the server takes none', () => {
+    // The privacy text promises that pressing again takes an Anonymous Like back.
+    expect(press({ serverTakesLikes: false, liked: true })).toBe(true);
+  });
+
+  it('sends every guest press to sign-in in a shell that takes none, filled heart included', () => {
+    // The website. An Install names a copy of the app, and the website is not one, so a filled heart
+    // there came from an account and is that account's to remove.
+    expect(press({ guestLikes: false })).toBe(false);
+    expect(press({ guestLikes: false, liked: true })).toBe(false);
+  });
+});
+
+describe('what the heart does about a refusal', () => {
+  it('sends the guest to sign-in when the server takes none', () => {
+    expect(refusalAnswer(ANONYMOUS_LIKE_CODES.OFF)).toBe('signIn');
+  });
+
+  it('has something to say only about the cap, which signing in gets past', () => {
+    expect(refusalAnswer(ANONYMOUS_LIKE_CODES.ADDRESS_CAP)).toBe('cap');
+  });
+
+  it.each([
+    ANONYMOUS_LIKE_CODES.NOT_VISIBLE,
+    ANONYMOUS_LIKE_CODES.BAD_INSTALL,
+    ANONYMOUS_LIKE_CODES.BAD_LIKED,
+    ANONYMOUS_LIKE_CODES.ACCOUNT_SUSPENDED,
+    ANONYMOUS_LIKE_CODES.ACCOUNT_OWN_LISTING,
+  ])('says nothing about %s, which is not the reader\'s to act on', (code) => {
+    expect(refusalAnswer(code)).toBe('silent');
+  });
+
+  it('reports a refusal it cannot name, so a server fault is not swallowed', () => {
+    expect(refusalAnswer('')).toBe('report');
+    expect(refusalAnswer('something_new')).toBe('report');
   });
 });

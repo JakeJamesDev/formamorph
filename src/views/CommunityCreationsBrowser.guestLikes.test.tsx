@@ -183,6 +183,20 @@ describe('where a guest\'s press goes', () => {
     expect(anonymousRoute()).not.toHaveBeenCalled();
   });
 
+  it('sends a website guest to sign-in even on a heart that shows filled', async () => {
+    // The server marks a guest's `liked` from the account that claimed their Install, so a website
+    // visitor who signed in once and out again sees a filled heart. It is their account's Like, and
+    // only their account may take it off.
+    sync.items = [{ ...listing, liked: true, likes: 4 }];
+    const onGuestLike = vi.fn();
+    renderBrowser({ capabilities: WEBSITE_COMMUNITY_CAPABILITIES, onGuestLike });
+
+    press();
+
+    await waitFor(() => expect(onGuestLike).toHaveBeenCalled());
+    expect(anonymousRoute()).not.toHaveBeenCalled();
+  });
+
   it('uses the account route once there is a session', async () => {
     renderBrowser({ isAuthenticated: true, currentUser: { id: 'u1', username: 'reader' } as unknown as WorldRecord });
 
@@ -207,6 +221,23 @@ describe('what a refusal does to the heart', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: /Unlike/ })).toBeNull());
   });
 
+  it('sends a refused clear to sign-in, which is what the server answers until its ticket 12 lands', async () => {
+    // The clear is attempted whatever the flag says, because a like must always be removable. The
+    // server refuses it with the same switched-off code today, so the press lands on the fallback.
+    sync.items = [{ ...listing, liked: true, likes: 4 }];
+    sync.anonymousLikes = false;
+    refuse(ANONYMOUS_LIKE_CODES.OFF);
+    const onGuestLike = vi.fn();
+    renderBrowser({ onGuestLike });
+
+    press();
+
+    await waitFor(() => expect(anonymousRoute()).toHaveBeenCalledWith('w1', false));
+    await waitFor(() => expect(onGuestLike).toHaveBeenCalled());
+    // The like it could not remove is still shown as given.
+    expect(screen.getByRole('button', { name: /Unlike — 4 likes/ })).toBeTruthy();
+  });
+
   it('says one thing about the cap, and offers sign-in as the way past it', async () => {
     refuse(ANONYMOUS_LIKE_CODES.ADDRESS_CAP);
     const onGuestLike = vi.fn();
@@ -220,7 +251,7 @@ describe('what a refusal does to the heart', () => {
     // The toast's own action is what reaches sign-in; the press itself does not.
     expect(onGuestLike).not.toHaveBeenCalled();
     const { getByRole } = render(<>{vi.mocked(toast.info).mock.calls[0][0] as React.ReactNode}</>);
-    fireEvent.click(getByRole('button', { name: 'Sign in' }));
+    fireEvent.click(getByRole('button', { name: 'Login' }));
     expect(onGuestLike).toHaveBeenCalled();
   });
 

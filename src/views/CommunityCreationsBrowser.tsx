@@ -72,7 +72,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
 import WorldStorageService, { AnonymousLikeRefused } from '../services/WorldStorageService';
-import { refusalAnswer } from '@/lib/anonymousLikes';
+import { ADDRESS_CAP, installId, refusalAnswer } from '@/lib/anonymousLikes';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -226,14 +226,14 @@ const CommunityCreationsBrowser = ({
   // The header's title element, which differs per shell (see PageHeading).
   const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
-  const catalogReader = isAuthenticated ? String(currentUser?.id ?? AuthService.token ?? '') : '';
+  // The same identity the catalog cache tag is stored under: a guest's hearts are their Install's.
+  const catalogReader = isAuthenticated
+    ? String(currentUser?.id ?? AuthService.token ?? '')
+    : `install:${installId()}`;
   const {
     remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
     anonymousLikes, setAnonymousLikes,
   } = useCatalogSync(open, catalogReader);
-  // Whether the heart is a guest's to press here: this shell has to allow it and this server has to take
-  // it. Either one off sends a guest to sign-in, which is where the heart sent them before.
-  const guestLikes = capabilities.guestLikes && anonymousLikes;
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
   // has already landed — declining leaves it removed and simply unexplained, as suspending does.
@@ -645,9 +645,9 @@ const CommunityCreationsBrowser = ({
         case 'cap':
           toast.info(
             <div className="flex flex-col items-start gap-2">
-              <span>One connection can give a listing three likes. Sign in to add yours.</span>
+              <span>One connection can give a listing {ADDRESS_CAP} likes. Log in to add yours.</span>
               {onGuestLike && (
-                <Button size="sm" variant="secondary" onClick={() => onGuestLike(world)}>Sign in</Button>
+                <Button size="sm" variant="secondary" onClick={() => onGuestLike(world)}>Login</Button>
               )}
             </div>,
           );
@@ -1215,7 +1215,8 @@ const CommunityCreationsBrowser = ({
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
                       onLike={capabilities.likes ? handleLike : undefined}
                       onGuestLike={capabilities.likes ? onGuestLike : undefined}
-                      guestLikes={capabilities.likes && guestLikes}
+                      guestLikes={capabilities.likes && capabilities.guestLikes}
+                      serverTakesLikes={anonymousLikes}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
                       onRelease={capabilities.moderation ? handleRelease : undefined}
                       placements={placementsBy(world, contests)}
@@ -1288,7 +1289,8 @@ const CommunityCreationsBrowser = ({
         currentUser={currentUser}
         onLike={handleLike}
         onGuestLike={capabilities.likes ? onGuestLike : undefined}
-        guestLikes={guestLikes}
+        guestLikes={capabilities.guestLikes}
+        serverTakesLikes={anonymousLikes}
         onAnonymousLikes={setAnonymousLikes}
         onLikesChanged={handleLikesChanged}
         openLikersOnMount={openLikersOnMount}

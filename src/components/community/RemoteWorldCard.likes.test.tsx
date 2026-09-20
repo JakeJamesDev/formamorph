@@ -114,7 +114,7 @@ describe('who can press it', () => {
     const onLike = vi.fn(async () => {});
     const onGuestLike = vi.fn();
     const record = world();
-    show(record, { onLike, onGuestLike, guestLikes: true, isAuthenticated: false, currentUser: null });
+    show(record, { onLike, onGuestLike, guestLikes: true, serverTakesLikes: true, isAuthenticated: false, currentUser: null });
 
     fireEvent.click(screen.getByRole('button', { name: /Like —/ }));
 
@@ -129,7 +129,7 @@ describe('who can press it', () => {
     const onLike = vi.fn(async () => {});
     const onGuestLike = vi.fn();
     const record = world({ liked: true });
-    show(record, { onLike, onGuestLike, guestLikes: false, isAuthenticated: false, currentUser: null });
+    show(record, { onLike, onGuestLike, guestLikes: true, serverTakesLikes: false, isAuthenticated: false, currentUser: null });
 
     fireEvent.click(screen.getByRole('button', { name: /Unlike/ }));
 
@@ -140,7 +140,7 @@ describe('who can press it', () => {
   it('takes a guest\'s like back on a second press', async () => {
     const onLike = vi.fn(async () => {});
     const record = world({ liked: true });
-    show(record, { onLike, guestLikes: true, isAuthenticated: false, currentUser: null });
+    show(record, { onLike, guestLikes: true, serverTakesLikes: true, isAuthenticated: false, currentUser: null });
 
     fireEvent.click(screen.getByRole('button', { name: /Unlike/ }));
 
