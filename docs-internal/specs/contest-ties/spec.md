@@ -108,6 +108,11 @@ In the Podium dialog, the podium is an ordered list. Each row below the first ha
 
 - The podium band becomes a flat wrapping row. Each card has its own plate. Cards follow the array order. React keys use the world id with an index fallback, never the place.
 - Four one-line surfaces name only the 1st-place world today: the contest bar status line, the event banner, the acknowledge modal title, and the admin Events tab one-liner. With one 1st-place world they do not change. With two or more they show a count: "N worlds tied for 1st". The contest bar keeps its "· N more placed" suffix, where N counts the worlds below 1st place. One shared helper returns the 1st-place worlds so the four surfaces cannot drift.
+- The tie forms, with N as the count of 1st-place worlds and M as the count of worlds below 1st:
+  - Contest bar status line: `N worlds tied for 1st · M more placed` (the suffix only when M is above 0).
+  - Event banner line: `Results announced — N worlds tied for 1st`.
+  - Acknowledge modal title: `N Worlds Tied for 1st`. It is a title, so it takes title case. The other three are status lines and stay in sentence case.
+  - Admin Events tab one-liner: `N worlds tied for 1st (+M more)`. The `1st Place:` prefix is dropped on a tie, because it repeats the place.
 - The decided-contest entry order pins the podium in array order and adds publish time as the tiebreaker for the like-count sort.
 - Place lookup by world, the badge-pair lookup, and the place badges need no change. They already look up by world.
 - The dev event sample gets a shared place.
