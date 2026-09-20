@@ -1,6 +1,7 @@
 # 06: Install id and the guest heart
 
-Status: ready-for-agent
+Status: in-progress
+Base: 43b0faaf
 Blocked by: 01
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
@@ -24,6 +25,8 @@ A guest in the app presses the heart and it fills, on the tile and in the detail
 - [ ] The client learns the server setting from the `anonymousLikes` boolean on the catalog and detail responses. A missing flag means off. It is kept with the catalog cache.
 - [ ] The heart toggles for a guest when the capability and the server setting are both on. Otherwise the existing guest handler runs. A "setting off" refusal on a press also falls back to the guest handler.
 - [ ] The like coordinator picks the account route or the anonymous route by session. The update is optimistic, and the count comes from the response.
+- [ ] The app passes no guest handler today, so a guest sees a static heart. This ticket wires one: the main menu opens the existing sign-in dialog. It opens only on a press, and closing it leaves the guest where they were.
+- [ ] With the setting on, a guest press never opens the dialog; only the cap toast's Sign in action does. Tests: setting off → dialog; setting on → toggle, no dialog; cap refusal → the toast action opens the dialog.
 - [ ] The cap refusal shows a short toast that offers sign-in. Other refusals restore the heart silently. A network failure toasts.
 - [ ] An own listing still shows a static count for a guest whose linked account wrote it (the server refusal restores the heart).
 - [ ] `CONTEXT.md` gains **Install**, **Anonymous Like**, and **Claim**, and the **Like** entry says the public count is the sum.
