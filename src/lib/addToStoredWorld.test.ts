@@ -5,7 +5,8 @@ import { addCopyToStoredWorld, storedWorldReferences } from './addToStoredWorld'
 import WorldStorageService from '@/services/WorldStorageService';
 import type { LibrarySource } from './linkedContent';
 import type { ConnectionPlan } from './worldReferences';
-import type { Dictionary, Entity, GameLocation, Placeholder } from '@/types';
+import { openingsEnabled } from './openings';
+import type { Dictionary, Entity, GameLocation, Placeholder, WorldOverview } from '@/types';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: () => null } }));
 
@@ -37,7 +38,7 @@ async function storeWorld(over: {
 }
 
 async function storedWorld(): Promise<{
-  worldOverview?: { openingsEnabled?: boolean };
+  worldOverview?: WorldOverview;
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
 }> {
   return await WorldStorageService.getWorldData('w-1') as never;
@@ -207,11 +208,22 @@ describe('a copy that brings openings', () => {
     expect((await storedWorld()).worldOverview?.openingsEnabled).toBeUndefined();
   });
 
-  it('leaves the switch alone for a copy with no row that could come up', async () => {
+  it('leaves the switch alone for a copy with no opening written', async () => {
     await storeWorld({ openingsEnabled: false });
 
     await addCopyToStoredWorld('w-1', opener('   '), source, empty);
 
     expect((await storedWorld()).worldOverview?.openingsEnabled).toBe(false);
+  });
+
+  it('writes no flag into a world that never switched the list off', async () => {
+    await storeWorld();
+
+    await addCopyToStoredWorld('w-1', opener('Marn hails you from the jetty.'), source, empty);
+
+    // The rows themselves switch the list on, so the copy leaves the field absent.
+    const after = await storedWorld();
+    expect(after.worldOverview?.openingsEnabled).toBeUndefined();
+    expect(openingsEnabled(after.worldOverview, after.entities)).toBe(true);
   });
 });

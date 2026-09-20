@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { markHelpSeen } from '@/lib/helpSeenStore';
+import { openingsEnabled } from '@/lib/openings';
 import type { Dictionary, Entity, World } from '@/types';
 
 /**
@@ -661,14 +662,14 @@ describe('Adding an entity that brings openings', () => {
     confirmPicker('Add Entity');
   };
 
-  it('switches the world list on and says so, since the copy would land benched', async () => {
+  it('clears the author’s off and says so, since the copy would land benched', async () => {
     seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
     const { ctx } = renderWorldEditorBench(OFF_WORLD(), 'advanced');
     await addFromLibrary();
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
-    expect(toast.info).toHaveBeenCalledWith('Openings are on now. Tall Marn brought its own.');
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so Openings is switched on.');
   });
 
   it('leaves the switch alone for a copy with no row that could come up', async () => {
@@ -681,13 +682,26 @@ describe('Adding an entity that brings openings', () => {
     expect(toast.info).not.toHaveBeenCalled();
   });
 
-  it('says nothing when the list is already on', async () => {
+  it('says so for a world that has no opening yet, where the box also reads off', async () => {
     seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
     const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
+    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(false);
     await addFromLibrary();
 
     await waitFor(() => expect(ctx().entities).toHaveLength(2));
-    expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
+    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
+    expect(toast.info).toHaveBeenCalledWith('Tall Marn has openings, so Openings is switched on.');
+  });
+
+  it('says nothing when the world already has an opening of its own', async () => {
+    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
+    const world = benchEditorWorld({});
+    world.worldOverview.openings = [{ id: 'w1', text: 'The fen wakes.', kind: 'action' }];
+    const { ctx } = renderWorldEditorBench(world, 'advanced');
+    expect(openingsEnabled(ctx().worldOverview, ctx().entities)).toBe(true);
+    await addFromLibrary();
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
     expect(toast.info).not.toHaveBeenCalled();
   });
 });

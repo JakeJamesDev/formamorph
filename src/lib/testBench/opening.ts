@@ -425,7 +425,7 @@ export function buildOpening(
     pool,
     selectedKey: chosen?.key ?? null,
     opening,
-    openingsEnabled: openingsEnabled(world.worldOverview),
+    openingsEnabled: openingsEnabled(world.worldOverview, world.entities),
     stats,
     disabledStats: (world.stats ?? [])
       .filter((stat) => !enabled[stat.id])

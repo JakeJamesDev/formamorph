@@ -15,7 +15,7 @@ import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
-  addOpening, DEFAULT_OPENING, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
+  addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
   setOpeningKind, setOpeningText, setOpeningWeight, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -40,6 +40,7 @@ export function OpeningsPanel({ onOpenEntity }: {
   const label = (name: string) => labelPlaceholders(name, placeholders, { letters: placementLetters, owners: placeholderOwners });
   const chancesStart = view.starts.find((l) => l.id === view.chancesStartId);
   const [world, ...entityGroups] = view.groups;
+  const anyOpenings = hasAuthoredOpenings(worldOverview) || entities.some(hasAuthoredOpenings);
 
   return (
     <div className="space-y-4">
@@ -66,7 +67,7 @@ export function OpeningsPanel({ onOpenEntity }: {
           placeholders={placeholders}
           empty={(
             <div className="space-y-1">
-              <Hint>No openings yet. Players start on the default opening.</Hint>
+              <Hint>No openings yet. This world starts on the text below.</Hint>
               <div
                 role="note"
                 aria-label="Default Opening"
@@ -120,9 +121,11 @@ export function OpeningsPanel({ onOpenEntity }: {
       })}
 
       <Hint>
-        {openingsEnabled(worldOverview)
+        {openingsEnabled(worldOverview, entities)
           ? 'Draws one opening by weight when a player starts this world. A Player Action fills their input box for them to edit and send. Narration is page one, shown as written.'
-          : "Not applied until you switch this one on. Players start on the default opening. Chances show the odds you'll get once it's on."}
+          : anyOpenings
+            ? "Switched off, so players start on the default opening. Chances show the odds you'll get once it's on."
+            : 'Write an opening here or on an entity to switch this on. Until then players start on the default opening.'}
       </Hint>
     </div>
   );
