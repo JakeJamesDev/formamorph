@@ -1,7 +1,7 @@
-# 05: Motion E2E Spec
+# 06: Motion E2E Spec
 
 Status: ready-for-agent
-Blocked by: 04
+Blocked by: 05
 Recommended model: Claude Opus 5 (`claude-opus-5`)
 Reasoning effort: high
 
@@ -21,6 +21,8 @@ The spec runs with `npm run test:e2e`, outside the four gates.
 
 - [ ] On every sampled frame the folder tile's rectangle in the outer layer equals the region's rectangle in the inner layer within one pixel, in both directions
 - [ ] The sampled sizes pass through intermediate values, so an instant swap fails the test
+- [ ] On every frame where the outer layer has any opacity, the folder header is at zero opacity and raised; it is at rest on the last frame, and the fly-out mirrors it; the test fails when the header shows from the first frame
+- [ ] The clip guard measures the inner layer's clip, not the corner member's box, because the tile's frame crops a sliver of a corner member whose span differs from the tile's
 - [ ] The library is scrolled before the fly-in; the test fails when the origin-offset term is removed from the camera function
 - [ ] On every frame where the outer layer has any opacity, no part of the inner layer shows past the tile's frame; the test fails when the clip opens from the first frame
 - [ ] On every frame, all left-out members hold one opacity value, and that value is zero before the reveal point; the test fails when the clip opens as a wipe with the members visible

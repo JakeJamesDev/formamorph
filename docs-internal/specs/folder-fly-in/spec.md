@@ -37,6 +37,10 @@ thing, so no zoom between them can look correct.
 - The motion takes 420 ms.
 - The detailed layout keeps the mosaic and the instant swap.
 - The instant swap is also used while a drag runs and when the player asks for reduced motion.
+- The **folder header** (**Library**, the name field, **Prompts**) slides down and fades in at the reveal
+  point, with the left-out members. On a fly-out it slides up and fades out first. Its space is reserved
+  from the first frame, so the board does not jump.
+- A folder tile that the player drags shows the cropped face under the pointer, not the 2×2 mosaic.
 
 ## User Stories
 
@@ -77,6 +81,11 @@ thing, so no zoom between them can look correct.
 35. As a player, I want the rest of the folder to appear only after the library is gone, so that tiles never show up on top of a library that is still on screen.
 36. As a player, I want the rest of the folder to fade in together, so that the reveal does not read as a wipe.
 37. As a player with a large member in a small folder tile, I want that member shown whole, so that the face is never empty.
+38. As a player, I want the folder header to arrive with the rest of the folder, so that it does not pop in over a library that is still on screen.
+39. As a player who opens a folder on the top row, I want the header out of the way while the camera moves, so that it does not sit against the tile I fly into.
+40. As a player, I want the folder header to leave first on a fly-out, so that the two directions match.
+41. As a player, I want the board to hold still when the header arrives, so that the header's space does not push the tiles down mid-motion.
+42. As a player who drags a folder tile, I want the carried tile to look like the tile I picked up, so that the drag does not show an old picture.
 
 ## Implementation Decisions
 
@@ -155,6 +164,18 @@ thing, so no zoom between them can look correct.
 - **Guards.** No animation while a drag is active, under `prefers-reduced-motion: reduce`, in the detailed
   layout, or when the folder tile cannot be measured. The scroll viewport takes no pointer input during
   the motion. A new open or back during the motion finishes the running one first.
+- **Folder header motion.** In the fly-in sense the header holds zero opacity and sits one header height
+  above its place until the reveal point. Then it slides down and fades to rest, on the camera's easing.
+  The header mounts at the swap as it does today, so its layout space is there from the first frame and
+  the `d` term already covers it. On a fly-out the header unmounts at the swap, so the hook freezes it the
+  way it freezes the board: a clone in a fixed overlay at the header's old rectangle, played in reverse.
+  The overlay clips to that rectangle, so the slide never covers the toolbar or the tabs. The header takes
+  no pointer input during the motion. Every guard that gives the instant swap also gives the header with
+  no motion.
+- **Carried folder tile.** The drag overlay's stand-in for a folder draws the same face component from the
+  same region function as the tile, at the overlay's size, in the grid layout. It keeps the overlay's
+  rules: half opacity, no shadow, no ring, no name bar. The face draws plain thumbnails and registers no
+  sortable, so it is safe in the overlay. The detailed layout keeps the mosaic there.
 - **Cleanup.** When the animations finish or are canceled, the hook cancels them, restores every inline
   style it set, and removes the overlay. Nothing is left on the grid that a dnd-kit measurement can read.
 - **No storage change.** The arrangement record, world exports, and saves do not change shape.
@@ -179,6 +200,11 @@ not check keyframe lists or internal refs.
   any opacity, that all left-out members hold one opacity value on every frame, that sizes pass through intermediate values, that no overlay remains, that the grid has no inline
   transform afterwards, that the library scroll offset returns, and that reduced motion gives the instant
   swap. It runs on a scrolled library. Prior art: `e2e/fullscreen-morph.spec.ts`.
+- **Folder header (jsdom and Playwright).** jsdom pins that the header gets the motion on an animated open
+  and none under each guard, and that a fly-out leaves no header clone behind. The Playwright spec samples
+  the header's opacity and offset: zero and raised while the outer layer has any opacity, at rest at the end.
+- **Carried folder tile (jsdom).** A dragged folder's overlay draws the face's members, not four mosaic
+  cells, in the grid layout.
 - **Drag regression.** `library-drag-parity.spec.ts` and `library-tiles.spec.ts` stay green with a folder
   opened and closed before the drag.
 
@@ -188,7 +214,6 @@ not check keyframe lists or internal refs.
 - Any animation in the detailed layout.
 - The full-width miniature. It was built first and was not legible; the prototype keeps it as `face=mini`.
 - A face that scrolls or pages to the left-out members.
-- A fade for the folder header.
 - The speed control, the variant bar, and the seed data. They stay on the prototype branch.
 - A user setting for the animation.
 
