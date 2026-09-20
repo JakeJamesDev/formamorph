@@ -151,3 +151,48 @@ export function installId(): string {
   }
   return held;
 }
+
+/**
+ * Whether this shell takes a guest's like at all.
+ *
+ * An Install names a copy of the app. A shell that sends every guest press to sign-in, such as the
+ * website, is not one, so it makes no id and names none in a request.
+ */
+let shellOffersGuestLikes = true;
+
+/**
+ * Whether a server has refused a request that carried the Install header.
+ *
+ * Sticky for the rest of the session. A server whose CORS allow list omits the header refuses the
+ * preflight for every request that carries it, so one refusal answers for all of them.
+ */
+let headerRefused = false;
+
+/**
+ * State whether this shell takes a guest's like, from the capability the shell was mounted with.
+ *
+ * @param offers - True for the app, false for the website
+ */
+export function setShellOffersGuestLikes(offers: boolean): void {
+  shellOffersGuestLikes = offers;
+}
+
+/** Record that a server refused the header, so nothing sends it again this session. */
+export function noteInstallHeaderRefused(): void {
+  headerRefused = true;
+}
+
+/** Whether a request may name this Install. */
+export function installHeaderInUse(): boolean {
+  return shellOffersGuestLikes && !headerRefused;
+}
+
+/**
+ * The Install id to name this reader by, or null when nothing here may name one.
+ *
+ * The one gate every caller asks through, so a shell that takes no guest like neither sends an id nor
+ * stores one.
+ */
+export function readerInstallId(): string | null {
+  return installHeaderInUse() ? installId() : null;
+}

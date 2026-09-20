@@ -5,6 +5,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import CommunityBrowserHost from './CommunityBrowserHost';
 import { WEBSITE_COMMUNITY_CAPABILITIES } from '@/lib/communityBrowserCapabilities';
+import { INSTALL_HEADER_NAME, setShellOffersGuestLikes } from '@/lib/anonymousLikes';
 import WorldStorageService from '@/services/WorldStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import ModelStorageService from '@/services/ModelStorageService';
@@ -145,6 +146,12 @@ const stubServer = (content: unknown = worldData('Sedge Landing')) => {
   }));
 };
 
+/** The headers the most recent request went out with. */
+const lastHeaders = () => {
+  const calls = vi.mocked(fetch).mock.calls;
+  return (calls[calls.length - 1][1] as RequestInit).headers as Record<string, string>;
+};
+
 const renderHost = (props: Record<string, unknown> = {}) =>
   render(<CommunityBrowserHost open onOpenChange={() => {}} {...props} />);
 
@@ -158,6 +165,8 @@ beforeEach(() => {
 
 afterEach(async () => {
   cleanup();
+  // Which shell mounted last is one decision per session, and the Install module holds it.
+  setShellOffersGuestLikes(true);
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   // Each test starts on an empty library; the fake IndexedDB outlives the render otherwise.
@@ -378,5 +387,27 @@ describe('the page presentation', () => {
     expect(screen.getByRole('button', { name: 'Download world' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Download this world' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Hide this world')).not.toBeInTheDocument();
+  });
+
+  it('names no Install in a shell whose guests are sent to sign-in', async () => {
+    // An Install names a copy of the app, and the website is not one. The header it would travel in is
+    // also the header a server's CORS allow list is likeliest to omit, which fails the whole catalog.
+    catalog.items = [listing()];
+    renderHost({ presentation: 'embedded', capabilities: WEBSITE_COMMUNITY_CAPABILITIES });
+    await screen.findByText('Sedge Landing');
+
+    await WorldStorageService.fetchCatalog();
+
+    expect(lastHeaders()[INSTALL_HEADER_NAME]).toBeUndefined();
+  });
+
+  it('names one in the app, where a guest may press the heart', async () => {
+    catalog.items = [listing()];
+    renderHost();
+    await screen.findByText('Sedge Landing');
+
+    await WorldStorageService.fetchCatalog();
+
+    expect(lastHeaders()[INSTALL_HEADER_NAME]).toMatch(/^[0-9a-f-]{36}$/);
   });
 });
