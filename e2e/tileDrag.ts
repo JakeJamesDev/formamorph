@@ -35,6 +35,26 @@ export async function openLibrary(page: Page, layout: 'grid' | 'detailed' = 'gri
   await tiles(page).nth(2).waitFor();
 }
 
+/**
+ * Wait for the folder camera to land, which every gesture after a folder opens or closes depends on.
+ *
+ * While the camera runs it takes pointer events off the scroll viewport, on purpose: a press on a board
+ * mid-flight would start a drag against cells that are not where they look. `page.mouse` is raw input
+ * with no actionability check behind it, so a drag issued too early lands on nothing and the board
+ * simply does not move — which reads as a board that ignored the gesture rather than as a wait missed.
+ *
+ * Three conditions, because any one of them alone can be true before the camera has even started: its
+ * raised frames are gone, the viewport takes pointer events again, and nothing inside it is animating.
+ */
+export async function cameraSettled(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    if (document.querySelector('[data-folder-overlay]')) return false;
+    const viewport = document.querySelector<HTMLElement>('[data-radix-scroll-area-viewport]');
+    if (!viewport || getComputedStyle(viewport).pointerEvents === 'none') return false;
+    return viewport.getAnimations({ subtree: true }).every((a) => a.playState !== 'running');
+  });
+}
+
 /** The center of a tile, in page coordinates. */
 export async function tileCenter(page: Page, index: number): Promise<{ x: number; y: number }> {
   const box = await tiles(page).nth(index).boundingBox();
