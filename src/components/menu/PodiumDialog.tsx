@@ -14,7 +14,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Meta } from "@/components/ui/typography";
 import { cn, listNames } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
-import { entriesOf, publishedAtOf, standingsOrder, tiedLikeCounts } from "@/lib/contests";
+import {
+  UNKNOWN_PUBLISH_TIME, entriesOf, publishedAtOf, standingsOrder, tiedLikeCounts,
+} from "@/lib/contests";
 import { entryBlockReason } from "@/lib/adminEvents";
 import { placementsOf } from "@/lib/serverEvents";
 import {
@@ -55,7 +57,7 @@ interface PodiumDialogProps {
   onSaved?: () => void;
 }
 
-/** One entry, reduced to what a judgement is made on. */
+/** One entry, reduced to what a judgment is made on. */
 interface Entry {
   id: string;
   name: string;
@@ -169,14 +171,15 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
 
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
 
-  // The standings, which is what a judgement is read off. Sorted neighbors say which entry leads but
-  // not whether two are level, so the entries that share a count are marked as well as ordered.
+  // The standings, which is what a judgment is read off. Sorted neighbors say which entry leads but
+  // not whether two are tied, so the entries that share a count are marked as well as ordered.
   const standings = useMemo(() => standingsOrder(entries), [entries]);
-  const levelCounts = useMemo(() => tiedLikeCounts(entries), [entries]);
-  const published = useMemo(
-    () => new Map(entries.map((entry) => [entry.id, entry.publishedAt])),
-    [entries],
-  );
+  const tiedCounts = useMemo(() => tiedLikeCounts(entries), [entries]);
+
+  // A drafted world the grid has no entry for — a published placement whose listing was deleted — has
+  // no stamp to sort on, so it goes last.
+  const publishedAt = (worldId: string): number =>
+    byId.get(worldId)?.publishedAt ?? UNKNOWN_PUBLISH_TIME;
 
   const places = podiumPlacesOf(draft);
   const podium = draft.map((row, index) => ({
@@ -192,7 +195,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
   // Every action re-sorts the worlds inside each shared place by publish time, which is the order the
   // server stores them in — so what a judge reads here is what the save writes.
   const stage = (next: (held: Draft) => Draft) =>
-    setDraft((held) => orderTiedRows(next(held), published));
+    setDraft((held) => orderTiedRows(next(held), publishedAt));
 
   const assign = (worldId: string) => stage((held) => cyclePodium(held, worldId));
 
@@ -234,10 +237,11 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             {editing ? 'Edit Podium' : 'Announce Results'} — {contest.title}
           </DialogTitle>
           <DialogDescription>
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first, with worlds
-            level on likes marked <strong>Tied</strong>. Click an entry to place it, and again to step it
-            down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share the place above it,
-            and the places below follow. Your own entry and quarantined worlds can&apos;t be placed.
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first. A{' '}
+            <strong>Tied</strong> badge marks entries that share a like count. Click an entry to place it,
+            and again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share
+            the place above it, and the places below follow. Your own entry and quarantined worlds
+            can&apos;t be placed.
           </DialogDescription>
         </DialogHeader>
 
@@ -322,7 +326,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               {standings.map((entry) => {
                 const staged = draft.findIndex((row) => row.worldId === entry.id);
                 const place = staged === -1 ? null : places[staged];
-                const level = levelCounts.has(entry.likes);
+                const tied = tiedCounts.has(entry.likes);
 
                 return (
                   <button
@@ -378,7 +382,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                           </span>
                           {/* A word rather than a tint: the mark is what a judge counts on to see a
                               tie, so it has to read the same to everyone. */}
-                          {level && (
+                          {tied && (
                             <span className="rounded border px-1 font-semibold text-foreground">
                               Tied<span className="sr-only"> on {entry.likes} likes</span>
                             </span>

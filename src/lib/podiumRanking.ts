@@ -6,7 +6,6 @@
  * from and a judge cannot stage a podium the server would refuse. The server validator answers the same
  * example table — the two must agree, or the dialog stages what the save then rejects.
  */
-import { UNKNOWN_PUBLISH_TIME } from './contests';
 import { PLACES } from './placeLabels';
 import type { ContestPlace, EventPlacement } from '@/types';
 
@@ -64,9 +63,25 @@ export function podiumPlacesOf(rows: PodiumRow[]): ContestPlace[] {
   return placesOf(rows) as ContestPlace[];
 }
 
-/** The podium after this row is cleared, with everything below it closing up. */
+/**
+ * The podium after this row is cleared, with everything below it closing up.
+ *
+ * The survivors of a shared place keep that place rather than joining the one above it. A row's flag
+ * reads against whatever ends up over it, so removing the row that opened a run would hand the run to
+ * the place above — clearing the first of two 2nd places would promote the other to a shared 1st, off a
+ * removal that was meant to take one world off. The next row opens the run instead. Removing a row that
+ * only shared a run leaves every other flag alone.
+ */
 export function clearRow(rows: PodiumRow[], index: number): PodiumRow[] {
-  return normalize(rows.filter((_, at) => at !== index));
+  const removed = rows[index];
+  const under = rows[index + 1];
+  const kept = rows.filter((_, at) => at !== index);
+
+  if (removed && under && !removed.tiedWithAbove && under.tiedWithAbove) {
+    kept[index] = { ...kept[index], tiedWithAbove: false };
+  }
+
+  return normalize(kept);
 }
 
 /**
@@ -117,14 +132,17 @@ const runEnd = (places: number[], at: number): number => {
  * click order would show an order the save then changes. Moving ids inside a run is safe because the tie
  * flag belongs to the row rather than to the world in it — the shape is untouched.
  *
- * A world with no readable stamp sorts last and keeps its place among the others with none, so bad data
- * never reshuffles the list.
+ * The sort is stable, so worlds the caller reads as level keep the order they were in and bad data never
+ * reshuffles the list.
  *
- * @param published - Publish times in milliseconds, by world id
+ * @param publishedAt - Reads one world's publish time in milliseconds; what "unknown" means is the
+ *   caller's to decide
  */
-export function orderTiedRows(rows: PodiumRow[], published: ReadonlyMap<string, number>): PodiumRow[] {
+export function orderTiedRows(
+  rows: PodiumRow[],
+  publishedAt: (worldId: string) => number,
+): PodiumRow[] {
   const places = placesOf(rows);
-  const when = (worldId: string): number => published.get(worldId) ?? UNKNOWN_PUBLISH_TIME;
   const out = [...rows];
 
   let start = 0;
@@ -132,7 +150,7 @@ export function orderTiedRows(rows: PodiumRow[], published: ReadonlyMap<string, 
     const end = runEnd(places, start);
     rows.slice(start, end + 1)
       .map((row) => row.worldId)
-      .sort((a, b) => when(a) - when(b))
+      .sort((a, b) => publishedAt(a) - publishedAt(b))
       .forEach((id, offset) => { out[start + offset] = { ...out[start + offset], worldId: id }; });
     start = end + 1;
   }

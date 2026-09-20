@@ -108,8 +108,10 @@ describe('clicking an entry', () => {
 
   it('takes a world on the bottom place off, even with a row still under it', () => {
     // The bottom place has nowhere below it, so every world sharing it cycles off rather than trading.
-    // The row that was under it keeps its own flag, exactly as the clear button leaves it.
-    expect(spell(cyclePodium(rows('a', 'b', 'c='), 'b'))).toEqual(['a', 'c=']);
+    // The survivor keeps 2nd place rather than being promoted into a shared 1st.
+    const left = cyclePodium(rows('a', 'b', 'c='), 'b');
+    expect(spell(left)).toEqual(['a', 'c']);
+    expect(placesOf(left)).toEqual([1, 2]);
   });
 
   it('takes the bottom row off the podium', () => {
@@ -233,8 +235,41 @@ describe('whether the toggle is available', () => {
   });
 });
 
+describe('clearing a row out of a shared place', () => {
+  it('leaves the survivors of a shared place on that place', () => {
+    // 1, 2, 2 with the first 2nd place gone is 1, 2 — not 1, 1. A removal takes one world off; it must
+    // not hand another a place nobody awarded it.
+    const left = clearRow(rows('a', 'b', 'c='), 1);
+    expect(spell(left)).toEqual(['a', 'c']);
+    expect(placesOf(left)).toEqual([1, 2]);
+  });
+
+  it('leaves the survivor of a shared 1st on 1st, with the row below deriving again', () => {
+    const left = clearRow(rows('a', 'b=', 'c'), 0);
+    expect(spell(left)).toEqual(['b', 'c']);
+    expect(placesOf(left)).toEqual([1, 2]);
+  });
+
+  it('changes no other flag when the row removed only shared a place', () => {
+    // The guard above must fire on the row that opened the run, not on every removal.
+    const left = clearRow(rows('a', 'b=', 'c='), 1);
+    expect(spell(left)).toEqual(['a', 'c=']);
+    expect(placesOf(left)).toEqual([1, 1]);
+  });
+
+  it('changes no flag when the row removed opened nothing', () => {
+    expect(spell(clearRow(rows('a', 'b', 'c'), 1))).toEqual(['a', 'c']);
+  });
+
+  it('changes no flag when the removed row is the last one', () => {
+    expect(spell(clearRow(rows('a', 'b=', 'c'), 2))).toEqual(['a', 'b=']);
+  });
+});
+
 describe('the order inside a shared place', () => {
-  const published = (times: Record<string, number>) => new Map(Object.entries(times));
+  /** A publish-time reader over a few named worlds. Anything else reads as unknown, which sorts last. */
+  const published = (times: Record<string, number>) =>
+    (worldId: string) => times[worldId] ?? Number.MAX_SAFE_INTEGER;
 
   it('puts the earliest published first inside each shared place', () => {
     const ordered = orderTiedRows(rows('a', 'b=', 'c='), published({ a: 300, b: 100, c: 200 }));
