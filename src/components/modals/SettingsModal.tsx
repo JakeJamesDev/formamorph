@@ -601,7 +601,15 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   // Same reasoning for the linked-image cache: it grows during play, so re-measure on open rather than once.
   const [cachedBytes, setCachedBytes] = useState(0);
   const seenTutorialCount = useSeenTutorialCount();
-  useEffect(() => { if (isOpen) cachedImageBytes().then(setCachedBytes).catch(() => setCachedBytes(0)); }, [isOpen]);
+  // The read outlives a quick close, so the cleanup drops the late answer rather than writing to a gone modal.
+  useEffect(() => {
+    if (!isOpen) return;
+    let live = true;
+    cachedImageBytes()
+      .then((bytes) => { if (live) setCachedBytes(bytes); })
+      .catch(() => { if (live) setCachedBytes(0); });
+    return () => { live = false; };
+  }, [isOpen]);
 
   const clearImageCache = async () => {
     try {
