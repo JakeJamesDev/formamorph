@@ -10,14 +10,16 @@
 import { withEntityLocations } from '@/lib/entityPresence';
 import { linkToSource, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import { kindOf } from '@/lib/librarySources';
+import { hasDrawableOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
 import { randomUUID } from '@/lib/uuid';
 import { unresolvedReferences, type ConnectionPlan, type ReferenceRow } from '@/lib/worldReferences';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Dictionary, Entity, GameLocation, Placeholder } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, WorldOverview } from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
 interface StoredContent extends Record<string, unknown> {
+  worldOverview?: WorldOverview;
   entities?: Entity[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
@@ -102,8 +104,14 @@ export async function addCopyToStoredWorld(
         ...(Object.keys(connections).length ? { connections } : {}),
       },
     };
+    // A switched-off list would bench the arriving openings, so the copy switches it back on, exactly as
+    // the World Editor's own add does.
+    const overview = hasDrawableOpenings(entity) && !openingsEnabled(data.worldOverview)
+      ? { worldOverview: { ...(data.worldOverview as WorldOverview), ...setOpeningsEnabled(true) } }
+      : {};
     return {
       ...data,
+      ...overview,
       entities: [...(data.entities ?? []), entity],
       ...(adopted.toAdd.length ? { placeholders: [...shared, ...adopted.toAdd] } : {}),
       ...(plan.newLocations.length ? { locations: places } : {}),

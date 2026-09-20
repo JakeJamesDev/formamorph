@@ -640,6 +640,58 @@ describe('Opening a world after a library save', () => {
   });
 });
 
+describe('Adding an entity that brings openings', () => {
+  const seedOpener = (openings: { id: string; text: string; kind: 'action' }[]) => library.entities.set('lib-o', {
+    id: 'lib-o', name: 'Tall Marn', createdAt: '2026-01-01T00:00:00.000Z',
+    data: { id: 'lib-o', name: 'Tall Marn', playerDescription: 'A pilot.', openings },
+  });
+
+  const OFF_WORLD = (): World => benchEditorWorld({
+    worldOverview: {
+      name: 'Sedge Landing', description: '', author: '', thumbnail: null, bgm: null,
+      systemPrompt: 'Narrate the fen.', readme: 'A fen primer.', use3DModel: true, tags: [],
+      openingsEnabled: false,
+    },
+  } as Partial<World>);
+
+  const addFromLibrary = async () => {
+    openTab(/Entities/);
+    clickButton(/Add Entity/);
+    fireEvent.click(await screen.findByText('Tall Marn'));
+    confirmPicker('Add Entity');
+  };
+
+  it('switches the world list on and says so, since the copy would land benched', async () => {
+    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
+    const { ctx } = renderWorldEditorBench(OFF_WORLD(), 'advanced');
+    await addFromLibrary();
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
+    expect(toast.info).toHaveBeenCalledWith('Openings are on now. Tall Marn brought its own.');
+  });
+
+  it('leaves the switch alone for a copy with no row that could come up', async () => {
+    seedOpener([{ id: 'o1', text: '   ', kind: 'action' }]);
+    const { ctx } = renderWorldEditorBench(OFF_WORLD(), 'advanced');
+    await addFromLibrary();
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(ctx().worldOverview.openingsEnabled).toBe(false);
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+
+  it('says nothing when the list is already on', async () => {
+    seedOpener([{ id: 'o1', text: 'Marn hails you from the jetty.', kind: 'action' }]);
+    const { ctx } = renderWorldEditorBench(benchEditorWorld({}), 'advanced');
+    await addFromLibrary();
+
+    await waitFor(() => expect(ctx().entities).toHaveLength(2));
+    expect(ctx().worldOverview.openingsEnabled).toBeUndefined();
+    expect(toast.info).not.toHaveBeenCalled();
+  });
+});
+
 describe('Entities follow a source the same way', () => {
   const LINKED_ENTITY = (link?: Record<string, unknown>): World => benchEditorWorld({
     entities: [{ id: 'e1', name: 'Wren', playerDescription: 'A ferryman.', locations: ['harbor'], ...(link ? { link } : {}) }],

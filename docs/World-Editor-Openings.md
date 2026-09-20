@@ -27,9 +27,11 @@ Drag a row by its handle to change its place in the list. Order doesn't change t
 
 ## The list switch
 
-The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening.
+The checkbox beside **Openings** turns the whole list on or off. Off keeps every row and its text. Players then start on the default opening. Off covers every opening in the world, including an entity the player picks at Enter World.
 
 > 💡 **The chances stay visible with the switch off.** They show the odds after you switch the list on. Tune the weights before you publish.
+
+> ✅ **Adding an entity with openings switches it back on.** Add an entity that brings an opening while the switch is off, and the switch turns on with a message saying which entity brought it. Its openings would never draw otherwise.
 
 ## The default opening
 
@@ -77,6 +79,6 @@ An entity at no starting location shows a **No Starting Location** badge. Its op
 |---|---|
 | **Starting location** | The entity's openings join the draw only when it is at the player's starting location. |
 | **The world switch** | The world's **Openings** checkbox turns the entity's openings off too. An entity has no switch of its own. |
-| **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch doesn't turn them off. |
+| **Library entity picked at Enter World** | When the player adds a library entity that has openings, the game draws from that entity's openings only. The world switch turns them off with the rest. |
 | **Character card** | The openings and their weights travel with the entity in its card file and in a published listing. |
 | **Played entity** | When the player plays this entity as their [persona](Persona-Authoring#make-an-entity-playable), its openings leave the draw for that game. |

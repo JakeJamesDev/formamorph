@@ -3,7 +3,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 import {
   addOpening, DEFAULT_OPENING, drawOpening, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
-  drawUnseenOpening, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
+  drawUnseenOpening, hasDrawableOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   setOpeningText, setOpeningWeight,
 } from './openings';
 
@@ -47,6 +47,14 @@ describe('the draw', () => {
     expect(openingsEnabled(ov)).toBe(false);
     expect(resolveOpening(ov, seeded(1))).toEqual(DEFAULT_OPENING);
     expect(ov.openings).toHaveLength(1);
+  });
+
+  it('reads whether an owner brings a row that can come up', () => {
+    expect(hasDrawableOpenings({ openings: [action('a')] })).toBe(true);
+    expect(hasDrawableOpenings(undefined)).toBe(false);
+    expect(hasDrawableOpenings({ openings: [] })).toBe(false);
+    expect(hasDrawableOpenings({ openings: [action('a', '   ')] })).toBe(false);
+    expect(hasDrawableOpenings({ openings: [action('a')], openingWeights: { a: 0 } })).toBe(false);
   });
 
   it('counts an absent switch as on', () => {
@@ -271,11 +279,13 @@ describe('the pool with picked entities', () => {
     expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
   });
 
-  it('keeps the picked entities’ rows when the world switch is off', () => {
+  it('benches the picked entities’ rows too when the world switch is off', () => {
     const off = overview({ openings: [action('w1')], openingsEnabled: false });
-    const pool = openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked: [pick('bard', [action('b1', 'Bard.')])] });
-    expect(texts(pool)).toEqual(['Bard.']);
-    expect(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked: [pick('plain', [])] })).toEqual([]);
+    const picked = [pick('bard', [action('b1', 'Bard.')])];
+    expect(openingPool({ overview: off, entities: [guide], startingLocationId: 'dock', picked })).toEqual([]);
+    // The same pick draws once the switch is on, so the empty pool is the switch and not the pick.
+    const on = overview({ openings: [action('w1')] });
+    expect(texts(openingPool({ overview: on, entities: [guide], startingLocationId: 'dock', picked }))).toEqual(['Bard.']);
   });
 });
 

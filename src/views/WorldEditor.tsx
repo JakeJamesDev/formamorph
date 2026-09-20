@@ -87,6 +87,7 @@ import { describePlaceholders, newPlaceholder } from '@/lib/placeholders';
 import { placeholderOwnerRef } from '@/lib/placeholderHomes';
 import { ownerIdOfNode } from '@/lib/placeholderScopes';
 import { chipPlaceholderNames, labelPlaceholders } from '@/lib/placementLetters';
+import { hasDrawableOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import PlaceholderOwnerPanel from '../managers/PlaceholderOwnerPanel';
 import { type DragEndEvent } from '@dnd-kit/core';
@@ -447,6 +448,13 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   const addEntityToWorld = (entity: Entity) => {
     const placed = { ...entity, groupId: null, order: entityRootSiblingCount() };
     addEntity(placed);
+    // Arriving openings would land benched under a switched-off list, so the add switches it on and says so
+    // rather than taking in content that silently never draws.
+    if (hasDrawableOpenings(placed) && !openingsEnabled(worldOverview)) {
+      updateWorldOverview(setOpeningsEnabled(true));
+      const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
+      toast.info(`Openings are on now. ${named || 'This entity'} brought its own.`);
+    }
     setSelectedItemId(placed.id);
   };
   const addBookToWorld = (book: Dictionary) => {
