@@ -1,8 +1,8 @@
 /**
- * Competition ranking for a contest podium being staged.
+ * Dense ranking for a contest podium being staged.
  *
- * A podium is an ordered list of rows, each either taking its own step or sharing the one above it. That
- * shape is the rule: places are read off the list rather than typed in, so 1, 1, 2 has nowhere to come
+ * A podium is an ordered list of rows, each either taking the next step or sharing the one above it. That
+ * shape is the rule: places are read off the list rather than typed in, so 1, 1, 3 has nowhere to come
  * from and a judge cannot stage a podium the server would refuse. The server validator answers the same
  * example table — the two must agree, or the dialog stages what the save then rejects.
  */
@@ -32,17 +32,19 @@ const normalize = (rows: PodiumRow[]): PodiumRow[] =>
     : rows;
 
 /**
- * Each row's place by competition ranking.
+ * Each row's place by dense ranking.
  *
- * A row that shares the place above takes that place; any other row takes its own 1-based position. That
- * is what makes the step after a tie skip — two worlds on 1st leave the third on 3rd.
+ * A row that shares the place above takes that place; any other row takes the next place down. A tie
+ * takes no place away — two worlds on 1st leave the third on 2nd — so the judge, not the rule, decides
+ * how many winners a contest has.
  *
  * @returns One place per row, in row order. A value past the last step means the row has no place.
  */
 export function placesOf(rows: PodiumRow[]): number[] {
   const places: number[] = [];
   rows.forEach((row, index) => {
-    places.push(index > 0 && row.tiedWithAbove ? places[index - 1] : index + 1);
+    const above = index > 0 ? places[index - 1] : 0;
+    places.push(index > 0 && row.tiedWithAbove ? above : above + 1);
   });
   return places;
 }
@@ -92,8 +94,8 @@ export function clearRow(rows: PodiumRow[], index: number): PodiumRow[] {
  * undone by clicking again rather than by hunting for a control.
  *
  * A world joins tied when its own step would be past the podium, so every podium the ranking rule accepts
- * is reachable by clicking — a fourth world shares 1st with three others, or shares 3rd, but it can never
- * take a 4th place. No limit applies to how many worlds share a step, so a click always lands.
+ * is reachable by clicking — a world that follows 3rd place shares it, but it can never take a 4th place.
+ * No limit applies to how many worlds share a step, so a click always lands.
  *
  * The step down is to the next place, not to the next row: worlds that share a place are kept in publish
  * order by `orderTiedRows`, so a trade inside one would be sorted straight back and the click would do
@@ -161,8 +163,8 @@ export function orderTiedRows(
 /**
  * The podium after this row's tie flag is flipped.
  *
- * Breaking a tie pushes the row, and any row still chained to it, down a step — which can land past the
- * podium. That is refused rather than staged, so the list never holds a row with no place; the way out
+ * Breaking a tie pushes the row, and every row below it, down a step — which can land one of them past
+ * the podium. That is refused rather than staged, so the list never holds a row with no place; the way out
  * of a tie with nowhere to go is to clear the row.
  *
  * @returns The new podium, or the one given when the result would not fit

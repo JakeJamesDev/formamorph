@@ -198,9 +198,10 @@ The flow closes the contest itself, by moving its `endsAt` into the past through
 is offered on a contest that has stopped taking entries, and this run publishes into one that is still
 open, so the window is moved rather than waited out.
 
-💡 **The podium is 1, 1 and nothing else.** Two worlds share 1st and no world is placed under them.
-That podium is valid under both the ranking rule in force today and the one replacing it, so the journey
-says nothing about whether a place after a tie is skipped. Extra entries in the contest are left unplaced.
+💡 **The podium is 1, 1, 2 when the contest holds a third entry.** Two worlds share 1st, and the newest
+other entry takes 2nd, so one run proves a shared place and a sole place. Run the first flow twice against
+the contest to seed it. With only two entries the podium is 1, 1, and the run's `podium` annotation says
+which one it built. The server must accept places with no gaps, or the 1, 1, 2 announce is refused.
 
 ⚠️ **Re-seed rather than reuse.** The entry flow's catalog assertion narrows the grid to this run's
 author, and on a scratch server that has accumulated a few dozen listings across many runs it starts

@@ -184,7 +184,7 @@ describe('the line under the title', () => {
       placements: [
         { place: 1, worldId: 'w1', worldName: 'Lantern Reef', authorName: 'suneater' },
         { place: 1, worldId: 'w2', worldName: 'Nine Bells', authorName: 'marrowmoss' },
-        { place: 3, worldId: 'w3', worldName: 'Kindling', authorName: 'ashgrove' },
+        { place: 2, worldId: 'w3', worldName: 'Kindling', authorName: 'ashgrove' },
       ],
     });
 

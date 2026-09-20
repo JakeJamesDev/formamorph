@@ -168,20 +168,20 @@ describe('which listings belong to a contest', () => {
   });
 
   it('badges each world that shares a place with the place it shares, listing and local copy alike', () => {
-    // Two golds and the bronze that competition ranking puts after them. The lookup is by world, so a
-    // shared place is meant to need nothing new — this is what says so.
+    // Two golds and the silver that follows them. The lookup is by world, so a shared place is meant to
+    // need nothing new — this is what says so.
     const tied = event({
       resultsAnnouncedAt: at(0),
       placements: [
         { place: 1, worldId: 'w1', worldName: 'Gold', authorName: 'an author' },
         { place: 1, worldId: 'w2', worldName: 'Also Gold', authorName: 'an author' },
-        { place: 3, worldId: 'w3', worldName: 'Bronze', authorName: 'an author' },
+        { place: 2, worldId: 'w3', worldName: 'Silver', authorName: 'an author' },
       ],
     });
 
     expect(placementsBy(entry('w1', 0), [tied]).map((p) => p.place)).toEqual([1]);
     expect(placementsBy(entry('w2', 0), [tied]).map((p) => p.place)).toEqual([1]);
-    expect(placeInContest(entry('w3', 0), tied)).toBe(3);
+    expect(placeInContest(entry('w3', 0), tied)).toBe(2);
     expect(placementsBy({ id: 'local-copy', name: 'Also Gold', sourceId: 'w2' }, [tied]).map((p) => p.place))
       .toEqual([1]);
   });
@@ -244,7 +244,7 @@ describe('the order entries are shown in', () => {
       placements: [
         { place: 1, worldId: 'w4', worldName: 'w4', authorName: 'an author' },
         { place: 1, worldId: 'w1', worldName: 'w1', authorName: 'an author' },
-        { place: 3, worldId: 'w3', worldName: 'w3', authorName: 'an author' },
+        { place: 2, worldId: 'w3', worldName: 'w3', authorName: 'an author' },
       ],
     });
 

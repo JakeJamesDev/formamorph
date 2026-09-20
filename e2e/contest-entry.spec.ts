@@ -359,6 +359,12 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
     'the contest has no second entry to tie with — run the entry flow against it first (see e2e/README.md)')
     .toBeGreaterThan(0);
   const partner = others[0];
+  // A third entry takes the place after the tie, where the seed holds one. The newest, so it is never
+  // the partner. Without it the podium is 1, 1 and the sole-place half of the journey does not run.
+  const runnerUp = others.length > 1 ? others[others.length - 1] : null;
+  testInfo.annotations.push({
+    type: 'podium', description: runnerUp ? '1, 1, 2' : '1, 1 — the seed holds no third entry',
+  });
 
   await closeContest();
 
@@ -390,6 +396,13 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   await rows.nth(1).getByRole('checkbox').check();
   await expect(rows.nth(1)).toContainText('1st Place');
 
+  // A tie takes no place away: the row after a shared 1st is 2nd, not 3rd.
+  if (runnerUp) {
+    await entryOf(runnerUp.author).click();
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(2)).toContainText('2nd Place');
+  }
+
   await podiumDialog.getByRole('button', { name: 'Announce Results' }).click();
   await expect(podiumDialog).toBeHidden();
 
@@ -400,14 +413,14 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   await gotoDev(page, 'mainMenu', { modal: 'community' });
   await page.getByRole('button', { name: 'Contest', exact: true }).click();
 
-  // The bar counts the shared place instead of naming one of two winners. No suffix: nothing placed
-  // below them, so there is nothing for it to count.
-  await expect(page.getByText('2 worlds tied for 1st', { exact: true })).toBeVisible();
+  // The bar counts the shared place instead of naming one of two winners, and counts what placed below.
+  const barLine = runnerUp ? '2 worlds tied for 1st · 1 more placed' : '2 worlds tied for 1st';
+  await expect(page.getByText(barLine, { exact: true })).toBeVisible();
 
   // Every placed world gets its own plate, and the two that share 1st are deliberately identical — so
   // what tells them from a sole winner is that there are two of them wearing the same metal.
   const band = page.getByTestId('podium-card');
-  await expect(band).toHaveCount(2);
+  await expect(band).toHaveCount(runnerUp ? 3 : 2);
   await expect(band.nth(0)).toContainText('1st Place');
   await expect(band.nth(1)).toContainText('1st Place');
   // Publish time decides the order inside a place, so the older listing leads however the judge listed
@@ -429,6 +442,14 @@ test('a tie built in the podium dialog reaches the band, the cards and the bar',
   await expect(catalogBadge).toHaveCount(2);
   for (const author of [username, partner.author]) {
     await expect(page.getByText(`By ${author}`, { exact: true })).toBeVisible();
+  }
+
+  // The sole place after the tie: silver on the band and one silver badge in the grid. A server that
+  // stored the old 1, 1, 3 leaves bronze here instead.
+  if (runnerUp) {
+    await expect(band.nth(2)).toContainText('2nd Place');
+    await expect(band.nth(2)).toContainText(`by ${runnerUp.author}`);
+    await expect(page.getByRole('tabpanel').getByText(`2nd Place — ${running.title}`)).toHaveCount(1);
   }
 
   // And the author's own downloaded copy, on a fresh launch. Nothing about the placement is stored
