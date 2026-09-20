@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   activeContestOf, contestPhase, contestsOf, contestEntryIdOf, entriesOf, isContestRunning,
   judgingContestsOf, orderContestEntries, placeInContest, placementsBy, shuffleWithSeed, contestSections,
+  standingsOrder, tiedLikeCounts,
 } from './contests';
 import type { ContestSection } from './contests';
 import { daysFrom, serverEvent as event } from '@/test/serverEvents';
@@ -265,6 +266,47 @@ describe('the order entries are shown in', () => {
     const judging = event({ startsAt: at(-20), endsAt: at(-2) });
 
     expect(orderContestEntries(level, judging, 0.42).map((w) => w._id)).toEqual(['dated', 'junk', 'none']);
+  });
+});
+
+describe('the standings', () => {
+  const standing = (id: string, likes: number, publishedAt: number) => ({ id, likes, publishedAt });
+
+  it('puts the most-liked entry first', () => {
+    const order = standingsOrder([standing('a', 2, 0), standing('b', 9, 0), standing('c', 5, 0)]);
+    expect(order.map((s) => s.id)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('breaks a level count by publish time, earliest first', () => {
+    const order = standingsOrder([standing('late', 5, 900), standing('early', 5, 100), standing('mid', 5, 400)]);
+    expect(order.map((s) => s.id)).toEqual(['early', 'mid', 'late']);
+  });
+
+  it('leaves the entries it was given alone', () => {
+    // The grid re-derives this on every render, so a sort in place would reorder the state it reads.
+    const given = [standing('a', 1, 0), standing('b', 9, 0)];
+    standingsOrder(given);
+    expect(given.map((s) => s.id)).toEqual(['a', 'b']);
+  });
+
+  it('marks every count two or more entries share, and no other', () => {
+    const shared = tiedLikeCounts([
+      standing('a', 9, 0), standing('b', 9, 0), standing('c', 4, 0), standing('d', 1, 0), standing('e', 1, 0),
+    ]);
+    expect([...shared].sort((x, y) => x - y)).toEqual([1, 9]);
+  });
+
+  it('marks a count three entries share once', () => {
+    const shared = tiedLikeCounts([standing('a', 7, 0), standing('b', 7, 0), standing('c', 7, 0)]);
+    expect([...shared]).toEqual([7]);
+  });
+
+  it('marks nothing when every count is its own', () => {
+    expect(tiedLikeCounts([standing('a', 3, 0), standing('b', 2, 0)]).size).toBe(0);
+  });
+
+  it('marks a level count of zero, which is the count a quiet contest is full of', () => {
+    expect(tiedLikeCounts([standing('a', 0, 0), standing('b', 0, 0)]).has(0)).toBe(true);
   });
 });
 

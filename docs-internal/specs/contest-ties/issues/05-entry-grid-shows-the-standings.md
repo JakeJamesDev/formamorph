@@ -1,6 +1,7 @@
 # 05: Entry Grid Shows the Standings
 
-Status: ready-for-agent
+Status: in-progress
+Base: 43b0faaf
 Blocked by: 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -12,6 +13,7 @@ Reasoning effort: medium
 This ticket waits for 04 only because both edit the dialog.
 
 - [ ] The grid sorts by likes descending, then publish time
+- [ ] Rows that share a place show in publish-time order, earliest first, matching what the server stores
 - [ ] Every entry that shares its like count with another entry shows the tie marker; an entry with a unique count shows none
 - [ ] The marker has an accessible name and does not rely on color alone
 - [ ] Blocked entries sort with the rest and stay disabled

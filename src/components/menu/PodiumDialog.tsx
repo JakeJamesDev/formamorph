@@ -14,11 +14,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Meta } from "@/components/ui/typography";
 import { cn, listNames } from "@/lib/utils";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
-import { entriesOf } from "@/lib/contests";
+import { entriesOf, publishedAtOf, standingsOrder, tiedLikeCounts } from "@/lib/contests";
 import { entryBlockReason } from "@/lib/adminEvents";
 import { placementsOf } from "@/lib/serverEvents";
 import {
-  canToggleTie, clearRow, cyclePodium, placementsFrom, podiumLines, podiumPlacesOf,
+  canToggleTie, clearRow, cyclePodium, orderTiedRows, placementsFrom, podiumLines, podiumPlacesOf,
   rowsFromPlacements, toggleTie,
 } from "@/lib/podiumRanking";
 import type { PodiumRow } from "@/lib/podiumRanking";
@@ -62,6 +62,8 @@ interface Entry {
   authorName: string;
   authorId: string | null;
   likes: number;
+  /** When the listing was published, in milliseconds. The tiebreaker on both orders in this dialog. */
+  publishedAt: number;
   /** Either the stored file the catalog caches by name, or an inline data URL. */
   thumbnailFile: string | null;
   thumbnail: string | null;
@@ -148,6 +150,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             authorName: String(record.author?.username || 'Unknown'),
             authorId,
             likes: Number(record.likes ?? 0) || 0,
+            publishedAt: publishedAtOf(record),
             thumbnailFile: typeof record.thumbnail_file === 'string' ? record.thumbnail_file : null,
             thumbnail: typeof record.thumbnail === 'string' && record.thumbnail ? record.thumbnail : null,
             updatedAt: typeof record.updated_at === 'string' ? record.updated_at : undefined,
@@ -165,6 +168,16 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
   }, [open, contestId, publishedSignature]);
 
   const byId = useMemo(() => new Map(entries.map((entry) => [entry.id, entry])), [entries]);
+
+  // The standings, which is what a judgement is read off. Sorted neighbors say which entry leads but
+  // not whether two are level, so the entries that share a count are marked as well as ordered.
+  const standings = useMemo(() => standingsOrder(entries), [entries]);
+  const levelCounts = useMemo(() => tiedLikeCounts(entries), [entries]);
+  const published = useMemo(
+    () => new Map(entries.map((entry) => [entry.id, entry.publishedAt])),
+    [entries],
+  );
+
   const places = podiumPlacesOf(draft);
   const podium = draft.map((row, index) => ({
     row, place: places[index], entry: byId.get(row.worldId) ?? null,
@@ -176,12 +189,17 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
     return entry ? `${entry.name} by ${entry.authorName}` : UNKNOWN_WORLD;
   };
 
-  const assign = (worldId: string) => setDraft((held) => cyclePodium(held, worldId));
+  // Every action re-sorts the worlds inside each shared place by publish time, which is the order the
+  // server stores them in — so what a judge reads here is what the save writes.
+  const stage = (next: (held: Draft) => Draft) =>
+    setDraft((held) => orderTiedRows(next(held), published));
+
+  const assign = (worldId: string) => stage((held) => cyclePodium(held, worldId));
 
   // Everything below closes up behind it, so clearing gold promotes silver rather than leaving a hole.
-  const clear = (index: number) => setDraft((held) => clearRow(held, index));
+  const clear = (index: number) => stage((held) => clearRow(held, index));
 
-  const tie = (index: number) => setDraft((held) => toggleTie(held, index));
+  const tie = (index: number) => stage((held) => toggleTie(held, index));
 
   const handleSave = async () => {
     if (draft.length === 0 || lost.length > 0) return;
@@ -216,10 +234,10 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
             {editing ? 'Edit Podium' : 'Announce Results'} — {contest.title}
           </DialogTitle>
           <DialogDescription>
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}. Click an entry to place it, and
-            again to step it down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share the
-            place above it, and the places below follow. Your own entry and quarantined worlds
-            can&apos;t be placed.
+            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}, most likes first, with worlds
+            level on likes marked <strong>Tied</strong>. Click an entry to place it, and again to step it
+            down. Select a row&apos;s <strong>Tie With Above</strong> checkbox to share the place above it,
+            and the places below follow. Your own entry and quarantined worlds can&apos;t be placed.
           </DialogDescription>
         </DialogHeader>
 
@@ -301,9 +319,10 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
               aria-label="Entries"
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
             >
-              {entries.map((entry) => {
+              {standings.map((entry) => {
                 const staged = draft.findIndex((row) => row.worldId === entry.id);
                 const place = staged === -1 ? null : places[staged];
+                const level = levelCounts.has(entry.likes);
 
                 return (
                   <button
@@ -353,8 +372,17 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
                       <div className="text-label font-semibold truncate">{entry.name}</div>
                       <div className="flex items-center gap-2 text-meta text-muted-foreground">
                         <span className="truncate">by {entry.authorName}</span>
-                        <span className="ml-auto inline-flex items-center gap-1 shrink-0">
-                          <Heart className="h-3 w-3" aria-hidden /> {entry.likes}
+                        <span className="ml-auto inline-flex items-center gap-1.5 shrink-0">
+                          <span className="inline-flex items-center gap-1">
+                            <Heart className="h-3 w-3" aria-hidden /> {entry.likes}
+                          </span>
+                          {/* A word rather than a tint: the mark is what a judge counts on to see a
+                              tie, so it has to read the same to everyone. */}
+                          {level && (
+                            <span className="rounded border px-1 font-semibold text-foreground">
+                              Tied<span className="sr-only"> on {entry.likes} likes</span>
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>

@@ -6,6 +6,7 @@
  * from and a judge cannot stage a podium the server would refuse. The server validator answers the same
  * example table — the two must agree, or the dialog stages what the save then rejects.
  */
+import { UNKNOWN_PUBLISH_TIME } from './contests';
 import { PLACES } from './placeLabels';
 import type { ContestPlace, EventPlacement } from '@/types';
 
@@ -79,6 +80,10 @@ export function clearRow(rows: PodiumRow[], index: number): PodiumRow[] {
  * is reachable by clicking — a fourth world shares 1st with three others, or shares 3rd, but it can never
  * take a 4th place. No limit applies to how many worlds share a step, so a click always lands.
  *
+ * The step down is to the next place, not to the next row: worlds that share a place are kept in publish
+ * order by `orderTiedRows`, so a trade inside one would be sorted straight back and the click would do
+ * nothing. A world on the bottom place leaves instead, which is the bottom row's move.
+ *
  * The flag belongs to the row rather than to the world sitting in it, so a trade moves two names and
  * leaves the podium's shape alone.
  */
@@ -89,12 +94,50 @@ export function cyclePodium(rows: PodiumRow[], worldId: string): PodiumRow[] {
     return fitsPodium(alone) ? alone : [...rows, { worldId, tiedWithAbove: true }];
   }
 
-  if (at === rows.length - 1) return clearRow(rows, at);
+  const below = runEnd(placesOf(rows), at) + 1;
+  if (below >= rows.length) return clearRow(rows, at);
 
   const next = [...rows];
-  next[at] = { ...next[at], worldId: next[at + 1].worldId };
-  next[at + 1] = { ...next[at + 1], worldId: rows[at].worldId };
+  next[at] = { ...next[at], worldId: next[below].worldId };
+  next[below] = { ...next[below], worldId: rows[at].worldId };
   return next;
+}
+
+/** The last row of the run of rows sharing this row's place. Tied rows are always neighbors. */
+const runEnd = (places: number[], at: number): number => {
+  let end = at;
+  while (end + 1 < places.length && places[end + 1] === places[at]) end++;
+  return end;
+};
+
+/**
+ * The podium with the worlds inside each shared place put in publish order, earliest first.
+ *
+ * The server sorts a shared place by publish time before it stores the positions, so a dialog left in
+ * click order would show an order the save then changes. Moving ids inside a run is safe because the tie
+ * flag belongs to the row rather than to the world in it — the shape is untouched.
+ *
+ * A world with no readable stamp sorts last and keeps its place among the others with none, so bad data
+ * never reshuffles the list.
+ *
+ * @param published - Publish times in milliseconds, by world id
+ */
+export function orderTiedRows(rows: PodiumRow[], published: ReadonlyMap<string, number>): PodiumRow[] {
+  const places = placesOf(rows);
+  const when = (worldId: string): number => published.get(worldId) ?? UNKNOWN_PUBLISH_TIME;
+  const out = [...rows];
+
+  let start = 0;
+  while (start < rows.length) {
+    const end = runEnd(places, start);
+    rows.slice(start, end + 1)
+      .map((row) => row.worldId)
+      .sort((a, b) => when(a) - when(b))
+      .forEach((id, offset) => { out[start + offset] = { ...out[start + offset], worldId: id }; });
+    start = end + 1;
+  }
+
+  return out;
 }
 
 /**
