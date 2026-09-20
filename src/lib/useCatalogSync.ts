@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
-import { installId } from "@/lib/anonymousLikes";
+import { readerInstallId } from "@/lib/anonymousLikes";
 import { claimWatch, type ClaimWatch } from "@/lib/anonymousLikeClaim";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
@@ -15,10 +15,16 @@ import { type CatalogWorld } from "@/lib/worldCatalog";
  *
  * A guest has hearts of their own now, and the server marks them from the Install header, so two
  * guests on one machine would otherwise read each other's. The Install is what tells them apart.
+ *
+ * Where nothing may name an Install, every guest is the one guest. That shell's catalog carries no
+ * hearts to keep apart, and asking for an id would make one for a reader who has no use for it.
  */
 const currentReader = (): string => {
   const id = AuthService.currentUser?.id;
-  return AuthService.isAuthenticated() && id != null ? String(id) : `install:${installId()}`;
+  if (AuthService.isAuthenticated() && id != null) return String(id);
+
+  const install = readerInstallId();
+  return install ? `install:${install}` : 'guest';
 };
 
 /**
