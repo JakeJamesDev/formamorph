@@ -15,15 +15,30 @@ import type { ListingVisibility } from '@/lib/publishLinks';
 import type { AddonRow, DependencyRow } from '@/lib/worldDependencies';
 import type { SourceCheckStatus } from '@/lib/sourceChecks';
 import type { ContentLink, LikerAuditRow, LikerRow, VrmLicense, WorldMetadata } from '@/types';
+import { INSTALL_HEADER_NAME, installId } from '@/lib/anonymousLikes';
 
 /**
  * What a conditional catalog fetch answers with: a fresh snapshot and the tag to store beside it, the
  * word that the local copy still stands, or the error that stopped the request.
  */
 export type CatalogFetch =
-  | { status: 'fresh'; data: unknown[]; tag: string | null }
+  | { status: 'fresh'; data: unknown[]; tag: string | null; anonymousLikes: boolean }
   | { status: 'unchanged' }
   | { status: 'error'; error: string };
+
+/**
+ * A press the server would not take, named by its code.
+ *
+ * The code and not the wording, so each refusal gets the answer it deserves: the cap is worth a message,
+ * a switched-off server sends the guest where the heart used to send them, and a listing that has gone
+ * quiet needs nothing said about it.
+ */
+export class AnonymousLikeRefused extends Error {
+  constructor(public readonly code: string, message: string) {
+    super(message);
+    this.name = 'AnonymousLikeRefused';
+  }
+}
 
 /**
  * What one listing says about itself beyond its row: its history, an Avatar's license, and the
@@ -32,6 +47,8 @@ export type CatalogFetch =
  */
 export interface ListingDetails {
   changelog: ChangelogEntry[] | null;
+  /** Whether this server takes a like from somebody who is not signed in. False against an older one. */
+  anonymousLikes: boolean;
   modelLicense?: VrmLicense;
   visibility?: ListingVisibility;
   /** The listing ids a world requires today, resolved or not. */
@@ -131,6 +148,19 @@ class WorldStorageService {
     // No eager open: every operation awaits `ensureInitialized` first, so opening here only adds an
     // import-time IndexedDB touch — which throws an unhandled rejection in test files that import this
     // module without a fake IndexedDB. Lazy init matches ModelStorageService.
+  }
+
+  /**
+   * Who is asking, in the one header the server reads to answer it.
+   *
+   * A session or an Install, never both: the account route is what a signed-in client presses, and an
+   * Install header beside a token would name a second reader of the same request. A guest sends the
+   * Install so the catalog and the listing come back with their hearts already filled.
+   */
+  private readerHeaders(): Record<string, string> {
+    return AuthService.isAuthenticated()
+      ? { Authorization: `Bearer ${AuthService.token}` }
+      : { [INSTALL_HEADER_NAME]: installId() };
   }
 
   /** Open the IndexedDB connection (idempotent — no-op once `db` is set). */
@@ -580,10 +610,7 @@ class WorldStorageService {
    */
   async fetchCatalog(tag?: string | null): Promise<CatalogFetch> {
     try {
-      const headers: Record<string, string> = {};
-      if (AuthService.isAuthenticated()) {
-        headers['Authorization'] = `Bearer ${AuthService.token}`;
-      }
+      const headers = this.readerHeaders();
       // `no-store` and not `reload`: `reload` sends `Cache-Control: no-cache`, which the server reads
       // as an end-to-end reload and answers `200` with the whole body however well the tag matches.
       const init: RequestInit = tag
@@ -595,7 +622,14 @@ class WorldStorageService {
       if (!response.ok) throw new Error('Failed to fetch worlds');
 
       const body = await response.json();
-      return { status: 'fresh', data: body.data || [], tag: response.headers.get('ETag') };
+      // Absent against a server that predates the feature, which reads as off — the same answer the
+      // route itself gives there, so the heart behaves one way rather than two.
+      return {
+        status: 'fresh',
+        data: body.data || [],
+        tag: response.headers.get('ETag'),
+        anonymousLikes: body.anonymousLikes === true,
+      };
     } catch (error) {
       console.error('Error fetching the world catalog:', error);
       return { status: 'error', error: (error as Error).message };
@@ -668,6 +702,42 @@ class WorldStorageService {
 
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || body.message || 'Failed to change that');
+
+    return body.data as { liked: boolean; likes: number };
+  }
+
+  /**
+   * Like a listing as this Install, or take that like back.
+   *
+   * The same press as {@link setRemoteWorldLiked} with no account behind it. It answers the same shape,
+   * so the heart and the number beside it are patched from one place either way.
+   *
+   * A refusal carries a code, and each one deserves a different answer, so it throws
+   * {@link AnonymousLikeRefused} rather than a plain error. One refusal is not a refusal at all: the
+   * listing is liked by the account that claimed this Install, which the server answers 200 with, so it
+   * reaches the caller as the state it is.
+   *
+   * @param worldId - The listing's server id
+   * @param liked - True to like it, false to take it back
+   * @returns The new state and count
+   */
+  async setAnonymousWorldLiked(worldId: string, liked: boolean) {
+    const response = await fetch(`${this.API_URL}/worlds/${worldId}/anonymous-like`, {
+      method: 'PUT',
+      headers: {
+        [INSTALL_HEADER_NAME]: installId(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ liked }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new AnonymousLikeRefused(
+        typeof body.code === 'string' ? body.code : '',
+        body.error || body.message || 'Failed to change that',
+      );
+    }
 
     return body.data as { liked: boolean; likes: number };
   }
@@ -821,10 +891,7 @@ class WorldStorageService {
    */
   async fetchListingDetails(worldId: string): Promise<ListingDetails | null> {
     try {
-      const headers: Record<string, string> = {};
-      if (AuthService.isAuthenticated()) {
-        headers['Authorization'] = `Bearer ${AuthService.token}`;
-      }
+      const headers = this.readerHeaders();
       const response = await fetch(`${this.API_URL}/worlds/${worldId}?includeChangelog=true`, { headers });
       if (!response.ok) return null;
 
@@ -834,6 +901,7 @@ class WorldStorageService {
       // keeps the Linked Content and Compatible Worlds sections empty there rather than wrong.
       return {
         changelog: changelogOf(body.data),
+        anonymousLikes: body.anonymousLikes === true,
         modelLicense: body.data?.modelLicense,
         visibility: body.data?.visibility,
         requiredDependencies: (body.data?.requiredDependencies ?? []).map(

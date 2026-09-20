@@ -65,8 +65,20 @@ The travel a location gets for free from containment — its parent, children, a
 _Avoid_: tree edges, default connections
 
 **Like**:
-One account's revocable mark on a listing. The room sees only the count; staff see the Likers behind it and can remove one.
+One account's revocable mark on a listing. The public count is the sum of Likes and Anonymous Likes. The room sees only that number; staff see the Likers behind it and can remove one.
 _Avoid_: vote, favorite, star
+
+**Install**:
+One copy of the app's local storage, named by a random id. Made on first need, never shown, never put in a URL. It names a copy of the app, not a person and not a device.
+_Avoid_: device, client id, install id (the id is the Install)
+
+**Anonymous Like**:
+One Install's revocable mark on a listing, given without an account. It counts toward the public number exactly as a Like does.
+_Avoid_: guest like, anonymous vote
+
+**Claim**:
+Moving an Install's Anonymous Likes to an account, and linking the two. It runs when somebody signs in, and the link is what stops signing out from giving a second like.
+_Avoid_: merge, migrate, transfer
 
 **Liker**:
 The account behind one Like, as the staff list shows it — with how old the account was at the moment it liked.

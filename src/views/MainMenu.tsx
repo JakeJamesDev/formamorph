@@ -3138,6 +3138,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             initialTab={communityTab ?? (devRoute?.modal === 'community' ? asBrowseTab(devRoute.tab) : undefined)}
             openListing={pendingListing}
             onListingOpened={handleListingOpened}
+            // Only on a press, and only where a guest's like cannot land: a server with the feature
+            // switched off, and the cap toast's own Sign in. Closing it leaves them on the listing.
+            onGuestLike={() => setShowAuthDialog(true)}
             promptLibrary={{ target: promptTarget, activeId: activePresetId, select: selectPreset }}
             openLikersOnMount={devRoute?.modal === 'likers'}
             openManageAddonsOnMount={devRoute?.modal === 'manageAddons'}

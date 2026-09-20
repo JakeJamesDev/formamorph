@@ -70,7 +70,7 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'getUserWorlds').mockResolvedValue([listing('w1', 'Sedge Landing')]);
   vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({ _id: 'w1' });
   vi.spyOn(WorldStorageService, 'linkWorldToListing').mockResolvedValue();
-  vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ changelog: [] });
+  vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ anonymousLikes: false, changelog: [] });
   vi.spyOn(WorldStorageService, 'createChangelogEntry').mockResolvedValue(entryRow());
 });
 
@@ -117,7 +117,7 @@ describe('when the changelog ask appears', () => {
   it('stays away against a server that does not keep changelogs', async () => {
     // The publish itself is unaffected — the section simply is not there, as the details window's tab
     // is not there.
-    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ changelog: null });
+    vi.spyOn(WorldStorageService, 'fetchListingDetails').mockResolvedValue({ anonymousLikes: false, changelog: null });
     view();
 
     await chooseUpdate();

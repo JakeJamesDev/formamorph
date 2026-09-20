@@ -11,6 +11,7 @@ const DB_NAME = 'FORMAMORPH_CATALOG_DB';
 const STORE_NAME = 'worlds';
 const META_STORE = 'meta';
 const TAG_KEY = 'etag';
+const ANONYMOUS_LIKES_KEY = 'anonymousLikes';
 const DB_VERSION = 2;
 
 // A catalog record is exactly a server list entry; kept loose since fields come straight from the API.
@@ -19,7 +20,8 @@ export type CatalogWorld = Record<string, unknown> & { id: string };
 /**
  * The freshness tag the server answered the stored catalog with, and who it was fetched for. The
  * server's tag varies by reader — liked marks and quarantined listings are the reader's own — so a
- * tag is only worth sending back while the same reader is asking.
+ * tag is only worth sending back while the same reader is asking. A guest is a reader too: their
+ * hearts are their Install's, so the Install is part of who this is.
  */
 export interface CatalogTag {
   tag: string;
@@ -28,6 +30,11 @@ export interface CatalogTag {
 
 interface TagRecord extends CatalogTag {
   key: string;
+}
+
+interface FlagRecord {
+  key: string;
+  value: boolean;
 }
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -62,12 +69,33 @@ export const getCatalogTag = async (): Promise<CatalogTag | null> => {
 };
 
 /**
+ * Whether the server this catalog came from takes a like from somebody who is not signed in.
+ *
+ * Kept beside the rows because that is where it was learned: the catalog response carries it, and the
+ * heart has to decide what it is before a refresh lands. Nothing cached reads as off, which is what an
+ * older server answers anyway.
+ */
+export const getCatalogAnonymousLikes = async (): Promise<boolean> => {
+  const db = await openDB();
+  const record = await promisifyRequest<FlagRecord>(
+    db.transaction([META_STORE], 'readonly').objectStore(META_STORE).get(ANONYMOUS_LIKES_KEY),
+  );
+  return record?.value === true;
+};
+
+/**
  * Replace the entire cached catalog with a fresh server snapshot, and its tag with `tag`. Rows and
  * tag move together in one transaction, so a stored tag never describes a snapshot that is not there.
  * Replacing without a tag drops the old one: rows the server did not answer with have no freshness
  * to claim.
+ *
+ * `anonymousLikes` is the server setting the snapshot was read under. Omitted, the stored one stands.
  */
-export const replaceCatalog = async (worlds: CatalogWorld[], tag?: CatalogTag | null): Promise<void> => {
+export const replaceCatalog = async (
+  worlds: CatalogWorld[],
+  tag?: CatalogTag | null,
+  anonymousLikes?: boolean,
+): Promise<void> => {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction([STORE_NAME, META_STORE], 'readwrite');
@@ -77,6 +105,9 @@ export const replaceCatalog = async (worlds: CatalogWorld[], tag?: CatalogTag | 
     const meta = tx.objectStore(META_STORE);
     if (tag) meta.put({ key: TAG_KEY, tag: tag.tag, reader: tag.reader } satisfies TagRecord);
     else meta.delete(TAG_KEY);
+    if (anonymousLikes !== undefined) {
+      meta.put({ key: ANONYMOUS_LIKES_KEY, value: anonymousLikes } satisfies FlagRecord);
+    }
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });

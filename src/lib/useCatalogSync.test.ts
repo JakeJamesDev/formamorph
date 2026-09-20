@@ -2,6 +2,10 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useCatalogSync } from './useCatalogSync';
 import { acceptAgeGate } from './ageGate';
+import { installId } from './anonymousLikes';
+
+/** Who a signed-out reader is: their Install, because their liked marks are addressed by it. */
+const guest = () => `install:${installId()}`;
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 vi.mock('@/lib/featureFlags', () => ({ COMMUNITY_ENABLED: true }));
@@ -9,11 +13,13 @@ vi.mock('@/lib/featureFlags', () => ({ COMMUNITY_ENABLED: true }));
 const cache = vi.hoisted(() => ({
   items: [] as Record<string, unknown>[],
   tag: null as { tag: string; reader: string } | null,
+  anonymousLikes: false,
   replace: null as null | ReturnType<typeof vi.fn>,
 }));
 vi.mock('@/lib/worldCatalog', () => ({
   getCatalog: async () => cache.items,
   getCatalogTag: async () => cache.tag,
+  getCatalogAnonymousLikes: async () => cache.anonymousLikes,
   replaceCatalog: (...args: unknown[]) => { cache.replace?.(...args); return Promise.resolve(); },
 }));
 
@@ -45,6 +51,7 @@ vi.mock('@/services/WorldStorageService', () => ({
 beforeEach(() => {
   cache.items = [];
   cache.tag = null;
+  cache.anonymousLikes = false;
   cache.replace = vi.fn();
   auth.user = null;
   server.resolve = null;
@@ -94,7 +101,7 @@ describe('catalogSettled', () => {
 
   it('settles on an unchanged refresh, which is an answer like any other', async () => {
     cache.items = [world];
-    cache.tag = { tag: 'W/"abc"', reader: '' };
+    cache.tag = { tag: 'W/"abc"', reader: guest() };
     const { result } = renderHook(() => useCatalogSync(true));
     await waitFor(() => expect(server.resolve).not.toBeNull());
 
@@ -120,7 +127,7 @@ describe('catalogSettled', () => {
 describe('the freshness tag', () => {
   it('sends the tag stored beside a cached catalog', async () => {
     cache.items = [world];
-    cache.tag = { tag: 'W/"abc"', reader: '' };
+    cache.tag = { tag: 'W/"abc"', reader: guest() };
 
     renderHook(() => useCatalogSync(true));
 
@@ -130,7 +137,7 @@ describe('the freshness tag', () => {
 
   it('keeps the rendered rows and writes nothing when the server says nothing changed', async () => {
     cache.items = [world];
-    cache.tag = { tag: 'W/"abc"', reader: '' };
+    cache.tag = { tag: 'W/"abc"', reader: guest() };
     const { result } = renderHook(() => useCatalogSync(true));
     await waitFor(() => expect(server.resolve).not.toBeNull());
 
@@ -142,23 +149,33 @@ describe('the freshness tag', () => {
 
   it('replaces rows and tag together when the server answers fresh', async () => {
     cache.items = [world];
-    cache.tag = { tag: 'W/"old"', reader: '' };
+    cache.tag = { tag: 'W/"old"', reader: guest() };
     const fresh = { id: 'w2', name: 'Somewhere newer' };
     renderHook(() => useCatalogSync(true));
     await waitFor(() => expect(server.resolve).not.toBeNull());
 
-    await act(async () => server.resolve?.({ status: 'fresh', data: [fresh], tag: 'W/"new"' }));
+    await act(async () => server.resolve?.({ status: 'fresh', data: [fresh], tag: 'W/"new"', anonymousLikes: false }));
 
-    expect(cache.replace).toHaveBeenCalledWith([fresh], { tag: 'W/"new"', reader: '' });
+    expect(cache.replace).toHaveBeenCalledWith([fresh], { tag: 'W/"new"', reader: guest() }, false);
   });
 
   it('stores no tag when the server answers none, so an older server behaves as it always did', async () => {
     renderHook(() => useCatalogSync(true));
     await waitFor(() => expect(server.resolve).not.toBeNull());
 
-    await act(async () => server.resolve?.({ status: 'fresh', data: [world], tag: null }));
+    await act(async () => server.resolve?.({ status: 'fresh', data: [world], tag: null, anonymousLikes: false }));
 
-    expect(cache.replace).toHaveBeenCalledWith([world], null);
+    expect(cache.replace).toHaveBeenCalledWith([world], null, false);
+  });
+
+  it('names the Install in a guest\'s tag, so two guests on one machine never share hearts', async () => {
+    cache.items = [world];
+    cache.tag = { tag: 'W/"other-install"', reader: 'install:11111111-2222-4333-8444-555555555555' };
+
+    renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(server.calls).toBe(1));
+    expect(server.sentTag).toBeNull();
   });
 
   it('sends no tag when the cached catalog has none', async () => {
@@ -172,7 +189,7 @@ describe('the freshness tag', () => {
   });
 
   it('sends no tag when nothing is cached, since there is no copy for one to describe', async () => {
-    cache.tag = { tag: 'W/"orphan"', reader: '' };
+    cache.tag = { tag: 'W/"orphan"', reader: guest() };
 
     renderHook(() => useCatalogSync(true));
 
@@ -204,7 +221,7 @@ describe('the freshness tag', () => {
 
   it('sends no tag on a forced refresh, which asks for the list again on purpose', async () => {
     cache.items = [world];
-    cache.tag = { tag: 'W/"abc"', reader: '' };
+    cache.tag = { tag: 'W/"abc"', reader: guest() };
     const { result } = renderHook(() => useCatalogSync(false));
 
     await act(async () => { void result.current.loadCatalog(true); });
@@ -282,5 +299,38 @@ describe('the age gate', () => {
     rerender({ open: true });
 
     await waitFor(() => expect(server.resolve).not.toBeNull());
+  });
+});
+
+describe('whether this server takes a guest\'s like', () => {
+  it('answers from the cache before the refresh lands, so the heart is a control on the first frame', async () => {
+    cache.items = [world];
+    cache.anonymousLikes = true;
+
+    const { result } = renderHook(() => useCatalogSync(true));
+
+    await waitFor(() => expect(result.current.anonymousLikes).toBe(true));
+    expect(server.resolve).not.toBeNull();
+  });
+
+  it('follows the fresh response and stores it beside the rows', async () => {
+    const { result } = renderHook(() => useCatalogSync(true));
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+
+    await act(async () => server.resolve?.({ status: 'fresh', data: [world], tag: null, anonymousLikes: true }));
+
+    expect(result.current.anonymousLikes).toBe(true);
+    expect(cache.replace).toHaveBeenCalledWith([world], null, true);
+  });
+
+  it('reads a server that says nothing as off', async () => {
+    // An older server has no such setting, and neither has its route.
+    cache.anonymousLikes = true;
+    const { result } = renderHook(() => useCatalogSync(true));
+    await waitFor(() => expect(server.resolve).not.toBeNull());
+
+    await act(async () => server.resolve?.({ status: 'fresh', data: [world], tag: null, anonymousLikes: false }));
+
+    expect(result.current.anonymousLikes).toBe(false);
   });
 });

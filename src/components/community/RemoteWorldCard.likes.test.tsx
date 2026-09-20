@@ -110,6 +110,43 @@ describe('who can press it', () => {
     expect(onLike).not.toHaveBeenCalled();
   });
 
+  it('records a guest\'s like where a guest may give one', async () => {
+    const onLike = vi.fn(async () => {});
+    const onGuestLike = vi.fn();
+    const record = world();
+    show(record, { onLike, onGuestLike, guestLikes: true, isAuthenticated: false, currentUser: null });
+
+    fireEvent.click(screen.getByRole('button', { name: /Like —/ }));
+
+    await waitFor(() => expect(onLike).toHaveBeenCalledWith(record, true));
+    // One press, and no sign-in between the guest and the heart.
+    expect(onGuestLike).not.toHaveBeenCalled();
+  });
+
+  it('still takes a guest\'s like back once the server stops taking new ones', async () => {
+    // The privacy text promises that pressing again removes an Anonymous Like. A switch-off must not
+    // quietly break that promise for somebody who liked before it.
+    const onLike = vi.fn(async () => {});
+    const onGuestLike = vi.fn();
+    const record = world({ liked: true });
+    show(record, { onLike, onGuestLike, guestLikes: false, isAuthenticated: false, currentUser: null });
+
+    fireEvent.click(screen.getByRole('button', { name: /Unlike/ }));
+
+    await waitFor(() => expect(onLike).toHaveBeenCalledWith(record, false));
+    expect(onGuestLike).not.toHaveBeenCalled();
+  });
+
+  it('takes a guest\'s like back on a second press', async () => {
+    const onLike = vi.fn(async () => {});
+    const record = world({ liked: true });
+    show(record, { onLike, guestLikes: true, isAuthenticated: false, currentUser: null });
+
+    fireEvent.click(screen.getByRole('button', { name: /Unlike/ }));
+
+    await waitFor(() => expect(onLike).toHaveBeenCalledWith(record, false));
+  });
+
   it('is a plain count on your own listing', () => {
     // Otherwise the number says how much somebody has published rather than how many people liked it.
     show(world(), { onLike: vi.fn(), currentUser: { id: 'u1', username: 'wren_hallow' } });

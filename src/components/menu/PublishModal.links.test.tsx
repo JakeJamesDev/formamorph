@@ -187,7 +187,7 @@ describe('publishing a world with linked content', () => {
     ));
     vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([{ _id: 'w1', name: 'Sedge Landing', downloads: 0 }]);
     vi.mocked(WorldStorageService.fetchListingDetails)
-      .mockResolvedValue({ changelog: null, requiredDependencies: ['listing-e'], compatibleWorlds: [] });
+      .mockResolvedValue({ anonymousLikes: false, changelog: null, requiredDependencies: ['listing-e'], compatibleWorlds: [] });
     view(worldWith({ entity: 'lib-e', dictionary: 'lib-d' }), 'world-1');
 
     await userEvent.click(await screen.findByLabelText('Sedge Landing (w1, 0 downloads)'));
@@ -251,6 +251,7 @@ describe('publishing a component with compatible worlds', () => {
   it('shows the world author answer beside an association that already exists', async () => {
     vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([{ _id: 'd1', name: 'Shared Lore', downloads: 0 }]);
     vi.mocked(WorldStorageService.fetchListingDetails).mockResolvedValue({
+      anonymousLikes: false,
       changelog: null,
       visibility: 'public',
       compatibleWorlds: [{ id: 'listing-w', name: 'Sedge Landing', reviewState: 'unreviewed' }],
@@ -284,6 +285,7 @@ describe('publishing a component with compatible worlds', () => {
     vi.mocked(WorldStorageService.worldsLinking).mockResolvedValue([]);
     vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([{ _id: 'd1', name: 'Shared Lore', downloads: 0 }]);
     vi.mocked(WorldStorageService.fetchListingDetails).mockResolvedValue({
+      anonymousLikes: false,
       changelog: null,
       visibility: 'public',
       compatibleWorlds: [{ id: 'listing-w', name: 'Sedge Landing', reviewState: 'approved' }],
@@ -304,7 +306,7 @@ describe('publishing a component with compatible worlds', () => {
     // opened after publishing something public cannot silently list an unlisted listing.
     vi.mocked(WorldStorageService.getUserWorlds).mockResolvedValue([{ _id: 'd1', name: 'Shared Lore', downloads: 0 }]);
     vi.mocked(WorldStorageService.fetchListingDetails)
-      .mockResolvedValue({ changelog: null, visibility: 'unlisted', compatibleWorlds: [] });
+      .mockResolvedValue({ anonymousLikes: false, changelog: null, visibility: 'unlisted', compatibleWorlds: [] });
     view(bookPayload, 'lib-d');
 
     await userEvent.click(await screen.findByLabelText('Shared Lore (d1, 0 downloads)'));

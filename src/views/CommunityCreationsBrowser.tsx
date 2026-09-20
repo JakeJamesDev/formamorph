@@ -71,7 +71,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { APP_COMMUNITY_CAPABILITIES, type CommunityBrowserCapabilities } from '@/lib/communityBrowserCapabilities';
-import WorldStorageService from '../services/WorldStorageService';
+import WorldStorageService, { AnonymousLikeRefused } from '../services/WorldStorageService';
+import { refusalAnswer } from '@/lib/anonymousLikes';
 import AuthService from '../services/AuthService';
 import { getDownloadState, type DownloadState } from '@/lib/downloadState';
 import { type WorldRecord } from "@/components/WorldDetails";
@@ -226,7 +227,13 @@ const CommunityCreationsBrowser = ({
   const Heading = presentation === 'dialog' ? DialogTitle : PageHeading;
   // Catalog fetch/cache/sync (loads on open, refreshes in the background).
   const catalogReader = isAuthenticated ? String(currentUser?.id ?? AuthService.token ?? '') : '';
-  const { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog } = useCatalogSync(open, catalogReader);
+  const {
+    remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
+    anonymousLikes, setAnonymousLikes,
+  } = useCatalogSync(open, catalogReader);
+  // Whether the heart is a guest's to press here: this shell has to allow it and this server has to take
+  // it. Either one off sends a guest to sign-in, which is where the heart sent them before.
+  const guestLikes = capabilities.guestLikes && anonymousLikes;
   const [remoteWorldToDelete, setRemoteWorldToDelete] = useState<string | null>(null);
   // Set once someone else's item has been deleted, offering to tell its author why. The takedown itself
   // has already landed — declining leaves it removed and simply unexplained, as suspending does.
@@ -587,24 +594,70 @@ const CommunityCreationsBrowser = ({
   };
 
   /**
-   * Record a like, taking the count from the server's own answer.
+   * Show one listing's like state on every copy of its record.
    *
-   * Patched in place rather than re-synced, like a quarantine: the catalog arrives as one big request, and
-   * refetching it to learn one number would blank the grid — and re-sort it under the pointer when the
-   * reader is sorting by likes.
+   * The grid and the open details window each hold their own, so both are patched or the two contradict
+   * each other about the same heart. Patched in place rather than re-synced, like a quarantine: the
+   * catalog arrives as one big request, and refetching it to learn one number would blank the grid — and
+   * re-sort it under the pointer when the reader is sorting by likes.
+   */
+  const showLikeState = (worldId: string, state: { liked?: boolean; likes: number }) => {
+    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId
+      ? { ...w, liked: state.liked, likes: state.likes }
+      : w)));
+    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId
+      ? { ...prev, liked: state.liked, likes: state.likes }
+      : prev));
+  };
+
+  /**
+   * Record a like, from an account or from this copy of the app.
+   *
+   * The session picks the route: an account has one of its own, and a guest's like is addressed by the
+   * Install instead. The heart moves first and the count follows the server's answer, so the press reads
+   * as done while the request is still in the air.
+   *
+   * A refusal puts the heart back. What is said about it depends on the code — see `refusalAnswer`.
    */
   const handleLike = async (world: WorldRecord, liked: boolean) => {
     dismissIfShowing('community-like');
     const worldId = String(world._id || world.id);
-    const state = await WorldStorageService.setRemoteWorldLiked(worldId, liked);
+    const before = { liked: world.liked as boolean | undefined, likes: Number(world.likes) || 0 };
 
-    setRemoteWorlds((prev) => prev.map((w) => ((w._id || w.id) === worldId
-      ? { ...w, liked: state.liked, likes: state.likes }
-      : w)));
-    // The open details modal holds its own copy of the record, so it needs the same patch to agree.
-    setSelectedRemoteWorld((prev) => (prev && (prev._id || prev.id) === worldId
-      ? { ...prev, liked: state.liked, likes: state.likes }
-      : prev));
+    showLikeState(worldId, { liked, likes: Math.max(0, before.likes + (liked ? 1 : -1)) });
+
+    try {
+      const state = isAuthenticated
+        ? await WorldStorageService.setRemoteWorldLiked(worldId, liked)
+        : await WorldStorageService.setAnonymousWorldLiked(worldId, liked);
+      showLikeState(worldId, state);
+    } catch (error) {
+      showLikeState(worldId, before);
+      if (!(error instanceof AnonymousLikeRefused)) throw error;
+
+      switch (refusalAnswer(error.code)) {
+        case 'signIn':
+          // The operator switched the feature off since this catalog was read. The heart goes back to
+          // sending a guest to sign-in, and the next read of the setting agrees.
+          setAnonymousLikes(false);
+          onGuestLike?.(world);
+          return;
+        case 'cap':
+          toast.info(
+            <div className="flex flex-col items-start gap-2">
+              <span>One connection can give a listing three likes. Sign in to add yours.</span>
+              {onGuestLike && (
+                <Button size="sm" variant="secondary" onClick={() => onGuestLike(world)}>Sign in</Button>
+              )}
+            </div>,
+          );
+          return;
+        case 'silent':
+          return;
+        default:
+          throw error;
+      }
+    }
   };
 
   /**
@@ -1162,6 +1215,7 @@ const CommunityCreationsBrowser = ({
                       onDelete={capabilities.authorManagement ? setRemoteWorldToDelete : undefined}
                       onLike={capabilities.likes ? handleLike : undefined}
                       onGuestLike={capabilities.likes ? onGuestLike : undefined}
+                      guestLikes={capabilities.likes && guestLikes}
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
                       onRelease={capabilities.moderation ? handleRelease : undefined}
                       placements={placementsBy(world, contests)}
@@ -1234,6 +1288,8 @@ const CommunityCreationsBrowser = ({
         currentUser={currentUser}
         onLike={handleLike}
         onGuestLike={capabilities.likes ? onGuestLike : undefined}
+        guestLikes={guestLikes}
+        onAnonymousLikes={setAnonymousLikes}
         onLikesChanged={handleLikesChanged}
         openLikersOnMount={openLikersOnMount}
         contests={contests}

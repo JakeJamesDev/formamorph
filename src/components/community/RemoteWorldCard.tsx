@@ -4,6 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tip } from "@/components/ui/tooltip";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { cn } from "@/lib/utils";
+import { guestMayPress } from '@/lib/anonymousLikes';
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { LikeButton } from "@/components/community/LikeButton";
@@ -45,6 +46,8 @@ interface RemoteWorldCardProps {
   onLike?: (world: WorldRecord, liked: boolean) => Promise<void>;
   /** Starts authentication for a guest Like without mutating the listing. */
   onGuestLike?: (world: WorldRecord) => void;
+  /** Whether a guest may press the heart here. Off sends them to `onGuestLike` as before. */
+  guestLikes?: boolean;
   /** Opens the quarantine dialog. Admin surfaces only. */
   onQuarantine?: (world: WorldRecord) => void;
   /** Lifts a quarantine. Admin surfaces only. */
@@ -65,7 +68,7 @@ interface RemoteWorldCardProps {
  *  description, author, counts, tags, and (for owners/admins) a delete control. */
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
-  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, onQuarantine, onRelease,
+  onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, onQuarantine, onRelease,
   placements = [], onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
@@ -106,8 +109,9 @@ export function RemoteWorldCard({
       likes={world.likes || 0}
       liked={world.liked}
       // Static on your own listing, which the server refuses: liking it would make the count say how much
-      // somebody has published rather than how many people liked it.
-      onToggle={onLike && isAuthenticated && !isOwnedByUser
+      // somebody has published rather than how many people liked it. A guest's own listing is the
+      // server's to spot, from the account that claimed this Install.
+      onToggle={onLike && (isAuthenticated ? !isOwnedByUser : guestMayPress(guestLikes, world.liked))
         ? (next) => onLike(world, next)
         : !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
     />

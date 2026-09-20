@@ -2,16 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
-import { getCatalog, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
+import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
+import { installId } from "@/lib/anonymousLikes";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { isAgeAttested } from "@/lib/ageGate";
 import { type WorldRecord } from "@/components/WorldDetails";
 import { type CatalogWorld } from "@/lib/worldCatalog";
 
-/** Who the catalog in hand belongs to: a signed-in reader's id, or the empty string for anonymous. */
+/**
+ * Who the catalog in hand belongs to: a signed-in reader's id, or this Install.
+ *
+ * A guest has hearts of their own now, and the server marks them from the Install header, so two
+ * guests on one machine would otherwise read each other's. The Install is what tells them apart.
+ */
 const currentReader = (): string => {
   const id = AuthService.currentUser?.id;
-  return AuthService.isAuthenticated() && id != null ? String(id) : '';
+  return AuthService.isAuthenticated() && id != null ? String(id) : `install:${installId()}`;
 };
 
 /**
@@ -31,6 +37,9 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
   // Whether a refresh attempt has finished during this open. Until then the list in hand is at best
   // last visit's snapshot, so a lookup miss (e.g. a listing named by a notification) proves nothing.
   const [catalogSettled, setCatalogSettled] = useState(false);
+  // Whether this server takes a guest's like. Read from the cache first, so the heart is a control from
+  // the first frame rather than after the refresh lands.
+  const [anonymousLikes, setAnonymousLikes] = useState(false);
   const lastReaderKey = useRef(readerKey);
   const requestGeneration = useRef(0);
 
@@ -41,6 +50,8 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
 
     try {
       const cached = await getCatalog();
+      if (!isCurrent()) return;
+      setAnonymousLikes(await getCatalogAnonymousLikes());
       if (!isCurrent()) return;
       if (cached.length && !force) {
         setRemoteWorlds(cached);
@@ -62,7 +73,12 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
       if (!isCurrent()) return;
       if (result.status === 'fresh') {
         setRemoteWorlds(result.data as WorldRecord[]);
-        await replaceCatalog(result.data as CatalogWorld[], result.tag ? { tag: result.tag, reader } : null);
+        setAnonymousLikes(result.anonymousLikes);
+        await replaceCatalog(
+          result.data as CatalogWorld[],
+          result.tag ? { tag: result.tag, reader } : null,
+          result.anonymousLikes,
+        );
       } else if (result.status === 'error' && !cached.length) {
         toast.error(result.error || 'Failed to fetch worlds');
       }
@@ -96,5 +112,8 @@ export function useCatalogSync(open: boolean, readerKey = currentReader()) {
     }
   }, [open, readerKey]);
 
-  return { remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog };
+  return {
+    remoteWorlds, setRemoteWorlds, isLoadingRemoteWorlds, isSyncingCatalog, catalogSettled, loadCatalog,
+    anonymousLikes, setAnonymousLikes,
+  };
 }
