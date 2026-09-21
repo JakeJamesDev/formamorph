@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import {
-  $getRoot, $getSelection, $isRangeSelection, $createParagraphNode,
-  $isElementNode,
   COMMAND_PRIORITY_LOW, SELECTION_CHANGE_COMMAND,
   UNDO_COMMAND, REDO_COMMAND, CAN_UNDO_COMMAND, CAN_REDO_COMMAND,
   type NodeKey,
@@ -40,7 +38,7 @@ import { ChipVocabularyContext, promptVocabulary, type ChipVocabulary } from '@/
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { resolveLayout, splitAvailable, usePromptSplitMode, useContainerWidth } from '@/lib/promptLayout';
-import { VariableNode, ValueBoxNode, $createVariableNode, PromptDragContext } from './VariableNode';
+import { VariableNode, ValueBoxNode, PromptDragContext } from './VariableNode';
 import { OpenValuesPlugin } from './OpenValuesPlugin';
 import { ValueEdgesPlugin } from './ValueEdgesPlugin';
 import { OpenValueLayoutPlugin } from './OpenValueLayoutPlugin';
@@ -51,7 +49,7 @@ import {
 } from './openValueContext';
 import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
-import { ChipInsertTargetPlugin } from './ChipInsertTarget';
+import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
 import { TOOLBAR_BTN } from './toolbarStyles';
 import { anchorAt, applyAnchor, captureAnchor, caretOffset, PROMPT_ANCHORS, type ScrollAnchor } from './previewScrollSync';
@@ -397,29 +395,9 @@ function VariableToolbar({ vocab, interactive }: {
   vocab: ChipVocabulary;
   interactive: boolean;
 }) {
-  const [editor] = useLexicalComposerContext();
   const items = vocab.palette();
+  const { insert } = useChipInsertRegistration(vocab);
   if (!items.length) return null;
-
-  const insert = (paletteToken: string) => {
-    editor.update(() => {
-      const node = $createVariableNode(vocab.freshInsertToken(paletteToken));
-      const selection = $getSelection();
-      if ($isRangeSelection(selection)) {
-        selection.insertNodes([node]);
-        return;
-      }
-      const root = $getRoot();
-      const last = root.getLastChild();
-      if ($isElementNode(last)) last.append(node);
-      else {
-        const para = $createParagraphNode();
-        para.append(node);
-        root.append(para);
-      }
-    });
-    editor.focus();
-  };
 
   return (
     // Narrow: one row that scrolls sideways rather than three that stack — the palette is reference

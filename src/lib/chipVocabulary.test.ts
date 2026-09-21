@@ -397,6 +397,13 @@ describe('placeholderVocabulary — ownership', () => {
     expect(v.palette().map((r) => r.label)).toEqual(['Molly', 'Hair', 'Town']);
   });
 
+  it('refuses palette drops that would make the destination placeholder recursive', () => {
+    const inMolly = placeholderVocabulary(WORLD, { ownerId: 'molly' });
+    expect(inMolly.acceptsPaletteToken?.(tok('molly', 'world'))).toBe(false);
+    expect(inMolly.acceptsPaletteToken?.(tok('hair', 'world'))).toBe(true);
+    expect(inMolly.acceptsPaletteToken?.(tok('northern', 'world'))).toBe(false);
+  });
+
   it('still offers it one level down, under its owner', () => {
     expect(v.drill?.(tok('molly', 'world')).map((r) => r.label)).toEqual(['Northern']);
   });

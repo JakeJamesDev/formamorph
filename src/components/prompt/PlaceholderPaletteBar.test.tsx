@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import PlaceholderPaletteBar from './PlaceholderPaletteBar';
 import { ChipInsertTargetProvider, useChipInsertTarget } from './ChipInsertTarget';
-import { encodePlaceholderToken } from '@/lib/placeholders';
+import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { phValues } from '@/test/placeholderValues';
@@ -25,6 +25,14 @@ const Claimer = ({ ownerId }: { ownerId?: string }) => {
   const { claim } = useChipInsertTarget();
   useEffect(() => { claim(Symbol('field'), () => {}, () => {}, null, ownerId); }, [claim, ownerId]);
   return null;
+};
+
+const FocusClaimer = ({ insert }: { insert: (token: string) => void }) => {
+  const { claim } = useChipInsertTarget();
+  const key = useMemo(() => Symbol('field'), []);
+  const root = useRef<HTMLButtonElement>(null);
+  useEffect(() => { claim(key, insert, () => {}, root.current); }, [claim, insert, key]);
+  return <button ref={root} type="button">Field</button>;
 };
 
 const names = () => screen.getAllByRole('button').map((b) => b.textContent).filter((t) => t && !t.startsWith('Placeholders'));
@@ -140,6 +148,25 @@ describe('PlaceholderPaletteBar toggle', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Placeholders' }));
     expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveTextContent('Placeholders (4)');
     expect(names()).toEqual([]);
+  });
+});
+
+describe('PlaceholderPaletteBar click target', () => {
+  it('finishes insertion before an outside focus move releases the field', async () => {
+    const insert = vi.fn();
+    render(
+      <ChipInsertTargetProvider>
+        <FocusClaimer insert={insert} />
+        <PlaceholderPaletteBar placeholders={world} />
+      </ChipInsertTargetProvider>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Field' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Town' }));
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(decodePlaceholderToken(insert.mock.calls[0][0])?.id).toBe('town');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'true'));
   });
 });
 
