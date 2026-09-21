@@ -8,7 +8,7 @@ import { placeholderCycleExclusions } from '@/lib/placeholderTree';
 import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
-import { useChipInsertTarget } from './ChipInsertTarget';
+import { CHIP_PALETTE_ATTR, useChipInsertTarget } from './ChipInsertTarget';
 import { startPaletteChipDrag } from './chipDragSource';
 import ChipRowHeading from './ChipRowHeading';
 
@@ -60,7 +60,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
   return (
     // Insertable placeholders, not a field's contents — the find bar must not offer one of these as the
     // place a hit on a placeholder's name lives.
-    <div data-editor-find-skip className={cn('sticky top-0 z-10 -mx-1 mb-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur', className)}>
+    <div data-editor-find-skip {...{ [CHIP_PALETTE_ATTR]: '' }} className={cn('sticky top-0 z-10 -mx-1 mb-2 border-b bg-background/95 px-1 py-1.5 backdrop-blur', className)}>
       <div className="flex items-start gap-2">
         {/* Open, the toggle is the chevron alone: the strip's first slot is worth more as a chip than as a
             word, and the tooltip and the accessible name still carry it. Closed, the word comes back with

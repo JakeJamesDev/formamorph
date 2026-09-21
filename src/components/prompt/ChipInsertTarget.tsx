@@ -92,6 +92,9 @@ export function useChipInsertRegistration(vocab: ChipVocabulary, ownerId?: strin
   return useMemo(() => ({ insert, startDrag, undo, ownerId: ownerId ?? null }), [insert, startDrag, undo, ownerId]);
 }
 
+/** Marks a shared palette, whose press keeps the claimed field's target until the click completes. */
+export const CHIP_PALETTE_ATTR = 'data-chip-palette';
+
 /** Wraps a panel so every chip field inside it shares one insert target. */
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<{
@@ -119,24 +122,41 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
   // falling to nothing at all — clicking blank panel background — fires no `focusin` and would otherwise
   // leave the palette lit with no caret to insert at.
   //
-  // Deliberately waits past the click: a palette button may take focus before its click inserts the chip.
+  // Deliberately waits past the click: a palette press takes focus at pointer-down, and its click comes only
+  // at release. The palette cannot keep focus with `preventDefault`, which would cancel its native drag.
   useEffect(() => {
-    const onFocusOut = () => {
-      if (!holder.current) return;
-      // Settled on the next tick rather than read from `relatedTarget`: a chip editor hands focus around
-      // inside itself while restoring its selection, and each of those blurs reports going nowhere. Asking
-      // where focus actually landed, once it has landed, tells a real departure from that shuffle — and
-      // covers focus falling to nothing at all, which reports no incoming element either way.
-      setTimeout(() => {
-        if (!holder.current) return;
-        if (holderRoot.current?.contains(document.activeElement)) return;
-        holder.current = null;
-        holderRoot.current = null;
-        setTarget(null);
-      }, 0);
+    let palettePress = false;
+    const settle = () => {
+      if (!holder.current || palettePress) return;
+      if (holderRoot.current?.contains(document.activeElement)) return;
+      holder.current = null;
+      holderRoot.current = null;
+      setTarget(null);
+    };
+    // Settled on the next tick rather than read from `relatedTarget`: a chip editor hands focus around
+    // inside itself while restoring its selection, and each of those blurs reports going nowhere. Asking
+    // where focus actually landed, once it has landed, tells a real departure from that shuffle — and
+    // covers focus falling to nothing at all, which reports no incoming element either way.
+    const onFocusOut = () => { if (holder.current) setTimeout(settle, 0); };
+    const onPointerDown = (event: PointerEvent) => {
+      palettePress = event.target instanceof Element && event.target.closest(`[${CHIP_PALETTE_ATTR}]`) !== null;
+    };
+    // A release or a drag ends the press; the click that follows it runs before this settles.
+    const onPointerEnd = () => {
+      if (!palettePress) return;
+      palettePress = false;
+      setTimeout(settle, 0);
     };
     document.addEventListener('focusout', onFocusOut);
-    return () => document.removeEventListener('focusout', onFocusOut);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerEnd, true);
+    document.addEventListener('pointercancel', onPointerEnd, true);
+    return () => {
+      document.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerup', onPointerEnd, true);
+      document.removeEventListener('pointercancel', onPointerEnd, true);
+    };
   }, []);
 
   const value = useMemo<TargetState>(

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, useMemo, useRef } from 'react';
 import PlaceholderPaletteBar from './PlaceholderPaletteBar';
@@ -152,8 +152,9 @@ describe('PlaceholderPaletteBar toggle', () => {
 });
 
 describe('PlaceholderPaletteBar click target', () => {
-  it('finishes insertion before an outside focus move releases the field', async () => {
-    const insert = vi.fn();
+  it('inserts on click and leaves the field holding focus and the claim', async () => {
+    // Like the real insert, which hands focus back to the field.
+    const insert = vi.fn((_token: string) => screen.getByRole('button', { name: 'Field' }).focus());
     render(
       <ChipInsertTargetProvider>
         <FocusClaimer insert={insert} />
@@ -166,7 +167,31 @@ describe('PlaceholderPaletteBar click target', () => {
 
     expect(insert).toHaveBeenCalledTimes(1);
     expect(decodePlaceholderToken(insert.mock.calls[0][0])?.id).toBe('town');
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'true'));
+    // Past the provider's deferred focus check, so a release would have landed by now.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(screen.getByRole('button', { name: 'Field' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'false');
+  });
+
+  it('inserts on a click whose release comes a moment after its press', async () => {
+    const insert = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ChipInsertTargetProvider>
+        <FocusClaimer insert={insert} />
+        <PlaceholderPaletteBar placeholders={world} />
+      </ChipInsertTargetProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Field' }));
+    const town = screen.getByRole('button', { name: 'Town' });
+
+    // A hand's press and release are never in the same tick, so the field's focus departure settles between them.
+    await user.pointer({ keys: '[MouseLeft>]', target: town });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await user.pointer({ keys: '[/MouseLeft]', target: town });
+
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(decodePlaceholderToken(insert.mock.calls[0][0])?.id).toBe('town');
   });
 });
 

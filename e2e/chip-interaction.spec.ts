@@ -294,6 +294,20 @@ test('World retains keyboard and touch typeahead insertion in fullscreen', async
   await expect(editor).toHaveText('TownZBefore after');
 });
 
+test('a World palette click with a hand-paced press inserts at the caret', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'The palette click path is a pointer interaction');
+  const { field, paletteChip } = await openWorldField(page);
+  const editor = field.locator('[contenteditable="true"]').first();
+  await setChipFieldText(page, editor, 'Before after');
+  await page.keyboard.press('End');
+
+  await paletteChip.click({ delay: 120 });
+
+  await expect(field.locator('[data-lexical-decorator]')).toHaveCount(1);
+  await expect(editor).toHaveText('Before afterTown');
+  await expect(editor).toBeFocused();
+});
+
 test('a World Editor palette drag creates one placement after the field has focus', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Native chip dragging is a desktop interaction');
   const { field, paletteChip } = await openWorldField(page);
