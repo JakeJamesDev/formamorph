@@ -1,5 +1,5 @@
 import { openDatabase, promisifyRequest } from '@/lib/idb';
-import type { CommunityLink } from '@/types';
+import type { CommunityLink, EntityLibraryDetails } from '@/types';
 
 /**
  * The wrapper shape every local library record shares: identity and library timestamps around an opaque
@@ -12,6 +12,7 @@ export interface StoredRecord<T> extends CommunityLink {
   createdAt?: string;
   lastAccessed?: string;
   data: T;
+  libraryDetails?: EntityLibraryDetails;
 }
 
 /** A selected library record no longer exists by the time its full data is requested. */
@@ -113,6 +114,7 @@ export class LibraryStore<T, M> {
           id: record.id,
           name: record.name,
           data: record.data,
+          libraryDetails: record.libraryDetails ?? existing?.libraryDetails,
           createdAt: existing?.createdAt ?? record.createdAt ?? new Date().toISOString(),
           lastAccessed: new Date().toISOString(),
           // Community link (publish/download): read-merged so an editor save that passes only id/name/data

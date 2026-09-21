@@ -109,7 +109,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   const [pendingIds, setPendingIds] = useState<string[]>([]);
   const [linkPickerFor, setLinkPickerFor] = useState<LinkableContent | null>(null);
   const [libraryEditor, setLibraryEditor] = useState<{ kind: LibraryKind; id: string } | null>(null);
-  const [importReview, setImportReview] = useState<{ kind: LibraryKind; item: LinkableContent } | null>(null);
+  const [importReview, setImportReview] = useState<{
+    kind: LibraryKind; item: LinkableContent;
+    libraryDetails?: Awaited<ReturnType<typeof importCharacterFile>>['libraryDetails'];
+  } | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [connect, setConnect] = useState<ConnectFlow | null>(null);
   const [choices, setChoices] = useState<ReferenceChoices>({});
@@ -420,10 +423,13 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     if (!file) return;
     const kind = importKindRef.current;
     try {
-      const item: LinkableContent = kind === 'dictionary'
-        ? parseDictionaryImport(await parseJsonText(await file.text()), file.name.replace(/\.[^.]+$/, ''))
-        : (await importCharacterFile(file)).entity;
-      setImportReview({ kind, item });
+      if (kind === 'dictionary') {
+        const item = parseDictionaryImport(await parseJsonText(await file.text()), file.name.replace(/\.[^.]+$/, ''));
+        setImportReview({ kind, item });
+      } else {
+        const { entity: item, libraryDetails } = await importCharacterFile(file);
+        setImportReview({ kind, item, libraryDetails });
+      }
     } catch (error) {
       toast.error((error as Error).message || 'Could not read this file.');
     }
@@ -434,11 +440,11 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const review = importReview;
     setImportReview(null);
     if (!review) return;
-    const { kind, item } = review;
+    const { kind, item, libraryDetails } = review;
     let entry: PendingAdd = { kind, item };
     if (link) {
       try {
-        const source = await saveCopyToLibrary(item, placeholders, locations);
+        const source = await saveCopyToLibrary(item, placeholders, locations, libraryDetails);
         entry = { kind, item: { ...item, link: linkToSource(source) }, source };
       } catch (error) {
         toast.error((error as Error).message || 'Could not save to your library.');

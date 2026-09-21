@@ -10,7 +10,7 @@ import AuthService from '@/services/AuthService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import type {
-  CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, GameLocation,
+  CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, EntityLibraryDetails, GameLocation,
   Placeholder,
 } from '@/types';
 
@@ -41,7 +41,7 @@ export interface LibraryItemSummary extends LibrarySource {
 }
 
 /** The library record fields these lines and states are read from. */
-type LibraryStamps = CommunityLink & { createdAt?: string };
+type LibraryStamps = CommunityLink & { createdAt?: string; libraryDetails?: EntityLibraryDetails };
 
 /** The two lines a picker prints under an item's name. */
 export interface LibraryLines {
@@ -52,6 +52,7 @@ export interface LibraryLines {
 /** Who wrote the item, in the picker's own words. Two items can share a name, so this is what tells them
  *  apart. */
 export function libraryAuthorLine(record: LibraryStamps, owned: boolean): string {
+  if (record.libraryDetails?.author?.trim()) return record.libraryDetails.author.trim();
   if (owned) return 'You';
   return record.sourceAuthorName?.trim() || 'Another author';
 }
@@ -99,7 +100,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
 const LIBRARIES: Record<LibraryKind, {
   list: () => Promise<(LibraryStamps & { id: string; name: string })[]>;
   load: (id: string) => Promise<LinkableContent>;
-  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent }) => Promise<void>;
+  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent; libraryDetails?: EntityLibraryDetails }) => Promise<void>;
   row: (meta: DictionaryMetadata & EntityMetadata) => Partial<LibraryItemSummary>;
 }> = {
   dictionary: {
@@ -177,11 +178,12 @@ export function toLibraryItem<T extends LinkableContent>(
  */
 export async function saveCopyToLibrary(
   item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
+  libraryDetails?: EntityLibraryDetails,
 ): Promise<LibrarySource> {
   const id = randomUUID();
   const data = { ...toLibraryItem(item, available, worldLocations), id };
   const now = new Date().toISOString();
-  await LIBRARIES[kindOf(item)].store({ id, name: data.name, createdAt: now, data });
+  await LIBRARIES[kindOf(item)].store({ id, name: data.name, createdAt: now, data, libraryDetails });
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is
   // the creation stamp — the same one a later read computes.
   return { id, name: data.name, revision: now, owned: true, data };

@@ -1,12 +1,7 @@
-// Import a SillyTavern / Character-Card character embedded in a PNG. Such cards store the card JSON base64'd
-// in a PNG text chunk — `ccv3` (Character Card V3) preferred, else `chara` (V2/V1). We map only the fields a
-// Formamorph world entity has a home for: name, description + personality + scenario → `aiDescription`, and
-// the first message + alternate greetings → Opening Narration rows. The other chat-runtime fields
-// (mes_example, system_prompt, …) are dropped. An embedded `character_book` lorebook is offered separately to
-// the dictionary library. See the MIT Character Card V3 spec (credited in THIRD-PARTY-NOTICES.md).
+// SillyTavern JSON/PNG cards; the Character Card V3 spec is credited in THIRD-PARTY-NOTICES.md.
 
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Dictionary, Opening } from '@/types';
+import type { Entity, Dictionary, Opening, EntityLibraryDetails } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
 import { canonicalUserMacro } from './userMacro';
@@ -20,6 +15,15 @@ interface TavernData {
   first_mes?: unknown;
   alternate_greetings?: unknown;
   character_book?: unknown;
+  creator?: unknown;
+  tags?: unknown;
+  avatar?: unknown;
+}
+
+export interface TavernImport {
+  entity: Entity;
+  book: Dictionary | null;
+  libraryDetails: EntityLibraryDetails;
 }
 
 /** Decode a base64 string as UTF-8 (the card JSON is UTF-8, so `atob` alone would mangle non-ASCII). */
@@ -81,12 +85,45 @@ function cardOpenings(data: TavernData, name: string): Opening[] {
 
 /**
  * Read a SillyTavern character PNG into an entity plus its embedded lorebook (if any). Returns null when the
- * bytes carry no recognizable card chunk. The caller sets `entity.image` from the PNG's own pixels.
+ * bytes carry no recognizable card chunk. The caller sets the portrait from the PNG's own pixels.
  */
-export function readTavernCard(bytes: Uint8Array): { entity: Entity; book: Dictionary | null } | null {
+export function readTavernCard(bytes: Uint8Array): TavernImport | null {
   const data = readCardData(bytes);
   if (!data) return null;
+  return convertCard(data);
+}
+
+function convertCard(data: TavernData): TavernImport {
   const entity = cardToEntity(data);
   const book = data.character_book ? convertLorebook({ character_book: data.character_book }, entity.name) : null;
-  return { entity, book };
+  const author = str(data.creator);
+  const tags = Array.isArray(data.tags) ? [...new Set(data.tags.map(str).filter(Boolean))] : [];
+  return { entity, book, libraryDetails: { ...(author ? { author } : {}), tags } };
+}
+
+/** Read a standalone V1/V2/V3 card, keeping an HTTP(S) avatar as a linked portrait. */
+export function readTavernJson(text: string): TavernImport | null {
+  let raw: unknown;
+  try { raw = JSON.parse(text); } catch { return null; }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const obj = raw as Record<string, unknown>;
+  if ('formamorphKind' in obj) return null;
+  let data: TavernData;
+  if ('spec' in obj) {
+    if (obj.spec !== 'chara_card_v2' && obj.spec !== 'chara_card_v3') return null;
+    if (!obj.data || typeof obj.data !== 'object' || Array.isArray(obj.data)) return null;
+    data = obj.data as TavernData;
+  } else {
+    if (!['description', 'personality', 'scenario', 'first_mes', 'mes_example']
+      .some((key) => typeof obj[key] === 'string')) return null;
+    data = obj;
+  }
+  if (!str(data.name)) return null;
+  const result = convertCard(data);
+  const avatar = str(data.avatar);
+  try {
+    const url = new URL(avatar);
+    if (url.protocol === 'https:' || url.protocol === 'http:') result.entity.images = [avatar];
+  } catch { /* Missing or malformed avatar leaves the portrait empty. */ }
+  return result;
 }

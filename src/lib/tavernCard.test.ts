@@ -46,6 +46,14 @@ const v2Card = {
 };
 
 describe('readTavernCard', () => {
+  it('carries PNG attribution and tags separately from world content', () => {
+    const result = readTavernCard(png('chara', b64(JSON.stringify({
+      ...v2Card, data: { ...v2Card.data, creator: 'Rowan', tags: ['Guide'], avatar: 'https://example.com/other.png' },
+    }))));
+    expect(result?.libraryDetails).toEqual({ author: 'Rowan', tags: ['Guide'] });
+    expect(result?.entity).not.toHaveProperty('tags');
+    expect(result?.entity).not.toHaveProperty('images');
+  });
   it('maps name + description/personality/scenario and substitutes macros', () => {
     const result = readTavernCard(png('chara', b64(JSON.stringify(v2Card))));
     expect(result).not.toBeNull();

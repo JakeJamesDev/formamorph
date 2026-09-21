@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Opening, Placeholder } from '@/types';
+import type { Entity, Opening, Placeholder, EntityLibraryDetails } from '@/types';
 import { remintOpenings } from './openings';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
@@ -11,7 +11,7 @@ import { carriedPlaceholders, sharedPlaceholdersUsed } from './placeholderHomes'
 import { portablePlaceholders } from './placeholderGroups';
 import type { Dictionary } from '@/types';
 import { embedEntityCard, readEntityCard } from './entityCard';
-import { readTavernCard } from './tavernCard';
+import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
 import { entityImages, primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
@@ -214,13 +214,17 @@ export async function importEntityCard(file: File): Promise<Entity> {
 }
 
 /**
- * Import a character image file into an entity plus an optional lorebook. Handles both our own WebP cards
- * (no lorebook) and SillyTavern character PNGs (`character_book` → a dictionary the caller can offer to save).
- * In both cases the file's own pixels become the entity's portrait.
+ * Import a WebP, SillyTavern PNG, or SillyTavern JSON card with optional lorebook and library metadata.
+ * Image cards use their pixels as the portrait; JSON cards keep their avatar URL.
  */
 export async function importCharacterFile(
   file: File,
-): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks }> {
+): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: EntityLibraryDetails }> {
+  if (file.type === 'application/json' || /\.json$/i.test(file.name)) {
+    const tavern = readTavernJson(await file.text());
+    if (!tavern) throw new Error("This JSON isn't a SillyTavern character card.");
+    return { ...tavern, links: {} };
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
 
   const cardJson = readEntityCard(bytes);

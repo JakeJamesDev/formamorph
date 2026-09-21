@@ -29,7 +29,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
-import type { Entity, FocusFieldHint, Placeholder } from '@/types';
+import type { Entity, EntityLibraryDetails, FocusFieldHint, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
@@ -58,6 +58,7 @@ const EntityEditorModal = ({
   focusField?: FocusFieldHint | null;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
+  const [libraryDetails, setLibraryDetails] = useState<EntityLibraryDetails | undefined>();
   const [tab, setTab] = useState<EntityEditorTab>(initialTab);
   const [subTab, setSubTab] = useState<EntityEditorSubTab>(initialSubTab);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
@@ -70,6 +71,7 @@ const EntityEditorModal = ({
   // Below `sm` the Tags column folds into the top of Profile.
   const narrow = useIsMobile(640);
   const baselineRef = useRef('');
+  const detailsBaselineRef = useRef('');
   // Reuses cached serialization for the entity's unchanged base64 image/model on each keystroke; matches
   // the JSON.stringify baseline byte-for-byte.
   const stringifyCache = useRef(new WeakMap<object, string>());
@@ -80,12 +82,17 @@ const EntityEditorModal = ({
 
   // Seed from the draft, or load the character from storage; clear when closed.
   useEffect(() => {
+    setLibraryDetails(undefined);
+    detailsBaselineRef.current = canon(undefined);
     if (draft) { setEntity(draft); baselineRef.current = canon(draft); return; }
     if (entityId === null) { setEntity(null); return; }
     let cancelled = false;
-    EntityStorageService.getEntityData(entityId)
-      .then((e) => {
+    Promise.all([EntityStorageService.getEntityData(entityId), EntityStorageService.getEntityMetadata()])
+      .then(([e, records]) => {
         if (cancelled) return;
+        const details = records.find((record) => record.id === entityId)?.libraryDetails;
+        setLibraryDetails(details);
+        detailsBaselineRef.current = canon(details);
         setEntity(e);
         baselineRef.current = canon(e);
       })
@@ -93,10 +100,16 @@ const EntityEditorModal = ({
     return () => { cancelled = true; };
   }, [entityId, draft]);
 
-  const hasUnsavedChanges = entity != null && canonicalStringify(entity, stringifyCache.current) !== baselineRef.current;
+  const hasUnsavedChanges = entity != null && (canonicalStringify(entity, stringifyCache.current) !== baselineRef.current
+    || canon(libraryDetails) !== detailsBaselineRef.current);
 
   const handleChange = (field: string, value: unknown) => {
     setEntity((prev) => (prev ? ({ ...prev, [field]: value } as Entity) : prev));
+  };
+
+  const handleTags = (tags: string[]) => {
+    if (libraryDetails) setLibraryDetails({ ...libraryDetails, tags });
+    else handleChange('tags', tags);
   };
 
   // Isolated placeholder store backed by the character's own `placeholders` field (empty ⇒ undefined).
@@ -134,10 +147,11 @@ const EntityEditorModal = ({
     try {
       // A save means this copy diverged from whatever it was downloaded from; the store read-merges the rest.
       await EntityStorageService.storeEntity({
-        id, name: normalized.name, data: normalized, dirty: true, editedAt: new Date().toISOString(),
+        id, name: normalized.name, data: normalized, libraryDetails, dirty: true, editedAt: new Date().toISOString(),
       });
       setEntity(normalized);
       baselineRef.current = canon(normalized);
+      detailsBaselineRef.current = canon(libraryDetails);
       toast.success('Character saved!');
       return true;
     } catch {
@@ -186,7 +200,7 @@ const EntityEditorModal = ({
             <div className="flex flex-col sm:flex-row">
               {!narrow && (
                 <div className="w-80 shrink-0 p-4 pr-0">
-                  <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />
+                  <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
                 </div>
               )}
               <FieldColumn>
@@ -196,7 +210,7 @@ const EntityEditorModal = ({
                   <ChipInsertTargetProvider>
                     <PlaceholderPaletteBar placeholders={pool} />
                     <TabsContent value="profile" className="space-y-4">
-                      {narrow && <TagsField values={entity.tags} onChange={(tags) => handleChange('tags', tags)} />}
+                      {narrow && <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />}
                       <EntityProfileFields
                         value={entity}
                         onChange={handleChange}
