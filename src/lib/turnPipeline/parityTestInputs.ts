@@ -48,7 +48,7 @@ export const PARITY_SETTINGS: TurnSettings = {
   language: 'English',
 };
 
-/** The run used the shipped default prompts. */
+/** Current defaults for request previews and assembly tests. */
 export const PARITY_PROMPTS: TurnPrompts = {
   locationChange: defaultLocationChangePrompt,
   locationChangeUser: defaultLocationChangeUserPrompt,
@@ -79,6 +79,37 @@ export const PARITY_PROMPTS: TurnPrompts = {
   // these carry the shipped defaults for completeness rather than because the capture used them.
   sceneTags: defaultSceneTagsPrompt,
   sceneTagsUser: defaultSceneTagsUserPrompt,
+};
+
+// Historical replay uses the exact user templates that produced the recorded messages.
+const RECORDED_USER_PROMPTS: Partial<TurnPrompts> = {
+  directorUser: `What just happened:
+<NARRATION>
+
+The player's next action: <PLAYER ACTION>
+
+Describe the scene and list the cast now.`,
+  choicesUser: `The scene just told to me, the player character:
+<NARRATION>
+
+Now write my options - one per line, each a single action I take.`,
+  summaryUser: `The player's action this turn: <PLAYER ACTION>
+
+The narration that resulted:
+<NARRATION>
+
+Now record what this turn changed - the player's action and its outcome - in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`,
+  timePassedUser: `What the character did:
+<PLAYER ACTION>
+
+What happened:
+<NARRATION>
+
+How much in-world time passed?`,
+  openingTimeUser: `The opening scene:
+<NARRATION>
+
+What time of day does this scene take place at?`,
 };
 
 /** Request types the turn itself dispatches. Anything else in the recording is an idle drainer. */
@@ -130,7 +161,7 @@ export const inputFor = (index: number): TurnPlanInput => ({
   locationCount: 3,
   hasCurrentLocation: true,
   settings: PARITY_SETTINGS,
-  prompts: PARITY_PROMPTS,
+  prompts: { ...PARITY_PROMPTS, ...RECORDED_USER_PROMPTS },
 });
 
 export const narrationOf = (turn: ParityTurnRecord): ParityRequestRecord => {

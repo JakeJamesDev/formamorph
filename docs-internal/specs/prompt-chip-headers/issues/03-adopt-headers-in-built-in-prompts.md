@@ -1,6 +1,8 @@
 # 03: Adopt Headers in Built-In Prompts
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Four gates green; Standards and Spec reviews found no actionable issues. Header adoption and both requested popover corrections are verified.
+Base: 9f278115
 Blocked by: 02 — Offer Headers on Every Prompt Chip
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
@@ -17,15 +19,15 @@ Ticket 02 completes Header support across the registry and depends on ticket 01;
 
 ## Acceptance criteria
 
-- [ ] Audit every built-in prompt and convert every section consisting of one chip. Record the adoption inventory in the implementation evidence, including any sections retained as authored prose and the reason.
-- [ ] Each converted placement stores one raw Header. Remove superseded ordinary heading text and heading-only Prepend/Append fragments so headings appear once. Preserve any affix wording that is actual section content.
-- [ ] Built-in style generation selects the corresponding chip Format for Simple, Markdown, and XML. Headings derive from Header data; style conversion does not rewrite raw Header text or regenerate literal affix headings. This does not change the agreed Simple default for newly headed raw-text chips in custom prompts.
-- [ ] XML peers remain siblings, including Traits and Player Character. Converting a conditional heading must not leave a preceding section open or nest later sections accidentally. Existing prose sections and their boundaries remain valid.
-- [ ] Blank, whitespace-only, and N/A values remove the adopted section's heading, wrappers, affixes, and generated spacing. Nonempty values restore it with the agreed casing and spacing. Name bodies stay plain, and raw-text chip bodies retain their content.
-- [ ] Read-only built-in presets display generated headings and closing tags with the shared conditional highlight and protected chip options. Header and Format can be inspected but not edited. Editable copies preserve native Header data and support the editing behavior delivered by tickets 01 and 02.
-- [ ] Existing saved custom prompts, including ordinary headings, affix-based headings, and intentional XML nesting, load and round-trip without content rewriting or automatic Header inference. No conversion wizard, migration, version bump, or legacy flattening is introduced.
-- [ ] Production preset sharing preserves editable Header data for custom copies of converted built-ins. Record older-version incompatibility and explicitly report any actual export-envelope shape change.
-- [ ] Preview, gameplay prompt assembly, and request-anatomy runs agree for converted built-ins in every style. Narrative instructions, unrelated wording, and model tuning remain outside this change.
+- [x] Audit every built-in prompt and convert every section consisting of one chip. Record the adoption inventory in the implementation evidence, including any sections retained as authored prose and the reason.
+- [x] Each converted placement stores one raw Header. Remove superseded ordinary heading text and heading-only Prepend/Append fragments so headings appear once. Preserve any affix wording that is actual section content.
+- [x] Built-in style generation selects the corresponding chip Format for Simple, Markdown, and XML. Headings derive from Header data; style conversion does not rewrite raw Header text or regenerate literal affix headings. This does not change the agreed Simple default for newly headed raw-text chips in custom prompts.
+- [x] XML peers remain siblings, including Traits and Player Character. Converting a conditional heading must not leave a preceding section open or nest later sections accidentally. Existing prose sections and their boundaries remain valid.
+- [x] Blank, whitespace-only, and N/A values remove the adopted section's heading, wrappers, affixes, and generated spacing. Nonempty values restore it with the agreed casing and spacing. Name bodies stay plain, and raw-text chip bodies retain their content.
+- [x] Read-only built-in presets display generated headings and closing tags with the shared conditional highlight and protected chip options. Header and Format can be inspected but not edited. Editable copies preserve native Header data and support the editing behavior delivered by tickets 01 and 02.
+- [x] Existing saved custom prompts, including ordinary headings, affix-based headings, and intentional XML nesting, load and round-trip without content rewriting or automatic Header inference. No conversion wizard, migration, version bump, or legacy flattening is introduced.
+- [x] Production preset sharing preserves editable Header data for custom copies of converted built-ins. Record older-version incompatibility and explicitly report any actual export-envelope shape change.
+- [x] Preview, gameplay prompt assembly, and request-anatomy runs agree for converted built-ins in every style. Narrative instructions, unrelated wording, and model tuning remain outside this change.
 
 ## Verification and completion
 
@@ -40,3 +42,9 @@ Ticket 02 completes Header support across the registry and depends on ticket 01;
 ## Scope boundary
 
 Adoption changes authored defaults only. It does not reinterpret users' stored custom prompts, repair their authored markup, introduce new narrative instructions, or authorize a release.
+
+## Implementation evidence
+
+See [the adoption inventory and verification report](../verification-03.md) for all 30 templates, model comparisons, compatibility, browser checks, and test evidence.
+
+The user selected cloud default + local Cydonia for the model comparison and approved preserving historical replay templates with separate current-Header request tests. Follow-up visual feedback also aligned chip hint sizes and replaced the tall chip popover's native scrollbar with the shared ScrollArea.

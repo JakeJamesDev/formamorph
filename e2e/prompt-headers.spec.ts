@@ -241,3 +241,121 @@ test('world JSON export and import retain editable Header tokens and legacy prom
   expect(result).toMatchObject({ systemPrompt: TOKEN, choicesPrompt: '## Custom\n<PERSONA|pre="Meet "|post=".">',
     directorPrompt: '<DICTIONARY|before|format=xml>', timePrompt: '<TIME|format=markdown|header="story clock">' });
 });
+
+for (const [preset, heading] of [['default', '## Important Player Notes'], ['simple', 'IMPORTANT PLAYER NOTES:'], ['xml', '<important_player_notes>']] as const) {
+  for (const theme of ['light', 'dark'] as const) {
+    test(`built-in ${preset}: protected headings become editable in a copy (${theme})`, async ({ page }, info) => {
+      await openApp(page, { 'vite-ui-theme': theme, FORMAMORPH_fontFamily: 'lexend', FORMAMORPH_promptSplitMode: 'tabs',
+        FORMAMORPH_promptPresets: { activeId: preset, presets: [] } });
+      await gotoDev(page, 'mainMenu', { modal: 'settings', tab: 'prompts', subtab: 'narration', surface: 'system' });
+      const readOnly = page.locator('[data-lexical-editor="true"]').first();
+      if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Edit full screen' }).first().click();
+      await readOnly.getByText(heading, { exact: true }).click();
+      await expect(page.getByLabel('Header', { exact: true })).toHaveValue('Important Player Notes');
+      await expect(page.getByLabel('Header', { exact: true })).toBeDisabled();
+      await expect(page.getByRole('radio', { name: 'XML', exact: true })).toBeDisabled();
+      await page.screenshot({ path: `.scratch/header-adoption/builtin-${preset}-${theme}-${info.project.name}.png`, animations: 'disabled' });
+      await page.keyboard.press('Escape');
+      if (preset === 'xml') {
+        await readOnly.getByText('</important_player_notes>', { exact: true }).click();
+        await expect(page.getByLabel('Header', { exact: true })).toBeDisabled();
+        await page.keyboard.press('Escape');
+      }
+      if (info.project.name === 'mobile') await page.getByRole('button', { name: 'Exit full screen' }).click();
+      const { editor } = await openHost(page, 'settings');
+      await editor.getByText(heading, { exact: true }).click();
+      await expect(page.getByLabel('Header', { exact: true })).toBeEnabled();
+      const format = preset === 'xml' ? 'XML' : preset === 'simple' ? 'Simple' : 'Markdown';
+      await expect(page.getByRole('radio', { name: format, exact: true })).toHaveAttribute('data-state', 'on');
+      await page.getByLabel('Header', { exact: true }).fill('Travel notes');
+      await page.getByRole('radio', { name: 'XML', exact: true }).click();
+      await page.keyboard.press('Escape');
+      expect(await stored(page, 'settings')).toContain('<NOTES|format=xml|header="Travel notes">');
+      await expect(editor.getByText('<travel_notes>', { exact: true })).toBeVisible();
+    });
+  }
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`chip options use the shared scrollbar and keep offscreen fields reachable (${theme})`, async ({ page }, info) => {
+    await openApp(page, { 'vite-ui-theme': theme, FORMAMORPH_promptSplitMode: 'tabs', FORMAMORPH_promptPresets: { activeId: 'xml', presets: [] } });
+    const { editor } = await openHost(page, 'settings');
+    await editor.getByText('<player_stats>', { exact: true }).click();
+    const popup = page.getByLabel('Header', { exact: true }).locator('xpath=ancestor::*[@role="dialog"][1]');
+    const viewport = popup.locator('[data-radix-scroll-area-viewport]');
+    await expect(viewport).toBeVisible();
+    expect(await viewport.evaluate(node => node.scrollHeight > node.clientHeight)).toBe(true);
+    const bounds = await popup.boundingBox();
+    expect(bounds!.y).toBeGreaterThanOrEqual(0);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await viewport.hover();
+    await page.mouse.wheel(0, 700);
+    await expect.poll(() => viewport.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+    await expect(page.getByLabel('Append', { exact: true })).toBeInViewport();
+    if (info.project.name === 'mobile') {
+      await viewport.evaluate(node => { node.scrollTop = 0; });
+      const box = (await viewport.boundingBox())!;
+      const touch = await page.context().newCDPSession(page);
+      const x = box.x + box.width / 2;
+      const start = box.y + box.height - 40;
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: start }] });
+      for (let step = 1; step <= 5; step++) {
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: start - step * 80 }] });
+      }
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect.poll(() => viewport.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+      await touch.detach();
+    }
+    await page.getByLabel('Header', { exact: true }).focus();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(page.getByLabel('Append', { exact: true })).toBeFocused();
+    await expect(page.getByLabel('Append', { exact: true })).toBeInViewport();
+    await page.getByLabel('Append', { exact: true }).fill('After stats.');
+    await page.screenshot({ path: `.scratch/header-adoption/scroll-${theme}-${info.project.name}.png`, animations: 'disabled' });
+    await page.keyboard.press('Escape');
+    expect(await stored(page, 'settings')).toContain('post="After stats."');
+  });
+
+  test(`built-in XML sections remain editable in World Editor (${theme})`, async ({ page }, info) => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openApp(page, { 'vite-ui-theme': theme, FORMAMORPH_fontFamily: 'lexend', FORMAMORPH_promptSplitMode: 'tabs' });
+    const { editor, field } = await openHost(page, 'world');
+    const source: string = await page.evaluate(async () => {
+      const paths = ['/src/components/game/GamePrompts.ts', '/src/lib/sectionStyle.ts', '/src/lib/promptTemplate.ts', '/src/lib/promptVariables.ts'];
+      const [{ PROMPT_TEXT_DEFAULTS }, { buildStyledValues }, { parsePromptTemplate }, { splitToken }] = await Promise.all(paths.map(path => import(path)));
+      return parsePromptTemplate(buildStyledValues(PROMPT_TEXT_DEFAULTS, 'xml').systemPrompt)
+        .filter((segment: { type: string; token?: string }) => segment.type === 'variable' && splitToken(segment.token).header && ['<NOTES>', '<PERSONA>'].includes(splitToken(segment.token).base))
+        .map((segment: { token: string }) => segment.token).join('\n\n');
+    });
+    const copied = `Before\n\n${source}\n\nAfter`.replaceAll('\n', '\r\n');
+    await page.evaluate(text => navigator.clipboard.writeText(text), copied);
+    await editor.focus();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Control+v');
+    await expect(editor.locator('[data-chip-token]')).toHaveCount(2);
+    await editor.getByText('<important_player_notes>', { exact: true }).click();
+    await expect(page.getByLabel('Header', { exact: true })).toHaveValue('Important Player Notes');
+    await page.getByLabel('Header', { exact: true }).fill('Travel notes');
+    await page.getByRole('radio', { name: 'Simple', exact: true }).click();
+    await page.getByRole('radio', { name: 'XML', exact: true }).click();
+    await page.screenshot({ path: `.scratch/header-adoption/world-${theme}-${info.project.name}.png`, animations: 'disabled' });
+    await page.keyboard.press('Escape');
+    const expected = copied.replace('Important Player Notes', 'Travel notes');
+    expect(await stored(page, 'world')).toBe(expected);
+    if (info.project.name === 'desktop') {
+      const notes = editor.locator('[data-chip-token^="<NOTES"]');
+      await notes.dragTo(editor, { targetPosition: await beforeText(editor, 'Before') });
+      expect(await stored(page, 'world')).toMatch(/^<NOTES\|format=xml\|header="Travel notes">Before/);
+      await field.getByRole('button', { name: 'Undo', exact: true }).click();
+      expect(await stored(page, 'world')).toBe(expected);
+      await field.getByRole('button', { name: 'Redo', exact: true }).click();
+      expect(await stored(page, 'world')).toMatch(/^<NOTES\|format=xml\|header="Travel notes">Before/);
+    }
+    await page.reload();
+    await page.waitForFunction(() => '__fmDev' in window);
+    const reopened = await openHost(page, 'world', true);
+    await reopened.editor.getByText('</travel_notes>', { exact: true }).click();
+    await expect(page.getByLabel('Header', { exact: true })).toHaveValue('Travel notes');
+  });
+}

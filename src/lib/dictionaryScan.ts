@@ -1,4 +1,5 @@
 import { parsePromptTemplate } from './promptTemplate';
+import { splitToken } from './promptVariables';
 import { parseTurnContent } from './turnDigest';
 import type { ScanSource } from './dictionaryUtils';
 import type { ChatMessage } from '@/types';
@@ -63,10 +64,12 @@ export function buildScanCorpus({ template, ctx, action, notes, history }: ScanC
   const seen = new Set<string>();
   const scene: ScanSource[] = [];
   for (const segment of parsePromptTemplate(template)) {
-    if (segment.type !== 'variable' || !isScannedSceneToken(segment.token) || seen.has(segment.token)) continue;
-    seen.add(segment.token);
-    const text = ctx[segment.token];
-    if (text) scene.push({ region: segment.token, text });
+    if (segment.type !== 'variable') continue;
+    const key = splitToken(segment.token)?.key ?? segment.token;
+    if (!isScannedSceneToken(key) || seen.has(key)) continue;
+    seen.add(key);
+    const text = ctx[key];
+    if (text) scene.push({ region: key, text });
   }
   if (action) scene.push({ region: 'action', text: action });
   if (notes) scene.push({ region: 'notes', text: notes });

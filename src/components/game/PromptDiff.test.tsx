@@ -6,10 +6,11 @@ import { SHIPPED_PROMPT_DEFAULTS } from '@/lib/worldPrompt';
 
 /** The shipped narration prompt with one line reworded and one guideline dropped, as an author would. */
 const REWORDED = 'grim, weather-beaten prose';
+const BACKGROUND_LORE = '<DICTIONARY|before|format=markdown|header="Background Lore">';
 const authoredNarration = () =>
   SHIPPED_PROMPT_DEFAULTS.narration
     .replace('vivid second-person prose', REWORDED)
-    .replace('## Background Lore\n<DICTIONARY|before>\n\n', '');
+    .replace(`${BACKGROUND_LORE}\n\n`, '');
 
 const insertions = (container: HTMLElement) =>
   [...container.querySelectorAll('ins')].map((el) => el.textContent).join('');
@@ -32,7 +33,7 @@ describe('PromptDiff', () => {
     for (const word of ['grim', 'weather', 'beaten']) expect(insertions(container)).toContain(word);
     expect(deletions(container)).toContain('vivid');
     // The dropped section leaves its chip struck through whole rather than in pieces.
-    expect(deletions(container)).toContain('<DICTIONARY|before>');
+    expect(deletions(container)).toContain(BACKGROUND_LORE);
   });
 
   it('reads as the world’s prompt past the strikethroughs, and as the default past the insertions', () => {
