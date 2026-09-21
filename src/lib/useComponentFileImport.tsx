@@ -16,6 +16,7 @@ import {
   type ConnectionPlan, type ReferenceChoices, type ReferenceRow,
 } from '@/lib/worldReferences';
 import WorldStorageService from '@/services/WorldStorageService';
+import type { LibraryDetails } from '@/types';
 
 /** What the host supplies so the review can hand a world off to Community Creations. */
 export interface ComponentFileImportOptions {
@@ -31,6 +32,7 @@ interface PendingImport {
   content: LinkableContent;
   links: ComponentFileLinks;
   rows: AssociationRow[];
+  libraryDetails?: LibraryDetails;
 }
 
 /** One world still waiting for its copy, once the library item exists. */
@@ -109,19 +111,19 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
 
   /** Review one component file. */
   const reviewFile = useCallback(async (
-    kind: LibraryKind, content: LinkableContent, links: ComponentFileLinks,
+    kind: LibraryKind, content: LinkableContent, links: ComponentFileLinks, libraryDetails?: LibraryDetails,
   ) => {
     const library = await libraryItems(kind).catch(() => []);
     const item = heldLibraryItem(links.source, library);
     if (item) {
       // Not a new component: the player already holds its source, so this is a revision of it.
-      await reviewImportedFile(kind, item.id, content);
+      await reviewImportedFile(kind, item.id, content, libraryDetails);
       onImported(kind);
       return;
     }
     const worlds = await WorldStorageService.getWorldMetadata().catch(() => []);
     setSelected([]);
-    setPending({ kind, content, links, rows: associationRows(links.associations ?? [], worlds) });
+    setPending({ kind, content, links, libraryDetails, rows: associationRows(links.associations ?? [], worlds) });
   }, [onImported, reviewImportedFile]);
 
   /**
@@ -137,14 +139,14 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
    * @returns The library item, as the copies that follow it name it
    */
   const storeFile = useCallback(async (
-    kind: LibraryKind, content: LinkableContent, links: ComponentFileLinks,
+    kind: LibraryKind, content: LinkableContent, links: ComponentFileLinks, libraryDetails?: LibraryDetails,
   ): Promise<LibrarySource> => {
     const listing = links.source?.sourceId;
-    if (!listing) return saveCopyToLibrary(content, carriedPlaceholders(content));
+    if (!listing) return saveCopyToLibrary(content, carriedPlaceholders(content), [], libraryDetails);
     const installed = await saveDownloadToLibrary(kind, content, {
       sourceId: listing,
       ...(links.source?.sourceName ? { name: links.source.sourceName } : {}),
-    });
+    }, libraryDetails);
     return {
       id: installed.libraryId,
       name: installed.name,
@@ -159,11 +161,11 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     const review = pending;
     setPending(null);
     if (!review) return;
-    const { kind, content, links, rows } = review;
+    const { kind, content, links, rows, libraryDetails } = review;
 
     let source: LibrarySource;
     try {
-      source = await storeFile(kind, content, links);
+      source = await storeFile(kind, content, links, libraryDetails);
     } catch (error) {
       toast.error((error as Error).message || 'Could not add this file to your library.');
       return;

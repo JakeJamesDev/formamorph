@@ -14,7 +14,7 @@ import type { Dictionary, Placeholder } from '@/types';
 const EMPTY_PLACEHOLDERS: Placeholder[] = [];
 
 /** What a book is: its Name, with the rename offer, its Description, and Enabled in Advanced mode. */
-const DictionaryBookFields = ({ book }: { book: Dictionary }) => {
+const DictionaryBookFields = ({ book, showEnabled = true }: { book: Dictionary; showEnabled?: boolean }) => {
   const { updateDictionary, dictionaries } = useDictionaryStore();
   const { advanced } = useEditorMode();
   // A book that owns placeholders is a node of the `placeholders` map, so a rename moves the owner segment
@@ -50,7 +50,7 @@ const DictionaryBookFields = ({ book }: { book: Dictionary }) => {
           rows={3}
         />
       </div>
-      {advanced && (
+      {advanced && showEnabled && (
         <label className="flex items-center gap-2 text-label">
           <Checkbox
             checked={book.enabled !== false}

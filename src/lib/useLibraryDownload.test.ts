@@ -24,6 +24,35 @@ beforeEach(() => {
 });
 afterEach(() => vi.restoreAllMocks());
 
+describe('downloaded creator credits', () => {
+  it.each(['entity', 'dictionary'] as const)('fills blank %s credits and preserves pen names', async (kind) => {
+    const store = vi.fn();
+    const hook = renderHook(() => useLibraryDownload<Entity>({ kind, records: [], store, refresh: vi.fn() }));
+    for (const author of [undefined, '', '  ', 'River Quill']) {
+      vi.mocked(fetchModule.fetchCatalogContent).mockResolvedValue({ ...content, author });
+      await act(async () => {
+        hook.result.current.startDownload({ ...listing('credit'), author: { id: 'publisher', username: ' Wren ' } });
+      });
+      expect(store.mock.lastCall?.[2].libraryDetails.author).toBe(author === 'River Quill' ? author : 'Wren');
+      expect(store.mock.lastCall?.[1]).not.toHaveProperty('author');
+    }
+  });
+
+  it('keeps an unknown author blank and leaves avatar payloads alone', async () => {
+    for (const kind of ['entity', 'model'] as const) {
+      const store = vi.fn();
+      const hook = renderHook(() => useLibraryDownload<Entity>({ kind, records: [], store, refresh: vi.fn() }));
+      await act(async () => {
+        hook.result.current.startDownload(kind === 'model'
+          ? { ...listing('avatar'), author: { id: 'publisher', username: 'Wren' } }
+          : listing('unknown'));
+      });
+      expect(store.mock.lastCall?.[1]).not.toHaveProperty('author');
+      hook.unmount();
+    }
+  });
+});
+
 describe('useLibraryDownload record id', () => {
   it('never stores under the downloaded content’s own id', async () => {
     // That id belongs to the author's original. A character you made and published carries it too, so

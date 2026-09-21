@@ -14,6 +14,7 @@ import { STAT_PANEL_TABS } from '@/views/statPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
 import { DICTIONARY_BOOK_PANEL_TABS } from '@/views/dictionaryBookPanelTabs';
+import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { MAIN_MENU_CARD_TABS } from '@/views/mainMenuTabs';
 import { GAME_LEFT_PANEL_TABS } from '@/components/game/leftPanelTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
@@ -51,6 +52,9 @@ function parseHash(hash: string): ParsedRoute | null {
 }
 
 describe('dev-router hash parsing', () => {
+  it('covers every library dictionary editor tab', () => {
+    expect([...DEV_MODAL_TABS.dictionaryEditor]).toEqual(DICTIONARY_EDITOR_TABS.map((tab) => tab.value));
+  });
   it('ignores hashes that are not #dev', () => {
     expect(parseHash('')).toBeNull();
     expect(parseHash('#/some/route')).toBeNull();

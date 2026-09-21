@@ -1,5 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Dictionary, DictionaryEntry, Placeholder } from '@/types';
+import type { Dictionary, DictionaryEntry, Placeholder, LibraryDetails } from '@/types';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders, migrateEntryKeys } from './version';
 import { convertLorebook } from './lorebookImport';
 import type { WorldAssociation } from './compatibleWorlds';
@@ -16,6 +16,7 @@ export interface DictionaryFile {
   formamorphKind: typeof DICTIONARY_FILE_KIND;
   version: string;
   name: string;
+  author?: string;
   description?: string;
   enabled?: boolean;
   /** Listing tags, as the catalog filters on. */
@@ -42,6 +43,7 @@ export function buildDictionaryFile(
   book: Dictionary,
   available: Placeholder[] = carriedPlaceholders(book),
   links: ComponentFileLinks = {},
+  libraryDetails?: LibraryDetails,
 ): DictionaryFile {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(book.placeholders ?? []);
@@ -50,6 +52,7 @@ export function buildDictionaryFile(
     formamorphKind: DICTIONARY_FILE_KIND,
     version: APP_VERSION,
     name: book.name,
+    ...(libraryDetails?.author ? { author: libraryDetails.author } : {}),
     ...(book.description ? { description: book.description } : {}),
     ...(book.enabled === false ? { enabled: false } : {}),
     ...(book.tags?.length ? { tags: book.tags } : {}),

@@ -70,26 +70,26 @@ export function worldPublishPayload(world: Omit<World, 'id'>): PublishPayload {
  * The blurb goes through {@link describePlaceholders} against the character's carried defs — a listing stores
  * only this string, so a chip left raw here would show as its id forever.
  */
-export function entityPublishPayload(entity: Entity): PublishPayload {
+export function entityPublishPayload(entity: Entity, libraryDetails?: { author?: string }): PublishPayload {
   return {
     kind: 'entity',
     name: labelPlaceholders(entity.name, entity.placeholders, { letters: entityPlacementLetters(entity) }) || 'Unnamed Character',
     description: describePlaceholders(entity.playerDescription || entity.aiSummary || '', entity.placeholders),
     thumbnail: primaryImage(entity), // optional; the server supplies stand-in art
-    contentData: entity,
+    contentData: libraryDetails?.author ? { ...entity, author: libraryDetails.author } : entity,
     tags: entity.tags ?? [],
   };
 }
 
 /** A dictionary has an optional note and no art at all; the server supplies the cover. The note goes through
  *  {@link describePlaceholders} for the same reason a character's does. */
-export function dictionaryPublishPayload(book: Dictionary): PublishPayload {
+export function dictionaryPublishPayload(book: Dictionary, libraryDetails?: { author?: string }): PublishPayload {
   return {
     kind: 'dictionary',
     name: book.name || 'Untitled Dictionary',
     description: describePlaceholders(book.description || '', book.placeholders),
     thumbnail: book.thumbnail || undefined, // optional; the server supplies stand-in art
-    contentData: book,
+    contentData: libraryDetails?.author ? { ...book, author: libraryDetails.author } : book,
     tags: book.tags ?? [],
   };
 }

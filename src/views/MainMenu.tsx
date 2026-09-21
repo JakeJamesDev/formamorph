@@ -88,6 +88,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
+import { readLibraryDetails } from '@/lib/contentAuthor';
 import { importCharacterFile } from '@/lib/entityFile';
 import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPersonaFiles, stPersonaReport } from '@/lib/stPersonaImport';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
@@ -111,6 +112,7 @@ import { ModelDetailsModal } from "@/components/modals/ModelDetailsModal";
 import { AdminPanelDialog } from "@/components/menu/AdminPanelDialog";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS } from "@/views/entityPanelTabs";
+import { DICTIONARY_EDITOR_TABS } from '@/views/dictionaryEditorTabs';
 import { TutorialPopover } from "@/components/TutorialPopover";
 import { useTutorial } from "@/lib/tutorials";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -631,8 +633,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
    * 5MB" — a dead end in a dialog that never mentions thumbnails, and no way to act on it. The download
    * side already offers this choice; the publish side is where the big image actually comes from.
    */
-  const publishEntity = async (entity: Entity) => {
-    openPublish(entityPublishPayload(await promptEntity(entity)), entity.id);
+  const publishEntity = async (entity: Entity, libraryDetails?: { author?: string }) => {
+    openPublish(entityPublishPayload(await promptEntity(entity), libraryDetails), entity.id);
   };
 
   /**
@@ -1023,9 +1025,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Persist a dictionary and show its card — shared by the dictionary import and the lorebooks that ride
   // along inside imported character cards.
-  const addDictionaryToLibrary = async (book: Dictionary) => {
+  const addDictionaryToLibrary = async (book: Dictionary, libraryDetails?: { author?: string }) => {
     const now = new Date().toISOString();
-    await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book });
+    await DictionaryStorageService.storeDictionary({ id: book.id, name: book.name, createdAt: now, lastAccessed: now, data: book, libraryDetails });
     setDictionaries(prev => [...prev, { id: book.id, name: book.name, entryCount: book.entries.length, createdAt: now, lastAccessed: now }]);
   };
 
@@ -1099,14 +1101,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const importDictionaryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = filesFrom(event);
     if (!files.length) return;
-    const parsed: { book: Dictionary; links: ComponentFileLinks }[] = [];
+    const parsed: { book: Dictionary; links: ComponentFileLinks; libraryDetails?: { author?: string } }[] = [];
     let ok = 0, skipped = 0;
     for (const file of files) {
       try {
         // Foreign lorebooks (ST / character cards) carry no internal name — fall back to the filename.
         const fallbackName = file.name.replace(/\.[^.]+$/, '');
         const raw = JSON.parse(await file.text());
-        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw) });
+        parsed.push({ book: parseDictionaryImport(raw, fallbackName), links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) });
       } catch (err) {
         console.error('Error importing dictionary:', file.name, err);
         skipped++;
@@ -1115,16 +1117,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
     // A lone file that carries relationships is reviewed; everything else lands straight in the library.
     if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
-      await reviewComponentFile('dictionary', parsed[0].book, parsed[0].links);
+      await reviewComponentFile('dictionary', parsed[0].book, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
-    for (const { book, links } of parsed) {
+    for (const { book, links, libraryDetails } of parsed) {
       try {
         // Through the same store either way: a file naming a listing refreshes the copy of it the player
         // already holds, rather than leaving a batch import with two rows of one name.
-        if (links.source?.sourceId) await storeComponentFile('dictionary', book, links);
-        else await addDictionaryToLibrary(book);
+        if (links.source?.sourceId) await storeComponentFile('dictionary', book, links, libraryDetails);
+        else await addDictionaryToLibrary(book, libraryDetails);
         ok++;
       } catch (err) { console.error('Error importing dictionary:', book.name, err); skipped++; }
     }
@@ -1157,7 +1159,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     if (parsed.length === 1 && !skipped && hasComponentLinks(parsed[0].links)) {
       const mode = await promptImagesBatch(entityImages(parsed[0].entity), IMAGE_CAPS.entity);
       const record = await applyEntityImagesOptimize(parsed[0].entity, mode, () => {});
-      await reviewComponentFile('entity', record, parsed[0].links);
+      await reviewComponentFile('entity', record, parsed[0].links, parsed[0].libraryDetails);
       return;
     }
 
@@ -1176,7 +1178,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             // A card naming a listing goes through the same store a reviewed one does, so a batch import
             // refreshes the copy the player already holds rather than adding a second row of one name.
             if (links.source?.sourceId) {
-              await storeComponentFile('entity', record, links);
+              await storeComponentFile('entity', record, links, libraryDetails);
               await refreshEntities();
             } else {
               await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record, libraryDetails });
@@ -2858,9 +2860,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       <DictionaryEditorModal
         dictionaryId={editingDictionaryId}
+        initialTab={devRoute?.modal === 'dictionaryEditor' ? DICTIONARY_EDITOR_TABS.find((t) => t.value === devRoute.tab)?.value : undefined}
         draft={draftDictionary}
         onClose={() => { setEditingDictionaryId(null); setDraftDictionary(null); refreshDictionaries(); }}
-        onPublish={isAuthenticated ? (book) => openPublish(dictionaryPublishPayload(book), book.id) : undefined}
+        onPublish={isAuthenticated ? (book, details) => openPublish(dictionaryPublishPayload(book, details), book.id) : undefined}
       />
 
       <ConfirmDialog

@@ -29,19 +29,12 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import type { DictionaryPanelTab } from '@/views/dictionaryPanelTabs';
-import type { Dictionary, Placeholder } from '@/types';
+import { DICTIONARY_EDITOR_TABS, type DictionaryEditorTab } from '@/views/dictionaryEditorTabs';
+import type { Dictionary, Placeholder, LibraryDetails } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
 const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
-
-const TABS = [
-  { value: 'overview', label: 'Overview' },
-  { value: 'dictionary', label: 'Dictionary' },
-  { value: 'placeholders', label: 'Placeholders' },
-];
-
-type DictionaryTab = (typeof TABS)[number]['value'];
 
 /**
  * Edit a single library dictionary in place. Reuses the World Editor's dictionary widgets, but binds them
@@ -49,18 +42,21 @@ type DictionaryTab = (typeof TABS)[number]['value'];
  * `dictionaryId !== null`; saves back to `DictionaryStorageService`. `onPublish` (when the user is signed
  * in) hands the book up to the publish dialog.
  */
-const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
+const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initialTab = 'dictionary' }: {
   dictionaryId: string | null;
   draft?: Dictionary | null;
+  initialTab?: DictionaryEditorTab;
   onClose: () => void;
-  onPublish?: (book: Dictionary) => void;
+  onPublish?: (book: Dictionary, libraryDetails?: LibraryDetails) => void;
 }) => {
   const store = useDictionaryStoreState([]);
   const { dictionaries, setDictionaries } = store;
   const [book, setBook] = useState<Dictionary | null>(null);
+  const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();
+  const detailsBaselineRef = useRef('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Opens on Dictionary: the entries are the work, the Overview is set once.
-  const [tab, setTab] = useState<DictionaryTab>('dictionary');
+  const [tab, setTab] = useState<DictionaryEditorTab>(initialTab);
   // The entry panel's own tabs. The modal has no editor slot, so it holds the choice itself for as long as
   // it is open: the tab survives selecting another entry and resets with the next open.
   const [entryTab, setEntryTab] = useState<DictionaryPanelTab>('details');
@@ -74,6 +70,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
 
   // Seed the isolated store from the draft, or load a stored book; clear when closed.
   useEffect(() => {
+    setLibraryDetails(undefined);
+    detailsBaselineRef.current = canon(undefined);
     // Opens on the first entry the tree shows, or on nothing for an empty book.
     const seed = (b: Dictionary) => {
       setDictionaries([b]); setBook(b); setSelectedId(firstDictionaryEntryId(b)); baselineRef.current = canon([b]);
@@ -81,16 +79,23 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     if (draft) { seed(draft); return; }
     if (dictionaryId === null) { setBook(null); return; }
     let cancelled = false;
-    DictionaryStorageService.getDictionaryData(dictionaryId)
-      .then((b) => { if (!cancelled) seed(b); })
+    Promise.all([DictionaryStorageService.getDictionaryData(dictionaryId), DictionaryStorageService.getDictionaryMetadata()])
+      .then(([b, records]) => {
+        if (cancelled) return;
+        const details = records.find((record) => record.id === dictionaryId)?.libraryDetails;
+        setLibraryDetails(details);
+        detailsBaselineRef.current = canon(details);
+        seed(b);
+      })
       .catch(() => { if (!cancelled) { toast.error('Could not load dictionary.'); onCloseRef.current(); } });
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
   // The modal stays mounted between opens, so the tabs are reset here rather than by unmounting.
-  useEffect(() => { setTab('dictionary'); setEntryTab('details'); }, [dictionaryId, draft]);
+  useEffect(() => { setTab(initialTab); setEntryTab('details'); }, [dictionaryId, draft, initialTab]);
 
-  const hasUnsavedChanges = book != null && canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current;
+  const hasUnsavedChanges = book != null && (canonicalStringify(dictionaries, stringifyCache.current) !== baselineRef.current
+    || canon(libraryDetails) !== detailsBaselineRef.current);
   const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
   // The book's carried placeholders live on the sole book (index 0): its own plus the shared ones it
   // carries from the world it was exported from. Its entries' chips resolve against both.
@@ -138,11 +143,12 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     try {
       // A save means this copy diverged from whatever it was downloaded from; the store read-merges the rest.
       await DictionaryStorageService.storeDictionary({
-        id: recordId, name: normalized[0].name, data: normalized[0],
+        id: recordId, name: normalized[0].name, data: normalized[0], libraryDetails,
         dirty: true, editedAt: new Date().toISOString(),
       });
       setDictionaries(normalized);
       baselineRef.current = canon(normalized);
+      detailsBaselineRef.current = canon(libraryDetails);
       toast.success('Dictionary saved!');
       return true;
     } catch {
@@ -156,14 +162,14 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
     if (!current) return;
     // A library item is its own source, so the file names it and the worlds that hold a linked copy.
     const links = await exportedLibraryLinks('dictionary', current.id);
-    const blob = new Blob([JSON.stringify(buildDictionaryFile(current, undefined, links), null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(buildDictionaryFile(current, undefined, links, libraryDetails), null, 2)], { type: 'application/json' });
     // A chip in the name would otherwise put a raw placement id in the filename.
     downloadBlob(blob, `${labelPlaceholders(current.name, bookPlaceholders, { letters }) || 'Dictionary'}.json`);
   };
 
   return (
     <NoWorld>
-    {/* A World Editor in Simple mode can open this editor; the book still shows Enabled and both zones. */}
+    {/* Library editing offers every entry field, independent of the World Editor's mode. */}
     <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
     <EditorPreviewRollsProvider>
     <PlacementLettersProvider letters={letters}>
@@ -176,19 +182,19 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish }: {
         title={labelPlaceholders(dictionaries[0]?.name ?? book?.name ?? '', bookPlaceholders, { letters }) || 'Dictionary'}
         contentClassName={LIBRARY_EDITOR_CONTENT_CLASS}
         loading={!book}
-        tabs={TABS}
+        tabs={DICTIONARY_EDITOR_TABS}
         tab={tab}
-        onTabChange={(v) => setTab(v as DictionaryTab)}
+        onTabChange={(v) => setTab(v as DictionaryEditorTab)}
         hasUnsavedChanges={hasUnsavedChanges}
         onSave={handleSave}
         onClose={onClose}
         onExport={handleExport}
-        onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0]); } : undefined}
+        onPublish={onPublish ? () => { if (dictionaries[0]) onPublish(dictionaries[0], libraryDetails); } : undefined}
       >
         <DictionaryStoreProvider value={store}>
           {tab === 'overview' ? (
             <ScrollArea className="flex-1 min-h-0">
-              {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} />}
+              {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} author={libraryDetails?.author} onAuthorChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />}
             </ScrollArea>
           ) : tab === 'placeholders' ? (
             // The same palette an entry gets, over the value fields: a value is a chip field too.

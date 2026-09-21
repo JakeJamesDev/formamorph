@@ -567,6 +567,8 @@ export interface WorldMetadata extends CommunityLink {
 export interface DictionaryMetadata extends CommunityLink {
   id: string;
   name: string;
+  author?: string;
+  libraryDetails?: LibraryDetails;
   /** The book's note, shown on the detailed library card. */
   description?: string;
   /** Cover art for the library card. Absent for a book that has none, which draws the empty tile. */
@@ -578,8 +580,8 @@ export interface DictionaryMetadata extends CommunityLink {
   tags?: string[];
 }
 
-/** Imported metadata stored only on the library record. */
-export interface EntityLibraryDetails {
+/** Creator credit and imported tags stored only on the library record. */
+export interface LibraryDetails {
   author?: string;
   tags?: string[];
 }
@@ -599,7 +601,7 @@ export interface EntityMetadata extends CommunityLink {
   /** The entity carries the Persona mark, so the tab's Personas filter shows it. */
   persona?: boolean;
   /** Imported attribution and tags kept outside world content. */
-  libraryDetails?: EntityLibraryDetails;
+  libraryDetails?: LibraryDetails;
 }
 
 /** A find-bar hit handed to a detail panel, so the panel can open the tab that holds the field. `itemId`

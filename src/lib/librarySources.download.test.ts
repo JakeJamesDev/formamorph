@@ -1,7 +1,9 @@
 // Must load before the storage singletons, whose first use opens IndexedDB.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { saveDownloadToLibrary } from './librarySources';
+import { saveDownloadToLibrary, libraryLines } from './librarySources';
+import { buildEntityCardData } from './entityFile';
+import { buildDictionaryFile } from './dictionaryFile';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { Dictionary, Entity } from '@/types';
@@ -92,6 +94,27 @@ describe('saveDownloadToLibrary', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(installed.libraryId);
     expect(await storedEntities()).toHaveLength(0);
+  });
+
+  it.each(['entity', 'dictionary'] as const)('persists and exports %s credits from dependency downloads', async (kind) => {
+    for (const author of [undefined, '  ', 'River Quill']) {
+      const credit = author === 'River Quill' ? author : 'ann';
+      const shared = { ...(kind === 'entity' ? entity('Sedge') : book('Lore')), author };
+      const source = await saveDownloadToLibrary(kind, shared, listing);
+      if (kind === 'entity') {
+        const saved = await EntityStorageService.getEntityData(source.libraryId);
+        const metadata = (await storedEntities())[0];
+        expect(buildEntityCardData(saved, undefined, {}, metadata.libraryDetails).author).toBe(credit);
+        expect(libraryLines(metadata).authorLine).toBe(credit);
+        expect(saved).not.toHaveProperty('author');
+      } else {
+        const saved = await DictionaryStorageService.getDictionaryData(source.libraryId);
+        const metadata = (await DictionaryStorageService.getDictionaryMetadata())[0];
+        expect(buildDictionaryFile(saved, undefined, {}, metadata.libraryDetails).author).toBe(credit);
+        expect(libraryLines(metadata).authorLine).toBe(credit);
+        expect(saved).not.toHaveProperty('author');
+      }
+    }
   });
 
   it('falls back to the listing\'s name when the content carries none', async () => {

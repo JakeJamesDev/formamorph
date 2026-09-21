@@ -1,4 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
+import { splitLibraryContent } from './contentAuthor';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { buildEntityCardData } from '@/lib/entityFile';
 import {
@@ -10,7 +11,7 @@ import AuthService from '@/services/AuthService';
 import DictionaryStorageService from '@/services/DictionaryStorageService';
 import EntityStorageService from '@/services/EntityStorageService';
 import type {
-  CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, EntityLibraryDetails, GameLocation,
+  CommunityLink, ContentLocationRef, Dictionary, DictionaryMetadata, Entity, EntityMetadata, LibraryDetails, GameLocation,
   Placeholder,
 } from '@/types';
 
@@ -41,7 +42,7 @@ export interface LibraryItemSummary extends LibrarySource {
 }
 
 /** The library record fields these lines and states are read from. */
-type LibraryStamps = CommunityLink & { createdAt?: string; libraryDetails?: EntityLibraryDetails };
+type LibraryStamps = CommunityLink & { createdAt?: string; author?: string; libraryDetails?: LibraryDetails };
 
 /** The two lines a picker prints under an item's name. */
 export interface LibraryLines {
@@ -52,7 +53,8 @@ export interface LibraryLines {
 /** Who wrote the item, in the picker's own words. Two items can share a name, so this is what tells them
  *  apart. */
 export function libraryAuthorLine(record: LibraryStamps, owned: boolean): string {
-  if (record.libraryDetails?.author?.trim()) return record.libraryDetails.author.trim();
+  const credit = record.author ?? record.libraryDetails?.author;
+  if (credit?.trim()) return credit.trim();
   if (owned) return 'You';
   return record.sourceAuthorName?.trim() || 'Another author';
 }
@@ -100,7 +102,7 @@ function summarize(kind: LibraryKind, record: LibraryStamps & { id: string; name
 const LIBRARIES: Record<LibraryKind, {
   list: () => Promise<(LibraryStamps & { id: string; name: string })[]>;
   load: (id: string) => Promise<LinkableContent>;
-  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent; libraryDetails?: EntityLibraryDetails }) => Promise<void>;
+  store: (record: CommunityLink & { id: string; name: string; createdAt: string; data: LinkableContent; libraryDetails?: LibraryDetails }) => Promise<void>;
   row: (meta: DictionaryMetadata & EntityMetadata) => Partial<LibraryItemSummary>;
 }> = {
   dictionary: {
@@ -133,6 +135,11 @@ export async function libraryItemData(kind: LibraryKind, id: string): Promise<Li
   } catch {
     return null;
   }
+}
+
+/** The library-only fields included when an item is shared. */
+export async function libraryItemDetails(kind: LibraryKind, id: string): Promise<LibraryDetails | undefined> {
+  return (await LIBRARIES[kind].list()).find((record) => record.id === id)?.libraryDetails;
 }
 
 /** Which library a piece of content belongs to, read from its own shape. */
@@ -178,7 +185,7 @@ export function toLibraryItem<T extends LinkableContent>(
  */
 export async function saveCopyToLibrary(
   item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
-  libraryDetails?: EntityLibraryDetails,
+  libraryDetails?: LibraryDetails,
 ): Promise<LibrarySource> {
   const id = randomUUID();
   const data = { ...toLibraryItem(item, available, worldLocations), id };
@@ -216,6 +223,7 @@ export interface DownloadedListing {
  */
 export async function saveDownloadToLibrary(
   kind: LibraryKind, content: LinkableContent, listing: DownloadedListing,
+  libraryDetails?: LibraryDetails,
 ): Promise<InstalledSource> {
   const held = (await LIBRARIES[kind].list()).find((record) => record.sourceId === listing.sourceId);
   // An edited copy is kept exactly as it is, and the world's copy follows it. Replacing it here would
@@ -225,13 +233,15 @@ export async function saveDownloadToLibrary(
   }
   const id = held?.id ?? randomUUID();
   const now = new Date().toISOString();
-  const data = { ...content, id };
+  const shared = splitLibraryContent(content, listing.authorName);
+  const data = { ...shared.content, id };
   const name = data.name?.trim() || listing.name?.trim() || 'Untitled';
   await LIBRARIES[kind].store({
     id,
     name,
     createdAt: held?.createdAt ?? now,
     data: { ...data, name },
+    libraryDetails: libraryDetails ? { ...held?.libraryDetails, ...libraryDetails } : shared.libraryDetails,
     sourceId: listing.sourceId,
     downloadedAt: now,
     // A fresh download is by definition unedited, which also clears the flag on a copy that was edited.
@@ -291,6 +301,7 @@ export async function linkLibraryItemToListing(
  */
 export async function replaceLibraryItemContent(
   kind: LibraryKind, id: string, content: LinkableContent, revision: string,
+  libraryDetails?: LibraryDetails,
 ): Promise<void> {
   const data = { ...content, id };
   await LIBRARIES[kind].store({
@@ -299,6 +310,7 @@ export async function replaceLibraryItemContent(
     createdAt: new Date().toISOString(),
     data,
     editedAt: revision,
+    libraryDetails,
     // The item no longer holds what its listing served, so a later download offer reads it as edited.
     dirty: true,
   });

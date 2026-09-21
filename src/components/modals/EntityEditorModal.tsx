@@ -13,6 +13,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
+import { LibraryAuthorField } from '@/components/LibraryAuthorField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
@@ -29,7 +30,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
-import type { Entity, EntityLibraryDetails, FocusFieldHint, Placeholder } from '@/types';
+import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
@@ -52,13 +53,13 @@ const EntityEditorModal = ({
   entityId: string | null;
   draft?: Entity | null;
   onClose: () => void;
-  onPublish?: (entity: Entity) => void;
+  onPublish?: (entity: Entity, libraryDetails?: LibraryDetails) => void;
   initialTab?: EntityEditorTab;
   initialSubTab?: EntityEditorSubTab;
   focusField?: FocusFieldHint | null;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
-  const [libraryDetails, setLibraryDetails] = useState<EntityLibraryDetails | undefined>();
+  const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();
   const [tab, setTab] = useState<EntityEditorTab>(initialTab);
   const [subTab, setSubTab] = useState<EntityEditorSubTab>(initialSubTab);
   useEffect(() => { setTab(initialTab); }, [initialTab]);
@@ -108,7 +109,7 @@ const EntityEditorModal = ({
   };
 
   const handleTags = (tags: string[]) => {
-    if (libraryDetails) setLibraryDetails({ ...libraryDetails, tags });
+    if (libraryDetails?.tags !== undefined) setLibraryDetails({ ...libraryDetails, tags });
     else handleChange('tags', tags);
   };
 
@@ -164,7 +165,7 @@ const EntityEditorModal = ({
     if (!entity) return;
     try {
       // A library item is its own source, so the card names it and the worlds that hold a linked copy.
-      const blob = await exportEntityCard(entity, undefined, await exportedLibraryLinks('entity', entity.id));
+      const blob = await exportEntityCard(entity, undefined, await exportedLibraryLinks('entity', entity.id), libraryDetails);
       // A chip in the name would otherwise put a raw placement id in the filename.
       downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Character'}.webp`);
     } catch (error) {
@@ -193,13 +194,14 @@ const EntityEditorModal = ({
         onSave={handleSave}
         onClose={onClose}
         onExport={handleExport}
-        onPublish={onPublish && entity ? () => onPublish(entity) : undefined}
+        onPublish={onPublish && entity ? () => onPublish(entity, libraryDetails) : undefined}
       >
         {entity && tab === 'entity' ? (
           <ScrollArea className="flex-1 min-h-0">
             <div className="flex flex-col sm:flex-row">
               {!narrow && (
-                <div className="w-80 shrink-0 p-4 pr-0">
+                <div className="w-80 shrink-0 space-y-6 p-4 pr-0">
+                  <LibraryAuthorField value={libraryDetails?.author} onChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />
                   <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
                 </div>
               )}
@@ -210,7 +212,12 @@ const EntityEditorModal = ({
                   <ChipInsertTargetProvider>
                     <PlaceholderPaletteBar placeholders={pool} />
                     <TabsContent value="profile" className="space-y-4">
-                      {narrow && <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />}
+                      {narrow && (
+                        <>
+                          <LibraryAuthorField value={libraryDetails?.author} onChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />
+                          <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
+                        </>
+                      )}
                       <EntityProfileFields
                         value={entity}
                         onChange={handleChange}

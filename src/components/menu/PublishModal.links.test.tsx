@@ -39,6 +39,7 @@ beforeEach(() => {
   vi.spyOn(WorldStorageService, 'publishItem').mockResolvedValue({ _id: 'new-listing' });
   vi.spyOn(librarySources, 'libraryItems').mockResolvedValue([]);
   vi.spyOn(librarySources, 'libraryItemData').mockResolvedValue(null);
+  vi.spyOn(librarySources, 'libraryItemDetails').mockResolvedValue({ author: 'River Quill' });
   vi.spyOn(librarySources, 'linkLibraryItemToListing').mockResolvedValue(undefined);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -70,7 +71,7 @@ describe('publishing a world with linked content', () => {
 
     await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalledTimes(2));
     const [source, world] = vi.mocked(WorldStorageService.publishItem).mock.calls;
-    expect(sent(source)).toMatchObject({ kind: 'dictionary', visibility: 'unlisted' });
+    expect(sent(source)).toMatchObject({ kind: 'dictionary', visibility: 'unlisted', contentData: { author: 'River Quill' } });
     expect(sent(world).requiredDependencies).toEqual(['listing-d']);
     // The library item now has a listing, so a later publish declares it rather than creating a second.
     expect(librarySources.linkLibraryItemToListing)

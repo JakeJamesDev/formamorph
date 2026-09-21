@@ -51,6 +51,7 @@ describe('readTavernCard', () => {
       ...v2Card, data: { ...v2Card.data, creator: 'Rowan', tags: ['Guide'], avatar: 'https://example.com/other.png' },
     }))));
     expect(result?.libraryDetails).toEqual({ author: 'Rowan', tags: ['Guide'] });
+    expect(result?.entity).not.toHaveProperty('author');
     expect(result?.entity).not.toHaveProperty('tags');
     expect(result?.entity).not.toHaveProperty('images');
   });

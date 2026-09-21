@@ -27,7 +27,7 @@ vi.mock('@/services/EntityStorageService', () => ({
   default: { getEntityData: vi.fn(), getEntityMetadata: vi.fn().mockResolvedValue([]), storeEntity: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock('@/services/DictionaryStorageService', () => ({
-  default: { getDictionaryData: vi.fn(), storeDictionary: vi.fn().mockResolvedValue(undefined) },
+  default: { getDictionaryData: vi.fn(), getDictionaryMetadata: vi.fn().mockResolvedValue([]), storeDictionary: vi.fn().mockResolvedValue(undefined) },
 }));
 
 // The GameData provider opens IndexedDB on mount, which jsdom has none of.

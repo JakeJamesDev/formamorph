@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildEntityCardData, parseEntityCardData, ENTITY_FILE_KIND } from './entityFile';
+import { buildEntityCardData, parseEntityCardData, importCharacterFile, ENTITY_FILE_KIND } from './entityFile';
+import { readLibraryDetails } from './contentAuthor';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { USER_MACRO } from './userMacro';
 import type { Entity } from '@/types';
@@ -17,6 +18,26 @@ const entity: Entity = {
   model: { data: 'data:model', type: 'model/gltf-binary' },
   sound: { data: 'data:sound', type: 'audio/mpeg' },
 };
+
+describe('entity author credits', () => {
+  it('keeps a pen name through the card container in library metadata only', async () => {
+    const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity, undefined, {}, { author: 'River Quill' })), { w: 4, h: 4 });
+    const file = new File([bytes], 'guide.webp', { type: 'image/webp' });
+    Object.defineProperty(file, 'arrayBuffer', { value: async () => bytes.buffer });
+    const imported = await importCharacterFile(file);
+    expect(imported.libraryDetails?.author).toBe('River Quill');
+    expect(imported.entity).not.toHaveProperty('author');
+  });
+
+  it('accepts older cards and ignores malformed credits', () => {
+    expect(buildEntityCardData(entity)).not.toHaveProperty('author');
+    for (const author of [undefined, null, 42, {}]) {
+      const raw = { ...buildEntityCardData(entity), author };
+      expect(readLibraryDetails(raw)).toBeUndefined();
+      expect(parseEntityCardData(raw)).not.toHaveProperty('author');
+    }
+  });
+});
 
 // A minimal simple-lossy WebP container to embed into (framing only; the bitstream bytes are arbitrary).
 function fakeWebp(): Uint8Array {
