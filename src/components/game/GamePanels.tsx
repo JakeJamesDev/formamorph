@@ -4,6 +4,7 @@ import { useGameplayText, setGameplayText } from '@/lib/gameplayTextStore';
 import { revealActive, revealAnimName, revealVars } from '@/lib/narrationRevealConfig';
 import { usePlaceholderResolver } from '@/lib/usePlaceholderResolver';
 import { useSettings } from '@/contexts/SettingsContext';
+import { templateChipKeys } from '@/lib/promptTemplate';
 import { useSentenceHighlight } from '@/lib/useSentenceHighlight';
 import { findEntityNames, resolveEntityByName } from '@/lib/entityMatch';
 import { clearTurnDerived } from '@/lib/turnDigest';
@@ -77,14 +78,15 @@ const PanelTab = ({ value, icon: Icon, label }: { value: string; icon: LucideIco
   </Tip>
 );
 
-export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
+export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrationPrompt }: {
   entities: Entity[];
   onEntityClick: (entityId: string) => void;
   /** Re-run the digest prompt for one turn (Memory Manager's regenerate); owned by GameViewer. */
   onRegenerateMemory?: (turnId: string) => Promise<boolean>;
+  /** The narration prompt this world actually sends: the world's own unless declined, else the preset's. */
+  narrationPrompt: string;
 }) => {
-  // Import systemPrompt from settings context
-  const { systemPrompt } = useSettings();
+  const placesNotes = templateChipKeys(narrationPrompt).has('<NOTES>');
   // The authored cast, separate from the `entities` prop (authored + runtime-discovered).
   // Resolved, not the authored context: a chip-bearing name compared against a resolved scene name would
   // read as a character the world never defined.
@@ -345,7 +347,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory }: {
 
         <TabsContent value="notes" className="flex-grow overflow-hidden min-h-[100px]">
           <div className="h-full p-2 flex flex-col">
-            {!systemPrompt.includes('<NOTES>') && (
+            {!placesNotes && (
               <div className="mb-2 p-2 bg-warning/20 border border-warning rounded  text-label">
                 Warning: The current system prompt does not include the &lt;NOTES&gt; placeholder!
               </div>

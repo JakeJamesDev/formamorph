@@ -27,6 +27,22 @@ export function parsePromptTemplate(template: string): PromptSegment[] {
   return segments;
 }
 
+/**
+ * Which chips a template carries, as the affix-free tokens the value map is keyed by (`<NOTES>`,
+ * `<DICTIONARY|before>`).
+ *
+ * Read through the parser rather than by substring: a placement with options
+ * (`<NOTES|format=markdown|header="Player Notes">`) renders its value like any other, so a raw
+ * `includes("<NOTES>")` calls the chip absent.
+ */
+export function templateChipKeys(template: string): Set<string> {
+  return new Set(
+    parsePromptTemplate(template).flatMap((s) =>
+      s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : [],
+    ),
+  );
+}
+
 /** Inverse of `parsePromptTemplate`: re-joins segments into the stored token-string. Round-trips
  *  exactly, so a prompt the user never touches stays byte-identical. */
 export function serializeSegments(segments: PromptSegment[]): string {
