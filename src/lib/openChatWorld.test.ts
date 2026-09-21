@@ -12,7 +12,10 @@ import { readPlaceholders, resolvePlaceholders } from './placeholders';
 import { parsePromptTemplate } from './promptTemplate';
 import { splitToken } from './promptVariables';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
-import { resolveWorldPrompt, worldPrompt, worldPromptChipValues, worldPromptEnabled } from './worldPrompt';
+import {
+  SHIPPED_PROMPT_DEFAULTS, customizedPromptKinds, resolveWorldPrompt, worldPrompt, worldPromptChipValues,
+  worldPromptEnabled,
+} from './worldPrompt';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { Trait } from '@/types';
 
@@ -41,21 +44,25 @@ describe('the Open Chat default world', () => {
     expect(world.dictionaries.flatMap((book) => book.entries)).toEqual([]);
   });
 
-  it('supplies its own narration prompt, which the player can decline', () => {
-    const overview = world.worldOverview;
-    expect(worldPromptEnabled(overview, 'narration')).toBe(true);
-    const own = worldPrompt(overview, 'narration');
-    expect(own).not.toBeNull();
-    expect(own).not.toBe(defaultSystemPrompt);
-    expect(resolveWorldPrompt(overview, 'narration', 'the preset', false)).toBe(own);
-    expect(resolveWorldPrompt(overview, 'narration', 'the preset', true)).toBe('the preset');
+  it('customizes the narration and choices prompts, and leaves the stats prompt alone', () => {
+    expect(customizedPromptKinds(world.worldOverview)).toEqual(['narration', 'choices']);
   });
 
-  it('keeps every chip of the built-in narration prompt in its own', () => {
+  it.each(['narration', 'choices'] as const)('supplies its own %s prompt, which the player can decline', (kind) => {
+    const overview = world.worldOverview;
+    expect(worldPromptEnabled(overview, kind)).toBe(true);
+    const own = worldPrompt(overview, kind);
+    expect(own).not.toBeNull();
+    expect(own).not.toBe(SHIPPED_PROMPT_DEFAULTS[kind]);
+    expect(resolveWorldPrompt(overview, kind, 'the preset', false)).toBe(own);
+    expect(resolveWorldPrompt(overview, kind, 'the preset', true)).toBe('the preset');
+  });
+
+  it.each(['narration', 'choices'] as const)('keeps every chip of the built-in %s prompt in its own', (kind) => {
     const chipKeys = (template: string) => new Set(parsePromptTemplate(template).flatMap((s) =>
       s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
-    const own = chipKeys(worldPrompt(world.worldOverview, 'narration') ?? '');
-    for (const key of chipKeys(defaultSystemPrompt)) expect(own, key).toContain(key);
+    const own = chipKeys(worldPrompt(world.worldOverview, kind) ?? '');
+    for (const key of chipKeys(SHIPPED_PROMPT_DEFAULTS[kind])) expect(own, key).toContain(key);
   });
 
   // The tone chips live in the narration prompt, so the world text is one line that sets no scene.
