@@ -48,6 +48,7 @@ import { FooterActionOrderReference } from '@/components/design-system/FooterAct
 import { NarrationTurnReference } from '@/components/design-system/NarrationTurnReference';
 import { PanelTabStripReference } from '@/components/design-system/PanelTabStripReference';
 import { RichListReferences } from '@/components/design-system/RichListReferences';
+import { PromptChipsReference } from '@/components/design-system/PromptChipsReference';
 
 type ReferenceDefinition = {
   id: string;
@@ -389,6 +390,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Markdown',
     description: 'Compact long-form editing',
     Component: MarkdownReference,
+  },
+  {
+    id: 'prompt-chips',
+    label: 'Prompt Chips',
+    description: 'Inline conditional text and chip editing',
+    Component: PromptChipsReference,
   },
   {
     id: 'community-cards',

@@ -2,6 +2,8 @@ import { forwardRef, type ComponentPropsWithoutRef } from 'react';
 import { Chip } from '@/components/Chip';
 import { chipTokenKey } from '@/lib/promptVariables';
 import { CHIP_TOKEN_ATTR } from '@/lib/editorFieldFocus';
+import { tintMarkStyle, TINT_MARK_CLASS } from '@/lib/previewTint';
+import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 
 /**
@@ -27,10 +29,12 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
   tip?: string;
   onRemove?: (label: string) => void;
   grabbable?: boolean;
+  /** Display the placement's conditional text in the editor. */
+  showAffixes?: boolean;
 }
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
-  { token, vocab, neutral, tip, onRemove, grabbable, className, ...rest },
+  { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, className, ...rest },
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
@@ -39,13 +43,21 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
   const name = vocab.label(token);
   // What the chip will become, for the tooltip — the label already says which placeholder it is.
   const hint = vocab.hint?.(token);
+  const affixes = showAffixes ? vocab.affixes(token) : null;
+  const hasAffixes = !!(affixes?.pre || affixes?.post);
+  const affixText = (value: string) => value.split(/(\r?\n)/).map((part, index) => part.trim() ? (
+    <Tip key={index} tip={`Included only when ${name} has a value`} labelsChild={false}>
+      <mark className={`${TINT_MARK_CLASS} cursor-pointer`} style={tintMarkStyle(color)}>{part}</mark>
+    </Tip>
+  ) : part);
   return (
     <span
       ref={ref}
       {...{ [CHIP_TOKEN_ATTR]: chipTokenKey(token) }}
       {...rest}
-      className={className ?? 'inline-block align-baseline'}
+      className={className ?? `${hasAffixes ? 'inline' : 'inline-block'} align-baseline`}
     >
+      {affixes?.pre && affixText(affixes.pre)}
       <Chip
         label={vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
         removeLabel={name}
@@ -54,6 +66,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
         grabbable={grabbable}
         style={color ? { backgroundColor: color, color: '#000' } : undefined}
       />
+      {affixes?.post && affixText(affixes.post)}
     </span>
   );
 });
