@@ -40,10 +40,10 @@ export function ChoiceRows({ choices, showContinue, disabled, isSelected, contin
             return (
               <Fragment key={index}>
                 {isContinue && choices.length > 0 && (
-                  <div className="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-foreground" aria-hidden>
-                    <span className="h-hairline flex-1 bg-current" />
+                  <div className="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-muted-foreground" aria-hidden>
+                    <span className="h-hairline flex-1 bg-border" />
                     <span className="text-helper">or</span>
-                    <span className="h-hairline flex-1 bg-current" />
+                    <span className="h-hairline flex-1 bg-border" />
                   </div>
                 )}
                 <div className="flex items-stretch">

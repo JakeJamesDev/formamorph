@@ -852,10 +852,10 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                   </div>
                   <div
                     aria-hidden="true"
-                    class="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-foreground"
+                    class="mx-3 mt-2 mb-1.5 flex items-center gap-3 text-muted-foreground"
                   >
                     <span
-                      class="h-hairline flex-1 bg-current"
+                      class="h-hairline flex-1 bg-border"
                     />
                     <span
                       class="text-helper"
@@ -863,7 +863,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                       or
                     </span>
                     <span
-                      class="h-hairline flex-1 bg-current"
+                      class="h-hairline flex-1 bg-border"
                     />
                   </div>
                   <div
