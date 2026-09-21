@@ -60,7 +60,7 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
   }
   if (state.sceneImagesAvailable) {
     if (!state.hasImage) {
-      actions.push({ key: 'image', label: 'Generate Scene Image', icon: ImagePlus, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'image', run: h.sceneImage });
+      actions.push({ key: 'image', label: 'Generate Scene Image', icon: ImagePlus, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'image', menuOnly: true, run: h.sceneImage });
     }
     actions.push({ key: 'tags', label: 'Write Scene Tags', icon: Dices, section: 'generate', disabled: sceneBlocked, spinning: sceneJob === 'tags', menuOnly: true, run: h.sceneTags });
   }

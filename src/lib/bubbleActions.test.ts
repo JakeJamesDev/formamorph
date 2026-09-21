@@ -27,19 +27,20 @@ const find = (state: BubbleState, label: string) => bubbleActions(state, handler
 describe('bubbleActions', () => {
   it('gives the latest turn the re-generate actions and no Rewind to Here', () => {
     expect(rowLabels(idle)).toEqual([
-      'Re-generate Narration', 'Re-generate Stats', 'Generate Scene Image', 'Edit', 'Text to Speech', 'Copy Text',
+      'Re-generate Narration', 'Re-generate Stats', 'Edit', 'Text to Speech', 'Copy Text',
     ]);
     expect(labels(idle)).not.toContain('Rewind to Here');
   });
 
   it('gives a past turn Rewind to Here and no re-generate actions', () => {
     const past = { ...idle, isLatest: false };
-    expect(rowLabels(past)).toEqual(['Generate Scene Image', 'Edit', 'Copy Text', 'Rewind to Here']);
+    expect(rowLabels(past)).toEqual(['Edit', 'Copy Text', 'Rewind to Here']);
   });
 
-  it('keeps Write Scene Tags and Regenerate Audio off the row but in the list', () => {
+  it('keeps Generate Scene Image, Write Scene Tags, and Regenerate Audio off the row but in the list', () => {
     for (const state of [idle, { ...idle, isLatest: false }]) {
-      expect(labels(state)).toEqual(expect.arrayContaining(['Write Scene Tags', 'Regenerate Audio']));
+      expect(labels(state)).toEqual(expect.arrayContaining(['Generate Scene Image', 'Write Scene Tags', 'Regenerate Audio']));
+      expect(rowLabels(state)).not.toContain('Generate Scene Image');
       expect(rowLabels(state)).not.toContain('Write Scene Tags');
       expect(rowLabels(state)).not.toContain('Regenerate Audio');
     }
