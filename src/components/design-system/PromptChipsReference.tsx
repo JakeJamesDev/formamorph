@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckRow } from '@/components/SettingsRows';
 import PromptField from '@/components/prompt/PromptField';
-import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { PROMPT_KIND_VARIABLES } from '@/lib/promptVariables';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
@@ -10,9 +9,9 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 
-const SAMPLE = defaultSystemPrompt.slice(
-  defaultSystemPrompt.indexOf('## Traits'), defaultSystemPrompt.indexOf('## Sublocations'),
-);
+const SAMPLE = '<TRAITS DESCRIPTION|markdown|header="traits">\n\n'
+  + '<PERSONA|markdown|header="player character">\n\n'
+  + '<LOCATION|markdown|header="current location">';
 
 const PLACEHOLDERS: Placeholder[] = [{ id: 'reference-town', name: 'Town', values: [
   { id: 'reference-harrow', text: 'Harrow' }, { id: 'reference-merrow', text: 'Merrow' },

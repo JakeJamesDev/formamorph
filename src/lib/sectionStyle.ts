@@ -112,6 +112,7 @@ function setChipFormat(text: string, format: string | null): string {
       return {
         type: 'variable',
         token: joinToken({
+          ...parts,
           base: baseToken(seg.token),
           variantId: encodeVariant(variable, selection),
           pre: parts?.pre,
