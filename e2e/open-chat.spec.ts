@@ -1,15 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { openApp } from './app';
+import { readTavernJson } from '../src/lib/tavernCard';
 
 /**
- * The bundled Open Chat world with one imported card's entity present, through the real game view: the
- * entity's greeting is page one, and the next turn's narration request runs on the world's own narration
- * prompt with its tone chips resolved. Only the view can show that the world prompt and its chip values
- * reach the request together.
- *
- * `OPEN_CHAT_LIVE=<chat completions URL>` with `OPEN_CHAT_MODEL=<id>` sends the same turn to a real model
- * and prints the reply, for the one-frame check a mock cannot make.
+ * Open Chat with an imported card's entity picked, through the real game view. Only the view can show
+ * that the world's narration prompt and its tone chip values reach the request together.
+ * `OPEN_CHAT_LIVE=<completions URL>` and `OPEN_CHAT_MODEL=<id>` send the turn to a real model and print it.
  */
 
 interface LoggedRequest { type: string; messages: { role: string; content: string }[] }
@@ -19,15 +16,9 @@ const LIVE = process.env.OPEN_CHAT_LIVE;
 const MOCK_REPLY = 'Maren sets a mug in front of you. "Drink it while it is hot," she says.';
 
 const world = JSON.parse(readFileSync('src/defaultworlds/open-chat.json', 'utf8'));
-const card = JSON.parse(readFileSync('testing/baseline/open-chat-cards.json', 'utf8'))[0].data;
-const greeting: string = card.first_mes;
-// The library entity the player picked at Enter World, as the card importer shapes one.
-world.devPicked = [{
-  id: 'e2e-card-entity',
-  name: card.name,
-  aiDescription: card.description.replaceAll('{{char}}', card.name),
-  openings: [{ id: 'e2e-greeting', text: greeting, kind: 'narration' }],
-}];
+const card = JSON.parse(readFileSync('testing/baseline/open-chat-cards.json', 'utf8'))[0];
+// The library entity the player picked at Enter World, read by the card importer.
+world.devPicked = [readTavernJson(JSON.stringify(card))!.entity];
 
 const settings = {
   FORMAMORPH_endpointUrl: LIVE ?? 'http://127.0.0.1:5190/v1/chat/completions',
