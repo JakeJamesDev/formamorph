@@ -600,6 +600,7 @@ The live reference renders four of the five production strips against their own 
 - One card renders a turn's narration in both layouts. The card owns its surface, its right-click menu, and its action row.
 - One action list feeds the row and the menu. Every row icon is also a menu item, and **More** opens that menu for the menu-only actions. **Generate Scene Image** is available only in **More** and the context menu in Pages and Chat.
 - The row is absent while the turn streams and when the list is empty. It does not show disabled icons in place of a live turn.
+- **Re-generate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
 - A turn with no scene image shows no plate. There is no empty box.
 - Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers.
 
@@ -637,7 +638,7 @@ The three parts, in reading order for Pages:
 
 ### Responsive behavior
 
-The card and the rows fill the narration column at every width. Long choice text wraps inside its row. The action row stays on one line; the full latest-page row, five icons and **More**, fits the card in a 375px window. The plate is at most 18rem tall and never wider than the card.
+The card and the rows fill the narration column at every width. Long choice text wraps inside its row. The action row stays on one line; the full latest-page row, four icons and **More**, fits the card in a 375px window. The plate is at most 18rem tall and never wider than the card.
 
 On a touch screen, a long press opens the card's menu, and a long press on a choice row appends it. The plate controls show when focus is on one of them, so Tab from the image reaches them without a pointer.
 

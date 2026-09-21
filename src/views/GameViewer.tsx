@@ -4304,6 +4304,8 @@ const GameViewer = ({
     <RightPanel
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
+      onRegenerateStats={handleRegenerateStats}
+      sceneImageJob={sceneImageJob}
       language={language}
       setLanguage={setLanguage}
     />

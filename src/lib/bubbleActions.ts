@@ -55,7 +55,7 @@ export function bubbleActions(state: BubbleState, h: BubbleActionHandlers): Bubb
     actions.push({ key: 'regenerate', label: 'Re-generate Narration', icon: RefreshCw, section: 'generate', disabled: busy, run: h.regenerate });
     if (state.canRegenStats) {
       // A running scene render holds the graphics card, and the re-roll keeps the turn its picture belongs to.
-      actions.push({ key: 'stats', label: 'Re-generate Stats', icon: ChartColumn, section: 'generate', disabled: sceneBlocked, run: h.regenerateStats });
+      actions.push({ key: 'stats', label: 'Re-generate Stats', icon: ChartColumn, section: 'generate', disabled: sceneBlocked, menuOnly: true, run: h.regenerateStats });
     }
   }
   if (state.sceneImagesAvailable) {

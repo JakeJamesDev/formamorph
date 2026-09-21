@@ -60,6 +60,7 @@ describe('Narration layout parity', () => {
     expect(pages.row).toEqual(chatted.row);
     expect(pages.menu).toEqual(chatted.menu);
     expect(pages.row).not.toContain('Generate Scene Image');
+    expect(pages.row).not.toContain('Re-generate Stats');
     expect(pages.menu).toContain('Generate Scene Image');
     // The menu lists the row's icons and the items behind its More icon.
     expect(pages.row.length).toBeGreaterThan(1);
@@ -174,11 +175,12 @@ describe('Pages: the Turn Card', () => {
     expect(view.props.handleRollback).toHaveBeenCalledWith(2);
   });
 
-  it('re-generates the latest page through its row', async () => {
+  it('re-generates the latest narration through its row and stats through its menu', async () => {
     const view = renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: statsOn });
     const row = await screen.findByTestId('bubble-actions');
     fireEvent.click(within(row).getByRole('button', { name: 'Re-generate Narration' }));
-    fireEvent.click(within(row).getByRole('button', { name: 'Re-generate Stats' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'More' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Re-generate Stats' }));
     expect(view.props.handleRegenerate).toHaveBeenCalledWith(3);
     expect(view.props.handleRegenerateStats).toHaveBeenCalledWith(3);
   });
@@ -195,8 +197,9 @@ describe('Pages: the Turn Card', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: statsOn, seed: (g) => g.setIsWaitingForAI(true) });
     const row = await screen.findByTestId('bubble-actions');
     expect(within(row).getByRole('button', { name: 'Re-generate Narration' })).toBeDisabled();
-    expect(within(row).getByRole('button', { name: 'Re-generate Stats' })).toBeDisabled();
     expect(within(row).getByRole('button', { name: 'Copy Text' })).toBeEnabled();
+    fireEvent.click(within(row).getByRole('button', { name: 'More' }));
+    expect(await screen.findByRole('menuitem', { name: 'Re-generate Stats' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('offers Re-generate Choices on the latest page only', async () => {

@@ -1076,13 +1076,16 @@ export const MiddlePanel = ({
   );
 };
 
-export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLanguage }: {
+export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, sceneImageJob, language, setLanguage }: {
   onLocationClick: () => void;
   /** Switch a chosen trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
   onToggleTrait: (traitId: string, enabled: boolean) => void;
+  onRegenerateStats: (page: number) => void;
+  sceneImageJob: 'tags' | 'image' | null;
   language: string;
   setLanguage: (value: string) => void;
 }) => {
+  const { statUpdatesEnabled } = useSettings();
   const {
     // Aliased to the viewed-page values (equal to live on the latest page) so paging back shows that
     // turn's stats/traits/time/deltas read-only. `commitManualStatEdit` writes live and rebaselines the
@@ -1091,6 +1094,8 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
     calendar,
     viewLocationId,
     isViewingPast,
+    isWaitingForAI,
+    isRevealingNarration,
     currentPage,
     totalPages,
     activeTab,
@@ -1221,18 +1226,34 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, language, setLangua
                 />
               );
             })}
-            <div className="absolute bottom-2 right-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditMode(!isEditMode)}
-                disabled={isViewingPast}
-                aria-label="Edit Stats"
-                aria-pressed={isEditMode}
-                className="h-8 w-8"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+            <div className="absolute bottom-2 right-2 flex items-center gap-0.5">
+              <Tip tip="Edit Stats">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsEditMode(!isEditMode)}
+                  disabled={isViewingPast}
+                  aria-label="Edit Stats"
+                  aria-pressed={isEditMode}
+                  className="h-8 w-8"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </Tip>
+              {statUpdatesEnabled && playerStats.length > 0 && (
+                <Tip tip="Re-generate Stats">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onRegenerateStats(currentPage)}
+                    disabled={isViewingPast || totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
+                    aria-label="Re-generate Stats"
+                    className="h-8 w-8"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </Tip>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
