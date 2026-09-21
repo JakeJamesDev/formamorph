@@ -4255,6 +4255,7 @@ const GameViewer = ({
         setIsEntityModalOpen(true);
       }}
       onRegenerateMemory={regenerateMemory}
+      narrationPrompt={systemPrompt}
     />
   );
 

@@ -11,6 +11,7 @@ import { PlaceholderSessionProvider } from '@/contexts/PlaceholderSessionContext
 import { setGameplayText } from '@/lib/gameplayTextStore';
 import { pageAssistantIndex } from '@/lib/turnHistory';
 import { LeftPanel, MiddlePanel, RightPanel } from '@/components/game/GamePanels';
+import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { AITurnResult, ChatMessage, GameState, PlayerStat, Stat, Trait, World } from '@/types';
 
 /**
@@ -327,7 +328,7 @@ export function renderLeftPanel(
   overrides: Partial<LeftPanelProps> = {},
   options: PanelHarnessOptions = {},
 ): PanelHarness<LeftPanelProps> {
-  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn() };
+  const defaults: LeftPanelProps = { entities: [], onEntityClick: vi.fn(), narrationPrompt: defaultSystemPrompt };
   return renderPanel(defaults, overrides, options, (props) => <LeftPanel {...props} />);
 }
 

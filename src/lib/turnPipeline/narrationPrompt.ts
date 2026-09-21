@@ -8,30 +8,13 @@ import {
   type ScanSource,
 } from "../dictionaryUtils";
 import { selectSemanticLore, applySemanticLore } from "../semanticDictionary";
-import { renderPromptTemplateRuns, parsePromptTemplate } from "../promptTemplate";
+import { renderPromptTemplateRuns, templateChipKeys } from "../promptTemplate";
 import { trimEndTiled, type AnatomyRun } from "../requestAnatomy";
-import { splitToken } from "../promptVariables";
 import type { SectionStyle } from "../promptPresets";
 import { markdownGuidance } from "../../components/game/GamePrompts";
 import { lengthGuidance, type ParagraphLimit } from "../outputLength";
 import { NONE_PLACEHOLDER } from "../promptFallbacks";
 import { languageDirective } from "../languages";
-
-/**
- * Which chips a template carries, as the affix-free tokens the value map is keyed by (`<NOTES>`,
- * `<DICTIONARY|before>`).
- *
- * Read through the parser rather than by substring: a placement with a prefix or suffix
- * (`<NOTES|pre="Remember: ">`) renders its value like any other, so a raw `includes("<NOTES>")` would call
- * the chip absent and then withhold the notes from the lore scan they are visibly part of.
- */
-function chipKeys(template: string): Set<string> {
-  return new Set(
-    parsePromptTemplate(template).flatMap((s) =>
-      s.type === "variable" ? [splitToken(s.token)?.key ?? s.token] : [],
-    ),
-  );
-}
 
 /** The per-entry activation report plus the verbatim scanned strings a hit landed in. */
 export interface DictionaryDebug {
@@ -86,7 +69,7 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
     embedVectors, language, paragraphLimit, maxTokens, markdownOutput, resolvePH,
   } = input;
 
-  const chips = chipKeys(template);
+  const chips = templateChipKeys(template);
   const dictCorpus = buildScanCorpus({
     template,
     ctx,

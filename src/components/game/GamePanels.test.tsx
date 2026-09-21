@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { getGameplayText } from '@/lib/gameplayTextStore';
 import { CONTINUE_CHOICE } from '@/lib/choices';
 import { encodePlaceholderToken } from '@/lib/placeholders';
+import { defaultSystemPrompt } from './GamePrompts';
+import openChat from '@/defaultworlds/open-chat.json';
 import { readTurn, renderLeftPanel, renderMiddlePanel, renderRightPanel, statFixture, type PanelHarness, type TurnFixture } from '@/test/gamePanels';
 import { resetTtsPlayback, setTtsPlayback } from '@/test/stubs/ttsPlayback';
 import { lastVrmViewerProps, resetVrmViewerStub } from '@/test/stubs/vrmViewer';
@@ -169,6 +171,22 @@ describe('LeftPanel', () => {
 
     expect(screen.getByTestId('vrm-viewer')).toBeInTheDocument();
     expect(lastVrmViewerProps()?.bodyMorphValues).toMatchObject({ Belly: 0.25 });
+  });
+
+  // Both built-in prompts place the chip with options, which a raw substring check misses.
+  it.each([
+    ['the built-in narration prompt', defaultSystemPrompt],
+    ['the Open Chat world prompt', openChat.worldOverview.promptOverrides.systemPrompt],
+  ])('shows no missing-notes warning under %s', (_name, prompt) => {
+    expect(prompt).toMatch(/<NOTES\|/);
+    renderLeftPanel({ narrationPrompt: prompt });
+    expect(screen.getByPlaceholderText(/Add notes here/)).toBeInTheDocument();
+    expect(screen.queryByText(/does not include the <NOTES> placeholder/)).not.toBeInTheDocument();
+  });
+
+  it('warns when the narration prompt places no notes chip', () => {
+    renderLeftPanel({ narrationPrompt: 'Narrate the scene. <LOCATION>' });
+    expect(screen.getByText(/does not include the <NOTES> placeholder/)).toBeInTheDocument();
   });
 
   it('keeps the notes the player types for the turn', () => {
