@@ -4,8 +4,8 @@ import { cn } from '@/lib/utils';
 
 /** A simple choice with no reserved columns; long names set their own height. */
 export const CompactSelectionRow = forwardRef<HTMLButtonElement,
-  ComponentPropsWithoutRef<'button'> & { selected?: boolean }
->(({ selected = false, className, children, ...props }, ref) => (
+  ComponentPropsWithoutRef<'button'> & { selected?: boolean; showCheck?: boolean }
+>(({ selected = false, showCheck = true, className, children, ...props }, ref) => (
   <button
     ref={ref}
     type="button"
@@ -18,7 +18,7 @@ export const CompactSelectionRow = forwardRef<HTMLButtonElement,
     {...props}
   >
     <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{children}</span>
-    {selected && <Check aria-hidden className="h-4 w-4 shrink-0" />}
+    {selected && showCheck && <Check aria-hidden className="h-4 w-4 shrink-0" />}
   </button>
 ));
 CompactSelectionRow.displayName = 'CompactSelectionRow';

@@ -1,7 +1,7 @@
 // Storage is real (in-memory): SettingsProvider and the modal both read it on mount.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -60,8 +60,10 @@ describe('Settings — custom quote color', () => {
 
     expect(custom()).toBe('#88ccff');
 
+    const picker = screen.getByRole('textbox', { name: 'Hex Color' }).closest('[role="dialog"]');
     await user.keyboard('{Escape}');
-    await user.click(screen.getByRole('radio', { name: 'Light' }));
+    await waitFor(() => expect(picker).not.toBeInTheDocument());
+    await user.click(await screen.findByRole('radio', { name: 'Light' }));
     expect(field(/Light Mode Color/)).toBeTruthy();
     expect(custom()).toBe('');
   });
@@ -75,8 +77,10 @@ describe('Settings — custom quote color', () => {
     await user.click(screen.getByRole('button', { name: 'Reset to Theme' }));
     expect(custom()).toBe('');
 
+    const picker = screen.getByRole('textbox', { name: 'Hex Color' }).closest('[role="dialog"]');
     await user.keyboard('{Escape}');
-    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+    await waitFor(() => expect(picker).not.toBeInTheDocument());
+    await user.click(await screen.findByRole('radio', { name: 'Dark' }));
     expect(field(/Dark Mode Color/)?.textContent).toContain('#88ccff');
     expect(custom()).toBe('#88ccff');
   });
