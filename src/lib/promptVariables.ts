@@ -300,7 +300,7 @@ export const ALL_VARIANT_IDS: string[] = [
 /**
  * The token grammar, shared by the template parser, the style downcast and the chip editor:
  *
- *     `<BASE [|variantId] [|pre="…"] [|post="…"] [|header="…"]>`
+ *     `<BASE [|variantId] [|pre="…"] [|post="…"] [|format=markdown|xml] [|header="…"]>`
  *
  * Affixes are the connective words around a chip used inside a sentence ("Now you are at X, inside Y"),
  * and they render only when the chip has a value — see `renderPromptTemplate`. They live in the token
@@ -325,7 +325,7 @@ const AFFIX_BODY = '"([^"]+)"';
 const HEADER_BODY = '"((?:[^"\\\\\\x00-\\x1f]|\\\\(?:["\\\\/bfnrt]|u[0-9a-fA-F]{4}))*)"';
 export const TOKEN_PATTERN =
   `(?:${TOKEN_BASES})(?:\\|(?:${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
-  `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|header=${HEADER_BODY})?>`;
+  `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>`;
 
 /** Longest an affix may be. They are connective phrases, not prose. */
 export const AFFIX_MAX_LENGTH = 40;
@@ -341,13 +341,15 @@ export interface TokenParts {
   pre: string;
   post: string;
   header?: string;
+  /** Header-only selection; omitted for Simple and kept separate from body lookup keys. */
+  headerFormat?: 'markdown' | 'xml';
   key: string;
 }
 
 // Anchored, non-global twin of the parser's regex, with the pieces captured.
 const TOKEN_EXACT = new RegExp(
   `^(${TOKEN_BASES})(?:\\|(${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
-    `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|header=${HEADER_BODY})?>$`,
+    `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>$`,
 );
 
 /** Take a token apart, or null when it isn't a canonical token. */
@@ -357,18 +359,20 @@ export function splitToken(token: string): TokenParts | null {
   const base = `${m[1]}>`;
   const variantId = m[2] ?? null;
   return { base, variantId, pre: m[3] ?? '', post: m[4] ?? '', key: withVariant(base, variantId),
-    ...(m[5] !== undefined ? { header: JSON.parse(`"${m[5]}"`) as string } : {}) };
+    ...(m[5] === 'markdown' || m[5] === 'xml' ? { headerFormat: m[5] } : {}),
+    ...(m[6] !== undefined ? { header: JSON.parse(`"${m[6]}"`) as string } : {}) };
 }
 
 /** Build a canonical token from its pieces. Empty affixes are omitted, so there is exactly one spelling
  *  of any given token — the property the round-trip guarantee rests on. */
-export function joinToken(parts: { base: string; variantId?: string | null; pre?: string; post?: string; header?: string }): string {
+export function joinToken(parts: { base: string; variantId?: string | null; pre?: string; post?: string; header?: string; headerFormat?: 'markdown' | 'xml' }): string {
   const inner = parts.base.slice(0, -1);
   const variant = parts.variantId ? `|${parts.variantId}` : '';
   const pre = parts.pre ? `|pre="${parts.pre}"` : '';
   const post = parts.post ? `|post="${parts.post}"` : '';
   const header = parts.header ? `|header=${JSON.stringify(parts.header)}` : '';
-  return `${inner}${variant}${pre}${post}${header}>`;
+  const format = parts.headerFormat ? `|format=${parts.headerFormat}` : '';
+  return `${inner}${variant}${pre}${post}${format}${header}>`;
 }
 
 /** True when `text` is usable as an affix (short enough, and free of the delimiter). */

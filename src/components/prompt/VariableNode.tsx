@@ -317,7 +317,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                   return (
                     <div key={axis.id} className="space-y-2">
                       {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                      <p className="text-meta font-medium">{axes.length > 1 ? axis.label : `${vocab.label(token)} mode`}</p>
+                      <p className="text-meta font-medium">{axes.length > 1 || axis.id === 'format' ? axis.label : `${vocab.label(token)} mode`}</p>
                       {/* `columns` wraps a long option list onto rows of that width, centered — so a final
                           short row sits under the middle of the one above rather than hanging off the left. */}
                       <ToggleGroup
@@ -365,7 +365,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 })}
               </div>
             ) : (
-              !affixes && !repickable && !editableValue && placementLabel == null
+              !affixes && !repickable && !editableValue && placementLabel == null && header == null
                 && <p className="text-meta text-muted-foreground">No options for this variable.</p>
             )}
             {placementLabel != null && (

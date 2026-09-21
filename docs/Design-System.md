@@ -115,7 +115,9 @@ In prompt editors, a chip's prepend and append text appears inline with its exac
 
 The highlight and pill belong to one token. Selecting either opens the chip's options; editing Prepend or Append keeps focus in that input. Removing or dragging the chip includes its affixes. Spaces retain their spacing without a colored mark; newline markers use the affix highlight. The highlight's tooltip identifies the empty-value condition, and the options explain it on mobile. Read-only presets show the same text with disabled options.
 
-Stats, Traits, Persona, Location, and Entities offer a single-line **Header** above Prepend/Append. Use the selected Format for a level-two Markdown heading, an uppercase Simple label, or paired XML tags. Keep raw Header text in the placement. Show generated boundaries with the same conditional highlight and chip options; move, copy, or remove the whole placement together.
+Every prompt-variable chip offers a single-line **Header** above any Prepend/Append controls. Use the selected Format for a level-two Markdown heading, an uppercase Simple label, or paired XML tags. Keep raw Header text in the placement. Show generated boundaries with the same conditional highlight and chip options; move, copy, or remove the whole placement together.
+
+Chips without body formatting show **Format** only while Header contains nonblank text. The first Header uses Simple, independent of the preset's style. Format changes the heading and wrappers while preserving the body. Clearing Header hides Format and remembers its selection through editing and sharing. Placeholder Chips keep their existing controls.
 
 Headed chips form separate sections, reusing authored line breaks and preserving extra blank lines. The section contains Header, Prepend, the value, Append, and any XML closing tag. Blank values and the exact `N/A` sentinel omit the whole section. Custom XML parents remain authored text.
 

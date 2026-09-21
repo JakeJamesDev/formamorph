@@ -1,6 +1,8 @@
 // One-shot, non-streaming helper that turns a world subject's description into a booru-tag image prompt
 // via the configured chat-completions (text) endpoint. Mirrors summarize.ts.
 
+import { renderPromptTemplate } from './promptTemplate';
+
 export type ImageSubjectKind = 'character' | 'location' | 'world';
 
 // Token in the (user-editable) tag prompt that expands to the per-kind guidance below. Uses the app's
@@ -23,7 +25,7 @@ export const DEFAULT_TAG_PROMPT =
   'write sentences. No preamble, no labels, no quotes, no negative terms.';
 
 const composeSystem = (template: string, kind: ImageSubjectKind) =>
-  template.split(SUBJECT_TOKEN).join(SUBJECT_GUIDANCE[kind]);
+  renderPromptTemplate(template, { [SUBJECT_TOKEN]: SUBJECT_GUIDANCE[kind] });
 
 /**
  * Repair an LLM's tag list into stripped danbooru form: lowercase, space-separated words per tag, comma

@@ -161,7 +161,7 @@ describe('authored prompt headers', () => {
       expect(vocab.affixes(token)).toEqual({ pre: 'Lead ', post: ' tail' });
       expect(vocab.header!(token)).toBe('');
     }
-    expect(vocab.header!('<NOTES>')).toBeNull();
-    expect(vocab.setHeader!('<NOTES>', 'notes')).toBe('<NOTES>');
+    expect(vocab.header!('<NOTES>')).toBe('');
+    expect(vocab.setHeader!('<NOTES>', 'notes')).toBe('<NOTES|header="notes">');
   });
 });

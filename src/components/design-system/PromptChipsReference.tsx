@@ -11,7 +11,8 @@ import type { Placeholder } from '@/types';
 
 const SAMPLE = '<TRAITS DESCRIPTION|markdown|header="traits">\n\n'
   + '<PERSONA|markdown|header="player character">\n\n'
-  + '<LOCATION|markdown|header="current location">';
+  + '<LOCATION|markdown|header="current location">\n\n'
+  + '<NOTES|format=xml|header="player notes">';
 
 const PLACEHOLDERS: Placeholder[] = [{ id: 'reference-town', name: 'Town', values: [
   { id: 'reference-harrow', text: 'Harrow' }, { id: 'reference-merrow', text: 'Merrow' },

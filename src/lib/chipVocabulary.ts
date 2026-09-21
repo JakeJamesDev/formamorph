@@ -175,6 +175,11 @@ export interface ChipVocabulary {
   fixed?(token: string): boolean;
 }
 
+const HEADER_FORMAT_AXIS: PromptVariantAxis = {
+  id: 'format', label: 'Format',
+  options: [{ id: null, label: 'Simple' }, { id: 'markdown', label: 'Markdown' }, { id: 'xml', label: 'XML' }],
+};
+
 /** Vocabulary backed by the static prompt-variable registry. `palette` is the subset a given prompt offers. */
 export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
   return {
@@ -187,18 +192,28 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
       const v = variableForToken(t);
       if (!v) return [];
       const inlineName = decodeVariant(v, tokenVariant(t)).content === 'name';
-      return variableAxes(v).map(axis => inlineName && !splitToken(t)?.header?.trim() && axis.id === 'format'
+      const axes = variableAxes(v);
+      const hasHeader = !!splitToken(t)?.header?.trim();
+      if (hasHeader && !axes.some(axis => axis.id === 'format')) return [...axes, HEADER_FORMAT_AXIS];
+      return axes.map(axis => inlineName && !hasHeader && axis.id === 'format'
         ? { ...axis, readOnly: true, readOnlyHelp: v.token === '<PERSONA>'
           ? 'Sends the name and pronouns as plain text' : 'Sends names as plain text' }
         : axis);
     },
     selection: (t) => {
       const v = variableForToken(t);
-      return v ? decodeVariant(v, tokenVariant(t)) : {};
+      if (!v) return {};
+      const selection = decodeVariant(v, tokenVariant(t));
+      return variableAxes(v).some(axis => axis.id === 'format') ? selection
+        : { ...selection, format: splitToken(t)?.headerFormat ?? null };
     },
     setAxis: (t, axisId, optionId) => {
       const v = variableForToken(t);
       if (!v) return t;
+      if (axisId === 'format' && !variableAxes(v).some(axis => axis.id === 'format')) {
+        return joinToken({ ...splitToken(t), base: baseToken(t),
+          headerFormat: optionId === 'markdown' || optionId === 'xml' ? optionId : undefined });
+      }
       const next = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
       // Preserve placement metadata while changing one selected axis.
       const parts = splitToken(t);
@@ -217,18 +232,18 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     },
     header: (t) => {
       const v = variableForToken(t);
-      return v && variableAxes(v).some(axis => axis.id === 'format') ? splitToken(t)?.header ?? '' : null;
+      return v ? splitToken(t)?.header ?? '' : null;
     },
     setHeader: (t, header) => {
       const v = variableForToken(t);
       const parts = splitToken(t);
-      if (!parts || !v || !variableAxes(v).some(axis => axis.id === 'format')) return t;
+      if (!parts || !v) return t;
       return joinToken({ ...parts, header });
     },
     headerBoundaries: (t) => {
       const parts = splitToken(t);
       const v = variableForToken(t);
-      return parts && v ? promptHeader(parts.header, decodeVariant(v, parts.variantId).format) : null;
+      return parts && v ? promptHeader(parts.header, parts.headerFormat ?? decodeVariant(v, parts.variantId).format) : null;
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,
