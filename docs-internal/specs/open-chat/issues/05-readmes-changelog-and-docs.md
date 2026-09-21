@@ -21,5 +21,5 @@ Append one Changelog In-Progress entry under Added, player bucket. Add Open Chat
 - [ ] The copy sweep reports no findings
 - [ ] The Changelog has one In-Progress entry in the right bucket, and no version changes
 - [ ] The docs list Open Chat wherever they list bundled worlds, with no mention of agent-only files
-- [ ] The content test still reports zero Test Bench findings
+- [ ] The content test's finding set no longer holds world-no-readme; location-no-entities is the one finding left
 - [ ] Four gates green

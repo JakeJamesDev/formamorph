@@ -48,7 +48,7 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 25. As a player, I want to delete Open Chat and have it stay deleted, so that it behaves like every other default world.
 26. As a player, I want the world tile to have a thumbnail, so that it looks finished beside the other defaults.
 27. As an author, I want to open Open Chat in the World Editor, so that I can read its prompts and copy the pattern.
-28. As an author, I want the world to pass every Test Bench rule, so that it is a clean example.
+28. As an author, I want the world to raise no Test Bench warning, so that it is a clean example.
 29. As a player on a small model, I want the prompts to work on the average reference tier, so that the chat feel does not need a premium model.
 
 ## Implementation Decisions
@@ -101,9 +101,9 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 
 A good test here reads the bundled world the way the app does and asserts what a player would see. It does not restate the JSON.
 
-- **Seam 1, world content.** Load the bundled file through the world migration and run the Test Bench rule runner over it. Assert zero findings. Then assert the structural facts: zero stats, one location, both overrides present and enabled, Open player setting, one Player Action opening, four exclusive groups. Prior art: the default-world id tests and the Test Bench rule tests.
+- **Seam 1, world content.** Load the bundled file through the world migration and run the Test Bench rule runner over it. Assert the exact set of findings, so each ticket must shrink it. The finished world has one: the info finding for a location with no entities, which is this world's design. Ticket 01 also lists the empty world system prompt (ticket 03 removes it) and the missing readme (ticket 05 removes it). No rule changes. Then assert the structural facts: zero stats, one location, both overrides present and enabled, Open player setting, one Player Action opening, four exclusive groups. Prior art: the default-world id tests and the Test Bench rule tests.
 - **Seam 2, tone resolution.** Resolve the narration override text with no pins, then with each trait's pins. Assert the default equals the middle trait's result, and that every trait changes exactly its own placeholder. Assert no placeholder resolves to an empty string. Prior art: the placeholder pin tests.
-- **Seam 3, turn plan.** Plan a turn with this world's counts and default settings. Assert the pass list is narration plus choices. Prior art: the turn plan tests.
+- **Seam 3, turn plan.** Plan a turn with this world's counts and default settings. Assert that narration and choices are due, and that the stat-update pass and both location passes are absent. Do not assert the exact list: passes that a player setting drives, such as the memory digest, stay on and are not this world's concern. Prior art: the turn plan tests.
 - **Probes.** A/B each override against the built-in prompt on both reference tiers, at least 2 runs per case, with one imported card as the fixture. Metrics: dialogue share of the reply, second-person frame held, reply length per tone setting, and choices in the player's voice. Run the guide's regression check on the other metrics. Record before and after numbers in the ticket.
 - **Live check.** Seed on a clean profile and on an existing profile through the dev-router. Confirm the tile, the trait picker groups, and one full turn.
 - Each new guard must fail when its bug returns, per the test bar.
