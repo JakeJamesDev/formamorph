@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this module co-locates the insert-target context,
    its provider/registrar components, and the shared caret-insert helper; they are one unit. */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
   $getRoot, $getSelection, $isRangeSelection, $isElementNode, $createParagraphNode,
   UNDO_COMMAND,
@@ -9,6 +9,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode } from './VariableNode';
+import { startPaletteChipDrag } from './chipDragSource';
 
 /**
  * Which chip field a shared palette inserts into. One palette serves every field in a panel, so it needs a
@@ -61,6 +62,7 @@ interface TargetState {
 
 export interface ChipInsertRegistration {
   insert: (paletteToken: string) => void;
+  startDrag: (event: DragEvent<HTMLElement>, paletteToken: string) => void;
   undo: () => void;
   ownerId: string | null;
 }
@@ -83,7 +85,11 @@ export function useChipInsertRegistration(vocab: ChipVocabulary, ownerId?: strin
     [editor],
   );
   const undo = useCallback(() => { editor.dispatchCommand(UNDO_COMMAND, undefined); }, [editor]);
-  return useMemo(() => ({ insert, undo, ownerId: ownerId ?? null }), [insert, undo, ownerId]);
+  const startDrag = useCallback(
+    (event: DragEvent<HTMLElement>, token: string) => startPaletteChipDrag(event, token, editor.getKey()),
+    [editor],
+  );
+  return useMemo(() => ({ insert, startDrag, undo, ownerId: ownerId ?? null }), [insert, startDrag, undo, ownerId]);
 }
 
 /** Wraps a panel so every chip field inside it shares one insert target. */

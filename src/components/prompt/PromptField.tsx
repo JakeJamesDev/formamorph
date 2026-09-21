@@ -396,7 +396,7 @@ function VariableToolbar({ vocab, interactive }: {
   interactive: boolean;
 }) {
   const items = vocab.palette();
-  const { insert } = useChipInsertRegistration(vocab);
+  const { insert, startDrag } = useChipInsertRegistration(vocab);
   if (!items.length) return null;
 
   return (
@@ -413,6 +413,8 @@ function VariableToolbar({ vocab, interactive }: {
           <button
             type="button"
             disabled={!interactive}
+            draggable={interactive}
+            onDragStart={interactive ? (event) => startDrag(event, v.token) : undefined}
             onClick={interactive ? () => insert(v.token) : undefined}
             className={cn(CHIP_BASE, 'border flex-shrink-0', interactive ? 'cursor-pointer hover:brightness-95' : 'cursor-default')}
             style={{ backgroundColor: v.color, color: '#000' }}
@@ -1017,7 +1019,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         <ValueEdgesPlugin active={valuesOpen} />
         {valuesOpen && <OpenValueLayoutPlugin />}
         {valuesOpen && <ActiveValuePlugin relay={activeValue} />}
-        <ChipDragPlugin dragKey={dragKey} vocab={insertTrigger ? vocab : undefined} />
+        <ChipDragPlugin dragKey={dragKey} vocab={vocab} paletteScope={insertTrigger ? 'shared' : 'editor'} />
         <CaretFollowPlugin onCaret={followCaret} />
         {insertTrigger && !readOnly && (
           <>

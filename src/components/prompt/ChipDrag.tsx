@@ -6,7 +6,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode, $isVariableNode } from './VariableNode';
-import { CHIP_DRAG_MIME, type ChipDragKey } from './chipDragSource';
+import { CHIP_DRAG_MIME, paletteDragTargetsEditor, type ChipDragKey } from './chipDragSource';
 
 /**
  * Dropping chips into a field: an existing chip dragged to a new caret position within the same editor, and
@@ -32,8 +32,9 @@ function caretRangeFromPoint(x: number, y: number): Range | null {
   return range;
 }
 
-export function ChipDragPlugin({ dragKey, vocab }: {
+export function ChipDragPlugin({ dragKey, vocab, paletteScope = 'shared' }: {
   dragKey: ChipDragKey;
+  paletteScope?: 'shared' | 'editor';
   /** Mints the placement id for a chip arriving from the palette. Omit to accept moves only. */
   vocab?: ChipVocabulary;
 }) {
@@ -48,7 +49,7 @@ export function ChipDragPlugin({ dragKey, vocab }: {
     document.body.appendChild(caret);
     const hideCaret = () => { caret.style.display = 'none'; };
     const acceptsPaletteToken = (token: string) =>
-      !!vocab && (!vocab.acceptsPaletteToken || vocab.acceptsPaletteToken(token));
+      !!vocab && vocab.isKnown(token) && (!vocab.acceptsPaletteToken || vocab.acceptsPaletteToken(token));
     const showCaretAt = (x: number, y: number) => {
       const range = caretRangeFromPoint(x, y);
       const rect = range?.getBoundingClientRect();
@@ -60,7 +61,8 @@ export function ChipDragPlugin({ dragKey, vocab }: {
     };
     // During dragover the payload is unreadable (by design), but its type list is not — which is exactly
     // enough to decide whether this field will take the drop.
-    const carriesPaletteChip = (e: DragEvent) => !!vocab && !!e.dataTransfer?.types.includes(CHIP_DRAG_MIME);
+    const carriesPaletteChip = (e: DragEvent) => !!vocab
+      && paletteDragTargetsEditor(e.dataTransfer, editor.getKey(), paletteScope === 'editor');
 
     const removeOver = editor.registerCommand(
       DRAGOVER_COMMAND,
@@ -78,7 +80,7 @@ export function ChipDragPlugin({ dragKey, vocab }: {
       DROP_COMMAND,
       (event: DragEvent) => {
         const key = dragKey.current;
-        const payload = vocab ? event.dataTransfer?.getData(CHIP_DRAG_MIME) ?? '' : '';
+        const payload = carriesPaletteChip(event) ? event.dataTransfer?.getData(CHIP_DRAG_MIME) ?? '' : '';
         const paletteToken = acceptsPaletteToken(payload) ? payload : '';
         if (!key && !paletteToken) {
           hideCaret();
@@ -116,13 +118,18 @@ export function ChipDragPlugin({ dragKey, vocab }: {
       hideCaret();
       dragKey.current = null;
     };
+    const onDocumentDragOver = (event: DragEvent) => {
+      if (!(event.target instanceof Node) || !editor.getRootElement()?.contains(event.target)) hideCaret();
+    };
+    document.addEventListener('dragover', onDocumentDragOver, true);
     document.addEventListener('dragend', onDragEnd);
     return () => {
       removeOver();
       removeDrop();
       document.removeEventListener('dragend', onDragEnd);
+      document.removeEventListener('dragover', onDocumentDragOver, true);
       caret.remove();
     };
-  }, [editor, dragKey, vocab]);
+  }, [editor, dragKey, vocab, paletteScope]);
   return null;
 }

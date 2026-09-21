@@ -7,11 +7,20 @@ import { placementLetters } from './placementLetters';
 import type { PlaceholderOwnerRef } from './placeholderHomes';
 
 import { phValues } from '@/test/placeholderValues';
+import { PROMPT_KIND_VARIABLES } from './promptVariables';
 const P = (id: string, values: string[]): Placeholder => ({ id, name: `name-${id}`, values: phValues(values) });
 const tok = (id: string, mode: 'world' | 'unique', pid = 'p1') => encodePlaceholderToken({ id, mode, placementId: pid });
 
 describe('promptVocabulary (regression — the existing prompt family still works)', () => {
   const v = promptVocabulary([]);
+  it('accepts only the prompt variables offered by this field', () => {
+    const vocab = promptVocabulary(PROMPT_KIND_VARIABLES.narration.filter((item) => item.token === '<PERSONA>'));
+    expect(vocab.acceptsPaletteToken?.('<PERSONA>')).toBe(true);
+    expect(vocab.acceptsPaletteToken?.('<LOCATION>')).toBe(false);
+    expect(vocab.acceptsPaletteToken?.(tok('eye', 'world'))).toBe(false);
+    expect(vocab.acceptsPaletteToken?.('plain text')).toBe(false);
+    expect(v.acceptsPaletteToken?.('<PERSONA>')).toBe(false);
+  });
   it('recognizes a registry token and reports its label/color', () => {
     expect(v.isKnown('<WORLD DESCRIPTION>')).toBe(true);
     expect(v.label('<WORLD DESCRIPTION>')).toBe('World');
