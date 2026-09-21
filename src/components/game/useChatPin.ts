@@ -189,7 +189,7 @@ export function useChatPin({ scroller, virtualizer, history, gameKey, lastIndex 
 
   return {
     pinnedIndex: pin?.index ?? null,
-    showJump: placement !== 'inside',
+    showJump: gameKey !== null && placement !== 'inside',
     newTextBelow: placement === 'below',
     jumpToLatest,
     isProgrammaticScroll,
