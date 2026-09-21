@@ -1,7 +1,8 @@
 # 03: Dialogue-Led Narration Prompt
 
 Status: ready-for-agent
-Blocked by: 02
+Status note: waits on ticket 07; no work started, so the claim and its `Base:` line are released
+Blocked by: 02, 07
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
 
@@ -29,3 +30,12 @@ Read the prompt-writing guide before editing. Follow it: positive contract, gene
 ## Comments
 
 **From ticket 02.** The four tone chips sit in the world system prompt, so `world-empty-system-prompt` is already gone from the finding set. When this ticket moves the chips into the narration override, keep one neutral line in the system prompt, or the finding returns. Also point the tone test in `src/lib/openChatWorld.test.ts` (`toneText`) at the override text.
+
+**Blocked on the engine, 2026-09-21.** A placeholder chip typed in a world custom prompt reaches the model raw. The pipeline resolves placeholders in chip values only, and the **Custom Prompts** field knows prompt chips only. A throwaway test through `buildNarrationPrompt` proved it. The user ruled: build engine and editor support first, as ticket 07. The alternative was to keep the tone chips in the world system prompt, which also sends them to the six other prompts that carry `<WORLD DESCRIPTION>`.
+
+Notes for the next session:
+
+- The built-in prompt carries `<LENGTH GUIDANCE>`, a player setting. The Reply Length chip gives a second length instruction. Keep both chips per the criteria, and probe the pair: the guide says models write up to the stated number.
+- `world-narration-probe.mjs` is the base for the A/B probe. It assembles a bundled world by hand, so it needs an arm for the override text and an entity fixture from one imported card.
+- The guide and the probe skill name the cloud default endpoint and Cydonia 24B as the current test pair, with about 12 cloud runs per arm. LM Studio listed `cydonia-24b-v4.3@q4_k_m` on this date.
+- The tone test should resolve the rendered narration prompt, not the raw override string, so it also guards the seam from ticket 07.
