@@ -25,7 +25,8 @@ import {
 } from './placeholders';
 import type { PlaceholderKindNoun, PlaceholderSegment } from './placeholders';
 import {
-  isOwnedPlaceholder, promotePlaceholder, qualifiedPlaceholderName, topLevelPlaceholders,
+  isOwnedPlaceholder, placeholderCycleExclusions, promotePlaceholder, qualifiedPlaceholderName,
+  topLevelPlaceholders,
 } from './placeholderTree';
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
 import { USER_MACRO, USER_MACRO_LABEL, isUserMacroToken } from './userMacro';
@@ -142,6 +143,8 @@ export interface ChipVocabulary {
   allRows?(): ChipRow[];
   /** Prepare a palette token for a fresh insertion (placeholders re-mint their placement id). */
   freshInsertToken(token: string): string;
+  /** True when this destination may accept a palette token. Omit when every offered token is valid. */
+  acceptsPaletteToken?(token: string): boolean;
   /** The rows one level under this token — each the same chip drilled one segment deeper. Present only where
    *  the family has structure to walk; the static prompt variables have none. */
   drill?(token: string): ChipRow[];
@@ -305,6 +308,8 @@ export function placeholderVocabulary(
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
+  const paletteIds = new Set(topLevelPlaceholders(placeholders).map((p) => p.id));
+  const cycleExclusions = ownerId ? placeholderCycleExclusions(placeholders, ownerId) : null;
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
@@ -450,6 +455,11 @@ export function placeholderVocabulary(
     freshInsertToken: (t) => {
       const d = decodePlaceholderToken(t);
       return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;
+    },
+    acceptsPaletteToken: (t) => {
+      if (isUserMacroToken(t)) return !!playerName;
+      const id = decodePlaceholderToken(t)?.id;
+      return !!id && paletteIds.has(id) && !cycleExclusions?.has(id);
     },
     // A row names only the part it adds; the breadcrumb above it carries where that part sits, and the
     // inserted chip's own label spells the whole path out.

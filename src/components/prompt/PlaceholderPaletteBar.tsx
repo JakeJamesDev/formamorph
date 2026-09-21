@@ -9,7 +9,7 @@ import { usePaletteCollapsed } from '@/lib/usePaletteCollapsed';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
 import { useChipInsertTarget } from './ChipInsertTarget';
-import { CHIP_DRAG_MIME } from './ChipDrag';
+import { startPaletteChipDrag } from './chipDragSource';
 import ChipRowHeading from './ChipRowHeading';
 
 /**
@@ -46,10 +46,8 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
   );
   const [renaming, setRenaming] = useState<string | null>(null);
 
-  // Inserting happens on mouse-down, so the first half of a double-click has already dropped a chip into the
-  // claimed field by the time the gesture turns out to be a rename. Taking it back through that field's own
-  // history leaves the text exactly as it was — the alternative, waiting to see whether a second click
-  // arrives, would put a delay on every insert to serve the rarer gesture.
+  // The first click of a double-click inserts normally; rename takes that insertion back through the field's
+  // own history rather than delaying every single-click insertion to wait for a possible second click.
   const startRename = (token: string) => {
     undo?.();
     setRenaming(token);
@@ -107,17 +105,13 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                   // Draggable even with no claimed field: dropping into one is its own way in, and needs no
                   // prior focus. Clicking still needs a target, so only that is disabled.
                   draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData(CHIP_DRAG_MIME, item.token);
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
+                  onDragStart={(event) => startPaletteChipDrag(event, item.token)}
                   // Not `disabled`: that would block the drag too. Clicking is what needs a claimed field, so
                   // only clicking goes inert — dimmed to say so, while the chip stays draggable.
                   aria-disabled={!insert}
-                  // Keep the target field's focus and selection: the insert reads its caret to know where to land.
-                  // `detail > 1` is the second press of a double-click: that one is starting a rename, not
-                  // asking for another copy.
-                  onMouseDown={(e) => { e.preventDefault(); if (e.detail < 2) insert?.(item.token); }}
+                  // Insert only after a completed click, so beginning a drag cannot commit the click path.
+                  // `detail > 1` is the second click of a double-click: that one starts a rename instead.
+                  onClick={(e) => { if (e.detail < 2) insert?.(item.token); }}
                   onDoubleClick={vocab.rename ? () => startRename(item.token) : undefined}
                   className={cn(
                     CHIP_BASE,

@@ -135,6 +135,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **Dragging a Placeholder Chip from the World Editor palette places one chip where you drop it.** Starting the drag no longer inserts a copy at the field's old caret instead. Click insertion, placed-chip movement, cancellation, undo and redo keep working in both the World Editor and Settings → Prompts.
   - **Community Creations:**
     - **A creation's details open with one fade on the website.** Opening a creation on formamorph.ai dimmed the page, cleared it and dimmed it again, so the background flashed twice. The details now open once and stay open.
     - **Thumbnails stay between launches when you are signed in.** Each launch checked the account's adult-content answer with the server, and the wait for that answer emptied the thumbnail and listing caches, so every thumbnail downloaded again. The caches now empty only when the warning is unanswered or declined, and a failed check leaves them alone. This device also remembers each account's confirmed answer, so a signed-in launch opens Community Creations without the wait. The server is still asked each launch, and its answer wins.

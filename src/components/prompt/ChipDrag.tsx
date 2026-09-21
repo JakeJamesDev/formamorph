@@ -6,6 +6,7 @@ import {
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { $createVariableNode, $isVariableNode } from './VariableNode';
+import { CHIP_DRAG_MIME, type ChipDragKey } from './chipDragSource';
 
 /**
  * Dropping chips into a field: an existing chip dragged to a new caret position within the same editor, and
@@ -15,10 +16,6 @@ import { $createVariableNode, $isVariableNode } from './VariableNode';
  * editor that owns the node can read it); a palette drag carries its token on the drag itself, so any chip
  * field it is dropped into can build the chip without knowing where it came from.
  */
-
-/** Drag payload for a palette chip. A private type so an unrelated drag (text, a file) is never mistaken
- *  for one — `text/plain` would be. */
-export const CHIP_DRAG_MIME = 'application/x-formamorph-chip';
 
 /** Where the drop caret sits, across the two APIs browsers expose for it. */
 function caretRangeFromPoint(x: number, y: number): Range | null {
@@ -36,7 +33,7 @@ function caretRangeFromPoint(x: number, y: number): Range | null {
 }
 
 export function ChipDragPlugin({ dragKey, vocab }: {
-  dragKey: { current: string | null };
+  dragKey: ChipDragKey;
   /** Mints the placement id for a chip arriving from the palette. Omit to accept moves only. */
   vocab?: ChipVocabulary;
 }) {
@@ -45,10 +42,13 @@ export function ChipDragPlugin({ dragKey, vocab }: {
     // Browsers don't render a native drop caret when dragging our contenteditable=false chip, so we draw our
     // own: a thin vertical line positioned at the drop caret during dragover, hidden on drop / drag end.
     const caret = document.createElement('div');
+    caret.dataset.chipDropCaret = '';
     caret.style.cssText =
       'position:fixed;width:2px;pointer-events:none;z-index:60;background:hsl(var(--foreground));display:none';
     document.body.appendChild(caret);
     const hideCaret = () => { caret.style.display = 'none'; };
+    const acceptsPaletteToken = (token: string) =>
+      !!vocab && (!vocab.acceptsPaletteToken || vocab.acceptsPaletteToken(token));
     const showCaretAt = (x: number, y: number) => {
       const range = caretRangeFromPoint(x, y);
       const rect = range?.getBoundingClientRect();
@@ -78,8 +78,12 @@ export function ChipDragPlugin({ dragKey, vocab }: {
       DROP_COMMAND,
       (event: DragEvent) => {
         const key = dragKey.current;
-        const paletteToken = vocab ? event.dataTransfer?.getData(CHIP_DRAG_MIME) : '';
-        if (!key && !paletteToken) return false;
+        const payload = vocab ? event.dataTransfer?.getData(CHIP_DRAG_MIME) ?? '' : '';
+        const paletteToken = acceptsPaletteToken(payload) ? payload : '';
+        if (!key && !paletteToken) {
+          hideCaret();
+          return false;
+        }
         event.preventDefault();
         dragKey.current = null;
         hideCaret();

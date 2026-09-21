@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- this module intentionally co-locates the
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
-import { createContext, useContext, useState, useEffect, type ReactNode, type DragEvent } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import {
   DecoratorNode, ElementNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
   type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
@@ -20,10 +20,11 @@ import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import { remintPlaceholderPlacements } from '@/lib/placeholders';
 import { OpenValueChip } from './OpenValueChip';
 import { EditValueContext, OpenValuesContext } from './openValueContext';
+import { startPlacedChipDrag, type ChipDragKey } from './chipDragSource';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
-export const PromptDragContext = createContext<{ current: string | null }>({ current: null });
+export const PromptDragContext = createContext<ChipDragKey>({ current: null });
 
 export type SerializedVariableNode = Spread<{ token: string }, SerializedLexicalNode>;
 
@@ -163,26 +164,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     }, { tag: SKIP_DOM_SELECTION_TAG });
   };
 
-  const handleDragStart = (e: DragEvent) => {
-    dragKey.current = nodeKey;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', token); // some browsers won't start a drag without payload
-    // Custom drag image: a translucent copy of the chip offset down-right of the pointer, so the chip stops
-    // sitting on the cursor and hiding the insertion point (the pointer aligns to the wrapper's transparent
-    // top-left corner). Cleaned up on the next tick, after the browser has snapshotted it.
-    const chip = e.currentTarget.querySelector<HTMLElement>('[data-chip]');
-    if (chip) {
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'position:absolute;top:-1000px;left:-1000px;padding:16px 0 0 16px;pointer-events:none';
-      const ghost = chip.cloneNode(true) as HTMLElement;
-      ghost.style.opacity = '0.6';
-      ghost.style.margin = '0';
-      wrap.appendChild(ghost);
-      document.body.appendChild(wrap);
-      e.dataTransfer.setDragImage(wrap, 0, 0);
-      setTimeout(() => wrap.remove(), 0);
-    }
-  };
+  const handleDragStart = (event: React.DragEvent<HTMLElement>) =>
+    startPlacedChipDrag(event, dragKey, nodeKey, token);
 
   // Double-click renames what the chip stands for, the same gesture that renames a keyword chip. It ends
   // the pop-out the first click of the pair opened, so the two never fight over the chip.

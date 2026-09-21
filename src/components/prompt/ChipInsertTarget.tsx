@@ -12,8 +12,8 @@ import { $createVariableNode } from './VariableNode';
 
 /**
  * Which chip field a shared palette inserts into. One palette serves every field in a panel, so it needs a
- * target: the field holding the caret, which keeps its claim across the palette click itself because that
- * click never takes focus (the palette calls `preventDefault` on mouse-down).
+ * target: the field holding the caret. A completed palette click runs before the delayed focus departure
+ * clears that claim, then insertion returns focus to the field.
  *
  * The claim ends the moment the caret leaves the field, rather than lingering with whichever field held it
  * last. Lingering made every palette chip live at all times, which cost the chips their own gestures —
@@ -59,12 +59,31 @@ interface TargetState {
   release: (key: symbol) => void;
 }
 
+export interface ChipInsertRegistration {
+  insert: (paletteToken: string) => void;
+  undo: () => void;
+  ownerId: string | null;
+}
+
 const ChipInsertTargetContext = createContext<TargetState>({
   insert: null, undo: null, ownerId: null, claim: () => {}, release: () => {},
 });
 
 export function useChipInsertTarget(): TargetState {
   return useContext(ChipInsertTargetContext);
+}
+
+/** Registers one editor's existing insertion and history behavior for any palette source. */
+export function useChipInsertRegistration(vocab: ChipVocabulary, ownerId?: string): ChipInsertRegistration {
+  const [editor] = useLexicalComposerContext();
+  const vocabRef = useRef(vocab);
+  vocabRef.current = vocab;
+  const insert = useCallback(
+    (token: string) => insertChipAtCaret(editor, vocabRef.current, token),
+    [editor],
+  );
+  const undo = useCallback(() => { editor.dispatchCommand(UNDO_COMMAND, undefined); }, [editor]);
+  return useMemo(() => ({ insert, undo, ownerId: ownerId ?? null }), [insert, undo, ownerId]);
 }
 
 /** Wraps a panel so every chip field inside it shares one insert target. */
@@ -94,8 +113,7 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
   // falling to nothing at all — clicking blank panel background — fires no `focusin` and would otherwise
   // leave the palette lit with no caret to insert at.
   //
-  // Deliberately ignores a `relatedTarget` that cannot hold focus: the palette's own mouse-down prevents
-  // the default focus change, so the click that inserts never reaches here.
+  // Deliberately waits past the click: a palette button may take focus before its click inserts the chip.
   useEffect(() => {
     const onFocusOut = () => {
       if (!holder.current) return;
@@ -126,10 +144,8 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
 }
 
 /**
- * Claims the shared insert target for this editor while it holds focus. Deliberately does not release on
- * blur — the palette lives outside the field, so clicking it necessarily blurs; keeping the claim is what
- * makes the click land. The claim is dropped when the field unmounts, or when the provider sees focus land
- * in an ordinary text field that cannot hold a chip.
+ * Claims the shared insert target for this editor while it holds focus. The provider releases the claim
+ * after a completed outside click or when the field unmounts.
  */
 export function ChipInsertTargetPlugin({ vocab, ownerId }: {
   vocab: ChipVocabulary;
@@ -138,18 +154,16 @@ export function ChipInsertTargetPlugin({ vocab, ownerId }: {
 }) {
   const [editor] = useLexicalComposerContext();
   const { claim, release } = useChipInsertTarget();
+  const registration = useChipInsertRegistration(vocab, ownerId);
   // Identity for this field instance, so a later unmount only clears a claim it still owns.
   const key = useMemo(() => Symbol('chip-field'), []);
-  const vocabRef = useRef(vocab);
-  vocabRef.current = vocab;
-
   useEffect(() => {
     const take = () => claim(
       key,
-      (token) => insertChipAtCaret(editor, vocabRef.current, token),
-      () => editor.dispatchCommand(UNDO_COMMAND, undefined),
+      registration.insert,
+      registration.undo,
       editor.getRootElement(),
-      ownerId,
+      registration.ownerId ?? undefined,
     );
     // A DOM focusin listener on the root rather than Lexical's FOCUS_COMMAND: the command is dispatched by
     // the text plugin's own handler and does not fire for every route into the field (a programmatic focus,
@@ -159,7 +173,7 @@ export function ChipInsertTargetPlugin({ vocab, ownerId }: {
       root?.addEventListener('focusin', take);
       if (root?.contains(document.activeElement)) take();
     });
-  }, [editor, claim, key, ownerId]);
+  }, [editor, claim, key, registration]);
 
   useEffect(() => () => release(key), [release, key]);
 
