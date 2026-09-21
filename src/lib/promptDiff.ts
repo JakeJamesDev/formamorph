@@ -1,10 +1,11 @@
 import { diffWordsWithSpace } from 'diff';
+import { PLACEHOLDER_TOKEN_SOURCE } from './placeholders';
 
 /** One run of the diff: unchanged unless flagged as this world's addition or its removal from the default. */
 export type PromptDiffPart = { value: string; added?: boolean; removed?: boolean };
 
-/** Chip tokens as they appear in stored prompt text: `<NARRATION>`, `<TIME|pre=" It is ">`. */
-const CHIP_RE = /<[A-Z][^<>]*>/g;
+/** Chip tokens as they appear in stored prompt text: `<NARRATION>`, `<TIME|pre=" It is ">`, `{{ph:…}}`. */
+const CHIP_RE = new RegExp(`<[A-Z][^<>]*>|${PLACEHOLDER_TOKEN_SOURCE}`, 'g');
 
 /** The private-use area the chip sentinels are drawn from. */
 const PUA_RE = /[\uE000-\uF8FF]/g;
