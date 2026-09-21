@@ -208,6 +208,7 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,
+    acceptsPaletteToken: (t) => palette.some((item) => item.token === t),
   };
 }
 

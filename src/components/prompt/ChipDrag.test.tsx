@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PromptField from './PromptField';
-import { promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { plainVocabulary, placeholderVocabulary, promptVocabulary, type ChipVocabulary } from '@/lib/chipVocabulary';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import { PROMPT_KIND_VARIABLES } from '@/lib/promptVariables';
 import { CHIP_DRAG_MIME } from './chipDragSource';
+import { renderPromptTemplate } from '@/lib/promptTemplate';
 
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div>{text}</div>,
@@ -79,6 +81,23 @@ afterEach(() => {
 });
 
 describe('ChipDragPlugin', () => {
+  it.each([
+    ['another family', promptVocabulary(PROMPT_KIND_VARIABLES.narration), encodePlaceholderToken({ id: 'town', mode: 'world', placementId: 'palette' })],
+    ['a plain-text destination', plainVocabulary(), '<PERSONA>'],
+    ['a variable outside the palette', promptVocabulary([]), '<PERSONA>'],
+  ] as const)('rejects %s without changing authored text', async (_name, vocabulary, token) => {
+    render(<Harness initial="Before" vocabulary={vocabulary} />);
+    aimAfter('Before');
+    const dataTransfer = transfer({ [CHIP_DRAG_MIME]: token });
+    await act(async () => {
+      fireEvent.dragOver(editor(), { clientX: 1, clientY: 1, dataTransfer });
+      fireEvent.drop(editor(), { clientX: 1, clientY: 1, dataTransfer });
+      fireEvent.dragEnd(editor(), { dataTransfer });
+    });
+    expect(screen.getByTestId('value').textContent).toBe('Before');
+    expect(editor().querySelectorAll('[data-chip-token]')).toHaveLength(0);
+  });
+
   it('copies a palette payload at the browser caret', async () => {
     render(<Harness initial="Before" />);
     aimAfter('Before');
@@ -104,6 +123,39 @@ describe('ChipDragPlugin', () => {
     await waitFor(() => expect(screen.getByTestId('value')).toHaveTextContent('Before<PERSONA>'));
     expect(editor().querySelectorAll('[data-chip-token]')).toHaveLength(1);
     expect(editor().querySelector('[data-chip-token]')).toHaveAttribute('data-chip-token', '<PERSONA>');
+  });
+
+  it.each(['world', 'unique'] as const)('preserves %s placeholder identity and path during movement', async (mode) => {
+    const child = encodePlaceholderToken({ id: 'gate', mode: 'world', placementId: 'town-gate' });
+    const vocabulary = placeholderVocabulary([
+      { id: 'town', name: 'Town', roll: false, values: [{ id: 'town-0', text: child }] },
+      { id: 'gate', name: 'Gate', values: [{ id: 'gate-0', text: 'North' }, { id: 'gate-1', text: 'South' }] },
+    ]);
+    const token = encodePlaceholderToken({ id: 'town', mode, placementId: 'authored-placement', path: [{ kind: 'slot', name: 'Gate' }] });
+    render(<Harness initial={`${token}Before`} vocabulary={vocabulary} />);
+    aimAfter('Before');
+    const source = editor().querySelector('[draggable="true"]') as HTMLElement;
+    const dataTransfer = transfer();
+    fireEvent.dragStart(source, { dataTransfer });
+    fireEvent.dragOver(editor(), { clientX: 1, clientY: 1, dataTransfer });
+    fireEvent.drop(editor(), { clientX: 1, clientY: 1, dataTransfer });
+    await waitFor(() => expect(screen.getByTestId('value').textContent).toBe(`Before${token}`));
+    expect(editor().querySelectorAll('[data-chip-token]')).toHaveLength(1);
+  });
+
+  it('moves exact conditional affixes and still omits an absent Persona from output', async () => {
+    const token = '<PERSONA|name.xml|pre=" \nHeading\n "|post="\n tail ">';
+    render(<Harness initial={`${token}Before`} />);
+    aimAfter('Before');
+    const source = editor().querySelector('[draggable="true"]') as HTMLElement;
+    const dataTransfer = transfer();
+    fireEvent.dragStart(source, { dataTransfer });
+    fireEvent.dragOver(editor(), { clientX: 1, clientY: 1, dataTransfer });
+    fireEvent.drop(editor(), { clientX: 1, clientY: 1, dataTransfer });
+    await waitFor(() => expect(screen.getByTestId('value').textContent).toBe(`Before${token}`));
+    const authored = screen.getByTestId('value').textContent!;
+    expect(renderPromptTemplate(authored, { '<PERSONA|name.xml>': 'N/A' })).toBe('Before');
+    expect(renderPromptTemplate(authored, { '<PERSONA|name.xml>': 'Mira' })).toBe('Before \nHeading\n Mira\n tail ');
   });
 
   it('rejects a palette token the destination vocabulary refuses', async () => {

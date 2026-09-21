@@ -117,6 +117,19 @@ The highlight and pill belong to one token. Selecting either opens the chip's op
 
 Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local controls cover present and absent Persona values and read-only editing without saving settings or calling a model. The reference uses a section of the default system prompt; authored prompt wording stays unchanged.
 
+### Shared chip insertion and movement
+
+Drag a palette chip into an editable field to create one placement at the drop caret. Drag a placed chip within its field to move it, including its conditional text. Click insertion remains available at the remembered caret. Undo and Redo restore each committed operation.
+
+| Palette | Eligible fields |
+| --- | --- |
+| World Editor Placeholders | Registered placeholder fields in the current panel, including unfocused and empty fields |
+| Prompt toolbar | Its own prompt field and its offered prompt variables |
+
+Both use the same drag image, insertion indicator, drop handling, and cleanup. Cancellation and unsupported drops preserve the document. Read-only fields and Preview reject edits; placed chips do not move between fields or token families.
+
+The Prompt Chips reference includes production prompt and placeholder editors with local state. Use its empty Notes field to check palette targeting, and its Read-Only control to check protected states. Shared behavior lives in [the drag source](../src/components/prompt/chipDragSource.ts), [field registration](../src/components/prompt/ChipInsertTarget.tsx), and [drop handling](../src/components/prompt/ChipDrag.tsx). Both real screens run [the same browser contract](../e2e/chipInteraction.ts).
+
 ## Pattern: Image-Led Community Creation Cards
 
 **Purpose:** Let readers scan community creations through their artwork while keeping the name, author, summary, social proof, and secondary actions easy to find.
