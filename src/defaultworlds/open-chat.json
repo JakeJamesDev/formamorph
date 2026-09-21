@@ -1,0 +1,43 @@
+{
+  "version": "2.19.0",
+  "worldOverview": {
+    "name": "Open Chat",
+    "description": "A blank stage for talking with an entity from your library. Bring the entity; it brings the scene.",
+    "author": "Formamorph",
+    "thumbnail": "",
+    "bgm": null,
+    "systemPrompt": "",
+    "use3DModel": false,
+    "tags": [
+      "example",
+      "chat",
+      "sandbox"
+    ],
+    "playerSetting": "open",
+    "openings": [
+      {
+        "id": "5f0c2a8e-3b1d-4c6e-9a7f-2d8b4e1c6a90",
+        "text": "I look up and say hello.",
+        "kind": "action"
+      }
+    ]
+  },
+  "stats": [],
+  "locations": [
+    {
+      "id": "9d3e7b21-6c4a-4f85-b0e2-7a1c5d9f3e48",
+      "name": "Here",
+      "isStarting": true,
+      "parentId": null,
+      "playerDescription": "Wherever the conversation takes place.",
+      "aiDescription": "No fixed setting. The scene is wherever the entities present place it."
+    }
+  ],
+  "connections": [],
+  "entities": [],
+  "traits": [],
+  "traitGroups": [],
+  "statUpdates": [],
+  "dictionaries": [],
+  "placeholders": []
+}
