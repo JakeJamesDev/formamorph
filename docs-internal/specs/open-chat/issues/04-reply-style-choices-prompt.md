@@ -18,5 +18,6 @@ Read the prompt-writing guide before editing. Follow it: positive contract, gene
 - [ ] A/B probe against the built-in prompt on both reference tiers, at least 2 runs per case, one imported card as the fixture
 - [ ] Metrics with before and after numbers are recorded under Comments: choices in the voice of the player, choice length, parse success
 - [ ] The regression check from the guide passes on the other metrics
+- [ ] The probe context holds the AI description of the one location as the world ships it; ticket 03 owns any rewrite
 - [ ] The content test asserts the choices override is present
 - [ ] Four gates green
