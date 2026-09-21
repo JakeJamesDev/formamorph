@@ -79,7 +79,7 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 - Four exclusive trait groups, one per placeholder. Each trait carries one placeholder pin with a value typed off the list. The middle trait of each group pins the same text as the default.
 - The narration override reads all four placeholders as chips. Each value is a full instruction sentence, so the prompt reads correctly with any pin.
 - The traits change no stats. They exist only to carry pins.
-- Ruling, 2026-09-21: a world custom prompt cannot hold placeholder chips yet. Ticket 07 adds engine and editor support, and ticket 03 waits on it. Until then the chips stay in the world system prompt.
+- Ruling, 2026-09-21: ticket 07 added placeholder chips to world custom prompts, in the engine and the editor. The tone chips sit in the narration prompt, and the world system prompt is one neutral line.
 - First build step: prove live that a pin with an off-list value masks a one-value placeholder. If it does not, use a multi-value placeholder with weight 0 on every non-default value.
 
 **Readmes**
