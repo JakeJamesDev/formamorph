@@ -175,6 +175,10 @@ function byContent(entry: { full: string; summary: string; name: string }, conte
   return entry.full;
 }
 
+function formatContent(entry: { full: string; summary: string; name: string }, sel: Record<string, string | null>, tag: string): string {
+  return sel.content === 'name' ? entry.name : format(byContent(entry, sel.content), sel.format, tag);
+}
+
 /** The sample value for one concrete token, decoded through its variable's own axes. */
 function sampleFor(variable: PromptVariable, variantId: string | null): string {
   const sel = decodeVariant(variable, variantId);
@@ -191,11 +195,11 @@ function sampleFor(variable: PromptVariable, variantId: string | null): string {
     case '<TRAITS DESCRIPTION>':
       return format(TRAITS, sel.format, 'trait');
     case '<LOCATION>':
-      return format(byContent(LOCATIONS[sel.scope ?? ''] ?? LOCATIONS[''], sel.content), sel.format, 'location');
+      return formatContent(LOCATIONS[sel.scope ?? ''] ?? LOCATIONS[''], sel, 'location');
     case '<ENTITIES>':
-      return format(byContent(ENTITIES[sel.scope ?? ''] ?? ENTITIES[''], sel.content), sel.format, 'entity');
+      return formatContent(ENTITIES[sel.scope ?? ''] ?? ENTITIES[''], sel, 'entity');
     case '<PERSONA>':
-      return format(byContent(PERSONA, sel.content), sel.format, 'entity');
+      return formatContent(PERSONA, sel, 'entity');
     case '<NOTES>':
       return NOTES;
     case '<TIME>':

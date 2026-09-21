@@ -13,6 +13,22 @@ const tok = (id: string, mode: 'world' | 'unique', pid = 'p1') => encodePlacehol
 
 describe('promptVocabulary (regression — the existing prompt family still works)', () => {
   const v = promptVocabulary([]);
+  it.each(['PERSONA|xml', 'LOCATION|parent.xml', 'ENTITIES|inscene.xml'])(
+    'disables Name formatting and preserves the format when content changes for %s', (variant) => {
+    const original = `<${variant}|pre="Playing "|post=".">`;
+    const name = v.setAxis(original, 'content', 'name');
+    expect(v.axes(name).find(axis => axis.id === 'format')).toMatchObject({
+      readOnly: true, readOnlyHelp: variant.startsWith('PERSONA')
+        ? 'Sends the name and pronouns as plain text' : 'Sends names as plain text',
+    });
+    expect(v.selection(name)).toMatchObject({ content: 'name', format: 'xml' });
+    expect(v.setAxis(name, 'content', null)).toBe(original);
+    const summary = v.setAxis(name, 'content', 'summary');
+    expect(v.selection(summary)).toMatchObject({ content: 'summary', format: 'xml' });
+    for (const token of [original, summary, '<STATS DESCRIPTION|xml>', '<TRAITS DESCRIPTION|xml>']) {
+      expect(v.axes(token).find(axis => axis.id === 'format')?.readOnly).not.toBe(true);
+    }
+  });
   it('accepts only the prompt variables offered by this field', () => {
     const vocab = promptVocabulary(PROMPT_KIND_VARIABLES.narration.filter((item) => item.token === '<PERSONA>'));
     expect(vocab.acceptsPaletteToken?.('<PERSONA>')).toBe(true);
