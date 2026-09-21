@@ -22,5 +22,6 @@ Read the prompt-writing guide before editing. Follow it: positive contract, gene
 - [ ] The regression check from the guide passes on the other metrics
 - [ ] An imported greeting as page one, followed by one turn, keeps one frame, checked live
 - [ ] The world system prompt holds one neutral line with no premise (the entities present and the player set the scene), probed together with the override
+- [ ] The AI description of the one location, written unprobed in ticket 01, is in the probed context; keep it or rewrite it on the numbers
 - [ ] The content test asserts the narration override is present and reads all four tone chips, and its finding set no longer holds world-empty-system-prompt
 - [ ] Four gates green
