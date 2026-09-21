@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Placeholder } from '@/types';
-import { promptVocabulary, placeholderVocabulary, chipRowMatches, chipSectionOpens } from './chipVocabulary';
+import { promptVocabulary, placeholderVocabulary, worldPromptVocabulary, chipRowMatches, chipSectionOpens } from './chipVocabulary';
+import { serializeSegments } from './promptTemplate';
 import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
 import { placementLetters } from './placementLetters';
@@ -684,5 +685,61 @@ describe('placeholderVocabulary — scoped placeholders', () => {
     v.create?.('Scar');
     expect(made[0][1]).toEqual({ kind: 'entity', ownerId: 'tam' });
     expect(v.palette().map((r) => r.label)).toEqual(['Town', 'Eyes', 'Iris', 'Mane']);
+  });
+});
+
+describe('worldPromptVocabulary (a world custom prompt holds both chip families)', () => {
+  const variables = PROMPT_KIND_VARIABLES.narration.filter((item) => item.token === '<NOTES>');
+  const hair = P('hair', ['red', 'black']);
+  const v = worldPromptVocabulary(promptVocabulary(variables), placeholderVocabulary([hair]));
+  const chip = tok('hair', 'unique', 'place-1');
+
+  it('splits a prompt at both families and gives the stored text back byte for byte', () => {
+    const text = `Narrate. <NOTES|pre="Remember: ">\n${chip} <not a token> {{user}} end`;
+    const segments = v.parse(text);
+    expect(segments.filter((s) => s.type === 'variable').map((s) => (s.type === 'variable' ? s.token : '')))
+      .toEqual(['<NOTES|pre="Remember: ">', chip, '{{user}}']);
+    expect(serializeSegments(segments)).toBe(text);
+  });
+
+  it('reads each chip through the family that owns it', () => {
+    expect(v.isKnown('<NOTES>')).toBe(true);
+    expect(v.isKnown(chip)).toBe(true);
+    expect(v.isKnown('<not a token>')).toBe(false);
+    expect(v.label(chip)).toBe('name-hair');
+    expect(v.label('<NOTES>')).toBe(promptVocabulary(variables).label('<NOTES>'));
+    expect(v.color(chip)).toBe(placeholderVocabulary([hair]).color(chip));
+    expect(v.display?.('<NOTES>')).toBeUndefined();
+  });
+
+  it('keeps a chip’s own controls: World or Unique on a placeholder, affixes on a prompt variable', () => {
+    expect(v.axes(chip).map((axis) => axis.id)).toEqual(['mode']);
+    expect(v.selection(chip)).toEqual({ mode: 'unique' });
+    expect(decodePlaceholderToken(v.setAxis(chip, 'mode', null))?.mode).toBe('world');
+    expect(v.affixes('<NOTES|pre="x">')).toEqual({ pre: 'x', post: '' });
+    expect(v.affixes(chip)).toBeNull();
+    expect(v.header?.(chip)).toBeNull();
+    expect(v.header?.('<NOTES>')).toBe('');
+  });
+
+  it('offers placeholders from the trigger and prompt variables from the toolbar', () => {
+    expect(v.palette().map((row) => row.label)).toEqual(['name-hair']);
+    expect(v.toolbar?.().map((row) => row.token)).toEqual(['<NOTES>']);
+  });
+
+  it('takes a drop from either palette, and nothing this field does not offer', () => {
+    const paletteChip = v.palette()[0].token;
+    expect(v.acceptsPaletteToken?.(paletteChip)).toBe(true);
+    expect(v.acceptsPaletteToken?.('<NOTES>')).toBe(true);
+    expect(v.acceptsPaletteToken?.('<LOCATION>')).toBe(false);
+    // A placeholder chip gets its own placement; a prompt variable goes in as it is.
+    expect(decodePlaceholderToken(v.freshInsertToken(paletteChip))?.placementId)
+      .not.toBe(decodePlaceholderToken(paletteChip)?.placementId);
+    expect(v.freshInsertToken('<NOTES>')).toBe('<NOTES>');
+  });
+
+  it('holds a prompt variable fixed, so only a placeholder chip can be renamed or re-aimed', () => {
+    expect(v.fixed?.('<NOTES>')).toBe(true);
+    expect(v.fixed?.(chip)).toBe(false);
   });
 });

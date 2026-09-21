@@ -13,7 +13,7 @@ import { qualifiedPlaceholderName } from './placeholderTree';
 import { sortedDescriptors } from './statDescriptorGeometry';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { entityTexts as entityTextFields } from './entityTexts';
-import { openingTexts } from './openings';
+import { overviewTexts } from './overviewTexts';
 
 /**
  * Placement letters — how a placed chip reads on an editor surface.
@@ -111,7 +111,7 @@ export function worldPlacementTexts(world: PlacementWorld): string[] {
     ...(world.traitGroups ?? []).flatMap(traitTexts),
     ...(world.stats ?? []).flatMap(statTexts),
     ...(world.dictionaries ?? []).flatMap(entryTexts),
-    ...present([ov?.systemPrompt, ov?.readme, ov?.introReadme, ...openingTexts(ov)]),
+    ...present(overviewTexts(ov)),
     ...valueTexts(allPlaceholders(world)),
   ];
 }

@@ -39,7 +39,7 @@ import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawOpening, drawUnseenOpening, openingPool } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import type { PersonaPick } from "@/lib/persona";
-import { resolveWorldPrompt, useWorldPromptOptOut } from "@/lib/worldPrompt";
+import { resolveWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
 import { EntityModal } from "../components/modals/EntityModal";
@@ -1782,9 +1782,11 @@ const GameViewer = ({
 
     // Resolve placeholder chips in every assembled value before it's folded into a prompt.
     for (const k in values) values[k] = resolve(values[k]);
+    // The placeholder chips this world's own custom prompts place, keyed by token. A preset places none.
+    Object.assign(values, worldPromptChipValues(worldOverview, declinedWorldPrompts, resolve));
     return values;
   }, [
-    worldOverview, activeStats, generateTraitDescriptions, persona,
+    worldOverview, declinedWorldPrompts, activeStats, generateTraitDescriptions, persona,
     currentLocation, locations, connections, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
     fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
   ]);

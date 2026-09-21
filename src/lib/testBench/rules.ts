@@ -39,7 +39,7 @@ import {
 import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
-import { openingTexts } from '@/lib/openings';
+import { overviewTexts } from '@/lib/overviewTexts';
 import type {
   DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, Trait, World,
 } from '@/types';
@@ -719,10 +719,7 @@ interface ChipOwner {
 const chipOwners = (world: RuleWorld): ChipOwner[] => [
   {
     item: { id: 'overview', name: world.worldOverview?.name || 'Overview', section: 'overview' },
-    texts: [
-      world.worldOverview?.systemPrompt, world.worldOverview?.readme, world.worldOverview?.introReadme,
-      ...openingTexts(world.worldOverview),
-    ],
+    texts: overviewTexts(world.worldOverview),
   },
   ...(world.entities ?? []).map((e) => ({
     item: { ...asItem(e, world), section: 'entities' as const },

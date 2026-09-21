@@ -11,7 +11,7 @@ import {
 } from './placeholderHomes';
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
-import { parsePromptTemplate } from './promptTemplate';
+import { parsePromptTemplate, parseTemplateWithPlaceholders } from './promptTemplate';
 import { promptHeader } from './promptHeader';
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
 import {
@@ -112,7 +112,7 @@ export interface ChipVocabulary {
   label(token: string): string;
   /** What the chip reads as on the surface, where that differs from the label — a placement's own name or
    *  letter. Absent, the chip shows the label plus its {@link variantLabel} in parens. */
-  display?(token: string): string;
+  display?(token: string): string | undefined;
   /** Extra detail for the chip's tooltip — a placeholder chip names itself and puts its mode and values
    *  here. Undefined when the label already says everything. */
   hint?(token: string): string | undefined;
@@ -143,6 +143,8 @@ export interface ChipVocabulary {
   /** Toolbar items to insert. Owned members are left out — they belong to one placeholder and are reached
    *  by drilling into it. */
   palette(): ChipRow[];
+  /** What the field's own toolbar offers, where that is not the palette its trigger opens. */
+  toolbar?(): ChipRow[];
   /** Every member the family has, owned ones included and flagged. For a picker that has to find a
    *  placeholder by name before it can say why the chip cannot be aimed there. */
   allRows?(): ChipRow[];
@@ -615,6 +617,52 @@ export function usePlaceholderChipVocabulary(
     }),
     [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, playerName],
   );
+}
+
+/**
+ * Two token families in one field: a world custom prompt holds prompt variables and the world's
+ * placeholders. Each token goes to the family that knows it. The trigger and the panel's shared palette
+ * offer placeholders; the field's own toolbar keeps the prompt variables.
+ */
+export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipVocabulary): ChipVocabulary {
+  const familyOf = (token: string) => (placeholder.isKnown(token) ? placeholder : prompt);
+  const placeholderFamilyOf = (token: string) => (placeholder.isKnown(token) ? placeholder : undefined);
+  return {
+    parse: parseTemplateWithPlaceholders,
+    isKnown: (t) => familyOf(t).isKnown(t),
+    label: (t) => familyOf(t).label(t),
+    display: (t) => familyOf(t).display?.(t),
+    hint: (t) => familyOf(t).hint?.(t),
+    variantLabel: (t) => familyOf(t).variantLabel(t),
+    color: (t) => familyOf(t).color(t),
+    axes: (t) => familyOf(t).axes(t),
+    selection: (t) => familyOf(t).selection(t),
+    setAxis: (t, axisId, optionId) => familyOf(t).setAxis(t, axisId, optionId),
+    affixes: (t) => familyOf(t).affixes(t),
+    setAffixes: (t, pre, post) => familyOf(t).setAffixes(t, pre, post),
+    header: (t) => familyOf(t).header?.(t) ?? null,
+    setHeader: (t, header) => familyOf(t).setHeader?.(t, header) ?? t,
+    headerBoundaries: (t) => familyOf(t).headerBoundaries?.(t) ?? null,
+    placementLabel: (t) => familyOf(t).placementLabel?.(t) ?? null,
+    setPlacementLabel: (t, label) => familyOf(t).setPlacementLabel?.(t, label) ?? t,
+    palette: placeholder.palette,
+    toolbar: prompt.palette,
+    allRows: placeholder.allRows,
+    freshInsertToken: (t) => familyOf(t).freshInsertToken(t),
+    acceptsPaletteToken: (t) => {
+      const family = familyOf(t);
+      return family.isKnown(t) && (family.acceptsPaletteToken?.(t) ?? true);
+    },
+    drill: (t) => placeholderFamilyOf(t)?.drill?.(t) ?? [],
+    structure: (t) => placeholderFamilyOf(t)?.structure?.(t) ?? null,
+    repoint: (t, at) => placeholderFamilyOf(t)?.repoint?.(t, at) ?? t,
+    create: placeholder.create,
+    createLabel: placeholder.createLabel,
+    promote: placeholder.promote,
+    rename: placeholder.rename && ((t, next) => placeholderFamilyOf(t)?.rename?.(t, next)),
+    // A prompt variable has nothing to rename or re-aim.
+    fixed: (t) => placeholderFamilyOf(t)?.fixed?.(t) ?? !placeholder.isKnown(t),
+  };
 }
 
 /** The editor reads its vocabulary here. Defaults to the prompt family (empty palette) so existing prompt

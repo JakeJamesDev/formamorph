@@ -396,7 +396,7 @@ function VariableToolbar({ vocab, interactive }: {
   vocab: ChipVocabulary;
   interactive: boolean;
 }) {
-  const items = vocab.palette();
+  const items = vocab.toolbar?.() ?? vocab.palette();
   const { insert, startDrag } = useChipInsertRegistration(vocab);
   if (!items.length) return null;
 
@@ -838,8 +838,9 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         {/* Markdown actions address the field's flat text, which a caret inside an open value is not in. */}
         {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled || valuesOpen} />}
         {/* With a shared palette the per-field row would repeat the same chips above every field on the
-            panel — the whole reason the palette was hoisted out. */}
-        {!insertTrigger && <VariableToolbar vocab={vocab} interactive={!editingDisabled} />}
+            panel — the whole reason the palette was hoisted out. A family with a toolbar of its own keeps
+            it: those chips are in no shared palette. */}
+        {(!insertTrigger || vocab.toolbar) && <VariableToolbar vocab={vocab} interactive={!editingDisabled} />}
       </div>
       <div className="flex flex-shrink-0 items-center gap-1">
         {/* Contributed buttons (an AI generate, say) lead, divided from the field's own history the same

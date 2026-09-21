@@ -42,7 +42,8 @@ export type ContextLabel =
   | 'diary-brief'
   | 'intents'
   | 'scene-cast'
-  | 'reply-format';
+  | 'reply-format'
+  | 'placeholder';
 
 /**
  * One run of a message's content. `source` is the editor whose field the run came out of — the text itself
@@ -262,6 +263,7 @@ export const CONTEXT_LABELS: Record<ContextLabel, string> = {
   intents: 'Intents',
   'scene-cast': 'Scene Cast',
   'reply-format': 'Reply Format',
+  placeholder: 'Placeholder',
 };
 
 /** What each assembled run is, in the player's own words — the chip's tooltip. One sentence each, so a
@@ -281,4 +283,5 @@ export const CONTEXT_HINTS: Record<ContextLabel, string> = {
   intents: 'What each character said they want this turn',
   'scene-cast': "Who's in frame for this picture",
   'reply-format': 'The reply lines the answer is read from',
+  placeholder: 'A world placeholder, as this playthrough reads it',
 };

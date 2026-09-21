@@ -440,6 +440,19 @@ describe('replaceAll', () => {
     expect(writes[0][1]).toMatchObject({ aiDescription: `marsh ${token} marsh` });
   });
 
+  it('replaces inside a custom prompt with a chip, and keeps the chips it already holds', () => {
+    const token = encodePlaceholderToken({ id: 'p1', mode: 'world', placementId: 'place-1' });
+    const { src, writes } = sources({
+      worldOverview: overview({ promptOverrides: { systemPrompt: `Narrate the fen. ${token} <NOTES>` } }),
+    });
+    const matches = findMatches(collectSearchTargets(src), 'fen', LOOSE);
+    const summary = replaceAll(matches, (t) => (t.chipCapable ? '<chip>' : null));
+    expect(summary).toMatchObject({ replaced: 1, fields: 1, skipped: 0 });
+    expect(writes).toEqual([['overview', expect.objectContaining({
+      promptOverrides: { systemPrompt: `Narrate the <chip>. ${token} <NOTES>` },
+    })]]);
+  });
+
   it('skips fields that cannot hold a chip and counts them', () => {
     const { src, writes } = sources({
       // `type` is a plain input; `aiDescription` renders chips.

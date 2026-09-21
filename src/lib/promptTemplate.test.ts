@@ -442,3 +442,15 @@ describe('renderPromptTemplateRuns', () => {
     expect(tiled.runs[1].contextLabel).toBe('action');
   });
 });
+
+describe('a prompt variable whose affix holds chip-like text', () => {
+  it('stays labeled as the chip it is', () => {
+    const { content, runs } = renderPromptTemplateRuns(
+      'Read this. <NOTES|pre="{{user}}: ">', { '<NOTES>': 'the ferryman' }, { source: 'system-template' },
+    );
+    expect(content).toBe('Read this. {{user}}: the ferryman');
+    expect(runsTile(content, runs)).toBe(true);
+    expect(runs.at(-1)).toMatchObject({ chip: '<NOTES>', source: 'system-template' });
+    expect(runs.some((run) => run.contextLabel === 'placeholder')).toBe(false);
+  });
+});
