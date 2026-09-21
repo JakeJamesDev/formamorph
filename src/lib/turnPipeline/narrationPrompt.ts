@@ -11,7 +11,6 @@ import { selectSemanticLore, applySemanticLore } from "../semanticDictionary";
 import { renderPromptTemplateRuns, parsePromptTemplate } from "../promptTemplate";
 import { trimEndTiled, type AnatomyRun } from "../requestAnatomy";
 import { splitToken } from "../promptVariables";
-import { restyle } from "../sectionStyle";
 import type { SectionStyle } from "../promptPresets";
 import { markdownGuidance } from "../../components/game/GamePrompts";
 import { lengthGuidance, type ParagraphLimit } from "../outputLength";
@@ -84,7 +83,7 @@ export interface NarrationPromptResult {
 export function buildNarrationPrompt(input: NarrationPromptInput): NarrationPromptResult {
   const {
     template, ctx, action, history, dictionary, actionVec, semanticLore,
-    embedVectors, language, paragraphLimit, maxTokens, markdownOutput, sectionStyle, resolvePH,
+    embedVectors, language, paragraphLimit, maxTokens, markdownOutput, resolvePH,
   } = input;
 
   const chips = chipKeys(template);
@@ -114,14 +113,11 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
     : [];
   const afterEntries = hasAfterChip ? activatedEntries.filter((e) => !beforeEntries.includes(e)) : [];
 
-  // The markdown guidance is a code-generated block authored in markdown, so it is restyled to the active
-  // preset's section style to match the authored prompt's headers; the lore blocks carry no headers of their
-  // own and need none. Trailing whitespace goes, so a trailing chip that resolves to nothing — the language
-  // chip on an English game — leaves no dangling blank lines behind it.
+  // Placements own headers; trimming keeps empty trailing chips from leaving blank lines.
   const rendered = trimEndTiled(renderPromptTemplateRuns(template, {
     ...ctx,
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
-    "<MARKDOWN GUIDANCE>": restyle(markdownGuidance(markdownOutput), sectionStyle),
+    "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
     "<LANGUAGE>": languageDirective("narration", language),

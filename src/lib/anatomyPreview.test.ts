@@ -285,10 +285,12 @@ describe('the narration hub under the output settings the player chose', () => {
   const systemText = (over: Partial<AnatomyPreviewSettings>) => preview({}, PROMPTS, over)[0].content;
 
   it('renders the system prompt in the section style the player picked', () => {
-    expect(systemText({ sectionStyle: 'markdown' })).toContain('## Formatting');
-    expect(systemText({ sectionStyle: 'xml' })).toContain('<formatting>');
-    expect(systemText({ sectionStyle: 'xml' })).not.toContain('## Formatting');
-    expect(systemText({ sectionStyle: 'labels' })).toContain('FORMATTING:');
+    const styledSystemText = (sectionStyle: AnatomyPreviewSettings['sectionStyle']) => preview({},
+      { ...PROMPTS, system: buildStyledValues(PROMPT_TEXT_DEFAULTS, sectionStyle).systemPrompt }, { sectionStyle })[0].content;
+    expect(styledSystemText('markdown')).toContain('## Formatting');
+    expect(styledSystemText('xml')).toContain('<formatting>');
+    expect(styledSystemText('xml')).not.toContain('## Formatting');
+    expect(styledSystemText('labels')).toContain('FORMATTING:');
   });
 
   it('reflects the markdown-output setting', () => {
