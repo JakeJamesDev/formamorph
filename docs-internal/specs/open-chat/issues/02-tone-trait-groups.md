@@ -22,5 +22,5 @@ Until ticket 03 lands, the world system prompt section may read the chips so the
 - [ ] The test asserts each trait changes only its own placeholder, and no value resolves to an empty string
 - [ ] The guard is proven to fail when a pin is broken, per the test bar
 - [ ] Switching a tone trait mid-game changes the resolved value in the AI context, checked live
-- [ ] The content test from ticket 01 now asserts four exclusive groups and stays at zero Test Bench findings
+- [ ] The content test from ticket 01 now asserts four exclusive groups and adds no Test Bench finding to the set
 - [ ] Four gates green

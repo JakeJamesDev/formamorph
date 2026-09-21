@@ -21,5 +21,6 @@ Read the prompt-writing guide before editing. Follow it: positive contract, gene
 - [ ] Metrics with before and after numbers are recorded under Comments: dialogue share of the reply, second-person frame held, reply length per Reply Length setting
 - [ ] The regression check from the guide passes on the other metrics
 - [ ] An imported greeting as page one, followed by one turn, keeps one frame, checked live
-- [ ] The content test asserts the narration override is present and reads all four tone chips
+- [ ] The world system prompt holds one neutral line with no premise (the entities present and the player set the scene), probed together with the override
+- [ ] The content test asserts the narration override is present and reads all four tone chips, and its finding set no longer holds world-empty-system-prompt
 - [ ] Four gates green
