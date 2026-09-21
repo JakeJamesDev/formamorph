@@ -107,7 +107,7 @@ const worldWith = (over: Partial<World>): World => benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const clickButton = (name: string | RegExp) => fireEvent.click(screen.getByRole('button', { name }));
 const confirmPicker = (name: string) =>
-  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name }));
+  fireEvent.click(within(screen.getByRole('dialog', { name })).getByRole('button', { name }));
 /**
  * Radix marks the dialog `aria-hidden` while a Select inside it is open, which takes the whole subtree out of
  * the accessibility tree — so once a row has been opened, the dialog's own controls are reached by their
