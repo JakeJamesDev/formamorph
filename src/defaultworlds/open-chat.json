@@ -20,6 +20,8 @@
       "sandbox"
     ],
     "playerSetting": "open",
+    "introReadme": "💬 **This world is a blank stage.** It has no story, no stats, and one quiet room. The entity you bring sets the scene.\n\n**Bring an entity first.** Add one to your library, or import a card, before you start. Then pick it under **Library Additions**. With nobody picked, you enter an empty room.\n\nUnder **Persona**, pick who you play. **Persona** shows when your library holds a persona.\n\nFour groups set the tone. Pick one trait in each, or skip a group to get its middle setting:\n- **Reply Length**: how much the entity writes each turn\n- **Prose Style**: casual messages, plain prose, or the voice of a novel\n- **Narration Share**: how much description surrounds the speech\n- **Pacing**: who moves the scene, the entity or you\n\nSay hello.",
+    "readme": "## Open Chat\n\nYour action is your side of the conversation. Say it, do it, or both.\n\n**Make it look like a chat**\nOpen Settings, then the **Display** tab. Under **Narration Layout**, pick **Chat**. The whole conversation scrolls as one thread.\n\n**Change the tone any time**\nOpen the **Traits** tab and switch a trait in any tone group. The next reply uses it.\n\n**Direct the scene**\nText in [square brackets] speaks to the AI as the author, and the entity never hears it. Try `I sit down. [Skip ahead to the evening.]`\n\n**Turn choices off**\nFor a pure chat, open Settings, then the **Output** tab. Under **System Prompts**, clear **Choices**.",
     "openings": [
       {
         "id": "5f0c2a8e-3b1d-4c6e-9a7f-2d8b4e1c6a90",

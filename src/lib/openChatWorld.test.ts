@@ -7,6 +7,7 @@ import { planTurn, planHasPass } from './turnPipeline/planTurn';
 import { HIDDEN_SETTING_DEFAULTS } from './settingsAdvancedData';
 import { testInput } from './turnPipeline/turnTestInputs';
 import type { TurnSettings } from './turnPipeline/turnPlan';
+import { buildEnterFlow } from './enterFlow';
 import { collectPins } from './placeholderPins';
 import { readPlaceholders, resolvePlaceholders } from './placeholders';
 import { parsePromptTemplate } from './promptTemplate';
@@ -17,6 +18,9 @@ import {
   worldPromptEnabled,
 } from './worldPrompt';
 import { defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
+import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
 import type { Trait } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -32,8 +36,37 @@ describe('the Open Chat default world', () => {
   it('raises exactly the expected Test Bench findings', () => {
     expect(runRules(world).map((f) => f.ruleId).sort()).toEqual([
       'location-no-entities',
-      'world-no-readme',
     ]);
+  });
+
+  // Setup guidance and play guidance stay apart: each readme shows at its own moment.
+  it('explains setup in the intro readme: the library, the persona, and every tone group', () => {
+    const intro = world.worldOverview.introReadme ?? '';
+    for (const label of ['Library Additions', 'Persona', ...(world.traitGroups ?? []).map((g) => g.name)]) {
+      expect(intro, label).toContain(`**${label}**`);
+    }
+    expect(intro).not.toContain(SETTINGS_COPY.narrationLayout.label);
+  });
+
+  it('opens setup on the intro readme, before the trait picks', () => {
+    const steps = buildEnterFlow({
+      introReadme: world.worldOverview.introReadme, traitCount: world.traits.length,
+      startingLocationCount: world.locations.length, hasLibraryAdditions: false, hasWorldPersonas: false, use3DModel: false,
+    }, 'newGame');
+    expect(steps).toEqual(['intro', 'workspace']);
+  });
+
+  it('names each setting in the gameplay readme by its live label', () => {
+    const readme = world.worldOverview.readme ?? '';
+    const tab = (value: string) => SETTINGS_TABS.find((t) => t.value === value)?.label;
+    const chat = NARRATION_LAYOUTS.find((o) => o.value === 'chat')?.label;
+    for (const label of [
+      tab('display'), SETTINGS_COPY.narrationLayout.label, chat,
+      tab('output'), SETTINGS_COPY.systemPrompts.label, 'Choices', 'Traits',
+    ]) {
+      expect(readme, label).toContain(`**${label}**`);
+    }
+    expect(readme).not.toContain('Library Additions');
   });
 
   it('is a neutral harness: no stats, one unconnected location, no entities, no lore', () => {
