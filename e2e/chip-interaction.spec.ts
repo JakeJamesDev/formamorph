@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { gotoDev, openApp, openPromptEditor } from './app';
 import { decodePlaceholderToken } from '../src/lib/placeholders';
+import type { PromptPresetStore } from '../src/lib/promptPresets';
 import {
   beforeText, chipInteractionContract, dragChipToEnd, setChipFieldText, type ChipSurfaceAdapter,
 } from './chipInteraction';
@@ -48,6 +49,15 @@ const promptField = (page: Page) => page.locator('div.flex.flex-col.gap-2')
 
 const WORLD_ADAPTER: ChipSurfaceAdapter = {
   name: 'World Editor',
+  readSavedText: async (page) => {
+    const save = page.getByRole('button', { name: 'Save', exact: true });
+    await save.click();
+    await expect(save).toBeDisabled();
+    return page.evaluate(async (id) => {
+      const dev = (window as unknown as { __fmDev: { getWorld(id: string): Promise<StoredWorld> } }).__fmDev;
+      return (await dev.getWorld(id)).entities?.find(entity => entity.id === 'ent-0')?.aiDescription;
+    }, WORLD.id);
+  },
   open: async (page) => {
     const { field, paletteChip } = await openWorldField(page);
     return {
@@ -76,6 +86,10 @@ const WORLD_ADAPTER: ChipSurfaceAdapter = {
 
 const SETTINGS_ADAPTER: ChipSurfaceAdapter = {
   name: 'Settings Prompts',
+  readSavedText: (page) => page.evaluate(() => {
+    const store = JSON.parse(localStorage.getItem('FORMAMORPH_promptPresets')!) as PromptPresetStore;
+    return store.presets.find(preset => preset.id === store.activeId)?.values.systemPrompt;
+  }),
   open: async (page) => {
     await openApp(page);
     await openPromptEditor(page);
@@ -100,6 +114,135 @@ const SETTINGS_ADAPTER: ChipSurfaceAdapter = {
 
 chipInteractionContract(WORLD_ADAPTER);
 chipInteractionContract(SETTINGS_ADAPTER);
+
+async function dropWithVisibleCaret(page: Page, source: Locator, x: number, y: number) {
+  const box = (await source.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, y, { steps: 10 });
+  await page.mouse.move(x, y);
+  const caret = page.locator('[data-chip-drop-caret]:visible');
+  await expect(caret).toHaveCount(1);
+  const caretBox = (await caret.boundingBox())!;
+  expect(Math.abs(caretBox.y - y)).toBeLessThan(20);
+  expect(Math.abs(caretBox.x - x)).toBeLessThan(12);
+  await page.mouse.up();
+}
+
+test('placed chips move between chip-only lines', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Native chip dragging is a desktop interaction');
+  const surface = await SETTINGS_ADAPTER.open(page);
+  await setChipFieldText(page, surface.editor, '');
+  await surface.paletteChip.click();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Location', exact: true }).first().click();
+  const persona = surface.editor.locator('[data-lexical-decorator]').filter({ hasText: 'Persona' });
+  const location = surface.editor.locator('[data-lexical-decorator]').filter({ hasText: 'Location' });
+  const locationBox = (await location.boundingBox())!;
+  await dropWithVisibleCaret(page, persona, locationBox.x + locationBox.width + 8, locationBox.y + locationBox.height / 2);
+  expect(await SETTINGS_ADAPTER.readSavedText(page)).toBe('\n<LOCATION><PERSONA>');
+});
+
+test('a placed chip moves to a trailing blank line', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Native chip dragging is a desktop interaction');
+  const surface = await SETTINGS_ADAPTER.open(page);
+  await setChipFieldText(page, surface.editor, '');
+  await surface.paletteChip.click();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  const placed = surface.editor.locator('[data-chip]');
+  const chipBox = (await placed.boundingBox())!;
+  const lineHeight = await surface.editor.evaluate(el => parseFloat(getComputedStyle(el).lineHeight));
+  await dropWithVisibleCaret(page, placed, chipBox.x + 1, chipBox.y + chipBox.height / 2 + 2 * lineHeight);
+  expect(await SETTINGS_ADAPTER.readSavedText(page)).toBe('\n\n<PERSONA>');
+});
+
+async function affixedPrompt(page: Page) {
+  const surface = await SETTINGS_ADAPTER.open(page);
+  if ((page.viewportSize()?.width ?? 1280) < 768) {
+    await surface.field.getByRole('button', { name: 'Edit full screen' }).click();
+  }
+  await surface.editor.click({ position: await beforeText(surface.editor, 'You are the narrator') });
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('Before after');
+  await expect(surface.editor).toHaveText('Before after');
+  await page.keyboard.press('Home');
+  await surface.paletteChip.click();
+  const placed = surface.editor.locator('[data-lexical-decorator]').first();
+  await placed.getByText('Persona', { exact: true }).click();
+  await page.getByLabel('Prepend', { exact: true }).fill('Lead↵↵Heading↵');
+  await page.getByLabel('Append', { exact: true }).fill('↵Tail↵End');
+  await page.keyboard.press('Escape');
+  return { ...surface, placed };
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`inline affix newlines show visible marks and preserve line breaks in ${theme}`, async ({ page }, testInfo) => {
+    await page.addInitScript(value => localStorage.setItem('vite-ui-theme', value), theme);
+    const { placed } = await affixedPrompt(page);
+    const lead = (await placed.locator('mark').filter({ hasText: 'Lead' }).boundingBox())!;
+    const heading = (await placed.locator('mark').filter({ hasText: 'Heading' }).boundingBox())!;
+    const chip = (await placed.locator('[data-chip]').boundingBox())!;
+    const tail = (await placed.locator('mark').filter({ hasText: 'Tail' }).boundingBox())!;
+    const end = (await placed.locator('mark').filter({ hasText: 'End' }).boundingBox())!;
+    await testInfo.attach('inline-affix-lines', { body: await page.screenshot(), contentType: 'image/png' });
+    await page.screenshot({ path: `.scratch/chip-fixes/affixes-${theme}-${testInfo.project.name}.png`, animations: 'disabled' });
+    expect(heading.y - lead.y).toBeGreaterThan(lead.height * 1.5);
+    expect(chip.y).toBeGreaterThan(heading.y);
+    expect(tail.y).toBeGreaterThan(chip.y);
+    expect(end.y).toBeGreaterThan(tail.y);
+    const newlineMarks = placed.locator('[data-affix-newline] mark');
+    await expect(newlineMarks).toHaveCount(1);
+    const highlight = await placed.locator('mark').filter({ hasText: 'Lead' }).evaluate(el => getComputedStyle(el).backgroundColor);
+    for (const mark of await newlineMarks.all()) {
+      expect(await mark.evaluate((element) => getComputedStyle(element, '::before').content)).toBe('"↵"');
+      expect(await mark.evaluate(element => getComputedStyle(element).backgroundColor)).toBe(highlight);
+      expect((await mark.boundingBox())!.width).toBeGreaterThan(0);
+    }
+    if (testInfo.project.name === 'desktop') {
+      await newlineMarks.first().hover();
+      await expect(page.getByText('Included only when Persona has a value', { exact: true })).toBeVisible();
+    }
+});
+}
+
+for (const affix of ['Lead', 'Tail']) {
+  test(`a chip rejects its own ${affix} affix as a drop target`, async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Native chip dragging is a desktop interaction');
+    const { editor, placed } = await affixedPrompt(page);
+    const original = await editor.innerText();
+    const token = await placed.locator('[data-chip-token]').getAttribute('data-chip-token');
+    const source = (await placed.locator('[data-chip]').boundingBox())!;
+    const target = (await placed.locator('mark').filter({ hasText: affix }).boundingBox())!;
+    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target.x + 5, target.y + target.height / 2, { steps: 10 });
+    await page.mouse.move(target.x + 5, target.y + target.height / 2);
+    await expect(page.locator('[data-chip-drop-caret]:visible')).toHaveCount(0);
+    await page.mouse.up();
+    await expect(editor).toHaveJSProperty('innerText', original);
+    await expect(editor.locator('[data-chip-token]')).toHaveCount(1);
+    await expect(editor.locator('[data-chip-token]')).toHaveAttribute('data-chip-token', token!);
+    await dragChipToEnd(placed.locator('[data-chip]'), editor);
+    await expect(editor).toHaveJSProperty('textContent', `Before afterLead\n\nHeading\nPersona\nTail\nEnd`);
+  });
+}
+
+test('newline markers follow typing before the chip and undo', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Keyboard editing in the desktop field');
+  const { editor, field, placed } = await affixedPrompt(page);
+  await placed.getByText('Persona', { exact: true }).click();
+  await page.getByLabel('Prepend', { exact: true }).fill('↵Heading↵');
+  await page.keyboard.press('Escape');
+  await expect(placed.locator('[data-affix-newline]')).toHaveCount(1);
+  await editor.focus();
+  await page.keyboard.press('Control+Home');
+  await page.keyboard.type('Intro');
+  await expect(editor).toHaveJSProperty('textContent', 'Intro\nHeading\nPersona\nTail\nEndBefore after');
+  await expect(placed.locator('[data-affix-newline]')).toHaveCount(0);
+  await field.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(placed.locator('[data-affix-newline]')).toHaveCount(1);
+});
 
 test('a World palette drag chooses the destination instead of the remembered click target', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Native chip dragging is a desktop interaction');

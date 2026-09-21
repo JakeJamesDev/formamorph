@@ -111,9 +111,9 @@ The live Markdown reference reuses the complete production editor. It demonstrat
 
 ### Conditional prompt text
 
-In prompt editors, a chip's prepend and append text appears inline with its exact spaces and line breaks. Highlight that text with the chip's color using `TINT_MARK_CLASS` and `tintMarkStyle` from [`previewTint.ts`](../src/lib/previewTint.ts), the same translucent treatment used in Preview. Preserve the surrounding text color. Do not add a section label or side rule.
+In prompt editors, a chip's prepend and append text appears inline with its exact spaces and line breaks. Show a highlighted `↵` only on otherwise empty affix lines, without adding it to the stored text. Highlight that text with the chip's color using `TINT_MARK_CLASS` and `tintMarkStyle` from [`previewTint.ts`](../src/lib/previewTint.ts), the same translucent treatment used in Preview. Preserve the surrounding text color. Do not add a section label or side rule.
 
-The highlight and pill belong to one token. Selecting either opens the chip's options; editing Prepend or Append keeps focus in that input. Removing or dragging the chip includes its affixes. Whitespace-only runs retain their spacing without a colored mark. The highlight's tooltip identifies the empty-value condition, and the options explain it on mobile. Read-only presets show the same text with disabled options.
+The highlight and pill belong to one token. Selecting either opens the chip's options; editing Prepend or Append keeps focus in that input. Removing or dragging the chip includes its affixes. Spaces retain their spacing without a colored mark; newline markers use the affix highlight. The highlight's tooltip identifies the empty-value condition, and the options explain it on mobile. Read-only presets show the same text with disabled options.
 
 Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local controls cover present and absent Persona values and read-only editing without saving settings or calling a model. The reference uses a section of the default system prompt; authored prompt wording stays unchanged.
 

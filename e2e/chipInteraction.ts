@@ -11,6 +11,7 @@ export interface ChipSurfaceAdapter {
   name: string;
   open(page: Page): Promise<ChipSurface>;
   reopen(page: Page): Promise<ChipSurface>;
+  readSavedText(page: Page): Promise<string | undefined>;
 }
 
 /** Replace the authored field through normal editor input. */
@@ -99,6 +100,40 @@ export function chipInteractionContract(adapter: ChipSurfaceAdapter): void {
       await page.keyboard.type('Z');
       await expect(surface.editor).toHaveText(`${surface.chipLabel}Z`);
     });
+
+    for (const sourceKind of ['palette', 'placement'] as const) {
+      test(`a blank line keeps the ${sourceKind} drop caret and placement on that line`, async ({ page }, testInfo) => {
+        const surface = await adapter.open(page);
+        await setChipFieldText(page, surface.editor, 'Before');
+        await page.keyboard.press('Enter');
+        await page.keyboard.press('Enter');
+        await page.keyboard.type('After');
+        if (sourceKind === 'placement') await surface.paletteChip.click();
+        const before = await beforeText(surface.editor, 'Before');
+        const after = await beforeText(surface.editor, 'After');
+        const box = (await surface.editor.boundingBox())!;
+        const source = (await (sourceKind === 'palette' ? surface.paletteChip : surface.editor.locator('[data-chip]')).boundingBox())!;
+        const target = { x: box.x + before.x, y: box.y + (before.y + after.y) / 2 };
+        await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(target.x, target.y, { steps: 10 });
+        await page.mouse.move(target.x, target.y);
+        const caret = page.locator('[data-chip-drop-caret]:visible');
+        await expect(caret).toHaveCount(1);
+        const caretBox = (await caret.boundingBox())!;
+        await testInfo.attach('blank-line-drop-caret', { body: await page.screenshot(), contentType: 'image/png' });
+        expect(caretBox.y).toBeGreaterThan(box.y + before.y);
+        expect(caretBox.y).toBeLessThan(box.y + after.y);
+        expect(Math.abs(caretBox.x - target.x)).toBeLessThan(4);
+        await page.mouse.up();
+        const placed = surface.editor.locator('[data-chip]');
+        const placedBox = (await placed.boundingBox())!;
+        expect(placedBox.y).toBeGreaterThan(box.y + before.y);
+        expect(placedBox.y).toBeLessThan(box.y + after.y);
+        const token = await surface.editor.locator('[data-chip-token]').getAttribute('data-chip-token');
+        expect(await adapter.readSavedText(page)).toBe(`Before\n${token}\nAfter`);
+      });
+    }
 
     test('palette insertion and movement persist exactly after reopening', async ({ page }) => {
       const surface = await adapter.open(page);
