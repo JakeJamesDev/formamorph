@@ -13,8 +13,9 @@
 //
 // Usage: npx vite-node testing/baseline/harness/open-chat-choices-probe.mjs -- [--endpoint URL]
 //          [--model default] [--runs 2] [--arms A,B] [--cases question,banter] [--seed 11]
-//          [--concurrency 1] [--override-file FILE] [--token T] [--quiet]
+//          [--concurrency 1] [--override-file FILE] [--rescore FILE] [--token T] [--quiet]
 //   --override-file  Draft choices prompt for arm B, in place of the one stored on the world.
+//   --quiet          Prints progress and the table, not each choice.
 //   --rescore        A stored run file: scores its replies again with the current metrics, sends nothing.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -149,14 +150,13 @@ const dice = (a, b) => {
 
 // A line that is not a choice at all: the parser keeps it, so the player would see it as a button.
 const JUNK = /^\s*(#{1,6}\s|(here (are|is)|here'?s|your options|options?\b|choices?\b|option \d|choose\b|possible (actions|replies))|.*:\s*$)|\{\{|<[A-Z][A-Z ]+[|>]/i;
-// A deed wrapped in quotation marks: the narrator would read it as words the player says out loud.
-// A quote that opens with "I" and a present-tense verb is a deed, unless the verb is one people say about
-// themselves ("I work nights", "I think so").
+// A deed in quotation marks ("I move to the chair."): a quote that opens with "I" and a verb, speaks to
+// nobody, and whose verb is not one people say about themselves ("I work nights", "I think so").
 const QUOTED_I_VERB = /^["“]I (?:\w+ly )?(\w+)\b(?!')/;
-const SAID_OF_SELF = /^(am|was|work|think|know|have|had|want|need|like|love|hate|guess|suppose|mean|read|came|heard|saw|thought|do|did|don|can|could|would|should|will|might|must|just|mostly|rarely|never|always|only|still|really|bet|hope|wish|doubt|promise|swear|told|said|owe|collect|write|teach|drive|sell|fix|run|keep)$/i;
+const SAID_OF_SELF = /^(am|was|work|think|know|believe|see|feel|live|prefer|say|have|had|want|need|like|love|hate|guess|suppose|mean|read|came|heard|saw|thought|do|did|can|could|would|should|will|might|must|just|mostly|rarely|never|always|still|bet|hope|wish|doubt|promise|swear|told|said|owe|collect|write|teach|drive|sell|fix|run|keep)$/i;
 const isQuotedDeed = (quote) => {
-  const verb = quote.match(QUOTED_I_VERB)?.[1];
-  return Boolean(verb) && !SAID_OF_SELF.test(verb);
+  const verb = quote.replaceAll('’', "'").match(QUOTED_I_VERB)?.[1];
+  return Boolean(verb) && !SAID_OF_SELF.test(verb) && !/\byou(r|rs)?\b/i.test(quote);
 };
 // Reported speech: the built-in form of a spoken choice.
 const REPORTED = /\b(ask|tell|say|answer|reply|admit|explain|confess|insist|agree|tease|joke|greet|thank|promise|assure|remind|warn)s?\b/i;
@@ -168,20 +168,20 @@ function scoreLine(line, entities) {
   const junk = JUNK.test(line) || unbalanced;
   const quotedDeed = quotes.some(isQuotedDeed);
   const spoken = quotes.length > 0 && !quotedDeed;
-  // The player's voice: a spoken line, or text outside the quotes that is first person. A break is the
-  // player in second or third person, a bare command, a deed in quotation marks, or an entity named as the
-  // speaker.
+  // The player's voice: a spoken line, or first-person text outside the quotes. Every flag below is a break.
   const firstPerson = /^(I|I'|I’|My)\b/.test(outside) || /\b(I|my|me)\b/.test(outside);
   const secondPerson = /\byou(r|rs|rself)?\b/i.test(outside) && !/\bI\b/.test(outside);
-  const entitySpeaks = /\b(she|he|they)\s+(says?|asks?|replies|answers?|adds?|snorts?)\b/i.test(outside)
-    || entities.some((e) =>
-      new RegExp(`\\b${e.name.split(' ')[0]}\\b[^.]*\\b(says?|asks?|replies|answers?)\\b`, 'i').test(outside));
+  const speakers = ['she', 'he', 'they', ...entities.map((e) => e.name.split(' ')[0].replace(/[^\w]/g, ''))];
+  const entitySpeaks = new RegExp(
+    `\\b(${speakers.join('|')})\\s+(?:\\w+ly\\s+)?(says?|asks?|replies|answers|adds?|snorts?)\\b`, 'i').test(outside);
   // "I notices": the verb after "I" written in third person.
-  const agreement = /^I (?:\w+ly )?(?!was\b|always\b|does\b|has\b)\w+(?<![su])s\b/.test(outside);
+  const agreement = /^I (?:\w+ly )?(?!was\b|always\b|sometimes\b|perhaps\b|has\b)\w+(?<![su])s\b/.test(outside);
   const voiced = !junk && !quotedDeed && !secondPerson && !entitySpeaks && !agreement
     && (outside === '' ? spoken : firstPerson);
   return {
     line, words: wordCount(line), spoken, junk, voiced, quotedDeed, agreement,
+    // A deed after the closing quotation mark: still a spoken choice, but longer than the line alone.
+    tail: spoken && outside !== '',
     // Single asterisks reach the choice button as literal characters.
     asterisks: /(^|[^*])\*(?!\*)/.test(line),
     reported: !spoken && REPORTED.test(outside),
@@ -272,6 +272,7 @@ const summarize = (label, rs) => {
     'choices/run': mean(rs.map((r) => r.count)).toFixed(1),
     voiced: pct(lines.map((l) => l.voiced)),
     spoken: pct(lines.map((l) => l.spoken)),
+    tail: pct(lines.map((l) => l.tail)),
     reported: pct(lines.map((l) => l.reported)),
     quotedDeed: lines.filter((l) => l.quotedDeed).length,
     agreement: lines.filter((l) => l.agreement).length,
@@ -279,6 +280,7 @@ const summarize = (label, rs) => {
     'runs w/ spoken': rate(rs.map((r) => r.lines.some((l) => l.spoken))),
     words: mean(lines.map((l) => l.words)).toFixed(1),
     maxWords: Math.max(0, ...lines.map((l) => l.words)),
+    '>10w': pct(lines.map((l) => l.words > 10)),
     '>25w': lines.filter((l) => l.words > 25).length,
     overlap: mean(rs.map((r) => r.overlap)).toFixed(2),
     cut: rate(rs.map((r) => r.cut)),
@@ -293,6 +295,9 @@ for (const arm of arms) {
   }
   const entityRuns = ok.filter((r) => r.arm === arm && CASES[r.caseId].entities.length);
   if (entityRuns.length) rows.push(summarize({ arm, case: 'ALL with an entity' }, entityRuns));
+  // The scenes that invite a reply: each run wants at least one spoken choice.
+  const speechRuns = ok.filter((r) => r.arm === arm && CASES[r.caseId].wantsSpeech);
+  if (speechRuns.length) rows.push(summarize({ arm, case: 'ALL that invite speech' }, speechRuns));
 }
 console.log('');
 console.table(rows);
