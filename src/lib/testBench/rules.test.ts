@@ -367,6 +367,17 @@ describe('reference-integrity rules', () => {
     expect(found[0].items[0]).toMatchObject({ id: 'overview', section: 'overview' });
   });
 
+  it('reports a broken chip in a custom prompt as the overview', () => {
+    const found = only(base({
+      worldOverview: {
+        name: 'Sedge Landing', description: '', systemPrompt: '',
+        promptOverrides: { systemPrompt: 'Narrate. {{ph:gone:world:pl1}}' },
+      } as WorldOverview,
+    }), 'chip-unknown-placeholder');
+    expect(found).toHaveLength(1);
+    expect(found[0].items[0]).toMatchObject({ id: 'overview', section: 'overview' });
+  });
+
   it('reads a chip in a stat description or descriptor as a placement, since both fields resolve', () => {
     const w = base({
       placeholders: [{ id: 'p1', name: 'Vice', values: phValues(['ale']) }],
@@ -1011,6 +1022,19 @@ describe('the unused-placeholder rule', () => {
       stats: [stat({ id: 's1', name: 'Vigor', description: 'Craving for {{ph:p1:world:pl1}}.' })],
     });
     expect(only(w, 'placeholder-unused')).toEqual([]);
+  });
+
+  it('counts a chip in a custom prompt as a use, switched on or not', () => {
+    // The rule's fix deletes what it flags, so a miss here deletes a placeholder a prompt still reads.
+    for (const choicesPromptEnabled of [true, false]) {
+      expect(only(base({
+        worldOverview: {
+          name: 'Sedge Landing', description: '', systemPrompt: '',
+          promptOverrides: { choicesPrompt: 'Offer replies. {{ph:p1:world:pl1}}', choicesPromptEnabled },
+        } as WorldOverview,
+        placeholders: [{ id: 'p1', name: 'Tone', values: phValues(['calm']) }],
+      }), 'placeholder-unused')).toEqual([]);
+    }
   });
 
   it('counts a chip in the world blurb as a use', () => {

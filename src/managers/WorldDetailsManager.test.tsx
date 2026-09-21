@@ -115,6 +115,10 @@ const renderManager = (advanced = true, focusField?: FocusField, onOpenEntity?: 
 
 /** The props the field of the open kind was last given. Only the open kind's editor is mounted. */
 const field = (label: string) => fieldProps.byLabel[label];
+/** The prompt-variable half of a custom prompt field: its toolbar chips and what they preview as. */
+const promptChips = (label: string) => field(label).promptChips as {
+  variables: Array<{ token: string }>; previewValues: Record<string, string>; sampleData?: boolean | string;
+};
 const edit = (label: string, text: string) =>
   act(() => (field(label).onChange as (v: string) => void)(text));
 const checkbox = (kind: string) => screen.getByRole('checkbox', { name: `Use this world's ${kind} prompt` });
@@ -315,7 +319,7 @@ describe('resetting a kind', () => {
 
 const previewValues = async () => {
   await openNarration();
-  return field('World narration prompt').previewValues as Record<string, string>;
+  return promptChips('World narration prompt').previewValues;
 };
 
 describe('the world narration prompt field', () => {
@@ -326,8 +330,9 @@ describe('the world narration prompt field', () => {
     // PromptField gates its Edit/Preview tabs — and the split view built on them — on having values to
     // resolve chips against. Without these the field is a bare textarea.
     expect(props).toBeDefined();
-    expect(Object.keys(props.previewValues as Record<string, string>).length).toBeGreaterThan(0);
-    expect(props.sampleData).toBe('Your world, sample turn');
+    const chips = promptChips('World narration prompt');
+    expect(Object.keys(chips.previewValues).length).toBeGreaterThan(0);
+    expect(chips.sampleData).toBe('Your world, sample turn');
   });
 
   it('previews the world being edited, not the shared sample world', async () => {
@@ -386,11 +391,16 @@ describe('the world narration prompt field', () => {
     expect(values['<LENGTH GUIDANCE>']).toBe('Write a single paragraph.');
   });
 
+  it('hands the field the world’s placeholders, so their chips work in a custom prompt', async () => {
+    await openNarration();
+    expect(field('World narration prompt').placeholders).toBe(placeholders);
+  });
+
   it('gives each kind its own chip palette', async () => {
     const user = await openNarration();
-    const narrationVars = field('World narration prompt').variables as Array<{ token: string }>;
+    const narrationVars = promptChips('World narration prompt').variables;
     await user.click(picker('Choices'));
-    const choicesVars = field('World choices prompt').variables as Array<{ token: string }>;
+    const choicesVars = promptChips('World choices prompt').variables;
 
     // Length and markdown guidance are narration-only: the choices pass has nowhere to put them.
     expect(narrationVars.map((v) => v.token)).toContain('<LENGTH GUIDANCE>');
@@ -402,7 +412,7 @@ describe('the world narration prompt field', () => {
 
   it('previews the language chip in the wording the open kind will actually send', async () => {
     const languageOf = (label: string) =>
-      (field(label).previewValues as Record<string, string>)['<LANGUAGE>'];
+      promptChips(label).previewValues['<LANGUAGE>'];
     const user = await openNarration();
     expect(languageOf('World narration prompt')).toBe('Write all narration in French.');
     await user.click(picker('Choices'));

@@ -199,7 +199,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // One target per custom prompt the author has actually stored — a tab still tracking the preset holds
     // no world text to find, and replacing into it would silently freeze a prompt nobody wrote.
     WORLD_PROMPT_KINDS.forEach((kind) => {
-      add({ ...ovWhere, chipCapable: false }, worldPromptFieldKey(kind),
+      add({ ...ovWhere, chipCapable: true }, worldPromptFieldKey(kind),
         `Custom Prompt (${WORLD_PROMPT_KIND_LABELS[kind]})`, storedWorldPrompt(ov, kind),
         (r, v) => ({ ...r, promptOverrides: setWorldPromptOverride(r.promptOverrides, kind, { text: v }) }));
     });

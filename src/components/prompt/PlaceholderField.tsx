@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import PromptField from './PromptField';
 import ChipInput from './ChipInput';
-import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { promptVocabulary, usePlaceholderChipVocabulary, worldPromptVocabulary } from '@/lib/chipVocabulary';
+import type { PromptVariable } from '@/lib/promptVariables';
 import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
 import { hasUserMacro } from '@/lib/userMacro';
 import {
@@ -35,7 +36,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -44,6 +45,9 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
    *  For an entity's or book's field: its scoped placeholders read bare and come first, and one created
    *  from here lands in its list. */
   ownerId?: string;
+  /** Makes this a world custom prompt: the field also holds prompt variables, offered from its own toolbar
+   *  and previewed from `previewValues`. `sampleData` badges that preview (see `PromptField`). */
+  promptChips?: { variables: PromptVariable[]; previewValues: Record<string, string>; sampleData?: boolean | string };
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
   /** Rendered at the end of the caption's row. Needs `label`. */
@@ -60,7 +64,13 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
   /** Names the editor for assistive tech, for a field whose caption is not its own `label`. */
   ariaLabel?: string;
 }) => {
-  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId, { playerName: true });
+  // A prompt names the player with its Persona variable, so the Player Name chip is not offered there.
+  const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { playerName: !promptChips });
+  const variables = promptChips?.variables;
+  const vocab = useMemo(
+    () => (variables ? worldPromptVocabulary(promptVocabulary(variables), placeholderVocab) : placeholderVocab),
+    [variables, placeholderVocab],
+  );
   const rolls = useEditorPreviewRolls();
   // The world's pins, which the chevrons step onto and a stepped-to stop may name. Without a world bound
   // (a library item) the only pins are the ones this field's own placeholders' values carry.
@@ -70,7 +80,9 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
     [game?.traits, game?.locations, game?.stats, placeholders],
   );
   // Re-read on every reroll: the store's identity carries its version.
-  const previewValues = useMemo(() => rolls.preview(value, placeholders, pinRows), [rolls, value, placeholders, pinRows]);
+  const chipValues = useMemo(() => rolls.preview(value, placeholders, pinRows), [rolls, value, placeholders, pinRows]);
+  const promptValues = promptChips?.previewValues;
+  const previewValues = useMemo(() => (promptValues ? { ...promptValues, ...chipValues } : chipValues), [promptValues, chipValues]);
   // A value edit goes through the same store a chip rename does, and a pin edit through the writer its source
   // kind uses on the pin editors. Writes made since the world last rendered build on each other, so two in
   // one tick never drop the first.
@@ -167,7 +179,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, markdown = f
       onChange={onChange}
       vocabulary={vocab}
       // The Player Name chip previews as its label, so it needs no placeholder behind it.
-      previewValues={hasPlaceholders || hasUserMacro(value) ? previewValues : undefined}
+      previewValues={promptChips || hasPlaceholders || hasUserMacro(value) ? previewValues : undefined}
+      sampleData={promptChips?.sampleData}
       openValues={hasPlaceholders ? openValues : undefined}
       onReroll={hasPlaceholders ? reroll : undefined}
       insertOwnerId={ownerId}

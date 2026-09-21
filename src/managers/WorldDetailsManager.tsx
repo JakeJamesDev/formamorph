@@ -208,7 +208,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
         const enabled = worldPromptEnabled(worldOverview, kind);
         return (
           <div className="space-y-2">
-            <PromptField
+            <PlaceholderField
               value={stored ?? presetPrompts[kind]}
               // Storing on the first divergence is what keeps an untouched kind tracking the preset: a
               // world only carries a prompt its author actually wrote.
@@ -216,13 +216,16 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
                 if (stored === undefined && text === presetPrompts[kind]) return;
                 write(kind, { text, enabled });
               }}
-              variables={PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]]}
-              // The choices prompt's language chip names itself in the directive, so its preview says
-              // "choices" where the pool's default says "narration".
-              previewValues={kind === 'choices'
-                ? { ...previewValues, ...languagePreviewValue('choices', language) }
-                : previewValues}
-              sampleData="Your world, sample turn"
+              placeholders={placeholders}
+              promptChips={{
+                variables: PROMPT_KIND_VARIABLES[PROMPT_KIND_VARIABLE_KEY[kind]],
+                // The choices prompt's language chip names itself in the directive, so its preview says
+                // "choices" where the pool's default says "narration".
+                previewValues: kind === 'choices'
+                  ? { ...previewValues, ...languagePreviewValue('choices', language) }
+                  : previewValues,
+                sampleData: 'Your world, sample turn',
+              }}
               ariaLabel={`World ${label} prompt`}
               resizable
             />

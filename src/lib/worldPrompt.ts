@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
 } from '@/components/game/GamePrompts';
+import { parsePlaceholderText } from '@/lib/placeholders';
+import { isUserMacroToken } from '@/lib/userMacro';
 import type { WorldOverview, WorldPromptOverrides } from '@/types';
 
 const STORAGE_KEY = 'FORMAMORPH_worldPromptOptOut';
@@ -88,6 +90,34 @@ export function resolveWorldPrompt(
 ): string {
   if (optedOut) return presetPrompt;
   return worldPrompt(overview, kind) ?? presetPrompt;
+}
+
+/** Every stored custom prompt, switched on or not: world text that places chips like any other field. */
+export function worldPromptTexts(overview: WorldOverview | null | undefined): string[] {
+  return WORLD_PROMPT_KINDS.flatMap((kind) => storedWorldPrompt(overview, kind) ?? []);
+}
+
+/**
+ * Template values for the placeholder chips in the custom prompts this world applies: each chip token keyed
+ * to what `resolve` reads it as. Spread into a pass's context values, they make a custom prompt render its
+ * chips. A preset is the player's text, so nothing here keys a chip the world's own prompts do not place.
+ */
+export function worldPromptChipValues(
+  overview: WorldOverview | null | undefined,
+  optedOut: boolean,
+  resolve: (text: string) => string,
+): Record<string, string> {
+  const values: Record<string, string> = {};
+  if (optedOut) return values;
+  for (const kind of WORLD_PROMPT_KINDS) {
+    for (const segment of parsePlaceholderText(worldPrompt(overview, kind) ?? '')) {
+      // The Player Name marker is left out: it reads its sentence position from the text around it.
+      if (segment.type === 'variable' && !isUserMacroToken(segment.token)) {
+        values[segment.token] ??= resolve(segment.token);
+      }
+    }
+  }
+  return values;
 }
 
 /**

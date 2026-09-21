@@ -105,6 +105,18 @@ describe('PlaceholderSessionProvider', () => {
     expect(TOWN.values).toContain(h.rolls().unique?.['cue-1']);
   });
 
+  it('rolls a Wildcard that appears only in a custom prompt', () => {
+    // A custom prompt is sent every turn, so an unprimed placement would send a new value each time.
+    const w = world();
+    w.worldOverview.promptOverrides = {
+      choicesPrompt: `Offer replies set in ${encodePlaceholderToken({ id: TOWN.id, mode: 'unique', placementId: 'prompt-1' })}.`,
+    };
+    const h = mount();
+    h.loadWorld(w);
+    h.begin();
+    expect(TOWN.values).toContain(h.rolls().unique?.['prompt-1']);
+  });
+
   it('rolls a Wildcard that appears only in a stat description or descriptor', () => {
     // Both texts reach the player and the AI resolved, so a chip only they carry has to be primed too.
     const w = world();

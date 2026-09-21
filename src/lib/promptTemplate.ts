@@ -1,6 +1,7 @@
 import { TOKEN_PATTERN, splitToken } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader, sectionSpacing } from './promptHeader';
+import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
 /** A prompt template parsed into an ordered run of literal text and variable tokens. */
@@ -32,6 +33,13 @@ export function serializeSegments(segments: PromptSegment[]): string {
   return segments.map((s) => (s.type === 'text' ? s.value : s.token)).join('');
 }
 
+/** A template split at both chip families: its own tokens, then the placeholder chips typed in the text
+ *  between them. Round-trips like {@link parsePromptTemplate}. A render reads every template this way: a
+ *  chip with no value renders as the text it is, so a template nobody keys reads unchanged. */
+export function parseTemplateWithPlaceholders(template: string): PromptSegment[] {
+  return parsePromptTemplate(template).flatMap((s) => (s.type === 'text' ? parsePlaceholderText(s.value) : [s]));
+}
+
 /** Blank and sentinel values omit headed or affixed placements. */
 function isBlankValue(value: string): boolean {
   return value.trim() === '' || value === NONE_PLACEHOLDER;
@@ -39,7 +47,7 @@ function isBlankValue(value: string): boolean {
 
 /** Resolve all placements, retaining tokens without a value; values use keys without Header or affixes. */
 export function renderPromptTemplate(template: string, values: Record<string, string>): string {
-  return resolvePromptSegments(parsePromptTemplate(template), values).map(part => part.text).join('');
+  return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(part => part.text).join('');
 }
 
 /** Resolve placements and their contextual section spacing for every rendering surface. */
@@ -85,8 +93,10 @@ export function promptTemplatePieces(
   values: Record<string, string>,
   labels: TemplateLabels,
 ): AnatomyPiece[] {
-  return resolvePromptSegments(parsePromptTemplate(template), values).map(({ segment, text, resolved }) => {
+  return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(({ segment, text, resolved }) => {
     if (segment.type === 'text' || !resolved) return { text, source: labels.source };
+    // A placeholder's value is world data the playthrough picked, so no editor owns the run.
+    if (decodePlaceholderToken(segment.token)) return { text, contextLabel: 'placeholder' };
     const key = splitToken(segment.token)?.key ?? segment.token;
     return {
       text,

@@ -3,7 +3,7 @@ import { useGameData } from './GameDataContext';
 import { primeRolls, weightedPick } from '@/lib/placeholders';
 import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
 import { entityTexts } from '@/lib/entityTexts';
-import { openingTexts } from '@/lib/openings';
+import { overviewTexts } from '@/lib/overviewTexts';
 import { personaPlaceholderSet, primePersonaRolls } from '@/lib/personaPlaceholders';
 import type { Entity, Placeholder, PlaceholderRolls } from '@/types';
 
@@ -117,11 +117,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
   useEffect(() => {
     if (!sessionActive || placeholders.length === 0) return;
     const texts = [
-      worldOverview.systemPrompt || '',
-      worldOverview.readme || '',
-      worldOverview.introReadme || '',
-      ...openingTexts(worldOverview),
-
+      ...overviewTexts(worldOverview),
       ...entities.flatMap(entityTexts),
       ...locations.flatMap((l) => [l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]),
       ...dictionaries.flatMap((b) => b.entries.flatMap((en) => [en.name, ...(en.key ?? []), ...(en.secondaryKeys ?? []), en.value])),

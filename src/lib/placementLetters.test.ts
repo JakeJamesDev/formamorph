@@ -109,6 +109,18 @@ describe('the document walk', () => {
     expect(letters.get('s-band')).toBe('B');
   });
 
+  it('letters a Unique chip in a custom prompt, after the ones in the overview prose', () => {
+    const letters = worldPlacementLetters({
+      worldOverview: {
+        systemPrompt: `Set in ${chip('town', 'ov-prose')}.`,
+        promptOverrides: { choicesPrompt: `Offer replies set in ${chip('town', 'ov-prompt')}.` },
+      } as never,
+      placeholders: [TOWN],
+    });
+    expect(letters.get('ov-prose')).toBe('A');
+    expect(letters.get('ov-prompt')).toBe('B');
+  });
+
   it('reads a world whose collections are absent without throwing', () => {
     expect(worldPlacementTexts({})).toEqual([]);
   });
