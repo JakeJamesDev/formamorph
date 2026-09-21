@@ -16,44 +16,29 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 
 <MARKDOWN GUIDANCE>
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Background Lore
-<DICTIONARY|before>
+<DICTIONARY|before|format=markdown|header="Background Lore">
 
-## Player Stats
-<STATS DESCRIPTION|descriptions.markdown>
+<STATS DESCRIPTION|descriptions.markdown|header="Player Stats">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|markdown|pre="
-## Player Character
-"|post="
-">
-## Important Player Notes
-<NOTES>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|markdown|header="Player Character">
+<NOTES|format=markdown|header="Important Player Notes">
 
-## Current Location
-<LOCATION|markdown>
+<LOCATION|markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
-## Characters and things that may appear in this location
-<ENTITIES|markdown>
+<ENTITIES|markdown|header="Characters and things that may appear in this location">
 
-## Characters and things that may appear in a sub-location
-<ENTITIES|sublocations.markdown>
+<ENTITIES|sublocations.markdown|header="Characters and things that may appear in a sub-location">
 
-## Characters and things that may appear in a reachable location
-<ENTITIES|reachable.summary.markdown>
+<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">
 
-## Foreground Lore
-<DICTIONARY>
+<DICTIONARY|format=markdown|header="Foreground Lore">
 
 ## Output
 Output only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a "Choose"/"Options" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.
@@ -139,8 +124,7 @@ export const defaultRecapUserPrompt = `Recap the story so far.`;
 // rehydrate-probe.mjs is the evidence bar for any wording change.
 export const defaultRehydrateUserPrompt = `Recall in full the earlier moment my next action returns to. This scene already happened; everything in the recap since then still stands.`;
 
-export const defaultChoicesUserPrompt = `The scene just told to me, the player character:
-<NARRATION>
+export const defaultChoicesUserPrompt = `<NARRATION|format=markdown|header="The scene just told to me, the player character">
 
 Now write my options - one per line, each a single action I take.`;
 
@@ -154,45 +138,31 @@ Reply with only a destination name from the list, or NONE.`;
 
 export const defaultSummaryUserPrompt = `The player's action this turn: <PLAYER ACTION>
 
-The narration that resulted:
-<NARRATION>
+<NARRATION|format=markdown|header="The narration that resulted">
 
 Now record what this turn changed - the player's action and its outcome - in one or two short second-person, present-tense sentences on a single line: what you do and what now stands true as a result. Report reactions only as what they settle (agreed, refused, hesitated), not the moment-by-moment. No quoted dialogue. Nothing else.`;
 
 export const defaultChoicesPrompt = `You are the player choice writer for an interactive roleplay. Your one job is to offer the player a short list of distinct actions their character could take next, in the player's own first-person voice. You never narrate events or act in the story - a separate step already wrote what just happened; you only propose what the player might do about it.
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Player Stats
-<STATS DESCRIPTION|descriptions.markdown>
+<STATS DESCRIPTION|descriptions.markdown|header="Player Stats">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|name.markdown|pre="
-## Player Character
-"|post="
-">
-## Player Notes
-<NOTES>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|name.markdown|header="Player Character">
+<NOTES|format=markdown|header="Player Notes">
 
-## Current Location
-<LOCATION|summary.markdown>
+<LOCATION|summary.markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
-## Characters and things that may appear in this location
-<ENTITIES|summary.markdown>
+<ENTITIES|summary.markdown|header="Characters and things that may appear in this location">
 
-## Characters and things that may appear in a sub-location
-<ENTITIES|sublocations.summary.markdown>
+<ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">
 
-## Characters and things that may appear in a reachable location
-<ENTITIES|reachable.summary.markdown>
+<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">
 
 The player character is "I": every option is written in the player's own first-person voice.
 
@@ -210,18 +180,15 @@ Suggest 3 to 5 distinct things I could do next - each a genuinely different way 
 
 export const defaultStatUpdatesPrompt = `You are the stat tracker for an interactive roleplay. You read what happened this turn and record how it moved the player's stats. Your entire output is stat-change lines - nothing else.
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
 ## Player Stats
 Current readings (shown as current-value/maximum) with what each stat means, so you know each stat's level, range, and purpose. Output only the CHANGE this turn, never a value and never that value/max format.
 <STATS DESCRIPTION|numbers.meaning.markdown>
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
+<TRAITS DESCRIPTION|markdown|header="Traits">
 
-## Player Notes
-<NOTES>
+<NOTES|format=markdown|header="Player Notes">
 
 ## What to change
 - The RIGHT stat in the RIGHT direction is what matters most. A rough amount on the stat the turn actually moved beats a precise amount on the wrong one.
@@ -238,11 +205,9 @@ Current readings (shown as current-value/maximum) with what each stat means, so 
 
 export const defaultLocationChangePrompt = `You are the location router for an interactive roleplay - from the player character's stated action alone, you decide whether they are moving to a new place. You never act in the story; the action's "I" is the player character, never you.
 
-## Current Location
-<LOCATION|summary.markdown>
+<LOCATION|summary.markdown|header="Current Location">
 
-## Where The Player Can Go
-<LOCATION|destinations.summary.markdown>
+<LOCATION|destinations.summary.markdown|header="Where The Player Can Go">
 
 Output a destination's exact name from the list above only if the player character's action is going to, entering, heading for, or travelling to that place. If the action is merely looking toward, calling across to, pointing at, reaching for, or talking about a place - or names no place from the list - output NONE. Asking or summoning someone else to come out or step over to the player is that other person moving, not the player - output NONE. Reply with only the name or NONE, nothing else.`;
 
@@ -253,35 +218,23 @@ Output a destination's exact name from the list above only if the player charact
 // as private stage directions (planDirective); the player never sees it.
 export const defaultThinkingPrompt = `You are the continuity planner for an interactive story. Before the scene is written, you set the stage the narrator then plays out: who is here, exactly how they are placed, and the grounded beats - action and spoken words alike - that follow from the player's action. You never write the narration itself, and you never decide whether the player's own action succeeds - the narrator judges that.
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|markdown|pre="
-## Player Character
-"|post="In the Cast, this is Player Character.
-">
-## Current Location
-<LOCATION|summary.markdown>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|markdown|post="In the Cast, this is Player Character."|header="Player Character">
+<LOCATION|summary.markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
-## Characters and things that may appear in this location
-<ENTITIES|summary.markdown>
+<ENTITIES|summary.markdown|header="Characters and things that may appear in this location">
 
-## Characters and things that may appear in a sub-location
-<ENTITIES|sublocations.summary.markdown>
+<ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">
 
-## Characters and things that may appear in a reachable location
-<ENTITIES|reachable.summary.markdown>
+<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">
 
-## Important Player Notes
-<NOTES>
+<NOTES|format=markdown|header="Important Player Notes">
 
 Respond in exactly this format:
 Cast:
@@ -464,18 +417,15 @@ Your entire reply is that one word, with nothing before or after it.`;
 
 // The opening pass's user message. Reads the narration alone: the pass runs on turn one, where there is no
 // player action worth measuring against.
-export const defaultOpeningTimeUserPrompt = `The opening scene:
-<NARRATION>
+export const defaultOpeningTimeUserPrompt = `<NARRATION|format=markdown|header="The opening scene">
 
 What time of day does this scene take place at?`;
 
 // The clock pass's user message. Same <PLAYER ACTION>/<NARRATION> tokens the other post-narration
 // extractors use, so the assembly matches choices/stats.
-export const defaultTimePassedUserPrompt = `What the character did:
-<PLAYER ACTION>
+export const defaultTimePassedUserPrompt = `<PLAYER ACTION|format=markdown|header="What the character did">
 
-What happened:
-<NARRATION>
+<NARRATION|format=markdown|header="What happened">
 
 How much in-world time passed?`;
 
@@ -507,35 +457,23 @@ export function planDirective(plan: string): string {
 // Pass 1: pick who is in the scene and what is carrying over. Output is parsed into a cast list.
 export const defaultDirectorPrompt = `You are the director of an interactive roleplay. Before the scene is written, set the stage: describe where we are and who is here. Do not write the narration.
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|markdown|pre="
-## Player Character
-"|post="In the Cast, this is Player Character.
-">
-## Current Location
-<LOCATION|summary.markdown>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|markdown|post="In the Cast, this is Player Character."|header="Player Character">
+<LOCATION|summary.markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
-## Characters and things that may appear in this location
-<ENTITIES|summary.markdown>
+<ENTITIES|summary.markdown|header="Characters and things that may appear in this location">
 
-## Characters and things that may appear in a sub-location
-<ENTITIES|sublocations.summary.markdown>
+<ENTITIES|sublocations.summary.markdown|header="Characters and things that may appear in a sub-location">
 
-## Characters and things that may appear in a reachable location
-<ENTITIES|reachable.summary.markdown>
+<ENTITIES|reachable.summary.markdown|header="Characters and things that may appear in a reachable location">
 
-## Important Player Notes
-<NOTES>
+<NOTES|format=markdown|header="Important Player Notes">
 
 Respond in exactly this format:
 Scene: <up to three sentences on where we are and what is visible right now>
@@ -554,8 +492,7 @@ Cast:
 - <ACTIVE CHARACTER GUIDANCE> Output exactly one Scene line and one Cast list - never repeat them, and write nothing else.`;
 
 // The director's per-turn user message: the recent narration recap plus the player's action.
-export const defaultDirectorUserPrompt = `What just happened:
-<NARRATION>
+export const defaultDirectorUserPrompt = `<NARRATION|format=markdown|header="What just happened">
 
 The player's next action: <PLAYER ACTION>
 
@@ -566,23 +503,15 @@ export const defaultCharacterPrompt = `You ARE <CHARACTER NAME>, one character i
 
 Refer to the player in the third person - "the player character" or "them" - never "you" (write "I pin the player character to the wall", not "I pin you").
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|markdown|pre="
-## Player Character
-"|post="
-">
-## Current Location
-<LOCATION|summary.markdown>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|markdown|header="Player Character">
+<LOCATION|summary.markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
 My background is who I am in general; the recap and scene below are where things stand now, so I act from the present moment. In 2-3 sentences, say in the first person what I want and what I do this turn - true to my character, moving the scene forward rather than repeating my last move. Any speech is intent, not quoted words; the narrator writes the dialogue. Output only those sentences.`;
 
@@ -591,29 +520,19 @@ My background is who I am in general; the recap and scene below are where things
 // sheet. That beat sheet becomes this turn's plan, attached to the game-text request's user turn.
 export const defaultStoryboardPrompt = `You are the storyboarder for an interactive roleplay. You are the only stage that sees everything - what just happened, the director's scene, and what each character independently intends - so your job is to reconcile them into one coherent plan for this turn. The characters decided their actions blind to each other, so resolve any overlaps or conflicts, order the actions sensibly, and keep everything consistent with what just happened. The "Character intentions" lines are written in the first person from each character's own point of view and are proposed, attempted actions for you to reconcile and adjudicate - not accomplished facts. Do not write the narration.
 
-## Game World
-<WORLD DESCRIPTION>
+<WORLD DESCRIPTION|format=markdown|header="Game World">
 
-## Player Stats
-<STATS DESCRIPTION|descriptions.markdown>
+<STATS DESCRIPTION|descriptions.markdown|header="Player Stats">
 
-## Traits
-<TRAITS DESCRIPTION|markdown>
-<PERSONA|markdown|pre="
-## Player Character
-"|post="
-">
-## Current Location
-<LOCATION|summary.markdown>
+<TRAITS DESCRIPTION|markdown|header="Traits">
+<PERSONA|markdown|header="Player Character">
+<LOCATION|summary.markdown|header="Current Location">
 
-## Sublocations
-<LOCATION|sublocations.summary.markdown>
+<LOCATION|sublocations.summary.markdown|header="Sublocations">
 
-## Reachable Locations
-<LOCATION|reachable.summary.markdown>
+<LOCATION|reachable.summary.markdown|header="Reachable Locations">
 
-## Important Player Notes
-<NOTES>
+<NOTES|format=markdown|header="Important Player Notes">
 
 Using everything below, output the plan as 3-5 short beats, one per line:
 - Start each beat with "- " and write it as a terse imperative of who does what - not prose.
@@ -628,10 +547,7 @@ Output only the beats - nothing else.`;
 // (lib/sceneTags), which is what keeps a world's look stable from one turn to the next. So the prompt's whole
 // job is to stop the model doing the parts it has not been asked for: left to itself it re-describes hair,
 // clothes and scenery, and those tags then fight the authored ones.
-export const defaultSceneTagsPrompt = `You are the storyboard artist for an illustrated story, and you write the danbooru tags an anime image model is given to draw it. You are given a passage and the people who are in the picture.<PERSONA|markdown|pre="
-
-The passage calls this person you:
-">
+export const defaultSceneTagsPrompt = `You are the storyboard artist for an illustrated story, and you write the danbooru tags an anime image model is given to draw it. You are given a passage and the people who are in the picture.<PERSONA|markdown|header="The passage calls this person you">
 
 Write one line of danbooru tags naming, in this order: what the people in frame are doing, their pose and expression, how the shot is framed, then the light and weather of the moment.
 
@@ -643,11 +559,9 @@ Your entire reply is those tags on one line, separated by commas, with nothing b
 
 // The tag pass's user message. `<IN FRAME>` is the cast the composer settled on (at most two), so the action
 // tags describe those people rather than everyone the passage mentions.
-export const defaultSceneTagsUserPrompt = `In the picture:
-<IN FRAME>
+export const defaultSceneTagsUserPrompt = `<IN FRAME|format=markdown|header="In the picture">
 
-What happens:
-<NARRATION>
+<NARRATION|format=markdown|header="What happens">
 
 Tag what is happening in the picture.`;
 

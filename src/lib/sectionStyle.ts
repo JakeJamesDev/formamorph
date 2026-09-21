@@ -2,20 +2,7 @@ import { PROMPT_TEXT_KEYS, type PromptValues, type SectionStyle } from './prompt
 import { parsePromptTemplate, serializeSegments } from './promptTemplate';
 import { variableForToken, variableAxes, decodeVariant, encodeVariant, baseToken, tokenVariant, splitToken, joinToken } from './promptVariables';
 
-/**
- * Style downcasting. Prompts are authored canonically in markdown — `## Game World` headers and chip tokens
- * carrying the markdown `format` axis (e.g. `<STATS DESCRIPTION|descriptions.markdown>`). The labels style is
- * the plain counterpart: headers become `GAME WORLD:` and any chip's `format` axis drops to its default
- * (`|…markdown` → plain), so *markdown = `##` headers + markdown chip output; labels = `FOO:` headers + plain*.
- *
- * The header transform is line-anchored and only touches lines beginning with `#` — bullets, template colons
- * (`Scene:`, `Hunger: -10`), and prose are untouched by construction, so it's idempotent on already-labels
- * text. The reverse (labels → markdown) is intentionally unsupported: a flat `Foo:` line is ambiguous (real
- * header vs. output-format example), so markdown is always the single source of truth.
- *
- * The xml style instead wraps each section in `<tag>…</tag>` (heading slugified to the tag name); chip bodies
- * stay markdown for now. Like labels, it derives from the canonical markdown source, never the reverse.
- */
+// Built-ins derive from canonical Markdown; raw Header data stays on its placement.
 
 const HEADER_LINE = /^#{1,6}[ \t]+(.+?)[ \t]*$/gm;
 const HEADER_TEST = /^(#{1,6})[ \t]+(.+?)[ \t]*$/;
@@ -88,8 +75,9 @@ export function restyle(text: string, style: SectionStyle): string {
   const masked = parsePromptTemplate(text)
     .map((seg) => {
       if (seg.type === 'text') return seg.value;
-      const heading = splitToken(seg.token)?.pre.split('\n').map(line => HEADER_TEST.exec(line)).find(Boolean);
-      affixLevels.push(heading?.[1].length);
+      const parts = splitToken(seg.token);
+      const heading = parts?.pre.split('\n').map(line => HEADER_TEST.exec(line)).find(Boolean);
+      affixLevels.push(parts?.header?.trim() ? 2 : heading?.[1].length);
       return `${MASK}${tokens.push(restyleAffixes(seg.token, style)) - 1}${MASK}`;
     })
     .join('');
@@ -97,18 +85,20 @@ export function restyle(text: string, style: SectionStyle): string {
   return out.replace(MASKED, (_m, i: string) => tokens[Number(i)]);
 }
 
-/** Set every format-bearing chip token's `format` axis to `format` (`null` = plain), leaving other axes
- *  untouched. Labels uses `null` (plain output); xml uses `'xml'` (nested-tag chip bodies). */
-function setChipFormat(text: string, format: string | null): string {
+/** Align body-capable and Header-only placements with a built-in's selected format. */
+function setChipFormat(text: string, format: 'markdown' | 'xml' | null): string {
   return serializeSegments(
     parsePromptTemplate(text).map((seg) => {
       if (seg.type !== 'variable') return seg;
       const variable = variableForToken(seg.token);
-      if (!variable || !variableAxes(variable).some((a) => a.id === 'format')) return seg;
-      const selection = { ...decodeVariant(variable, tokenVariant(seg.token)), format };
-      // Rebuild through joinToken, carrying the placement's affixes: withVariant alone knows nothing
-      // about them, so a style downcast would silently delete the user's connective wording.
       const parts = splitToken(seg.token);
+      if (!variable || !parts) return seg;
+      if (!variableAxes(variable).some((a) => a.id === 'format')) {
+        return parts.header?.trim()
+          ? { type: 'variable', token: joinToken({ ...parts, headerFormat: format ?? undefined }) }
+          : seg;
+      }
+      const selection = { ...decodeVariant(variable, tokenVariant(seg.token)), format };
       return {
         type: 'variable',
         token: joinToken({
@@ -123,14 +113,12 @@ function setChipFormat(text: string, format: string | null): string {
   );
 }
 
-/** The styled value-set for a built-in preset: headers restyled, and the chip `format` axis aligned to the
- *  style — labels strips it to plain, xml sets it to nested-tag output, markdown keeps the authored value. */
+/** Style built-in prose sections and chip formats without changing raw Headers or affix content. */
 export function buildStyledValues(canonical: PromptValues, style: SectionStyle): PromptValues {
   const out = {} as PromptValues;
   for (const key of PROMPT_TEXT_KEYS) {
     const headered = restyle(canonical[key], style);
-    out[key] =
-      style === 'labels' ? setChipFormat(headered, null) : style === 'xml' ? setChipFormat(headered, 'xml') : headered;
+    out[key] = setChipFormat(headered, style === 'labels' ? null : style);
   }
   return out;
 }

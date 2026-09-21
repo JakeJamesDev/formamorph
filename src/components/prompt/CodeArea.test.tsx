@@ -414,7 +414,7 @@ describe('CodeArea', () => {
     await type(user, 'return "');
 
     await waitFor(() => expect(popup()).toBeTruthy());
-    expect(within(popup()!).getByText('Stamina')).toBeInTheDocument();
+    await waitFor(() => expect(within(popup()!).getByText('Stamina')).toBeInTheDocument());
   });
 
   // Story 5 of the parent spec: Escape is the way out of the field, and the popup must not spend it.

@@ -33,6 +33,13 @@ describe('scannableMessageText', () => {
 });
 
 describe('buildScanCorpus — scans exactly the blocks the prompt renders', () => {
+  it('scans headed and affixed scene placements through their body lookup keys', () => {
+    const { scene } = buildScanCorpus({ ...base, template:
+      '<LOCATION|markdown|header="current location">\n<ENTITIES|markdown|pre="Nearby: "|header="cast">' });
+    expect(scene.find(source => source.region === '<LOCATION|markdown>')?.text).toBe(base.ctx['<LOCATION|markdown>']);
+    expect(scene.find(source => source.region === '<ENTITIES|markdown>')?.text).toBe(base.ctx['<ENTITIES|markdown>']);
+  });
+
   it('uses the rendered variant, not the base token', () => {
     const { scene } = buildScanCorpus(base);
     const regions = scene.map((s) => s.region);

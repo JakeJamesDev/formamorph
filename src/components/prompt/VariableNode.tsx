@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Hint } from '@/components/ui/typography';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
@@ -268,7 +269,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         />
       </PopoverTrigger>
       <PopoverContent
-        className={cn(width, 'max-w-[calc(100vw-1rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto')}
+        className={cn(width, 'max-w-[calc(100vw-1rem)] flex flex-col max-h-[var(--radix-popover-content-available-height)] overflow-hidden p-0')}
         collisionPadding={8}
         align="start"
         // Selecting an option runs editor.update, which returns focus to the editor; without this that
@@ -276,146 +277,150 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         // (pointer-down-outside) and Escape still close it.
         onFocusOutside={(e) => e.preventDefault()}
       >
-        {repicking ? (
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => setRepicking(false)}
-              className="flex items-center gap-1 rounded text-meta text-muted-foreground hover:text-foreground"
-            >
-              <span aria-hidden>‹</span>
-              Back
-            </button>
-            <DrillPicker vocab={vocab} token={token} onPick={repick} />
-          </div>
-        ) : (
-          <>
-            {axes.length ? (
-              <div className="space-y-3">
-                {axes.map((axis) => {
-                  // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
-                  if (axis.toggle) {
-                    const isOn = selection[axis.id] != null;
-                    const onId = axis.options.find((o) => o.id != null)?.id ?? null;
-                    const locked = isOn && toggleOnCount === 1;
-                    return (
-                      <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
-                        <Checkbox
-                          checked={isOn}
-                          disabled={!editable || locked}
-                          onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
-                          className="mt-0.5"
-                        />
-                        <span>
-                          <span className="text-meta font-medium">{axis.label}</span>
-                          {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
-                        </span>
-                      </label>
-                    );
-                  }
-                  const active = selection[axis.id] ?? FULL;
-                  return (
-                    <div key={axis.id} className="space-y-2">
-                      {/* One heading per axis (its own label when multi-axis, else the chip name). */}
-                      <p className="text-meta font-medium">{axes.length > 1 || axis.id === 'format' ? axis.label : `${vocab.label(token)} mode`}</p>
-                      {/* `columns` wraps a long option list onto rows of that width, centered — so a final
-                          short row sits under the middle of the one above rather than hanging off the left. */}
-                      <ToggleGroup
-                        type="single"
-                        value={active}
-                        // A single ToggleGroup clears its value when the active item is clicked again; an axis
-                        // always has a mode, so an empty result is ignored rather than stored.
-                        onValueChange={(v) => { if (v) setAxis(axis.id, v === FULL ? null : v); }}
-                        className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
-                        style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
-                      >
-                        {axis.options.map((opt) => (
-                          <ToggleGroupItem
-                            key={opt.id ?? FULL}
-                            value={opt.id ?? FULL}
-                            disabled={!editable || axis.readOnly}
-                            className="text-meta px-1.5"
-                            style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
-                          >{opt.label}</ToggleGroupItem>
-                        ))}
-                      </ToggleGroup>
-                      {/* A shut axis says why instead: the mode help describes a choice this chip cannot make.
-                          Not in a read-only field, where nothing is on offer and the line would name an
-                          unlock the field itself is holding shut. */}
-                      {axis.readOnly && editable ? (
-                        <p className="text-[11px] text-muted-foreground">{axis.readOnlyHelp}</p>
-                      ) : (
-                        // Help lines stacked in one cell so the pop-out doesn't reflow when switching modes.
-                        <div className="grid">
-                          {axis.options.map((opt) => (
-                            <p
-                              key={opt.id ?? FULL}
-                              className={cn(
-                                'col-start-1 row-start-1 text-[11px] text-muted-foreground',
-                                (opt.id ?? FULL) !== active && 'invisible',
-                              )}
-                            >
-                              {opt.help}
-                            </p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+        <ScrollArea className="min-h-0">
+          <div className="p-4">
+            {repicking ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setRepicking(false)}
+                  className="flex items-center gap-1 rounded text-meta text-muted-foreground hover:text-foreground"
+                >
+                  <span aria-hidden>‹</span>
+                  Back
+                </button>
+                <DrillPicker vocab={vocab} token={token} onPick={repick} />
               </div>
             ) : (
-              !affixes && !repickable && !editableValue && placementLabel == null && header == null
-                && <p className="text-meta text-muted-foreground">No options for this variable.</p>
+              <>
+                {axes.length ? (
+                  <div className="space-y-3">
+                    {axes.map((axis) => {
+                      // Toggle axes render as a checkbox; the last one on is locked so a stats block is never nameless.
+                      if (axis.toggle) {
+                        const isOn = selection[axis.id] != null;
+                        const onId = axis.options.find((o) => o.id != null)?.id ?? null;
+                        const locked = isOn && toggleOnCount === 1;
+                        return (
+                          <label key={axis.id} className={cn('flex items-start gap-2', (!editable || locked) && 'cursor-default')}>
+                            <Checkbox
+                              checked={isOn}
+                              disabled={!editable || locked}
+                              onCheckedChange={() => setAxis(axis.id, isOn ? null : onId)}
+                              className="mt-0.5"
+                            />
+                            <span>
+                              <span className="text-meta font-medium">{axis.label}</span>
+                              {axis.help && <p className="text-[11px] text-muted-foreground">{axis.help}</p>}
+                            </span>
+                          </label>
+                        );
+                      }
+                      const active = selection[axis.id] ?? FULL;
+                      return (
+                        <div key={axis.id} className="space-y-2">
+                          {/* One heading per axis (its own label when multi-axis, else the chip name). */}
+                          <p className="text-meta font-medium">{axes.length > 1 || axis.id === 'format' ? axis.label : `${vocab.label(token)} mode`}</p>
+                          {/* `columns` wraps a long option list onto rows of that width, centered — so a final
+                              short row sits under the middle of the one above rather than hanging off the left. */}
+                          <ToggleGroup
+                            type="single"
+                            value={active}
+                            // A single ToggleGroup clears its value when the active item is clicked again; an axis
+                            // always has a mode, so an empty result is ignored rather than stored.
+                            onValueChange={(v) => { if (v) setAxis(axis.id, v === FULL ? null : v); }}
+                            className={cn('grid w-full', axis.columns && 'flex flex-wrap justify-center gap-1 h-auto')}
+                            style={axis.columns ? undefined : { gridTemplateColumns: `repeat(${axis.options.length}, minmax(0, 1fr))` }}
+                          >
+                            {axis.options.map((opt) => (
+                              <ToggleGroupItem
+                                key={opt.id ?? FULL}
+                                value={opt.id ?? FULL}
+                                disabled={!editable || axis.readOnly}
+                                className="text-meta px-1.5"
+                                style={axis.columns ? { flexBasis: `calc((100% - ${(axis.columns - 1) * 0.25}rem) / ${axis.columns})` } : undefined}
+                              >{opt.label}</ToggleGroupItem>
+                            ))}
+                          </ToggleGroup>
+                          {/* A shut axis says why instead: the mode help describes a choice this chip cannot make.
+                              Not in a read-only field, where nothing is on offer and the line would name an
+                              unlock the field itself is holding shut. */}
+                          {axis.readOnly && editable ? (
+                            <p className="text-[11px] text-muted-foreground">{axis.readOnlyHelp}</p>
+                          ) : (
+                            // Help lines stacked in one cell so the pop-out doesn't reflow when switching modes.
+                            <div className="grid">
+                              {axis.options.map((opt) => (
+                                <p
+                                  key={opt.id ?? FULL}
+                                  className={cn(
+                                    'col-start-1 row-start-1 text-[11px] text-muted-foreground',
+                                    (opt.id ?? FULL) !== active && 'invisible',
+                                  )}
+                                >
+                                  {opt.help}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  !affixes && !repickable && !editableValue && placementLabel == null && header == null
+                    && <p className="text-meta text-muted-foreground">No options for this variable.</p>
+                )}
+                {placementLabel != null && (
+                  <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+                    <p className="text-meta font-medium">Label</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Tells this placement apart from others on the same placeholder. Travels with the chip.
+                    </p>
+                    <Input
+                      aria-label="Label"
+                      value={placementLabel}
+                      disabled={!editable}
+                      onChange={(e) => setPlacementLabel(e.target.value)}
+                      className="h-7 text-meta"
+                    />
+                  </div>
+                )}
+                {header != null && (
+                  <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+                    <label className="block space-y-2">
+                      <span className="text-meta font-medium">Header</span>
+                      <Hint className="text-[11px]">Starts a section when the chip has a value</Hint>
+                      <Input aria-label="Header" value={header} disabled={!editable}
+                        onChange={event => setHeader(event.target.value)} className="h-7 text-meta" />
+                    </label>
+                  </div>
+                )}
+                {affixes && (
+                  <div className={cn('space-y-2', (axes.length || placementLabel != null) && 'mt-4 pt-3 border-t')}>
+                    <p className="text-meta font-medium">Prepend / Append</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Wraps the value, and vanishes with it. Spaces count — check Preview.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
+                      <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
+                    </div>
+                  </div>
+                )}
+                {(repickable || editableValue) && (
+                  // One stack, so a further action needs no new spacing rule of its own.
+                  <div className={cn('space-y-2', (axes.length || affixes || placementLabel != null) && 'mt-4')}>
+                    {/* The chip's own pill already reads as the whole path, so the row is the one control and no
+                        readout of where it points. */}
+                    {repickable && <FlyoutAction onClick={() => setRepicking(true)}>Re-Pick…</FlyoutAction>}
+                    {editableValue && <FlyoutAction onClick={editValue}>Edit Value</FlyoutAction>}
+                  </div>
+                )}
+              </>
             )}
-            {placementLabel != null && (
-              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
-                <p className="text-meta font-medium">Label</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Tells this placement apart from others on the same placeholder. Travels with the chip.
-                </p>
-                <Input
-                  aria-label="Label"
-                  value={placementLabel}
-                  disabled={!editable}
-                  onChange={(e) => setPlacementLabel(e.target.value)}
-                  className="h-7 text-meta"
-                />
-              </div>
-            )}
-            {header != null && (
-              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
-                <label className="block space-y-2">
-                  <span className="text-meta font-medium">Header</span>
-                  <Hint>Starts a section when the chip has a value</Hint>
-                  <Input aria-label="Header" value={header} disabled={!editable}
-                    onChange={event => setHeader(event.target.value)} className="h-7 text-meta" />
-                </label>
-              </div>
-            )}
-            {affixes && (
-              <div className={cn('space-y-2', (axes.length || placementLabel != null) && 'mt-4 pt-3 border-t')}>
-                <p className="text-meta font-medium">Prepend / Append</p>
-                <p className="text-[11px] text-muted-foreground">
-                  Wraps the value, and vanishes with it. Spaces count — check Preview.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <AffixInput label="Prepend" value={affixes.pre} disabled={!editable} onChange={(v) => setAffix('pre', v)} />
-                  <AffixInput label="Append" value={affixes.post} disabled={!editable} onChange={(v) => setAffix('post', v)} />
-                </div>
-              </div>
-            )}
-            {(repickable || editableValue) && (
-              // One stack, so a further action needs no new spacing rule of its own.
-              <div className={cn('space-y-2', (axes.length || affixes || placementLabel != null) && 'mt-4')}>
-                {/* The chip's own pill already reads as the whole path, so the row is the one control and no
-                    readout of where it points. */}
-                {repickable && <FlyoutAction onClick={() => setRepicking(true)}>Re-Pick…</FlyoutAction>}
-                {editableValue && <FlyoutAction onClick={editValue}>Edit Value</FlyoutAction>}
-              </div>
-            )}
-          </>
-        )}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );

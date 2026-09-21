@@ -8,10 +8,14 @@ import { composePreviewValues, SAMPLE_PREVIEW_VALUES, SAMPLE_TURN } from './prev
 import { PARITY_PROMPTS } from './turnPipeline/parityTestInputs';
 import { allGroupedTabs } from './promptGroups';
 import type { ThinkingMode } from '@/contexts/SettingsContext';
+import { buildStyledValues } from './sectionStyle';
+import { renderPromptTemplate } from './promptTemplate';
+import { PROMPT_TEXT_KEYS } from './promptPresets';
 import {
   defaultSystemPrompt, defaultNarrationUserPrompt, defaultRecapUserPrompt,
   defaultNowLinePrompt, defaultRehydrateUserPrompt, defaultOocDirectivePrompt,
   INLINE_THINKING_DIRECTIVE,
+  PROMPT_TEXT_DEFAULTS,
 } from '@/components/game/GamePrompts';
 
 const SETTINGS: AnatomyPreviewSettings = {
@@ -89,6 +93,37 @@ const contextTextOf = (blocks: AnatomyBlock[], label: string) =>
   blocks.flatMap((b) => b.runs.filter((r) => r.contextLabel === label).map((r) => b.content.slice(r.start, r.end)));
 
 const MODES: ThinkingMode[] = ['off', 'precall', 'inline', 'staged'];
+
+describe('current built-in Headers through production request builders', () => {
+  it.each(['markdown', 'labels', 'xml'] as const)('%s: tiles every request and renders current user Headers', sectionStyle => {
+    const values = buildStyledValues(PROMPT_TEXT_DEFAULTS, sectionStyle);
+    const styled = (text: string) => {
+      const key = PROMPT_TEXT_KEYS.find(key => PROMPT_TEXT_DEFAULTS[key] === text);
+      return key ? values[key] : text;
+    };
+    const turn = { ...PROMPTS.turn };
+    for (const key of Object.keys(turn) as (keyof typeof turn)[]) turn[key] = styled(turn[key]);
+    const prompts: AnatomyPreviewPrompts = {
+      system: styled(PROMPTS.system), recap: styled(PROMPTS.recap), now: styled(PROMPTS.now), recall: styled(PROMPTS.recall),
+      turn,
+    };
+    for (const thinkingMode of MODES) {
+      for (const tab of allGroupedTabs()) {
+        const requests = hub(tab, {}, prompts, { sectionStyle, thinkingMode });
+        expect(requests.length, tab).toBeGreaterThan(0);
+        for (const request of requests) {
+          for (const block of request.blocks) expect(runsTile(block.content, block.runs)).toBe(true);
+        }
+      }
+    }
+    const choices = hub('choices', {}, prompts, { sectionStyle })[0];
+    const expected = renderPromptTemplate(values.choicesUserPrompt, valuesFor({ ...SETTINGS, sectionStyle }));
+    expect(choices.blocks.at(-1)?.content).toBe(expected);
+    expect(expected).toContain(sectionStyle === 'xml' ? '<the_scene_just_told_to_me_the_player_character>'
+      : sectionStyle === 'labels' ? 'THE SCENE JUST TOLD TO ME, THE PLAYER CHARACTER:'
+        : '## The Scene Just Told to Me, the Player Character');
+  });
+});
 
 describe('the narration hub', () => {
   it('opens with the system message and continues as an alternating conversation', () => {
