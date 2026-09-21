@@ -53,6 +53,8 @@ export interface PlaceholderToken {
 // parses unchanged. A path segment starts with its kind letter, never `=`, which is what tells the two
 // trailing groups apart when only one is present.
 const TOKEN_RE = /\{\{ph:([^:{}]+):(world|unique):([^:{}]+)(?::([^:{}=][^:{}]*))?(?::=([^:{}]*))?\}\}/g;
+/** One placeholder token's grammar, for a reader that has to keep tokens whole without decoding them. */
+export const PLACEHOLDER_TOKEN_SOURCE = TOKEN_RE.source;
 // The same token with nothing around it: "is this string one whole chip?". Built once — both readers of it
 // run per value on render paths. Ungreedy of state: no `g`, so `exec` never carries a `lastIndex`.
 const WHOLE_TOKEN_RE = new RegExp(`^${TOKEN_RE.source}$`);

@@ -164,6 +164,7 @@ import {
   type WorldPromptKind,
 } from "@/lib/worldPrompt";
 import { PromptDiff, PromptDiffModeToggle, type PromptDiffMode } from "@/components/game/PromptDiff";
+import { allPlaceholders, placeholderOwners } from "@/lib/placeholderHomes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWorldPromptPresets, GLOBAL_PRESET_VALUE } from "@/lib/worldPromptPreset";
 import { promptLibraryTarget } from "@/lib/promptDownload";
@@ -301,6 +302,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Which passes the selected world rewrites — what the details notice names, what the viewer tabs, and
   // what the single opt-out declines. A world that stores a prompt but switched it off customizes nothing.
   const customPromptKinds = useMemo(() => customizedPromptKinds(promptOverview), [promptOverview]);
+  // What the viewer names the prompts' placeholder chips by.
+  const promptWorldData = selectedWorld?.data;
+  const promptPlaceholders = useMemo(() => (promptWorldData ? allPlaceholders(promptWorldData) : undefined), [promptWorldData]);
+  const promptPlaceholderOwners = useMemo(() => (promptWorldData ? placeholderOwners(promptWorldData) : undefined), [promptWorldData]);
   // Falls back to whichever kind the world does customize, so the viewer never opens on an empty tab.
   const [promptTab, setPromptTab] = useState<string>('narration');
   const shownPromptTab = customPromptKinds.includes(promptTab as WorldPromptKind)
@@ -3021,7 +3026,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 value={kind}
                 className="flex-1 min-h-0 mt-0 overflow-auto rounded-md bg-muted p-4"
               >
-                <PromptDiff kind={kind} text={worldPrompt(promptOverview, kind) ?? ''} mode={promptView} />
+                <PromptDiff
+                  kind={kind}
+                  text={worldPrompt(promptOverview, kind) ?? ''}
+                  mode={promptView}
+                  placeholders={promptPlaceholders}
+                  owners={promptPlaceholderOwners}
+                />
               </TabsContent>
             ))}
           </Tabs>

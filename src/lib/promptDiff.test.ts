@@ -108,6 +108,16 @@ describe('promptWordDiff: chips stay atomic', () => {
     expect(added(parts).join('')).toBe('<PLAYER ACTION>');
   });
 
+  it('swaps a placeholder chip whole when only its mode changes', () => {
+    // Unprotected, the word diff splits the token at its colons and highlights only `world`/`unique`.
+    const id = '6f1c2a90-4b1e-4c55-9d2e-0a7b3c4d5e6f';
+    const before = `{{ph:${id}:world:a1b2}}`;
+    const after = `{{ph:${id}:unique:a1b2}}`;
+    const parts = promptWordDiff(`Wear ${before} today.`, `Wear ${after} today.`);
+    expect(removed(parts)).toEqual([before]);
+    expect(added(parts)).toEqual([after]);
+  });
+
   it('leaves lowercase angle text alone — only chips are protected', () => {
     const parts = promptWordDiff('use <name> here', 'use <name> now');
     expect(sideText(parts, 'base')).toBe('use <name> here');
