@@ -587,7 +587,7 @@ export const MiddlePanel = ({
   const revealAnim = revealAnimName(revealSpec);
   const revealStyle = revealVars(revealSpec) as React.CSSProperties;
   // Which partial re-generate actions to offer (mirrors the aux-request gates).
-  const canRegenChoices = choicesEnabled;
+  const canRegenChoices = choicesEnabled && fullMessageHistory[fullMessageHistory.length - 1]?.role === 'assistant';
   const canRegenStats = statUpdatesEnabled && playerStats.length > 0;
   const [toolMenuOpen, setToolMenuOpen] = useState(false);
 

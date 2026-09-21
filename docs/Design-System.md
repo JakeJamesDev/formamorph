@@ -602,7 +602,7 @@ The live reference renders four of the five production strips against their own 
 - The row is absent while the turn streams and when the list is empty. It does not show disabled icons in place of a live turn.
 - **Re-generate Stats** sits to the right of **Edit Stats** in the Stats panel, with a tooltip on each button. It also remains in the narration menus. The panel disables regeneration on past turns and while a reply or scene render is running.
 - A turn with no scene image shows no plate. There is no empty box.
-- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers.
+- Choices in Pages are unnumbered rows. Choices in Chat are unsent bubbles. Both take the same press handlers. **Re-generate Choices** waits for the latest turn to have narration; it remains available after a turn returns no choices. **Jump to Latest** stays hidden before the opening narration.
 
 **Density:** Comfortable. The card uses the narration text size the player sets. The action row and the plate controls are compact icon buttons with tooltips.
 
