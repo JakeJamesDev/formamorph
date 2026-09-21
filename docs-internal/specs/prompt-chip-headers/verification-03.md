@@ -133,3 +133,18 @@ The plugin's independent Standards and Spec reviews compared this unit against `
 | Spec | No missing, partial, incorrect, or unrequested behavior requiring changes. Independently passed 209 focused tests in 2.10 s. |
 
 The ticket is ready for human review. Model quality limitations above remain explicit; no prompt tuning was added to address them.
+
+## Markdown Guidance follow-up
+
+The built-in narration chip now stores `header="Formatting"` and its Format. The guidance value contains only instructions, so renaming or clearing Header cannot leave an embedded heading behind. Preview and gameplay use the same unheaded value. Existing custom template text is not rewritten; bare Markdown Guidance placements now render without a hidden heading. Export envelopes and version are unchanged.
+
+- Live Settings: inspected the read-only Default chip, duplicated it, renamed Header to Presentation, and cleared it with keyboard input. The generated heading changed and disappeared while the chip remained. Returned to Default afterward.
+- Six new regression cases cover enabled/disabled guidance in Markdown, Simple, and XML; each checks default, renamed, and absent Header through preview and gameplay, including anatomy tiling.
+- Focused suite: 174 tests passed in 5.34 s. Changed-module line coverage: GamePrompts 100%, previewValuePool 99.44%, narrationPrompt 96.15%; functions 100% across all three.
+- Mutation: restoring the embedded heading failed all three enabled-format cases in 4.15 s; source restored.
+- Production request comparison: Markdown narration is byte-identical; XML narration changes boundary whitespace only. Planning and choices requests are identical.
+- Local Cydonia comparison: two samples per case per arm, eight calls in 47.51 s. Nonempty and dialogue 4/4 → 4/4; truncation and menu leakage 0/4 → 0/4; bold 0/4 → 1/4. This small sample does not establish unchanged narrative quality.
+- Cloud comparison was explicitly authorized after automatic review requested consent: eight calls in 11.02 s. Nonempty 4/4 → 4/4; dialogue 2/4 → 3/4; truncation, menus, and bold 0/4 → 0/4. Both tiers have only two samples per case per arm.
+- Initial full suite: four failures in 104.58 s—one stale style test and three unrelated UI timing/control failures. The style test now supplies production-styled preset text while retaining its original heading assertions; the final rerun is recorded below.
+
+Final follow-up gates: typecheck and lint exit 0 (one existing fast-refresh warning); build exit 0 in 22.49 s; full standard suite 12,415 passed, three skipped, exit 0 in 100.60 s. The preceding rerun took 100.29 s and failed only the unrelated placeholder-label case; that case and Anatomy passed unchanged in a 101-test focused run (3.57 s). No unrelated UI test or production implementation was changed. Graph refresh completed with exit 0.

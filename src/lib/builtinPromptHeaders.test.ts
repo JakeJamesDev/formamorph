@@ -30,6 +30,32 @@ describe('built-in Header adoption', () => {
   });
 
   for (const style of ['markdown', 'labels', 'xml'] as const) {
+    it.each([true, false])(`${style}: Markdown Guidance uses only its placement Header (enabled=%s)`, markdownOutput => {
+      const settings = { paragraphLimit: 'none' as const, maxTokens: 400, markdownOutput, sectionStyle: style,
+        limitActiveCharacters: false, activeCharacterLimit: 4, language: 'English' };
+      const values = derivedPreviewValues(settings);
+      const template = buildStyledValues(PROMPT_TEXT_DEFAULTS, style).systemPrompt;
+      const chip = parsePromptTemplate(template).find(seg => seg.type === 'variable' && splitToken(seg.token)?.base === '<MARKDOWN GUIDANCE>');
+      expect(chip?.type).toBe('variable');
+      if (chip?.type !== 'variable') throw new Error('Missing Markdown Guidance');
+      expect(splitToken(chip.token)?.header).toBe('Formatting');
+      for (const placement of [chip.token, chip.token.replace('header="Formatting"', 'header="Presentation"'), '<MARKDOWN GUIDANCE>']) {
+        const gameplay = buildNarrationPrompt({ ...settings, template: placement, ctx: {}, action: 'look', history: [],
+          dictionary: [], actionVec: null, semanticLore: false, embedVectors: new Map(), resolvePH: text => text });
+        const preview = renderPromptTemplate(placement, values);
+        expect(gameplay.prompt).toBe(preview);
+        expect(runsTile(gameplay.prompt, gameplay.runs)).toBe(true);
+        const name = placement.includes('Presentation') ? 'Presentation' : 'Formatting';
+        const body = values['<MARKDOWN GUIDANCE>'];
+        const expected = placement === '<MARKDOWN GUIDANCE>' ? body
+          : style === 'markdown' ? `## ${name}\n${body}`
+            : style === 'labels' ? `${name.toUpperCase()}:\n${body}`
+              : `<${name.toLowerCase()}>\n${body}\n</${name.toLowerCase()}>`;
+        expect(preview).toBe(expected);
+        expect(body).not.toMatch(/^(?:## |FORMATTING:|<formatting>)/m);
+      }
+    });
+
     it(`${style}: copies, stores and shares every native Header without rewriting legacy custom text`, () => {
       const builtins = Object.fromEntries(BUILTIN_PRESETS.map(p => [p.id, buildStyledValues(PROMPT_TEXT_DEFAULTS, p.style)]));
       const values = buildStyledValues(PROMPT_TEXT_DEFAULTS, style);

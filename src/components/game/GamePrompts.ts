@@ -14,7 +14,7 @@ export const defaultSystemPrompt = `You are the narrator stage of an interactive
 - The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.
 - Don't report or tabulate the player's stats or their changes - a separate step handles them.
 
-<MARKDOWN GUIDANCE>
+<MARKDOWN GUIDANCE|format=markdown|header="Formatting">
 
 <WORLD DESCRIPTION|format=markdown|header="Game World">
 
@@ -47,8 +47,7 @@ Output only the story prose - the events themselves, with no labels, no mention 
 
 const MARKDOWN_OFF = 'Write plain prose - no headings, lists, or tables.';
 
-const MARKDOWN_ON = `## Formatting
-- Write immersive, flowing prose - never a list, menu, or table.
+const MARKDOWN_ON = `- Write immersive, flowing prose - never a list, menu, or table.
 - Use Markdown emphasis with intent. When a moment genuinely pivots - a sudden threat, a key object, a revealed name - **bold** that one noun so it lands on the page. Don't bold out of habit: skip it on a calm turn, and never bold an incidental or trailing noun just to have one. *Italicize* a sharp inner thought, sound, or stressed word.`;
 
 /** The Markdown formatting directive injected into the game-text prompt (replaces `<MARKDOWN GUIDANCE>`). */

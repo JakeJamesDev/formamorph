@@ -1,5 +1,4 @@
 import { lengthGuidance, type ParagraphLimit } from './outputLength';
-import { restyle } from './sectionStyle';
 import { type SectionStyle } from './promptPresets';
 import { markdownGuidance, activeCharacterGuidance } from '@/components/game/GamePrompts';
 import { languageDirective, type LanguageSurface } from './languages';
@@ -277,7 +276,7 @@ export function languagePreviewValue(surface: LanguageSurface, language: string)
 export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, string> {
   return {
     '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
-    '<MARKDOWN GUIDANCE>': restyle(markdownGuidance(s.markdownOutput), s.sectionStyle),
+    '<MARKDOWN GUIDANCE>': markdownGuidance(s.markdownOutput),
     '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
     ...languagePreviewValue('narration', s.language),
   };
