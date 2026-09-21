@@ -31,7 +31,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 class="absolute top-2 right-2 z-10 flex gap-1"
               >
                 <button
-                  aria-controls="radix-:r10:"
+                  aria-controls="radix-:ru:"
                   aria-expanded="false"
                   aria-haspopup="dialog"
                   aria-label="More narration options"
@@ -39,7 +39,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                   data-base-ui-tooltip-trigger=""
                   data-idle="true"
                   data-state="closed"
-                  id="base-ui-:r12:"
+                  id="base-ui-:r10:"
                   type="button"
                 >
                   <svg
@@ -122,48 +122,10 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                     2
                   </span>
                   <button
-                    aria-label="Generate Scene Image"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                    data-base-ui-tooltip-trigger=""
-                    id="base-ui-:r1i:"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-image-plus h-4 w-4 shrink-0"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M16 5h6"
-                      />
-                      <path
-                        d="M19 2v6"
-                      />
-                      <path
-                        d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
-                      />
-                      <path
-                        d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
-                      />
-                      <circle
-                        cx="9"
-                        cy="9"
-                        r="2"
-                      />
-                    </svg>
-                  </button>
-                  <button
                     aria-label="Edit"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:r1k:"
+                    id="base-ui-:r1g:"
                   >
                     <svg
                       aria-hidden="true"
@@ -190,7 +152,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                     aria-label="Copy Text"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:r1m:"
+                    id="base-ui-:r1i:"
                   >
                     <svg
                       aria-hidden="true"
@@ -222,7 +184,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                     aria-label="Rewind to Here"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent h-8 w-8 text-destructive hover:text-destructive"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:r1o:"
+                    id="base-ui-:r1k:"
                   >
                     <svg
                       aria-hidden="true"
@@ -250,7 +212,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                     aria-label="More"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:r1q:"
+                    id="base-ui-:r1m:"
                   >
                     <svg
                       aria-hidden="true"
@@ -357,7 +319,7 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 class=""
               >
                 <button
-                  aria-controls="radix-:r1r:"
+                  aria-controls="radix-:r1n:"
                   aria-current="page"
                   aria-expanded="false"
                   aria-haspopup="dialog"
@@ -650,48 +612,10 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     </svg>
                   </button>
                   <button
-                    aria-label="Generate Scene Image"
-                    class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
-                    data-base-ui-tooltip-trigger=""
-                    id="base-ui-:rk:"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      class="lucide lucide-image-plus h-4 w-4 shrink-0"
-                      fill="none"
-                      height="24"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M16 5h6"
-                      />
-                      <path
-                        d="M19 2v6"
-                      />
-                      <path
-                        d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"
-                      />
-                      <path
-                        d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
-                      />
-                      <circle
-                        cx="9"
-                        cy="9"
-                        r="2"
-                      />
-                    </svg>
-                  </button>
-                  <button
                     aria-label="Edit"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:rm:"
+                    id="base-ui-:rk:"
                   >
                     <svg
                       aria-hidden="true"
@@ -718,7 +642,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     aria-label="Text to Speech"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:ro:"
+                    id="base-ui-:rm:"
                   >
                     <svg
                       aria-hidden="true"
@@ -742,7 +666,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     aria-label="Copy Text"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:rq:"
+                    id="base-ui-:ro:"
                   >
                     <svg
                       aria-hidden="true"
@@ -775,7 +699,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                     aria-label="More"
                     class="inline-flex items-center justify-center whitespace-nowrap rounded-md border text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-8 w-8"
                     data-base-ui-tooltip-trigger=""
-                    id="base-ui-:rs:"
+                    id="base-ui-:rq:"
                   >
                     <svg
                       aria-hidden="true"
@@ -891,7 +815,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                         aria-label="Re-generate Choices"
                         class="inline-flex items-center justify-center whitespace-nowrap text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 border-border hover:bg-accent hover:text-accent-foreground h-auto w-10 rounded-none border-0"
                         data-base-ui-tooltip-trigger=""
-                        id="base-ui-:ru:"
+                        id="base-ui-:rs:"
                       >
                         <svg
                           aria-hidden="true"
@@ -997,7 +921,7 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 class=""
               >
                 <button
-                  aria-controls="radix-:rv:"
+                  aria-controls="radix-:rt:"
                   aria-current="page"
                   aria-expanded="false"
                   aria-haspopup="dialog"

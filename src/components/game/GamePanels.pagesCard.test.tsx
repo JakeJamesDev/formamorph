@@ -59,6 +59,8 @@ describe('Narration layout parity', () => {
     const chatted = await chatActions(turn);
     expect(pages.row).toEqual(chatted.row);
     expect(pages.menu).toEqual(chatted.menu);
+    expect(pages.row).not.toContain('Generate Scene Image');
+    expect(pages.menu).toContain('Generate Scene Image');
     // The menu lists the row's icons and the items behind its More icon.
     expect(pages.row.length).toBeGreaterThan(1);
     expect(pages.menu).toEqual(expect.arrayContaining(pages.row.filter((n) => n !== 'More')));

@@ -33,9 +33,9 @@ describe('Chat bubble actions', () => {
   it('gives the latest bubble the re-generate actions and a past bubble Rewind to Here', async () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: chat });
     expect(names(await row(3))).toEqual([
-      'Re-generate Narration', 'Re-generate Stats', 'Generate Scene Image', 'Edit', 'Text to Speech', 'Copy Text', 'More',
+      'Re-generate Narration', 'Re-generate Stats', 'Edit', 'Text to Speech', 'Copy Text', 'More',
     ]);
-    expect(names(await row(2))).toEqual(['Generate Scene Image', 'Edit', 'Copy Text', 'Rewind to Here', 'More']);
+    expect(names(await row(2))).toEqual(['Edit', 'Copy Text', 'Rewind to Here', 'More']);
   });
 
   it('shows each turn number on its row', async () => {
@@ -74,7 +74,8 @@ describe('Chat bubble actions', () => {
   it('runs the scene and audio actions for the bubble\'s own turn', async () => {
     const view = renderMiddlePanel({ ttsLoaded: true }, { turns: TURNS, settings: chat, page: 3 });
     const past = await row(2);
-    fireEvent.click(within(past).getByRole('button', { name: 'Generate Scene Image' }));
+    fireEvent.click(within(past).getByRole('button', { name: 'More' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Generate Scene Image' }));
     expect(view.props.onSceneImage).toHaveBeenCalledWith(undefined, 2);
     fireEvent.click(within(await row(3)).getByRole('button', { name: 'Text to Speech' }));
     expect(view.props.onTTSClick).toHaveBeenCalledTimes(1);
@@ -183,7 +184,7 @@ describe('Chat bubble menus', () => {
       const icons = names(await row(turn)).filter((n) => n !== 'More');
       rightClick(await narrationBubble(turn));
       const rows = menuRows();
-      expect(rows.filter((r) => r !== '|').sort()).toEqual([...icons, 'Write Scene Tags', 'Regenerate Audio'].sort());
+      expect(rows.filter((r) => r !== '|').sort()).toEqual([...icons, 'Generate Scene Image', 'Write Scene Tags', 'Regenerate Audio'].sort());
       fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
       await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
     }
