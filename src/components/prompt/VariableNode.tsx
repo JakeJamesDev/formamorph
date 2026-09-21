@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
+import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { remintPlaceholderPlacements } from '@/lib/placeholders';
 import { OpenValueChip } from './OpenValueChip';
 import { EditValueContext, OpenValuesContext } from './openValueContext';
@@ -77,6 +78,21 @@ function FlyoutAction({ onClick, children }: { onClick: () => void; children: Re
   );
 }
 
+/** Whether a leading affix newline ends an otherwise empty authored line. */
+function $startsOnEmptyLine(nodeKey: NodeKey, vocab: ChipVocabulary): boolean {
+  let previous = $getNodeByKey(nodeKey)?.getPreviousSibling();
+  while (previous) {
+    const isChip = $isVariableNode(previous);
+    const text = $isVariableNode(previous) ? vocab.affixes(previous.getToken())?.post ?? '' : previous.getTextContent();
+    const lastBreak = text.lastIndexOf('\n');
+    if (text.slice(lastBreak + 1).trim()) return false;
+    if (lastBreak >= 0) return true;
+    if (isChip) return false;
+    previous = previous.getPreviousSibling();
+  }
+  return true;
+}
+
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
  *  single-click pop-out. Variables with `variants` show a segmented control to switch the chip's mode
  *  (e.g. Location → Full | Summary | List); others show a placeholder. */
@@ -101,6 +117,14 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   const axes = known ? vocab.axes(token) : [];
   const selection = known ? vocab.selection(token) : {};
   const affixes = known ? vocab.affixes(token) : null;
+  const [startsOnEmptyLine, setStartsOnEmptyLine] = useState(() =>
+    editor.getEditorState().read(() => $startsOnEmptyLine(nodeKey, vocab)));
+  useEffect(() => {
+    if (!/^[^\S\n]*\n/.test(affixes?.pre ?? '')) return;
+    const update = () => editor.getEditorState().read(() => setStartsOnEmptyLine($startsOnEmptyLine(nodeKey, vocab)));
+    update();
+    return editor.registerUpdateListener(update);
+  }, [editor, nodeKey, vocab, affixes?.pre]);
   const placementLabel = known ? vocab.placementLabel?.(token) ?? null : null;
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
@@ -194,6 +218,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
           token={token}
           vocab={vocab}
           showAffixes
+          startsOnEmptyLine={startsOnEmptyLine}
           draggable={editable}
           onDragStart={editable ? handleDragStart : undefined}
           onDoubleClick={renameable ? startRename : undefined}

@@ -15,6 +15,30 @@ function Field({ readOnly = false, onChange = (_value: string) => {} }) {
 }
 
 describe('inline conditional text in the prompt editor', () => {
+  it('marks otherwise empty affix lines without changing the token or adding characters to its text', () => {
+    const onChange = vi.fn();
+    const { container } = render(<Field onChange={onChange} />);
+    const placement = container.querySelector('[data-chip-token]')!;
+    expect(placement.querySelectorAll('[data-affix-newline]')).toHaveLength(1);
+    expect(placement.textContent).toBe('\n## Player Character\nPersona (Markdown)\n');
+    expect(placement.getAttribute('data-chip-token')).toBe('<PERSONA|markdown>');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('updates leading newline markers when the surrounding authored line changes', async () => {
+    const vocabulary = promptVocabulary([]);
+    const onChange = vi.fn();
+    const field = (value: string) => <PromptField value={value} vocabulary={vocabulary} onChange={onChange} />;
+    const { container, rerender } = render(field(`Before${TOKEN}`));
+    expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(0);
+    rerender(field(`Before\n  ${TOKEN}`));
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(1));
+    rerender(field(`<LOCATION>${TOKEN}`));
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(0));
+    rerender(field(`<LOCATION|post="\n">${TOKEN}`));
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(1));
+  });
+
   it('opens the chip from its heading and saves edits inside the token', async () => {
     const onChange = vi.fn();
     render(<Field onChange={onChange} />);

@@ -125,6 +125,23 @@ describe('ChipDragPlugin', () => {
     expect(editor().querySelector('[data-chip-token]')).toHaveAttribute('data-chip-token', '<PERSONA>');
   });
 
+  it('adjusts an element destination when removing the earlier source chip', async () => {
+    render(<Harness initial={'<PERSONA>\n<LOCATION>'} />);
+    Object.defineProperty(document, 'caretRangeFromPoint', {
+      configurable: true,
+      value: () => {
+        const range = document.createRange();
+        range.selectNodeContents(editor().firstElementChild!);
+        range.collapse(false);
+        return range;
+      },
+    });
+    const dataTransfer = transfer();
+    fireEvent.dragStart(editor().querySelector('[draggable="true"]')!, { dataTransfer });
+    fireEvent.drop(editor(), { clientX: 1, clientY: 1, dataTransfer });
+    await waitFor(() => expect(screen.getByTestId('value').textContent).toBe('\n<LOCATION><PERSONA>'));
+  });
+
   it.each(['world', 'unique'] as const)('preserves %s placeholder identity and path during movement', async (mode) => {
     const child = encodePlaceholderToken({ id: 'gate', mode: 'world', placementId: 'town-gate' });
     const vocabulary = placeholderVocabulary([
@@ -156,6 +173,19 @@ describe('ChipDragPlugin', () => {
     const authored = screen.getByTestId('value').textContent!;
     expect(renderPromptTemplate(authored, { '<PERSONA|name.xml>': 'N/A' })).toBe('Before');
     expect(renderPromptTemplate(authored, { '<PERSONA|name.xml>': 'Mira' })).toBe('Before \nHeading\n Mira\n tail ');
+  });
+
+  it.each(['Heading', 'tail'])('rejects a drop event on its own %s even when the browser caret snaps elsewhere', async (label) => {
+    const token = '<PERSONA|pre="Heading\n"|post="\ntail">';
+    render(<Harness initial={`${token}Before`} />);
+    aimAfter('Before');
+    const dataTransfer = transfer();
+    fireEvent.dragStart(editor().querySelector('[draggable="true"]')!, { dataTransfer });
+    fireEvent.dragOver(screen.getByText(label), { clientX: 1, clientY: 1, dataTransfer });
+    expect(dataTransfer.dropEffect).toBe('none');
+    fireEvent.drop(screen.getByText(label), { clientX: 1, clientY: 1, dataTransfer });
+    await act(async () => {});
+    expect(screen.getByTestId('value').textContent).toBe(`${token}Before`);
   });
 
   it('rejects a palette token the destination vocabulary refuses', async () => {

@@ -31,10 +31,11 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
   grabbable?: boolean;
   /** Display the placement's conditional text in the editor. */
   showAffixes?: boolean;
+  startsOnEmptyLine?: boolean;
 }
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
-  { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, className, ...rest },
+  { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, startsOnEmptyLine = true, className, ...rest },
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
@@ -45,11 +46,27 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
   const hint = vocab.hint?.(token);
   const affixes = showAffixes ? vocab.affixes(token) : null;
   const hasAffixes = !!(affixes?.pre || affixes?.post);
-  const affixText = (value: string) => value.split(/(\r?\n)/).map((part, index) => part.trim() ? (
-    <Tip key={index} tip={`Included only when ${name} has a value`} labelsChild={false}>
-      <mark className={`${TINT_MARK_CLASS} cursor-pointer`} style={tintMarkStyle(color)}>{part}</mark>
-    </Tip>
-  ) : part);
+  const affixText = (value: string, emptyLine: boolean) => value.split(/(\r?\n)/).map((part, index) => {
+    if (/^\r?\n$/.test(part)) {
+      const showMarker = emptyLine;
+      emptyLine = true;
+      return showMarker ? (
+        <span key={index} data-affix-newline="" aria-hidden="true">
+          <Tip tip={`Included only when ${name} has a value`} labelsChild={false}>
+            <mark className={`${TINT_MARK_CLASS} cursor-pointer before:content-['↵'] before:select-none`} style={tintMarkStyle(color)} />
+          </Tip>
+          {part}
+        </span>
+      ) : part;
+    }
+    if (!part.trim()) return part;
+    emptyLine = false;
+    return (
+      <Tip key={index} tip={`Included only when ${name} has a value`} labelsChild={false}>
+        <mark className={`${TINT_MARK_CLASS} cursor-pointer`} style={tintMarkStyle(color)}>{part}</mark>
+      </Tip>
+    );
+  });
   return (
     <span
       ref={ref}
@@ -57,7 +74,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       {...rest}
       className={className ?? `${hasAffixes ? 'inline' : 'inline-block'} align-baseline`}
     >
-      {affixes?.pre && affixText(affixes.pre)}
+      {affixes?.pre && affixText(affixes.pre, startsOnEmptyLine)}
       <Chip
         label={vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
         removeLabel={name}
@@ -66,7 +83,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
         grabbable={grabbable}
         style={color ? { backgroundColor: color, color: '#000' } : undefined}
       />
-      {affixes?.post && affixText(affixes.post)}
+      {affixes?.post && affixText(affixes.post, false)}
     </span>
   );
 });
