@@ -84,9 +84,7 @@ export async function loadDevFixture(name: string): Promise<DevFixture | null> {
       };
     }
     case 'pickedOpening': {
-      // A new game where the player picked one entity with an Opening Action, so the box fills with its text.
-      // A world file that brings its own openings or its own `devPicked` entities keeps them, which is how
-      // a browser spec boots another world with a library entity picked.
+      // A new game with one picked entity. A world file keeps its own openings and `devPicked` entities.
       const file = (await import('./devFixtures/whiteRoomWorld.json')).default as unknown as World & { devPicked?: Entity[] };
       const { devPicked, ...world } = file;
       return {

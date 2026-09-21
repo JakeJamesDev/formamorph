@@ -1,6 +1,7 @@
 # 03: Dialogue-Led Narration Prompt
 
-Status: in-progress
+Status: ready-for-human
+Status note: built and probed; one acceptance box is open for a product ruling on the empty room (see Comments)
 Base: e48a6ca5
 Blocked by: 02, 07
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -44,7 +45,8 @@ Notes for the next session:
 
 - The world holds its own narration prompt, switched on. It keeps every chip of the built-in prompt and reads the four tone chips. The world system prompt is one line: "This world has no setting or story of its own. The entities present and the player set the scene."
 - Voice rules changed: the role line, the second-person and third-person rule, the rule that the entities carry each reply, a rule that the entity descriptions set the scene, a rule for a room with no entity, names from the start, and the ending rule. "Be concise and vivid" gave its place to the Prose Style chip.
-- Two stat rules are left out, because the world has no stats. The `<STATS DESCRIPTION>` chip stays.
+- Two clauses of the built-in rules are gone with those edits: "Advance the scene" (the Pacing chip owns who moves the scene) and "the more physical the moment, the more they voice it".
+- Two stat rules are left out, because the world has no stats. The `<STATS DESCRIPTION>` chip stays. This goes past "change only the voice rules". An author who copies this prompt into a world with stats must put both rules back.
 - The location text gained one sentence: "With nobody present, it is a quiet, ordinary room." See the empty room below.
 - The player preset adds a line to every narration user message ("The player's action is the turn's first beat…"). A world cannot change it, so the prompt keeps the same sentence in its Output section.
 
@@ -61,7 +63,20 @@ Dialogue share is quoted text, less the player's own line read back, as a share 
 | Cydonia | duo | 6 | 42.3% → 38.9% | 6/6 → 6/6 | 6/6 → 4/6 | 141 → 141 |
 | Cydonia | cold | 6 | 17.9% → 29.0% | 6/6 → 6/6 | 6/6 → 6/6 | 142 → 135 |
 
-Reading: the frame holds in every reply on both arms, so the built-in prompt was not breaking it. The world prompt raises dialogue on a cold start on both tiers. It does not raise dialogue after a greeting on the cloud tier; the greeting sets the register there. It names the entity more reliably on the cloud tier.
+Difference B − A with a 95% interval, from a bootstrap that resamples whole chains (4000 draws):
+
+| Tier | Case | Dialogue share | Words |
+|---|---|---|---|
+| Cloud | solo | −3.6 pts [−8.5, +1.5] | **+27 [+15, +39]** |
+| Cloud | duo | +2.7 pts [−4.0, +9.5] | +12 [−7, +33] |
+| Cloud | cold | **+5.7 pts [+3.0, +8.3]** | +11 [−15, +37] |
+| Cydonia | solo | +5.3 pts [−4.5, +14.7] | −16 [−35, +1] |
+| Cydonia | duo | −3.4 pts [−14.9, +8.3] | +1 [−37, +38] |
+| Cydonia | cold | **+11.0 pts [+3.2, +17.0]** | −7 [−60, +27] |
+
+Bold cells have an interval that does not hold zero.
+
+Reading: the frame holds in every reply on both arms, across more than 200 replies, so the built-in prompt was not breaking it. The world prompt raises dialogue on a cold start on both tiers, and that is the only dialogue change outside the noise. After a greeting the greeting sets the register, and the two prompts are not distinguishable. The cloud tier names the entity more reliably on arm B (solo 29/36 → 36/36, duo 16/24 → 20/24). On Cydonia `duo` both names appear in 6/6 → 4/6 replies and dialogue reads 42.3% → 38.9%; n is 6 and the interval is wide, but it is the only two-entity evidence on that tier and it does not point up. The default cloud reply is longer on arm B (115 → 142 words, 2.6 paragraphs), which is inside the Medium target of two to four paragraphs.
 
 Reply length per Reply Length setting, `solo` case, words (paragraphs). Cloud n = 18 per cell (none: 36), Cydonia n = 9.
 
@@ -72,15 +87,17 @@ Reply length per Reply Length setting, `solo` case, words (paragraphs). Cloud n 
 | Cydonia | A | 113 (4.8) | 133 (4.4) | 131 (4.7) |
 | Cydonia | B | 124 (4.9) | 117 (4.1) | 146 (5.8) |
 
-Reading: arm A cannot read the setting, by design. Arm B follows it on the cloud tier. On Cydonia only Long separates; the greeting's short one-line paragraphs lock the register. The length chip was tried in three places (last guideline, last sentence of the prompt, one rule with `<LENGTH GUIDANCE>` named as the upper limit). The last guideline measured best and shipped. `<LENGTH GUIDANCE>` read "Write at most 6 short paragraphs" in these runs, from a local max-tokens default of 512.
+Long − Short in words, 95% interval: cloud arm B **+111 [+89, +133]** against arm A +20 [+7, +35]; Cydonia arm B +22 [−22, +54] against arm A +18 [−21, +55].
 
-Narration Share, arm B, `solo`: cloud Mostly Dialogue 26.4% against Descriptive 23.1% (n = 18); Cydonia 38.5% against 39.4% (n = 9). The setting moves dialogue share very little after a greeting on either tier. The tone sentences are ticket 02 content and are unchanged here.
+Reading: arm A cannot read the setting, by design. Arm B follows it on the cloud tier. On Cydonia the setting is not distinguishable from noise; the greeting's short one-line paragraphs lock the register. The length chip was tried in three places (last guideline, last sentence of the prompt, one rule with `<LENGTH GUIDANCE>` named as the upper limit). The last guideline measured best and shipped. `<LENGTH GUIDANCE>` read "Write at most 6 short paragraphs" in these runs, from a local max-tokens default of 512.
+
+Narration Share, arm B, `solo`: cloud Mostly Dialogue 26.4% against Descriptive 23.1% (n = 18); Cydonia 38.5% against 39.4% (n = 9). The difference is +3.3 pts [−1.4, +8.5] on cloud and −0.9 pts [−9.4, +8.3] on Cydonia, so the setting is not shown to move dialogue share after a greeting on either tier. The tone sentences are ticket 02 content and are unchanged here.
 
 Other metrics, every case with an entity, both tiers, both arms: narrator question to the player 0, reply that leaves the story 0, bold 0, raw chip or token 0, cut reply 0. Past-tense narration on cloud `cold`: 4/24 → 1/24.
 
 **Open: the empty room (the guard the guide asks for).** With no entity present:
 
-- Cydonia, first draft of arm B: in 2 of 3 chains the model left the story and asked the player to define characters. A rule for the empty room plus the new location sentence fixed that: 0 of 12 now. A title heading such as `# Here` still tops 8 of 12 empty-room replies on arm B (2 of 12 on arm A). It never appears with an entity present.
+- Cydonia, first draft of arm B: in 2 of 3 chains the model left the story and asked the player to define characters. A rule for the empty room plus the new location sentence fixed that: 0 of 12 now. A title heading such as `# Here` still tops 8 of 12 empty-room replies on arm B (2 of 12 on arm A). It never appears with an entity present. One wording was tried against it with no effect. This is a second open regression, in the same case.
 - Cloud, final wording: someone other than the player speaks in 16 of 24 replies on arm B, against 6 of 24 on arm A (dialogue share 5.8% against 1.8%). The model invents a companion. The world's Opening Action is "I look up and say hello", which invites one. Two rule wordings were tried; the second took the share from 10.0% to 5.8%. This guard does not hold at zero, so the regression criterion stays open for a product ruling: an invented companion may be acceptable in a chat world that the readme tells the player not to enter alone.
 
 **Live check.** `e2e/open-chat.spec.ts` boots this world in the real game view with the card's entity picked (the `pickedOpening` dev fixture now takes `devPicked` entities from a served world file). With the mock model it asserts: the greeting is page one with no narration request, the next request's history is start message, greeting, action, and its system prompt is the world prompt with every tone default as text and no raw chip. Removing the `worldPromptChipValues` line in GameViewer turns it red, so it guards the wiring ticket 07 left untested. With `OPEN_CHAT_LIVE` and `OPEN_CHAT_MODEL` set it sent the turn to Cydonia: the reply kept Maren in third person, her speech in quotes, and the player as "you". Run it with `E2E_PORT` set to a free port when another checkout holds 5183.
@@ -91,5 +108,8 @@ Other metrics, every case with an entity, both tiers, both arms: narrator questi
 
 - The Notes panel warns that the system prompt has no `<NOTES>` chip. It searches for the bare token, and both the built-in prompt and this one place the chip with options.
 - Three Re-generate tests in `e2e/opening-narration.spec.ts` fail on this checkout: no button named "Re-generate". They use the `writtenOpening` fixture, which this ticket did not touch.
+- "A quiet, ordinary room" now sits in two places, the prompt rule and the location text. They were measured as a pair; neither was measured alone.
 - A picked tone trait shows under the "Traits" heading of the prompt as a bare name ("Reply Length: Short"), beside its instruction sentence.
 - The rendered prompt holds runs of blank lines where headed chips are empty. The built-in prompt does the same.
+
+**2026-09-21, closing review.** Folded in: a 95% interval on every A-to-B difference, as the guide asks; the browser spec reads its entity through the card importer in place of a hand-built copy; two comments cut to one line; the change list names the two dropped clauses and states that the stat rules go past "voice rules only"; the Cydonia `duo` dip and the title heading are reported as they are. Left as it is: the changelog line for the choices probe, which belongs to ticket 04 and was swept into this commit with the shared file. Not acted on: the chip block and Output section are a copy of the built-in prompt by design, and the probe's quote and shingle helpers repeat what other probes hold.
