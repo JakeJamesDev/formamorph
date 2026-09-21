@@ -27,25 +27,31 @@ function xmlTag(heading: string): string {
 
 /** Wrap each markdown section in `<tag>…</tag>`. Level-aware: a header of level N closes any open section of
  *  level ≥ N; all remaining tags close at EOF. Preamble before the first header stays outside any tag. */
-function wrapXml(text: string): string {
+function wrapXml(text: string, affixLevels: (number | undefined)[]): string {
   const out: string[] = [];
   const stack: { level: number; tag: string }[] = [];
   const closeTo = (level: number) => {
-    while (stack.length && stack[stack.length - 1].level >= level) out.push(`</${stack.pop()!.tag}>`);
+    const tags: string[] = [];
+    while (stack.length && stack[stack.length - 1].level >= level) tags.push(`</${stack.pop()!.tag}>`);
+    return tags;
   };
   for (const line of text.split('\n')) {
     const m = HEADER_TEST.exec(line);
     if (!m) {
-      out.push(line);
+      out.push(line.replace(MASKED, (mask, index: string) => {
+        // Conditional headings close surrounding sections outside the optional chip.
+        const closes = closeTo(affixLevels[Number(index)] ?? Infinity);
+        return closes.length ? `${closes.join('\n')}\n${mask}` : mask;
+      }));
       continue;
     }
     const level = m[1].length;
     const tag = xmlTag(m[2]);
-    closeTo(level);
+    out.push(...closeTo(level));
     out.push(`<${tag}>`);
     stack.push({ level, tag });
   }
-  closeTo(0);
+  out.push(...closeTo(0));
   return out.join('\n');
 }
 
@@ -78,10 +84,16 @@ const MASKED = new RegExp(`${MASK}([0-9]+)${MASK}`, 'g');
 export function restyle(text: string, style: SectionStyle): string {
   if (style === 'markdown') return text;
   const tokens: string[] = [];
+  const affixLevels: (number | undefined)[] = [];
   const masked = parsePromptTemplate(text)
-    .map((seg) => (seg.type === 'text' ? seg.value : `${MASK}${tokens.push(restyleAffixes(seg.token, style)) - 1}${MASK}`))
+    .map((seg) => {
+      if (seg.type === 'text') return seg.value;
+      const heading = splitToken(seg.token)?.pre.split('\n').map(line => HEADER_TEST.exec(line)).find(Boolean);
+      affixLevels.push(heading?.[1].length);
+      return `${MASK}${tokens.push(restyleAffixes(seg.token, style)) - 1}${MASK}`;
+    })
     .join('');
-  const out = style === 'xml' ? wrapXml(masked) : toLabel(masked);
+  const out = style === 'xml' ? wrapXml(masked, affixLevels) : toLabel(masked);
   return out.replace(MASKED, (_m, i: string) => tokens[Number(i)]);
 }
 
