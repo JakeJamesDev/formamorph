@@ -27,9 +27,10 @@ const find = (state: BubbleState, label: string) => bubbleActions(state, handler
 describe('bubbleActions', () => {
   it('gives the latest turn the re-generate actions and no Rewind to Here', () => {
     expect(rowLabels(idle)).toEqual([
-      'Re-generate Narration', 'Re-generate Stats', 'Edit', 'Text to Speech', 'Copy Text',
+      'Re-generate Narration', 'Edit', 'Text to Speech', 'Copy Text',
     ]);
     expect(labels(idle)).not.toContain('Rewind to Here');
+    expect(labels(idle)).toContain('Re-generate Stats');
   });
 
   it('gives a past turn Rewind to Here and no re-generate actions', () => {

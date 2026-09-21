@@ -38,11 +38,12 @@ const TURNS = [
 
 const STATS = [statFixture('Vigor', 50)];
 
-/** The latest page's two partial re-generates: Re-generate Stats in the card's row, Re-generate Choices under the choices. */
-const partialRegens = () => ({
-  stats: within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Re-generate Stats' }),
-  choices: screen.getByRole('button', { name: 'Re-generate Choices' }),
-});
+/** The latest page's partial re-generates, including the stats action in its menu. */
+const partialRegens = () => {
+  const choices = screen.getByRole('button', { name: 'Re-generate Choices' });
+  fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
+  return { stats: screen.getByRole('menuitem', { name: 'Re-generate Stats' }), choices };
+};
 
 describe('MiddlePanel — partial re-generate against a scene render', () => {
   it('holds both partial re-generates while a scene image is being drawn', () => {
@@ -50,7 +51,7 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     const items = partialRegens();
 
     // One graphics card can't write and draw at once.
-    expect(items.stats).toBeDisabled();
+    expect(items.stats).toHaveAttribute('aria-disabled', 'true');
     expect(items.choices).toBeDisabled();
 
     fireEvent.click(items.stats);
@@ -66,16 +67,17 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
   it('holds them while the tag pass runs too', () => {
     renderMiddlePanel({ sceneImageJob: 'tags' }, { turns: TURNS, stats: STATS });
     const items = partialRegens();
-    expect(items.stats).toBeDisabled();
+    expect(items.stats).toHaveAttribute('aria-disabled', 'true');
     expect(items.choices).toBeDisabled();
   });
 
   it('offers only the partial re-generates their aux requests are switched on for', () => {
     renderMiddlePanel({}, { turns: TURNS, stats: STATS, settings: (s) => s.setChoicesEnabled(false) });
 
-    expect(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'Re-generate Stats' })).toBeInTheDocument();
     // Re-generating choices that are switched off would fire a request whose result nothing displays.
     expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
+    fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
+    expect(screen.getByRole('menuitem', { name: 'Re-generate Stats' })).toBeInTheDocument();
   });
 
   it('offers neither when neither is available, and keeps the full re-generate', () => {
@@ -84,6 +86,8 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     expect(screen.queryByRole('button', { name: 'Re-generate Stats' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Re-generate Choices' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Re-generate Narration' })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId('bubble-actions')).getByRole('button', { name: 'More' }));
+    expect(screen.queryByRole('menuitem', { name: 'Re-generate Stats' })).toBeNull();
   });
 
   it('offers them again with nothing in flight', () => {
@@ -91,7 +95,7 @@ describe('MiddlePanel — partial re-generate against a scene render', () => {
     const view = renderMiddlePanel({ sceneImageJob: null }, { turns: TURNS, stats: STATS });
     const items = partialRegens();
 
-    expect(items.stats).toBeEnabled();
+    expect(items.stats).not.toHaveAttribute('aria-disabled', 'true');
     expect(items.choices).toBeEnabled();
 
     fireEvent.click(items.stats);
