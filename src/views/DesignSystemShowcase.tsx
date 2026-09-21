@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react';
+import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import {
@@ -444,6 +445,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Panel Tabs',
     description: 'Editor detail panel tab strips',
     Component: PanelTabStripReference,
+  },
+  {
+    id: 'prompt-navigation',
+    label: 'Prompt Navigation',
+    description: 'Nested prompt selection and independent scrolling',
+    Component: PromptNavigationReference,
   },
   {
     id: 'narration-turn',

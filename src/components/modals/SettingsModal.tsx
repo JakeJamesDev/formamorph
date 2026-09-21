@@ -1,3 +1,4 @@
+import { PromptNavigationRail } from './PromptNavigationRail';
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
 import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, NARRATION_LAYOUTS, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
@@ -2711,69 +2712,18 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 </Select>
               </div>
 
-              <ScrollArea className="hidden md:block w-[190px] flex-shrink-0 border-r pr-2">
-                <nav aria-label="Prompts" className="flex flex-col gap-0.5 pb-2">
-                  {presetOverview && (
-                    <button
-                      type="button"
-                      onClick={() => setOverviewOpen(true)}
-                      aria-current={showingOverview ? 'true' : undefined}
-                      className={cn(
-                        'mt-1 rounded px-2 py-1 text-left text-label',
-                        showingOverview ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50',
-                      )}
-                    >
-                      {OVERVIEW_LABEL}
-                    </button>
-                  )}
-                  {railGroups.map((g) => (
-                    <div key={g.label} className="flex flex-col gap-0.5">
-                      {/* A divider, not an entry: styled like the items it heads, it invited clicks and
-                          ignored them. The rule is what says "structure" without adding a control. */}
-                      <div className="flex items-center gap-2 px-2 pb-1 pt-4 first:pt-1">
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-                          {g.label}
-                        </span>
-                        <span className="h-hairline flex-1 bg-border" aria-hidden />
-                      </div>
-                      {g.tabs.map((t) => {
-                        const selected = !showingOverview && t === activePromptTab;
-                        return (
-                          <div key={t} className="flex flex-col">
-                            <button
-                              type="button"
-                              onClick={() => selectPromptTab(t)}
-                              aria-current={selected ? 'true' : undefined}
-                              className={cn(
-                                'rounded px-2 py-1 text-left text-label',
-                                selected ? 'bg-accent font-medium text-accent-foreground' : 'text-muted-foreground hover:bg-accent/50',
-                              )}
-                            >
-                              {promptResets[t]?.label ?? t}
-                            </button>
-                            {/* Only the open prompt lists its parts — expanding all of them would just be
-                                the old flat wall of buttons with extra steps. */}
-                            {selected && activeSurfaces.map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => selectPromptView(s)}
-                                aria-current={promptView === s ? 'true' : undefined}
-                                className={cn(
-                                  'ml-2 rounded px-2 py-0.5 text-left text-meta',
-                                  promptView === s ? 'text-primary font-medium' : 'text-muted-foreground hover:bg-accent/50',
-                                )}
-                              >
-                                {SURFACE_LABELS[s]}
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </nav>
-              </ScrollArea>
+              <PromptNavigationRail
+                groups={railGroups}
+                labels={Object.fromEntries(Object.entries(promptResets).map(([id, prompt]) => [id, prompt.label]))}
+                activePrompt={activePromptTab}
+                surface={showingHub ? null : promptView}
+                surfaces={activeSurfaces}
+                showingOverview={showingOverview}
+                hasOverview={!!presetOverview}
+                onOverview={() => setOverviewOpen(true)}
+                onPrompt={selectPromptTab}
+                onSurface={selectPromptView}
+              />
 
               <div className="flex flex-1 min-w-0 min-h-0 flex-col gap-2">
 

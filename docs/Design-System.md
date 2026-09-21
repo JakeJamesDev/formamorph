@@ -692,6 +692,27 @@ The live reference renders the production card, plate, and rows with the product
 - Action labels come from the action builders, and the plate's names come from `ScenePlate`, so the reference and the game cannot drift. Reuse does not certify those labels as fully ASD-STE100 compliant.
 - **Unverified:** the headings "Latest Page" and "Past Page", their two `Meta` lines, the status line, and **Restore Images** have terminology review only; vocabulary and grammar evidence is not recorded.
 
+## Pattern: Nested Prompt Navigation
+
+**Purpose:** Show the active prompt section while retaining the surrounding prompt list.
+
+- Use the production [PromptNavigationRail](../src/components/modals/PromptNavigationRail.tsx) in Settings.
+- The active destination uses the shared [CompactSelectionRow](../src/components/ui/compact-selection-row.tsx) primary fill and foreground, with `showCheck={false}`.
+- An open parent has a quiet accent tint and medium weight while a child is selected. Clicking the parent opens Anatomy and makes that parent the active destination.
+- Indent child rows and use the smaller `text-meta` size without a connector line. Keep only the current prompt's children open.
+- Use uppercase section headings with hairline dividers. Rows wrap long names and retain the shared inset focus ring.
+- The rail stays a flex column with a bounded, shrinkable viewport. Long lists scroll independently of the editor; contain wheel scrolling at the rail's ends.
+- Below `md`, Settings uses its combined prompt/section selector instead of the rail.
+- `aria-current="true"` identifies only the current destination. Navigation buttons do not expose toggle states.
+
+The [live reference](../src/components/design-system/PromptNavigationReference.tsx) uses the production rail with all prompt labels and local selection state in a short container.
+Open `#dev?modal=designSystem&tab=prompt-navigation`.
+The reference's mobile section selector previews the current prompt's sections; Settings retains its complete combined selector.
+
+### Writing review
+
+Prompt and section labels reuse the production registry. The reference's title and selector label name their controls; it adds no instructional prose.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.
