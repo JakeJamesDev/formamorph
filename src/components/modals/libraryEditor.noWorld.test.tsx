@@ -24,7 +24,7 @@ import type { Dictionary, Entity, Placeholder, Stat, World } from '@/types';
  */
 
 vi.mock('@/services/EntityStorageService', () => ({
-  default: { getEntityData: vi.fn(), storeEntity: vi.fn().mockResolvedValue(undefined) },
+  default: { getEntityData: vi.fn(), getEntityMetadata: vi.fn().mockResolvedValue([]), storeEntity: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock('@/services/DictionaryStorageService', () => ({
   default: { getDictionaryData: vi.fn(), storeDictionary: vi.fn().mockResolvedValue(undefined) },

@@ -6,7 +6,7 @@ import { phValues } from '@/test/placeholderValues';
 import type { Entity } from '@/types';
 
 vi.mock('@/services/EntityStorageService', () => ({
-  default: { getEntityData: vi.fn(), storeEntity: vi.fn() },
+  default: { getEntityData: vi.fn(), getEntityMetadata: vi.fn().mockResolvedValue([]), storeEntity: vi.fn() },
 }));
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="md">{text}</div>,

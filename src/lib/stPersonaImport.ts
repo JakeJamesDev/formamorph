@@ -131,7 +131,16 @@ export async function readStPersonaFiles(backup: File, images: File[]): Promise<
   return result;
 }
 
-/** True for a JSON pick, which the Entities import reads as a persona backup. */
+/** True for a JSON pick. */
 export function isJsonFile(file: File): boolean {
   return file.type === 'application/json' || /\.json$/i.test(file.name);
+}
+
+/** Identify persona backups without mistaking standalone character JSON for one. */
+export async function isStPersonaBackupFile(file: File): Promise<boolean> {
+  if (!isJsonFile(file)) return false;
+  try {
+    const raw: unknown = JSON.parse(await file.text());
+    return isRecord(raw) && ('personas' in raw || 'persona_descriptions' in raw);
+  } catch { return false; }
 }

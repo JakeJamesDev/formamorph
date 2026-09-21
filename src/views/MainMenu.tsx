@@ -89,7 +89,7 @@ import { UpdateVersionControl } from '@/components/menu/UpdateVersionControl';
 import { WebVersionChangelog } from '@/components/menu/WebVersionChangelog';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
 import { importCharacterFile } from '@/lib/entityFile';
-import { importedDefaultPersona, isJsonFile, readStPersonaFiles, stPersonaReport } from '@/lib/stPersonaImport';
+import { importedDefaultPersona, isJsonFile, isStPersonaBackupFile, readStPersonaFiles, stPersonaReport } from '@/lib/stPersonaImport';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { useWorldExport } from '@/lib/useWorldExport';
 import { IMAGE_CAPS, applyWorldOptimize, applyEntityImagesOptimize, countWorldImages } from '@/lib/imageOptim';
@@ -1135,15 +1135,17 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Import one or more character images (our WebP cards or SillyTavern PNGs) into the library. One combined
   // Optimize/Downscale prompt covers every portrait; any lorebooks embedded in the cards are added too.
   const importEntityFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = filesFrom(event);
+    let files = filesFrom(event);
     if (!files.length) return;
-    const backups = files.filter(isJsonFile);
+    const backupFlags = await Promise.all(files.map(isStPersonaBackupFile));
+    const backups = files.filter((_, index) => backupFlags[index]);
     if (backups.length) {
       await importStPersonas(backups, files.filter((file) => !isJsonFile(file)));
-      return;
+      files = files.filter((file) => isJsonFile(file) && !backups.includes(file));
+      if (!files.length) return;
     }
 
-    const parsed: { entity: Entity; book: Dictionary | null; links: ComponentFileLinks }[] = [];
+    const parsed: Awaited<ReturnType<typeof importCharacterFile>>[] = [];
     let skipped = 0;
     for (const file of files) {
       try { parsed.push(await importCharacterFile(file)); }
@@ -1167,7 +1169,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const total = mode === 'off' ? 0 : parsed.reduce((n, p) => n + entityImages(p.entity).length, 0);
       const storeAll = async (tick: (done: number) => void) => {
         let done = 0;
-        for (const { entity, book, links } of parsed) {
+        for (const { entity, book, links, libraryDetails } of parsed) {
           // Guarded per card: a portrait can blow the storage quota mid-batch, and that must not drop the rest.
           try {
             const record = await applyEntityImagesOptimize(entity, mode, () => tick(++done));
@@ -1177,8 +1179,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               await storeComponentFile('entity', record, links);
               await refreshEntities();
             } else {
-              await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record });
-              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now }]);
+              await EntityStorageService.storeEntity({ id: record.id, name: record.name, createdAt: now, lastAccessed: now, data: record, libraryDetails });
+              setEntities(prev => [...prev, { id: record.id, name: record.name, image: primaryImage(record), createdAt: now, lastAccessed: now, tags: libraryDetails?.tags ?? record.tags, author: libraryDetails?.author, libraryDetails }]);
             }
             stored++;
           } catch (err) {
@@ -2209,7 +2211,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           )}
           renderCard={(entity, { layout, fill, compact }) => (
             <SortableWorldCard
-              world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags }}
+              world={{ id: entity.id, name: entity.name, description: entity.description, thumbnail: entity.image, tags: entity.tags, author: entity.author }}
               layout={layout}
               aspect="portrait"
               fill={fill}

@@ -16,7 +16,7 @@ import type { Entity } from '@/types';
  */
 
 vi.mock('@/services/EntityStorageService', () => ({
-  default: { getEntityData: vi.fn(), storeEntity: vi.fn() },
+  default: { getEntityData: vi.fn(), getEntityMetadata: vi.fn().mockResolvedValue([]), storeEntity: vi.fn() },
 }));
 
 const entity = { id: 'e1', name: 'Wren', aiDescription: 'A lamp-keeper.' } as unknown as Entity;

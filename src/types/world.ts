@@ -578,10 +578,17 @@ export interface DictionaryMetadata extends CommunityLink {
   tags?: string[];
 }
 
+/** Imported metadata stored only on the library record. */
+export interface EntityLibraryDetails {
+  author?: string;
+  tags?: string[];
+}
+
 /** Lightweight preview record used by the main-menu character-library grid; `image` is the card portrait. */
 export interface EntityMetadata extends CommunityLink {
   id: string;
   name: string;
+  author?: string;
   /** The player-facing blurb, shown on the detailed library card — the same one a listing publishes. */
   description?: string;
   image?: Base64Data;
@@ -591,6 +598,8 @@ export interface EntityMetadata extends CommunityLink {
   tags?: string[];
   /** The entity carries the Persona mark, so the tab's Personas filter shows it. */
   persona?: boolean;
+  /** Imported attribution and tags kept outside world content. */
+  libraryDetails?: EntityLibraryDetails;
 }
 
 /** A find-bar hit handed to a detail panel, so the panel can open the tab that holds the field. `itemId`
