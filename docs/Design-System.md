@@ -115,6 +115,8 @@ In prompt editors, a chip's prepend and append text appears inline with its exac
 
 The highlight and pill belong to one token. Selecting either opens the chip's options; editing Prepend or Append keeps focus in that input. Removing or dragging the chip includes its affixes. Spaces retain their spacing without a colored mark; newline markers use the affix highlight. The highlight's tooltip identifies the empty-value condition, and the options explain it on mobile. Read-only presets show the same text with disabled options.
 
+Persona, Location and Entities use plain text for Name, including in Preview. Disable Format for Name through the shared read-only axis pattern and explain the plain text output below it. Keep the selected format so Full and Summary restore it.
+
 Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local controls cover present and absent Persona values and read-only editing without saving settings or calling a model. The reference uses a section of the default system prompt; authored prompt wording stays unchanged.
 
 ### Shared chip insertion and movement

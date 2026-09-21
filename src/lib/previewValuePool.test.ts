@@ -4,6 +4,7 @@ import {
 } from './previewValuePool';
 import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant, baseToken } from './promptVariables';
 import { resolveToken } from './promptTemplate';
+import { personaContextValues } from './personaContext';
 
 /** Every concrete token the chip vocabulary can produce, variants and all. */
 const everyToken = ALL_PROMPT_VARIABLES.flatMap((v) =>
@@ -97,6 +98,30 @@ describe('composePreviewValues', () => {
 });
 
 describe('SAMPLE_PREVIEW_VALUES', () => {
+  it.each([
+    ['LOCATION|name', 'The Landing'],
+    ['LOCATION|sublocations.name', 'The Boathouse, The Tide Pools'],
+    ['LOCATION|parent.name', 'Sample Town'],
+    ['LOCATION|reachable.name', 'Sample Town, The Causeway'],
+    ['LOCATION|destinations.name', 'The Boathouse, The Tide Pools, Sample Town, The Causeway'],
+    ['ENTITIES|name', 'Wren, a gull'],
+    ['ENTITIES|sublocations.name', 'Bell'],
+    ['ENTITIES|reachable.name', 'Harrow'],
+    ['ENTITIES|inscene.name', 'Wren'],
+  ])('previews %s as plain names in every format', (variant, expected) => {
+    for (const suffix of ['', '.markdown', '.xml']) {
+      expect(resolveToken(`<${variant}${suffix}>`, SAMPLE_PREVIEW_VALUES)).toBe(expected);
+    }
+  });
+  it('previews Persona Name as the same inline text used in play in every format', () => {
+    const live = personaContextValues({ source: 'library', entity: { id: 'traveler', name: 'Traveler', pronouns: 'they/them' } });
+    for (const token of ['<PERSONA|name>', '<PERSONA|name.markdown>', '<PERSONA|name.xml>']) {
+      expect(resolveToken(token, SAMPLE_PREVIEW_VALUES)).toBe('Traveler (they/them)');
+      expect(resolveToken(token, SAMPLE_PREVIEW_VALUES)).toBe(live[token]);
+    }
+    expect(SAMPLE_PREVIEW_VALUES['<PERSONA|xml>']).toContain('<entity>');
+    expect(SAMPLE_PREVIEW_VALUES['<PERSONA|summary.xml>']).toContain('<entity>');
+  });
 
   it('resolves through the same path the preview uses, affixes included', () => {
     expect(resolveToken('<LOCATION>', SAMPLE_PREVIEW_VALUES)).toContain('The Landing');

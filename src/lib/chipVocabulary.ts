@@ -180,7 +180,12 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
     color: colorForToken,
     axes: (t) => {
       const v = variableForToken(t);
-      return v ? variableAxes(v) : [];
+      if (!v) return [];
+      const inlineName = decodeVariant(v, tokenVariant(t)).content === 'name';
+      return variableAxes(v).map(axis => inlineName && axis.id === 'format'
+        ? { ...axis, readOnly: true, readOnlyHelp: v.token === '<PERSONA>'
+          ? 'Sends the name and pronouns as plain text' : 'Sends names as plain text' }
+        : axis);
     },
     selection: (t) => {
       const v = variableForToken(t);
