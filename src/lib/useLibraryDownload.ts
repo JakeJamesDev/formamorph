@@ -5,7 +5,8 @@ import { randomUUID } from "@/lib/uuid";
 import { getDownloadState, type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
 import { type WorldRecord } from "@/components/WorldDetails";
-import type { CommunityLink } from "@/types";
+import type { CommunityLink, LibraryDetails } from "@/types";
+import { splitLibraryContent } from './contentAuthor';
 
 /** A local library record with its community link — the slice this flow needs, whichever kind it is. */
 export interface LibraryRecord extends CommunityLink {
@@ -31,7 +32,7 @@ export interface LibraryTarget<T> {
   store: (
     id: string,
     content: T,
-    link: Required<Pick<CommunityLink, 'sourceId' | 'downloadedAt'>> & CommunityLink,
+    link: Required<Pick<CommunityLink, 'sourceId' | 'downloadedAt'>> & CommunityLink & { libraryDetails?: LibraryDetails },
     listingName: string,
   ) => Promise<void>;
   /** Refresh the caller's list after a store. */
@@ -82,7 +83,10 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
       const content = await fetchCatalogContent(listingId, (fraction) =>
         setDownloadProgress((p) => ({ ...p, [listingId]: fraction })));
 
-      const item = content as T;
+      const shared = target.kind === 'entity' || target.kind === 'dictionary'
+        ? splitLibraryContent(content as T, listing.author?.username)
+        : { content: content as T, libraryDetails: undefined };
+      const item = shared.content;
       const final = target.onFetched ? await target.onFetched(item) : item;
 
       // Re-download reuses this listing's existing copy (one copy per listing); a first download mints a
@@ -102,6 +106,7 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
         // display; the id is what decides whether a save of yours may push to your linked copies.
         sourceAuthorId: listing.author?.id,
         sourceAuthorName: listing.author?.username,
+        ...(shared.libraryDetails ? { libraryDetails: shared.libraryDetails } : {}),
       }, listing.name || noun);
       target.refresh();
       toast.success(`"${listing.name || noun}" downloaded successfully`);

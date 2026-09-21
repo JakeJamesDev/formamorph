@@ -1,6 +1,6 @@
 // Must load before the storage singletons, whose first use opens IndexedDB.
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, renderHook, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useComponentFileImport } from './useComponentFileImport';
@@ -55,6 +55,24 @@ async function open(links: ComponentFileLinks, content: LinkableContent = card) 
 }
 
 describe('useComponentFileImport', () => {
+  it.each([false, true])('retains file credit when storing a component (linked: %s)', async (linked) => {
+    const { result } = renderHook(() => useComponentFileImport({ onFindWorld: vi.fn(), onImported: vi.fn() }));
+    const links = linked ? { source: { sourceId: 'credit-listing' } } : {};
+    const source = await result.current.storeFile('entity', card, links, { author: 'River Quill' });
+    expect((await EntityStorageService.getEntityMetadata()).find((row) => row.id === source.id)?.author).toBe('River Quill');
+    expect(await EntityStorageService.getEntityData(source.id)).not.toHaveProperty('author');
+  });
+
+  it('updates a changed credit even when a linked file has identical entity content', async () => {
+    const { result } = renderHook(() => useComponentFileImport({ onFindWorld: vi.fn(), onImported: vi.fn() }));
+    const links = { source: { sourceId: 'credit-listing' } };
+    const source = await result.current.storeFile('entity', card, links, { author: 'River Quill', tags: ['Guide'] });
+    await act(async () => { await result.current.reviewFile('entity', card, links, { author: 'Fen Writer' }); });
+    expect((await EntityStorageService.getEntityMetadata()).find((row) => row.id === source.id)?.author).toBe('Fen Writer');
+    expect((await EntityStorageService.getEntityMetadata()).find((row) => row.id === source.id)?.tags).toEqual(['Guide']);
+    expect(await EntityStorageService.getEntityData(source.id)).not.toHaveProperty('author');
+  });
+
   beforeEach(async () => {
     found.length = 0;
     for (const id of await WorldStorageService.getWorldIds()) await WorldStorageService.deleteWorld(id);

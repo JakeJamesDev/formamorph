@@ -3,6 +3,7 @@ import { buildDictionaryFile, parseDictionaryFile, parseDictionaryImport, DICTIO
 import { APP_VERSION } from './version';
 import { phValues } from '@/test/placeholderValues';
 import type { Dictionary } from '@/types';
+import { readLibraryDetails } from './contentAuthor';
 
 const book = (over: Partial<Dictionary> = {}): Dictionary => ({
   id: 'b1',
@@ -15,6 +16,21 @@ const book = (over: Partial<Dictionary> = {}): Dictionary => ({
 });
 
 describe('buildDictionaryFile', () => {
+  it('keeps creator credit through JSON export and import', () => {
+    const raw = JSON.parse(JSON.stringify(buildDictionaryFile(book(), undefined, {}, { author: 'River Quill' })));
+    expect(readLibraryDetails(raw)?.author).toBe('River Quill');
+    expect(parseDictionaryImport(raw)).not.toHaveProperty('author');
+  });
+
+  it('accepts older files and ignores malformed credits', () => {
+    expect(buildDictionaryFile(book())).not.toHaveProperty('author');
+    for (const author of [undefined, null, 42, {}]) {
+      const raw = { ...buildDictionaryFile(book()), author };
+      expect(readLibraryDetails(raw)).toBeUndefined();
+      expect(parseDictionaryFile(raw)).not.toHaveProperty('author');
+    }
+  });
+
   it('stamps the discriminator + version and carries name/entries', () => {
     const file = buildDictionaryFile(book());
     expect(file.formamorphKind).toBe(DICTIONARY_FILE_KIND);

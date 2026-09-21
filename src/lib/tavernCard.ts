@@ -1,7 +1,7 @@
 // SillyTavern JSON/PNG cards; the Character Card V3 spec is credited in THIRD-PARTY-NOTICES.md.
 
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Dictionary, Opening, EntityLibraryDetails } from '@/types';
+import type { Entity, Dictionary, Opening, LibraryDetails } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
 import { canonicalUserMacro } from './userMacro';
@@ -23,7 +23,7 @@ interface TavernData {
 export interface TavernImport {
   entity: Entity;
   book: Dictionary | null;
-  libraryDetails: EntityLibraryDetails;
+  libraryDetails: LibraryDetails;
 }
 
 /** Decode a base64 string as UTF-8 (the card JSON is UTF-8, so `atob` alone would mangle non-ASCII). */

@@ -8,6 +8,7 @@ import ImportContentModal from '@/components/modals/ImportContentModal';
 import LinkToLibraryModal from '@/components/modals/LinkToLibraryModal';
 import type { LibraryPick } from '@/components/modals/AddFromLibraryModal';
 import { parseDictionaryImport } from '@/lib/dictionaryFile';
+import { readLibraryDetails } from '@/lib/contentAuthor';
 import { contentLinkStatusLine } from '@/lib/contentLink';
 import { isHelpSeen } from '@/lib/helpSeenStore';
 import { withEntityLocations } from '@/lib/entityPresence';
@@ -424,8 +425,9 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const kind = importKindRef.current;
     try {
       if (kind === 'dictionary') {
-        const item = parseDictionaryImport(await parseJsonText(await file.text()), file.name.replace(/\.[^.]+$/, ''));
-        setImportReview({ kind, item });
+        const raw = await parseJsonText(await file.text());
+        const item = parseDictionaryImport(raw, file.name.replace(/\.[^.]+$/, ''));
+        setImportReview({ kind, item, libraryDetails: readLibraryDetails(raw) });
       } else {
         const { entity: item, libraryDetails } = await importCharacterFile(file);
         setImportReview({ kind, item, libraryDetails });

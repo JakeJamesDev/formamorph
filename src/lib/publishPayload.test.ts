@@ -13,6 +13,15 @@ const world = (over = {}, rest = {}) => ({ worldOverview: { name: 'Sedge Landing
 const entity = (over = {}) => ({ id: 'e1', name: 'Mara', ...over } as Entity);
 const book = (over = {}) => ({ id: 'd1', name: 'Lore', entries: [], ...over } as Dictionary);
 
+it('publishes library creator credits without mutating world content', () => {
+  const e = entity();
+  const d = book();
+  expect(entityPublishPayload(e, { author: 'River Quill' }).contentData).toMatchObject({ author: 'River Quill' });
+  expect(dictionaryPublishPayload(d, { author: 'River Quill' }).contentData).toMatchObject({ author: 'River Quill' });
+  expect(e).not.toHaveProperty('author');
+  expect(d).not.toHaveProperty('author');
+});
+
 describe('worldPublishPayload', () => {
   it('publishes the overview fields', () => {
     expect(worldPublishPayload(world())).toMatchObject({

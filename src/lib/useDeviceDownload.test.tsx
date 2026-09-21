@@ -55,6 +55,18 @@ function fakeWebp(): Uint8Array {
 }
 
 describe('useDeviceDownload', () => {
+  it.each([undefined, 'River Quill'])('uses publisher fallback only for blank device-download credit (%s)', async (author) => {
+    const { result } = renderHook(() => useDeviceDownload());
+    const publisher = { id: 'publisher', username: 'Wren' };
+    const credit = author ?? 'Wren';
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'e', name: 'Guide', author });
+    await act(async () => { await result.current.download({ ...entityListing, author: publisher }); });
+    expect(mocks.exportEntityCard).toHaveBeenLastCalledWith(expect.anything(), undefined, expect.anything(), { author: credit });
+    mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'd', name: 'Lore', entries: [], author });
+    await act(async () => { await result.current.download({ ...dictionaryListing, author: publisher }); });
+    expect(mocks.serializeJsonBlob).toHaveBeenLastCalledWith(expect.objectContaining({ author: credit }), 2);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -99,6 +111,7 @@ describe('useDeviceDownload', () => {
       expect.objectContaining({ name: 'River Warden' }),
       undefined,
       { source: { sourceId: 'entity-listing', sourceName: 'River Warden' } },
+      undefined,
     );
     expect(mocks.downloadBlob).toHaveBeenLastCalledWith(expect.any(Blob), 'River Warden.webp');
     const entityBytes = new Uint8Array(await vi.mocked(mocks.downloadBlob).mock.calls[0][0].arrayBuffer());

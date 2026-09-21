@@ -123,6 +123,7 @@ export const DEV_MODAL_TABS = {
   // The library entity editor (`#dev?modal=entityEditor&tab=placeholders`). It opens on a blank draft and is
   // never in Simple mode, so every tab is reachable.
   entityEditor: ['entity', 'placeholders'],
+  dictionaryEditor: ['overview', 'dictionary', 'placeholders'],
   // Its Entity tab's sub-tabs, reached with `subtab=…` (`#dev?modal=entityEditor&tab=entity&subtab=openings`).
   entityEditorEntity: ['profile', 'descriptions', 'openings'],
   // The World Editor's location panel does the same over the Locations tab

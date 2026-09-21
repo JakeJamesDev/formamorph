@@ -74,7 +74,7 @@ describe('SillyTavern JSON import', () => {
     expect(await isStPersonaBackupFile(new File(['pixels'], 'card.png'))).toBe(false);
   });
 
-  it('persists attribution and editable tags without putting them in world or card content', async () => {
+  it('carries library credit into shared cards without adding it to world entities', async () => {
     const { entity, libraryDetails } = await importCharacterFile(file(card));
     const source = await saveCopyToLibrary(entity, [], [], libraryDetails);
     const meta = (await EntityStorageService.getEntityMetadata())[0];
@@ -87,6 +87,7 @@ describe('SillyTavern JSON import', () => {
     expect(worldEntity).not.toHaveProperty('tags');
     expect(worldEntity).not.toHaveProperty('libraryDetails');
     expect(buildEntityCardData(worldEntity)).not.toHaveProperty('tags');
+    expect(buildEntityCardData(worldEntity, undefined, {}, libraryDetails).author).toBe('Rowan');
     await WorldStorageService.storeWorld({ id: 'audit-world', name: 'Landing', author: 'Ann', data: {
       worldOverview: { name: 'Landing' }, stats: [], traits: [], statUpdates: [], entities: [], locations: [],
     } });

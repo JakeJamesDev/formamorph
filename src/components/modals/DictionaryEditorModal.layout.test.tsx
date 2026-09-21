@@ -145,16 +145,19 @@ describe('the library dictionary editor’s Overview', () => {
     await userEvent.setup().click(topTab('Overview'));
   };
 
-  it('holds Tags, Cover Image, Name, Description, and Enabled', async () => {
+  it('holds Author above Tags, Cover Image, Name, and Description without Enabled', async () => {
     await openOverview();
     expect(screen.getByText('Tags')).toBeInTheDocument();
     expect(screen.getByText('Cover Image')).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Fen Lore');
     expect(screen.getByPlaceholderText('Notes for you, not injected into the prompt')).toHaveValue('Marsh notes');
-    expect(screen.getByRole('checkbox', { name: /Enabled/ })).toBeChecked();
+    const author = screen.getByRole('textbox', { name: 'Author' });
+    expect(author).toHaveValue('');
+    expect(author.compareDocumentPosition(screen.getByText('Tags')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('checkbox', { name: /Enabled/ })).toBeNull();
   });
 
-  it('shows Enabled when a World Editor in Simple mode opens it', async () => {
+  it('keeps Enabled absent when a World Editor in Simple mode opens it', async () => {
     render(
       <SettingsProvider>
         <GameDataProvider>
@@ -165,7 +168,7 @@ describe('the library dictionary editor’s Overview', () => {
       </SettingsProvider>,
     );
     await userEvent.setup().click(topTab('Overview'));
-    expect(screen.getByRole('checkbox', { name: /Enabled/ })).toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: /Enabled/ })).toBeNull();
   });
 
   it('shows none of the World Editor book panel', async () => {

@@ -6,7 +6,7 @@ import type { CatalogKind } from '@/lib/catalogKinds';
 import {
   compatibleWorldRows, declaresCompatibility, offeredWorldIds, promptCompatibleRows, type CompatibleWorldRow,
 } from '@/lib/compatibleWorlds';
-import { libraryItemData, libraryItems, type LibraryItemSummary } from '@/lib/librarySources';
+import { libraryItemData, libraryItemDetails, libraryItems, type LibraryItemSummary } from '@/lib/librarySources';
 import { linkLibraryItemToListing } from '@/lib/librarySources';
 import {
   declaresDependencies, hasLinkedContent, linkedContentRows, requiredSourceIds, sourcesToPublish,
@@ -178,9 +178,10 @@ export function usePublishLinks({ open, kind, contentData, localId, overwriteTar
       try {
         const data = await libraryItemData(row.kind, row.libraryId);
         if (!data) throw new Error('This source is no longer in your library.');
+        const details = await libraryItemDetails(row.kind, row.libraryId);
         const payload = row.kind === 'dictionary'
-          ? dictionaryPublishPayload(data as Dictionary)
-          : entityPublishPayload(data as Entity);
+          ? dictionaryPublishPayload(data as Dictionary, details)
+          : entityPublishPayload(data as Entity, details);
         const created = await publishOne({ ...payload, visibility: row.visibility });
         const listingId = created?._id || created?.id;
         if (!listingId) throw new Error('The server did not answer with a listing.');

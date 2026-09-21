@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Opening, Placeholder, EntityLibraryDetails } from '@/types';
+import type { Entity, Opening, Placeholder, LibraryDetails } from '@/types';
+import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
@@ -24,6 +25,7 @@ export interface EntityCardData {
   formamorphKind: typeof ENTITY_FILE_KIND;
   version: string;
   name: string;
+  author?: string;
   aliases?: string[];
   pronouns?: string;
   /** The Persona mark. A shared persona arrives as a persona. */
@@ -61,6 +63,7 @@ export function buildEntityCardData(
   entity: Entity,
   available: Placeholder[] = carriedPlaceholders(entity),
   links: ComponentFileLinks = {},
+  libraryDetails?: LibraryDetails,
 ): EntityCardData {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(entity.placeholders ?? []);
@@ -70,6 +73,7 @@ export function buildEntityCardData(
     formamorphKind: ENTITY_FILE_KIND,
     version: APP_VERSION,
     name: entity.name,
+    ...(libraryDetails?.author ? { author: libraryDetails.author } : {}),
     ...(entity.aliases?.length ? { aliases: entity.aliases } : {}),
     ...(entity.pronouns ? { pronouns: entity.pronouns } : {}),
     ...(entity.persona ? { persona: true } : {}),
@@ -179,7 +183,7 @@ async function placeholderPortrait(name: string): Promise<string> {
  * Entities without a portrait get a generated placeholder so export always yields a valid image.
  */
 export async function exportEntityCard(
-  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {},
+  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails,
 ): Promise<Blob> {
   // The generated portrait draws initials from the name, so a chip left raw is baked into the shipped image.
   let imageUrl = primaryImage(entity)
@@ -193,7 +197,7 @@ export async function exportEntityCard(
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links, libraryDetails)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 
@@ -219,7 +223,7 @@ export async function importEntityCard(file: File): Promise<Entity> {
  */
 export async function importCharacterFile(
   file: File,
-): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: EntityLibraryDetails }> {
+): Promise<{ entity: Entity; book: Dictionary | null; links: ComponentFileLinks; libraryDetails?: LibraryDetails }> {
   if (file.type === 'application/json' || /\.json$/i.test(file.name)) {
     const tavern = readTavernJson(await file.text());
     if (!tavern) throw new Error("This JSON isn't a SillyTavern character card.");
@@ -237,7 +241,7 @@ export async function importCharacterFile(
     }
     const entity = parseEntityCardData(raw);
     entity.images = [bytesToDataUrl(bytes, 'image/webp'), ...(entity.images ?? [])];
-    return { entity, book: null, links: readComponentFileLinks(raw) };
+    return { entity, book: null, links: readComponentFileLinks(raw), libraryDetails: readLibraryDetails(raw) };
   }
 
   const tavern = readTavernCard(bytes);
