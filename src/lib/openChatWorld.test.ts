@@ -9,6 +9,11 @@ import { testInput } from './turnPipeline/turnTestInputs';
 import type { TurnSettings } from './turnPipeline/turnPlan';
 import { collectPins } from './placeholderPins';
 import { readPlaceholders, resolvePlaceholders } from './placeholders';
+import { parsePromptTemplate } from './promptTemplate';
+import { splitToken } from './promptVariables';
+import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
+import { resolveWorldPrompt, worldPrompt, worldPromptChipValues, worldPromptEnabled } from './worldPrompt';
+import { defaultSystemPrompt } from '@/components/game/GamePrompts';
 import type { Trait } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -34,6 +39,31 @@ describe('the Open Chat default world', () => {
     expect(world.connections ?? []).toEqual([]);
     expect(world.entities).toEqual([]);
     expect(world.dictionaries.flatMap((book) => book.entries)).toEqual([]);
+  });
+
+  it('supplies its own narration prompt, which the player can decline', () => {
+    const overview = world.worldOverview;
+    expect(worldPromptEnabled(overview, 'narration')).toBe(true);
+    const own = worldPrompt(overview, 'narration');
+    expect(own).not.toBeNull();
+    expect(own).not.toBe(defaultSystemPrompt);
+    expect(resolveWorldPrompt(overview, 'narration', 'the preset', false)).toBe(own);
+    expect(resolveWorldPrompt(overview, 'narration', 'the preset', true)).toBe('the preset');
+  });
+
+  it('keeps every chip of the built-in narration prompt in its own', () => {
+    const chipKeys = (template: string) => new Set(parsePromptTemplate(template).flatMap((s) =>
+      s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
+    const own = chipKeys(worldPrompt(world.worldOverview, 'narration') ?? '');
+    for (const key of chipKeys(defaultSystemPrompt)) expect(own, key).toContain(key);
+  });
+
+  // The tone chips live in the narration prompt, so the world text is one line that sets no scene.
+  it('holds one chip-free line as its world system prompt', () => {
+    const text = world.worldOverview.systemPrompt.trim();
+    expect(text).not.toBe('');
+    expect(text.split('\n')).toHaveLength(1);
+    expect(text).not.toContain('{{ph:');
   });
 
   it('lets the player be anyone and opens on one editable Player Action', () => {
@@ -74,10 +104,18 @@ describe('the Open Chat tone traits', () => {
   const valuesById = (active: Trait[], disabledTraitIds?: string[]): Record<string, string> =>
     Object.fromEntries(readPlaceholders({ placeholders, rolls: {}, pins: pinsFor(active, disabledTraitIds) })
       .map((r) => [r.id, r.value]));
-  // The shipped text that reads the four tone chips.
-  const toneText = world.worldOverview.systemPrompt;
-  const resolvedText = (active: Trait[]) =>
-    resolvePlaceholders(toneText, { placeholders, rolls: {}, pins: pinsFor(active) });
+  // The narration system prompt as play sends it: the world's own prompt, its tone chips keyed at the seam.
+  const resolvedText = (active: Trait[]) => {
+    const overview = world.worldOverview;
+    const resolvePH = (text: string) => resolvePlaceholders(text, { placeholders, rolls: {}, pins: pinsFor(active) });
+    return buildNarrationPrompt({
+      template: resolveWorldPrompt(overview, 'narration', defaultSystemPrompt, false),
+      ctx: { ...worldPromptChipValues(overview, false, resolvePH), '<WORLD DESCRIPTION>': resolvePH(overview.systemPrompt) },
+      action: '', history: [], dictionary: [], actionVec: null, semanticLore: false, embedVectors: new Map(),
+      language: 'English', paragraphLimit: 'auto', maxTokens: 1024, markdownOutput: true,
+      sectionStyle: 'markdown', resolvePH,
+    }).prompt;
+  };
 
   const defaults = valuesById([]);
 
@@ -92,7 +130,10 @@ describe('the Open Chat tone traits', () => {
   it('reads the middle setting of every group when no trait is picked', () => {
     const middles = groupTraits.map((traits) => traits[1]);
     expect(resolvedText(middles)).toBe(resolvedText([]));
-    for (const value of Object.values(defaults)) expect(value.trim()).not.toBe('');
+    for (const value of Object.values(defaults)) {
+      expect(value.trim()).not.toBe('');
+      expect(resolvedText([])).toContain(value);
+    }
   });
 
   it.each(groupTraits.flat().map((t) => [t.name, t] as const))('%s changes only its own placeholder', (_name, trait) => {
