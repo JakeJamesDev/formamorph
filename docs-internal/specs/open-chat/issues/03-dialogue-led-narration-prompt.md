@@ -25,3 +25,7 @@ Read the prompt-writing guide before editing. Follow it: positive contract, gene
 - [ ] The AI description of the one location, written unprobed in ticket 01, is in the probed context; keep it or rewrite it on the numbers
 - [ ] The content test asserts the narration override is present and reads all four tone chips, and its finding set no longer holds world-empty-system-prompt
 - [ ] Four gates green
+
+## Comments
+
+**From ticket 02.** The four tone chips sit in the world system prompt, so `world-empty-system-prompt` is already gone from the finding set. When this ticket moves the chips into the narration override, keep one neutral line in the system prompt, or the finding returns. Also point the tone test in `src/lib/openChatWorld.test.ts` (`toneText`) at the override text.
