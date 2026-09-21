@@ -115,9 +115,13 @@ In prompt editors, a chip's prepend and append text appears inline with its exac
 
 The highlight and pill belong to one token. Selecting either opens the chip's options; editing Prepend or Append keeps focus in that input. Removing or dragging the chip includes its affixes. Spaces retain their spacing without a colored mark; newline markers use the affix highlight. The highlight's tooltip identifies the empty-value condition, and the options explain it on mobile. Read-only presets show the same text with disabled options.
 
-Persona, Location and Entities use plain text for Name, including in Preview. Disable Format for Name through the shared read-only axis pattern and explain the plain text output below it. Keep the selected format so Full and Summary restore it.
+Stats, Traits, Persona, Location, and Entities offer a single-line **Header** above Prepend/Append. Use the selected Format for a level-two Markdown heading, an uppercase Simple label, or paired XML tags. Keep raw Header text in the placement. Show generated boundaries with the same conditional highlight and chip options; move, copy, or remove the whole placement together.
 
-Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local controls cover present and absent Persona values and read-only editing without saving settings or calling a model. The reference uses a section of the default system prompt; authored prompt wording stays unchanged.
+Headed chips form separate sections, reusing authored line breaks and preserving extra blank lines. The section contains Header, Prepend, the value, Append, and any XML closing tag. Blank values and the exact `N/A` sentinel omit the whole section. Custom XML parents remain authored text.
+
+Persona, Location and Entities use plain text for Name, including in Preview. Disable Format for Name only when Header is blank, through the shared read-only axis pattern. Clearing Header retains Format and affixes.
+
+Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local sample covers Header, present and absent Persona values, and read-only editing without saving settings or calling a model.
 
 ### Shared chip insertion and movement
 

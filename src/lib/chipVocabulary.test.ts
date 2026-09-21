@@ -267,13 +267,13 @@ describe('placeholderVocabulary — drill and inline create', () => {
 describe('chip affixes in the editor vocabulary (gate 8)', () => {
   const vocab = promptVocabulary([]);
 
-  it('offers affixes only on chips that render an inline value', () => {
+  it('offers affixes on inline and format-capable chips', () => {
     expect(vocab.affixes('<LOCATION|name>')).toEqual({ pre: '', post: '' });
     expect(vocab.affixes('<ENTITIES>')).toEqual({ pre: '', post: '' });
     expect(vocab.affixes('<NOTES>')).toEqual({ pre: '', post: '' });
-    // Block-rendering chips get no fields at all.
     expect(vocab.affixes('<WORLD DESCRIPTION>')).toBeNull();
-    expect(vocab.affixes('<STATS DESCRIPTION>')).toBeNull();
+    expect(vocab.affixes('<STATS DESCRIPTION>')).toEqual({ pre: '', post: '' });
+    expect(vocab.affixes('<TRAITS DESCRIPTION>')).toEqual({ pre: '', post: '' });
   });
 
   it('writes affixes into the token and reads them back', () => {

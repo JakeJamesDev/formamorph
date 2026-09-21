@@ -29,7 +29,7 @@ import { CHIP_BASE } from '@/components/Chip';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { type MarkdownAction, HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 import { type PromptVariable } from '@/lib/promptVariables';
-import { resolveToken } from '@/lib/promptTemplate';
+import { resolvePromptSegments } from '@/lib/promptTemplate';
 import {
   tintValue, emptyMarker, stripTintSentinels, tintMarkStyle, emptyMarkStyle,
   TINT_MARK_CLASS, EMPTY_MARK_CLASS, EMPTY_MARK_LABEL,
@@ -51,6 +51,7 @@ import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptF
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
+import { PromptTokenPastePlugin } from './PromptTokenPastePlugin';
 import { TOOLBAR_BTN } from './toolbarStyles';
 import { anchorAt, applyAnchor, captureAnchor, caretOffset, PROMPT_ANCHORS, type ScrollAnchor } from './previewScrollSync';
 
@@ -448,13 +449,9 @@ function PreviewPane({ value, previewValues, vocab, scrollRef, onScroll }: {
 }) {
   return (
     <div ref={scrollRef} onScroll={onScroll} data-testid="prompt-preview" className="h-full min-h-[160px] overflow-auto rounded-md border border-input bg-muted/40 px-3 py-2 text-label whitespace-pre-wrap">
-      {vocab.parse(value).map((seg, i) => {
+      {resolvePromptSegments(vocab.parse(value), previewValues).map(({ segment: seg, text: rendered }, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
         const color = vocab.color(seg.token);
-        // resolveToken applies the placement's affixes and the vanish-when-empty rule, so the preview
-        // matches what the model receives. It returns undefined for another family's token (placeholders),
-        // which then falls back to that family's own by-token lookup. `??` — '' is a real result.
-        const rendered = resolveToken(seg.token, previewValues) ?? previewValues[seg.token] ?? seg.token;
         // A chip with nothing to show — an absent value, or an affixed placement whose whole phrase drops
         // out — leaves a marker rather than vanishing, so an empty resolution reads differently from a
         // placeholder the author never inserted. The model still receives nothing.
@@ -491,11 +488,9 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
   scrollRef?: React.Ref<HTMLDivElement>;
   onScroll?: React.UIEventHandler<HTMLDivElement>;
 }) {
-  const resolved = vocab
-    .parse(value)
-    .map((seg) => {
+  const resolved = resolvePromptSegments(vocab.parse(value), previewValues ?? {})
+    .map(({ segment: seg, text: rendered }) => {
       if (seg.type === 'text') return stripTintSentinels(seg.value);
-      const rendered = resolveToken(seg.token, previewValues ?? {}) ?? previewValues?.[seg.token] ?? seg.token;
       const color = vocab.color(seg.token);
       return rendered === '' ? emptyMarker(color) : tintValue(stripTintSentinels(rendered), color);
     })
@@ -1013,6 +1008,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           body
         )}
         <SeededHistoryPlugin />
+        {vocab.header && <PromptTokenPastePlugin vocab={vocab} />}
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
         <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} pressed={pressedValue} />

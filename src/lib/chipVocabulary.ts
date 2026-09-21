@@ -12,6 +12,7 @@ import {
 import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate } from './promptTemplate';
+import { promptHeader } from './promptHeader';
 import { HIGHLIGHT_PALETTE } from './highlightUtils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
@@ -125,11 +126,15 @@ export interface ChipVocabulary {
   selection(token: string): Record<string, string | null>;
   /** The token with one axis changed. */
   setAxis(token: string, axisId: string, optionId: string | null): string;
-  /** The placement's prefix/suffix, or null when this chip doesn't take them (it renders a block, not a
-   *  phrase). See docs-internal/designs/chip-affixes/design.md. */
+  /** The placement's literal prefix/suffix, or null when affix controls are unavailable. */
   affixes(token: string): { pre: string; post: string } | null;
   /** The token with its affixes replaced. Empty strings remove them. */
   setAffixes(token: string, pre: string, post: string): string;
+  /** Raw section heading, or null for a chip without Header controls. */
+  header?(token: string): string | null;
+  setHeader?(token: string, header: string): string;
+  /** Generated section boundaries, separate from literal affixes. */
+  headerBoundaries?(token: string): { pre: string; post: string } | null;
   /** The author's name for this one placement (`''` when unset), or null while the chip cannot take one.
    *  Only a Unique placeholder chip takes one: a World chip is every other World chip of its placeholder. */
   placementLabel?(token: string): string | null;
@@ -182,7 +187,7 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
       const v = variableForToken(t);
       if (!v) return [];
       const inlineName = decodeVariant(v, tokenVariant(t)).content === 'name';
-      return variableAxes(v).map(axis => inlineName && axis.id === 'format'
+      return variableAxes(v).map(axis => inlineName && !splitToken(t)?.header?.trim() && axis.id === 'format'
         ? { ...axis, readOnly: true, readOnlyHelp: v.token === '<PERSONA>'
           ? 'Sends the name and pronouns as plain text' : 'Sends names as plain text' }
         : axis);
@@ -195,21 +200,35 @@ export function promptVocabulary(palette: PromptVariable[]): ChipVocabulary {
       const v = variableForToken(t);
       if (!v) return t;
       const next = { ...decodeVariant(v, tokenVariant(t)), [axisId]: optionId };
-      // Rebuilt through joinToken so switching a mode keeps the placement's affixes — withVariant knows
-      // nothing about them and would silently drop the user's wording.
+      // Preserve placement metadata while changing one selected axis.
       const parts = splitToken(t);
-      return joinToken({ base: baseToken(t), variantId: encodeVariant(v, next), pre: parts?.pre, post: parts?.post });
+      return joinToken({ ...parts, base: baseToken(t), variantId: encodeVariant(v, next) });
     },
     affixes: (t) => {
       const v = variableForToken(t);
-      if (!v?.affixable) return null;
+      if (!v || (!v.affixable && !variableAxes(v).some(axis => axis.id === 'format'))) return null;
       const parts = splitToken(t);
       return { pre: parts?.pre ?? '', post: parts?.post ?? '' };
     },
     setAffixes: (t, pre, post) => {
       const v = variableForToken(t);
-      if (!v?.affixable) return t;
-      return joinToken({ base: baseToken(t), variantId: tokenVariant(t), pre, post });
+      if (!v || (!v.affixable && !variableAxes(v).some(axis => axis.id === 'format'))) return t;
+      return joinToken({ ...splitToken(t), base: baseToken(t), variantId: tokenVariant(t), pre, post });
+    },
+    header: (t) => {
+      const v = variableForToken(t);
+      return v && variableAxes(v).some(axis => axis.id === 'format') ? splitToken(t)?.header ?? '' : null;
+    },
+    setHeader: (t, header) => {
+      const v = variableForToken(t);
+      const parts = splitToken(t);
+      if (!parts || !v || !variableAxes(v).some(axis => axis.id === 'format')) return t;
+      return joinToken({ ...parts, header });
+    },
+    headerBoundaries: (t) => {
+      const parts = splitToken(t);
+      const v = variableForToken(t);
+      return parts && v ? promptHeader(parts.header, decodeVariant(v, parts.variantId).format) : null;
     },
     palette: () => palette.map((v) => ({ token: v.token, label: v.label, color: v.color })),
     freshInsertToken: (t) => t,

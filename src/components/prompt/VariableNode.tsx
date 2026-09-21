@@ -2,7 +2,7 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import {
-  DecoratorNode, ElementNode, $getNodeByKey, SKIP_DOM_SELECTION_TAG,
+  DecoratorNode, ElementNode, $getNodeByKey, $getRoot, $isElementNode, SKIP_DOM_SELECTION_TAG,
   type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Hint } from '@/components/ui/typography';
 import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
@@ -22,6 +23,7 @@ import { remintPlaceholderPlacements } from '@/lib/placeholders';
 import { OpenValueChip } from './OpenValueChip';
 import { EditValueContext, OpenValuesContext } from './openValueContext';
 import { startPlacedChipDrag, type ChipDragKey } from './chipDragSource';
+import { sectionSpacing } from '@/lib/promptHeader';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -93,6 +95,25 @@ function $startsOnEmptyLine(nodeKey: NodeKey, vocab: ChipVocabulary): boolean {
   return true;
 }
 
+function $headerSpacing(nodeKey: NodeKey, vocab: ChipVocabulary) {
+  const pieces: { key: string; text: string; section: boolean }[] = [];
+  const visit = (node: LexicalNode) => {
+    if ($isVariableNode(node)) {
+      const token = node.getToken();
+      const header = vocab.headerBoundaries?.(token);
+      const affixes = vocab.affixes(token);
+      pieces.push({ key: node.getKey(), section: !!header,
+        text: `${header?.pre ?? ''}${affixes?.pre ?? ''}${vocab.label(token)}${affixes?.post ?? ''}${header?.post ?? ''}` });
+    } else if ($isElementNode(node)) node.getChildren().forEach(visit);
+    else pieces.push({ key: node.getKey(), text: node.getTextContent(), section: false });
+  };
+  $getRoot().getChildren().forEach((node, index) => {
+    if (index) pieces.push({ key: '', text: '\n', section: false });
+    visit(node);
+  });
+  return sectionSpacing(pieces)[pieces.findIndex(piece => piece.key === nodeKey)] ?? { before: '', after: '' };
+}
+
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
  *  single-click pop-out. Variables with `variants` show a segmented control to switch the chip's mode
  *  (e.g. Location → Full | Summary | List); others show a placeholder. */
@@ -126,6 +147,17 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     return editor.registerUpdateListener(update);
   }, [editor, nodeKey, vocab, affixes?.pre]);
   const placementLabel = known ? vocab.placementLabel?.(token) ?? null : null;
+  const header = known ? vocab.header?.(token) ?? null : null;
+  const [headerSpacing, setHeaderSpacing] = useState({ before: '', after: '' });
+  useEffect(() => {
+    if (!header?.trim()) { setHeaderSpacing({ before: '', after: '' }); return; }
+    const update = () => editor.getEditorState().read(() => {
+      const next = $headerSpacing(nodeKey, vocab);
+      setHeaderSpacing(previous => previous.before === next.before && previous.after === next.after ? previous : next);
+    });
+    update();
+    return editor.registerUpdateListener(update);
+  }, [editor, nodeKey, vocab, header]);
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
@@ -188,6 +220,14 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     }, { tag: SKIP_DOM_SELECTION_TAG });
   };
 
+  const setHeader = (value: string) => {
+    if (!editable || header == null) return;
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if ($isVariableNode(node)) node.setToken(vocab.setHeader?.(node.getToken(), value) ?? node.getToken());
+    }, { tag: SKIP_DOM_SELECTION_TAG });
+  };
+
   const handleDragStart = (event: React.DragEvent<HTMLElement>) =>
     startPlacedChipDrag(event, dragKey, nodeKey, token);
 
@@ -212,13 +252,14 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   }
 
   return (
-    <Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setRepicking(false); }}>
+    <Popover modal={header != null} open={open} onOpenChange={(next) => { setOpen(next); if (!next) setRepicking(false); }}>
       <PopoverTrigger asChild>
         <TokenChip
           token={token}
           vocab={vocab}
           showAffixes
           startsOnEmptyLine={startsOnEmptyLine}
+          headerSpacing={headerSpacing}
           draggable={editable}
           onDragStart={editable ? handleDragStart : undefined}
           onDoubleClick={renameable ? startRename : undefined}
@@ -227,7 +268,8 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         />
       </PopoverTrigger>
       <PopoverContent
-        className={width}
+        className={cn(width, 'max-w-[calc(100vw-1rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto')}
+        collisionPadding={8}
         align="start"
         // Selecting an option runs editor.update, which returns focus to the editor; without this that
         // focus-leave dismisses the pop-out, so you can't change two axes in a row. Clicking truly outside
@@ -341,6 +383,16 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
                 />
               </div>
             )}
+            {header != null && (
+              <div className={cn('space-y-2', axes.length && 'mt-4 pt-3 border-t')}>
+                <label className="block space-y-2">
+                  <span className="text-meta font-medium">Header</span>
+                  <Hint>Starts a section when the chip has a value</Hint>
+                  <Input aria-label="Header" value={header} disabled={!editable}
+                    onChange={event => setHeader(event.target.value)} className="h-7 text-meta" />
+                </label>
+              </div>
+            )}
             {affixes && (
               <div className={cn('space-y-2', (axes.length || placementLabel != null) && 'mt-4 pt-3 border-t')}>
                 <p className="text-meta font-medium">Prepend / Append</p>
@@ -391,6 +443,7 @@ export class VariableNode extends DecoratorNode<ReactNode> {
 
   isInline(): boolean { return true; }
   getToken(): string { return this.getLatest().__token; }
+  getTextContent(): string { return this.getToken(); }
   setToken(token: string): void { this.getWritable().__token = token; }
   isExpanded(): boolean { return this.getLatest().__expanded; }
   setExpanded(expanded: boolean): void { this.getWritable().__expanded = expanded; }
