@@ -19,6 +19,30 @@ function Field({ initial = TOKEN, readOnly = false }: { initial?: string; readOn
 }
 
 describe('Header in the shared prompt editor', () => {
+  it('offers Header on World without a misleading empty-options message and remembers its hidden Format', async () => {
+    const user = userEvent.setup();
+    const view = render(<Field initial="<WORLD DESCRIPTION>" />);
+    await user.click(screen.getByText('World'));
+    expect(screen.queryByText('No options for this variable.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Simple' })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Header'), 'world');
+    expect(screen.getByText('Format', { exact: true })).toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Simple' })).toHaveAttribute('data-state', 'on');
+    await user.click(screen.getByRole('radio', { name: 'XML' }));
+    await user.clear(screen.getByLabelText('Header'));
+    expect(screen.queryByRole('radio', { name: 'XML' })).not.toBeInTheDocument();
+    const saved = screen.getByTestId('stored').textContent!;
+    expect(saved).toBe('<WORLD DESCRIPTION|format=xml>');
+    view.unmount();
+    render(<Field initial={saved} />);
+    await user.click(screen.getByText('World'));
+    await user.type(screen.getByLabelText('Header'), 'world');
+    expect(screen.getByRole('radio', { name: 'XML' })).toHaveAttribute('data-state', 'on');
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByText('</world>'));
+    expect(screen.getByLabelText('Header')).toHaveValue('world');
+  });
+
   it('selects either generated boundary, retains input focus, and clears only Header', async () => {
     const user = userEvent.setup();
     render(<Field />);

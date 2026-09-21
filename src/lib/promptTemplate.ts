@@ -112,7 +112,7 @@ export function resolveToken(token: string, values: Record<string, string>): str
   if (!parts) return undefined;
   const value = values[parts.key];
   if (value === undefined) return undefined;
-  const header = promptHeader(parts.header, parts.variantId?.split('.').find(id => id === 'markdown' || id === 'xml'));
+  const header = promptHeader(parts.header, parts.headerFormat ?? parts.variantId?.split('.').find(id => id === 'markdown' || id === 'xml'));
   if (header) return isBlankValue(value) ? '' : `${header.pre}${parts.pre}${value}${parts.post}${header.post}`;
   if (!parts.pre && !parts.post) return value;
   return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { normalizeBooruTags, buildImagePrompt } from './imagePrompt';
+import { normalizeBooruTags, buildImagePrompt, SUBJECT_GUIDANCE, DEFAULT_TAG_PROMPT } from './imagePrompt';
 
 describe('normalizeBooruTags', () => {
   it('splits CamelCase/PascalCase joined tokens into spaced words', () => {
@@ -50,5 +50,24 @@ describe('buildImagePrompt user message', () => {
     const sent = await capture('a tall man in a grey coat');
     expect(sent).toContain('a tall man in a grey coat');
     expect(sent).not.toContain('Name:');
+  });
+});
+
+describe('Subject Header in the image-prompt request', () => {
+  it.each(['character', 'location', 'world'] as const)('renders %s guidance through the shared Header path', async kind => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ choices: [{ message: { content: 'a tag' } }] }) });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      for (const [tagPrompt, expected] of [
+        [undefined, DEFAULT_TAG_PROMPT.replace('<SUBJECT>', SUBJECT_GUIDANCE[kind])],
+        ['Before<SUBJECT|format=xml|header="image subject">After', `Before\n\n<image_subject>\n${SUBJECT_GUIDANCE[kind]}\n</image_subject>\n\nAfter`],
+        ['<SUBJECT|format=xml>', SUBJECT_GUIDANCE[kind]],
+        ['<SUBJECT|format=markdown|header="image subject">', `## Image Subject\n${SUBJECT_GUIDANCE[kind]}`],
+      ]) {
+        await buildImagePrompt({ description: 'A river town', kind }, { endpointUrl: 'http://x', apiToken: '', modelName: 'm', tagPrompt });
+        const request = JSON.parse(fetchMock.mock.lastCall![1].body as string) as { messages: { content: string }[] };
+        expect(request.messages[0].content).toBe(expected);
+      }
+    } finally { vi.unstubAllGlobals(); }
   });
 });

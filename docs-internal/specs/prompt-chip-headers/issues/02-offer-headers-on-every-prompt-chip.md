@@ -1,6 +1,8 @@
 # 02: Offer Headers on Every Prompt Chip
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Implemented and verified; closing review corrected Subject request rendering and found no remaining issues.
+Base: 9dc76c89
 Blocked by: 01 — Author Headers on Format-Capable Chips
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
@@ -17,16 +19,16 @@ Build on ticket 01's shared representation, renderer, editing, and sharing behav
 
 ## Acceptance criteria
 
-- [ ] Every registered prompt-variable chip offers optional Header in both Settings prompts and World Editor custom prompt fields. Inventory the registry so less prominent chip families are covered. World Editor Placeholder Chips remain outside scope.
-- [ ] On a chip without body formatting, adding its first nonblank Header reveals Format initialized to **Simple**, regardless of the custom prompt's style metadata or origin. Do not infer an initial value from a preset.
-- [ ] Format changes affect only the generated heading/wrappers for these chips. Existing content/scope choices retain their meanings, and the resolved body is unchanged. No artificial formatted-body variants are introduced.
-- [ ] Clearing Header removes generated structure and hides the now-ineffective Format selector while preserving its selection and any existing affixes. Restoring Header restores that selection, including after saving, reopening, copying, moving, and export/import.
-- [ ] Whitespace-only Header behaves as absent. Existing chips without Header retain their output, options, fallback behavior, and stored text.
-- [ ] All newly covered chips use ticket 01's casing, affix order, contextual spacing, empty-value omission, XML boundaries, and unresolved-token behavior. No family-specific rendering rules are duplicated.
-- [ ] Generated headings and closing tags use the same conditional highlight, options access, read-only protection, and single-placement ownership as the format-capable chips.
-- [ ] Ordinary/blank-line moves, self-drop rejection, cancellation, undo/redo, clipboard, and persistence preserve Header and its remembered Format on both real editing screens. Header-only format state survives each token mutation that can reconstruct a placement.
-- [ ] Preview, gameplay assembly, and request-anatomy runs remain consistent for the newly covered chips. Production JSON and share-code round trips retain native editable data, including remembered Format while Header is cleared.
-- [ ] Existing custom prompts are not converted or rewritten. Any actual export-envelope shape change is explicitly reported; no version bump or migration is added.
+- [x] Every registered prompt-variable chip offers optional Header in both Settings prompts and World Editor custom prompt fields. Inventory the registry so less prominent chip families are covered. World Editor Placeholder Chips remain outside scope.
+- [x] On a chip without body formatting, adding its first nonblank Header reveals Format initialized to **Simple**, regardless of the custom prompt's style metadata or origin. Do not infer an initial value from a preset.
+- [x] Format changes affect only the generated heading/wrappers for these chips. Existing content/scope choices retain their meanings, and the resolved body is unchanged. No artificial formatted-body variants are introduced.
+- [x] Clearing Header removes generated structure and hides the now-ineffective Format selector while preserving its selection and any existing affixes. Restoring Header restores that selection, including after saving, reopening, copying, moving, and export/import.
+- [x] Whitespace-only Header behaves as absent. Existing chips without Header retain their output, options, fallback behavior, and stored text.
+- [x] All newly covered chips use ticket 01's casing, affix order, contextual spacing, empty-value omission, XML boundaries, and unresolved-token behavior. No family-specific rendering rules are duplicated.
+- [x] Generated headings and closing tags use the same conditional highlight, options access, read-only protection, and single-placement ownership as the format-capable chips.
+- [x] Ordinary/blank-line moves, self-drop rejection, cancellation, undo/redo, clipboard, and persistence preserve Header and its remembered Format on both real editing screens. Header-only format state survives each token mutation that can reconstruct a placement.
+- [x] Preview, gameplay assembly, and request-anatomy runs remain consistent for the newly covered chips. Production JSON and share-code round trips retain native editable data, including remembered Format while Header is cleared.
+- [x] Existing custom prompts are not converted or rewritten. Any actual export-envelope shape change is explicitly reported; no version bump or migration is added.
 
 ## Verification and completion
 
@@ -40,3 +42,9 @@ Build on ticket 01's shared representation, renderer, editing, and sharing behav
 ## Scope boundary
 
 This completes Header availability and editing for custom prompts. Built-in conversion belongs to ticket 03. It does not add body formatting to raw-text chips or change Placeholder Chip behavior.
+
+## Comments
+
+All 22 registered chip families share Header authoring and rendering. [Verification evidence](../verification-02.md) records the four green gates, measured coverage, seven regression mutations, both-screen browser checks, and the closing Standards/Spec reviews. The review's Subject request-builder finding is fixed and regression-tested.
+
+Export envelopes, versions, and existing custom prompt strings are unchanged. Sharing the extended token syntax requires an updated parser.
