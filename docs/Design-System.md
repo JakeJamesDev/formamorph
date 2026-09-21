@@ -613,7 +613,7 @@ The three parts, in reading order for Pages:
 | --- | --- | --- |
 | **Turn Card** | The plate, the action line, the reasoning block, the narration, then the action row | The caller supplies the body. Chat puts the plate under the narration and keeps the action bubble outside the card. |
 | **Scene Plate** | One turn's images, newest in view | A click zooms. Hover or focus within shows previous, the count, next, and delete. One image shows delete only. |
-| **Choice rows** | Unnumbered choices, then a Continue action; an inset line in the text color with centered “or” separates them | Continue and **Re-generate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Re-generate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
+| **Choice rows** | Unnumbered choices, then a Continue action; an inset muted line with centered, muted “or” separates them | Continue and **Re-generate Choices** share a segmented row with a muted vertical divider and no separate icon-button border. Re-generate sits below the choices when Continue is hidden. No rule appears when Continue is the only choice. |
 
 - The action row starts with the turn number, then the icon actions, then **More** for the menu-only actions.
 - The action line in Pages is the player's text with a left rule in the primary color and the muted foreground. It is upright, so the player's italics and quote color show. It has its own right-click menu, and that event does not reach the card's menu.
