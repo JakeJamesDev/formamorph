@@ -148,7 +148,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
       if (!$isVariableNode(node)) return;
       const current = vocab.affixes(node.getToken()) ?? { pre: '', post: '' };
       node.setToken(vocab.setAffixes(node.getToken(), ...(which === 'pre' ? [value, current.post] : [current.pre, value]) as [string, string]));
-    });
+    }, { tag: SKIP_DOM_SELECTION_TAG });
   };
 
   // Written straight through to the token like an affix: the label is the placement's own and travels with
@@ -170,7 +170,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     // Custom drag image: a translucent copy of the chip offset down-right of the pointer, so the chip stops
     // sitting on the cursor and hiding the insertion point (the pointer aligns to the wrapper's transparent
     // top-left corner). Cleaned up on the next tick, after the browser has snapshotted it.
-    const chip = (e.currentTarget as HTMLElement).firstElementChild as HTMLElement | null;
+    const chip = e.currentTarget.querySelector<HTMLElement>('[data-chip]');
     if (chip) {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'position:absolute;top:-1000px;left:-1000px;padding:16px 0 0 16px;pointer-events:none';
@@ -210,6 +210,7 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
         <TokenChip
           token={token}
           vocab={vocab}
+          showAffixes
           draggable={editable}
           onDragStart={editable ? handleDragStart : undefined}
           onDoubleClick={renameable ? startRename : undefined}
@@ -388,8 +389,8 @@ export class VariableNode extends DecoratorNode<ReactNode> {
 
   createDOM(): HTMLElement {
     const span = document.createElement('span');
-    // An open value wraps with the text around it; a pill never breaks.
-    span.style.display = this.__expanded ? 'inline' : 'inline-block';
+    // Affixes and open values wrap with surrounding text; the chip pill stays unbroken.
+    span.style.display = 'inline';
     return span;
   }
   updateDOM(prev: VariableNode): boolean { return prev.__expanded !== this.__expanded; }
