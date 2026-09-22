@@ -17,7 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
-  - **The website gallery and social preview show the updated interface, with gameplay choices and readable side-panel tabs.** Captures use a 1600×900 viewport across all five palettes in light and dark themes. The gameplay image shows a submitted player action and its response, with Entities selected. The capture script rejects clipped action text, narration, choices or input and crowded tabs before saving the gameplay image.
+  - **The website gallery and social preview show the updated interface and load fresh images after each screenshot update.** Captures use a 1600×900 viewport across all five palettes in light and dark themes. The gameplay image shows a submitted player action and its response, with Entities selected. The capture script rejects clipped action text, narration, choices or input and crowded tabs before saving the gameplay image. Website deployments give the gallery, thumbnails, and social preview content-based URLs so cached images do not hide new captures.
 
 ---
 

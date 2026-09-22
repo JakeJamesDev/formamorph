@@ -52,6 +52,7 @@ runs:
         unzip -q "$WEB_ZIP" -d out/play
         cp -r hosting/. out/
         cp -r site-dist/. out/site-app/
+        node scripts/versionSiteImages.mjs out
         echo "app:   $(find out/play -type f | wc -l) files"
         echo "pages: $(find out/site-app -type f | wc -l) files"
         echo "site:  $(find out -type f -not -path 'out/play/*' -not -path 'out/site-app/*' | wc -l) files"
