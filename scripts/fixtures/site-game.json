@@ -1,0 +1,12 @@
+{
+  "location": "Demon Frontier",
+  "entity": "Tiamat",
+  "opening": "Tiamat rests on a ruined arch at the edge of the clearing. Beyond him, a thin column of smoke rises from a frontier watchtower.",
+  "action": "I chirp a greeting to Tiamat and point my scanning beam toward the distant smoke.",
+  "narration": "Your greeting rings against the broken stone. Tiamat lowers his silver head until one enormous eye meets your optical sensor. For a moment, the dragon studies the little beam crossing his claws. Then he follows it toward the watchtower, where black smoke curls above the trees.\n\n\"Yes, little machine. I see it.\" His wings shift, scattering dust from the arch. \"Mortals build a tower, put something valuable inside, and act astonished when someone comes to take it. A tradition older than your makers.\" Despite his dismissive tone, his gaze stays on the ridge.\n\nYou narrow your scan. Through a gap in the branches, the tower's iron gate hangs open. A wagon lies tipped across the road, its wheels still turning slowly. Two figures hurry from the courtyard carrying a long, cloth-wrapped object between them. A third remains beside the gate, watching the tree line. No one is trying to fight the fire.\n\nTiamat's claws tighten against the stone. \"That banner belonged to people who once knew better.\" The words come quietly, without his earlier amusement. He draws back, leaving the trail clear before you. The road offers a direct approach; a dry streambed winds below it, hidden by thorn bushes. Above both routes, the dragon waits to see which way you will turn.",
+  "choices": [
+    "I ask Tiamat what he knows about the banner.",
+    "I follow the streambed toward the watchtower.",
+    "I approach along the road and hail the guard."
+  ]
+}

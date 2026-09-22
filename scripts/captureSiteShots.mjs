@@ -1,12 +1,14 @@
 // Capture the landing page's gallery set: 5 screens x 5 palettes x 2 themes, plus the thumbnails,
 // the favicon, and the social-embed image. Writes straight into hosting/site/.
 //
-// Needs a dev server (`npm run dev -- --port 5180`) and, for the in-game screen, a reachable text
-// endpoint. Palette is the `data-theme` attribute; theme is an emulated `prefers-color-scheme`, so
+// Needs a dev server (`npm run dev -- --port 5180`). Gameplay loads a prepared save without AI calls.
+// Palette is the `data-theme` attribute; theme is an emulated `prefers-color-scheme`, so
 // every pair is pixel-aligned.
 //
 //   node scripts/captureSiteShots.mjs
 //   node scripts/captureSiteShots.mjs --base http://localhost:5180 --only 01-library,04-settings
+//   node scripts/captureSiteShots.mjs --only 02-game --verify-only --width 1600 --height 900
+//   node scripts/captureSiteShots.mjs --only 02-game --scene scripts/fixtures/site-game.json
 //
 // The avatar screen ships the alternate VRM, which is not the tracked default. The capture serves it
 // by intercepting the fetch in a context of its own, so the tracked file is never touched: writing an
@@ -14,6 +16,7 @@
 import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -26,8 +29,9 @@ const ENDPOINT = process.env.CAPTURE_ENDPOINT ?? 'https://api.lyonade.net';
 const MODEL = process.env.CAPTURE_MODEL ?? 'default';
 const PALETTES = ['graphite', 'purple', 'forest', 'rose', 'monochrome'];
 const THEMES = ['light', 'dark'];
-const VIEWPORT = { width: 1280, height: 720 };
-// The gallery renders ~1050 CSS px wide, so 1280 covers a 1x display outright and most of a 2x one.
+const VIEWPORT = { width: Number(arg('width', '1600')), height: Number(arg('height', '900')) };
+if (!Object.values(VIEWPORT).every((size) => Number.isInteger(size) && size > 0)) throw new Error('Invalid capture viewport');
+// The side-panel labels and the complete turn must fit at the capture viewport.
 const WEBP_QUALITY = 0.86;
 const THUMB_WIDTH = 300;
 const OG = { width: 1200, height: 630, quality: 0.88 };
@@ -37,8 +41,13 @@ const only = arg('only', '').split(',').filter(Boolean);
 const wanted = new Set(only.length ? only : ALL);
 
 const AVATAR_ALT = 'build-assets/alternate-avatar.vrm';
+const SCENE = JSON.parse(readFileSync(arg('scene', 'scripts/fixtures/site-game.json'), 'utf8'));
+const VERIFY_ONLY = process.argv.includes('--verify-only');
 
-const write = (path, buf) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, buf); };
+const write = (path, buf) => {
+  if (VERIFY_ONLY) return;
+  mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, buf);
+};
 
 const browser = await chromium.launch();
 const newCtx = async () => {
@@ -98,24 +107,11 @@ const mk = async (context = ctx) => {
       await page.waitForTimeout(500);
     }
   };
-  page.closeDialogs = async () => {
-    for (let i = 0; i < 4; i++) {
-      const dlg = page.locator('[role="dialog"]').last();
-      if (!(await dlg.isVisible().catch(() => false))) break;
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(500);
-      if (!(await dlg.isVisible().catch(() => false))) break;
-      const close = dlg.getByRole('button', { name: /close/i }).first();
-      if (await close.isVisible().catch(() => false)) await close.click().catch(() => {});
-      else { const b = await dlg.boundingBox(); if (b) await page.mouse.click(b.x + b.width - 18, b.y + 18); }
-      await page.waitForTimeout(700);
-    }
-  };
   return page;
 };
 
 /** Sweep one screen through every palette and theme, and keep the graphite/dark frame for reuse. */
-const sweep = async (page, name) => {
+const sweep = async (page, name, verify) => {
   let hero = null;
   for (const pal of PALETTES) {
     await page.evaluate((v) => document.documentElement.setAttribute('data-theme', v), pal);
@@ -123,36 +119,89 @@ const sweep = async (page, name) => {
       await page.emulateMedia({ colorScheme: scheme });
       await page.waitForTimeout(600);
       await page.dismiss();
+      if (verify) await verify(page);
       const png = await page.screenshot();
       write(`${OUT}/shots/${pal}/${scheme}/${name}.webp`, await encode(png));
       if (pal === 'graphite' && scheme === 'dark') hero = png;
     }
   }
   write(`${OUT}/shots/thumbs/${name}.webp`, await encode(hero, { width: THUMB_WIDTH }));
-  console.log('swept:', name);
+  console.log(VERIFY_ONLY ? 'verified:' : 'swept:', name);
   return hero;
 };
 
-/** Give every drone location the one authored backdrop, in the seeded copy only. */
-const patchBackdrops = (page) => page.evaluate(() => new Promise((res, rej) => {
-  const req = indexedDB.open('worldsDB');
-  req.onsuccess = () => {
-    const st = req.result.transaction(['worlds'], 'readwrite').objectStore('worlds');
-    const g = st.get('drone');
-    g.onsuccess = () => {
-      const rec = g.result;
-      if (!rec) return rej('drone not seeded yet');
-      const src = (rec.data.locations || []).find((l) => l.backgroundImage);
-      if (!src) return rej('no background source');
-      let n = 0;
-      for (const l of rec.data.locations) if (!l.backgroundImage) { l.backgroundImage = src.backgroundImage; n++; }
-      rec.dirty = true; // keeps the auto-reseed from reverting it on a later launch
-      st.put(rec).onsuccess = () => res(`patched ${n} locations`);
-    };
-    g.onerror = () => rej('get failed');
+async function prepareGame(context) {
+  const world = JSON.parse(readFileSync('src/defaultworlds/drone.json', 'utf8'));
+  const location = world.locations.find((item) => item.name === SCENE.location);
+  const entity = world.entities.find((item) => item.name === SCENE.entity);
+  if (!location || !entity || !entity.locations.includes(location.id)) throw new Error('Capture scene does not match the world');
+  location.backgroundImage ||= world.locations.find((item) => item.backgroundImage)?.backgroundImage;
+  const state = {
+    playerStats: world.stats.map((stat) => ({ ...stat, value: stat.starting })),
+    playerTraits: [], visibleEntities: [{ name: entity.name, revealed: true }], discoveredEntities: [],
+    logEntries: [], gameplayText: SCENE.narration, locationId: location.id, gameTime: 3,
+    characterData: null, choices: SCENE.choices, isGameStarted: true, timestamp: new Date().toISOString(),
+    worldName: world.worldOverview.name, playerNotes: '', previousStateIndex: 0, stateVersion: 2,
   };
-  req.onerror = () => rej('open failed');
-}));
+  const openingState = { ...state, gameplayText: SCENE.opening, choices: [SCENE.action], gameTime: 0, previousStateIndex: null };
+  const save = {
+    currentState: state, stateHistory: [openingState, state], dictionaries: world.dictionaries,
+    version: JSON.parse(readFileSync('package.json', 'utf8')).version,
+    messageHistory: [
+      { role: 'user', content: 'START GAME' },
+      { role: 'assistant', content: JSON.stringify({
+        narration: SCENE.opening, choices: [SCENE.action], entities: [entity.name],
+        stat_changes: [], turnId: randomUUID(),
+      }) },
+      { role: 'user', content: SCENE.action },
+      { role: 'assistant', content: JSON.stringify({
+        narration: SCENE.narration, choices: SCENE.choices, entities: [entity.name],
+        stat_changes: [], turnId: randomUUID(),
+      }) },
+    ],
+  };
+  // Replace only the capture browser's dev-fixture modules; the client and tracked fixtures stay intact.
+  for (const [file, data] of [['whiteRoomWorld', world], ['whiteRoomSave', save]]) {
+    await context.route(`**/src/lib/devFixtures/${file}.json*`, (route) => route.fulfill({
+      contentType: 'application/javascript', body: `export default ${JSON.stringify(data)};`,
+    }));
+  }
+  await context.route('**/chat/completions*', (route) => route.abort());
+}
+
+async function verifyGame(page) {
+  if ((await page.getByTestId('action-line').textContent())?.trim() !== SCENE.action) {
+    throw new Error('Gameplay capture rejected: submitted action does not match the scene');
+  }
+  const targets = [page.getByTestId('action-line'), page.getByTestId('narration'), page.getByTestId('action-input-wrap'),
+    ...SCENE.choices.map((choice) => page.getByRole('button', { name: choice, exact: true })),
+    page.getByRole('tabpanel').filter({ hasText: SCENE.entity }).getByText(SCENE.entity, { exact: true })];
+  for (const target of targets) {
+    const problem = await target.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      let left = 0, top = 0, right = innerWidth, bottom = innerHeight;
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const style = getComputedStyle(parent), box = parent.getBoundingClientRect();
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) { left = Math.max(left, box.left); right = Math.min(right, box.right); }
+        if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) { top = Math.max(top, box.top); bottom = Math.min(bottom, box.bottom); }
+      }
+      return rect.width <= 0 || rect.height <= 0 || rect.left < left - 1 || rect.right > right + 1
+        || rect.top < top - 1 || rect.bottom > bottom + 1 ? `clipped: ${element.textContent?.slice(0, 90)}` : null;
+    });
+    if (problem) throw new Error(`Gameplay capture rejected: ${problem}`);
+  }
+  const tabs = page.getByRole('tab', { name: /^(Entities|Notes|Memory|Logs)/ });
+  if (await tabs.count() !== 4) throw new Error('Gameplay capture rejected: missing side-panel tabs');
+  const badTabs = await tabs.evaluateAll((tabs) => tabs.filter((tab) => {
+    const icon = tab.querySelector('svg')?.getBoundingClientRect();
+    const label = tab.querySelector('span');
+    if (!icon || !label) return true;
+    const range = document.createRange(); range.selectNodeContents(label);
+    const lines = [...range.getClientRects()];
+    return lines.length !== 1 || icon.right > lines[0].left + 1 || label.scrollWidth > label.clientWidth + 1;
+  }).map((tab) => tab.textContent));
+  if (badTabs.length) throw new Error(`Gameplay capture rejected: crowded tabs: ${badTabs.join(', ')}`);
+}
 
 let gameFrame = null;
 const failures = [];
@@ -172,32 +221,23 @@ try {
   }
 
   if (wanted.has('02-game')) {
-    const p = await mk();
-    p.on('response', (r) => { if (r.url().includes('chat/completions')) console.log('AI response <-', r.status()); });
-    await p.goto(`${BASE}/#dev?view=mainMenu`);
-    await p.waitForTimeout(8000);
+    const gameContext = await newCtx();
+    await prepareGame(gameContext);
+    const p = await mk(gameContext);
+    await p.goto(`${BASE}/#dev?view=gameViewer&fixture=whiteRoom&mode=pages`);
+    await p.getByTestId('narration').waitFor();
     await p.dismiss();
-    console.log('backdrop patch:', await patchBackdrops(p));
-    await p.getByText('Reincarnated to Another World as a Cute Assault Drone', { exact: false }).first().click();
-    await p.waitForTimeout(1500);
-    await p.getByRole('button', { name: 'Quick Start' }).click();
-    await p.waitForTimeout(4000);
-    await p.closeDialogs();
-    // The opening narration fires on its own; wait for the choices it ends with.
-    let nudged = false;
-    for (let i = 0; i < 60; i++) {
-      await p.waitForTimeout(3000);
-      await p.dismiss();
-      const n = await p.locator('button', { hasText: /^I / }).count().catch(() => 0);
-      if (n >= 2) { console.log('choices up at tick', i); break; }
-      if (i === 6 && !nudged) {
-        const input = p.locator('textarea').last();
-        if (await input.isVisible().catch(() => false)) { await input.click().catch(() => {}); await p.keyboard.press('Enter'); nudged = true; }
-      }
-    }
-    await p.waitForTimeout(2500);
-    gameFrame = await sweep(p, '02-game');
+    await p.getByRole('tab', { name: 'Entities', exact: true }).click();
+    await p.getByRole('button', { name: SCENE.choices[0], exact: true }).waitFor();
+    await p.getByTestId('action-input-wrap').locator('textarea').fill('');
+    await p.getByTestId('action-input-wrap').locator('textarea').blur();
+    await p.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.all([...document.images].map((image) => image.decode().catch(() => {})));
+    });
+    gameFrame = await sweep(p, '02-game', verifyGame);
     await p.close();
+    await gameContext.close();
   }
 
   if (wanted.has('04-settings')) {
@@ -240,7 +280,7 @@ const ogSource = gameFrame ?? (existsSync(`${OUT}/shots/graphite/dark/02-game.we
   : null);
 if (ogSource) {
   write(`${OUT}/og.jpg`, await encode(ogSource, { type: 'image/jpeg', quality: OG.quality, crop: OG }));
-  console.log('wrote og.jpg');
+  if (!VERIFY_ONLY) console.log('wrote og.jpg');
 } else {
   console.log('skipped og.jpg (no 02-game frame in this run)');
 }
