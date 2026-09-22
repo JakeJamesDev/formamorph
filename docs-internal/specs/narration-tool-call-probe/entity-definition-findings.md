@@ -1,5 +1,7 @@
 # Entity definition: results
 
+> Interpretation caveat: both arms retain a tool-description example, “the ferryman,” that appears in the fixture. The definition comparison holds it constant, but does not establish behavior without that cue. See the [example-removal control](no-example-protocol.md).
+
 **The diagnostic found a vocabulary mismatch. Adding the definition improved the action-required retrieval result in this batch, without increasing aggregate thinking. It did not improve coverage of every incidental mention.**
 
 [Diagnostic answers](entity-diagnostic-answers.md) · [Narration comparison](entity-definition-outputs.md) · [Narration thinking](entity-definition-thinking.md) · [Exact candidate prompt](entity-definition-prompt.md) · [Mention audit](entity-definition-review.csv) · [Protocol](entity-definition-protocol.md)
