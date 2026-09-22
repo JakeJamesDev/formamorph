@@ -97,11 +97,12 @@ export interface PromptPresetStore {
   presets: PromptPreset[];
 }
 
-/** The read-only built-in presets — same content, different section style. Order = dropdown order. */
+/** The read-only built-in presets, in dropdown order. */
 export const BUILTIN_PRESETS: { id: string; name: string; style: SectionStyle }[] = [
   { id: 'default', name: 'Default', style: 'markdown' },
   { id: 'simple', name: 'Simple', style: 'labels' },
   { id: 'xml', name: 'XML', style: 'xml' },
+  { id: 'experimental', name: 'Experimental', style: 'markdown' },
 ];
 
 const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));

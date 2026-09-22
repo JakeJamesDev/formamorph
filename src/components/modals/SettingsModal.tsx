@@ -2610,8 +2610,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
           {advanced && (
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
             <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef}>
-            {/* Preset selector: the whole prompt set switches together. Built-in presets (Default, Simple)
-                are read-only and differ only in section-header style. */}
+            {/* Built-in presets are read-only; selecting one switches the whole prompt set. */}
             <div className="flex items-center gap-2 flex-shrink-0" data-testid="preset-header-row">
               <span className="text-helper text-muted-foreground">Preset</span>
               {/* Desktop mirrors the menu around the selector: destructive actions outermost on the left. */}
