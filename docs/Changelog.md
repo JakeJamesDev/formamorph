@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.0.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The website gallery and social preview show the updated interface, with gameplay choices and readable side-panel tabs.** Captures use a 1600×900 viewport across all five palettes in light and dark themes. The gameplay image shows a submitted player action and its response, with Entities selected. The capture script rejects clipped action text, narration, choices or input and crowded tabs before saving the gameplay image.
+
 ---
 
 <details>
