@@ -13,9 +13,11 @@ The parts that make a chat possible now exist: per-world prompt overrides, Openi
 
 A new bundled default world named **Open Chat**. The world is a neutral harness. It has no premise, no stats, and one near-empty location. The picked entity and its dictionary carry the lore.
 
-The world supplies its own narration prompt and choices prompt. The narrator stays in second person, but each reply centers the entity's speech and actions. Choices read as short replies in the player's voice.
+The world supplies its own narration prompt and choices prompt. A reply is a chat message: the entity speaks in first person, as if it sent the message. There is no narrator and no scene prose. Choices are the messages the player could send back, with no quotation marks.
 
-The player tunes the chat with four exclusive trait groups: Reply Length, Prose Style, Narration Share, and Pacing. Each trait pins a tone placeholder that the narration prompt reads. A player who picks nothing gets the middle setting of each.
+The player tunes the chat with three exclusive trait groups: Reply Length, Prose Style, and Pacing. Each trait pins a tone placeholder value that the narration prompt reads. The middle trait of each group is the default, so Quick Start and a skipped picker both give the middle setting.
+
+**Revision 2, 2026-09-21.** The first build (tickets 01-07) shipped a dialogue-led second-person narrator with four groups. The user ruled on the output: it read as novel prose, not chat. Revision 2 replaces the voice with first-person messages, drops Narration Share, and fixes three defects: pins held literal text instead of a value id, no trait was the default, and the narration prompt kept the preset's length guidance beside the Reply Length chip. Tickets 08-10 carry the rework.
 
 Version 1 ships without four SillyTavern parity items. They are listed under Out of Scope.
 
@@ -23,13 +25,13 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 
 1. As a player, I want a bundled world made for chatting with a library entity, so that I can use an imported card without building a world.
 2. As a player, I want the world to have no premise of its own, so that the card's scenario is the only scenario.
-3. As a player, I want replies to center the entity's speech and actions, so that the playthrough feels like a conversation.
-4. As a player, I want the narrator to stay in second person, so that imported greetings and later replies share one frame.
-5. As a player, I want choices that read as things I could say or do next, so that a choice fits the conversation.
+3. As a player, I want each reply to be a message the entity sends me in first person, so that the playthrough reads as a chat.
+4. As a player, I want no narrator and no scene prose in a reply, so that nothing sits between me and the entity.
+5. As a player, I want choices that read as messages I could send back, with no quotation marks, so that a choice reads as my next message.
 6. As a player, I want to pick a reply length, so that replies are as short or as long as I like.
 7. As a player, I want to pick a prose style, so that the chat reads as casual messages or as novel prose.
-8. As a player, I want to pick how much scene description surrounds the dialogue, so that I control the narration share.
-9. As a player, I want to pick the pacing, so that the entity drives the scene or waits for me.
+8. As a player, I want a Quick Start to use the middle tone settings, so that a skipped picker still gives a sane chat.
+9. As a player, I want to pick the pacing, so that the entity drives the conversation or waits for me.
 10. As a player, I want each tone group to allow one pick only, so that two settings never contradict.
 11. As a player, I want a sane chat when I skip the tone picks, so that the world works with zero setup.
 12. As a player, I want to switch a tone trait during play, so that I can tune the chat without a restart.
@@ -38,7 +40,7 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 15. As a player, I want to edit that pre-filled action before I submit it, so that my first line is my own.
 16. As a player, I want to play as any of my personas or as None, so that the persona is my choice, as in SillyTavern.
 17. As a player, I want the intro readme to tell me to pick or import an entity first, so that I do not enter an empty room by mistake.
-18. As a player, I want the intro readme to explain the four tone groups, so that I know what each pick changes.
+18. As a player, I want the intro readme to explain the three tone groups and to recommend one entity, so that I know what each pick changes.
 19. As a player, I want the gameplay readme to name the Chat layout setting, so that I can find the layout made for this world.
 20. As a player who enters with no entity, I want the narrator to still run, so that the playthrough does not break.
 21. As a player, I want a turn to cost as few requests as possible, so that a chat is fast and cheap.
@@ -66,25 +68,28 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 **Prompts**
 
 - The world sets a narration prompt override and a choices prompt override. It sets no stat-update override.
-- The narration override starts from the built-in narration prompt and keeps its chips. Only the voice rules change. Memory, persona, dictionary, and language chips must stay.
-- The narration voice is a dialogue-led second-person narrator. The entity is written in third person and addresses the player as "you". This is the same frame as an imported greeting.
-- The override supports several picked entities but has no turn-taking rules.
-- The choices override produces short replies or actions in the player's voice.
+- The narration override starts from the built-in narration prompt and keeps its context chips: memory, persona, dictionary, notes, entities, location, and language. The voice rules change. The length guidance chip is removed, because the Reply Length trait is this world's only length control.
+- The reply is one chat message from the entity, in first person, as the entity would type it. No narrator, no scene prose, no quotation marks around the message. An action, when the entity needs one, sits inside the message between asterisks, the SillyTavern convention.
+- With two or more entities present, each message starts with the entity's name and a colon. With one entity there is no prefix. This is a smoke case only, not tuned; the readme recommends one entity.
+- With no entity present, the model introduces a speaker by name and that speaker sends the message. The world keeps one voice.
+- An imported greeting stays page one as is. A greeting is written in the entity's voice and addresses the player as "you", which is the same frame as a message.
+- The choices override produces the messages the player could send back. A choice is the message text itself, with no quotation marks and no "I say". A deed, when the player would do rather than say, sits between asterisks.
 - Both prompts follow the prompt-writing guide: positive contract, generic examples only, no parrotable values.
 - Sampler pins for narration and choices stay as they are. The world changes text only.
 
 **Tone placeholders**
 
-- Four world placeholders: reply length, prose style, narration share, pacing. Each holds one value, the middle setting. That value is the default when no trait pins it.
-- Four exclusive trait groups, one per placeholder. Each trait carries one placeholder pin with a value typed off the list. The middle trait of each group pins the same text as the default.
-- The narration override reads all four placeholders as chips. Each value is a full instruction sentence, so the prompt reads correctly with any pin.
+- Three world placeholders: reply length, prose style, pacing. Each holds its three values on the list. Narration share is removed with its group: a message has no narration to share.
+- Three exclusive trait groups, one per placeholder. Each trait carries one placeholder pin that names a listed value by its value id, so the pin follows an author edit. The middle trait of each group is the default trait, so Quick Start and a skipped picker apply it.
+- Each value is a full instruction sentence written for a first-person message. Prose Style is the voice of the message: casual, plain, or literary.
+- The narration override reads all three placeholders as chips.
 - The traits change no stats. They exist only to carry pins.
 - Ruling, 2026-09-21: ticket 07 added placeholder chips to world custom prompts, in the engine and the editor. The tone chips sit in the narration prompt, and the world system prompt is one neutral line.
-- First build step: prove live that a pin with an off-list value masks a one-value placeholder. If it does not, use a multi-value placeholder with weight 0 on every non-default value.
+- Revision 1 used one-value placeholders with pins typed off the list. Ticket 02 proved that works, but a literal pin does not follow an author edit, and it left no trait as the default. Revision 2 replaces it.
 
 **Readmes**
 
-- The intro readme covers setup: pick or import an entity, pick a persona, and what each tone group does.
+- The intro readme covers setup: pick or import one entity (more than one is not yet supported well), pick a persona, and what each tone group does.
 - The gameplay readme covers play only: the Chat layout setting by its exact name, mid-game tone switching, and the bracket channel for direction.
 - Copy follows the player-facing voice and UI terminology rules ("entity", never "character").
 
@@ -102,10 +107,10 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 
 A good test here reads the bundled world the way the app does and asserts what a player would see. It does not restate the JSON.
 
-- **Seam 1, world content.** Load the bundled file through the world migration and run the Test Bench rule runner over it. Assert the exact set of findings, so each ticket must shrink it. The finished world has one: the info finding for a location with no entities, which is this world's design. Ticket 01 also lists the empty world system prompt (ticket 03 removes it) and the missing readme (ticket 05 removes it). No rule changes. Then assert the structural facts: zero stats, one location, both overrides present and enabled, Open player setting, one Player Action opening, four exclusive groups. Prior art: the default-world id tests and the Test Bench rule tests.
-- **Seam 2, tone resolution.** Resolve the narration override text with no pins, then with each trait's pins. Assert the default equals the middle trait's result, and that every trait changes exactly its own placeholder. Assert no placeholder resolves to an empty string. Prior art: the placeholder pin tests.
+- **Seam 1, world content.** Load the bundled file through the world migration and run the Test Bench rule runner over it. Assert the exact set of findings, so each ticket must shrink it. The finished world has one: the info finding for a location with no entities, which is this world's design. Ticket 01 also lists the empty world system prompt (ticket 03 removes it) and the missing readme (ticket 05 removes it). No rule changes. Then assert the structural facts: zero stats, one location, both overrides present and enabled, Open player setting, one Player Action opening, three exclusive groups with one default trait each, every pin carrying a value id that its placeholder lists. Prior art: the default-world id tests and the Test Bench rule tests.
+- **Seam 2, tone resolution.** Resolve the narration override text with no pins, then with each trait's pins. Assert the default-trait set resolves to the middle values, that every trait changes exactly its own placeholder, and that no placeholder resolves to an empty string. Assert the rendered narration prompt holds no length guidance text. Prior art: the placeholder pin tests.
 - **Seam 3, turn plan.** Plan a turn with this world's counts and default settings. Assert that narration and choices are due, and that the stat-update pass and both location passes are absent. Do not assert the exact list: passes that a player setting drives, such as the memory digest, stay on and are not this world's concern. Prior art: the turn plan tests.
-- **Probes.** A/B each override against the built-in prompt on both reference tiers, at least 2 runs per case, with one imported card as the fixture. Metrics: dialogue share of the reply, second-person frame held, reply length per tone setting, and choices in the player's voice. Run the guide's regression check on the other metrics. Record before and after numbers in the ticket.
+- **Probes.** A/B each override against the built-in prompt on both reference tiers, at least 2 runs per case, with one imported card as the fixture. Metrics for revision 2: first-person message held (no narrator sentences, no third-person reference to the entity, no quotation marks around the message), reply length per Reply Length setting, and for choices: no quotation marks, no "I say" lead, message-shaped lines. The revision 1 arm (the shipped prompt) is the baseline. Run the guide's regression check on the other metrics. Record before and after numbers in the ticket.
 - **Live check.** Seed on a clean profile and on an existing profile through the dev-router. Confirm the tile, the trait picker groups, and one full turn.
 - Each new guard must fail when its bug returns, per the test bar.
 
@@ -115,7 +120,8 @@ A good test here reads the bundled world the way the app does and asserts what a
 - Per-world switches that turn off the choices, planning, or stat requests.
 - Depth injection and Character's Note import.
 - A seeded default entity and an entity seeder.
-- Prompt tuning for group chats.
+- Prompt tuning for group chats. Name-prefixed messages are a smoke case only; real support is later work.
+- App changes for the message voice. The message is plain prose to the app, and the Chat layout shows it as is.
 - A world field that preselects the Chat layout.
 - Any change to the card importer.
 - The thumbnail art itself.
