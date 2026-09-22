@@ -20,6 +20,22 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('changes only preparation for the reasoning-goal experiment', () => {
+    const input = { caseId: 'preparation', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, preparationGoal: true } }).request;
+    const system = variant.messages[0].content!;
+    expect(system).toContain('Use preparation to establish what happens next and which authored facts it requires.');
+    expect(system).toContain('Once the needed entries are available and continuity is resolved, proceed to the narration.');
+    expect(system).not.toContain('Use reasoning to select');
+    expect(system).not.toContain('burn scar across her right cheek');
+    const section = /## Preparation\n[\s\S]*?(?=## Output\n)/;
+    expect(system.replace(section, '')).toBe(baseline.messages[0].content!.replace(section, ''));
+    variant.messages[0] = baseline.messages[0];
+    expect(variant).toEqual(baseline);
+  });
+
   it('removes only write and completes lookup followed by ordinary narration', async () => {
     const input = { caseId: 'plain', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { thinking: true } };
