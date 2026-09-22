@@ -61,6 +61,15 @@ network requests. After the request is approved, `npm run probe:narration-tools 
 cloud batch. Set `FORMAMORPH_PROBE_TOKEN` only when the endpoint requires a bearer token; credentials are never
 written to the evidence file.
 
+Run the same bounded batch against a loaded LM Studio model with a fixed seed:
+
+```bash
+npm run probe:narration-tools -- --lm-studio <model-id>
+```
+
+This targets `http://127.0.0.1:1234/v1/chat/completions`, records the selected model and seed in every request,
+and writes a separate `lm-studio-batch-*.json` evidence file.
+
 ## Notes
 
 - **Nondeterministic** by design — the script is fixed, the model output isn't. That's fine; runs are comparable.

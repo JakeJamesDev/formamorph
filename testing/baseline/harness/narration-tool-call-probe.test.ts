@@ -6,7 +6,7 @@ import {
   CONTROL_ACTION,
   EndpointRejectionError,
   PROBE_TOOLS,
-  createCloudProbeTransport,
+  createProbeTransport,
   lookupEntityInfo,
   prepareNarrationToolCallReview,
   prepareNarrationToolCallCase,
@@ -342,6 +342,32 @@ describe('narration tool-call probe trial', () => {
     expect(transport.requests.every((request) => request.messages.length === 2)).toBe(true);
   });
 
+  it('carries the selected model and seed through every local request', async () => {
+    const responses = [
+      { choices: [{ message: { role: 'assistant', content: null, tool_calls: [
+        toolCall('lookup-bram', 'request_info', { term: 'Bram' }),
+      ] } }] },
+      ...[0, 1, 2, 3].map((index) => ({
+      choices: [{ message: { role: 'assistant', content: null, tool_calls: [
+        toolCall(`write-${index}`, 'write', { narration: `Narration ${index}` }),
+      ] } }],
+      })),
+    ];
+    const transport = scriptedTransport(responses);
+
+    await runNarrationToolCallBatch({
+      sourceRevision: 'test-revision',
+      world: world(),
+      transport,
+      model: 'rocinante-x-12b-v1',
+      seed: 424242,
+    });
+
+    expect(transport.requests).toHaveLength(5);
+    expect(transport.requests.every((request) =>
+      request.model === 'rocinante-x-12b-v1' && request.seed === 424242)).toBe(true);
+  });
+
   it('cleans the request timeout after a completed call', async () => {
     vi.useFakeTimers();
     const transport = scriptedTransport([{ choices: [{ message: {
@@ -363,7 +389,7 @@ describe('narration tool-call cloud transport', () => {
         toolCall('write', 'write', { narration: 'Done.' }),
       ] } }],
     }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
-    const transport = createCloudProbeTransport({ token: 'secret-token', fetchImpl: fetchMock });
+    const transport = createProbeTransport({ token: 'secret-token', fetchImpl: fetchMock });
     const result = await runNarrationToolCallTrial({
       caseId: 'control', action: CONTROL_ACTION, sourceRevision: 'test-revision', world: world(), transport,
     });
@@ -381,7 +407,7 @@ describe('narration tool-call cloud transport', () => {
       JSON.stringify({ error: { message: 'tools unsupported' } }),
       { status: 422, headers: { 'Content-Type': 'application/json' } },
     ));
-    const transport = createCloudProbeTransport({ fetchImpl: fetchMock });
+    const transport = createProbeTransport({ fetchImpl: fetchMock });
     const result = await runNarrationToolCallTrial({
       caseId: 'main', action: MAIN_ACTION, sourceRevision: 'test-revision', world: world(), transport,
     });
