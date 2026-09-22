@@ -9,7 +9,9 @@ import { testInput } from './turnPipeline/turnTestInputs';
 import type { TurnSettings } from './turnPipeline/turnPlan';
 import { buildEnterFlow } from './enterFlow';
 import { collectPins } from './placeholderPins';
-import { readPlaceholders, resolvePlaceholders } from './placeholders';
+import { directChipTargets, parsePlaceholderText, readPlaceholders, resolvePlaceholders } from './placeholders';
+import { drawOpening, openingPool } from './openings';
+import { choicesSystemPrompt } from './turnPipeline/turnPasses';
 import { parsePromptTemplate } from './promptTemplate';
 import { splitToken } from './promptVariables';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
@@ -18,7 +20,7 @@ import {
   SHIPPED_PROMPT_DEFAULTS, customizedPromptKinds, resolveWorldPrompt, worldPrompt, worldPromptChipValues,
   worldPromptEnabled,
 } from './worldPrompt';
-import { defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { defaultChoicesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { NARRATION_LAYOUTS } from '@/contexts/settingsDefaults';
@@ -26,6 +28,8 @@ import type { Trait } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
 const world = migrateWorld(JSON.parse(raw));
+const chipIds = (text: string) => directChipTargets([text]);
+const byName = (name: string) => (world.placeholders ?? []).find((ph) => ph.name === name)!.id;
 
 describe('the Open Chat default world', () => {
   it('is listed as a bundled default under its stable id', () => {
@@ -125,7 +129,7 @@ describe('the Open Chat default world', () => {
 
   it('offers three exclusive tone groups of three traits, the middle one the default', () => {
     const groups = world.traitGroups ?? [];
-    expect(groups.map((g) => g.name)).toEqual(['Reply Length', 'Prose Style', 'Pacing']);
+    expect(groups.map((g) => g.name)).toEqual(['Reply Length', 'Style', 'Pacing']);
     for (const group of groups) {
       expect(group.exclusive, group.name).toBe(true);
       const members = world.traits.filter((t) => t.groupId === group.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -134,7 +138,8 @@ describe('the Open Chat default world', () => {
       for (const trait of members) {
         expect(trait.playerToggle, trait.name).toBe(true);
         expect(trait.statChanges, trait.name).toEqual([]);
-        expect(trait.placeholderPins, trait.name).toHaveLength(1);
+        // A Style trait carries the frame: the voice block, the choice shape, and the opening.
+        expect(trait.placeholderPins, trait.name).toHaveLength(group.name === 'Style' ? 3 : 1);
       }
     }
     expect(world.traits).toHaveLength(9);
@@ -143,9 +148,23 @@ describe('the Open Chat default world', () => {
   it('pins every trait to a value its placeholder lists, by value id', () => {
     const byId = new Map((world.placeholders ?? []).map((ph) => [ph.id, ph]));
     for (const trait of world.traits) {
-      const pin = trait.placeholderPins![0];
-      const listed = byId.get(pin.placeholderId)?.values.map((v) => v.id) ?? [];
-      expect(listed, trait.name).toContain(pin.valueId);
+      for (const pin of trait.placeholderPins ?? []) {
+        const listed = byId.get(pin.placeholderId)?.values.map((v) => v.id) ?? [];
+        expect(listed, trait.name).toContain(pin.valueId);
+      }
+    }
+  });
+
+  // The Style trait carries the frame, so each surface reads its own chip and states no frame of its own.
+  it('places each frame chip in its own surface, and neither prompt states a voice outside its chips', () => {
+    const narration = worldPrompt(world.worldOverview, 'narration') ?? '';
+    const choices = worldPrompt(world.worldOverview, 'choices') ?? '';
+    expect(chipIds(narration)).toEqual(new Set([byName('reply length'), byName('voice block'), byName('pacing')]));
+    expect(chipIds(choices)).toEqual(new Set([byName('choice shape')]));
+    expect(world.worldOverview.openings!.map((o) => [...chipIds(o.text)])).toEqual([[byName('opening')]]);
+    for (const [kind, text] of [['narration', narration], ['choices', choices]]) {
+      const bare = parsePlaceholderText(text).map((s) => (s.type === 'text' ? s.value : '')).join('');
+      expect(bare, kind).not.toMatch(/first person|second person|third person|quotation|asterisk|present tense|text message|narrat/i);
     }
   });
 });
@@ -154,7 +173,7 @@ describe('the Open Chat tone traits', () => {
   const placeholders = world.placeholders ?? [];
   const groupTraits = (world.traitGroups ?? []).map((group) =>
     world.traits.filter((t) => t.groupId === group.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
-  const target = (trait: Trait): string => trait.placeholderPins![0].placeholderId;
+  const targets = (trait: Trait): Set<string> => new Set((trait.placeholderPins ?? []).map((p) => p.placeholderId));
   const defaultTraits = world.traits.filter((t) => t.isDefault);
 
   // Play's path: the active traits' pins, collected and laid over a playthrough with no rolls yet.
@@ -162,27 +181,46 @@ describe('the Open Chat tone traits', () => {
   const valuesById = (active: Trait[], phs = placeholders): Record<string, string> =>
     Object.fromEntries(readPlaceholders({ placeholders: phs, rolls: {}, pins: pinsFor(active, phs) })
       .map((r) => [r.id, r.value]));
-  // The narration system prompt as play sends it: the world's own prompt, its tone chips keyed at the seam.
-  const resolvedText = (active: Trait[]) => {
+  // What play sends and shows: both system prompts with the world's chips keyed at the seam, and the drawn opening.
+  const surfaces = (active: Trait[]) => {
     const overview = world.worldOverview;
-    const resolvePH = (text: string) => resolvePlaceholders(text, { placeholders, rolls: {}, pins: pinsFor(active) });
-    return buildNarrationPrompt({
+    const pins = pinsFor(active);
+    const resolvePH = (text: string) => resolvePlaceholders(text, { placeholders, rolls: {}, pins });
+    const chips = worldPromptChipValues(overview, false, resolvePH);
+    const narration = buildNarrationPrompt({
       template: resolveWorldPrompt(overview, 'narration', defaultSystemPrompt, false),
-      ctx: { ...worldPromptChipValues(overview, false, resolvePH), '<WORLD DESCRIPTION>': resolvePH(overview.systemPrompt) },
+      ctx: { ...chips, '<WORLD DESCRIPTION>': resolvePH(overview.systemPrompt) },
       action: '', history: [], dictionary: [], actionVec: null, semanticLore: false, embedVectors: new Map(),
       language: 'English', paragraphLimit: 'auto', maxTokens: 1024, markdownOutput: true,
       sectionStyle: 'markdown', resolvePH,
     }).prompt;
+    const choices = choicesSystemPrompt(resolveWorldPrompt(overview, 'choices', defaultChoicesPrompt, false), 'English', chips);
+    const drawn = drawOpening(openingPool({ overview }), () => 0);
+    const opening = resolvePlaceholders(drawn.text, { placeholders, rolls: {}, pins, player: { name: null, kind: 'opening' } });
+    return { narration, choices, opening };
   };
+  const resolvedText = (active: Trait[]) => surfaces(active).narration;
+  const allText = (active: Trait[]) => Object.values(surfaces(active)).join('\n');
 
   const defaults = valuesById(defaultTraits);
 
-  it('backs each group with its own placeholder listing all three values', () => {
-    expect(placeholders).toHaveLength(3);
+  // Every trait of a group pins the same placeholders, at the value of its own place in the group.
+  it('backs each group with placeholders of its own, each listing all three values', () => {
+    expect(placeholders).toHaveLength(5);
     for (const ph of placeholders) expect(ph.values, ph.name).toHaveLength(3);
-    const targets = groupTraits.map((traits) => new Set(traits.map(target)));
-    for (const set of targets) expect(set.size).toBe(1);
-    expect(new Set(targets.map((set) => [...set][0])).size).toBe(3);
+    const groupTargets = groupTraits.map((traits) => {
+      for (const trait of traits) {
+        for (const pin of trait.placeholderPins ?? []) {
+          const values = placeholders.find((ph) => ph.id === pin.placeholderId)!.values;
+          expect(values.findIndex((v) => v.id === pin.valueId), trait.name).toBe(trait.order);
+        }
+      }
+      const sets = traits.map((t) => [...targets(t)].sort().join());
+      expect(new Set(sets).size).toBe(1);
+      return sets[0].split(',');
+    });
+    expect(groupTargets.map((ids) => ids.length)).toEqual([1, 3, 1]);
+    expect(new Set(groupTargets.flat()).size).toBe(5);
   });
 
   it('reads a listed, non-empty value for every placeholder when no trait is picked', () => {
@@ -191,12 +229,12 @@ describe('the Open Chat tone traits', () => {
       expect(value.trim(), ph.name).not.toBe('');
       expect(ph.values.map((v) => v.text), ph.name).toContain(value);
     }
-    expect(resolvedText([])).not.toContain('{{ph:');
+    expect(allText([])).not.toContain('{{ph:');
   });
 
   it('reads the middle value of every placeholder under the default traits', () => {
     for (const ph of placeholders) expect(defaults[ph.id], ph.name).toBe(ph.values[1].text);
-    const text = resolvedText(defaultTraits);
+    const text = allText(defaultTraits);
     for (const value of Object.values(defaults)) expect(text).toContain(value);
     expect(text).not.toContain('{{ph:');
   });
@@ -214,22 +252,55 @@ describe('the Open Chat tone traits', () => {
     for (const ph of placeholders) {
       const value = pinned[ph.id];
       expect(value.trim(), ph.name).not.toBe('');
-      if (ph.id !== target(trait)) expect(value, ph.name).toBe(defaults[ph.id]);
+      if (!targets(trait).has(ph.id)) expect(value, ph.name).toBe(defaults[ph.id]);
       else if (!trait.isDefault) expect(value, ph.name).not.toBe(defaults[ph.id]);
     }
-    const text = resolvedText(active);
-    expect(text).toContain(pinned[target(trait)]);
+    const text = allText(active);
+    for (const id of targets(trait)) expect(text).toContain(pinned[id]);
     expect(text).not.toContain('{{ph:');
   });
 
   it('follows an author edit of the pinned value text', () => {
     for (const trait of groupTraits.flat()) {
-      const pin = trait.placeholderPins![0];
-      const edited = placeholders.map((ph) => (ph.id !== pin.placeholderId ? ph : {
-        ...ph, values: ph.values.map((v) => (v.id === pin.valueId ? { ...v, text: 'An edited value.' } : v)),
-      }));
-      expect(valuesById([trait], edited)[pin.placeholderId], trait.name).toBe('An edited value.');
+      for (const pin of trait.placeholderPins ?? []) {
+        const edited = placeholders.map((ph) => (ph.id !== pin.placeholderId ? ph : {
+          ...ph, values: ph.values.map((v) => (v.id === pin.valueId ? { ...v, text: 'An edited value.' } : v)),
+        }));
+        expect(valuesById([trait], edited)[pin.placeholderId], trait.name).toBe('An edited value.');
+      }
     }
+  });
+
+  describe('under each Style', () => {
+    const styleGroup = (world.traitGroups ?? []).find((g) => g.name === 'Style')?.id;
+    const styles = groupTraits.find((traits) => traits[0]?.groupId === styleGroup) ?? [];
+    const underStyle = (style: Trait) => surfaces([...defaultTraits.filter((t) => t.groupId !== style.groupId), style]);
+    const rendered = styles.map((style) => ({ style, ...underStyle(style) }));
+
+    it.each(['narration', 'choices', 'opening'] as const)('renders a %s unlike the other two Styles', (surface) => {
+      const texts = rendered.map((r) => r[surface]);
+      expect(new Set(texts).size, surface).toBe(3);
+    });
+
+    // A chip inline after a bullet would prefix only the block's first line, so each block stands on its own lines.
+    it.each(styles.map((s) => [s.name, s] as const))('%s sends every frame value whole, line by line', (_name, style) => {
+      const { narration, choices, opening } = rendered.find((r) => r.style === style)!;
+      const pinned = valuesById([...defaultTraits.filter((t) => t.groupId !== style.groupId), style]);
+      const voice = pinned[byName('voice block')];
+      const shape = pinned[byName('choice shape')];
+      for (const block of [voice, shape]) expect(block.split('\n').length).toBeGreaterThan(1);
+      expect(narration).toContain(`\n${voice}\n`);
+      expect(choices).toContain(`\n${shape}\n`);
+      expect(opening).toBe(pinned[byName('opening')]);
+      for (const name of ['reply length', 'pacing']) {
+        expect(pinned[byName(name)].trim(), name).not.toBe('');
+        expect(narration, name).toContain(pinned[byName(name)]);
+      }
+      for (const text of [narration, choices, opening]) {
+        expect(text.trim()).not.toBe('');
+        expect(text).not.toContain('{{ph:');
+      }
+    });
   });
 });
 
