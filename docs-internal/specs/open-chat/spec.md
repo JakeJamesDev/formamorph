@@ -17,6 +17,8 @@ The world supplies its own narration prompt and choices prompt. A reply is a cha
 
 The player tunes the chat with three exclusive trait groups: Reply Length, Prose Style, and Pacing. Each trait pins a tone placeholder value that the narration prompt reads. The middle trait of each group is the default, so Quick Start and a skipped picker both give the middle setting.
 
+**Revision 3, 2026-09-21.** Revision 2 (tickets 08-10) hardcoded the message frame in the prompt, so every Style pick read the same, and its own probe showed the frame rarely held. Revision 3 makes the **Style** trait carry the frame itself. Each Style trait pins three placeholders: the narration voice block, the choices shape, and the world opening text. The prompts hold context and the output contract only. Three styles: **Chat** (text messages, entity in first person, no narration), **Plain** (a narrated back-and-forth, entity in third person with quoted speech, the player's line as typed), and **Literary** (the built-in prompt's voice, second person, the player's action narrated first so the turns read as a novel without the player's input). Tickets 11-13 carry it.
+
 **Revision 2, 2026-09-21.** The first build (tickets 01-07) shipped a dialogue-led second-person narrator with four groups. The user ruled on the output: it read as novel prose, not chat. Revision 2 replaces the voice with first-person messages, drops Narration Share, and fixes three defects: pins held literal text instead of a value id, no trait was the default, and the narration prompt kept the preset's length guidance beside the Reply Length chip. Tickets 08-10 carry the rework.
 
 Version 1 ships without four SillyTavern parity items. They are listed under Out of Scope.
@@ -29,7 +31,9 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 4. As a player, I want no narrator and no scene prose in a reply, so that nothing sits between me and the entity.
 5. As a player, I want choices that read as messages I could send back, with no quotation marks, so that a choice reads as my next message.
 6. As a player, I want to pick a reply length, so that replies are as short or as long as I like.
-7. As a player, I want to pick a prose style, so that the chat reads as casual messages or as novel prose.
+7. As a player, I want to pick a Style, so that a reply reads as text messages, as a narrated back-and-forth, or as a novel.
+7a. As a player, I want the choices and the world opening to follow my Style, so that every surface of a turn has one shape.
+7b. As a player, I want each Style to read clearly different from the other two, so that the pick means something.
 8. As a player, I want a Quick Start to use the middle tone settings, so that a skipped picker still gives a sane chat.
 9. As a player, I want to pick the pacing, so that the entity drives the conversation or waits for me.
 10. As a player, I want each tone group to allow one pick only, so that two settings never contradict.
@@ -68,21 +72,22 @@ Version 1 ships without four SillyTavern parity items. They are listed under Out
 **Prompts**
 
 - The world sets a narration prompt override and a choices prompt override. It sets no stat-update override.
-- The narration override starts from the built-in narration prompt and keeps its context chips: memory, persona, dictionary, notes, entities, location, and language. The voice rules change. The length guidance chip is removed, because the Reply Length trait is this world's only length control.
-- The reply is one chat message from the entity, in first person, as the entity would type it. No narrator, no scene prose, no quotation marks around the message. An action, when the entity needs one, sits inside the message between asterisks, the SillyTavern convention.
-- With two or more entities present, each message starts with the entity's name and a colon. With one entity there is no prefix. This is a smoke case only, not tuned; the readme recommends one entity.
-- With no entity present, the model introduces a speaker by name and that speaker sends the message. The world keeps one voice.
-- An imported greeting stays page one as is. A greeting is written in the entity's voice and addresses the player as "you", which is the same frame as a message.
-- The choices override produces the messages the player could send back. A choice is the message text itself, with no quotation marks and no "I say". A deed, when the player would do rather than say, sits between asterisks.
+- Revision 3. The narration override holds no voice rules of its own. It holds the role line, the context chips (memory, persona, dictionary, notes, entities, location, language), the three tone chips, and the output contract (prose only, no menu, stop at the end). The **voice block** placeholder chip supplies the frame. The length guidance chip stays out; the Reply Length trait is the only length control.
+- The three voice blocks, one per Style value. **Chat:** the entity replies as text messages in first person, no narration, no quotation marks, an action between asterisks if needed. **Plain:** a narrated back-and-forth; the entity is written in third person with its speech in quotation marks, the player's typed line stands as the turn's first beat and is not restated. **Literary:** the built-in narration prompt's voice rules; second person, the player's action narrated first as the turn's first beat, so the turns string together as a novel without the player's input.
+- The choices override likewise holds no shape rules of its own. The **choice shape** placeholder chip supplies them. Chat: a choice is the bare message text, a deed between asterisks. Plain and Literary: a choice is a first-person line with the words in quotation marks (`I walk up and ask, "..."`), a deed as `I` and a verb. The list contract (3 to 5 lines, distinct, no lead-in) stays in the prompt.
+- The world opening is one Player Action whose text is the **opening** placeholder chip. Chat pins a message-shaped greeting; Plain and Literary pin a narrated first-person line. An entity opening still wins and keeps the card's own shape.
+- A voice block is multi-line prompt text. The first build step proves a multi-line placeholder value reaches the model intact through the chip render, in the narration prompt, the choices prompt, and the opening draw.
+- The two-entity and no-entity cases are stated inside each voice block in one line each, as smoke cases. The readme recommends one entity.
+- An imported greeting stays page one as is.
 - Both prompts follow the prompt-writing guide: positive contract, generic examples only, no parrotable values.
 - Sampler pins for narration and choices stay as they are. The world changes text only.
 
 **Tone placeholders**
 
-- Three world placeholders: reply length, prose style, pacing. Each holds its three values on the list. Narration share is removed with its group: a message has no narration to share.
-- Three exclusive trait groups, one per placeholder. Each trait carries one placeholder pin that names a listed value by its value id, so the pin follows an author edit. The middle trait of each group is the default trait, so Quick Start and a skipped picker apply it.
-- Each value is a full instruction sentence written for a first-person message. Prose Style is the voice of the message: casual, plain, or literary.
-- The narration override reads all three placeholders as chips.
+- Revision 3: five world placeholders. **Reply length** and **pacing** hold three values each, as before. The **Style** group's three traits each pin three placeholders: **voice block**, **choice shape**, and **opening**, each listing three values, one per style. A trait carries several pins already; no engine change.
+- Three exclusive trait groups: Reply Length, Style (Chat, Plain, Literary), Pacing. Every pin names a listed value by its value id. The middle trait of each group is the default trait: Medium, Plain, Shared.
+- Reply Length and Pacing values are written frame-neutral, so they read correctly under any Style. Reply Length counts brief, medium, or full replies, not messages or paragraphs.
+- The narration override reads reply length, voice block, and pacing. The choices override reads choice shape. The world opening reads opening.
 - The traits change no stats. They exist only to carry pins.
 - Ruling, 2026-09-21: ticket 07 added placeholder chips to world custom prompts, in the engine and the editor. The tone chips sit in the narration prompt, and the world system prompt is one neutral line.
 - Revision 1 used one-value placeholders with pins typed off the list. Ticket 02 proved that works, but a literal pin does not follow an author edit, and it left no trait as the default. Revision 2 replaces it.
@@ -110,7 +115,9 @@ A good test here reads the bundled world the way the app does and asserts what a
 - **Seam 1, world content.** Load the bundled file through the world migration and run the Test Bench rule runner over it. Assert the exact set of findings, so each ticket must shrink it. The finished world has one: the info finding for a location with no entities, which is this world's design. Ticket 01 also lists the empty world system prompt (ticket 03 removes it) and the missing readme (ticket 05 removes it). No rule changes. Then assert the structural facts: zero stats, one location, both overrides present and enabled, Open player setting, one Player Action opening, three exclusive groups with one default trait each, every pin carrying a value id that its placeholder lists. Prior art: the default-world id tests and the Test Bench rule tests.
 - **Seam 2, tone resolution.** Resolve the narration override text with no pins, then with each trait's pins. Assert the default-trait set resolves to the middle values, that every trait changes exactly its own placeholder, and that no placeholder resolves to an empty string. Assert the rendered narration prompt holds no length guidance text. Prior art: the placeholder pin tests.
 - **Seam 3, turn plan.** Plan a turn with this world's counts and default settings. Assert that narration and choices are due, and that the stat-update pass and both location passes are absent. Do not assert the exact list: passes that a player setting drives, such as the memory digest, stay on and are not this world's concern. Prior art: the turn plan tests.
-- **Probes.** A/B each override against the built-in prompt on both reference tiers, at least 2 runs per case, with one imported card as the fixture. Metrics for revision 2: first-person message held (no narrator sentences, no third-person reference to the entity, no quotation marks around the message), reply length per Reply Length setting, and for choices: no quotation marks, no "I say" lead, message-shaped lines. The revision 1 arm (the shipped prompt) is the baseline. Run the guide's regression check on the other metrics. Record before and after numbers in the ticket.
+- **Seam 2b, style resolution (revision 3).** Resolve the rendered narration prompt, the rendered choices prompt, and the drawn world opening under each Style trait. Assert each differs from the other two, that no chip resolves empty, and that a multi-line value keeps its lines. Prior art: the tone-resolution test.
+- **Probes, revision 3.** Three arms per tier, one per Style, at least 2 runs per case, one imported card as the fixture, both overrides and the opening in context. Distinctness metrics per reply: quotation marks present, grammatical person of the entity (first or third), the player's line restated or not. Each style must differ from the other two on at least one metric, on both tiers. Same for choices: bare message versus quoted first-person line. Revision 2 is the baseline for Chat.
+- **Probes, revision 2 (superseded).** A/B each override against the built-in prompt on both reference tiers, at least 2 runs per case, with one imported card as the fixture. Metrics for revision 2: first-person message held (no narrator sentences, no third-person reference to the entity, no quotation marks around the message), reply length per Reply Length setting, and for choices: no quotation marks, no "I say" lead, message-shaped lines. The revision 1 arm (the shipped prompt) is the baseline. Run the guide's regression check on the other metrics. Record before and after numbers in the ticket.
 - **Live check.** Seed on a clean profile and on an existing profile through the dev-router. Confirm the tile, the trait picker groups, and one full turn.
 - Each new guard must fail when its bug returns, per the test bar.
 
