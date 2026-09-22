@@ -49,6 +49,7 @@ export const PROBE_TOOLS = [
 ] as const;
 
 export interface ProbeMessage {
+  reasoning_content?: string;
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
   tool_calls?: ProbeToolCall[];
@@ -79,6 +80,10 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  exampleFromStart?: boolean;
+  storyHistory?: readonly { role: 'user' | 'assistant'; content: string }[];
+  continuationExample?: readonly ProbeMessage[];
+  omitPriorReasoning?: boolean;
   roleOnly?: boolean;
   summaryLabel?: boolean;
   entityDefinition?: boolean;
@@ -483,6 +488,7 @@ export async function runNarrationToolCallTrial(input: {
   const prepared = prepareNarrationToolCallCase(input);
   const initialRequest = structuredClone(prepared.request);
   const messages = structuredClone(prepared.request.messages);
+  messages.splice(1, 0, ...structuredClone(input.experiment?.storyHistory ?? []));
   const requests: ProbeExchange[] = [];
   const toolResults: ProbeToolResultEvidence[] = [];
   const seenCallIds = new Set<string>();
@@ -511,6 +517,16 @@ export async function runNarrationToolCallTrial(input: {
   for (let round = 0; round < 4; round++) {
     if (input.signal?.aborted) return finish('canceled', null, { kind: 'canceled', message: 'Trial canceled.' });
     const request: ProbeRequest = { ...prepared.request, messages: structuredClone(messages) };
+    if (input.experiment?.omitPriorReasoning) {
+      for (const message of request.messages) {
+        if (message.role !== 'assistant') continue;
+        delete (message as ProbeMessage & { reasoning_content?: unknown }).reasoning_content;
+        delete (message as ProbeMessage & { reasoning?: unknown }).reasoning;
+      }
+    }
+    if ((round > 0 || input.experiment?.exampleFromStart) && input.experiment?.continuationExample) {
+      request.messages.splice(1, 0, ...structuredClone(input.experiment.continuationExample));
+    }
     if (input.nineCharacterCallIds) {
       // Remap the outgoing history only; evidence retains server-issued IDs.
       const ids = new Map<string, string>();
@@ -523,6 +539,7 @@ export async function runNarrationToolCallTrial(input: {
         if (message.tool_call_id) message.tool_call_id = ids.get(message.tool_call_id)!;
       }
     }
+    if (round === 0) initialRequest.messages = structuredClone(request.messages);
     const requestStarted = performance.now();
     const requestController = new AbortController();
     let timedOut = false;

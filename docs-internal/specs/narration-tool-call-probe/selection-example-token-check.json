@@ -1,0 +1,266 @@
+[
+  {
+    "keep": true,
+    "request": {
+      "model": "g4-meromero-v2-31b-i1",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.\n\n## Game World\nThe setting, tone, and world-wide facts of this story.\n\nThe tone is a quiet, grounded folk tale: hushed and observational, with small human moments rather than grand adventure. Iron rusts to a pale blue, never orange. No one speaks their own name aloud until they trust you.\n\n\n\n## Player Stats\nDescriptions of the player character's current stat values.\n\n- **Vigor:** Winded\n- **Resolve:** Unshakable\n\n## Traits\nThe player character's active characteristics and conditions.\n\n- **Wren the Mapmaker:** The player character is Wren, a traveling mapmaker with close-cropped silver hair and ink-stained hands, missing the last two fingers of the left hand. Wren is soft-spoken and observant, cannot swim, and habitually ties a small \"tollow-knot\" in any loose rope for luck.\n- **Condition:**\n  - **Footsore:** Wren is footsore and travel-worn, slow to rise and quick to tire.\n\n\n\n## Current Location\nThe place where the player character currently is.\n\n- **name:** Sedge Landing\n- **description:** A rickety wooden dock on the north bank of the Ashen River. The water here runs milk-pale and dead silent - locals call this stretch the gloamwater. A single lantern hangs from a leaning post where notices are nailed; a rope ferry is moored at the dock, its far end lost in mist. The Ashen River is a slow northern waterway crossed only by rope ferry.\n\n\n\n\n\n\n## Entities in the Current Location\nAn entity is a character, creature, or object listed in the entity summaries.\nThese summaries identify entities that may appear in the current location.\n\n- **Bram**\n  - **summary:** The one-armed ferryman who won't cross after dark.\n  - **type:** Person\n- **Odette**\n  - **summary:** The scarred eel-smoker waiting to cross; distrusts strangers.\n  - **type:** Person\n- **Rope Ferry**\n  - **summary:** A two-person rope raft that lists to the left.\n  - **type:** Object\n- **Mara**\n  - **summary:** A traveling healer sorting clean bandages beside a chest at the landing.\n  - **type:** Person\n- **Iven**\n  - **summary:** A cobbler repairing travelers' footwear on a low stool at the landing.\n  - **type:** Person\n- **Nessa**\n  - **summary:** A basketmaker counting empty reed baskets near the path.\n  - **type:** Person\n- **Corin**\n  - **summary:** A courier waiting at the landing with a sealed satchel.\n  - **type:** Person\n\n\n\n\n\n\n## Foreground Lore\nAdditional authored information about the world, its concepts, and its terminology.\n\ngloamwater: Gloamwater: a stretch of river gone silent and milk-pale where the current stalls. Sound does not carry over it and fish avoid it; folk say names spoken over gloamwater are forgotten by morning."
+        },
+        {
+          "role": "user",
+          "content": "Demonstration from a separate story. Location: an observatory archive. Entity summary: Ysra, the archivist responsible for a sealed star atlas. Player action: I ask the archivist whether I may examine the atlas."
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "reasoning_content": "The request concerns Ysra; retrieve her entry.",
+          "tool_calls": [
+            {
+              "id": "000000001",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Ysra\"}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000001",
+          "content": "{\"matches\":[{\"id\":\"example-ysra\",\"name\":\"Ysra\",\"description\":\"Ysra wears indigo cuffs and keeps the atlas locked. She permits visitors to examine it only while she supervises. She speaks politely and precisely.\"}]}"
+        },
+        {
+          "role": "assistant",
+          "reasoning_content": "Ysra permits access only under supervision, so her answer should offer a supervised viewing.",
+          "content": "The archivist rests her indigo cuffs beside the locked atlas. \"You may examine it here, while I attend you,\" she says. She unlocks the cover and makes room at the desk for you to look."
+        },
+        {
+          "role": "user",
+          "content": "I greet the ferryman and the woman by the firepit, asking them to tell me a little about themselves."
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "000000002",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Bram\"}"
+              }
+            },
+            {
+              "id": "000000003",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Odette\"}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000002",
+          "content": "{\"matches\":[{\"id\":\"ent-bram\",\"name\":\"Bram\",\"description\":\"Bram is the ferryman: a broad, weathered man with only one arm - the right; his left sleeve is pinned up - and a brass ring through his left ear. He speaks in short dry sentences and never crosses the river after dark. He has not told the player his name.\"}]}"
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000003",
+          "content": "{\"matches\":[{\"id\":\"ent-odette\",\"name\":\"Odette\",\"description\":\"A small, quick woman smoking river-eels over a firepit at the landing, waiting to cross. She has a burn scar across her right cheek and a green glass bead braided into her hair. She distrusts strangers and counts everything twice. She has not given her name.\"}]}"
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "get_entity",
+            "description": "Purpose: Retrieve an entity's full authored entry. Entity summaries identify candidates for the story.\nUse when: Before an entity appears in your upcoming narration, retrieve its full entry for this response. This includes named, indirect, and background appearances.\nInput: name — the entity's name from the entity list.\nOutput: JSON with a matches array. Each match contains id, name, and the full authored description when provided by the author. An empty matches array means no matching entity was found.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "tool_choice": "auto",
+      "max_tokens": 1,
+      "stream": false,
+      "seed": 424243
+    },
+    "status": 200,
+    "response": {
+      "id": "chatcmpl-pkohzebhu5h5abprw7fthc",
+      "object": "chat.completion",
+      "created": 1790142529,
+      "model": "g4-meromero-v2-31b-i1",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": "",
+            "tool_calls": []
+          },
+          "logprobs": null,
+          "finish_reason": "length"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 1276,
+        "completion_tokens": 1,
+        "total_tokens": 1277,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "stats": {},
+      "system_fingerprint": "g4-meromero-v2-31b-i1"
+    },
+    "durationMs": 814.5595000000001
+  },
+  {
+    "keep": false,
+    "request": {
+      "model": "g4-meromero-v2-31b-i1",
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.\n\n## Game World\nThe setting, tone, and world-wide facts of this story.\n\nThe tone is a quiet, grounded folk tale: hushed and observational, with small human moments rather than grand adventure. Iron rusts to a pale blue, never orange. No one speaks their own name aloud until they trust you.\n\n\n\n## Player Stats\nDescriptions of the player character's current stat values.\n\n- **Vigor:** Winded\n- **Resolve:** Unshakable\n\n## Traits\nThe player character's active characteristics and conditions.\n\n- **Wren the Mapmaker:** The player character is Wren, a traveling mapmaker with close-cropped silver hair and ink-stained hands, missing the last two fingers of the left hand. Wren is soft-spoken and observant, cannot swim, and habitually ties a small \"tollow-knot\" in any loose rope for luck.\n- **Condition:**\n  - **Footsore:** Wren is footsore and travel-worn, slow to rise and quick to tire.\n\n\n\n## Current Location\nThe place where the player character currently is.\n\n- **name:** Sedge Landing\n- **description:** A rickety wooden dock on the north bank of the Ashen River. The water here runs milk-pale and dead silent - locals call this stretch the gloamwater. A single lantern hangs from a leaning post where notices are nailed; a rope ferry is moored at the dock, its far end lost in mist. The Ashen River is a slow northern waterway crossed only by rope ferry.\n\n\n\n\n\n\n## Entities in the Current Location\nAn entity is a character, creature, or object listed in the entity summaries.\nThese summaries identify entities that may appear in the current location.\n\n- **Bram**\n  - **summary:** The one-armed ferryman who won't cross after dark.\n  - **type:** Person\n- **Odette**\n  - **summary:** The scarred eel-smoker waiting to cross; distrusts strangers.\n  - **type:** Person\n- **Rope Ferry**\n  - **summary:** A two-person rope raft that lists to the left.\n  - **type:** Object\n- **Mara**\n  - **summary:** A traveling healer sorting clean bandages beside a chest at the landing.\n  - **type:** Person\n- **Iven**\n  - **summary:** A cobbler repairing travelers' footwear on a low stool at the landing.\n  - **type:** Person\n- **Nessa**\n  - **summary:** A basketmaker counting empty reed baskets near the path.\n  - **type:** Person\n- **Corin**\n  - **summary:** A courier waiting at the landing with a sealed satchel.\n  - **type:** Person\n\n\n\n\n\n\n## Foreground Lore\nAdditional authored information about the world, its concepts, and its terminology.\n\ngloamwater: Gloamwater: a stretch of river gone silent and milk-pale where the current stalls. Sound does not carry over it and fish avoid it; folk say names spoken over gloamwater are forgotten by morning."
+        },
+        {
+          "role": "user",
+          "content": "Demonstration from a separate story. Location: an observatory archive. Entity summary: Ysra, the archivist responsible for a sealed star atlas. Player action: I ask the archivist whether I may examine the atlas."
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "000000001",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Ysra\"}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000001",
+          "content": "{\"matches\":[{\"id\":\"example-ysra\",\"name\":\"Ysra\",\"description\":\"Ysra wears indigo cuffs and keeps the atlas locked. She permits visitors to examine it only while she supervises. She speaks politely and precisely.\"}]}"
+        },
+        {
+          "role": "assistant",
+          "content": "The archivist rests her indigo cuffs beside the locked atlas. \"You may examine it here, while I attend you,\" she says. She unlocks the cover and makes room at the desk for you to look."
+        },
+        {
+          "role": "user",
+          "content": "I greet the ferryman and the woman by the firepit, asking them to tell me a little about themselves."
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "000000002",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Bram\"}"
+              }
+            },
+            {
+              "id": "000000003",
+              "type": "function",
+              "function": {
+                "name": "get_entity",
+                "arguments": "{\"name\":\"Odette\"}"
+              }
+            }
+          ]
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000002",
+          "content": "{\"matches\":[{\"id\":\"ent-bram\",\"name\":\"Bram\",\"description\":\"Bram is the ferryman: a broad, weathered man with only one arm - the right; his left sleeve is pinned up - and a brass ring through his left ear. He speaks in short dry sentences and never crosses the river after dark. He has not told the player his name.\"}]}"
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "000000003",
+          "content": "{\"matches\":[{\"id\":\"ent-odette\",\"name\":\"Odette\",\"description\":\"A small, quick woman smoking river-eels over a firepit at the landing, waiting to cross. She has a burn scar across her right cheek and a green glass bead braided into her hair. She distrusts strangers and counts everything twice. She has not given her name.\"}]}"
+        }
+      ],
+      "tools": [
+        {
+          "type": "function",
+          "function": {
+            "name": "get_entity",
+            "description": "Purpose: Retrieve an entity's full authored entry. Entity summaries identify candidates for the story.\nUse when: Before an entity appears in your upcoming narration, retrieve its full entry for this response. This includes named, indirect, and background appearances.\nInput: name — the entity's name from the entity list.\nOutput: JSON with a matches array. Each match contains id, name, and the full authored description when provided by the author. An empty matches array means no matching entity was found.",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        }
+      ],
+      "tool_choice": "auto",
+      "max_tokens": 1,
+      "stream": false,
+      "seed": 424243
+    },
+    "status": 200,
+    "response": {
+      "id": "chatcmpl-ce6f5bzcwdypd0c3di9oh",
+      "object": "chat.completion",
+      "created": 1790142530,
+      "model": "g4-meromero-v2-31b-i1",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": "",
+            "tool_calls": []
+          },
+          "logprobs": null,
+          "finish_reason": "length"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 1236,
+        "completion_tokens": 1,
+        "total_tokens": 1237,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "stats": {},
+      "system_fingerprint": "g4-meromero-v2-31b-i1"
+    },
+    "durationMs": 963.6137
+  }
+]
