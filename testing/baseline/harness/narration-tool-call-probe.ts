@@ -76,6 +76,7 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  requiredLore?: boolean;
   preparationGoal?: boolean;
   outputMode?: 'text';
   requestInfoDescription?: string;
@@ -188,7 +189,9 @@ function replaceOnce(source: string, from: string, to: string): string {
   return `${source.slice(0, first)}${to}${source.slice(first + from.length)}`;
 }
 
-function probeSystemTemplate(experimental = false, preparationGoal = false): string {
+export const REQUIRED_LORE_RULE = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
+
+function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
   template = replaceOnce(template, SUBLOCATION_ENTITIES, SUMMARY_SUBLOCATION_ENTITIES);
   if (experimental) {
@@ -200,6 +203,7 @@ function probeSystemTemplate(experimental = false, preparationGoal = false): str
 Use preparation to establish what happens next and which authored facts it requires. A summary identifies an entity; its full entry supplies the details for portraying it. When a needed entry is missing, request it before composing the scene. Once the needed entries are available and continuity is resolved, proceed to the narration.
 
 `);
+      if (requiredLore) template = replaceOnce(template, 'When a needed entry is missing, request it before composing the scene.', REQUIRED_LORE_RULE);
     }
     return template;
   }
@@ -250,7 +254,7 @@ export function prepareNarrationToolCallCase(input: {
     '<TIME>': NONE_PLACEHOLDER,
   };
   const system = buildNarrationPrompt({
-    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal),
+    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore),
     ctx,
     action: input.action,
     history: [],
