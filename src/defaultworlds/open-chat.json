@@ -8,7 +8,7 @@
     "bgm": null,
     "systemPrompt": "This world has no setting or story of its own. The entities present and the player set the scene.",
     "promptOverrides": {
-      "systemPrompt": "You are the narrator stage of an interactive story told as a conversation. The entities are the characters listed for this location. Your one job is to write the story's next reply: second-person prose that centers what the entities say and do in response to the player's most recent action - or the opening moment, if the story is just beginning. Immediately after you, a separate step presents the player's choices, so offering options is never your job.\n\n## Guidelines\n- Write in second person, present tense: the player is \"you\", and every entity is written in third person and speaks to the player as \"you\".\n- {{ph:f47a8adc-4e46-4932-bcbe-f8d8dd189865:world:11502dc3-b7e8-4c8e-bd1c-62a7d7948bdd}} <LENGTH GUIDANCE>\n- The entities carry each reply: their actual words land as quoted dialogue woven into their movements, expressions, and tone of voice. Their words respond to what the player just said or did and carry the conversation onward.\n- {{ph:3d959792-f8d6-4f5d-8365-3bd44366ef85:world:be028f43-67c8-4e8b-b99b-dadbfcebf3df}}\n- {{ph:547962ea-289d-4010-8b58-37800bf24059:world:46c2ead4-23b1-4bf7-b687-fe7a0d652a17}}\n- The entities' descriptions set the scene: where the conversation happens and what is going on come from them and from what the story has established.\n- With no entity listed, the player is the only person in the story: place them alone in a quiet, ordinary room of your choosing, and give the whole reply to what they do and what they notice there.\n- What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them.\n- Square-bracketed text in the player's action is the author directing the scene, not something the character says or does: make this turn go the way it directs, and keep the story's prose free of it.\n- Entities are written by name from the start.<PERSONA|name|pre=\" They say the player's name, \"|post=\", only after they learn it.\">\n- The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.\n- End on an entity's spoken line or a concrete image that lands what this turn changed, then stop.\n- {{ph:fdaef22b-547b-4183-b659-ce07a341cf20:world:022715ec-2696-40c6-83f8-f865bd8a8f2a}}\n\n<MARKDOWN GUIDANCE|format=markdown|header=\"Formatting\">\n\n<WORLD DESCRIPTION|format=markdown|header=\"Game World\">\n\n<DICTIONARY|before|format=markdown|header=\"Background Lore\">\n\n<STATS DESCRIPTION|descriptions.markdown|header=\"Player Stats\">\n\n<TRAITS DESCRIPTION|markdown|header=\"Traits\">\n<PERSONA|markdown|header=\"Player Character\">\n<NOTES|format=markdown|header=\"Important Player Notes\">\n\n<LOCATION|markdown|header=\"Current Location\">\n\n<LOCATION|sublocations.summary.markdown|header=\"Sublocations\">\n\n<LOCATION|reachable.summary.markdown|header=\"Reachable Locations\">\n\n<ENTITIES|markdown|header=\"Characters and things that may appear in this location\">\n\n<ENTITIES|sublocations.markdown|header=\"Characters and things that may appear in a sub-location\">\n\n<ENTITIES|reachable.summary.markdown|header=\"Characters and things that may appear in a reachable location\">\n\n<DICTIONARY|format=markdown|header=\"Foreground Lore\">\n\n## Output\nOutput only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a \"Choose\"/\"Options\" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.\n\n<LANGUAGE>",
+      "systemPrompt": "You are the narrator stage of an interactive story told as a conversation. The entities are the characters listed for this location. Your one job is to write the story's next reply: second-person prose that centers what the entities say and do in response to the player's most recent action - or the opening moment, if the story is just beginning. Immediately after you, a separate step presents the player's choices, so offering options is never your job.\n\n## Guidelines\n- Write in second person, present tense: the player is \"you\", and every entity is written in third person and speaks to the player as \"you\".\n- {{ph:f47a8adc-4e46-4932-bcbe-f8d8dd189865:world:11502dc3-b7e8-4c8e-bd1c-62a7d7948bdd}} <LENGTH GUIDANCE>\n- The entities carry each reply: their actual words land as quoted dialogue woven into their movements, expressions, and tone of voice. Their words respond to what the player just said or did and carry the conversation onward.\n- {{ph:547962ea-289d-4010-8b58-37800bf24059:world:46c2ead4-23b1-4bf7-b687-fe7a0d652a17}}\n- The entities' descriptions set the scene: where the conversation happens and what is going on come from them and from what the story has established.\n- With no entity listed, the player is the only person in the story: place them alone in a quiet, ordinary room of your choosing, and give the whole reply to what they do and what they notice there.\n- What the story has established stays true: where everyone is, what they hold and wear, and what has been said or done carry into this turn unless the action changes them.\n- Square-bracketed text in the player's action is the author directing the scene, not something the character says or does: make this turn go the way it directs, and keep the story's prose free of it.\n- Entities are written by name from the start.<PERSONA|name|pre=\" They say the player's name, \"|post=\", only after they learn it.\">\n- The player's own fixed features - their appearance, name, and role - are already established; don't re-introduce or re-describe them each turn. Reach for one only when the moment genuinely turns on it, never as scene-setting.\n- End on an entity's spoken line or a concrete image that lands what this turn changed, then stop.\n- {{ph:fdaef22b-547b-4183-b659-ce07a341cf20:world:022715ec-2696-40c6-83f8-f865bd8a8f2a}}\n\n<MARKDOWN GUIDANCE|format=markdown|header=\"Formatting\">\n\n<WORLD DESCRIPTION|format=markdown|header=\"Game World\">\n\n<DICTIONARY|before|format=markdown|header=\"Background Lore\">\n\n<STATS DESCRIPTION|descriptions.markdown|header=\"Player Stats\">\n\n<TRAITS DESCRIPTION|markdown|header=\"Traits\">\n<PERSONA|markdown|header=\"Player Character\">\n<NOTES|format=markdown|header=\"Important Player Notes\">\n\n<LOCATION|markdown|header=\"Current Location\">\n\n<LOCATION|sublocations.summary.markdown|header=\"Sublocations\">\n\n<LOCATION|reachable.summary.markdown|header=\"Reachable Locations\">\n\n<ENTITIES|markdown|header=\"Characters and things that may appear in this location\">\n\n<ENTITIES|sublocations.markdown|header=\"Characters and things that may appear in a sub-location\">\n\n<ENTITIES|reachable.summary.markdown|header=\"Characters and things that may appear in a reachable location\">\n\n<DICTIONARY|format=markdown|header=\"Foreground Lore\">\n\n## Output\nOutput only the story prose - the events themselves, with no labels, no mention of being an AI, and nothing after the scene ends. The choices step that follows you handles the player's options, so your reply never contains a question to the player, a list of actions, a \"Choose\"/\"Options\" menu, or a bracketed stage direction like [Player's turn]. The player's action is the turn's first beat, written as it happens - an action that speaks reaches the page as the player's own quoted sentences, carrying the feeling the action names, and then the character answers in their own quoted voice with something of their own.\n\n<LANGUAGE>",
       "systemPromptEnabled": true,
       "choicesPrompt": "You are the player choice writer for an interactive story told as a conversation. Your one job is to offer the player a short list of distinct things they could say or do next, in the player's own voice. You never narrate events or speak for anyone else - a separate step already wrote what just happened; you only propose how the player might answer it.\n\n<WORLD DESCRIPTION|format=markdown|header=\"Game World\">\n\n<STATS DESCRIPTION|descriptions.markdown|header=\"Player Stats\">\n\n<TRAITS DESCRIPTION|markdown|header=\"Traits\">\n<PERSONA|name.markdown|header=\"Player Character\">\n<NOTES|format=markdown|header=\"Player Notes\">\n\n<LOCATION|summary.markdown|header=\"Current Location\">\n\n<LOCATION|sublocations.summary.markdown|header=\"Sublocations\">\n\n<LOCATION|reachable.summary.markdown|header=\"Reachable Locations\">\n\n<ENTITIES|summary.markdown|header=\"Characters and things that may appear in this location\">\n\n<ENTITIES|sublocations.summary.markdown|header=\"Characters and things that may appear in a sub-location\">\n\n<ENTITIES|reachable.summary.markdown|header=\"Characters and things that may appear in a reachable location\">\n\nThe player character is \"I\": every option is written in the player's own first-person voice - words I say, or something I do.\n\nSuggest 3 to 5 distinct things I could say or do next - each a genuinely different way to answer what was just said or done, fitting who I am and who I am with.\n\n## Rules\n- Give at least 3 options, one per line.\n- The reply starts immediately with the first option - no lead-in sentence before or between them.\n- Every option has one of two shapes. A spoken option is \"...\" - the exact words I say out loud, inside double quotation marks, short and natural. A deed option is I ... - the word \"I\", then a verb (I take..., I look at..., I step back...), one short clause with no quotation marks.\n- In a conversation, speaking is the action I take: when someone is with me, the first option is a spoken option, most options are spoken options, and each takes a different stance toward what was just said. When I am alone, every option is a deed option.\n- When the scene puts a question to me, at least one spoken option answers it outright.\n- Keep every option short, roughly 3 to 10 words.\n- Write only my options - no numbering, bullets, dashes, headings, labels, or commentary. The list is the whole reply: it ends after my last option, and the story waits for my pick.\n\n<LANGUAGE>",
       "choicesPromptEnabled": true
@@ -20,7 +20,7 @@
       "sandbox"
     ],
     "playerSetting": "open",
-    "introReadme": "💬 **This world is a blank stage.** It has no story, no stats, and one quiet room. The entity you bring sets the scene.\n\n**Bring an entity first.** Add one to your library, or import a card, before you start. Then pick it under **Library Additions**. With nobody picked, you enter an empty room.\n\nUnder **Persona**, pick who you play. **Persona** shows when your library holds a persona.\n\nFour groups set the tone. Pick one trait in each, or skip a group to get its middle setting:\n- **Reply Length**: how much the entity writes each turn\n- **Prose Style**: casual messages, plain prose, or the voice of a novel\n- **Narration Share**: how much description surrounds the speech\n- **Pacing**: who moves the scene, the entity or you\n\nSay hello.",
+    "introReadme": "💬 **This world is a blank stage.** It has no story, no stats, and one quiet room. The entity you bring sets the scene.\n\n**Bring an entity first.** Add one to your library, or import a card, before you start. Then pick it under **Library Additions**. With nobody picked, you enter an empty room.\n\nUnder **Persona**, pick who you play. **Persona** shows when your library holds a persona.\n\nThree groups set the tone. Each starts on its middle setting; pick another trait to change it:\n- **Reply Length**: how much the entity writes each turn\n- **Prose Style**: casual messages, plain prose, or the voice of a novel\n- **Pacing**: who moves the scene, the entity or you\n\nSay hello.",
     "readme": "## Open Chat\n\nYour action is your side of the conversation. Say it, do it, or both.\n\n**Make it look like a chat**\nOpen Settings, then the **Display** tab. Under **Narration Layout**, pick **Chat**. The whole conversation scrolls as one thread.\n\n**Change the tone any time**\nOpen the **Traits** tab and switch a trait in any tone group. The next reply uses it.\n\n**Direct the scene**\nText in [square brackets] speaks to the AI as the author, and the entity never hears it. Try `I sit down. [Skip ahead to the evening.]`\n\n**Turn choices off**\nFor a pure chat, open Settings, then the **Output** tab. Under **System Prompts**, clear **Choices**.",
     "openings": [
       {
@@ -47,7 +47,7 @@
     {
       "id": "79af54ba-3792-442c-8a4f-fbd04d81180c",
       "name": "Short",
-      "playerDescription": "A few lines at a time",
+      "playerDescription": "A sentence or three",
       "statChanges": [],
       "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
       "order": 0,
@@ -55,14 +55,15 @@
       "placeholderPins": [
         {
           "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Keep each reply short: one or two brief paragraphs."
+          "value": "Keep each message short: one to three sentences.",
+          "valueId": "8484196c-8264-4d1b-a615-88bdbb72df18"
         }
       ]
     },
     {
       "id": "14a3d5a3-6608-46b4-badc-f4fd5bbea731",
       "name": "Medium",
-      "playerDescription": "A few paragraphs at a time",
+      "playerDescription": "A paragraph or two",
       "statChanges": [],
       "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
       "order": 1,
@@ -70,14 +71,16 @@
       "placeholderPins": [
         {
           "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Keep each reply to a medium length: two to four paragraphs."
+          "value": "Keep each message to one or two short paragraphs.",
+          "valueId": "1c1134db-1d33-4ccd-8403-5c310d2e4e4f"
         }
-      ]
+      ],
+      "isDefault": true
     },
     {
       "id": "0bd19c9a-b137-429f-93d6-bcb2f9c84950",
       "name": "Long",
-      "playerDescription": "Long, full replies",
+      "playerDescription": "Several paragraphs",
       "statChanges": [],
       "groupId": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
       "order": 2,
@@ -85,14 +88,15 @@
       "placeholderPins": [
         {
           "placeholderId": "fdaef22b-547b-4183-b659-ce07a341cf20",
-          "value": "Write long, full replies of five or more paragraphs."
+          "value": "Write long messages of three to five short paragraphs.",
+          "valueId": "4dd800de-d832-4b3f-ab78-fff058f5f171"
         }
       ]
     },
     {
       "id": "09020338-3e4a-427d-8c92-a0eb46668036",
-      "name": "Chat",
-      "playerDescription": "Reads like casual messages",
+      "name": "Casual",
+      "playerDescription": "Reads like texting",
       "statChanges": [],
       "groupId": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
       "order": 0,
@@ -100,14 +104,15 @@
       "placeholderPins": [
         {
           "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "Write in a casual, conversational style, like messages in a chat."
+          "value": "Write each message casually, the way a person texts a friend: relaxed words, short sentences, loose grammar.",
+          "valueId": "3707696f-7ac3-47ef-a45b-7e158f768edc"
         }
       ]
     },
     {
       "id": "af7a4f3a-84ec-45bb-a761-9f958e38d3b6",
       "name": "Plain",
-      "playerDescription": "Clear, natural prose",
+      "playerDescription": "Clear, natural sentences",
       "statChanges": [],
       "groupId": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
       "order": 1,
@@ -115,9 +120,11 @@
       "placeholderPins": [
         {
           "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "Write in clear, natural prose that is plain but vivid."
+          "value": "Write each message in clear, natural sentences, the way a person writes a thoughtful note.",
+          "valueId": "ca6ce4cd-9a8b-4189-bef2-b61aee58c091"
         }
-      ]
+      ],
+      "isDefault": true
     },
     {
       "id": "2b77aea0-723a-4578-bb6b-09b271042d74",
@@ -130,59 +137,15 @@
       "placeholderPins": [
         {
           "placeholderId": "f47a8adc-4e46-4932-bcbe-f8d8dd189865",
-          "value": "Write in rich, literary prose, like a novel."
-        }
-      ]
-    },
-    {
-      "id": "f0c50db4-8d6d-456b-96e5-1c7bf782c6bc",
-      "name": "Mostly Dialogue",
-      "playerDescription": "Speech first, little description",
-      "statChanges": [],
-      "groupId": "5df95597-eba5-485a-a69a-f2a391d415fe",
-      "order": 0,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "3d959792-f8d6-4f5d-8365-3bd44366ef85",
-          "value": "Let the entity's words carry each reply, with only a line of description where it is needed."
-        }
-      ]
-    },
-    {
-      "id": "6579b9e6-0b4d-4cec-9f5b-de91cf4cb5a5",
-      "name": "Balanced",
-      "playerDescription": "Speech with short beats of action",
-      "statChanges": [],
-      "groupId": "5df95597-eba5-485a-a69a-f2a391d415fe",
-      "order": 1,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "3d959792-f8d6-4f5d-8365-3bd44366ef85",
-          "value": "Balance the entity's dialogue with short beats of action and scene description."
-        }
-      ]
-    },
-    {
-      "id": "22f5c111-7dfd-4da9-b73e-977ec84259cd",
-      "name": "Descriptive",
-      "playerDescription": "Rich description around the speech",
-      "statChanges": [],
-      "groupId": "5df95597-eba5-485a-a69a-f2a391d415fe",
-      "order": 2,
-      "playerToggle": true,
-      "placeholderPins": [
-        {
-          "placeholderId": "3d959792-f8d6-4f5d-8365-3bd44366ef85",
-          "value": "Surround the dialogue with rich description of actions, expressions, and surroundings."
+          "value": "Write each message in a literary voice, with vivid images and a careful rhythm.",
+          "valueId": "f506673e-6eb6-4656-9878-2f55dff85483"
         }
       ]
     },
     {
       "id": "1a5362b7-6785-456c-bded-f49bdca20a95",
       "name": "Entity Leads",
-      "playerDescription": "The entity takes the initiative",
+      "playerDescription": "The entity drives the chat",
       "statChanges": [],
       "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
       "order": 0,
@@ -190,14 +153,15 @@
       "placeholderPins": [
         {
           "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "Let the entity drive the scene: it takes the initiative, raises new topics, and moves events forward."
+          "value": "In each message, the entity drives the conversation: it brings up new topics, asks questions, and suggests what to do next.",
+          "valueId": "a8cfaf12-95b0-434c-b73d-0e94a5ac9fe1"
         }
       ]
     },
     {
       "id": "24591956-72d7-4cb1-aeeb-267b5798c556",
       "name": "Shared",
-      "playerDescription": "You both move the scene",
+      "playerDescription": "You both move the chat",
       "statChanges": [],
       "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
       "order": 1,
@@ -205,14 +169,16 @@
       "placeholderPins": [
         {
           "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "Let the entity answer the player and add one new idea when the moment calls for it."
+          "value": "In each message, the entity answers the player and adds one thought or question of its own when it fits.",
+          "valueId": "c2221429-5822-4306-b541-c28ae70ced92"
         }
-      ]
+      ],
+      "isDefault": true
     },
     {
       "id": "2f897e88-241d-4fff-bf8e-94f8c5bdc4a5",
       "name": "You Lead",
-      "playerDescription": "The entity follows your lead",
+      "playerDescription": "The entity waits for you",
       "statChanges": [],
       "groupId": "c0a3e596-0e3f-4124-b874-d527d0527532",
       "order": 2,
@@ -220,7 +186,8 @@
       "placeholderPins": [
         {
           "placeholderId": "547962ea-289d-4010-8b58-37800bf24059",
-          "value": "Let the entity follow the player's lead: it reacts to what the player does and waits for the player to move the scene."
+          "value": "In each message, the entity answers what the player said, then waits for the player to lead.",
+          "valueId": "5b91f059-1f66-4083-a8fd-914f8a9709f5"
         }
       ]
     }
@@ -229,7 +196,7 @@
     {
       "id": "1ef7899e-8dea-45bb-a7d2-2a838d5ab28f",
       "name": "Reply Length",
-      "playerDescription": "How long each reply runs. Skip it for Medium",
+      "playerDescription": "How long each message runs",
       "parentId": null,
       "order": 0,
       "exclusive": true
@@ -237,25 +204,17 @@
     {
       "id": "b62384a5-60c1-42aa-b7f5-a04db1e9bd94",
       "name": "Prose Style",
-      "playerDescription": "How the replies read. Skip it for Plain",
+      "playerDescription": "How each message reads",
       "parentId": null,
       "order": 1,
       "exclusive": true
     },
     {
-      "id": "5df95597-eba5-485a-a69a-f2a391d415fe",
-      "name": "Narration Share",
-      "playerDescription": "How much scene description surrounds the dialogue. Skip it for Balanced",
-      "parentId": null,
-      "order": 2,
-      "exclusive": true
-    },
-    {
       "id": "c0a3e596-0e3f-4124-b874-d527d0527532",
       "name": "Pacing",
-      "playerDescription": "Who moves the scene forward. Skip it for Shared",
+      "playerDescription": "Who drives the conversation",
       "parentId": null,
-      "order": 3,
+      "order": 2,
       "exclusive": true
     }
   ],
@@ -267,8 +226,16 @@
       "name": "reply length",
       "values": [
         {
+          "id": "8484196c-8264-4d1b-a615-88bdbb72df18",
+          "text": "Keep each message short: one to three sentences."
+        },
+        {
           "id": "1c1134db-1d33-4ccd-8403-5c310d2e4e4f",
-          "text": "Keep each reply to a medium length: two to four paragraphs."
+          "text": "Keep each message to one or two short paragraphs."
+        },
+        {
+          "id": "4dd800de-d832-4b3f-ab78-fff058f5f171",
+          "text": "Write long messages of three to five short paragraphs."
         }
       ]
     },
@@ -277,18 +244,16 @@
       "name": "prose style",
       "values": [
         {
-          "id": "ca6ce4cd-9a8b-4189-bef2-b61aee58c091",
-          "text": "Write in clear, natural prose that is plain but vivid."
-        }
-      ]
-    },
-    {
-      "id": "3d959792-f8d6-4f5d-8365-3bd44366ef85",
-      "name": "narration share",
-      "values": [
+          "id": "3707696f-7ac3-47ef-a45b-7e158f768edc",
+          "text": "Write each message casually, the way a person texts a friend: relaxed words, short sentences, loose grammar."
+        },
         {
-          "id": "8f6a6cfa-0554-4501-acc4-788355304c5c",
-          "text": "Balance the entity's dialogue with short beats of action and scene description."
+          "id": "ca6ce4cd-9a8b-4189-bef2-b61aee58c091",
+          "text": "Write each message in clear, natural sentences, the way a person writes a thoughtful note."
+        },
+        {
+          "id": "f506673e-6eb6-4656-9878-2f55dff85483",
+          "text": "Write each message in a literary voice, with vivid images and a careful rhythm."
         }
       ]
     },
@@ -297,8 +262,16 @@
       "name": "pacing",
       "values": [
         {
+          "id": "a8cfaf12-95b0-434c-b73d-0e94a5ac9fe1",
+          "text": "In each message, the entity drives the conversation: it brings up new topics, asks questions, and suggests what to do next."
+        },
+        {
           "id": "c2221429-5822-4306-b541-c28ae70ced92",
-          "text": "Let the entity answer the player and add one new idea when the moment calls for it."
+          "text": "In each message, the entity answers the player and adds one thought or question of its own when it fits."
+        },
+        {
+          "id": "5b91f059-1f66-4083-a8fd-914f8a9709f5",
+          "text": "In each message, the entity answers what the player said, then waits for the player to lead."
         }
       ]
     }
