@@ -20,6 +20,18 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('changes only the retrieval prerequisite against the preparation-goal baseline', () => {
+    const input = { caseId: 'prerequisite', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { preparationGoal: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, requiredLore: true } }).request;
+    const rule = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
+    expect(variant.messages[0].content).toContain(rule);
+    expect(variant.messages[0].content).not.toContain('When a needed entry is missing');
+    variant.messages[0].content = variant.messages[0].content!.replace(rule, 'When a needed entry is missing, request it before composing the scene.');
+    expect(variant).toEqual(baseline);
+  });
+
   it('changes only preparation for the reasoning-goal experiment', () => {
     const input = { caseId: 'preparation', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
