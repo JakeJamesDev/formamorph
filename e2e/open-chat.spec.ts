@@ -24,7 +24,8 @@ const settings = {
   FORMAMORPH_endpointUrl: LIVE ?? 'http://127.0.0.1:5190/v1/chat/completions',
   ...(LIVE ? { FORMAMORPH_modelName: process.env.OPEN_CHAT_MODEL ?? 'default' } : {}),
   FORMAMORPH_narrationLayout: 'chat',
-  FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: false,
+  // A live run keeps the choices request on, so the turn shows the world's message choices too.
+  FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: Boolean(LIVE),
   FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
 };
 
@@ -97,9 +98,13 @@ test('the greeting is page one, and the next turn runs on the world narration pr
 
   if (LIVE) {
     const reply = await page.evaluate(() => document.querySelector('main')?.textContent ?? document.body.textContent ?? '');
+    const choices = page.getByTestId('chat-choices').getByRole('button');
+    await expect(choices.first()).toBeVisible({ timeout: 120_000 });
     console.log(`
 --- live reply page ---
 ${reply.slice(-1500)}
+--- live choices ---
+${(await choices.allTextContents()).join('\n')}
 `);
   }
 });
