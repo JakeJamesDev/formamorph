@@ -20,6 +20,31 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('relabels entity summaries without changing the location, cached lore, or request controls', () => {
+    const input = { caseId: 'summary-label', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { roleOnly: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, summaryLabel: true } }).request;
+    const system = variant.messages[0].content!;
+    expect(system).toContain('- **Bram**\n  - **summary:**');
+    expect(system).toContain('- **Odette**\n  - **summary:**');
+    expect(system).toContain('- **Rope Ferry**\n  - **summary:**');
+    expect(system.match(/\*\*summary:\*\*/g)).toHaveLength(3);
+    variant.messages[0].content = system.replaceAll('  - **summary:**', '  - **description:**');
+    expect(variant).toEqual(baseline);
+  });
+
+  it('keeps only role and perspective plus unchanged context chips', () => {
+    const input = { caseId: 'role-only', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { preparationGoal: true, requiredLore: true, decisionNotes: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, roleOnly: true } }).request;
+    const context = baseline.messages[0].content!.match(/## Game World\n[\s\S]*?(?=## Preparation\n)/)![0].trim();
+    expect(variant.messages[0].content?.trim()).toBe(`You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.\n\n${context}`);
+    variant.messages[0] = baseline.messages[0];
+    expect(variant).toEqual(baseline);
+  });
+
   it('changes only preparation for decision notes while preserving required lore', () => {
     const input = { caseId: 'decision-notes', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { preparationGoal: true, requiredLore: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
