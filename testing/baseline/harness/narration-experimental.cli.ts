@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { migrateWorld } from '@/lib/version';
-import { createProbeTransport, LM_STUDIO_PROBE_ENDPOINT, prepareNarrationToolCallCase, REQUIRED_LORE_RULE, ROLE_ONLY_INSTRUCTION,
+import { createProbeTransport, LM_STUDIO_PROBE_ENDPOINT, prepareNarrationToolCallCase, REQUIRED_LORE_RULE, ROLE_ONLY_INSTRUCTION, ENTITY_DEFINITION,
   runNarrationToolCallTrial, type ProbeTrialEvidence } from './narration-tool-call-probe';
 
 const [baselinePath, ...flags] = process.argv.slice(2);
@@ -13,10 +13,16 @@ const prerequisite = flags.includes('--prerequisite');
 const decisionNotes = flags.includes('--decision-notes');
 const roleOnly = flags.includes('--role-only');
 const summaryLabel = flags.includes('--summary-label');
-const experimentalBaseline = plain || preparation || prerequisite || decisionNotes || roleOnly || summaryLabel;
+const mentionTool = flags.includes('--mention-tool');
+const entityDefinition = flags.includes('--entity-definition');
+const entityDiagnostic = flags.includes('--entity-diagnostic');
+const entityStudy = entityDefinition || entityDiagnostic;
+const diagnosticQuestion = 'What does “entity” mean in this request, and which supplied entries does it include?';
+const mentionDescription = 'Retrieve an entity\'s full authored entry before mentioning it in narration, including indirect references such as “the ferryman.” Entity summaries help you select what to include in the scene. For each selected entity, retrieve its entry unless the full entry is already in context. Supply its name from the entity list.';
+const experimentalBaseline = plain || preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy;
 const live = flags.includes('--run');
-if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label'].includes(flag)) || new Set(flags).size !== flags.length) {
-  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label] [--run].');
+if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel, mentionTool, entityDefinition, entityDiagnostic].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label', '--mention-tool', '--entity-definition', '--entity-diagnostic'].includes(flag)) || new Set(flags).size !== flags.length) {
+  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label | --mention-tool | --entity-definition | --entity-diagnostic] [--run].');
 }
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
   model: string; description: string; modelMetadata: unknown;
@@ -28,24 +34,35 @@ if (!description) throw new Error('Baseline has no lookup description.');
 const seeds = [424243, 424244];
 const world = migrateWorld(JSON.parse(readFileSync('testing/baseline/sedge-landing.json', 'utf8')));
 const sourceRevision = execFileSync('git', ['-c', `safe.directory=${process.cwd().replaceAll('\\', '/')}`, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
+const jobs = seeds.flatMap((seed) => baseline.cases.filter((scenario) => !entityDiagnostic || scenario.id === 'greeting').map((scenario) => {
   const cached = baseline.trials.filter((item) => (experimentalBaseline || item.arm === 'B') && item.seed === seed && item.scenario === scenario.id);
   if (cached.length !== 1) throw new Error(`Expected one cached baseline: ${scenario.id}/${seed}`);
   const input = { caseId: `${scenario.id}-${seed}-experimental`, action: scenario.action, world, sourceRevision,
     model: baseline.model, seed, nineCharacterCallIds: true, requestTimeoutMs: 180_000,
     experiment: { thinking: true, knownEntityNames: scenario.known, requestInfoDescription: description,
-      ...(preparation || prerequisite || decisionNotes || roleOnly || summaryLabel ? { outputMode: 'text' as const } : {}),
-      ...(prerequisite || decisionNotes || roleOnly || summaryLabel ? { preparationGoal: true } : {}),
-      ...(decisionNotes || roleOnly || summaryLabel ? { requiredLore: true } : {}),
-      ...(roleOnly || summaryLabel ? { decisionNotes: true } : {}), ...(summaryLabel ? { roleOnly: true } : {}) } };
+      ...(preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { outputMode: 'text' as const } : {}),
+      ...(prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { preparationGoal: true } : {}),
+      ...(decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { requiredLore: true } : {}),
+      ...(roleOnly || summaryLabel || mentionTool || entityStudy ? { decisionNotes: true } : {}), ...(summaryLabel || mentionTool || entityStudy ? { roleOnly: true } : {}), ...(mentionTool || entityStudy ? { summaryLabel: true } : {}) } };
   const original = prepareNarrationToolCallCase({ ...input, ...(experimentalBaseline ? { promptMode: 'experimental' as const } : {}) }).request;
   if (!isDeepStrictEqual(original, cached[0].trial.initialRequest)) throw new Error('Cached baseline request drifted.');
-  const trialInput = { ...input, experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
+  const trialInput = { ...input, ...(entityDiagnostic ? { action: diagnosticQuestion } : {}), experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
     ...(preparation ? { preparationGoal: true } : {}), ...(prerequisite ? { requiredLore: true } : {}),
-    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}) } };
+    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}), ...(mentionTool ? { requestInfoDescription: mentionDescription } : {}), ...(entityDefinition ? { entityDefinition: true } : {}) } };
   const experimental = prepareNarrationToolCallCase({ ...trialInput, promptMode: 'experimental' }).request;
   const normalized = structuredClone(experimental);
-  if (summaryLabel) {
+  if (entityDefinition) {
+    const system = normalized.messages[0].content ?? '';
+    if (!system.includes(ENTITY_DEFINITION)) throw new Error('Entity definition missing.');
+    normalized.messages[0].content = system.replace(`${ENTITY_DEFINITION}\n\n`, '');
+  } else if (entityDiagnostic) {
+    if (normalized.messages[1].content !== diagnosticQuestion) throw new Error('Diagnostic question missing.');
+    normalized.messages[1] = original.messages[1];
+  } else if (mentionTool) {
+    const tool = normalized.tools.find((tool) => tool.function.name === 'request_info');
+    if (!tool || tool.function.description !== mentionDescription) throw new Error('Mention tool description missing.');
+    tool.function.description = description;
+  } else if (summaryLabel) {
     const before = original.messages[0].content ?? '';
     const after = normalized.messages[0].content ?? '';
     if ((after.match(/ {2}- \*\*summary:\*\*/g) ?? []).length !== 3
@@ -75,12 +92,12 @@ const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
   if (!isDeepStrictEqual(normalized, original)) throw new Error('Non-prompt controls differ.');
   return { input: trialInput, scenario: scenario.id, required: scenario.required, baseline: cached[0].trial, prepared: experimental };
 }));
-const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${entityDefinition ? 'entity-definition-' : entityDiagnostic ? 'entity-diagnostic-' : mentionTool ? 'mention-tool-' : summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
 const trials: Array<{ scenario: string; seed: number; trial: ProbeTrialEvidence }> = [];
 const started = performance.now();
 let modelMetadata: unknown = null;
 const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation || prerequisite || decisionNotes, requiredLore: prerequisite || decisionNotes, decisionNotes,
-  roleOnly: roleOnly || summaryLabel, summaryLabel,
+  roleOnly: roleOnly || summaryLabel || mentionTool || entityStudy, summaryLabel: summaryLabel || mentionTool || entityStudy, mentionTool, entityDefinition, entityDiagnostic,
   outputMode: experimentalBaseline ? 'text' : 'write', model: baseline.model,
   seeds, cases: baseline.cases, plannedTrials: jobs.length, modelMetadata, durationMs: performance.now() - started,
   pairs: jobs.map(({ input, ...rest }) => ({ seed: input.seed, ...rest })), trials }, null, 2)}\n`);
