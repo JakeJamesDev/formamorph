@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **🛠️ Developer tooling**
+  - **The narration tool probe tests entity lookup and tool-based output with a minimal local prompt.** Two fresh trials compare a short instruction with the full narration prompt. LM Studio runs allow three minutes per request and remap outgoing call IDs for nine-character-ID templates while retaining original server responses in the evidence.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**
