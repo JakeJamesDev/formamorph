@@ -1,4 +1,5 @@
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { experimentalNarrationUserPrompt, experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
 import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
@@ -185,9 +186,10 @@ function replaceOnce(source: string, from: string, to: string): string {
   return `${source.slice(0, first)}${to}${source.slice(first + from.length)}`;
 }
 
-function probeSystemTemplate(): string {
-  let template = replaceOnce(defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
+function probeSystemTemplate(experimental = false): string {
+  let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
   template = replaceOnce(template, SUBLOCATION_ENTITIES, SUMMARY_SUBLOCATION_ENTITIES);
+  if (experimental) return template;
   template = replaceOnce(template, OUTPUT_SENTENCE, TOOL_OUTPUT_SENTENCE);
   return replaceOnce(template, '## Output\n', `${ENTITY_INFORMATION}## Output\n`);
 }
@@ -217,7 +219,7 @@ export function prepareNarrationToolCallCase(input: {
   world: World;
   model?: string;
   seed?: number;
-  promptMode?: 'minimal';
+  promptMode?: 'minimal' | 'experimental';
   experiment?: ProbeExperiment;
 }): PreparedProbeCase {
   const location = input.world.locations.find((candidate) => candidate.id === 'loc-sedge');
@@ -235,7 +237,7 @@ export function prepareNarrationToolCallCase(input: {
     '<TIME>': NONE_PLACEHOLDER,
   };
   const system = buildNarrationPrompt({
-    template: probeSystemTemplate(),
+    template: probeSystemTemplate(input.promptMode === 'experimental'),
     ctx,
     action: input.action,
     history: [],
@@ -250,7 +252,7 @@ export function prepareNarrationToolCallCase(input: {
     sectionStyle: 'markdown',
     resolvePH: (text) => text,
   }).prompt;
-  const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
+  const user = renderPromptTemplate(input.promptMode === 'experimental' ? experimentalNarrationUserPrompt : defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
   const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [
     { role: 'system', content: MINIMAL_TOOL_SYSTEM },
     { role: 'user', content: input.action },
@@ -389,7 +391,7 @@ export async function runNarrationToolCallTrial(input: {
   requestTimeoutMs?: number;
   model?: string;
   seed?: number;
-  promptMode?: 'minimal';
+  promptMode?: 'minimal' | 'experimental';
   experiment?: ProbeExperiment;
   nineCharacterCallIds?: boolean;
 }): Promise<ProbeTrialEvidence> {
