@@ -1,23 +1,26 @@
-// Open Chat probe — A/B the Open Chat world's narration prompt against the built-in one, over the real
-// bundled world (src/defaultworlds/open-chat.json) and one imported SillyTavern card
-// (../open-chat-cards.json, read through the real card importer). Assembly uses the production boundaries:
-// world migration, trait pins, placeholder resolution, the world-prompt seam, and buildNarrationPrompt.
+// Open Chat probe — A/B the Open Chat world's narration prompt against a baseline, over the real bundled
+// world (src/defaultworlds/open-chat.json) and one imported SillyTavern card (../open-chat-cards.json, read
+// through the real card importer). Assembly uses the production boundaries: world migration, trait pins,
+// placeholder resolution, the world-prompt seam, and buildNarrationPrompt.
 //
-//   Arm A = the built-in narration prompt over the world (what a player gets after the per-world opt-out).
-//   Arm B = the world's own narration prompt.
+//   Arm A = the world's narration prompt at --a-world-rev (default: the revision 1 prompt), or the built-in
+//           narration prompt with --a-builtin (what a player gets after the per-world opt-out).
+//   Arm B = the world's own narration prompt in the working tree, or --override-file.
 //
-// Cases: solo (greeting is page one, then three turns), duo (two entities present), cold (entity with no
-// greeting, the world's Opening Action starts), empty (no entity: the false-positive guard, nobody is there
-// to speak). Seeds are paired across arms. Metrics are regex counts; read the dumped prose for quality.
+// A reply in revision 2 is one first-person chat message from the entity. Cases: solo (the greeting is page
+// one, then a question, banter, and a task), cold (no greeting, the world's Opening Action starts, then a
+// question), duo (two entities present: the name-prefix smoke case), duocold (two entities, no greeting),
+// empty (no entity: the model introduces a speaker). Seeds are paired across arms. Metrics are regex
+// counts; read the dumped prose for quality.
 //
 // Usage: npx vite-node testing/baseline/harness/open-chat-probe.mjs -- [--endpoint URL] [--model default]
-//          [--runs 2] [--arms A,B] [--cases solo,duo,cold,empty] [--tones none] [--seed 11]
-//          [--concurrency 1] [--override-file FILE] [--a-world-rev REV] [--token T]
-//   --tones          Tone traits to run, one picked per job, by name: none (the middle of every group),
-//                    Short, Long, "Mostly Dialogue", Descriptive, ...
+//          [--runs 2] [--arms A,B] [--cases solo,cold,duo,empty] [--tones none] [--seed 11]
+//          [--concurrency 1] [--override-file FILE] [--a-world-rev REV] [--a-builtin] [--no-rider] [--token T]
+//   --tones          Tone traits to run, one picked per job, by name: none (the default trait of every
+//                    group), Short, Long, Casual, Literary, "Entity Leads", "You Lead". A picked trait
+//                    replaces its group's default, as the exclusive picker does.
 //   --override-file  Draft narration prompt for arm B, in place of the one stored on the world.
-//   --a-world-rev    Arm A reads the world from this git revision (e.g. one with the tone chips in the
-//                    world system prompt).
+//   --a-world-rev    Arm A reads the world from this git revision.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -41,6 +44,8 @@ import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HARNESS_DIR, '../../..');
 const WORLD_PATH = 'src/defaultworlds/open-chat.json';
+// The revision 1 narration prompt: the baseline for the first-person message rewrite.
+const REVISION_1 = 'c646b365';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = null) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
@@ -52,10 +57,13 @@ const baseSeed = Number(option('--seed', '11'));
 const concurrency = Number(option('--concurrency', '1'));
 const token = option('--token', process.env.PROBE_TOKEN || '');
 const arms = list('--arms', 'A,B');
-const caseIds = list('--cases', 'solo,duo,cold,empty');
+const caseIds = list('--cases', 'solo,cold,duo,empty');
 const tones = list('--tones', 'none');
 const overrideFile = option('--override-file');
-const aWorldRev = option('--a-world-rev');
+const aBuiltin = args.includes('--a-builtin');
+// Diagnostic: send the bare action with no player-preset rider, to weigh the rider against the prompt.
+const noRider = args.includes('--no-rider');
+const aWorldRev = aBuiltin ? null : option('--a-world-rev', REVISION_1);
 
 const { paragraphLimit, maxTokens } = HIDDEN_SETTING_DEFAULTS;
 
@@ -77,37 +85,54 @@ const [lead, second] = cards;
 // Persona None: the Player Name marker reads as "you", the way play renders it.
 const greeting = renderUserMacro(lead.openings[0].text, { kind: 'opening' });
 
-// Actions are bare player text, as the app sends them. `start` is the world's own Opening Action.
+// Each turn is a beat label and the player's own message, as the app sends it. `start` is the world's own
+// Opening Action.
+const turn = (beat, action) => ({ beat, action });
+const start = turn('start', 'start');
 const CASES = {
   solo: {
     entities: [lead],
     greeting,
-    actions: [
-      '"Estate sale? Whose?" I shake the rain off my coat and pull a stool up to the counter.',
-      'I slit the tape on the box with my key and lift out the first book, turning it over in my hands.',
-      '"You never told me why you keep the shop open this late."',
+    turns: [
+      turn('question', 'Estate sale? Whose was it?'),
+      turn('banter', "You keep the shop open past midnight and you're worried about *me* ruining something?"),
+      turn('task', "Pass the box over, I'll open it. *I dry my hands on my coat*"),
     ],
   },
+  cold: { entities: [{ ...lead, openings: undefined }], greeting: null, turns: [start, turn('question', 'Quiet night?')] },
   duo: {
     entities: [lead, second],
     greeting,
-    actions: [
-      '"I\'ll take the tea. Is Tobias still hiding in the back?"',
-      'I hold the wet parcel out to Tobias. "This one has your handwriting on it."',
+    turns: [
+      turn('question', "I'll take the tea. Is Tobias still hiding in the back?"),
+      turn('task', '*I hold the wet parcel out to Tobias* This one has your handwriting on it.'),
     ],
   },
-  cold: { entities: [{ ...lead, openings: undefined }], greeting: null, actions: ['start', '"Quiet night?"'] },
-  empty: { entities: [], greeting: null, actions: ['start', 'I look around for anyone else.'] },
+  // Two entities with no greeting: weighs the greeting's format against the name-prefix rule.
+  duocold: {
+    entities: [{ ...lead, openings: undefined }, second],
+    greeting: null,
+    turns: [start, turn('question', 'Is Tobias still hiding in the back?')],
+  },
+  empty: { entities: [], greeting: null, turns: [start, turn('question', 'Is anyone there?')] },
 };
 
 // ---------- assembly ----------
-function buildSystem(arm, world, entities, toneTrait, action, history) {
+// The traits in play: every group's default, with the picked tone trait in place of its own group's.
+function activeTraits(world, tone) {
+  const defaults = world.traits.filter((t) => t.isDefault);
+  if (tone === 'none') return defaults;
+  const trait = world.traits.find((t) => t.name.toLowerCase() === tone.toLowerCase());
+  if (!trait) throw new Error(`no tone trait "${tone}"`);
+  return [...defaults.filter((t) => t.groupId !== trait.groupId), trait];
+}
+
+function buildSystem(arm, world, entities, active, action, history) {
   const placeholders = world.placeholders ?? [];
-  const active = toneTrait ? [toneTrait] : [];
   const pins = collectPins({ traits: active, disabledTraitIds: [], placeholders });
   const resolvePH = (text) => resolvePlaceholders(text, { placeholders, rolls: {}, pins });
   const overview = world.worldOverview;
-  const declined = arm === 'A';
+  const declined = arm === 'A' && aBuiltin;
   const location = world.locations.find((l) => l.isStarting) ?? world.locations[0];
   const ids = entities.map((e) => e.id);
 
@@ -156,6 +181,9 @@ async function call(system, messages, seed) {
 
 // ---------- metrics ----------
 const QUOTE_RE = /["“][^"”\n]*["”]/g;
+const BOLD_RE = /\*\*[^*]+\*\*/g;
+const ACTION_RE = /\*[^*\n]+\*/g;
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const shingles = (text) => {
   const words = text.toLowerCase().replace(/[^a-z' ]/g, ' ').split(/\s+/).filter(Boolean);
   return new Set(words.slice(0, -2).map((_, i) => words.slice(i, i + 3).join(' ')));
@@ -163,45 +191,60 @@ const shingles = (text) => {
 
 function score(text, action, entities) {
   const quotes = text.match(QUOTE_RE) ?? [];
-  const outside = text.replace(QUOTE_RE, ' ');
-  const actionShingles = shingles(action);
-  const echoed = quotes.filter((q) => [...shingles(q)].some((s) => actionShingles.has(s)));
   const quoteChars = quotes.reduce((n, q) => n + q.length, 0);
-  const echoChars = echoed.reduce((n, q) => n + q.length, 0);
-  const firstPerson = (outside.match(/\b(I|I'm|I've|I'll|I'd|my|me|myself)\b/g) ?? []).length;
+  const noBold = text.replace(BOLD_RE, ' ');
+  const actions = noBold.match(ACTION_RE) ?? [];
+  const names = entities.map((e) => e.name.split(' ')[0]);
+  const prefixRe = new RegExp(`^\\s*(?:\\*\\*)?(?:${names.map(escapeRe).join('|') || '(?!)'})(?:\\*\\*)?:`, 'gm');
+  const prefixed = (text.match(prefixRe) ?? []).length;
+  // The message minus its name prefix, and the same minus its asterisk actions: the words the entity typed.
+  const body = noBold.replace(prefixRe, ' ');
+  const spoken = body.replace(ACTION_RE, ' ');
+  const firstPerson = (body.match(/\b(I|I'm|I've|I'll|I'd|my|me|myself|mine)\b/g) ?? []).length;
+  // A third-person reference to the one entity present: its name, or a he/she pronoun. Read with one entity
+  // only; with two, a pronoun may point at the other one. Counted over the whole body, and over the actions.
+  const selfName = entities.length === 1 ? names[0] : null;
+  const thirdIn = (part) => (entities.length > 1 ? 0
+    : (part.match(/\b(she|he|her|his|him|hers|herself|himself)\b/gi) ?? []).length
+      + (selfName ? (part.match(new RegExp(`\\b${escapeRe(selfName)}\\b`, 'g')) ?? []).length : 0));
+  const thirdPerson = thirdIn(body);
+  const thirdInActions = thirdPerson - thirdIn(spoken);
+  const singles = (noBold.match(/\*/g) ?? []).length;
+  // The reply is the player's own message read back: most of its word triples come from the action.
+  const replyShingles = [...shingles(text)];
+  const actionShingles = shingles(action);
+  const echo = replyShingles.length > 0 && replyShingles.filter((s) => actionShingles.has(s)).length / replyShingles.length >= 0.5;
+  const youSeen = /\byou(r|rs|rself)?\b/i.test(spoken);
   return {
     words: text.split(/\s+/).filter(Boolean).length,
     paras: text.split(/\n\s*\n/).filter((p) => p.trim()).length,
-    // Speech that is not the player's own line read back: the entity's share of the reply.
-    dialogueShare: text.length ? (quoteChars - echoChars) / text.length : 0,
-    echoShare: text.length ? echoChars / text.length : 0,
-    // The frame: the player is "you", every entity is third person. A break is first-person narration or
-    // the player written in third person. A reply that is only an entity's quoted line still holds it.
-    frameHeld: firstPerson === 0 && !/\bthe player\b/i.test(outside)
-      && /\b(you|your|she|he|they|her|his|their)\b/i.test(outside),
-    youSeen: /\byou(r|rs|rself)?\b/i.test(outside),
-    // Narration that slid out of the present tense: two or more plain past-tense narrator verbs.
-    pastTense: (outside.match(/\b(you|she|he|they) (was|were|had|did|said|looked|turned|seemed|felt|watched)\b/gi) ?? []).length >= 2,
     firstPerson,
-    named: entities.length > 0 && entities.every((e) => text.includes(e.name.split(' ')[0])),
-    // The model stepping out of the story: a heading, a note about its own job, a request for setup.
-    meta: /^\s*#|\b(narrat(e|or|ion)|please provide|scenario|as an ai)\b/im.test(outside),
-    narratorAsks:/\b(what (do|would|will) you (do|say)|choose one|your options?|options?:|pick one)\b/i.test(outside),
-    bold: (text.match(/\*\*[^*]+\*\*/g) ?? []).length,
-    asterisks: (text.replace(/\*\*[^*]+\*\*/g, '').match(/\*[^*\n]+\*/g) ?? []).length,
+    thirdPerson,
+    thirdInActions,
+    quotes: quotes.length,
+    quoteShare: text.length ? quoteChars / text.length : 0,
+    // The message is quoted speech: it opens on a quotation mark.
+    wrapped: /^\s*["“]/.test(text),
+    echo,
+    // The contract: the entity speaks as itself, never in third person, with no quotation marks at all.
+    messageHeld: (firstPerson > 0 || youSeen) && thirdPerson === 0 && quotes.length === 0 && !echo,
+    youSeen,
+    actions: actions.length,
+    // Every asterisk opens or closes an action: an odd count is a broken span.
+    actionsBalanced: singles % 2 === 0,
+    prefixed,
+    // A speaker introduces itself by name, the empty-room contract.
+    introduces: /\b(I'm|I am|my name is|name's|call me|it's|this is)\s+[A-Z][a-z]+/.test(text),
+    // The model stepping out of the chat: a heading, a note about its own job, a request for setup.
+    meta: /^\s*#|\b(narrat(e|or|ion)|please provide|scenario|as an ai)\b/im.test(spoken),
+    menu: /\b(choose one|your options?|options?:|pick one)\b/i.test(spoken) || /^\s*(\d+[.)]|-|•)\s/m.test(text),
+    bold: (text.match(BOLD_RE) ?? []).length,
     leak: /\{\{|<[A-Z][A-Z ]+[|>]/.test(text),
     empty: !text,
   };
 }
 
 // ---------- run ----------
-const toneTraitOf = (world, tone) => {
-  if (tone === 'none') return null;
-  const trait = world.traits.find((t) => t.name.toLowerCase() === tone.toLowerCase());
-  if (!trait) throw new Error(`no tone trait "${tone}"`);
-  return trait;
-};
-
 const jobs = [];
 for (const arm of arms) for (const caseId of caseIds) for (const tone of tones) for (let r = 0; r < runs; r++) {
   jobs.push({ arm, caseId, tone, run: r });
@@ -210,31 +253,32 @@ for (const arm of arms) for (const caseId of caseIds) for (const tone of tones) 
 async function runJob({ arm, caseId, tone, run }) {
   const world = arm === 'A' ? worldA : worldB;
   const spec = CASES[caseId];
-  const trait = toneTraitOf(world, tone);
+  const active = activeTraits(world, tone);
   const openingAction = world.worldOverview.openings?.[0]?.text ?? 'START GAME';
   const history = spec.greeting
     ? [{ role: 'user', content: 'START GAME' }, { role: 'assistant', content: spec.greeting }]
     : [];
   const turns = [];
-  for (let t = 0; t < spec.actions.length; t++) {
-    const action = spec.actions[t] === 'start' ? openingAction : spec.actions[t];
-    const system = buildSystem(arm, world, spec.entities, trait, action, history);
-    const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': action });
+  for (let t = 0; t < spec.turns.length; t++) {
+    const { beat } = spec.turns[t];
+    const action = beat === 'start' ? openingAction : spec.turns[t].action;
+    const system = buildSystem(arm, world, spec.entities, active, action, history);
+    const user = noRider ? action : renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': action });
     let reply;
     try {
       reply = await call(system, [...history, { role: 'user', content: user }], baseSeed + run * 100 + t);
     } catch (e) {
-      turns.push({ turn: t + 1, action, error: String(e.message || e) });
+      turns.push({ turn: t + 1, beat, action, error: String(e.message || e) });
       break;
     }
     history.push({ role: 'user', content: action }, { role: 'assistant', content: reply.text });
-    turns.push({ turn: t + 1, action, system: t === 0 ? system : undefined, text: reply.text,
+    turns.push({ turn: t + 1, beat, action, system: t === 0 ? system : undefined, text: reply.text,
       truncated: reply.truncated, ...score(reply.text, action, spec.entities) });
   }
   return { arm, caseId, tone, run, turns };
 }
 
-console.log(`Open Chat probe · ${endpoint} · model "${model}" · arms ${arms.join('/')} · cases ${caseIds.join(', ')} · tones ${tones.join(', ')} ·${runs} run(s)`);
+console.log(`Open Chat probe · ${endpoint} · model "${model}" · arms ${arms.join('/')} (A = ${aBuiltin ? 'built-in' : aWorldRev}) · cases ${caseIds.join(', ')} · tones ${tones.join(', ')} · ${runs} run(s)`);
 // Warm-up, so a cold model load does not land inside the first timed job.
 await call('Reply with one word.', [{ role: 'user', content: 'ready?' }], 1).catch(() => {});
 
@@ -261,16 +305,21 @@ for (const arm of arms) for (const caseId of caseIds) for (const tone of tones) 
     arm, case: caseId, tone, n: turns.length,
     words: mean(turns.map((t) => t.words)).toFixed(0),
     paras: mean(turns.map((t) => t.paras)).toFixed(1),
-    'dialogue%': (mean(turns.map((t) => t.dialogueShare)) * 100).toFixed(1),
-    'echo%': (mean(turns.map((t) => t.echoShare)) * 100).toFixed(1),
-    frameHeld: rate(turns.map((t) => t.frameHeld)),
-    youSeen: rate(turns.map((t) => t.youSeen)),
-    past: rate(turns.map((t) => t.pastTense)),
-    named: rate(turns.map((t) => t.named)),
-    asks: rate(turns.map((t) => t.narratorAsks)),
+    held: rate(turns.map((t) => t.messageHeld)),
+    firstP: rate(turns.map((t) => t.firstPerson > 0)),
+    thirdP: rate(turns.map((t) => t.thirdPerson > 0)),
+    '3pAct': rate(turns.map((t) => t.thirdInActions > 0)),
+    echo: rate(turns.map((t) => t.echo)),
+    quoted: rate(turns.map((t) => t.quotes > 0)),
+    'quote%': (mean(turns.map((t) => t.quoteShare)) * 100).toFixed(1),
+    wrapped: rate(turns.map((t) => t.wrapped)),
+    actions: mean(turns.map((t) => t.actions)).toFixed(1),
+    balanced: rate(turns.map((t) => t.actionsBalanced)),
+    prefixed: rate(turns.map((t) => t.prefixed > 0)),
+    intro: rate(turns.map((t) => t.introduces)),
     meta: rate(turns.map((t) => t.meta)),
+    menu: rate(turns.map((t) => t.menu)),
     bold: mean(turns.map((t) => t.bold)).toFixed(1),
-    asterisks: mean(turns.map((t) => t.asterisks)).toFixed(1),
     cut: rate(turns.map((t) => t.truncated)),
     leak: rate(turns.map((t) => t.leak || t.empty)),
   });
@@ -282,5 +331,5 @@ if (errors.length) console.log(`${errors.length} errored turn(s): ${errors[0].er
 const outDir = path.join(HARNESS_DIR, '../runs');
 await mkdir(outDir, { recursive: true });
 const outFile = path.join(outDir, `open-chat-probe-${model.replace(/[^\w.-]/g, '_')}-${Date.now()}.json`);
-await writeFile(outFile, JSON.stringify({ endpoint, model, runs, baseSeed, overrideFile, aWorldRev, rows, results }, null, 2));
+await writeFile(outFile, JSON.stringify({ endpoint, model, runs, baseSeed, overrideFile, aWorldRev, aBuiltin, rows, results }, null, 2));
 console.log(`prose and prompts: ${path.relative(REPO_ROOT, outFile)}`);

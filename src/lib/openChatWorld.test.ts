@@ -13,6 +13,7 @@ import { readPlaceholders, resolvePlaceholders } from './placeholders';
 import { parsePromptTemplate } from './promptTemplate';
 import { splitToken } from './promptVariables';
 import { buildNarrationPrompt } from './turnPipeline/narrationPrompt';
+import { lengthGuidance } from './outputLength';
 import {
   SHIPPED_PROMPT_DEFAULTS, customizedPromptKinds, resolveWorldPrompt, worldPrompt, worldPromptChipValues,
   worldPromptEnabled,
@@ -91,11 +92,16 @@ describe('the Open Chat default world', () => {
     expect(resolveWorldPrompt(overview, kind, 'the preset', true)).toBe('the preset');
   });
 
-  it.each(['narration', 'choices'] as const)('keeps every chip of the built-in %s prompt in its own', (kind) => {
-    const chipKeys = (template: string) => new Set(parsePromptTemplate(template).flatMap((s) =>
-      s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
+  const chipKeys = (template: string) => new Set(parsePromptTemplate(template).flatMap((s) =>
+    s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : []));
+
+  // The Reply Length chip is the one length control of a message, so the built-in length chip stays out.
+  it.each(['narration', 'choices'] as const)('keeps every context chip of the built-in %s prompt in its own', (kind) => {
     const own = chipKeys(worldPrompt(world.worldOverview, kind) ?? '');
-    for (const key of chipKeys(SHIPPED_PROMPT_DEFAULTS[kind])) expect(own, key).toContain(key);
+    for (const key of chipKeys(SHIPPED_PROMPT_DEFAULTS[kind])) {
+      if (kind === 'narration' && key === '<LENGTH GUIDANCE>') expect(own, key).not.toContain(key);
+      else expect(own, key).toContain(key);
+    }
   });
 
   // The tone chips live in the narration prompt, so the world text is one line that sets no scene.
@@ -191,6 +197,12 @@ describe('the Open Chat tone traits', () => {
     const text = resolvedText(defaultTraits);
     for (const value of Object.values(defaults)) expect(text).toContain(value);
     expect(text).not.toContain('{{ph:');
+  });
+
+  // The prompt as play sends it carries one length instruction: the Reply Length value.
+  it('sends the player length guidance nowhere in the narration prompt', () => {
+    const text = resolvedText(defaultTraits);
+    for (const mode of ['auto', 'single'] as const) expect(text).not.toContain(lengthGuidance(mode, 1024));
   });
 
   // Picking a trait replaces its group's default, as the exclusive picker does.

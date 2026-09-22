@@ -23,6 +23,7 @@ world.devPicked = [readTavernJson(JSON.stringify(card))!.entity];
 const settings = {
   FORMAMORPH_endpointUrl: LIVE ?? 'http://127.0.0.1:5190/v1/chat/completions',
   ...(LIVE ? { FORMAMORPH_modelName: process.env.OPEN_CHAT_MODEL ?? 'default' } : {}),
+  FORMAMORPH_narrationLayout: 'chat',
   FORMAMORPH_thinkingMode: 'off', FORMAMORPH_choicesEnabled: false,
   FORMAMORPH_memoryDigests: false, FORMAMORPH_aiClock: false,
 };
@@ -87,7 +88,7 @@ test('the greeting is page one, and the next turn runs on the world narration pr
   expect(chat[1].content).toContain("You're dripping on the poetry");
   // The world's prompt, not the preset's: its opening words, and a listed value of every tone chip as plain
   // text. The fixture starts with no traits, so each chip reads its roll.
-  expect(system).toContain('told as a conversation');
+  expect(system).toContain('chatting with the player by message');
   for (const placeholder of world.placeholders) {
     expect(placeholder.values.filter((value: { text: string }) => system.includes(value.text)), placeholder.name)
       .toHaveLength(1);
