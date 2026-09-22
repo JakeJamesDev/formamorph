@@ -48,6 +48,19 @@ Output lands in `testing/baseline/runs/` (gitignored). Each line reports `<turns
 run is obvious. `--parity <file>` additionally writes the ordered AI request sequence to `<file>` (relative to
 the repo root) — see [../../parity/README.md](../../parity/README.md) before re-recording the tracked fixture.
 
+## Narration tool-call probe
+
+Prepare the two exact cloud requests offline:
+
+```bash
+npm run probe:narration-tools
+```
+
+The command writes a review artifact under `testing/baseline/runs/narration-tool-call-probe/` and makes no
+network requests. After the request is approved, `npm run probe:narration-tools -- --cloud` runs the four-trial
+cloud batch. Set `FORMAMORPH_PROBE_TOKEN` only when the endpoint requires a bearer token; credentials are never
+written to the evidence file.
+
 ## Notes
 
 - **Nondeterministic** by design — the script is fixed, the model output isn't. That's fine; runs are comparable.
