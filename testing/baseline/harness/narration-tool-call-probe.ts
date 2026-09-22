@@ -12,6 +12,10 @@ export const MAIN_ACTION =
 export const CONTROL_ACTION =
   'I crouch at the edge of the dock and study the pale water beneath it.';
 
+export const CLOUD_PROBE_ENDPOINT = 'https://api.lyonade.net/v1/chat/completions';
+export const LM_STUDIO_PROBE_ENDPOINT = 'http://127.0.0.1:1234/v1/chat/completions';
+export const LM_STUDIO_PROBE_SEED = 424242;
+
 export const PROBE_TOOLS = [
   {
     type: 'function',
@@ -55,13 +59,14 @@ export interface ProbeToolCall {
 }
 
 export interface ProbeRequest {
-  model: 'default';
+  model: string;
   messages: ProbeMessage[];
   tools: typeof PROBE_TOOLS;
   tool_choice: 'auto';
   max_tokens: 1024;
   reasoning_effort: 'none';
   stream: false;
+  seed?: number;
 }
 
 export interface PreparedProbeCase {
@@ -199,6 +204,8 @@ export function prepareNarrationToolCallCase(input: {
   action: string;
   sourceRevision: string;
   world: World;
+  model?: string;
+  seed?: number;
 }): PreparedProbeCase {
   const location = input.world.locations.find((candidate) => candidate.id === 'loc-sedge');
   if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
@@ -242,13 +249,14 @@ export function prepareNarrationToolCallCase(input: {
     action: input.action,
     sourceRevision: input.sourceRevision,
     request: {
-      model: 'default',
+      model: input.model ?? 'default',
       messages,
       tools: PROBE_TOOLS,
       tool_choice: 'auto',
       max_tokens: 1024,
       reasoning_effort: 'none',
       stream: false,
+      ...(input.seed === undefined ? {} : { seed: input.seed }),
     },
   };
 }
@@ -342,6 +350,8 @@ export async function runNarrationToolCallTrial(input: {
   transport: ProbeTransport;
   signal?: AbortSignal;
   requestTimeoutMs?: number;
+  model?: string;
+  seed?: number;
 }): Promise<ProbeTrialEvidence> {
   const started = performance.now();
   const prepared = prepareNarrationToolCallCase(input);
@@ -496,12 +506,12 @@ export class EndpointRejectionError extends Error {
   }
 }
 
-export function createCloudProbeTransport(options: {
+export function createProbeTransport(options: {
   endpoint?: string;
   token?: string;
   fetchImpl?: typeof fetch;
 } = {}): ProbeTransport {
-  const endpoint = options.endpoint ?? 'https://api.lyonade.net/v1/chat/completions';
+  const endpoint = options.endpoint ?? CLOUD_PROBE_ENDPOINT;
   const fetchImpl = options.fetchImpl ?? fetch;
   return {
     async send(request, { signal }) {
@@ -540,6 +550,8 @@ export async function runNarrationToolCallBatch(input: {
   transport: ProbeTransport;
   signal?: AbortSignal;
   requestTimeoutMs?: number;
+  model?: string;
+  seed?: number;
 }): Promise<ProbeBatchEvidence> {
   const started = performance.now();
   const cases = [
