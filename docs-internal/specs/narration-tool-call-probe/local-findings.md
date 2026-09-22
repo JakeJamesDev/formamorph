@@ -4,7 +4,7 @@
 
 LM Studio accepted all four approved requests and returned ordinary assistant completions. `rocinante-x-12b-v1` made no native function calls in any trial: it skipped both `request_info` and the required terminal `write`, placing prose directly in `message.content`. The harness therefore classified every trial as `missing_write`.
 
-This establishes model-level protocol failure for this bounded configuration, not an endpoint compatibility failure. It does not establish how the model would behave with forced tool choice, a different parser/template, prompt coaching, or another model.
+This establishes protocol noncompliance under these four requests, without isolating the model, prompt, or template as the cause. A [minimal follow-up](minimal-findings.md) elicited a native lookup and then exposed a continuation error in the endpoint's template validation.
 
 ## Local batch
 

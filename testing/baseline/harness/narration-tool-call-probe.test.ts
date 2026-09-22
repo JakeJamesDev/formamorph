@@ -4,6 +4,7 @@ import { migrateWorld } from '@/lib/version';
 import {
   MAIN_ACTION,
   CONTROL_ACTION,
+  MINIMAL_TOOL_ACTION,
   EndpointRejectionError,
   PROBE_TOOLS,
   createProbeTransport,
@@ -128,6 +129,58 @@ describe('narration tool-call probe lookup', () => {
 });
 
 describe('narration tool-call probe trial', () => {
+  it('remaps local call IDs across batched and sequential lookups without changing raw evidence', async () => {
+    const rawIds = ['sameprefix-first-long-id', 'sameprefix-second-long-id', '000000001'];
+    const responses = [
+      { choices: [{ message: { role: 'assistant', content: '', tool_calls: rawIds.slice(0, 2).map((id, index) => toolCall(id, 'request_info', { term: index ? 'Odette' : 'Bram' })) } }] },
+      { choices: [{ message: { role: 'assistant', content: '', tool_calls: [toolCall(rawIds[2], 'request_info', { term: 'Bram' })] } }] },
+      { choices: [{ message: { role: 'assistant', content: '', tool_calls: [toolCall('done', 'write', { narration: 'Bram wears a brass ring.' })] } }] },
+    ];
+    const originals = structuredClone(responses);
+    const transport = scriptedTransport(responses);
+    const evidence = await runNarrationToolCallTrial({
+      caseId: 'local-ids', action: MINIMAL_TOOL_ACTION, sourceRevision: 'test', world: world(),
+      transport, promptMode: 'minimal', nineCharacterCallIds: true,
+    });
+    expect(evidence.status).toBe('succeeded');
+    for (const [index, request] of transport.requests.entries()) {
+      const calls = request.messages.flatMap((message) => message.tool_calls ?? []);
+      const results = request.messages.filter((message) => message.role === 'tool');
+      expect(calls).toHaveLength(index === 0 ? 0 : index + 1);
+      expect(new Set(calls.map((call) => call.id)).size).toBe(calls.length);
+      calls.forEach((call, callIndex) => {
+        expect(call.id).toMatch(/^[a-zA-Z0-9]{9}$/);
+        expect(results[callIndex].tool_call_id).toBe(call.id);
+      });
+    }
+    expect(transport.requests[2].messages.slice(0, 5)).toEqual(transport.requests[1].messages);
+    expect(evidence.requests.map((exchange) => exchange.response)).toEqual(originals);
+    expect(evidence.toolResults.map((result) => result.callId)).toEqual(rawIds);
+  });
+  it('runs the minimal lookup and write conversation without story context', async () => {
+    const transport = scriptedTransport([
+      { choices: [{ message: { role: 'assistant', content: null, tool_calls: [toolCall('lookup', 'request_info', { term: 'Bram' })] } }] },
+      { choices: [{ message: { role: 'assistant', content: null, tool_calls: [toolCall('finish', 'write', { narration: 'Bram wears a brass ring through his left ear.' })] } }] },
+    ]);
+    const evidence = await runNarrationToolCallTrial({
+      caseId: 'minimal', action: MINIMAL_TOOL_ACTION, sourceRevision: 'test', world: world(), transport,
+      model: 'local-model', seed: 424242, promptMode: 'minimal',
+    });
+    expect(evidence.status).toBe('succeeded');
+    expect(evidence.lookupCount).toBe(1);
+    expect(evidence.narration).toBe('Bram wears a brass ring through his left ear.');
+    expect(transport.requests).toHaveLength(2);
+    const initial = transport.requests[0];
+    expect(initial).toMatchObject({ model: 'local-model', seed: 424242, tools: PROBE_TOOLS, tool_choice: 'auto' });
+    expect(initial.messages[0].content).toContain('First call request_info');
+    expect(initial.messages[0].content).not.toContain('Game World');
+    expect(initial.messages[1].content).toBe(MINIMAL_TOOL_ACTION);
+    expect(JSON.stringify(initial.messages)).not.toContain('brass ring');
+    expect(transport.requests[1].messages.at(-1)).toMatchObject({
+      role: 'tool', tool_call_id: 'lookup',
+      content: JSON.stringify(lookupEntityInfo(world().entities, 'Bram')),
+    });
+  });
   it('supports sequential lookups and finishes on a terminal write', async () => {
     const first = toolCall('call-bram', 'request_info', { term: 'Bram' });
     const second = toolCall('call-odette', 'request_info', { term: 'Odette' });

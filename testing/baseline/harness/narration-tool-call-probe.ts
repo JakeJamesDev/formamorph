@@ -15,6 +15,8 @@ export const CONTROL_ACTION =
 export const CLOUD_PROBE_ENDPOINT = 'https://api.lyonade.net/v1/chat/completions';
 export const LM_STUDIO_PROBE_ENDPOINT = 'http://127.0.0.1:1234/v1/chat/completions';
 export const LM_STUDIO_PROBE_SEED = 424242;
+export const MINIMAL_TOOL_ACTION = 'Look up Bram, then write one sentence about him using his full description.';
+const MINIMAL_TOOL_SYSTEM = 'Use the available function tools to complete the task. First call request_info for the requested entity. After receiving its description, call write with one sentence that uses a specific fact from that description.';
 
 export const PROBE_TOOLS = [
   {
@@ -206,6 +208,7 @@ export function prepareNarrationToolCallCase(input: {
   world: World;
   model?: string;
   seed?: number;
+  promptMode?: 'minimal';
 }): PreparedProbeCase {
   const location = input.world.locations.find((candidate) => candidate.id === 'loc-sedge');
   if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
@@ -238,7 +241,10 @@ export function prepareNarrationToolCallCase(input: {
     resolvePH: (text) => text,
   }).prompt;
   const user = renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
-  const messages: ProbeMessage[] = [
+  const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [
+    { role: 'system', content: MINIMAL_TOOL_SYSTEM },
+    { role: 'user', content: input.action },
+  ] : [
     { role: 'system', content: system },
     { role: 'user', content: user },
   ];
@@ -352,6 +358,8 @@ export async function runNarrationToolCallTrial(input: {
   requestTimeoutMs?: number;
   model?: string;
   seed?: number;
+  promptMode?: 'minimal';
+  nineCharacterCallIds?: boolean;
 }): Promise<ProbeTrialEvidence> {
   const started = performance.now();
   const prepared = prepareNarrationToolCallCase(input);
@@ -385,6 +393,18 @@ export async function runNarrationToolCallTrial(input: {
   for (let round = 0; round < 4; round++) {
     if (input.signal?.aborted) return finish('canceled', null, { kind: 'canceled', message: 'Trial canceled.' });
     const request: ProbeRequest = { ...prepared.request, messages: structuredClone(messages) };
+    if (input.nineCharacterCallIds) {
+      // Remap the outgoing history only; evidence retains server-issued IDs.
+      const ids = new Map<string, string>();
+      for (const message of request.messages) {
+        for (const call of message.tool_calls ?? []) {
+          const id = (ids.size + 1).toString(36).padStart(9, '0');
+          ids.set(call.id, id);
+          call.id = id;
+        }
+        if (message.tool_call_id) message.tool_call_id = ids.get(message.tool_call_id)!;
+      }
+    }
     const requestStarted = performance.now();
     const requestController = new AbortController();
     let timedOut = false;
@@ -552,6 +572,7 @@ export async function runNarrationToolCallBatch(input: {
   requestTimeoutMs?: number;
   model?: string;
   seed?: number;
+  nineCharacterCallIds?: boolean;
 }): Promise<ProbeBatchEvidence> {
   const started = performance.now();
   const cases = [
