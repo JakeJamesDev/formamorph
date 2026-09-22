@@ -20,6 +20,19 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('changes only preparation for decision notes while preserving required lore', () => {
+    const input = { caseId: 'decision-notes', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { preparationGoal: true, requiredLore: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, decisionNotes: true } }).request;
+    expect(variant.messages[0].content).toContain('Keep preparation in brief decision notes: participants, relevant facts, and what changes.');
+    expect(variant.messages[0].content).toContain('Move directly to the final narration, composing');
+    expect(variant.messages[0].content).toContain('Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.');
+    const section = /## Preparation\n[\s\S]*?(?=## Output\n)/;
+    variant.messages[0].content = variant.messages[0].content!.replace(section, baseline.messages[0].content!.match(section)![0]);
+    expect(variant).toEqual(baseline);
+  });
+
   it('changes only the retrieval prerequisite against the preparation-goal baseline', () => {
     const input = { caseId: 'prerequisite', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { preparationGoal: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };

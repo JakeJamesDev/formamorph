@@ -1,0 +1,13 @@
+scenario,seed,baselineProseDraft,baselineRepeatedDraft,candidateProseDraft,candidateRepeatedDraft,candidateCompleted,requiredAvailable,missingPortrayed,unnecessaryLookups,paragraphs,note
+greeting,424243,false,false,true,false,true,true,,0,2,"Fetched both; one prose draft inside reasoning; two paragraphs."
+odette,424243,true,false,false,false,true,true,,0,2,"Fetched Odette; outline then narration; two paragraphs."
+ferry,424243,false,false,true,false,true,true,,0,1,"Fetched ferry; one prose draft; no added NPC portrayal."
+environment,424243,false,false,false,false,true,true,,2,1,"Fetched Bram and Odette just in case; neither used; observation stayed silent."
+cached-bram,424243,true,false,true,false,true,true,,0,1,"Reused cached Bram; one prose draft."
+mixed-cache,424243,true,true,true,false,true,true,,0,1,"Fetched Odette; one prose draft; completed but voice carries clearly across gloamwater."
+greeting,424244,false,false,false,false,true,true,,0,1,"Fetched both; outline then narration; replies remain evasive."
+odette,424244,false,false,false,false,true,true,,0,2,"Fetched Odette; outline then narration; two paragraphs."
+ferry,424244,false,false,false,false,true,true,,0,1,"Fetched ferry; outline then narration."
+environment,424244,true,false,true,false,true,true,Rope Ferry,0,1,"One prose draft; adds ferry lean and hempen mooring-line details without its entry."
+cached-bram,424244,true,true,true,true,true,true,,0,1,"Reused cached Bram; two prose drafts; voice barely carries over gloamwater."
+mixed-cache,424244,false,false,false,false,true,true,,0,2,"Fetched Odette and reused Bram; outline then narration; two paragraphs."
