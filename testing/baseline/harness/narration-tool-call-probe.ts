@@ -76,6 +76,7 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  outputMode?: 'text';
   requestInfoDescription?: string;
   thinking?: boolean;
   knownEntityNames?: readonly string[];
@@ -285,7 +286,7 @@ export function prepareNarrationToolCallCase(input: {
     request: {
       model: input.model ?? 'default',
       messages,
-      tools: PROBE_TOOLS.map((tool) => ({ ...tool, function: {
+      tools: PROBE_TOOLS.filter((tool) => input.experiment?.outputMode !== 'text' || tool.function.name !== 'write').map((tool) => ({ ...tool, function: {
         ...tool.function,
         description: tool.function.name === 'request_info'
           ? input.experiment?.requestInfoDescription ?? tool.function.description
@@ -496,10 +497,19 @@ export async function runNarrationToolCallTrial(input: {
     }
     const calls = assistant.tool_calls ?? [];
     if (calls.length === 0) {
+      if (input.experiment?.outputMode === 'text') {
+        const choice = isRecord(response) && Array.isArray(response.choices) ? response.choices[0] : null;
+        if (!isRecord(choice) || choice.finish_reason !== 'stop') {
+          return finish('failed', null, { kind: 'incomplete_narration', message: 'Narration did not finish normally.' });
+        }
+        const narration = assistant.content?.trim();
+        return narration ? finish('succeeded', narration)
+          : finish('failed', null, { kind: 'missing_narration', message: 'Assistant returned no narration.' });
+      }
       return finish('failed', null, { kind: 'missing_write', message: 'Assistant returned no native tool call.' });
     }
 
-    const unknown = calls.find((call) => call.function.name !== 'write' && call.function.name !== 'request_info');
+    const unknown = calls.find((call) => !prepared.request.tools.some((tool) => tool.function.name === call.function.name));
     if (unknown) {
       return finish('failed', null, { kind: 'unknown_function', message: `Unknown function: ${unknown.function.name}` });
     }
