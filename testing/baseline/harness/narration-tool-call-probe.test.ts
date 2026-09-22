@@ -20,6 +20,27 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('runs Experimental with withheld lore and preserves all non-prompt controls', async () => {
+    const input = { caseId: 'experimental', action: MAIN_ACTION, sourceRevision: 'test', world: world(), seed: 424243,
+      experiment: { thinking: true, knownEntityNames: ['Bram'] }, nineCharacterCallIds: true };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const transport = scriptedTransport([
+      { choices: [{ message: { content: null, tool_calls: [toolCall('lookup', 'request_info', { term: 'Odette' })] } }] },
+      { choices: [{ message: { content: null, tool_calls: [toolCall('finish', 'write', { narration: 'You greet them.' })] } }] },
+    ]);
+    const trial = await runNarrationToolCallTrial({ ...input, promptMode: 'experimental', transport });
+    expect(trial.status).toBe('succeeded');
+    const request = transport.requests[0];
+    expect(request.messages[0].content).toContain('An observational turn can remain silent.');
+    expect(request.messages[0].content).toContain('compose the narration directly in the final output');
+    expect(request.messages[0].content).not.toContain('burn scar across her right cheek');
+    expect(request.messages[1].content).toBe(MAIN_ACTION);
+    expect(request.messages.at(-1)?.content).toContain('left sleeve is pinned up');
+    expect(transport.requests[1].messages.at(-1)?.content).toContain('burn scar across her right cheek');
+    expect({ ...request, messages: [] }).toEqual({ ...baseline, messages: [] });
+    expect(trial.lookupCount).toBe(1);
+  });
+
   it('changes only the lookup description between paired requests', () => {
     const input = { caseId: 'pair', action: MAIN_ACTION, sourceRevision: 'test', world: world(), seed: 7 };
     const baseline = prepareNarrationToolCallCase({ ...input, experiment: { thinking: true } }).request;
