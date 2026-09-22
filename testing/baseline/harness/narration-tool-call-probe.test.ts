@@ -20,6 +20,30 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('defines populated sections while preserving data and omitting empty sections', () => {
+    const input = { caseId: 'section-definitions', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { roleOnly: true, summaryLabel: true, entityDefinition: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, sectionDefinitions: true } }).request;
+    const additions = [
+      'The setting, tone, and world-wide facts of this story.',
+      "Descriptions of the player character's current stat values.",
+      "The player character's active characteristics and conditions.",
+      'The place where the player character currently is.',
+      'Additional authored information about the world, its concepts, and its terminology.',
+    ];
+    let system = variant.messages[0].content!;
+    for (const text of additions) {
+      expect(system).toContain(`${text}\n\n`);
+      system = system.replace(`${text}\n\n`, '');
+    }
+    expect(system).toContain('These summaries identify entities that may appear in the current location.\n');
+    expect(system).not.toContain('## Sublocations');
+    expect(system).not.toContain('Places contained within the current location.');
+    variant.messages[0].content = system.replace('These summaries identify entities that may appear in the current location.\n', '');
+    expect(variant).toEqual(baseline);
+  });
+
   it('adds only the entity definition beside the summary list', () => {
     const input = { caseId: 'entity-definition', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { roleOnly: true, summaryLabel: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };

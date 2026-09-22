@@ -79,6 +79,7 @@ export interface ProbeExperiment {
   roleOnly?: boolean;
   summaryLabel?: boolean;
   entityDefinition?: boolean;
+  sectionDefinitions?: boolean;
   decisionNotes?: boolean;
   requiredLore?: boolean;
   preparationGoal?: boolean;
@@ -196,6 +197,21 @@ function replaceOnce(source: string, from: string, to: string): string {
 export const REQUIRED_LORE_RULE = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
 export const ROLE_ONLY_INSTRUCTION = "You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.";
 export const ENTITY_DEFINITION = 'An entity is a character, creature, or object listed in the entity summaries.';
+export const SECTION_DEFINITIONS: Readonly<Record<string, string>> = {
+  'Game World': 'The setting, tone, and world-wide facts of this story.',
+  'Background Lore': 'Authored information about the world, its concepts, and its terminology.',
+  'Player Stats': "Descriptions of the player character's current stat values.",
+  Traits: "The player character's active characteristics and conditions.",
+  'Player Character': 'The identity and description of the character controlled by the player.',
+  'Important Player Notes': 'Additional information supplied by the player for this story.',
+  'Current Location': 'The place where the player character currently is.',
+  Sublocations: 'Places contained within the current location.',
+  'Reachable Locations': 'Places the player can reach from the current location.',
+  'Characters and Things That May Appear in a Sub-location': 'Summaries of characters, creatures, or objects associated with sublocations.',
+  'Characters and Things That May Appear in a Reachable Location': 'Summaries of characters, creatures, or objects associated with reachable locations.',
+  'Foreground Lore': 'Additional authored information about the world, its concepts, and its terminology.',
+};
+export const ENTITY_SECTION_SCOPE = 'These summaries identify entities that may appear in the current location.';
 
 function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false, decisionNotes = false, roleOnly = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
@@ -300,6 +316,11 @@ export function prepareNarrationToolCallCase(input: {
   if (input.experiment?.entityDefinition) {
     system = replaceOnce(system, '## Characters and Things That May Appear in This Location\n',
       `## Characters and Things That May Appear in This Location\n${ENTITY_DEFINITION}\n\n`);
+  }
+  if (input.experiment?.sectionDefinitions) {
+    system = system.replace(/^## (.+)\n/gm, (header, name: string) =>
+      SECTION_DEFINITIONS[name] ? `${header}${SECTION_DEFINITIONS[name]}\n\n` : header);
+    system = replaceOnce(system, `${ENTITY_DEFINITION}\n`, `${ENTITY_DEFINITION}\n${ENTITY_SECTION_SCOPE}\n`);
   }
   const user = renderPromptTemplate(input.promptMode === 'experimental' ? experimentalNarrationUserPrompt : defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
   const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [
