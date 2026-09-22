@@ -1,0 +1,13 @@
+scenario,seed,proseDraft,repeatedDraft,missingRequired,missingPortrayed,paragraphs,words,reasoningTokens,note
+greeting,424243,false,false,Bram;Odette,Bram;Odette,10,380,212,"No lookups; full quoted greeting and both replies; invents extra scars; adds knot tying."
+odette,424243,true,false,Odette,Odette,6,216,607,"Prose fragments within the outline; invented scar and hair; voice carries over gloamwater."
+ferry,424243,false,false,Rope Ferry,Rope Ferry,4,192,146,"Invents guide chain instead of authored tar-black rope; adds knot tying."
+environment,424243,false,false,,Rope Ferry,5,222,230,"No NPC interaction; adds detailed ferry ropes and unrequested knot tying."
+cached-bram,424243,false,false,,,4,118,109,"Cached full Bram entry; correct sleeve and jewelry; direct player question and reply."
+mixed-cache,424243,false,false,Odette,Odette,7,263,374,"Reuses Bram; improvises Odette from summary; both NPCs reply."
+greeting,424244,false,false,Bram;Odette,Bram;Odette,3,183,232,"No lookups; NPC asks player where they came from; invented name-related superstition."
+odette,424244,false,false,Odette,Odette,7,275,316,"Explicitly decides summary permits improvisation; uses unknown name; left-side scar contradicts right-cheek lore."
+ferry,424244,false,false,Rope Ferry,Rope Ferry,3,154,197,"No lookup; improvised ferry dimensions and hemp cable; adds knot tying."
+environment,424244,false,false,,,3,164,151,"Silent observation; keeps hands still; no substantive entity portrayal."
+cached-bram,424244,false,false,,,3,126,254,"Cached Bram; outline only; correct sleeve and jewelry."
+mixed-cache,424244,false,false,Odette,Odette,6,245,203,"Cached Bram; missing Odette; invented scar extends temple to jaw."

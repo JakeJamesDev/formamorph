@@ -76,6 +76,8 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  roleOnly?: boolean;
+  summaryLabel?: boolean;
   decisionNotes?: boolean;
   requiredLore?: boolean;
   preparationGoal?: boolean;
@@ -191,11 +193,18 @@ function replaceOnce(source: string, from: string, to: string): string {
 }
 
 export const REQUIRED_LORE_RULE = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
+export const ROLE_ONLY_INSTRUCTION = "You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.";
 
-function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false, decisionNotes = false): string {
+function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false, decisionNotes = false, roleOnly = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
   template = replaceOnce(template, SUBLOCATION_ENTITIES, SUMMARY_SUBLOCATION_ENTITIES);
   if (experimental) {
+    if (roleOnly) {
+      const start = template.indexOf('<WORLD DESCRIPTION');
+      const end = template.indexOf('## Preparation\n', start);
+      if (start < 0 || end < 0) throw new Error('Experimental context chips are missing.');
+      return `${ROLE_ONLY_INSTRUCTION}\n\n${template.slice(start, end)}`;
+    }
     if (preparationGoal) {
       const start = template.indexOf('## Preparation\n');
       const end = template.indexOf('## Output\n', start);
@@ -266,8 +275,8 @@ export function prepareNarrationToolCallCase(input: {
     '<NOTES>': NONE_PLACEHOLDER,
     '<TIME>': NONE_PLACEHOLDER,
   };
-  const system = buildNarrationPrompt({
-    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore, input.experiment?.decisionNotes),
+  let system = buildNarrationPrompt({
+    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore, input.experiment?.decisionNotes, input.experiment?.roleOnly),
     ctx,
     action: input.action,
     history: [],
@@ -282,6 +291,10 @@ export function prepareNarrationToolCallCase(input: {
     sectionStyle: 'markdown',
     resolvePH: (text) => text,
   }).prompt;
+  if (input.experiment?.summaryLabel) {
+    system = system.replace(/(## Characters and Things[^\n]*\n)([\s\S]*?)(?=\n## |$)/g,
+      (_section, heading: string, body: string) => heading + body.replaceAll('  - **description:**', '  - **summary:**'));
+  }
   const user = renderPromptTemplate(input.promptMode === 'experimental' ? experimentalNarrationUserPrompt : defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
   const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [
     { role: 'system', content: MINIMAL_TOOL_SYSTEM },
