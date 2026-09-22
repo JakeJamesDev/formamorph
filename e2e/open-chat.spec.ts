@@ -15,7 +15,12 @@ interface LoggedTurn { action: string; requests: LoggedRequest[] }
 const LIVE = process.env.OPEN_CHAT_LIVE;
 const MOCK_REPLY = 'Maren sets a mug in front of you. "Drink it while it is hot," she says.';
 
+interface Placeholder { id: string; name: string; values: { id: string; text: string }[] }
+
 const world = JSON.parse(readFileSync('src/defaultworlds/open-chat.json', 'utf8'));
+const placeholder = (name: string): Placeholder => world.placeholders.find((ph: Placeholder) => ph.name === name);
+// The chips the narration prompt places; the choice shape and the opening read elsewhere.
+const narrationPlaceholders = ['reply length', 'voice block', 'pacing'].map(placeholder);
 const card = JSON.parse(readFileSync('testing/baseline/open-chat-cards.json', 'utf8'))[0];
 // The library entity the player picked at Enter World, read by the card importer.
 world.devPicked = [readTavernJson(JSON.stringify(card))!.entity];
@@ -89,10 +94,9 @@ test('the greeting is page one, and the next turn runs on the world narration pr
   expect(chat[1].content).toContain("You're dripping on the poetry");
   // The world's prompt, not the preset's: its opening words, and a listed value of every tone chip as plain
   // text. The fixture starts with no traits, so each chip reads its roll.
-  expect(system).toContain('chatting with the player by message');
-  for (const placeholder of world.placeholders) {
-    expect(placeholder.values.filter((value: { text: string }) => system.includes(value.text)), placeholder.name)
-      .toHaveLength(1);
+  expect(system).toContain('You write the next reply in a chat between the player');
+  for (const ph of narrationPlaceholders) {
+    expect(ph.values.filter((value) => system.includes(value.text)), ph.name).toHaveLength(1);
   }
   expect(system).not.toContain('{{ph:');
 
@@ -115,14 +119,53 @@ test('a Quick Start applies the middle setting of every tone group', async ({ pa
   await mockModel(page);
   await openApp(page, settings);
   await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
-  const system = await quickStartTurn(page);
+  await openChatCard(page).click();
+  await page.getByRole('button', { name: 'Quick Start' }).click();
+  // The Plain opening pre-fills the action box.
+  await expect(page.getByPlaceholder(/Type your action/)).toHaveValue(placeholder('opening').values[1].text);
+  await page.waitForFunction(() => '__baseline' in window);
+  const system = systemOf((await playTurn(page, 'Hello.')).narration);
 
-  for (const placeholder of world.placeholders) {
-    const [low, middle, high] = placeholder.values.map((value: { text: string }) => value.text);
-    expect(system, placeholder.name).toContain(middle);
-    expect(system, placeholder.name).not.toContain(low);
-    expect(system, placeholder.name).not.toContain(high);
+  for (const ph of narrationPlaceholders) {
+    const [low, middle, high] = ph.values.map((value) => value.text);
+    expect(system, ph.name).toContain(middle);
+    expect(system, ph.name).not.toContain(low);
+    expect(system, ph.name).not.toContain(high);
   }
+});
+
+// The Style trait carries the frame, so a switch reaches the voice block and the choice shape on the next turn.
+test('switching Style mid-game changes the voice block and the choice shape on the next turn', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', QUICK_START_SKIP);
+  await mockModel(page);
+  await openApp(page, { ...settings, FORMAMORPH_choicesEnabled: true });
+  await page.getByText('Loaded default worlds').waitFor({ state: 'visible' });
+  await openChatCard(page).click();
+  await page.getByRole('button', { name: 'Quick Start' }).click();
+  await page.waitForFunction(() => '__baseline' in window);
+  const voice = placeholder('voice block').values.map((value) => value.text);
+  const shape = placeholder('choice shape').values.map((value) => value.text);
+  const systems = async (action: string) => {
+    const { log } = await playTurn(page, action);
+    const byType = (type: string) => systemOf(log[log.length - 1].requests.find((request) => request.type === type)!);
+    return { narration: byType('narration'), choices: byType('choices') };
+  };
+
+  const plain = await systems('Hello.');
+  expect(plain.narration).toContain(voice[1]);
+  expect(plain.choices).toContain(shape[1]);
+
+  // The gameplay readme shows once play starts; the Traits tab sits under it, with each group folded.
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: /^Style/ }).click();
+  await page.getByRole('group', { name: 'Style' }).getByRole('button', { name: /^Disabled/ }).click();
+  await page.getByRole('radio', { name: 'Switch on Chat' }).click();
+  await expect(page.getByRole('radio', { name: 'Switch off Chat' })).toBeVisible();
+  const chat = await systems('Still there?');
+  expect(chat.narration).toContain(voice[0]);
+  expect(chat.narration).not.toContain(voice[1]);
+  expect(chat.choices).toContain(shape[0]);
+  expect(chat.choices).not.toContain(shape[1]);
 });
 
 // A pin names its value by id, so an author's edit of the text reaches play through the unchanged trait.
@@ -149,7 +192,7 @@ test('editing a pinned value in the World Editor changes what its trait sends', 
   const system = await quickStartTurn(page);
   expect(system).toContain(edited);
   // Every chip still reads its default trait's pin: the edit moved one text, not the pins.
-  const [replyLength, ...others] = world.placeholders;
+  const [replyLength, ...others] = narrationPlaceholders;
   for (const value of replyLength.values) expect(system).not.toContain(value.text);
-  for (const placeholder of others) expect(system, placeholder.name).toContain(placeholder.values[1].text);
+  for (const ph of others) expect(system, ph.name).toContain(ph.values[1].text);
 });
