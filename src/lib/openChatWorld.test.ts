@@ -41,11 +41,13 @@ describe('the Open Chat default world', () => {
   });
 
   // Setup guidance and play guidance stay apart: each readme shows at its own moment.
-  it('explains setup in the intro readme: the library, the persona, and every tone group', () => {
+  it('explains setup in the intro readme: one entity from the library, the persona, and every tone group', () => {
     const intro = world.worldOverview.introReadme ?? '';
     for (const label of ['Library Additions', 'Persona', ...(world.traitGroups ?? []).map((g) => g.name)]) {
       expect(intro, label).toContain(`**${label}**`);
     }
+    // Group chats are a smoke case only, so the readme asks for one entity.
+    expect(intro).toMatch(/\bone entity\b/);
     expect(intro).not.toContain(SETTINGS_COPY.narrationLayout.label);
   });
 

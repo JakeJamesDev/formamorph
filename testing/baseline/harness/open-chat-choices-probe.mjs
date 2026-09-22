@@ -1,23 +1,29 @@
-// Open Chat choices probe — A/B the Open Chat world's choices prompt against the built-in one, over the real
+// Open Chat choices probe — A/B the Open Chat world's choices prompt against a baseline, over the real
 // bundled world (src/defaultworlds/open-chat.json) and one imported SillyTavern card
 // (../open-chat-cards.json, read through the real card importer). Assembly uses the production boundaries:
 // world migration, the world-prompt seam, choicesSystemPrompt, and parseChoices.
 //
-//   Arm A = the built-in choices prompt over the world (what a player gets after the per-world opt-out).
-//   Arm B = the world's own choices prompt.
+//   Arm A = the world's choices prompt at --a-world-rev (default: the revision 1 prompt), or the built-in
+//           choices prompt with --a-builtin (what a player gets after the per-world opt-out).
+//   Arm B = the world's own choices prompt in the working tree, or --override-file.
 //
-// Each case is one fixed narration passage in the Open Chat frame (second person, dialogue-led), written as
-// standard prose. `question` and `greeting` put a question to the player and want a spoken choice. `empty`
-// has no entity: the false-positive guard, nobody is there to speak to. Seeds are paired across arms.
-// Metrics are regex counts; read the printed choices for quality.
+// A choice in revision 2 is the message the player could send back, typed bare, or a deed between
+// asterisks. Each case is one fixed reply in the revision 2 frame: a first-person message from the entity
+// with its actions between asterisks. `greeting` is the imported greeting as page one, in the card's own
+// shape. `question` and `greeting` put a question to the player and want a typed message. `duo` has two
+// entities, each with a name-prefixed message. `empty` has no entity: the false-positive guard, nobody is
+// there to message. Seeds are paired across arms. Metrics are regex counts; read the printed choices.
 //
 // Usage: npx vite-node testing/baseline/harness/open-chat-choices-probe.mjs -- [--endpoint URL]
 //          [--model default] [--runs 2] [--arms A,B] [--cases question,banter] [--seed 11]
-//          [--concurrency 1] [--override-file FILE] [--rescore FILE] [--token T] [--quiet]
+//          [--concurrency 1] [--override-file FILE] [--a-world-rev REV] [--a-builtin] [--rescore FILE]
+//          [--token T] [--quiet]
 //   --override-file  Draft choices prompt for arm B, in place of the one stored on the world.
+//   --a-world-rev    Arm A reads the world from this git revision.
 //   --quiet          Prints progress and the table, not each choice.
 //   --rescore        A stored run file: scores its replies again with the current metrics, sends nothing.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defaultChoicesPrompt, defaultChoicesUserPrompt } from '@/components/game/GamePrompts';
@@ -35,6 +41,9 @@ import { resolveWorldPrompt, worldPromptChipValues, setWorldPromptOverride } fro
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HARNESS_DIR, '../../..');
+const WORLD_PATH = 'src/defaultworlds/open-chat.json';
+// The revision 1 choices prompt: the baseline for the message rewrite.
+const REVISION_1 = '535e7b50';
 
 const args = process.argv.slice(2);
 const option = (name, fallback = null) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
@@ -47,52 +56,59 @@ const concurrency = Number(option('--concurrency', '1'));
 const token = option('--token', process.env.PROBE_TOKEN || '');
 const arms = list('--arms', 'A,B');
 const overrideFile = option('--override-file');
+const aBuiltin = args.includes('--a-builtin');
+const aWorldRev = aBuiltin ? null : option('--a-world-rev', REVISION_1);
 const quiet = args.includes('--quiet');
 const rescoreFile = option('--rescore');
 
 // ---------- fixtures ----------
-const world = migrateWorld(JSON.parse(await readFile(path.join(REPO_ROOT, 'src/defaultworlds/open-chat.json'), 'utf8')));
+const loadWorld = (text) => migrateWorld(JSON.parse(text));
+const worldB = loadWorld(await readFile(path.join(REPO_ROOT, WORLD_PATH), 'utf8'));
 if (overrideFile) {
   const text = (await readFile(overrideFile, 'utf8')).replace(/\r\n/g, '\n').trimEnd();
-  world.worldOverview.promptOverrides =
-    setWorldPromptOverride(world.worldOverview.promptOverrides, 'choices', { text, enabled: true });
+  worldB.worldOverview.promptOverrides =
+    setWorldPromptOverride(worldB.worldOverview.promptOverrides, 'choices', { text, enabled: true });
 }
+const worldA = aWorldRev
+  ? loadWorld(execFileSync('git', ['show', `${aWorldRev}:${WORLD_PATH}`], { cwd: REPO_ROOT, encoding: 'utf8' }))
+  : worldB;
 const [lead, second] = JSON.parse(await readFile(path.join(HARNESS_DIR, '../open-chat-cards.json'), 'utf8'))
   .map((card) => readTavernJson(JSON.stringify(card)).entity);
 
 const CASES = {
-  // Page one: the imported greeting is the scene the first choices answer.
-  greeting: { entities: [lead], wantsSpeech: true, narration: renderUserMacro(lead.openings[0].text, { kind: 'opening' }) },
+  // Page one: the imported greeting, in the card's own shape, is the message the first choices answer.
+  greeting: { entities: [lead], wantsMessage: true, reply: renderUserMacro(lead.openings[0].text, { kind: 'opening' }) },
   question: {
-    entities: [lead], wantsSpeech: true,
-    narration: 'Maren slides a chipped mug across the counter and wraps both hands around her own. Steam fogs the glasses she has finally remembered to pull down. "Go on, then," she says. "You\'ve come in every Thursday for a year and I still don\'t know what you do all day. What is it that keeps you out this late?"\n\nRain ticks against the window behind you. She waits, one eyebrow up.',
+    entities: [lead], wantsMessage: true,
+    reply: '*I slide a chipped mug across the counter and wrap both hands around my own.* Go on, then. You\'ve come in every Thursday for a year and I still don\'t know what you do all day. What is it that keeps you out this late?\n\n*I wait, one eyebrow up, while the rain ticks against the window behind you.*',
   },
   banter: {
-    entities: [lead], wantsSpeech: true,
-    narration: '"That one\'s not for sale," Maren says, without looking up, as your hand closes on the green cloth spine. "I know, I know. It has a price in it. The price is a lie I tell to people I don\'t like." She turns a page of the ledger. "You can read it here. It doesn\'t leave the shop."\n\nThe book is heavier than it looks, and someone has pressed a fern between the endpapers.',
+    entities: [lead], wantsMessage: true,
+    reply: '*I don\'t look up as your hand closes on the green cloth spine.* That one\'s not for sale. I know, I know, it has a price in it. The price is a lie I tell to people I don\'t like. *I turn a page of the ledger.* You can read it here. It doesn\'t leave the shop, and mind the fern somebody pressed between the endpapers.',
   },
   task: {
-    entities: [lead], wantsSpeech: false,
-    narration: 'Maren sets the estate box on the counter between you and hands you the letter opener, handle first. The tape is old and yellow, and it has been sealed twice. "Your turn," she says. "My hands are full of tea."\n\nSomething inside shifts when you tilt the box, soft and heavy, not like books at all.',
+    entities: [lead], wantsMessage: false,
+    reply: '*I set the estate box on the counter between us and hand you the letter opener, handle first.* Your turn. My hands are full of tea. It\'s been sealed twice, so go slow, and whatever is in there isn\'t books. *I nod at the box as something inside shifts, soft and heavy.*',
   },
   duo: {
-    entities: [lead, second], wantsSpeech: true,
-    narration: 'The door bangs open and Tobias comes in backwards, shaking water off his jacket like a dog. "Maren! Tell me you didn\'t open it without me." He sees you and grins, already pulling off a glove to shake your hand. "Oh, good, a witness. Has she told you whose estate it was? She won\'t tell me."\n\n"Because you\'d tell the whole street," Maren says into her mug. She looks at you over the rim, and it is not clear whose side she wants you on.',
+    entities: [lead, second], wantsMessage: true,
+    reply: 'Tobias: *I come in backwards through the door, shaking water off my jacket.* Maren! Tell me you didn\'t open it without me. *I see you and grin, already pulling off a glove to shake your hand.* Oh, good, a witness. Has she told you whose estate it was? She won\'t tell me.\n\nMaren: Because you\'d tell the whole street. *I look at you over the rim of my mug, and I haven\'t decided whose side I want you on.*',
   },
   // Nobody is present. The world's Opening Action ran, so the scene is the near-empty location.
   empty: {
-    entities: [], wantsSpeech: false,
-    narration: 'You look up. The room is quiet, and nobody answers. A chair stands pushed back from a table, a coat still over its arm, and a door at the far side is open a hand\'s width. The air smells of rain. Whoever was here left without hurry, and not long ago.',
+    entities: [], wantsMessage: false,
+    reply: 'You look up. The room is quiet, and nobody answers. A chair stands pushed back from a table, a coat still over its arm, and a door at the far side is open a hand\'s width. The air smells of rain. Whoever was here left without hurry, and not long ago.',
   },
 };
 const caseIds = list('--cases', Object.keys(CASES).join(','));
 
 // ---------- assembly ----------
-function buildMessages(arm, entities, narration) {
+function buildMessages(arm, entities, reply) {
+  const world = arm === 'A' ? worldA : worldB;
   const placeholders = world.placeholders ?? [];
   const resolvePH = (text) => resolvePlaceholders(text, { placeholders, rolls: {}, pins: {} });
   const overview = world.worldOverview;
-  const declined = arm === 'A';
+  const declined = arm === 'A' && aBuiltin;
   const location = world.locations.find((l) => l.isStarting) ?? world.locations[0];
   const ids = entities.map((e) => e.id);
 
@@ -111,7 +127,7 @@ function buildMessages(arm, entities, narration) {
   const template = resolveWorldPrompt(overview, 'choices', defaultChoicesPrompt, declined);
   return {
     system: choicesSystemPrompt(template, 'English', values),
-    user: renderPromptTemplate(defaultChoicesUserPrompt, { '<NARRATION>': narration, '<PLAYER ACTION>': '' }),
+    user: renderPromptTemplate(defaultChoicesUserPrompt, { '<NARRATION>': reply, '<PLAYER ACTION>': '' }),
   };
 }
 
@@ -138,7 +154,7 @@ async function call(system, user, seed) {
 }
 
 // ---------- metrics ----------
-const QUOTE_RE = /["“][^"”\n]*["”]/g;
+const ACTION_RE = /\*[^*\n]+\*/g;
 const wordCount = (s) => (s.trim().match(/\S+/g) ?? []).length;
 const contentWords = (s) => new Set(s.toLowerCase().replace(/[^a-z' ]/g, ' ').split(/\s+/).filter((w) => w.length > 3));
 const dice = (a, b) => {
@@ -147,45 +163,51 @@ const dice = (a, b) => {
   for (const w of a) if (b.has(w)) shared++;
   return (2 * shared) / (a.size + b.size);
 };
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // A line that is not a choice at all: the parser keeps it, so the player would see it as a button.
-const JUNK = /^\s*(#{1,6}\s|(here (are|is)|here'?s|your options|options?\b|choices?\b|option \d|choose\b|possible (actions|replies))|.*:\s*$)|\{\{|<[A-Z][A-Z ]+[|>]/i;
-// A deed in quotation marks ("I move to the chair."): a quote that opens with "I" and a verb, speaks to
-// nobody, and whose verb is not one people say about themselves ("I work nights", "I think so").
-const QUOTED_I_VERB = /^["“]I (?:\w+ly )?(\w+)\b(?!')/;
-const SAID_OF_SELF = /^(am|was|work|think|know|believe|see|feel|live|prefer|say|have|had|want|need|like|love|hate|guess|suppose|mean|read|came|heard|saw|thought|do|did|can|could|would|should|will|might|must|just|mostly|rarely|never|always|still|bet|hope|wish|doubt|promise|swear|told|said|owe|collect|write|teach|drive|sell|fix|run|keep)$/i;
-const isQuotedDeed = (quote) => {
-  const verb = quote.replaceAll('’', "'").match(QUOTED_I_VERB)?.[1];
-  return Boolean(verb) && !SAID_OF_SELF.test(verb) && !/\byou(r|rs)?\b/i.test(quote);
+const JUNK = /^\s*(#{1,6}\s|(here (are|is)|here'?s|your options|options?\b|choices?\b|option \d|choose\b|possible (actions|replies|messages))|.*:\s*$)|\{\{|<[A-Z][A-Z ]+[|>]/i;
+// Reported speech as the lead of a line: the choice tells what I say instead of being it.
+const SAY_LEAD = /^\s*I (?:\w+ly )?(say|says|ask|asks|tell|tells|reply|replies|answer|answers|respond|responds|remark|remarks|admit|admits|explain|explains|insist|insists)\b/i;
+// A deed typed bare ("I walk to the door"): "I" and a verb that is not something people say about
+// themselves, addressed to nobody. The typed option should be words sent; a deed sits between asterisks.
+const I_VERB = /^I (?:\w+ly )?(\w+)\b(?!')/;
+const SAID_OF_SELF = /^(am|was|work|think|know|believe|see|feel|live|prefer|say|have|had|want|need|like|love|hate|guess|suppose|mean|read|came|heard|saw|thought|do|did|can|could|would|should|will|might|must|just|mostly|rarely|never|always|still|bet|hope|wish|doubt|promise|swear|told|said|owe|collect|write|teach|drive|sell|fix|run|keep|get|got|remember|forget|understand|agree|trust|figure|imagine|wonder|admit|hear|miss|appreciate|accept|insist|suspect|reckon)$/i;
+const isBareDeed = (typed) => {
+  const verb = typed.replaceAll('’', "'").match(I_VERB)?.[1];
+  return Boolean(verb) && !SAID_OF_SELF.test(verb) && !/\byou(r|rs)?\b/i.test(typed);
 };
-// Reported speech: the built-in form of a spoken choice.
+// A softer reading of reported speech: a reporting verb anywhere outside the deeds.
 const REPORTED = /\b(ask|tell|say|answer|reply|admit|explain|confess|insist|agree|tease|joke|greet|thank|promise|assure|remind|warn)s?\b/i;
 
 function scoreLine(line, entities) {
-  const quotes = line.match(QUOTE_RE) ?? [];
-  const outside = line.replace(QUOTE_RE, ' ').trim();
-  const unbalanced = ((line.match(/["“”]/g) ?? []).length % 2) === 1;
-  const junk = JUNK.test(line) || unbalanced;
-  const quotedDeed = quotes.some(isQuotedDeed);
-  const spoken = quotes.length > 0 && !quotedDeed;
-  // The player's voice: a spoken line, or first-person text outside the quotes. Every flag below is a break.
-  const firstPerson = /^(I|I'|I’|My)\b/.test(outside) || /\b(I|my|me)\b/.test(outside);
-  const secondPerson = /\byou(r|rs|rself)?\b/i.test(outside) && !/\bI\b/.test(outside);
-  const speakers = ['she', 'he', 'they', ...entities.map((e) => e.name.split(' ')[0].replace(/[^\w]/g, ''))];
+  const stars = (line.match(/\*/g) ?? []).length;
+  const unbalanced = stars % 2 === 1;
+  const deeds = unbalanced ? [] : (line.match(ACTION_RE) ?? []);
+  // The typed words: the line minus its deeds.
+  const typed = line.replace(ACTION_RE, ' ').replace(/\s+/g, ' ').trim();
+  const junk = JUNK.test(line);
+  const quoted = /["“”]/.test(line);
+  const sayLead = SAY_LEAD.test(line);
+  const deedOnly = !unbalanced && deeds.length > 0 && typed === '';
+  const message = !junk && !unbalanced && typed !== '';
+  const bareDeed = message && !sayLead && isBareDeed(typed);
+  // A break of the player's voice: the entity as the speaker or actor, or "I notices".
+  const names = entities.map((e) => e.name.split(' ')[0].replace(/[^\w]/g, ''));
+  const third = new RegExp(`^(?:she|he|they|${names.map(escapeRe).join('|') || '(?!)'})\\s+(?:\\w+ly\\s+)?\\w+(?:s|es|ed)\\b`, 'i');
   const entitySpeaks = new RegExp(
-    `\\b(${speakers.join('|')})\\s+(?:\\w+ly\\s+)?(says?|asks?|replies|answers|adds?|snorts?)\\b`, 'i').test(outside);
-  // "I notices": the verb after "I" written in third person.
-  const agreement = /^I (?:\w+ly )?(?!was\b|always\b|sometimes\b|perhaps\b|has\b)\w+(?<![su])s\b/.test(outside);
-  const voiced = !junk && !quotedDeed && !secondPerson && !entitySpeaks && !agreement
-    && (outside === '' ? spoken : firstPerson);
+    `\\b(she|he|they|${names.map(escapeRe).join('|') || '(?!)'})\\s+(?:\\w+ly\\s+)?(says?|asks?|replies|answers|adds?|snorts?)\\b`, 'i').test(typed);
+  // The words the player wrote: the typed text, or the deed inside its asterisks.
+  const own = deedOnly ? deeds[0].slice(1, -1) : typed;
+  const narrated = third.test(own);
+  const agreement = /^I (?:\w+ly )?(?!was\b|always\b|sometimes\b|perhaps\b|has\b)\w+(?<![su])s\b/.test(own);
+  const voiced = !junk && !unbalanced && !entitySpeaks && !narrated && !agreement;
   return {
-    line, words: wordCount(line), spoken, junk, voiced, quotedDeed, agreement,
-    // A deed after the closing quotation mark: still a spoken choice, but longer than the line alone.
-    tail: spoken && outside !== '',
-    // Single asterisks reach the choice button as literal characters.
-    asterisks: /(^|[^*])\*(?!\*)/.test(line),
-    reported: !spoken && REPORTED.test(outside),
-    spokenWords: quotes.reduce((n, q) => n + wordCount(q), 0),
+    line, words: wordCount(line), junk, quoted, sayLead, deedOnly, message, bareDeed, unbalanced, voiced, agreement,
+    // A message that also carries a deed: allowed, and longer than the words alone.
+    mixed: message && deeds.length > 0,
+    reported: message && !sayLead && REPORTED.test(typed),
+    typedWords: wordCount(typed),
   };
 }
 
@@ -197,7 +219,7 @@ function scoreRun(raw, entities) {
     lines,
     count: lines.length,
     // The parser never fails; success means it kept at least 3 lines and every one is a usable choice.
-    parsed: lines.length >= 3 && lines.every((l) => !l.junk),
+    parsed: lines.length >= 3 && lines.every((l) => !l.junk && !l.unbalanced),
     // The prompt asks for 3 to 5. The parser keeps up to 6.
     inRange: lines.length >= 3 && lines.length <= 5,
     overlap: pairs.length ? pairs.reduce((a, b) => a + b, 0) / pairs.length : 0,
@@ -210,7 +232,7 @@ for (const arm of arms) for (const caseId of caseIds) for (let r = 0; r < runs; 
 
 async function runJob({ arm, caseId, run }) {
   const spec = CASES[caseId];
-  const { system, user } = buildMessages(arm, spec.entities, spec.narration);
+  const { system, user } = buildMessages(arm, spec.entities, spec.reply);
   try {
     const reply = await call(system, user, baseSeed + run);
     return { arm, caseId, run, system: run === 0 ? system : undefined, raw: reply.text, cut: reply.cut,
@@ -230,7 +252,7 @@ if (rescoreFile) {
   jobs.length = 0;
   console.log(`Open Chat choices probe · rescore of ${rescoreFile}`);
 } else {
-  console.log(`Open Chat choices probe · ${endpoint} · model "${model}" · arms ${arms.join('/')} · cases ${caseIds.join(', ')} · ${runs} run(s)`);
+  console.log(`Open Chat choices probe · ${endpoint} · model "${model}" · arms ${arms.join('/')} (A = ${aBuiltin ? 'built-in' : aWorldRev}) · cases ${caseIds.join(', ')} · ${runs} run(s)`);
   // Warm-up, so a cold model load does not land inside the first timed job.
   await call('Reply with one word.', 'ready?', 1).catch(() => {});
 }
@@ -256,7 +278,11 @@ if (!quiet) {
       if (r.error) { console.log(`  #${r.run + 1} ERROR: ${r.error}`); continue; }
       console.log(`  #${r.run + 1} ${r.count} choices${r.parsed ? '' : ' (PARSE!)'} · ${r.tokens} tok${r.cut ? ' (CUT!)' : ''}`);
       for (const l of r.lines) {
-        const flags = [l.spoken ? 'spoken' : l.quotedDeed ? 'QUOTED-DEED!' : l.reported ? 'reported' : 'action', l.voiced ? '' : 'VOICE!', l.junk ? 'JUNK!' : ''];
+        const flags = [
+          l.deedOnly ? 'deed' : l.mixed ? 'mixed' : l.message ? 'message' : 'other',
+          l.quoted ? 'QUOTED!' : '', l.sayLead ? 'SAY-LEAD!' : '', l.bareDeed ? 'BARE-DEED!' : '', l.unbalanced ? 'STARS!' : '',
+          l.voiced ? '' : 'VOICE!', l.junk ? 'JUNK!' : '',
+        ];
         console.log(`      [${String(l.words).padStart(2)}w ${flags.filter(Boolean).join(' ')}] ${l.line}`);
       }
     }
@@ -270,14 +296,17 @@ const summarize = (label, rs) => {
     parsed: rate(rs.map((r) => r.parsed)),
     '3-5': rate(rs.map((r) => r.inRange)),
     'choices/run': mean(rs.map((r) => r.count)).toFixed(1),
-    voiced: pct(lines.map((l) => l.voiced)),
-    spoken: pct(lines.map((l) => l.spoken)),
-    tail: pct(lines.map((l) => l.tail)),
+    message: pct(lines.map((l) => l.message)),
+    deed: pct(lines.map((l) => l.deedOnly)),
+    mixed: pct(lines.map((l) => l.mixed)),
+    quoted: pct(lines.map((l) => l.quoted)),
+    sayLead: pct(lines.map((l) => l.sayLead)),
+    bareDeed: pct(lines.map((l) => l.bareDeed)),
     reported: pct(lines.map((l) => l.reported)),
-    quotedDeed: lines.filter((l) => l.quotedDeed).length,
+    voiced: pct(lines.map((l) => l.voiced)),
+    stars: lines.filter((l) => l.unbalanced).length,
     agreement: lines.filter((l) => l.agreement).length,
-    asterisks: lines.filter((l) => l.asterisks).length,
-    'runs w/ spoken': rate(rs.map((r) => r.lines.some((l) => l.spoken))),
+    'runs w/ message': rate(rs.map((r) => r.lines.some((l) => l.message))),
     words: mean(lines.map((l) => l.words)).toFixed(1),
     maxWords: Math.max(0, ...lines.map((l) => l.words)),
     '>10w': pct(lines.map((l) => l.words > 10)),
@@ -295,9 +324,9 @@ for (const arm of arms) {
   }
   const entityRuns = ok.filter((r) => r.arm === arm && CASES[r.caseId].entities.length);
   if (entityRuns.length) rows.push(summarize({ arm, case: 'ALL with an entity' }, entityRuns));
-  // The scenes that invite a reply: each run wants at least one spoken choice.
-  const speechRuns = ok.filter((r) => r.arm === arm && CASES[r.caseId].wantsSpeech);
-  if (speechRuns.length) rows.push(summarize({ arm, case: 'ALL that invite speech' }, speechRuns));
+  // The replies that invite a message back: each run wants at least one typed message.
+  const messageRuns = ok.filter((r) => r.arm === arm && CASES[r.caseId].wantsMessage);
+  if (messageRuns.length) rows.push(summarize({ arm, case: 'ALL that invite a message' }, messageRuns));
 }
 console.log('');
 console.table(rows);
@@ -308,6 +337,6 @@ if (!rescoreFile) {
   const outDir = path.join(HARNESS_DIR, '../runs');
   await mkdir(outDir, { recursive: true });
   const outFile = path.join(outDir, `open-chat-choices-probe-${model.replace(/[^\w.-]/g, '_')}-${Date.now()}.json`);
-  await writeFile(outFile, JSON.stringify({ endpoint, model, runs, baseSeed, overrideFile, rows, results }, null, 2));
+  await writeFile(outFile, JSON.stringify({ endpoint, model, runs, baseSeed, overrideFile, aWorldRev, aBuiltin, rows, results }, null, 2));
   console.log(`choices and prompts: ${path.relative(REPO_ROOT, outFile)}`);
 }
