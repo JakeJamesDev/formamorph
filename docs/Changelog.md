@@ -17,7 +17,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **🛠️ Developer tooling**
-  - **The narration tool probe tests entity lookup and tool-based output with a minimal local prompt.** Two fresh trials compare a short instruction with the full narration prompt. LM Studio runs allow three minutes per request and remap outgoing call IDs for nine-character-ID templates while retaining original server responses in the evidence.
+  - **The narration tool probe tests entity lookup and tool-based output with minimal prompts and paired full-prompt comparisons.** Two fresh trials compare a short instruction with the full narration prompt. A separate runner compares lookup descriptions across four seeds and six scenes, including object lookup, focused observation, and reuse of already-returned lore. It alternates variant order and preserves every request and response. LM Studio runs allow three minutes per request and remap outgoing call IDs for nine-character-ID templates while retaining original server responses in the evidence.
 
 #### 🔧 Fixed
 
