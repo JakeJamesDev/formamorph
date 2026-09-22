@@ -1,6 +1,7 @@
 # 12: Probe the Three Styles
 
-Status: ready-for-agent
+Status: in-progress
+Base: 519c4c5a
 Blocked by: 11
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
