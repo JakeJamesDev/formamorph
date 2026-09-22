@@ -1,6 +1,7 @@
 # 01: Build the Reviewable Standalone Probe
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 8fa9aa40a82f2e4497d7644c246d4e223f08e813
 Blocked by: None (can start immediately)
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: high
