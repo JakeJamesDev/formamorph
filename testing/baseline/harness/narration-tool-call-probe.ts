@@ -78,6 +78,7 @@ export interface ProbeRequest {
 export interface ProbeExperiment {
   roleOnly?: boolean;
   summaryLabel?: boolean;
+  entityDefinition?: boolean;
   decisionNotes?: boolean;
   requiredLore?: boolean;
   preparationGoal?: boolean;
@@ -194,6 +195,7 @@ function replaceOnce(source: string, from: string, to: string): string {
 
 export const REQUIRED_LORE_RULE = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
 export const ROLE_ONLY_INSTRUCTION = "You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.";
+export const ENTITY_DEFINITION = 'An entity is a character, creature, or object listed in the entity summaries.';
 
 function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false, decisionNotes = false, roleOnly = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
@@ -294,6 +296,10 @@ export function prepareNarrationToolCallCase(input: {
   if (input.experiment?.summaryLabel) {
     system = system.replace(/(## Characters and Things[^\n]*\n)([\s\S]*?)(?=\n## |$)/g,
       (_section, heading: string, body: string) => heading + body.replaceAll('  - **description:**', '  - **summary:**'));
+  }
+  if (input.experiment?.entityDefinition) {
+    system = replaceOnce(system, '## Characters and Things That May Appear in This Location\n',
+      `## Characters and Things That May Appear in This Location\n${ENTITY_DEFINITION}\n\n`);
   }
   const user = renderPromptTemplate(input.promptMode === 'experimental' ? experimentalNarrationUserPrompt : defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
   const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [

@@ -20,6 +20,17 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('adds only the entity definition beside the summary list', () => {
+    const input = { caseId: 'entity-definition', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { roleOnly: true, summaryLabel: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, entityDefinition: true } }).request;
+    const definition = 'An entity is a character, creature, or object listed in the entity summaries.';
+    expect(variant.messages[0].content).toContain(`## Characters and Things That May Appear in This Location\n${definition}\n\n- **Bram**`);
+    variant.messages[0].content = variant.messages[0].content!.replace(`${definition}\n\n`, '');
+    expect(variant).toEqual(baseline);
+  });
+
   it('relabels entity summaries without changing the location, cached lore, or request controls', () => {
     const input = { caseId: 'summary-label', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { roleOnly: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };
