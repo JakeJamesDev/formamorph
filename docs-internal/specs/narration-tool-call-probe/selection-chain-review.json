@@ -1,0 +1,330 @@
+{
+  "rawPath": "testing/baseline/runs/narration-tool-call-probe/selection-chain-batch-2026-09-23T06-19-55-699Z.json",
+  "durationSeconds": 236.39791200000002,
+  "method": "Manual unique explicit entity appearances, including indirect mentions. Generic crowds separate; previous-turn lookups do not count.",
+  "collectiveNotes": [
+    {
+      "id": "424243-2-B",
+      "text": "other travelers fade into the background",
+      "interpretation": "Unresolved group; explicit ferry miss already fails this turn."
+    },
+    {
+      "id": "424243-2-A",
+      "text": "landing’s bustle",
+      "interpretation": "Ambiguous activity, no extra named entities counted."
+    }
+  ],
+  "rows": [
+    {
+      "id": "424243-1-A",
+      "explicit": [
+        "Mara",
+        "Iven",
+        "Nessa"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "missing": [
+        "Iven",
+        "Nessa"
+      ],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 224,
+          "seconds": 8.6723778,
+          "lookups": [
+            "Mara"
+          ]
+        },
+        {
+          "reasoningTokens": 343,
+          "seconds": 17.713475099999997,
+          "lookups": []
+        }
+      ],
+      "words": 164
+    },
+    {
+      "id": "424243-1-B",
+      "explicit": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 227,
+          "seconds": 10.9314237,
+          "lookups": [
+            "Mara"
+          ]
+        },
+        {
+          "reasoningTokens": 144,
+          "seconds": 9.584685099999994,
+          "lookups": []
+        }
+      ],
+      "words": 122
+    },
+    {
+      "id": "424243-2-A",
+      "explicit": [
+        "Mara"
+      ],
+      "loaded": [],
+      "missing": [
+        "Mara"
+      ],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 247,
+          "seconds": 13.636572299999992,
+          "lookups": []
+        }
+      ],
+      "words": 134
+    },
+    {
+      "id": "424243-2-B",
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "loaded": [],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 189,
+          "seconds": 14.747260899999993,
+          "lookups": []
+        }
+      ],
+      "words": 175
+    },
+    {
+      "id": "424243-3-A",
+      "explicit": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 340,
+          "seconds": 13.153223199999992,
+          "lookups": [
+            "Iven"
+          ]
+        },
+        {
+          "reasoningTokens": 230,
+          "seconds": 15.982062399999995,
+          "lookups": []
+        }
+      ],
+      "words": 210
+    },
+    {
+      "id": "424243-3-B",
+      "explicit": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 151,
+          "seconds": 7.814678199999995,
+          "lookups": [
+            "Iven"
+          ]
+        },
+        {
+          "reasoningTokens": 119,
+          "seconds": 9.360808600000018,
+          "lookups": []
+        }
+      ],
+      "words": 160
+    },
+    {
+      "id": "424244-1-B",
+      "explicit": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 173,
+          "seconds": 5.643604499999987,
+          "lookups": [
+            "Mara"
+          ]
+        },
+        {
+          "reasoningTokens": 344,
+          "seconds": 16.019081000000007,
+          "lookups": []
+        }
+      ],
+      "words": 146
+    },
+    {
+      "id": "424244-1-A",
+      "explicit": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 168,
+          "seconds": 7.379343200000003,
+          "lookups": [
+            "Mara"
+          ]
+        },
+        {
+          "reasoningTokens": 119,
+          "seconds": 8.588621400000005,
+          "lookups": []
+        }
+      ],
+      "words": 134
+    },
+    {
+      "id": "424244-2-B",
+      "explicit": [
+        "Iven",
+        "Nessa",
+        "Mara"
+      ],
+      "loaded": [],
+      "missing": [
+        "Iven",
+        "Nessa",
+        "Mara"
+      ],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 141,
+          "seconds": 14.54865949999998,
+          "lookups": []
+        }
+      ],
+      "words": 198
+    },
+    {
+      "id": "424244-2-A",
+      "explicit": [],
+      "loaded": [],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 147,
+          "seconds": 15.748320200000016,
+          "lookups": []
+        }
+      ],
+      "words": 133
+    },
+    {
+      "id": "424244-3-B",
+      "explicit": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 136,
+          "seconds": 7.527960200000002,
+          "lookups": [
+            "Iven"
+          ]
+        },
+        {
+          "reasoningTokens": 127,
+          "seconds": 13.996672700000024,
+          "lookups": []
+        }
+      ],
+      "words": 184
+    },
+    {
+      "id": "424244-3-A",
+      "explicit": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "missing": [],
+      "unused": [],
+      "stages": [
+        {
+          "reasoningTokens": 106,
+          "seconds": 8.36542120000001,
+          "lookups": [
+            "Iven"
+          ]
+        },
+        {
+          "reasoningTokens": 278,
+          "seconds": 16.6830104,
+          "lookups": []
+        }
+      ],
+      "words": 143
+    }
+  ],
+  "totals": {
+    "A": {
+      "complete": 6,
+      "coverage": 4,
+      "lookups": 4,
+      "preLookup": 838,
+      "postLookup": 970,
+      "noLookup": 394,
+      "words": 918,
+      "seconds": 125.93970850000001
+    },
+    "B": {
+      "complete": 6,
+      "coverage": 4,
+      "lookups": 4,
+      "preLookup": 687,
+      "postLookup": 734,
+      "noLookup": 330,
+      "words": 985,
+      "seconds": 110.19050889999997
+    }
+  }
+}

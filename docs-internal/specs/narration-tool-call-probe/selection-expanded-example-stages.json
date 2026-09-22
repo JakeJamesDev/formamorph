@@ -1,0 +1,260 @@
+{
+  "A": {
+    "requiredCases": 10,
+    "missingLookup": 0,
+    "preTotal": 1187,
+    "postTotal": 2171,
+    "initialGreetingPromptTokens": 856,
+    "rows": [
+      {
+        "scenario": "greeting",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 139,
+        "postLookup": 302,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "odette",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 147,
+        "postLookup": 273,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "ferry",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 63,
+        "postLookup": 91,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "environment",
+        "seed": 424243,
+        "required": false,
+        "status": "succeeded",
+        "lookupRequestIndex": -1,
+        "preLookup": null,
+        "postLookup": null,
+        "noLookupReasoning": 227
+      },
+      {
+        "scenario": "healer",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 148,
+        "postLookup": 350,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "cobbler",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 148,
+        "postLookup": 221,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "greeting",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 128,
+        "postLookup": 182,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "odette",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 95,
+        "postLookup": 235,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "ferry",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 140,
+        "postLookup": 126,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "environment",
+        "seed": 424244,
+        "required": false,
+        "status": "succeeded",
+        "lookupRequestIndex": -1,
+        "preLookup": null,
+        "postLookup": null,
+        "noLookupReasoning": 199
+      },
+      {
+        "scenario": "healer",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 54,
+        "postLookup": 151,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "cobbler",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 125,
+        "postLookup": 240,
+        "noLookupReasoning": null
+      }
+    ]
+  },
+  "B": {
+    "requiredCases": 10,
+    "missingLookup": 0,
+    "preTotal": 1187,
+    "postTotal": 2359,
+    "initialGreetingPromptTokens": 856,
+    "rows": [
+      {
+        "scenario": "greeting",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 139,
+        "postLookup": 260,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "odette",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 147,
+        "postLookup": 136,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "ferry",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 63,
+        "postLookup": 202,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "environment",
+        "seed": 424243,
+        "required": false,
+        "status": "succeeded",
+        "lookupRequestIndex": -1,
+        "preLookup": null,
+        "postLookup": null,
+        "noLookupReasoning": 227
+      },
+      {
+        "scenario": "healer",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 148,
+        "postLookup": 173,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "cobbler",
+        "seed": 424243,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 148,
+        "postLookup": 330,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "greeting",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 128,
+        "postLookup": 247,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "odette",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 95,
+        "postLookup": 219,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "ferry",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 140,
+        "postLookup": 220,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "environment",
+        "seed": 424244,
+        "required": false,
+        "status": "succeeded",
+        "lookupRequestIndex": -1,
+        "preLookup": null,
+        "postLookup": null,
+        "noLookupReasoning": 199
+      },
+      {
+        "scenario": "healer",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 54,
+        "postLookup": 320,
+        "noLookupReasoning": null
+      },
+      {
+        "scenario": "cobbler",
+        "seed": 424244,
+        "required": true,
+        "status": "succeeded",
+        "lookupRequestIndex": 0,
+        "preLookup": 125,
+        "postLookup": 252,
+        "noLookupReasoning": null
+      }
+    ]
+  }
+}

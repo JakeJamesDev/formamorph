@@ -1,0 +1,1091 @@
+{
+  "method": "Manual unique-entity mentions per narration; conservative collective references; explicit contradictions only.",
+  "arms": {
+    "A": "Original reasoning replayed",
+    "B": "No prior reasoning",
+    "C": "Demonstrated pattern"
+  },
+  "rows": [
+    {
+      "arm": "A",
+      "scenario": "greeting",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "odette",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette"
+      ],
+      "explicit": [
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "ferry",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "environment",
+      "seed": 424243,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Others waiting to cross is an ambiguous collective, conservatively counted as other listed people. The explicit unfetched ferry already fails this case.",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "healer",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Bram",
+        "Corin",
+        "Mara"
+      ],
+      "explicit": [
+        "Bram",
+        "Corin",
+        "Mara"
+      ],
+      "missing": [
+        "Bram",
+        "Corin"
+      ],
+      "missingExplicit": [
+        "Bram",
+        "Corin"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Her eyes catching her own temple birthmark is a prose error; no fixed authored fact is contradicted.",
+      "selection": true
+    },
+    {
+      "arm": "A",
+      "scenario": "cobbler",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette",
+        "Iven"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette",
+        "Iven"
+      ],
+      "missing": [
+        "Bram",
+        "Odette"
+      ],
+      "missingExplicit": [
+        "Bram",
+        "Odette"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Iven is retrieved twice in separate requests.",
+      "selection": true
+    },
+    {
+      "arm": "A",
+      "scenario": "greeting",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "odette",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette"
+      ],
+      "explicit": [
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "ferry",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "environment",
+      "seed": 424244,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Nessa",
+        "Iven"
+      ],
+      "explicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "missing": [
+        "Nessa",
+        "Iven"
+      ],
+      "missingExplicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "A",
+      "scenario": "healer",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Iven",
+        "Nessa",
+        "Mara"
+      ],
+      "explicit": [
+        "Iven",
+        "Nessa",
+        "Mara"
+      ],
+      "missing": [
+        "Iven",
+        "Nessa"
+      ],
+      "missingExplicit": [
+        "Iven",
+        "Nessa"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "A",
+      "scenario": "cobbler",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Iven"
+      ],
+      "explicit": [
+        "Iven"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "B",
+      "scenario": "greeting",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Dialogue explicitly refers to the raft.",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "odette",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette"
+      ],
+      "explicit": [
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "ferry",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "environment",
+      "seed": 424243,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Unchanged cached quiet control; ambiguous others waiting to cross.",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "healer",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Mara"
+      ],
+      "explicit": [
+        "Mara"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "B",
+      "scenario": "cobbler",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Iven"
+      ],
+      "explicit": [
+        "Iven"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "B",
+      "scenario": "greeting",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "His arm resting on the guide rope is an indirect reference to the ferry apparatus, consistent with earlier mooring-line scoring.",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "odette",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette",
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Odette",
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "ferry",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "environment",
+      "seed": 424244,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Nessa",
+        "Iven"
+      ],
+      "explicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "missing": [
+        "Nessa",
+        "Iven"
+      ],
+      "missingExplicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Unchanged cached quiet control.",
+      "selection": null
+    },
+    {
+      "arm": "B",
+      "scenario": "healer",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Mara"
+      ],
+      "explicit": [
+        "Mara"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "B",
+      "scenario": "cobbler",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Iven"
+      ],
+      "explicit": [
+        "Iven"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "C",
+      "scenario": "greeting",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette",
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "odette",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette"
+      ],
+      "explicit": [
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "ferry",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Boots described as aching; awkward prose rather than entity fact error.",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "environment",
+      "seed": 424243,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [
+        "Rope Ferry",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Iven",
+        "Nessa",
+        "Corin"
+      ],
+      "missingExplicit": [
+        "Rope Ferry"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Unchanged cached quiet control.",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "healer",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Mara"
+      ],
+      "explicit": [
+        "Mara"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "C",
+      "scenario": "cobbler",
+      "seed": 424243,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Iven"
+      ],
+      "explicit": [
+        "Iven"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": true
+    },
+    {
+      "arm": "C",
+      "scenario": "greeting",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Bram",
+        "Odette"
+      ],
+      "loaded": [
+        "Bram",
+        "Odette"
+      ],
+      "mentioned": [
+        "Bram",
+        "Odette"
+      ],
+      "explicit": [
+        "Bram",
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Runs the rope and crossing are occupational activities; no physical ferry description.",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "odette",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Odette"
+      ],
+      "loaded": [
+        "Odette"
+      ],
+      "mentioned": [
+        "Odette"
+      ],
+      "explicit": [
+        "Odette"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "ferry",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Rope Ferry"
+      ],
+      "loaded": [
+        "Rope Ferry"
+      ],
+      "mentioned": [
+        "Rope Ferry"
+      ],
+      "explicit": [
+        "Rope Ferry"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Two people at most to keep it steady is a less clear capacity explanation than the authored maximum.",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "environment",
+      "seed": 424244,
+      "completed": true,
+      "required": [],
+      "loaded": [],
+      "mentioned": [
+        "Nessa",
+        "Iven"
+      ],
+      "explicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "missing": [
+        "Nessa",
+        "Iven"
+      ],
+      "missingExplicit": [
+        "Nessa",
+        "Iven"
+      ],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Unchanged cached quiet control.",
+      "selection": null
+    },
+    {
+      "arm": "C",
+      "scenario": "healer",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Mara"
+      ],
+      "loaded": [
+        "Mara"
+      ],
+      "mentioned": [
+        "Mara"
+      ],
+      "explicit": [
+        "Mara"
+      ],
+      "missing": [],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Help occurs without explicitly narrating the requested verbal ask.",
+      "selection": true
+    },
+    {
+      "arm": "C",
+      "scenario": "cobbler",
+      "seed": 424244,
+      "completed": true,
+      "required": [
+        "Iven"
+      ],
+      "loaded": [
+        "Iven"
+      ],
+      "mentioned": [
+        "Iven",
+        "Bram",
+        "Odette",
+        "Mara",
+        "Nessa",
+        "Corin"
+      ],
+      "explicit": [
+        "Iven"
+      ],
+      "missing": [
+        "Bram",
+        "Odette",
+        "Mara",
+        "Nessa",
+        "Corin"
+      ],
+      "missingExplicit": [],
+      "unusedLoaded": [],
+      "contradictions": [],
+      "note": "Small crowd conservatively includes other listed people. Empty baskets alone do not identify their owner.",
+      "selection": true
+    }
+  ],
+  "totals": {
+    "A": {
+      "completed": 12,
+      "requiredCases": 10,
+      "requiredPass": 10,
+      "mentionCases": 6,
+      "explicitCases": 6,
+      "mentions": 28,
+      "loadedMentions": 12,
+      "people": 24,
+      "loadedPeople": 10,
+      "explicitPeople": 18,
+      "loadedExplicitPeople": 10,
+      "objects": 4,
+      "loadedObjects": 2,
+      "unusedLoaded": 0,
+      "lookups": 13,
+      "reasoning": 3526,
+      "words": 2095,
+      "contradictions": 0,
+      "loadedContradictions": 0,
+      "selectionPass": 4,
+      "selectionCases": 4,
+      "seconds": 240.55647409999995
+    },
+    "B": {
+      "completed": 12,
+      "requiredCases": 10,
+      "requiredPass": 10,
+      "mentionCases": 7,
+      "explicitCases": 7,
+      "mentions": 24,
+      "loadedMentions": 12,
+      "people": 18,
+      "loadedPeople": 10,
+      "explicitPeople": 12,
+      "loadedExplicitPeople": 10,
+      "objects": 6,
+      "loadedObjects": 2,
+      "unusedLoaded": 0,
+      "lookups": 12,
+      "reasoning": 3840,
+      "words": 2249,
+      "contradictions": 0,
+      "loadedContradictions": 0,
+      "selectionPass": 4,
+      "selectionCases": 4,
+      "seconds": 142.97344139999998
+    },
+    "C": {
+      "completed": 12,
+      "requiredCases": 10,
+      "requiredPass": 10,
+      "mentionCases": 8,
+      "explicitCases": 9,
+      "mentions": 27,
+      "loadedMentions": 12,
+      "people": 23,
+      "loadedPeople": 10,
+      "explicitPeople": 12,
+      "loadedExplicitPeople": 10,
+      "objects": 4,
+      "loadedObjects": 2,
+      "unusedLoaded": 0,
+      "lookups": 12,
+      "reasoning": 3784,
+      "words": 1780,
+      "contradictions": 0,
+      "loadedContradictions": 0,
+      "selectionPass": 4,
+      "selectionCases": 4,
+      "seconds": 114.3678857
+    }
+  }
+}
