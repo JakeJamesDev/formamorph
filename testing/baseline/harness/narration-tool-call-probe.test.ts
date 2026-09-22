@@ -20,6 +20,42 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('removes only write and completes lookup followed by ordinary narration', async () => {
+    const input = { caseId: 'plain', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { thinking: true } };
+    const baseline = prepareNarrationToolCallCase(input).request;
+    const transport = scriptedTransport([
+      { choices: [{ message: { content: null, tool_calls: [toolCall('lookup', 'request_info', { term: 'Bram' })] } }] },
+      { choices: [{ finish_reason: 'stop', message: { content: 'You notice his pinned left sleeve.' } }] },
+    ]);
+    const trial = await runNarrationToolCallTrial({ ...input, experiment: { ...input.experiment, outputMode: 'text' }, transport });
+    expect(trial.status).toBe('succeeded');
+    expect(trial.narration).toBe('You notice his pinned left sleeve.');
+    expect(trial.lookupCount).toBe(1);
+    expect(transport.requests[0]).toEqual({ ...baseline, tools: baseline.tools.filter((tool) => tool.function.name === 'request_info') });
+    expect(transport.requests[1].messages.at(-1)?.content).toContain('left sleeve is pinned up');
+  });
+
+  it.each([
+    ['length', 'You notice his', 'incomplete_narration'],
+    ['stop', '  ', 'missing_narration'],
+    [undefined, 'You notice his sleeve.', 'incomplete_narration'],
+  ])('rejects incomplete or empty ordinary narration (%s)', async (finish_reason, content, failure) => {
+    const trial = await runNarrationToolCallTrial({ caseId: 'plain-failure', action: MAIN_ACTION,
+      sourceRevision: 'test', world: world(), promptMode: 'experimental', experiment: { outputMode: 'text' },
+      transport: scriptedTransport([{ choices: [{ finish_reason, message: { content } }] }]) });
+    expect(trial.status).toBe('failed');
+    expect(trial.failure?.kind).toBe(failure);
+  });
+
+  it('rejects an unadvertised write call in ordinary narration mode', async () => {
+    const trial = await runNarrationToolCallTrial({ caseId: 'plain-write', action: MAIN_ACTION,
+      sourceRevision: 'test', world: world(), promptMode: 'experimental', experiment: { outputMode: 'text' },
+      transport: scriptedTransport([{ choices: [{ message: { content: null,
+        tool_calls: [toolCall('write', 'write', { narration: 'You look around.' })] } }] }]) });
+    expect(trial.failure?.kind).toBe('unknown_function');
+  });
+
   it('runs Experimental with withheld lore and preserves all non-prompt controls', async () => {
     const input = { caseId: 'experimental', action: MAIN_ACTION, sourceRevision: 'test', world: world(), seed: 424243,
       experiment: { thinking: true, knownEntityNames: ['Bram'] }, nineCharacterCallIds: true };
