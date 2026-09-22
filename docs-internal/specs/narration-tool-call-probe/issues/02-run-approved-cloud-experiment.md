@@ -1,6 +1,7 @@
 # 02: Run the Approved Cloud Experiment and Report Findings
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 081634690f217a77e4fdb8ae77dd36b4c65536ed
 Blocked by: 01
 Recommended model: GPT-5.6 Sol (`gpt-5.6-sol`)
 Reasoning effort: medium
@@ -39,3 +40,9 @@ Model rationale: Sol with medium reasoning suits executing an already-defined pr
 ## Completion condition
 
 A fully documented failure or endpoint rejection completes this ticket just as a successful tool conversation does. Completion requires honest evidence for every attempted trial and explicit accounting for trials skipped after early termination. Proposed follow-up experiments remain proposals for the user to choose.
+
+## Comments
+
+September 22, 2026 — The user explicitly approved the exact credential-free preview and bounded four-trial cloud batch. Offline verification passed 27/27 focused tests before execution.
+
+September 22, 2026 — The hosted endpoint rejected the first `main-1` request with HTTP 400 because automatic tool choice and a tool-call parser were not enabled. The runner stopped without retrying; `main-2`, `control-1`, and `control-2` were not attempted. See the [findings report](D:/Documents/GitHub/formamorph/docs-internal/specs/narration-tool-call-probe/findings.md).
