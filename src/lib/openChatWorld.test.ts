@@ -115,19 +115,29 @@ describe('the Open Chat default world', () => {
     expect(openings[0].text.trim()).not.toBe('');
   });
 
-  it('offers four exclusive tone groups of three traits, each trait switchable and pinning one placeholder', () => {
+  it('offers three exclusive tone groups of three traits, the middle one the default', () => {
     const groups = world.traitGroups ?? [];
-    expect(groups.map((g) => g.name)).toEqual(['Reply Length', 'Prose Style', 'Narration Share', 'Pacing']);
+    expect(groups.map((g) => g.name)).toEqual(['Reply Length', 'Prose Style', 'Pacing']);
     for (const group of groups) {
       expect(group.exclusive, group.name).toBe(true);
-      const members = world.traits.filter((t) => t.groupId === group.id);
+      const members = world.traits.filter((t) => t.groupId === group.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       expect(members, group.name).toHaveLength(3);
+      expect(members.map((t) => t.isDefault === true), group.name).toEqual([false, true, false]);
       for (const trait of members) {
         expect(trait.playerToggle, trait.name).toBe(true);
-        expect(trait.isDefault, trait.name).not.toBe(true);
         expect(trait.statChanges, trait.name).toEqual([]);
         expect(trait.placeholderPins, trait.name).toHaveLength(1);
       }
+    }
+    expect(world.traits).toHaveLength(9);
+  });
+
+  it('pins every trait to a value its placeholder lists, by value id', () => {
+    const byId = new Map((world.placeholders ?? []).map((ph) => [ph.id, ph]));
+    for (const trait of world.traits) {
+      const pin = trait.placeholderPins![0];
+      const listed = byId.get(pin.placeholderId)?.values.map((v) => v.id) ?? [];
+      expect(listed, trait.name).toContain(pin.valueId);
     }
   });
 });
@@ -137,12 +147,12 @@ describe('the Open Chat tone traits', () => {
   const groupTraits = (world.traitGroups ?? []).map((group) =>
     world.traits.filter((t) => t.groupId === group.id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)));
   const target = (trait: Trait): string => trait.placeholderPins![0].placeholderId;
+  const defaultTraits = world.traits.filter((t) => t.isDefault);
 
   // Play's path: the active traits' pins, collected and laid over a playthrough with no rolls yet.
-  const pinsFor = (active: Trait[], disabledTraitIds: string[] = []) =>
-    collectPins({ traits: active, disabledTraitIds, placeholders });
-  const valuesById = (active: Trait[], disabledTraitIds?: string[]): Record<string, string> =>
-    Object.fromEntries(readPlaceholders({ placeholders, rolls: {}, pins: pinsFor(active, disabledTraitIds) })
+  const pinsFor = (active: Trait[], phs = placeholders) => collectPins({ traits: active, placeholders: phs });
+  const valuesById = (active: Trait[], phs = placeholders): Record<string, string> =>
+    Object.fromEntries(readPlaceholders({ placeholders: phs, rolls: {}, pins: pinsFor(active, phs) })
       .map((r) => [r.id, r.value]));
   // The narration system prompt as play sends it: the world's own prompt, its tone chips keyed at the seam.
   const resolvedText = (active: Trait[]) => {
@@ -157,41 +167,55 @@ describe('the Open Chat tone traits', () => {
     }).prompt;
   };
 
-  const defaults = valuesById([]);
+  const defaults = valuesById(defaultTraits);
 
-  it('backs each group with its own one-value placeholder', () => {
-    expect(placeholders).toHaveLength(4);
-    for (const ph of placeholders) expect(ph.values, ph.name).toHaveLength(1);
+  it('backs each group with its own placeholder listing all three values', () => {
+    expect(placeholders).toHaveLength(3);
+    for (const ph of placeholders) expect(ph.values, ph.name).toHaveLength(3);
     const targets = groupTraits.map((traits) => new Set(traits.map(target)));
     for (const set of targets) expect(set.size).toBe(1);
-    expect(new Set(targets.map((set) => [...set][0])).size).toBe(4);
+    expect(new Set(targets.map((set) => [...set][0])).size).toBe(3);
   });
 
-  it('reads the middle setting of every group when no trait is picked', () => {
-    const middles = groupTraits.map((traits) => traits[1]);
-    expect(resolvedText(middles)).toBe(resolvedText([]));
-    for (const value of Object.values(defaults)) {
-      expect(value.trim()).not.toBe('');
-      expect(resolvedText([])).toContain(value);
+  it('reads a listed, non-empty value for every placeholder when no trait is picked', () => {
+    for (const ph of placeholders) {
+      const value = valuesById([])[ph.id];
+      expect(value.trim(), ph.name).not.toBe('');
+      expect(ph.values.map((v) => v.text), ph.name).toContain(value);
     }
+    expect(resolvedText([])).not.toContain('{{ph:');
   });
 
+  it('reads the middle value of every placeholder under the default traits', () => {
+    for (const ph of placeholders) expect(defaults[ph.id], ph.name).toBe(ph.values[1].text);
+    const text = resolvedText(defaultTraits);
+    for (const value of Object.values(defaults)) expect(text).toContain(value);
+    expect(text).not.toContain('{{ph:');
+  });
+
+  // Picking a trait replaces its group's default, as the exclusive picker does.
   it.each(groupTraits.flat().map((t) => [t.name, t] as const))('%s changes only its own placeholder', (_name, trait) => {
-    const pinned = valuesById([trait]);
-    const middle = groupTraits.find((traits) => traits.includes(trait))![1];
+    const active = [...defaultTraits.filter((t) => t.groupId !== trait.groupId), trait];
+    const pinned = valuesById(active);
     for (const ph of placeholders) {
       const value = pinned[ph.id];
       expect(value.trim(), ph.name).not.toBe('');
       if (ph.id !== target(trait)) expect(value, ph.name).toBe(defaults[ph.id]);
-      else if (trait !== middle) expect(value, ph.name).not.toBe(defaults[ph.id]);
+      else if (!trait.isDefault) expect(value, ph.name).not.toBe(defaults[ph.id]);
     }
-    const text = resolvedText([trait]);
-    expect(text).toContain(trait.placeholderPins![0].value);
+    const text = resolvedText(active);
+    expect(text).toContain(pinned[target(trait)]);
     expect(text).not.toContain('{{ph:');
   });
 
-  it('reads the default again once the trait is switched off', () => {
-    for (const trait of groupTraits.flat()) expect(valuesById([trait], [trait.id]), trait.name).toEqual(defaults);
+  it('follows an author edit of the pinned value text', () => {
+    for (const trait of groupTraits.flat()) {
+      const pin = trait.placeholderPins![0];
+      const edited = placeholders.map((ph) => (ph.id !== pin.placeholderId ? ph : {
+        ...ph, values: ph.values.map((v) => (v.id === pin.valueId ? { ...v, text: 'An edited value.' } : v)),
+      }));
+      expect(valuesById([trait], edited)[pin.placeholderId], trait.name).toBe('An edited value.');
+    }
   });
 });
 
