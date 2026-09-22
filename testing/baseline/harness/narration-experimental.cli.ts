@@ -8,32 +8,43 @@ import { createProbeTransport, LM_STUDIO_PROBE_ENDPOINT, prepareNarrationToolCal
 
 const [baselinePath, ...flags] = process.argv.slice(2);
 const plain = flags.includes('--plain');
+const preparation = flags.includes('--preparation');
+const experimentalBaseline = plain || preparation;
 const live = flags.includes('--run');
-if (!baselinePath || flags.some((flag) => !['--run', '--plain'].includes(flag)) || new Set(flags).size !== flags.length) {
-  throw new Error('Use <saved-description-batch.json> [--run], or <saved-experimental-batch.json> --plain [--run].');
+if (!baselinePath || (plain && preparation) || flags.some((flag) => !['--run', '--plain', '--preparation'].includes(flag)) || new Set(flags).size !== flags.length) {
+  throw new Error('Use <baseline.json> [--plain | --preparation] [--run].');
 }
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
   model: string; description: string; modelMetadata: unknown;
   cases: Array<{ id: string; action: string; known: string[]; required: string[] }>;
   trials: Array<{ arm: string; scenario: string; seed: number; trial: ProbeTrialEvidence }>;
 };
-const description = plain ? baseline.trials[0].trial.initialRequest.tools.find((tool) => tool.function.name === 'request_info')?.function.description : baseline.description;
+const description = experimentalBaseline ? baseline.trials[0].trial.initialRequest.tools.find((tool) => tool.function.name === 'request_info')?.function.description : baseline.description;
 if (!description) throw new Error('Baseline has no lookup description.');
 const seeds = [424243, 424244];
 const world = migrateWorld(JSON.parse(readFileSync('testing/baseline/sedge-landing.json', 'utf8')));
 const sourceRevision = execFileSync('git', ['-c', `safe.directory=${process.cwd().replaceAll('\\', '/')}`, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
-  const cached = baseline.trials.filter((item) => (plain || item.arm === 'B') && item.seed === seed && item.scenario === scenario.id);
+  const cached = baseline.trials.filter((item) => (experimentalBaseline || item.arm === 'B') && item.seed === seed && item.scenario === scenario.id);
   if (cached.length !== 1) throw new Error(`Expected one cached baseline: ${scenario.id}/${seed}`);
   const input = { caseId: `${scenario.id}-${seed}-experimental`, action: scenario.action, world, sourceRevision,
     model: baseline.model, seed, nineCharacterCallIds: true, requestTimeoutMs: 180_000,
-    experiment: { thinking: true, knownEntityNames: scenario.known, requestInfoDescription: description } };
-  const original = prepareNarrationToolCallCase({ ...input, ...(plain ? { promptMode: 'experimental' as const } : {}) }).request;
+    experiment: { thinking: true, knownEntityNames: scenario.known, requestInfoDescription: description,
+      ...(preparation ? { outputMode: 'text' as const } : {}) } };
+  const original = prepareNarrationToolCallCase({ ...input, ...(experimentalBaseline ? { promptMode: 'experimental' as const } : {}) }).request;
   if (!isDeepStrictEqual(original, cached[0].trial.initialRequest)) throw new Error('Cached baseline request drifted.');
-  const trialInput = { ...input, experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}) } };
+  const trialInput = { ...input, experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
+    ...(preparation ? { preparationGoal: true } : {}) } };
   const experimental = prepareNarrationToolCallCase({ ...trialInput, promptMode: 'experimental' }).request;
   const normalized = structuredClone(experimental);
-  if (plain) normalized.tools = [...normalized.tools, ...original.tools.filter((tool) => tool.function.name === 'write')];
+  if (preparation) {
+    const section = /## Preparation\n[\s\S]*?(?=## Output\n)/;
+    const oldSystem = original.messages[0].content ?? '';
+    const newSystem = normalized.messages[0].content ?? '';
+    if (!section.test(oldSystem) || !section.test(newSystem)
+      || oldSystem.replace(section, '') !== newSystem.replace(section, '')) throw new Error('Changes outside preparation.');
+    normalized.messages[0] = original.messages[0];
+  } else if (plain) normalized.tools = [...normalized.tools, ...original.tools.filter((tool) => tool.function.name === 'write')];
   else {
     normalized.messages[0] = original.messages[0];
     normalized.messages[1] = original.messages[1];
@@ -41,11 +52,12 @@ const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
   if (!isDeepStrictEqual(normalized, original)) throw new Error('Non-prompt controls differ.');
   return { input: trialInput, scenario: scenario.id, required: scenario.required, baseline: cached[0].trial, prepared: experimental };
 }));
-const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
 const trials: Array<{ scenario: string; seed: number; trial: ProbeTrialEvidence }> = [];
 const started = performance.now();
 let modelMetadata: unknown = null;
-const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, outputMode: plain ? 'text' : 'write', model: baseline.model,
+const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation,
+  outputMode: experimentalBaseline ? 'text' : 'write', model: baseline.model,
   seeds, cases: baseline.cases, plannedTrials: jobs.length, modelMetadata, durationMs: performance.now() - started,
   pairs: jobs.map(({ input, ...rest }) => ({ seed: input.seed, ...rest })), trials }, null, 2)}\n`);
 if (live) {

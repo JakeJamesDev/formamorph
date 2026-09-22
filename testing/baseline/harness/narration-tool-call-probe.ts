@@ -76,6 +76,7 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  preparationGoal?: boolean;
   outputMode?: 'text';
   requestInfoDescription?: string;
   thinking?: boolean;
@@ -187,10 +188,21 @@ function replaceOnce(source: string, from: string, to: string): string {
   return `${source.slice(0, first)}${to}${source.slice(first + from.length)}`;
 }
 
-function probeSystemTemplate(experimental = false): string {
+function probeSystemTemplate(experimental = false, preparationGoal = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
   template = replaceOnce(template, SUBLOCATION_ENTITIES, SUMMARY_SUBLOCATION_ENTITIES);
-  if (experimental) return template;
+  if (experimental) {
+    if (preparationGoal) {
+      const start = template.indexOf('## Preparation\n');
+      const end = template.indexOf('## Output\n', start);
+      if (start < 0 || end < 0) throw new Error('Experimental preparation section is missing.');
+      template = replaceOnce(template, template.slice(start, end), `## Preparation
+Use preparation to establish what happens next and which authored facts it requires. A summary identifies an entity; its full entry supplies the details for portraying it. When a needed entry is missing, request it before composing the scene. Once the needed entries are available and continuity is resolved, proceed to the narration.
+
+`);
+    }
+    return template;
+  }
   template = replaceOnce(template, OUTPUT_SENTENCE, TOOL_OUTPUT_SENTENCE);
   return replaceOnce(template, '## Output\n', `${ENTITY_INFORMATION}## Output\n`);
 }
@@ -238,7 +250,7 @@ export function prepareNarrationToolCallCase(input: {
     '<TIME>': NONE_PLACEHOLDER,
   };
   const system = buildNarrationPrompt({
-    template: probeSystemTemplate(input.promptMode === 'experimental'),
+    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal),
     ctx,
     action: input.action,
     history: [],
