@@ -19,6 +19,51 @@ import {
 
 const world = () => migrateWorld(structuredClone(rawWorld));
 
+describe('description experiment controls', () => {
+  it('changes only the lookup description between paired requests', () => {
+    const input = { caseId: 'pair', action: MAIN_ACTION, sourceRevision: 'test', world: world(), seed: 7 };
+    const baseline = prepareNarrationToolCallCase({ ...input, experiment: { thinking: true } }).request;
+    const variant = prepareNarrationToolCallCase({ ...input, experiment: { thinking: true, requestInfoDescription: 'Candidate description' } }).request;
+    expect(variant.tools[0].function.description).toBe('Candidate description');
+    expect(variant).not.toHaveProperty('reasoning_effort');
+    variant.tools[0].function.description = baseline.tools[0].function.description;
+    expect(variant).toEqual(baseline);
+    expect(PROBE_TOOLS[0].function.description).toBe('Retrieve full descriptions of world entities by name or keyword.');
+  });
+
+  it('retains cached lore through a new lookup and final write with matching history IDs', async () => {
+    const transport = scriptedTransport([
+      { choices: [{ message: { content: null, tool_calls: [toolCall('server-odette', 'request_info', { term: 'Odette' })] } }] },
+      { choices: [{ message: { content: null, tool_calls: [toolCall('server-write', 'write', { narration: 'The ferryman gestures while the woman counts twice.' })] } }] },
+    ]);
+    const result = await runNarrationToolCallTrial({
+      caseId: 'cache', action: MAIN_ACTION, sourceRevision: 'test', world: world(), transport,
+      nineCharacterCallIds: true, experiment: { thinking: true, knownEntityNames: ['Bram'] },
+    });
+    expect(result.status).toBe('succeeded');
+    expect(result.lookupCount).toBe(1);
+    for (const request of transport.requests) {
+      const calls = request.messages.flatMap((message) => message.tool_calls ?? []);
+      const results = request.messages.filter((message) => message.role === 'tool');
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].content).toContain('left sleeve is pinned up');
+      for (const message of results) {
+        expect(calls.some((call) => call.id === message.tool_call_id)).toBe(true);
+        expect(message.tool_call_id).toHaveLength(9);
+      }
+    }
+    expect(transport.requests[1].messages.filter((message) => message.role === 'tool')).toHaveLength(2);
+    expect(transport.requests[1].messages.at(-1)?.content).toContain('burn scar across her right cheek');
+  });
+
+  it('rejects missing cached lore instead of pretending it is available', () => {
+    expect(() => prepareNarrationToolCallCase({
+      caseId: 'missing', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      experiment: { knownEntityNames: ['No such entity'] },
+    })).toThrow('Cached lore requires one complete match');
+  });
+});
+
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();

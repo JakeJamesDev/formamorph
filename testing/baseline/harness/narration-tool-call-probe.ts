@@ -63,12 +63,21 @@ export interface ProbeToolCall {
 export interface ProbeRequest {
   model: string;
   messages: ProbeMessage[];
-  tools: typeof PROBE_TOOLS;
+  tools: ReadonlyArray<{
+    type: 'function';
+    function: { name: string; description: string; parameters: typeof PROBE_TOOLS[number]['function']['parameters'] };
+  }>;
   tool_choice: 'auto';
   max_tokens: 1024;
-  reasoning_effort: 'none';
+  reasoning_effort?: 'none';
   stream: false;
   seed?: number;
+}
+
+export interface ProbeExperiment {
+  requestInfoDescription?: string;
+  thinking?: boolean;
+  knownEntityNames?: readonly string[];
 }
 
 export interface PreparedProbeCase {
@@ -209,6 +218,7 @@ export function prepareNarrationToolCallCase(input: {
   model?: string;
   seed?: number;
   promptMode?: 'minimal';
+  experiment?: ProbeExperiment;
 }): PreparedProbeCase {
   const location = input.world.locations.find((candidate) => candidate.id === 'loc-sedge');
   if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
@@ -250,6 +260,22 @@ export function prepareNarrationToolCallCase(input: {
   ];
   validatePreparedMessages(messages, input.world);
 
+  const known = (input.experiment?.knownEntityNames ?? []).map((term, index) => {
+    const result = lookupEntityInfo(input.world.entities, term);
+    if (result.matches.length !== 1 || !result.matches[0].description) {
+      throw new Error(`Cached lore requires one complete match: ${term}`);
+    }
+    return { term, result, id: `known${index.toString().padStart(4, '0')}` };
+  });
+  if (known.length) {
+    messages.push({ role: 'assistant', content: null, tool_calls: known.map(({ term, id }) => ({
+      id, type: 'function', function: { name: 'request_info', arguments: JSON.stringify({ term }) },
+    })) });
+    messages.push(...known.map(({ id, result }): ProbeMessage => ({
+      role: 'tool', tool_call_id: id, content: JSON.stringify(result),
+    })));
+  }
+
   return {
     caseId: input.caseId,
     action: input.action,
@@ -257,10 +283,15 @@ export function prepareNarrationToolCallCase(input: {
     request: {
       model: input.model ?? 'default',
       messages,
-      tools: PROBE_TOOLS,
+      tools: PROBE_TOOLS.map((tool) => ({ ...tool, function: {
+        ...tool.function,
+        description: tool.function.name === 'request_info'
+          ? input.experiment?.requestInfoDescription ?? tool.function.description
+          : tool.function.description,
+      } })),
       tool_choice: 'auto',
       max_tokens: 1024,
-      reasoning_effort: 'none',
+      ...(input.experiment?.thinking ? {} : { reasoning_effort: 'none' as const }),
       stream: false,
       ...(input.seed === undefined ? {} : { seed: input.seed }),
     },
@@ -359,6 +390,7 @@ export async function runNarrationToolCallTrial(input: {
   model?: string;
   seed?: number;
   promptMode?: 'minimal';
+  experiment?: ProbeExperiment;
   nineCharacterCallIds?: boolean;
 }): Promise<ProbeTrialEvidence> {
   const started = performance.now();
