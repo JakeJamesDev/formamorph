@@ -10,10 +10,11 @@ const [baselinePath, ...flags] = process.argv.slice(2);
 const plain = flags.includes('--plain');
 const preparation = flags.includes('--preparation');
 const prerequisite = flags.includes('--prerequisite');
-const experimentalBaseline = plain || preparation || prerequisite;
+const decisionNotes = flags.includes('--decision-notes');
+const experimentalBaseline = plain || preparation || prerequisite || decisionNotes;
 const live = flags.includes('--run');
-if (!baselinePath || [plain, preparation, prerequisite].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite'].includes(flag)) || new Set(flags).size !== flags.length) {
-  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite] [--run].');
+if (!baselinePath || [plain, preparation, prerequisite, decisionNotes].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes'].includes(flag)) || new Set(flags).size !== flags.length) {
+  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes] [--run].');
 }
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
   model: string; description: string; modelMetadata: unknown;
@@ -31,24 +32,27 @@ const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
   const input = { caseId: `${scenario.id}-${seed}-experimental`, action: scenario.action, world, sourceRevision,
     model: baseline.model, seed, nineCharacterCallIds: true, requestTimeoutMs: 180_000,
     experiment: { thinking: true, knownEntityNames: scenario.known, requestInfoDescription: description,
-      ...(preparation || prerequisite ? { outputMode: 'text' as const } : {}),
-      ...(prerequisite ? { preparationGoal: true } : {}) } };
+      ...(preparation || prerequisite || decisionNotes ? { outputMode: 'text' as const } : {}),
+      ...(prerequisite || decisionNotes ? { preparationGoal: true } : {}),
+      ...(decisionNotes ? { requiredLore: true } : {}) } };
   const original = prepareNarrationToolCallCase({ ...input, ...(experimentalBaseline ? { promptMode: 'experimental' as const } : {}) }).request;
   if (!isDeepStrictEqual(original, cached[0].trial.initialRequest)) throw new Error('Cached baseline request drifted.');
   const trialInput = { ...input, experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
-    ...(preparation ? { preparationGoal: true } : {}), ...(prerequisite ? { requiredLore: true } : {}) } };
+    ...(preparation ? { preparationGoal: true } : {}), ...(prerequisite ? { requiredLore: true } : {}),
+    ...(decisionNotes ? { decisionNotes: true } : {}) } };
   const experimental = prepareNarrationToolCallCase({ ...trialInput, promptMode: 'experimental' }).request;
   const normalized = structuredClone(experimental);
   if (prerequisite) {
     const system = normalized.messages[0].content ?? '';
     if (!system.includes(REQUIRED_LORE_RULE)) throw new Error('Prerequisite rule missing.');
     normalized.messages[0].content = system.replace(REQUIRED_LORE_RULE, 'When a needed entry is missing, request it before composing the scene.');
-  } else if (preparation) {
+  } else if (preparation || decisionNotes) {
     const section = /## Preparation\n[\s\S]*?(?=## Output\n)/;
     const oldSystem = original.messages[0].content ?? '';
     const newSystem = normalized.messages[0].content ?? '';
     if (!section.test(oldSystem) || !section.test(newSystem)
       || oldSystem.replace(section, '') !== newSystem.replace(section, '')) throw new Error('Changes outside preparation.');
+    if (decisionNotes && (!oldSystem.includes(REQUIRED_LORE_RULE) || !newSystem.includes(REQUIRED_LORE_RULE))) throw new Error('Retrieval rule changed.');
     normalized.messages[0] = original.messages[0];
   } else if (plain) normalized.tools = [...normalized.tools, ...original.tools.filter((tool) => tool.function.name === 'write')];
   else {
@@ -58,11 +62,11 @@ const jobs = seeds.flatMap((seed) => baseline.cases.map((scenario) => {
   if (!isDeepStrictEqual(normalized, original)) throw new Error('Non-prompt controls differ.');
   return { input: trialInput, scenario: scenario.id, required: scenario.required, baseline: cached[0].trial, prepared: experimental };
 }));
-const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
 const trials: Array<{ scenario: string; seed: number; trial: ProbeTrialEvidence }> = [];
 const started = performance.now();
 let modelMetadata: unknown = null;
-const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation || prerequisite, requiredLore: prerequisite,
+const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation || prerequisite || decisionNotes, requiredLore: prerequisite || decisionNotes, decisionNotes,
   outputMode: experimentalBaseline ? 'text' : 'write', model: baseline.model,
   seeds, cases: baseline.cases, plannedTrials: jobs.length, modelMetadata, durationMs: performance.now() - started,
   pairs: jobs.map(({ input, ...rest }) => ({ seed: input.seed, ...rest })), trials }, null, 2)}\n`);

@@ -76,6 +76,7 @@ export interface ProbeRequest {
 }
 
 export interface ProbeExperiment {
+  decisionNotes?: boolean;
   requiredLore?: boolean;
   preparationGoal?: boolean;
   outputMode?: 'text';
@@ -191,7 +192,7 @@ function replaceOnce(source: string, from: string, to: string): string {
 
 export const REQUIRED_LORE_RULE = 'Before portraying any listed person or object, call request_info for its full entry unless that full entry is already in context.';
 
-function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false): string {
+function probeSystemTemplate(experimental = false, preparationGoal = false, requiredLore = false, decisionNotes = false): string {
   let template = replaceOnce(experimental ? experimentalSystemPrompt : defaultSystemPrompt, CURRENT_ENTITIES, SUMMARY_ENTITIES);
   template = replaceOnce(template, SUBLOCATION_ENTITIES, SUMMARY_SUBLOCATION_ENTITIES);
   if (experimental) {
@@ -204,6 +205,18 @@ Use preparation to establish what happens next and which authored facts it requi
 
 `);
       if (requiredLore) template = replaceOnce(template, 'When a needed entry is missing, request it before composing the scene.', REQUIRED_LORE_RULE);
+      if (decisionNotes) {
+        const sectionStart = template.indexOf('## Preparation\n');
+        const sectionEnd = template.indexOf('## Output\n', sectionStart);
+        template = replaceOnce(template, template.slice(sectionStart, sectionEnd), `## Preparation
+Use preparation to choose the scene's immediate outcome and identify the authored facts needed to portray it. Keep preparation in brief decision notes: participants, relevant facts, and what changes.
+
+${REQUIRED_LORE_RULE}
+
+Preparation is complete when those entries are available and the immediate outcome is chosen. Move directly to the final narration, composing the scene's wording there.
+
+`);
+      }
     }
     return template;
   }
@@ -254,7 +267,7 @@ export function prepareNarrationToolCallCase(input: {
     '<TIME>': NONE_PLACEHOLDER,
   };
   const system = buildNarrationPrompt({
-    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore),
+    template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore, input.experiment?.decisionNotes),
     ctx,
     action: input.action,
     history: [],
