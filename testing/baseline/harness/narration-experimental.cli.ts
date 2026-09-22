@@ -16,13 +16,14 @@ const summaryLabel = flags.includes('--summary-label');
 const mentionTool = flags.includes('--mention-tool');
 const entityDefinition = flags.includes('--entity-definition');
 const entityDiagnostic = flags.includes('--entity-diagnostic');
-const entityStudy = entityDefinition || entityDiagnostic;
+const noExample = flags.includes('--no-example');
+const entityStudy = entityDefinition || entityDiagnostic || noExample;
 const diagnosticQuestion = 'What does “entity” mean in this request, and which supplied entries does it include?';
 const mentionDescription = 'Retrieve an entity\'s full authored entry before mentioning it in narration, including indirect references such as “the ferryman.” Entity summaries help you select what to include in the scene. For each selected entity, retrieve its entry unless the full entry is already in context. Supply its name from the entity list.';
 const experimentalBaseline = plain || preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy;
 const live = flags.includes('--run');
-if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel, mentionTool, entityDefinition, entityDiagnostic].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label', '--mention-tool', '--entity-definition', '--entity-diagnostic'].includes(flag)) || new Set(flags).size !== flags.length) {
-  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label | --mention-tool | --entity-definition | --entity-diagnostic] [--run].');
+if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel, mentionTool, entityDefinition, entityDiagnostic, noExample].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label', '--mention-tool', '--entity-definition', '--entity-diagnostic', '--no-example'].includes(flag)) || new Set(flags).size !== flags.length) {
+  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label | --mention-tool | --entity-definition | --entity-diagnostic | --no-example] [--run].');
 }
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
   model: string; description: string; modelMetadata: unknown;
@@ -31,6 +32,8 @@ const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
 };
 const description = experimentalBaseline ? baseline.trials[0].trial.initialRequest.tools.find((tool) => tool.function.name === 'request_info')?.function.description : baseline.description;
 if (!description) throw new Error('Baseline has no lookup description.');
+const neutralDescription = description.replace('including indirect references such as “the ferryman.”', 'whether by name or indirect reference.');
+if (noExample && neutralDescription === description) throw new Error('Expected fixture-specific example is missing from baseline.');
 const seeds = [424243, 424244];
 const world = migrateWorld(JSON.parse(readFileSync('testing/baseline/sedge-landing.json', 'utf8')));
 const sourceRevision = execFileSync('git', ['-c', `safe.directory=${process.cwd().replaceAll('\\', '/')}`, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
@@ -43,15 +46,19 @@ const jobs = seeds.flatMap((seed) => baseline.cases.filter((scenario) => !entity
       ...(preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { outputMode: 'text' as const } : {}),
       ...(prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { preparationGoal: true } : {}),
       ...(decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { requiredLore: true } : {}),
-      ...(roleOnly || summaryLabel || mentionTool || entityStudy ? { decisionNotes: true } : {}), ...(summaryLabel || mentionTool || entityStudy ? { roleOnly: true } : {}), ...(mentionTool || entityStudy ? { summaryLabel: true } : {}) } };
+      ...(roleOnly || summaryLabel || mentionTool || entityStudy ? { decisionNotes: true } : {}), ...(summaryLabel || mentionTool || entityStudy ? { roleOnly: true } : {}), ...(mentionTool || entityStudy ? { summaryLabel: true } : {}), ...(noExample ? { entityDefinition: true } : {}) } };
   const original = prepareNarrationToolCallCase({ ...input, ...(experimentalBaseline ? { promptMode: 'experimental' as const } : {}) }).request;
   if (!isDeepStrictEqual(original, cached[0].trial.initialRequest)) throw new Error('Cached baseline request drifted.');
   const trialInput = { ...input, ...(entityDiagnostic ? { action: diagnosticQuestion } : {}), experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
     ...(preparation ? { preparationGoal: true } : {}), ...(prerequisite ? { requiredLore: true } : {}),
-    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}), ...(mentionTool ? { requestInfoDescription: mentionDescription } : {}), ...(entityDefinition ? { entityDefinition: true } : {}) } };
+    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}), ...(mentionTool ? { requestInfoDescription: mentionDescription } : {}), ...(entityDefinition ? { entityDefinition: true } : {}), ...(noExample ? { requestInfoDescription: neutralDescription } : {}) } };
   const experimental = prepareNarrationToolCallCase({ ...trialInput, promptMode: 'experimental' }).request;
   const normalized = structuredClone(experimental);
-  if (entityDefinition) {
+  if (noExample) {
+    const tool = normalized.tools.find((tool) => tool.function.name === 'request_info');
+    if (!tool || tool.function.description !== neutralDescription) throw new Error('Neutral description missing.');
+    tool.function.description = description;
+  } else if (entityDefinition) {
     const system = normalized.messages[0].content ?? '';
     if (!system.includes(ENTITY_DEFINITION)) throw new Error('Entity definition missing.');
     normalized.messages[0].content = system.replace(`${ENTITY_DEFINITION}\n\n`, '');
@@ -92,12 +99,12 @@ const jobs = seeds.flatMap((seed) => baseline.cases.filter((scenario) => !entity
   if (!isDeepStrictEqual(normalized, original)) throw new Error('Non-prompt controls differ.');
   return { input: trialInput, scenario: scenario.id, required: scenario.required, baseline: cached[0].trial, prepared: experimental };
 }));
-const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${entityDefinition ? 'entity-definition-' : entityDiagnostic ? 'entity-diagnostic-' : mentionTool ? 'mention-tool-' : summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${noExample ? 'no-example-' : entityDefinition ? 'entity-definition-' : entityDiagnostic ? 'entity-diagnostic-' : mentionTool ? 'mention-tool-' : summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
 const trials: Array<{ scenario: string; seed: number; trial: ProbeTrialEvidence }> = [];
 const started = performance.now();
 let modelMetadata: unknown = null;
 const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation || prerequisite || decisionNotes, requiredLore: prerequisite || decisionNotes, decisionNotes,
-  roleOnly: roleOnly || summaryLabel || mentionTool || entityStudy, summaryLabel: summaryLabel || mentionTool || entityStudy, mentionTool, entityDefinition, entityDiagnostic,
+  roleOnly: roleOnly || summaryLabel || mentionTool || entityStudy, summaryLabel: summaryLabel || mentionTool || entityStudy, mentionTool, entityDefinition: entityDefinition || noExample, entityDiagnostic, noExample,
   outputMode: experimentalBaseline ? 'text' : 'write', model: baseline.model,
   seeds, cases: baseline.cases, plannedTrials: jobs.length, modelMetadata, durationMs: performance.now() - started,
   pairs: jobs.map(({ input, ...rest }) => ({ seed: input.seed, ...rest })), trials }, null, 2)}\n`);

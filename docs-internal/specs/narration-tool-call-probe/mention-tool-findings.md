@@ -1,5 +1,7 @@
 # Retrieve before mentioning: results
 
+> Interpretation caveat: the tested tool description contains “the ferryman,” a role in this fixture. The [example-removal control](no-example-protocol.md) tests that confound separately. These results do not establish fixture-independent behavior.
+
 **The new tool description improved retrieval for the main participants, but did not reliably cover every mention.** Seven of eight cases needing new lore retrieved all action-required entries, compared with three before. One of those seven then ran out of output tokens, leaving six completed narrations with their action-required new lore.
 
 [Narration comparison](mention-tool-outputs.md) · [Thinking separately](mention-tool-thinking.md) · [Exact request wording](mention-tool-prompt.md) · [Per-case mention audit](mention-tool-review.csv) · [Protocol](mention-tool-protocol.md)
