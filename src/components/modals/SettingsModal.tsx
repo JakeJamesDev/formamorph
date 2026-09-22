@@ -403,7 +403,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <label htmlFor="promptReasoning" className="text-label">{lead.label}</label>
-        <HintInfo>{lead.info}</HintInfo>
+        {'info' in lead && <HintInfo>{lead.info}</HintInfo>}
       </div>
       <span className="text-helper text-muted-foreground">{lead.description}</span>
       <ReasoningSwitch
@@ -419,7 +419,6 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
-            <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
           </div>
           <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
           {/* Same switch as above: the row only carries the slider, flush with every other track. */}

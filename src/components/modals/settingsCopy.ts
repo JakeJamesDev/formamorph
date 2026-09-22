@@ -519,7 +519,6 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   reasoningBudget: {
     label: 'Reasoning Budget',
     description: 'Sets the share of output tokens this prompt spends on reasoning',
-    info: 'Uncheck and this prompt does no reasoning. Your share is kept while it\'s off.',
   },
   promptNativeReasoning: {
     label: 'Native Reasoning',
