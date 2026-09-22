@@ -66,7 +66,10 @@ export interface ProbeRequest {
   messages: ProbeMessage[];
   tools: ReadonlyArray<{
     type: 'function';
-    function: { name: string; description: string; parameters: typeof PROBE_TOOLS[number]['function']['parameters'] };
+    function: { name: string; description: string; parameters: {
+      type: 'object'; properties: Readonly<Record<string, { readonly type: 'string' }>>;
+      required: readonly string[]; additionalProperties: false;
+    } };
   }>;
   tool_choice: 'auto';
   max_tokens: 1024;
@@ -80,6 +83,9 @@ export interface ProbeExperiment {
   summaryLabel?: boolean;
   entityDefinition?: boolean;
   sectionDefinitions?: boolean;
+  entityHeader?: boolean;
+  requestInfoName?: 'get_entity';
+  requestInfoParameter?: 'name';
   decisionNotes?: boolean;
   requiredLore?: boolean;
   preparationGoal?: boolean;
@@ -322,6 +328,9 @@ export function prepareNarrationToolCallCase(input: {
       SECTION_DEFINITIONS[name] ? `${header}${SECTION_DEFINITIONS[name]}\n\n` : header);
     system = replaceOnce(system, `${ENTITY_DEFINITION}\n`, `${ENTITY_DEFINITION}\n${ENTITY_SECTION_SCOPE}\n`);
   }
+  if (input.experiment?.entityHeader) {
+    system = replaceOnce(system, '## Characters and Things That May Appear in This Location\n', '## Entities in the Current Location\n');
+  }
   const user = renderPromptTemplate(input.promptMode === 'experimental' ? experimentalNarrationUserPrompt : defaultNarrationUserPrompt, { '<PLAYER ACTION>': input.action });
   const messages: ProbeMessage[] = input.promptMode === 'minimal' ? [
     { role: 'system', content: MINIMAL_TOOL_SYSTEM },
@@ -341,7 +350,8 @@ export function prepareNarrationToolCallCase(input: {
   });
   if (known.length) {
     messages.push({ role: 'assistant', content: null, tool_calls: known.map(({ term, id }) => ({
-      id, type: 'function', function: { name: 'request_info', arguments: JSON.stringify({ term }) },
+      id, type: 'function', function: { name: input.experiment?.requestInfoName ?? 'request_info',
+        arguments: JSON.stringify({ [input.experiment?.requestInfoParameter ?? 'term']: term }) },
     })) });
     messages.push(...known.map(({ id, result }): ProbeMessage => ({
       role: 'tool', tool_call_id: id, content: JSON.stringify(result),
@@ -357,6 +367,10 @@ export function prepareNarrationToolCallCase(input: {
       messages,
       tools: PROBE_TOOLS.filter((tool) => input.experiment?.outputMode !== 'text' || tool.function.name !== 'write').map((tool) => ({ ...tool, function: {
         ...tool.function,
+        name: tool.function.name === 'request_info' ? input.experiment?.requestInfoName ?? tool.function.name : tool.function.name,
+        parameters: tool.function.name === 'request_info' && input.experiment?.requestInfoParameter === 'name'
+          ? { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false }
+          : tool.function.parameters,
         description: tool.function.name === 'request_info'
           ? input.experiment?.requestInfoDescription ?? tool.function.description
           : tool.function.description,
@@ -589,7 +603,7 @@ export async function runNarrationToolCallTrial(input: {
       seenCallIds.add(call.id);
     }
     const writes = calls.filter((call) => call.function.name === 'write');
-    const lookups = calls.filter((call) => call.function.name === 'request_info');
+    const lookups = calls.filter((call) => call.function.name === (input.experiment?.requestInfoName ?? 'request_info'));
     if (writes.length > 1) {
       return finish('failed', null, { kind: 'multiple_writes', message: 'Response contained multiple write calls.' });
     }
@@ -613,7 +627,7 @@ export async function runNarrationToolCallTrial(input: {
       }
       let term: string;
       try {
-        term = exactStringArgument(call.function.arguments, 'term');
+        term = exactStringArgument(call.function.arguments, input.experiment?.requestInfoParameter ?? 'term');
       } catch (error) {
         return finish('failed', null, {
           kind: 'invalid_arguments',

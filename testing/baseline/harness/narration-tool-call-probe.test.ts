@@ -20,6 +20,42 @@ import {
 const world = () => migrateWorld(structuredClone(rawWorld));
 
 describe('description experiment controls', () => {
+  it('changes only the entity header', () => {
+    const input = { caseId: 'header', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental' as const, experiment: { roleOnly: true, summaryLabel: true, entityDefinition: true, sectionDefinitions: true } };
+    const before = prepareNarrationToolCallCase(input).request;
+    const after = prepareNarrationToolCallCase({ ...input, experiment: { ...input.experiment, entityHeader: true } }).request;
+    expect(after.messages[0].content).toContain('## Entities in the Current Location\n');
+    after.messages[0].content = after.messages[0].content!.replace('## Entities in the Current Location\n', '## Characters and Things That May Appear in This Location\n');
+    expect(after).toEqual(before);
+  });
+
+  it.each(['term', 'name'] as const)('executes get_entity with the %s argument and consistent cached calls', async (key) => {
+    const transport = scriptedTransport([
+      { choices: [{ message: { content: null, tool_calls: [toolCall('lookup', 'get_entity', { [key]: 'Odette' })] } }] },
+      { choices: [{ finish_reason: 'stop', message: { content: 'You notice her green glass bead.' } }] },
+    ]);
+    const trial = await runNarrationToolCallTrial({ caseId: 'rename', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental', experiment: { roleOnly: true, outputMode: 'text', requestInfoName: 'get_entity',
+        ...(key === 'name' ? { requestInfoParameter: 'name' } : {}), knownEntityNames: ['Bram'] }, transport });
+    expect(trial.status).toBe('succeeded');
+    expect(trial.lookupCount).toBe(1);
+    expect(trial.toolResults[0].term).toBe('Odette');
+    expect(transport.requests[1].messages.at(-1)?.content).toContain('burn scar across her right cheek');
+    const initial = transport.requests[0];
+    expect(initial.tools[0].function.name).toBe('get_entity');
+    expect(initial.tools[0].function.parameters).toEqual({ type: 'object', properties: { [key]: { type: 'string' } }, required: [key], additionalProperties: false });
+    expect(initial.messages.flatMap((m) => m.tool_calls ?? [])[0].function).toEqual({ name: 'get_entity', arguments: JSON.stringify({ [key]: 'Bram' }) });
+  });
+
+  it('rejects the old argument key when the schema requires name', async () => {
+    const transport = scriptedTransport([{ choices: [{ message: { content: null, tool_calls: [toolCall('lookup', 'get_entity', { term: 'Odette' })] } }] }]);
+    const trial = await runNarrationToolCallTrial({ caseId: 'wrong-key', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental', experiment: { roleOnly: true, outputMode: 'text', requestInfoName: 'get_entity', requestInfoParameter: 'name' }, transport });
+    expect(trial.failure?.kind).toBe('invalid_arguments');
+    expect(trial.lookupCount).toBe(0);
+  });
+
   it('defines populated sections while preserving data and omitting empty sections', () => {
     const input = { caseId: 'section-definitions', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
       promptMode: 'experimental' as const, experiment: { roleOnly: true, summaryLabel: true, entityDefinition: true, thinking: true, outputMode: 'text' as const, knownEntityNames: ['Bram'] } };

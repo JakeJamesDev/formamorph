@@ -18,20 +18,29 @@ const entityDefinition = flags.includes('--entity-definition');
 const entityDiagnostic = flags.includes('--entity-diagnostic');
 const noExample = flags.includes('--no-example');
 const sectionDefinitions = flags.includes('--section-definitions');
-const entityStudy = entityDefinition || entityDiagnostic || noExample || sectionDefinitions;
+const entityHeader = flags.includes('--entity-header');
+const entityTool = flags.includes('--entity-tool');
+const entityParameter = flags.includes('--entity-parameter');
+const entityFull = flags.includes('--entity-full');
+const namingStudy = entityHeader || entityTool || entityParameter || entityFull;
+const fullDescription = `Purpose: Retrieve an entity's full authored entry. Entity summaries help you select what to include in the scene.
+Use when: Before mentioning a selected entity in narration, whether by name or indirect reference, unless its full entry is already in context.
+Input: name — the entity's name from the entity list.
+Output: JSON with a matches array. Each match contains id, name, and the full authored description when provided by the author. An empty matches array means no matching entity was found.`;
+const entityStudy = entityDefinition || entityDiagnostic || noExample || sectionDefinitions || namingStudy;
 const diagnosticQuestion = 'What does “entity” mean in this request, and which supplied entries does it include?';
 const mentionDescription = 'Retrieve an entity\'s full authored entry before mentioning it in narration, including indirect references such as “the ferryman.” Entity summaries help you select what to include in the scene. For each selected entity, retrieve its entry unless the full entry is already in context. Supply its name from the entity list.';
 const experimentalBaseline = plain || preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy;
 const live = flags.includes('--run');
-if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel, mentionTool, entityDefinition, entityDiagnostic, noExample, sectionDefinitions].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label', '--mention-tool', '--entity-definition', '--entity-diagnostic', '--no-example', '--section-definitions'].includes(flag)) || new Set(flags).size !== flags.length) {
-  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label | --mention-tool | --entity-definition | --entity-diagnostic | --no-example | --section-definitions] [--run].');
+if (!baselinePath || [plain, preparation, prerequisite, decisionNotes, roleOnly, summaryLabel, mentionTool, entityDefinition, entityDiagnostic, noExample, sectionDefinitions, entityHeader, entityTool, entityParameter, entityFull].filter(Boolean).length > 1 || flags.some((flag) => !['--run', '--plain', '--preparation', '--prerequisite', '--decision-notes', '--role-only', '--summary-label', '--mention-tool', '--entity-definition', '--entity-diagnostic', '--no-example', '--section-definitions', '--entity-header', '--entity-tool', '--entity-parameter', '--entity-full'].includes(flag)) || new Set(flags).size !== flags.length) {
+  throw new Error('Use <baseline.json> [--plain | --preparation | --prerequisite | --decision-notes | --role-only | --summary-label | --mention-tool | --entity-definition | --entity-diagnostic | --no-example | --section-definitions | --entity-header | --entity-tool | --entity-parameter | --entity-full] [--run].');
 }
 const baseline = JSON.parse(readFileSync(baselinePath, 'utf8')) as {
   model: string; description: string; modelMetadata: unknown;
   cases: Array<{ id: string; action: string; known: string[]; required: string[] }>;
   trials: Array<{ arm: string; scenario: string; seed: number; trial: ProbeTrialEvidence }>;
 };
-const description = experimentalBaseline ? baseline.trials[0].trial.initialRequest.tools.find((tool) => tool.function.name === 'request_info')?.function.description : baseline.description;
+const description = experimentalBaseline ? baseline.trials[0].trial.initialRequest.tools.find((tool) => ['request_info', 'get_entity'].includes(tool.function.name))?.function.description : baseline.description;
 if (!description) throw new Error('Baseline has no lookup description.');
 const neutralDescription = description.replace('including indirect references such as “the ferryman.”', 'whether by name or indirect reference.');
 if (noExample && neutralDescription === description) throw new Error('Expected fixture-specific example is missing from baseline.');
@@ -47,15 +56,44 @@ const jobs = seeds.flatMap((seed) => baseline.cases.filter((scenario) => !entity
       ...(preparation || prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { outputMode: 'text' as const } : {}),
       ...(prerequisite || decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { preparationGoal: true } : {}),
       ...(decisionNotes || roleOnly || summaryLabel || mentionTool || entityStudy ? { requiredLore: true } : {}),
-      ...(roleOnly || summaryLabel || mentionTool || entityStudy ? { decisionNotes: true } : {}), ...(summaryLabel || mentionTool || entityStudy ? { roleOnly: true } : {}), ...(mentionTool || entityStudy ? { summaryLabel: true } : {}), ...(noExample || sectionDefinitions ? { entityDefinition: true } : {}) } };
+      ...(roleOnly || summaryLabel || mentionTool || entityStudy ? { decisionNotes: true } : {}), ...(summaryLabel || mentionTool || entityStudy ? { roleOnly: true } : {}), ...(mentionTool || entityStudy ? { summaryLabel: true } : {}), ...(noExample || sectionDefinitions || namingStudy ? { entityDefinition: true } : {}), ...(namingStudy ? { sectionDefinitions: true } : {}), ...(entityParameter ? { requestInfoName: 'get_entity' as const } : {}) } };
   const original = prepareNarrationToolCallCase({ ...input, ...(experimentalBaseline ? { promptMode: 'experimental' as const } : {}) }).request;
   if (!isDeepStrictEqual(original, cached[0].trial.initialRequest)) throw new Error('Cached baseline request drifted.');
   const trialInput = { ...input, ...(entityDiagnostic ? { action: diagnosticQuestion } : {}), experiment: { ...input.experiment, ...(plain ? { outputMode: 'text' as const } : {}),
     ...(preparation ? { preparationGoal: true } : {}), ...(prerequisite ? { requiredLore: true } : {}),
-    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}), ...(mentionTool ? { requestInfoDescription: mentionDescription } : {}), ...(entityDefinition ? { entityDefinition: true } : {}), ...(noExample ? { requestInfoDescription: neutralDescription } : {}), ...(sectionDefinitions ? { sectionDefinitions: true } : {}) } };
+    ...(decisionNotes ? { decisionNotes: true } : {}), ...(roleOnly ? { roleOnly: true } : {}), ...(summaryLabel ? { summaryLabel: true } : {}), ...(mentionTool ? { requestInfoDescription: mentionDescription } : {}), ...(entityDefinition ? { entityDefinition: true } : {}), ...(noExample ? { requestInfoDescription: neutralDescription } : {}), ...(sectionDefinitions ? { sectionDefinitions: true } : {}), ...(entityHeader ? { entityHeader: true } : {}), ...(entityTool ? { requestInfoName: 'get_entity' as const } : {}), ...(entityParameter ? { requestInfoParameter: 'name' as const } : {}), ...(entityFull ? { entityHeader: true, requestInfoName: 'get_entity' as const, requestInfoParameter: 'name' as const, requestInfoDescription: fullDescription } : {}) } };
   const experimental = prepareNarrationToolCallCase({ ...trialInput, promptMode: 'experimental' }).request;
   const normalized = structuredClone(experimental);
-  if (sectionDefinitions) {
+  if (entityFull) {
+    const tool = normalized.tools.find((tool) => tool.function.name === 'get_entity');
+    if (!tool || tool.function.description !== fullDescription || !('name' in tool.function.parameters.properties)) throw new Error('Combined tool changes missing.');
+    tool.function = structuredClone(original.tools[0].function);
+    const system = normalized.messages[0].content ?? '';
+    if (!system.includes('## Entities in the Current Location\n')) throw new Error('Combined header missing.');
+    normalized.messages[0].content = system.replace('## Entities in the Current Location\n', '## Characters and Things That May Appear in This Location\n');
+    for (const message of normalized.messages) for (const call of message.tool_calls ?? []) {
+      if (call.function.name !== 'get_entity') throw new Error('Combined cached call name drifted.');
+      call.function.name = 'request_info';
+      call.function.arguments = JSON.stringify({ term: (JSON.parse(call.function.arguments) as { name: string }).name });
+    }
+  } else if (entityHeader) {
+    const system = normalized.messages[0].content ?? '';
+    if (!system.includes('## Entities in the Current Location\n')) throw new Error('Entity header missing.');
+    normalized.messages[0].content = system.replace('## Entities in the Current Location\n', '## Characters and Things That May Appear in This Location\n');
+  } else if (entityTool || entityParameter) {
+    const tool = normalized.tools.find((tool) => tool.function.name === 'get_entity');
+    if (!tool) throw new Error('Renamed tool missing.');
+    if (entityTool) tool.function.name = 'request_info';
+    else {
+      if (!('name' in tool.function.parameters.properties)) throw new Error('Name parameter missing.');
+      tool.function.parameters = original.tools[0].function.parameters;
+    }
+    for (const message of normalized.messages) for (const call of message.tool_calls ?? []) {
+      if (call.function.name !== 'get_entity') throw new Error('Cached call name drifted.');
+      if (entityTool) call.function.name = 'request_info';
+      else call.function.arguments = JSON.stringify({ term: (JSON.parse(call.function.arguments) as { name: string }).name });
+    }
+  } else if (sectionDefinitions) {
     let system = normalized.messages[0].content ?? '';
     for (const [header, definition] of Object.entries(SECTION_DEFINITIONS)) {
       if ((original.messages[0].content ?? '').includes(`## ${header}\n`)) {
@@ -111,12 +149,12 @@ const jobs = seeds.flatMap((seed) => baseline.cases.filter((scenario) => !entity
   if (!isDeepStrictEqual(normalized, original)) throw new Error('Non-prompt controls differ.');
   return { input: trialInput, scenario: scenario.id, required: scenario.required, baseline: cached[0].trial, prepared: experimental };
 }));
-const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${sectionDefinitions ? 'section-definitions-' : noExample ? 'no-example-' : entityDefinition ? 'entity-definition-' : entityDiagnostic ? 'entity-diagnostic-' : mentionTool ? 'mention-tool-' : summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
+const path = `testing/baseline/runs/narration-tool-call-probe/experimental-${entityFull ? 'entity-full-' : entityHeader ? 'entity-header-' : entityTool ? 'entity-tool-' : entityParameter ? 'entity-parameter-' : sectionDefinitions ? 'section-definitions-' : noExample ? 'no-example-' : entityDefinition ? 'entity-definition-' : entityDiagnostic ? 'entity-diagnostic-' : mentionTool ? 'mention-tool-' : summaryLabel ? 'summary-label-' : roleOnly ? 'role-only-' : decisionNotes ? 'decision-notes-' : prerequisite ? 'prerequisite-' : preparation ? 'preparation-goal-' : plain ? 'plain-' : ''}${live ? 'batch' : 'preparation'}-${new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')}.json`;
 const trials: Array<{ scenario: string; seed: number; trial: ProbeTrialEvidence }> = [];
 const started = performance.now();
 let modelMetadata: unknown = null;
 const save = () => writeFileSync(path, `${JSON.stringify({ baselinePath, sourceRevision, preparationGoal: preparation || prerequisite || decisionNotes, requiredLore: prerequisite || decisionNotes, decisionNotes,
-  roleOnly: roleOnly || summaryLabel || mentionTool || entityStudy, summaryLabel: summaryLabel || mentionTool || entityStudy, mentionTool, entityDefinition: entityDefinition || noExample || sectionDefinitions, entityDiagnostic, noExample, sectionDefinitions,
+  roleOnly: roleOnly || summaryLabel || mentionTool || entityStudy, summaryLabel: summaryLabel || mentionTool || entityStudy, mentionTool, entityDefinition: entityDefinition || noExample || sectionDefinitions || namingStudy, entityDiagnostic, noExample, sectionDefinitions: sectionDefinitions || namingStudy, entityHeader, entityTool, entityParameter, entityFull,
   outputMode: experimentalBaseline ? 'text' : 'write', model: baseline.model,
   seeds, cases: baseline.cases, plannedTrials: jobs.length, modelMetadata, durationMs: performance.now() - started,
   pairs: jobs.map(({ input, ...rest }) => ({ seed: input.seed, ...rest })), trials }, null, 2)}\n`);
