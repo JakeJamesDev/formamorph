@@ -4,8 +4,8 @@ import { useTutorialScreenOnTop } from '@/lib/tutorials';
 import { useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import type { AuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
 
-/** The current tour step's note, beside the field it points at. Hidden while its field is off screen or
- *  covered. `onShowEffect` is mobile's way to In Play. */
+/** The current tour step's note, beside its field. Hidden while the field is off screen or covered.
+ *  `onShowEffect` adds Show Effect, which opens In Play on mobile. */
 export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onShowEffect?: () => void }) {
   const onTop = useTutorialScreenOnTop('worldEditor');
   const anchor = useTourAnchor(tour.step?.anchor ?? null);
@@ -28,7 +28,7 @@ export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onSh
             {tour.stepNumber} / {tour.total}
           </span>
           <Button size="xs" variant="ghost" onClick={tour.prev} disabled={tour.stepNumber === 1}>Previous</Button>
-          {step?.example !== undefined && (
+          {tour.canUseExample && (
             <Button size="xs" variant="outline" onClick={tour.applyExample}>Use Example</Button>
           )}
           <Button

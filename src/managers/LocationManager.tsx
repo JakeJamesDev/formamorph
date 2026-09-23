@@ -81,7 +81,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
 
       <TabsContent value="details" className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1 space-y-2">
+          <div data-tour-anchor="location-name" className="min-w-0 flex-1 space-y-2">
             <Label>Name</Label>
             <PlaceholderNameField
               value={editingLocation.name || ''}
@@ -92,7 +92,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           </div>
           {/* Bottom-aligned and as tall as the field, so the checkbox sits on the name's last line when a
               long name wraps. */}
-          <div className="flex min-h-10 shrink-0 items-center gap-2">
+          <div data-tour-anchor="location-starting" className="flex min-h-10 shrink-0 items-center gap-2">
             <Checkbox
               id={`location-starting-${editingLocation.id}`}
               checked={!!editingLocation.isStarting}
@@ -116,6 +116,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           onChange={(v) => handleChange('playerDescription', v)}
           placeholders={placeholders}
           resizable
+          tourAnchor="location-player-description"
         />
         <PlaceholderField
           label="AI-Facing Description"
@@ -131,6 +132,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           onChange={(v) => handleChange('aiDescription', v)}
           placeholders={placeholders}
           resizable
+          tourAnchor="location-ai-description"
         />
         {advanced && (
           <PlaceholderField

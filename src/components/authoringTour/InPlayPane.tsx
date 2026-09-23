@@ -2,11 +2,19 @@ import { useMemo, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WorldCardFace } from '@/components/WorldCardFace';
+import { LocationTabBody } from '@/components/game/LocationTabBody';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
+  type StartsAt,
 } from '@/lib/authoringTour/inPlay';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
+
+const STARTS_LINES: Record<StartsAt, string> = {
+  here: 'A new game starts here',
+  elsewhere: 'A new game starts at another location',
+  anywhere: 'A new game starts at a random location',
+};
 
 const STATE_LINES: Record<Exclude<ReaderState, 'reads'>, string> = {
   neverReads: 'The AI never reads this field',
@@ -38,13 +46,28 @@ const Muted = ({ children }: { children: ReactNode }) => (
   <p className="text-helper text-muted-foreground">{children}</p>
 );
 
+function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }> }) {
+  switch (surface.kind) {
+    case 'libraryCard':
+      return <div className="w-56 max-w-full"><WorldCardFace world={surface.world} layout="grid" /></div>;
+    case 'locationTab':
+      return (
+        <div className="rounded-md border">
+          <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
+        </div>
+      );
+    case 'startsHere':
+      return <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>;
+    case 'never':
+      return <Muted>Players never see this field</Muted>;
+  }
+}
+
 function PlayerSees({ surface }: { surface: PlayerSurface }) {
   if (surface.kind === 'none') return null;
   return (
     <Section title="Player Sees">
-      {surface.kind === 'libraryCard'
-        ? <div className="w-56 max-w-full"><WorldCardFace world={surface.world} layout="grid" /></div>
-        : <Muted>Players never see this field</Muted>}
+      <Surface surface={surface} />
     </Section>
   );
 }
