@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { SetupTraitList } from '@/components/game/SetupTraitList';
+import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -82,14 +82,6 @@ const REMEMBERED_MS = 3000;
 const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
   [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-const choiceRowClass = (selected: boolean) => cn(
-  'flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border bg-card p-3 transition-colors',
-  'focus-within:ring-2 focus-within:ring-ring focus-within:ring-inset',
-  selected
-    ? 'border-primary bg-primary/10'
-    : 'border-border hover:border-muted-foreground/60 hover:bg-muted/40',
-);
-
 const buildTraitWorkspace = (traits: Trait[], groups: TraitGroup[]): TraitWorkspace => {
   const directTraits = (groupId: string | null) => authoredOrder(
     traits.filter((trait) => (trait.groupId ?? null) === groupId),
@@ -167,7 +159,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
   const visibleGroups = traitWorkspace.navigationGroups;
-  const statById = useMemo(() => new Map(props.stats.map((stat) => [stat.id, stat])), [props.stats]);
   const dialogDescription = 'Configure this playthrough before entering the world.';
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
@@ -348,83 +339,17 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-4 md:px-6 md:py-4">
           {current?.kind === 'traits' && (
-            <>
-              <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
-              <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
-              {current.path.map((group) => group.playerDescription?.trim() && (
-                <div key={group.id} className="mb-2 max-w-3xl text-helper text-muted-foreground">
-                  <MarkdownRenderer text={props.resolveText(group.playerDescription)} />
-                </div>
-              ))}
-              <fieldset className="mt-4 min-w-0">
-                <legend className="sr-only">{current.name} choices</legend>
-                {(() => {
-                  const exclusive = current.group?.exclusive === true;
-                  const selectedExclusive = current.traits.find((trait) => props.selectedTraits.includes(trait.id))?.id;
-                  const rows = current.traits.map((trait) => {
-                    const selected = props.selectedTraits.includes(trait.id);
-                    const description = props.resolveTraitText(trait, trait.playerDescription ?? '').trim();
-                    const changes = trait.statChanges
-                      .map((change) => ({ change, stat: statById.get(change.statId) }))
-                      .filter(({ stat }) => stat !== undefined && stat.hidden !== true);
-                    return (
-                      <div key={trait.id} className={choiceRowClass(selected)}>
-                        {exclusive ? (
-                          <RadioGroupItem
-                            id={`setup-trait-${trait.id}`}
-                            value={trait.id}
-                            aria-label={trait.name}
-                            className="mt-0.5 shrink-0"
-                            onClick={(event) => {
-                              if (selected) {
-                                event.preventDefault();
-                                props.onTraitSelect(trait.id);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <Checkbox
-                            id={`setup-trait-${trait.id}`}
-                            checked={selected}
-                            aria-label={trait.name}
-                            className="mt-0.5 shrink-0"
-                            onCheckedChange={() => props.onTraitSelect(trait.id)}
-                          />
-                        )}
-                        <label htmlFor={`setup-trait-${trait.id}`} className="min-w-0 flex-1 cursor-pointer">
-                          <strong className="block text-label font-semibold">{trait.name}</strong>
-                          {description && <span className="mt-1 block text-helper text-muted-foreground">{description}</span>}
-                          {changes.length > 0 && (
-                            <ul className="mt-2 list-inside list-disc text-helper text-muted-foreground">
-                              {changes.map(({ change, stat }, index) => (
-                                <li key={index}>
-                                  {props.resolveTraitText(trait, stat!.name)}:{' '}
-                                  <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
-                                    {change.value > 0 ? '+' : ''}{change.value}
-                                  </span>
-                                  {change.type && change.type !== 'starting' ? ` (${change.type})` : ''}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </label>
-                      </div>
-                    );
-                  });
-                  return exclusive ? (
-                    <RadioGroup
-                      value={selectedExclusive ?? ''}
-                      onValueChange={props.onTraitSelect}
-                      className="grid min-w-0 gap-3 xl:grid-cols-2"
-                    >
-                      {rows}
-                    </RadioGroup>
-                  ) : (
-                    <div className="grid min-w-0 gap-3 xl:grid-cols-2">{rows}</div>
-                  );
-                })()}
-              </fieldset>
-            </>
+            <SetupTraitList
+              name={current.name}
+              groups={current.path}
+              traits={current.traits}
+              exclusive={current.group?.exclusive === true}
+              stats={props.stats}
+              selectedTraits={props.selectedTraits}
+              resolveText={props.resolveText}
+              resolveTraitText={props.resolveTraitText}
+              onTraitSelect={props.onTraitSelect}
+            />
           )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (
             <>

@@ -28,7 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, Trash2, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
@@ -58,7 +58,8 @@ import { formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
-import { effectiveDestinations } from '@/lib/locationGraph';
+import { LocationTabBody } from './LocationTabBody';
+import { EntityListRow } from './EntityListRow';
 import { TraitsTab } from './TraitsTab';
 import { StatRow } from './StatRow';
 import { PersonaRow } from './PersonaRow';
@@ -305,29 +306,13 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                   // Authored characters belong to the world and are never deletable from play.
                   const isRemovable = !isAuthored;
                   return (
-                    <div
+                    <EntityListRow
                       key={index}
-                      className={`mb-1 flex justify-between items-center gap-2 p-2 ${
-                        isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted cursor-pointer'
-                      }`}
+                      label={label}
+                      disabled={isDisabled}
                       onClick={() => handleEntityListClick(se)}
-                    >
-                      <span className="min-w-0 truncate">{label}</span>
-                      {isRemovable && (
-                        <span className="flex items-center gap-1 shrink-0">
-                          <Tip tip={`Remove ${label}`}>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => { e.stopPropagation(); setPendingRemoval(label); }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </Tip>
-                        </span>
-                      )}
-                    </div>
+                      onRemove={isRemovable ? () => setPendingRemoval(label) : undefined}
+                    />
                   );
                 })
               ) : (
@@ -1157,18 +1142,6 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
-  // The authored links leading out of here, named. Implicit travel is deliberately absent: this panel has
-  // always listed what the author drew, so a world with no Connections shows no section at all.
-  const connectedNames = React.useMemo(() => {
-    if (!displayLocation) return [];
-    const names: string[] = [];
-    for (const [id, via] of effectiveDestinations(displayLocation.id, locations, connections)) {
-      if (via.via !== 'connection') continue;
-      const name = locations.find((l) => l.id === id)?.name;
-      if (name) names.push(name);
-    }
-    return names;
-  }, [connections, locations, displayLocation]);
 
   return (
     <Card className="w-full md:w-1/4 md:shrink-0 md:ml-1 grow md:grow-0 min-h-0 flex flex-col md:h-full bg-background/60 border-border overflow-hidden">
@@ -1276,27 +1249,14 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
         </TabsContent>
         <TabsContent value="location" className="flex-grow overflow-hidden">
           <ScrollArea className="h-[calc(100%-1rem)]">
-            <div className="p-2 flex flex-col gap-4">
-              <Button onClick={onLocationClick} disabled={isViewingPast} className="w-full">
-                {isViewingPast ? 'Location' : 'Current Location'}: {displayLocation?.name || 'Unknown'}
-              </Button>
-              {displayLocation && (
-                <div className="space-y-2">
-                  <p className="font-semibold">Description:</p>
-                  <p className="text-label">{resolvePH(displayLocation.playerDescription || displayLocation.description || '')}</p>
-                  {connectedNames.length > 0 && (
-                    <>
-                      <p className="font-semibold mt-4">Connected Locations:</p>
-                      <ul className="list-disc list-inside text-label">
-                        {connectedNames.map((name, index) => (
-                          <li key={index}>{name}</li>
-                        ))}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <LocationTabBody
+              location={displayLocation}
+              locations={locations}
+              connections={connections}
+              resolveText={resolvePH}
+              past={isViewingPast}
+              onLocationClick={onLocationClick}
+            />
           </ScrollArea>
         </TabsContent>
       </Tabs>
