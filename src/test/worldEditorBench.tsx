@@ -40,8 +40,7 @@ export const asMobile = () => {
   };
 };
 
-/** End a closed sheet's exit animation, which jsdom never runs: vaul unmounts the sheet, and the editor it
- *  hid from assistive tech comes back. */
+/** Ends a closed sheet's exit animation, which jsdom never runs, so vaul unmounts the sheet. */
 export const finishSheetExit = (sheet: HTMLElement) => {
   const end = new Event('animationend', { bubbles: true });
   Object.defineProperty(end, 'animationName', { value: getComputedStyle(sheet).animationName });

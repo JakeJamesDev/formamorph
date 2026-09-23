@@ -8,9 +8,8 @@ import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import type { World } from '@/types';
 
 /**
- * In Play on mobile, driven through the real editor: Show Effect on the step note opens the same slice as the
- * desktop pane in a bottom sheet, the note stands down under it, and it never shares the screen with the
- * Bench's sheet.
+ * In Play on mobile, driven through the real editor: Show Effect on the step note opens the desktop pane's slice
+ * in a bottom sheet. The note hides while the sheet is open, and the sheet is never open with the Bench's sheet.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -39,6 +38,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
+// Cast: the overview type requires fields that a New World overview does not have.
 const NEW_WORLD = benchEditorWorld({
   worldOverview: {
     name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
@@ -65,9 +65,7 @@ const toAiDescription = async () => {
 };
 
 const showEffect = (note: HTMLElement) => within(note).queryByRole('button', { name: 'Show Effect' });
-/** The sheet's open/closed is read off it: vaul keeps its content mounted for the exit animation, and jsdom
- *  runs no animations to finish. Found by its title element, since a name read under another sheet's
- *  `aria-hidden` comes out empty. */
+/** Matched by its title element: its accessible name is empty under another sheet's `aria-hidden`. */
 const effectSheet = () => screen.queryAllByRole('dialog', { hidden: true }).find(
   (d) => document.getElementById(d.getAttribute('aria-labelledby') ?? '')?.textContent === 'In Play',
 ) ?? null;
@@ -114,9 +112,9 @@ describe('In Play on mobile', () => {
     expect(marked).toMatch(/^Brinewell is a quiet fishing village/);
   });
 
-  it('stands the note down while the sheet is open, and brings it and the field back when it closes', async () => {
+  it('hides the note while the sheet is open, and shows it and focuses the field after it closes', async () => {
     restoreViewport = asMobile();
-    // A tap focuses the button, which leaves with the note; fireEvent alone would leave focus in the field.
+    // A tap focuses the button, and the button unmounts with the note. fireEvent alone does not move focus.
     const button = showEffect(await startTour())!;
     button.focus();
     fireEvent.click(button);
@@ -142,7 +140,7 @@ describe('In Play on mobile', () => {
     expect(within(playerSees()).getByRole('heading', { name: 'Brinewell' })).toBeInTheDocument();
   });
 
-  it('holds Show Effect back while the Bench sheet covers the note', async () => {
+  it('hides Show Effect while the Bench sheet is open', async () => {
     restoreViewport = asMobile();
     await startTour();
     await clickOpenBench();
@@ -151,13 +149,13 @@ describe('In Play on mobile', () => {
     expect(effectSheet()).toBeNull();
   });
 
-  it('covers the flask, and closes if the Bench sheet opens anyway', async () => {
+  it('hides the flask, and closes when the Bench sheet opens', async () => {
     restoreViewport = asMobile();
     fireEvent.click(showEffect(await startTour())!);
     await waitFor(() => expect(effectSheet()).toHaveAttribute('data-state', 'open'));
     expect(screen.queryByRole('button', { name: /^Test Bench/ })).toBeNull();
 
-    // Reached past the cover, the way the dev router's `bench=` opens the Bench with no click at all.
+    // Clicks through `aria-hidden`, as the dev router's `bench=` opens the Bench without a click.
     fireEvent.click(screen.getByRole('button', { name: /^Test Bench/, hidden: true }));
     fireEvent.click(await screen.findByRole('button', { name: 'Open Test Bench', hidden: true }));
     await waitFor(() => expect(benchSheet()).toHaveAttribute('data-state', 'open'));

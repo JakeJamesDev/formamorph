@@ -7,6 +7,11 @@ export function findTourAnchor(anchor: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`[${TOUR_ANCHOR_ATTR}="${anchor}"]`);
 }
 
+/** Focuses the text field inside this tour anchor, if it is on screen. */
+export function focusTourField(anchor: string): void {
+  findTourAnchor(anchor)?.querySelector<HTMLElement>('input, textarea, [contenteditable="true"]')?.focus();
+}
+
 /**
  * The element carrying this tour anchor, followed as it mounts and unmounts. The whole document is watched,
  * because a field can move into a portaled full-screen shell.

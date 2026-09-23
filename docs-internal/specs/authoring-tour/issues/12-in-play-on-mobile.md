@@ -1,6 +1,6 @@
 # 12: In Play on Mobile
 
-Status: in-progress
+Status: ready-for-human
 Base: e56bc579
 Blocked by: 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
