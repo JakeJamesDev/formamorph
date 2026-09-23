@@ -91,7 +91,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 40. As a tour user writing a Player-Facing Description, I want to see it in the Location tab and see that the AI never reads it, so that I put scene details for the AI in the other field.
 41. As a tour user writing an AI-Facing Description, I want to see it in the narration prompt's location block, so that I know what the AI builds the scene from.
 42. As a tour user ticking Starting Location, I want In Play to show that a new game begins there, so that I understand the checkbox.
-43. As a tour user adding a second location and a Connection, I want to see it under Connected Locations for the player and in the destinations list the AI reads, so that I understand how travel is offered.
+43. As a tour user adding a second location and a Connection, I want to see it under Connected Locations for the player and in the destinations list the Location Change prompt reads, so that I understand how travel is offered.
 44. As a tour user writing a Travel Hint, I want to see it attached to the destination in the AI text, so that I know the AI reads it as a route.
 
 **Entities**
@@ -182,6 +182,10 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - Any start of the tour retires the offers, including a start from Settings.
   - The in-game World Editor holds the first-visit offer. It is not spent, and it shows on the next editor visit from the main menu.
   - If the open world has unsaved edits, **Start Tour** shows the editor's Unsaved Changes dialog first. **Save** or **Discard** continues to the tour. **Cancel** keeps the world and leaves the offer on screen, unspent.
+- **Rulings from ticket 05 (2026-09-23):**
+  - The second location's example values (Appendix A) come from **Use Example** on the "Add a Second Location" step. It is offered only once the second location exists, and it fills that location's Name and both descriptions. The first add step has no **Use Example**, because the Name step follows it.
+  - An add step detects its new item by comparing ids against the list as it stood when the step became current, so every add path counts.
+  - A dev route to a mid-tour step replays each earlier step's add and example, so it opens on a filled step.
 
 **Editor mode**
 - The tour forces Simple through a mode override, the same kind the dev router uses. It never writes the stored preference, so the author's mode is back the moment the tour is off screen. There is nothing to restore.
@@ -200,7 +204,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 | Tab | Readers shown |
 |---|---|
 | Overview | Narration Prompt (world block) |
-| Locations | Narration Prompt (location block, destinations) |
+| Locations | Narration Prompt (location block). The Connection step shows Location Change Prompt (destinations list with the Travel Hint) and no Narration reader, because narration never reads destinations. |
 | Entities | Narration Prompt (the roster of the entity's location) |
 | Stats | Narration Prompt (name only, in Simple) and Stats Prompt (numbers and Description) |
 | Traits | Narration Prompt (traits block, with the tour trait active) |
