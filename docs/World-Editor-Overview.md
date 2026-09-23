@@ -21,9 +21,9 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 
 | Field | What it does |
 |---|---|
-| **World Description** | The text on the library card. Players read it before they play, so placeholders stay as plain text here. |
+| **Player-Facing Description** | The text on the library card and the community listing. Players read it before they play, so placeholders stay as plain text here. The AI never reads it. |
 | **Readme** | Two tabs. **Introduction** shows before the player makes any setup choices. **Gameplay** shows when they enter the world. Both take markdown. |
-| **System Prompt Addition** | Text added to the narrator's prompt on every turn of this world. |
+| **AI-Facing Description** | The world's description for the AI. The AI reads it on every turn. Players never see it. |
 | **Custom Prompts** | **Advanced mode only.** Replaces the player's own narration, choices or stats prompt. Its **Openings** item holds the world's [Openings](World-Editor-Openings). |
 
 ## Upload or link

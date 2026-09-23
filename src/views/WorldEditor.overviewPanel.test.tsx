@@ -44,7 +44,7 @@ const WORLD: World = benchEditorWorld({
 /** Both column labels, so a label that moves between the columns fails rather than passing twice. */
 const FIELD_LABELS = new RegExp(
   '^(World Name|Author|Tags|Thumbnail|3D Player Avatar|Custom Player Avatar|Persona Choice|Background Music'
-  + '|World Description|Readme|System Prompt Addition|Custom Prompts)$',
+  + '|Player-Facing Description|Readme|AI-Facing Description|Custom Prompts)$',
 );
 
 /** The labels of one editor pane, in document order. Read from the pane rather than the page: both columns
@@ -120,7 +120,7 @@ describe('the World Editor Overview columns', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     await screen.findByLabelText('World Name');
     expect(rightLabels()).toEqual([
-      'World Description', 'Readme', 'System Prompt Addition', 'Custom Prompts',
+      'Player-Facing Description', 'Readme', 'AI-Facing Description', 'Custom Prompts',
     ]);
   });
 
@@ -135,7 +135,24 @@ describe('the World Editor Overview columns', () => {
   it('drops Custom Prompts from the right column in Simple mode, keeping the order', async () => {
     renderWorldEditorBench(WORLD, 'simple');
     await screen.findByLabelText('World Name');
-    expect(rightLabels()).toEqual(['World Description', 'Readme', 'System Prompt Addition']);
+    expect(rightLabels()).toEqual(['Player-Facing Description', 'Readme', 'AI-Facing Description']);
+  });
+
+  it.each(['simple', 'advanced'] as const)('puts an ⓘ tip beside each description caption in %s mode', async (mode) => {
+    renderWorldEditorBench(WORLD, mode);
+    await screen.findByLabelText('World Name');
+    const pane = document.querySelector<HTMLElement>('[data-panel-id="editor-detail"]')!;
+    for (const [caption, reader] of [
+      ['Player-Facing Description', /AI never reads it/],
+      ['AI-Facing Description', /Players never see it/],
+    ] as const) {
+      const row = within(pane).getByText(caption).parentElement!;
+      const info = within(row).getByRole('button', { name: 'More info' });
+      fireEvent.click(info);
+      expect(await screen.findByText(reader)).toBeTruthy();
+      fireEvent.click(info);
+      await waitFor(() => expect(screen.queryByText(reader)).toBeNull());
+    }
   });
 
   // The button's width comes from the box it shares with the picture, so what this can assert in jsdom is

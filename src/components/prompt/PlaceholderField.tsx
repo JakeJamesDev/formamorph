@@ -36,7 +36,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, labelAside, hint, ariaLabel }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -50,6 +50,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
   promptChips?: { variables: PromptVariable[]; previewValues: Record<string, string>; sampleData?: boolean | string };
   /** The field's caption, rendered by the field itself so it can share a row (see `PromptField`). */
   label?: ReactNode;
+  /** Sits right after the caption (see `PromptField`). */
+  info?: ReactNode;
   /** Rendered at the end of the caption's row. Needs `label`. */
   labelAside?: ReactNode;
   /** One line under the caption, above the editor (see `PromptField`). */
@@ -185,6 +187,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
       onReroll={hasPlaceholders ? reroll : undefined}
       insertOwnerId={ownerId}
       label={label}
+      info={info}
       labelAside={labelAside}
       hint={hint}
       markdown={markdown}

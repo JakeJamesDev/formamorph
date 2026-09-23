@@ -6,6 +6,7 @@ import { KIND_INFO } from './PlaceholderManager';
 import { AVAILABILITY_INFO } from './StatManager';
 import { PUBLISH_SIZE_INFO } from '@/components/editor/IssuesInstrument';
 import { CAST_WITHOUT_PERSONAS_HINT, PLAYER_SETTING_HINTS } from './WorldOverviewManager';
+import { AI_DESCRIPTION_INFO, PLAYER_DESCRIPTION_INFO } from './WorldDetailsManager';
 
 /** Every World Editor ⓘ body that lives as a constant, by the field it sits beside. */
 const TIPS: Record<string, string> = {
@@ -15,6 +16,8 @@ const TIPS: Record<string, string> = {
   Kind: KIND_INFO,
   Availability: AVAILABILITY_INFO,
   'Publish Size': PUBLISH_SIZE_INFO,
+  'Player-Facing Description': PLAYER_DESCRIPTION_INFO,
+  'AI-Facing Description': AI_DESCRIPTION_INFO,
 };
 
 /** The lines a reader takes one at a time: each paragraph and each bullet, with the bullet mark dropped. */

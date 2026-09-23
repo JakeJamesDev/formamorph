@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/typography";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { HintInfo } from "@/components/SettingsRows";
 import {
   clearWorldPromptOverride, setWorldPromptOverride, storedWorldPrompt, worldPromptEnabled, worldPromptFieldKey,
   WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS, type WorldPromptKind,
@@ -313,6 +314,10 @@ const ReadmeSection = ({ focusField }: { focusField?: FocusFieldHint | null }) =
   );
 };
 
+/** The ⓘ behind each Overview description: who reads it, and who never does. */
+export const PLAYER_DESCRIPTION_INFO = 'Shows on your world\'s library card and community listing. The AI never reads it.';
+export const AI_DESCRIPTION_INFO = "Goes to the AI on every turn as your world's description. Players never see it.";
+
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
 const WorldDetailsManager = ({ focusField, onOpenEntity }: {
@@ -327,10 +332,11 @@ const WorldDetailsManager = ({ focusField, onOpenEntity }: {
 
   return (
     // Player-facing text first, then the AI-facing prompts, so the Advanced-only section is last and a
-    // Simple-mode column ends on the System Prompt Addition.
+    // Simple-mode column ends on the AI-Facing Description.
     <div className="space-y-4">
       <PromptField
-        label="World Description"
+        label="Player-Facing Description"
+        info={<HintInfo>{PLAYER_DESCRIPTION_INFO}</HintInfo>}
         value={worldOverview.description}
         onChange={(description) => updateWorldOverview({ description })}
         vocabulary={plainVocab}
@@ -341,7 +347,8 @@ const WorldDetailsManager = ({ focusField, onOpenEntity }: {
       <ReadmeSection focusField={focusField} />
 
       <PlaceholderField
-        label="System Prompt Addition"
+        label="AI-Facing Description"
+        info={<HintInfo>{AI_DESCRIPTION_INFO}</HintInfo>}
         value={worldOverview.systemPrompt || ''}
         onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}
         placeholders={placeholders}

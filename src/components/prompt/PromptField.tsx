@@ -511,7 +511,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, labelAside, hint }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -532,6 +532,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
    *  markdown field keeps it on its own line and puts the formatting buttons on the button row instead —
    *  either way one row shorter than a caption stacked above the chrome. */
   label?: ReactNode;
+  /** Sits right after the caption (a `HintInfo`, say). Needs `label`. */
+  info?: ReactNode;
   /** Rendered at the end of the caption's row (an AI generate/undo toolbar, say). Needs `label`. */
   labelAside?: ReactNode;
   /** One line under the caption saying what the field does. Above the editor, so the reader meets it before
@@ -829,12 +831,16 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
   // Nothing to type into: read-only, or the preview pane is the one showing.
   const editingDisabled = readOnly || (!split && showTabs && tab === 'preview');
 
+  const caption = info
+    ? <span className="flex items-center gap-1.5"><Label className="leading-none">{label}</Label>{info}</span>
+    : <Label className="leading-none">{label}</Label>;
+
   const chrome = (
     // The chip palette is many chips wide and wraps; it must be allowed to shrink (`min-w-0`) or its
     // intrinsic width shoves the buttons off the side of a mobile screen instead of wrapping.
     <div className="flex items-center gap-1 flex-shrink-0">
       <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-        {label && !markdown && <Label className="leading-none">{label}</Label>}
+        {label && !markdown && caption}
         {/* Markdown actions address the field's flat text, which a caret inside an open value is not in. */}
         {markdown && <MarkdownToolbar parse={vocab.parse} disabled={editingDisabled || valuesOpen} />}
         {/* With a shared palette the per-field row would repeat the same chips above every field on the
@@ -966,7 +972,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
           'flex items-center justify-between gap-2 flex-shrink-0',
           fullscreen && 'max-sm:justify-center',
         )}>
-          <Label className="leading-none">{label}</Label>
+          {caption}
           {labelAside}
         </div>
       )}
