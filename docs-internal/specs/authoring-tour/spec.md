@@ -177,6 +177,11 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 - The tutorial note component gains an optional second action for this.
 - On a new blank world, **Start Tour** runs the tour on that world. Anywhere else, it creates a new world with the same defaults as **New World** and opens it.
 - **Start Authoring Tour** in Settings always creates a new world. It is its own row on the **Data** tab and shows in both Settings modes. It is not placed beside Reset Tutorials, which sits in Data → Storage and only shows in Advanced. The row is hidden while a game is running.
+- **Rulings from ticket 10 (2026-09-23):**
+  - The first-visit offer's body says "a new world", because it starts one. It keeps the same title and buttons as the new-world offer.
+  - Any start of the tour retires the offers, including a start from Settings.
+  - The in-game World Editor holds the first-visit offer. It is not spent, and it shows on the next editor visit from the main menu.
+  - If the open world has unsaved edits, **Start Tour** shows the editor's Unsaved Changes dialog first. **Save** or **Discard** continues to the tour. **Cancel** keeps the world and leaves the offer on screen, unspent.
 
 **Editor mode**
 - The tour forces Simple through a mode override, the same kind the dev router uses. It never writes the stored preference, so the author's mode is back the moment the tour is off screen. There is nothing to restore.
