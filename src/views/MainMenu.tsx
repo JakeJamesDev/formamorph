@@ -350,6 +350,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   // The open editor holds a world New World just made, not one from the library.
   const [editorOnNewWorld, setEditorOnNewWorld] = useState(false);
+  // ...and the Authoring Tour starts on it at once.
+  const [editorStartsTour, setEditorStartsTour] = useState(false);
   // A required source the world's last check found removed. Read from that recorded answer alone: a check
   // runs only when the author asks for one in the World Editor, so opening this menu makes no request and
   // an installed world stays playable offline. Editing and loading a save are never gated — repair lives in
@@ -1618,7 +1620,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     }
   };
 
-  const handleCreateNewWorld = async () => {
+  const handleCreateNewWorld = async ({ tour = false }: { tour?: boolean } = {}) => {
     try {
       // Load the blank world into context for editing; it is NOT persisted until the user hits Save World
       // (so backing out without saving leaves no stray blank world behind).
@@ -1626,6 +1628,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
       // Open the world editor on it, which offers the Authoring Tour there.
       setEditorOnNewWorld(true);
+      setEditorStartsTour(tour);
       setShowWorldEditor(true);
     } catch (error) {
       console.error('Error creating new world:', error);
@@ -2058,6 +2061,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         initialPromptTab={devRoute?.subtab}
         initialPromptSurface={devRoute?.surface}
         onWorldsRestored={refreshWorlds}
+        onStartAuthoringTour={() => { setShowSettings(false); void handleCreateNewWorld({ tour: true }); }}
       />
       <AiSetupGate
         open={gate !== null}
@@ -3160,9 +3164,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             embedded
             backButton
             newWorld={editorOnNewWorld}
+            startTour={editorStartsTour}
             onClose={() => {
               setShowWorldEditor(false);
               setEditorOnNewWorld(false);
+              setEditorStartsTour(false);
               const openId = selectedWorld?.id;
               void refreshWorlds().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
             }}

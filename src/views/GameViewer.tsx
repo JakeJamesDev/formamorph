@@ -4523,7 +4523,7 @@ const GameViewer = ({
       >
         <DialogContent aria-describedby={undefined} className="max-w-[95vw] w-[95vw] h-[90dvh] p-0 overflow-hidden">
           <DialogTitle className="sr-only">World Editor</DialogTitle>
-          <WorldEditor embedded onClose={() => setIsEditingWorld(false)} />
+          <WorldEditor embedded inGame onClose={() => setIsEditingWorld(false)} />
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog

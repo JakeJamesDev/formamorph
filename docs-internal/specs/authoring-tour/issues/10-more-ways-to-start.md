@@ -1,6 +1,7 @@
 # 10: More Ways to Start
 
-Status: ready-for-agent
+Status: in-progress
+Base: 81739da8
 Blocked by: 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

@@ -26,6 +26,8 @@ export interface TutorialEntry {
 
 /** The Authoring Tour offer. Every place that offers the tour shares this one seen-state. */
 export const AUTHORING_TOUR_OFFER_ID = 'authoring-tour-offer';
+/** The offer's body on a world that is not new, where Start Tour builds a new one. */
+export const AUTHORING_TOUR_FIRST_VISIT_BODY = 'Build a new world one field at a time, with an example for every step';
 
 /** Registry order is display order: the first unseen entry for a screen is the one that shows. */
 export const TUTORIALS: readonly TutorialEntry[] = [

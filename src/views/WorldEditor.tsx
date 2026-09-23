@@ -6,7 +6,10 @@ import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
-import { AUTHORING_TOUR_OFFER_ID, useTutorial, useTutorialSeen } from '@/lib/tutorials';
+import {
+  AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, markTutorialSeen, useTutorial, useTutorialSeen,
+} from '@/lib/tutorials';
+import { newBlankWorld } from '@/lib/blankWorld';
 import { TOUR_STEPS, type TourStep } from '@/lib/authoringTour/steps';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
@@ -117,11 +120,15 @@ type ListItem = SortableListItem;
 
 const MODE_TUTORIAL_ID = 'world-editor-mode-toggle';
 
-const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = false }: {
+const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false }: {
   onClose: () => void;
   embedded?: boolean;
   /** The world is one New World just made. The editor offers the Authoring Tour on it. */
   newWorld?: boolean;
+  /** The editor is open over a running game. The tour never starts there, so its offer waits. */
+  inGame?: boolean;
+  /** The host opened a new world for the Authoring Tour. The tour starts on it at once. */
+  startTour?: boolean;
   /** Force the header back arrow on/off independent of `embedded`. Defaults to `!embedded`: a full-screen
    *  host (MainMenu modal) wants the back arrow without the toast/chrome; GameViewer's popup uses the X. */
   backButton?: boolean;
@@ -185,16 +192,21 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
   // the switch it explains.
   const touring = useTourRecord(worldId) !== null;
   const offerSeen = useTutorialSeen(AUTHORING_TOUR_OFFER_ID);
-  // The first world the editor shows is the new one. A world loaded over it from a file is not.
-  const [newWorldId, setNewWorldId] = useState<string | null>(null);
+  // The offer is about the first world the editor shows. A world loaded over it from a file gets none.
+  const [openedWorldId, setOpenedWorldId] = useState<string | null>(null);
+  // A new world the tour starts on as soon as it is the one on screen.
+  const [tourWorldId, setTourWorldId] = useState<string | null>(null);
   useEffect(() => {
-    if (newWorld && worldId && newWorldId === null) setNewWorldId(worldId);
-  }, [newWorld, worldId, newWorldId]);
-  const offerPending = worldId !== null && worldId === newWorldId && !offerSeen && !touring;
+    if (!worldId || openedWorldId !== null) return;
+    setOpenedWorldId(worldId);
+    if (startTourOnOpen) setTourWorldId(worldId);
+  }, [worldId, openedWorldId, startTourOnOpen]);
+  const offerPending = !inGame && worldId !== null && worldId === openedWorldId && tourWorldId === null
+    && !offerSeen && !touring;
   const heldTutorials = useMemo(() => [
     ...(offerPending ? [] : [AUTHORING_TOUR_OFFER_ID]),
-    ...(offerPending || touring ? [MODE_TUTORIAL_ID] : []),
-  ], [offerPending, touring]);
+    ...(offerPending || touring || tourWorldId !== null ? [MODE_TUTORIAL_ID] : []),
+  ], [offerPending, touring, tourWorldId]);
   const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('worldEditor', { held: heldTutorials });
   const dismissTutorial = useCallback(() => dismiss(MODE_TUTORIAL_ID), [dismiss]);
   const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
@@ -412,7 +424,16 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
   const [showExitPrompt, setShowExitPrompt] = useState(false);
   // Leaving asks about unsaved edits first. The dialog around the editor refuses Escape so nothing bypasses
   // that prompt; the Android back button reaches this step instead.
-  const requestClose = useCallback(() => (isWorldDirty ? setShowExitPrompt(true) : onClose()), [isWorldDirty, onClose]);
+  // What follows once the edits are settled: closing the editor, or a tour on a new world.
+  const afterLeave = useRef<() => void>(onClose);
+  /** Runs `then` now, or after the unsaved-changes prompt. False when the prompt is up. */
+  const leaveWorld = useCallback((then: () => void) => {
+    if (!isWorldDirty) { then(); return true; }
+    afterLeave.current = then;
+    setShowExitPrompt(true);
+    return false;
+  }, [isWorldDirty]);
+  const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
   useBackStop(requestClose, editorRootRef);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
@@ -542,6 +563,23 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
     appliedDevTour.current = key;
     if (!touring) startTour(devTour);
   }, [devTour, worldId, touring, startTour]);
+
+  // ── More ways to start ────────────────────────────────────────────────────
+  // Only New World's own world takes the tour in place. Any other start builds a new world, so the tour
+  // never edits a world the author already had. Any start retires the offer.
+  const startTourNow = tour.start;
+  useEffect(() => {
+    if (!tourWorldId || worldId !== tourWorldId) return;
+    setTourWorldId(null);
+    markTutorialSeen(AUTHORING_TOUR_OFFER_ID);
+    if (!touring) startTourNow();
+  }, [tourWorldId, worldId, touring, startTourNow]);
+  const startTourOnNewWorld = () => {
+    const world = newBlankWorld();
+    loadWorldData(world, true);
+    setTourWorldId(world.id);
+  };
+  const takeTourOffer = () => (newWorld ? startTourNow() : leaveWorld(startTourOnNewWorld));
 
   const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1346,11 +1384,11 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
-        onSave={async () => { if (await saveWorld()) onClose(); }}
+        onSave={async () => { if (await saveWorld()) afterLeave.current(); }}
         // The managers write edits straight into the store as you type, so leaving has to actively roll them
         // back — closing alone would keep them live for the next time this world is opened. The links made
         // this session roll back with them; the library items they named stay.
-        onExit={() => { discardChanges(); linking.clearPendingLinks(); onClose(); }}
+        onExit={() => { discardChanges(); linking.clearPendingLinks(); afterLeave.current(); }}
       />
       {worldExportDialog}
       <AddDictionaryModal
@@ -1388,11 +1426,12 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
       )}
       {linking.dialogs}
       <TutorialPopover
-        entry={tutorial?.id === AUTHORING_TOUR_OFFER_ID ? tutorial : null}
+        entry={tutorial?.id !== AUTHORING_TOUR_OFFER_ID ? null
+          : newWorld ? tutorial : { ...tutorial, body: AUTHORING_TOUR_FIRST_VISIT_BODY }}
         nav={tutorialNav}
         anchor={offerAnchor}
         align="start"
-        onPrimary={() => tour.start()}
+        onPrimary={takeTourOffer}
       />
       {tour.running && <TourStepNote tour={tour} />}
     </div>
