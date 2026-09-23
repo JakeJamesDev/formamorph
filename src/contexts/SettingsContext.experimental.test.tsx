@@ -45,7 +45,7 @@ describe('Experimental built-in prompt', () => {
     first.unmount();
     const second = renderHook(() => useSettings(), { wrapper });
     expect(second.result.current.activePresetId).toBe('experimental');
-    expect(second.result.current.systemPrompt).toContain('An observational turn can remain silent.');
+    expect(second.result.current.systemPrompt).toBe(experimental.systemPrompt);
     expect(second.result.current.systemPrompt).not.toContain('then the character answers');
     act(() => second.result.current.selectPreset('default'));
     expect(second.result.current.systemPrompt).toBe(defaults.systemPrompt);
