@@ -27,6 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Prompt Chips:**
     - **Anatomy's Chips view keeps headed sections evenly spaced when sample values are empty.** Inline chips keep their placement, and Resolved view still shows the exact request text.
+    - **World and Dictionary chips have Prepend and Append fields.** Text added before or after these chips can be seen and edited in the chip editor.
     - **Long Prepend and Append text can be edited normally.** Removed the 40-character limit that blocked changes to section definitions.
     - **Headed chips keep consistent section spacing in Edit and Preview.** Automatic header spacing remains visible in Edit, with `↵` on otherwise empty lines. Header, Prepend, and Append remain visible. Removing a chip from a sequence removes its empty line, and empty rendered sections leave no extra gaps. Content and affix whitespace remain intact.
   - **Slime Outbreak's Night Pharmacy and Veilwood's Surveyor's Camp are now places, not entities.** Each is a sublocation of the district or tree that holds it, so you can travel there. Unedited copies update on next launch.

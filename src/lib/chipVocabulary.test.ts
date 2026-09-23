@@ -272,7 +272,10 @@ describe('chip affixes in the editor vocabulary (gate 8)', () => {
     expect(vocab.affixes('<LOCATION|name>')).toEqual({ pre: '', post: '' });
     expect(vocab.affixes('<ENTITIES>')).toEqual({ pre: '', post: '' });
     expect(vocab.affixes('<NOTES>')).toEqual({ pre: '', post: '' });
-    expect(vocab.affixes('<WORLD DESCRIPTION>')).toBeNull();
+    expect(vocab.affixes('<WORLD DESCRIPTION>')).toEqual({ pre: '', post: '' });
+    expect(vocab.affixes('<DICTIONARY>')).toEqual({ pre: '', post: '' });
+    expect(vocab.affixes('<DICTIONARY|before>')).toEqual({ pre: '', post: '' });
+    expect(vocab.affixes('<PLAYER ACTION>')).toBeNull();
     expect(vocab.affixes('<STATS DESCRIPTION>')).toEqual({ pre: '', post: '' });
     expect(vocab.affixes('<TRAITS DESCRIPTION>')).toEqual({ pre: '', post: '' });
   });
@@ -301,7 +304,7 @@ describe('chip affixes in the editor vocabulary (gate 8)', () => {
   });
 
   it('refuses affixes on a chip that does not take them', () => {
-    expect(vocab.setAffixes('<WORLD DESCRIPTION>', ' x ', '')).toBe('<WORLD DESCRIPTION>');
+    expect(vocab.setAffixes('<LANGUAGE>', ' x ', '')).toBe('<LANGUAGE>');
   });
 });
 

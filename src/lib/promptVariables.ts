@@ -134,7 +134,7 @@ const STAT_MEANING_AXIS: PromptVariantAxis = {
 };
 
 // Each variable gets a fixed palette slot so its color is stable everywhere (chip + preview, every prompt).
-const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0] };
+const WORLD: PromptVariable = { token: '<WORLD DESCRIPTION>', label: 'World', color: HIGHLIGHT_PALETTE[0], affixable: true };
 const STATS: PromptVariable = { token: '<STATS DESCRIPTION>', label: 'Stats', color: HIGHLIGHT_PALETTE[1], axes: [STAT_VALUES_AXIS, STAT_STATUS_AXIS, STAT_MEANING_AXIS, FORMAT_AXIS] };
 const TRAITS: PromptVariable = { token: '<TRAITS DESCRIPTION>', label: 'Traits', color: HIGHLIGHT_PALETTE[2], axes: [FORMAT_AXIS] };
 const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color: HIGHLIGHT_PALETTE[3], axes: [LOCATION_SCOPE_AXIS, CONTENT_AXIS, FORMAT_AXIS], affixable: true };
@@ -154,6 +154,7 @@ const DICTIONARY: PromptVariable = {
   token: '<DICTIONARY>',
   label: 'Dictionary',
   color: HIGHLIGHT_PALETTE[11],
+  affixable: true,
   variants: [
     { id: null, label: 'Foreground', help: 'Keyword-triggered lore placed late for high recency — the "## Foreground Lore" block.' },
     { id: 'before', label: 'Background', help: 'Lore placed early with the world setup — the "## Background Lore" block.' },
