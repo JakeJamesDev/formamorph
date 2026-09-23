@@ -55,6 +55,8 @@ export interface AnatomyRun {
   end: number;
   source?: AnatomySource;
   chip?: string;
+  /** The placement has a Header, even when its resolved value is empty. */
+  section?: boolean;
   contextLabel?: ContextLabel;
 }
 
@@ -75,6 +77,7 @@ export interface AnatomyPiece {
   text: string;
   source?: AnatomySource;
   chip?: string;
+  section?: boolean;
   contextLabel?: ContextLabel;
   /** Keeps a zero-width run when a parsed chip resolves to empty text. */
   preserveWhenEmpty?: boolean;
@@ -88,7 +91,7 @@ export interface TiledRuns {
 }
 
 const sameLabel = (a: AnatomyPiece, b: AnatomyRun): boolean =>
-  a.source === b.source && a.chip === b.chip && a.contextLabel === b.contextLabel;
+  a.source === b.source && a.chip === b.chip && a.section === b.section && a.contextLabel === b.contextLabel;
 
 /**
  * Join pieces into one string and the runs covering it. Empty pieces vanish unless their parsed chip needs
@@ -110,6 +113,7 @@ export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
         end: content.length,
         ...(piece.source ? { source: piece.source } : {}),
         ...(piece.chip ? { chip: piece.chip } : {}),
+        ...(piece.section ? { section: true } : {}),
         ...(piece.contextLabel ? { contextLabel: piece.contextLabel } : {}),
       });
       continue;
@@ -132,6 +136,7 @@ export function tilePieces(pieces: AnatomyPiece[]): TiledRuns {
       end: content.length,
       ...(piece.source ? { source: piece.source } : {}),
       ...(piece.chip ? { chip: piece.chip } : {}),
+      ...(piece.section ? { section: true } : {}),
       ...(piece.contextLabel ? { contextLabel: piece.contextLabel } : {}),
     });
   }

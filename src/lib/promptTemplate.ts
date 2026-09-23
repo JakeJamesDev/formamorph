@@ -152,6 +152,7 @@ export function promptTemplatePieces(
       text,
       source: labels.source,
       chip: key,
+      ...(splitToken(segment.token)?.header?.trim() ? { section: true } : {}),
       preserveWhenEmpty: true,
       ...(labels.tokens?.[key] ? { contextLabel: labels.tokens[key] } : {}),
     };
