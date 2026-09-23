@@ -10,11 +10,14 @@ import { PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { buildStyledValues } from './sectionStyle';
 
 describe('authored prompt headers', () => {
-  it('preserves ordinary separators and adds section spacing for Header', () => {
+  it('preserves ordinary separators and frames each Header section statically', () => {
     const values = { '<PERSONA>': 'Mira', '<LOCATION>': 'Dock', '<NOTES>': 'Find map' };
     expect(renderPromptTemplate('<PERSONA>\n\n<LOCATION>\n\n<NOTES>', values)).toBe('Mira\n\nDock\n\nFind map');
-    expect(renderPromptTemplate('<PERSONA|header="player">\n<LOCATION|header="place">\n<NOTES|header="notes">', values))
-      .toBe('PLAYER:\nMira\n\nPLACE:\nDock\n\nNOTES:\nFind map');
+    expect(renderPromptTemplate('<PERSONA|header="player"><LOCATION|header="place"><NOTES|header="notes">', values))
+      .toBe('\nPLAYER:\nMira\n\nPLACE:\nDock\n\nNOTES:\nFind map\n');
+    // Typed line breaks between sections render as typed.
+    expect(renderPromptTemplate('<PERSONA|header="player">\n<LOCATION|header="place">', values))
+      .toBe('\nPLAYER:\nMira\n\n\nPLACE:\nDock\n');
   });
   it('round-trips raw heading text and renders a Markdown section', () => {
     const token = '<PERSONA|markdown|pre="Meet "|post="."|header="player character">';
@@ -23,7 +26,7 @@ describe('authored prompt headers', () => {
     expect(splitToken(token)).toMatchObject({ header: 'player character', key: '<PERSONA|markdown>' });
     expect(joinToken(splitToken(token)!)).toBe(token);
     expect(renderPromptTemplate(`Before${token}After`, { '<PERSONA|markdown>': 'Mira' }))
-      .toBe('Before\n\n## Player Character\nMeet Mira.\n\nAfter');
+      .toBe('Before\n## Player Character\nMeet Mira.\nAfter');
   });
 
   it.each([
@@ -31,14 +34,14 @@ describe('authored prompt headers', () => {
     ['notes for the player', 'Notes for the Player'], ['NPC notes', 'NPC Notes'], ['iPhone status', 'iPhone Status'],
   ])('formats %s without rewriting its raw Header', (header, title) => {
     const token = joinToken({ base: '<PERSONA>', variantId: 'markdown', header });
-    expect(renderPromptTemplate(token, { '<PERSONA|markdown>': 'Mira' })).toBe(`## ${title}\nMira`);
+    expect(renderPromptTemplate(token, { '<PERSONA|markdown>': 'Mira' })).toBe(`\n## ${title}\nMira\n`);
     expect(splitToken(token)?.header).toBe(header);
   });
 
   it.each([
-    [null, 'PLAYER CHARACTER:\nMeet Mira.'],
-    ['markdown', '## Player Character\nMeet Mira.'],
-    ['xml', '<player_character>\nMeet Mira.\n</player_character>'],
+    [null, '\nPLAYER CHARACTER:\nMeet Mira.\n'],
+    ['markdown', '\n## Player Character\nMeet Mira.\n'],
+    ['xml', '\n<player_character>\nMeet Mira.\n</player_character>\n'],
   ])('keeps literal affixes inside the %s section', (variantId, expected) => {
     const token = joinToken({ base: '<PERSONA>', variantId, header: 'player character', pre: 'Meet ', post: '.' });
     expect(renderPromptTemplate(token, { [splitToken(token)!.key]: 'Mira' })).toBe(expected);
@@ -58,7 +61,7 @@ describe('authored prompt headers', () => {
   it('keeps unresolved and unheaded tokens and exact sentinel semantics intact', () => {
     const token = '<PERSONA|header="player">';
     expect(renderPromptTemplate(`Before${token}After`, {})).toBe(`Before${token}After`);
-    expect(renderPromptTemplate(token, { '<PERSONA>': ' N/A ' })).toBe('PLAYER:\n N/A ');
+    expect(renderPromptTemplate(token, { '<PERSONA>': ' N/A ' })).toBe('\nPLAYER:\n N/A\n');
     expect(renderPromptTemplate('<PERSONA>', { '<PERSONA>': 'N/A' })).toBe('N/A');
     expect(renderPromptTemplate('<PERSONA|header="  ">', { '<PERSONA>': 'N/A' })).toBe('N/A');
     const legacy = '## Old\n<PERSONA|pre="( "|post=" )">\n<UNKNOWN>';
@@ -67,17 +70,16 @@ describe('authored prompt headers', () => {
   });
 
   it.each([
-    ['Before$After', 'Before\n\nPLAYER:\nMira\n\nAfter'],
-    ['$After', 'PLAYER:\nMira\n\nAfter'],
-    ['Before$', 'Before\n\nPLAYER:\nMira'],
-    ['$', 'PLAYER:\nMira'],
+    ['Before$After', 'Before\nPLAYER:\nMira\nAfter'],
+    ['$After', '\nPLAYER:\nMira\nAfter'],
+    ['Before$', 'Before\nPLAYER:\nMira\n'],
+    ['$', '\nPLAYER:\nMira\n'],
     ['Before\n$\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
-    ['Before\n\n$\n\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
-    ['Before\n\n\n$\n\n\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
-    ['$$', 'PLAYER:\nMira\n\nPLAYER:\nMira'],
-    ['$\n$', 'PLAYER:\nMira\n\nPLAYER:\nMira'],
-    ['Before\r\n\r\n$\r\n\r\nAfter', 'Before\r\n\r\nPLAYER:\nMira\r\n\r\nAfter'],
-  ])('reuses authored spacing in %j', (template, expected) => {
+    ['Before\n\n$\n\nAfter', 'Before\n\n\nPLAYER:\nMira\n\n\nAfter'],
+    ['$$', '\nPLAYER:\nMira\n\nPLAYER:\nMira\n'],
+    ['$\n$', '\nPLAYER:\nMira\n\n\nPLAYER:\nMira\n'],
+    ['Before\r\n$\r\nAfter', 'Before\r\n\nPLAYER:\nMira\n\r\nAfter'],
+  ])('adds the static frame to authored spacing in %j', (template, expected) => {
     const input = template.replaceAll('$', '<PERSONA|header="player">');
     const values = { '<PERSONA>': 'Mira' };
     expect(renderPromptTemplate(input, values)).toBe(expected);
@@ -90,37 +92,39 @@ describe('authored prompt headers', () => {
     const token = '<PERSONA|post="\n\n\n"|header="player">';
     const empty = '<LOCATION|header="place">';
     expect(renderPromptTemplate(`${empty}${token}${empty}After`, { '<PERSONA>': 'Mira', '<LOCATION>': '' }))
-      .toBe('PLAYER:\nMira\n\n\nAfter');
+      .toBe('\nPLAYER:\nMira\n\n\n\nAfter');
     expect(renderPromptTemplate(`Before${empty}After`, { '<LOCATION>': '' })).toBe('BeforeAfter');
   });
 
-  it.each(['\n', '\r\n'])('removes empty headed chip gaps with %j line endings', newline => {
+  it.each(['\n', '\r\n'])('leaves only authored text when adjacent headed chips are empty, %j line endings', newline => {
     const chips = ['<NOTES|header="notes">', '<PERSONA|header="player">', '<LOCATION|header="place">'];
-    for (const separator of [newline, newline.repeat(3)]) {
-      const template = ['Intro', ...chips, 'End'].join(separator);
-      const values = { '<NOTES>': '', '<PERSONA>': 'N/A', '<LOCATION>': '' };
-      const expected = `Intro${newline.repeat(2)}End`;
-      expect(renderPromptTemplate(template, values)).toBe(expected);
-      const runs = renderPromptTemplateRuns(template, values, { source: 'system-template' });
-      expect(runs.content).toBe(expected);
-      expect(runsTile(expected, runs.runs)).toBe(true);
-      expect(runs.runs.filter(run => run.chip)).toHaveLength(3);
-      expect(renderPromptTemplate(separator + chips.join(separator) + separator, values)).toBe('');
-    }
+    const values = { '<NOTES>': '', '<PERSONA>': 'N/A', '<LOCATION>': '' };
+    const template = `Intro${newline}${chips.join('')}${newline}End`;
+    const expected = `Intro${newline.repeat(2)}End`;
+    expect(renderPromptTemplate(template, values)).toBe(expected);
+    const runs = renderPromptTemplateRuns(template, values, { source: 'system-template' });
+    expect(runs.content).toBe(expected);
+    expect(runsTile(expected, runs.runs)).toBe(true);
+    expect(runs.runs.filter(run => run.chip)).toHaveLength(3);
+    expect(renderPromptTemplate(chips.join(''), values)).toBe('');
+    // Line breaks typed between chips are authored text, so they stay.
+    expect(renderPromptTemplate(['Intro', ...chips, 'End'].join(newline), values)).toBe(`Intro${newline.repeat(4)}End`);
   });
 
   it('gives consecutive sections one blank line and preserves body and inline whitespace', () => {
-    const template = '\n<NOTES|header="notes">\n<PERSONA|header="player">\n<LOCATION|header="place">\n';
+    const template = '<NOTES|header="notes"><PERSONA|header="player"><LOCATION|header="place">';
     const values = { '<NOTES>': 'First\n\n\nSecond', '<PERSONA>': '', '<LOCATION>': 'Here' };
-    expect(renderPromptTemplate(template, values)).toBe('NOTES:\nFirst\n\n\nSecond\n\nPLACE:\nHere');
+    expect(renderPromptTemplate(template, values)).toBe('\nNOTES:\nFirst\n\n\nSecond\n\nPLACE:\nHere\n');
     expect(renderPromptTemplate(template, { ...values, '<PERSONA>': 'Mira' }))
-      .toBe('NOTES:\nFirst\n\n\nSecond\n\nPLAYER:\nMira\n\nPLACE:\nHere');
+      .toBe('\nNOTES:\nFirst\n\n\nSecond\n\nPLAYER:\nMira\n\nPLACE:\nHere\n');
+    // A value's own edge line breaks never shift the frame.
+    expect(renderPromptTemplate(template, { ...values, '<NOTES>': '\n\nFirst\n\n' })).toBe('\nNOTES:\nFirst\n\nPLACE:\nHere\n');
     expect(renderPromptTemplate('Before  <PERSONA|header="player">  after\n\n\nEnd', values)).toBe('Before    after\n\n\nEnd');
     expect(renderPromptTemplate('Before\n\n\n<PERSONA>\n\n\nAfter', values)).toBe('Before\n\n\n\n\n\nAfter');
     expect(renderPromptTemplate(template, {})).toBe(template);
-    expect(renderPromptTemplate('Before\n\n\n<PERSONA|header="player">After', values)).toBe('Before\n\nAfter');
-    expect(renderPromptTemplate('Before\n\n\n<PERSONA|header="player">After', { ...values, '<PERSONA>': 'Mira' }))
-      .toBe('Before\n\nPLAYER:\nMira\n\nAfter');
+    expect(renderPromptTemplate('Before\n\n\n<PERSONA|header="player">After', values)).toBe('Before\n\n\nAfter');
+    expect(renderPromptTemplate('Before\n<PERSONA|header="player">After', { ...values, '<PERSONA>': 'Mira' }))
+      .toBe('Before\n\nPLAYER:\nMira\nAfter');
   });
 
   it.each(['He said "go" | <now> & \\ later', '123 supplies', 'XML data', '!!!', 'café status', '旅行 🧭'])(
@@ -142,14 +146,14 @@ describe('authored prompt headers', () => {
   it('escapes Markdown markup while preserving plain Header input', () => {
     const token = joinToken({ base: '<PERSONA>', variantId: 'markdown', header: '<script> *hello* & [link](url)' });
     const out = renderPromptTemplate(token, { '<PERSONA|markdown>': 'Mira' });
-    expect(out).toBe('## \\<Script\\> \\*Hello\\* &amp; \\[Link\\](Url)\nMira');
+    expect(out).toBe('\n## \\<Script\\> \\*Hello\\* &amp; \\[Link\\](Url)\nMira\n');
     expect(splitToken(token)?.header).toBe('<script> *hello* & [link](url)');
   });
 
   it('uses the same headed Name output in preview, gameplay and request anatomy', () => {
     const ctx = personaContextValues({ source: 'library', entity: { id: 'mira', name: 'Mira', pronouns: 'she/her', aiDescription: 'A cartographer.' } });
     const template = 'Before<PERSONA|name.xml|header="player character">After';
-    const expected = 'Before\n\n<player_character>\nMira (she/her)\n</player_character>\n\nAfter';
+    const expected = 'Before\n<player_character>\nMira (she/her)\n</player_character>\nAfter';
     const rendered = buildNarrationPrompt({ template, ctx, action: 'look', history: [], dictionary: [],
       actionVec: null, semanticLore: false, embedVectors: new Map(), language: 'English', paragraphLimit: 'none',
       maxTokens: 512, markdownOutput: true, sectionStyle: 'markdown', resolvePH: text => text });
@@ -157,7 +161,7 @@ describe('authored prompt headers', () => {
     expect(rendered.prompt).toBe(expected);
     expect(runsTile(rendered.prompt, rendered.runs)).toBe(true);
     const owned = rendered.runs.find(run => run.chip === '<PERSONA|name.xml>')!;
-    expect(rendered.prompt.slice(owned.start, owned.end)).toBe('\n\n<player_character>\nMira (she/her)\n</player_character>\n\n');
+    expect(rendered.prompt.slice(owned.start, owned.end)).toBe('\n<player_character>\nMira (she/her)\n</player_character>\n');
   });
 
   it('exports and imports editable Header data through production JSON and share codes', () => {

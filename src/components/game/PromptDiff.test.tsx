@@ -11,7 +11,7 @@ const BACKGROUND_LORE = '<DICTIONARY|before|format=markdown|header="Background L
 const authoredNarration = () =>
   SHIPPED_PROMPT_DEFAULTS.narration
     .replace('vivid second-person prose', REWORDED)
-    .replace(`${BACKGROUND_LORE}\n`, '');
+    .replace(BACKGROUND_LORE, '');
 
 const insertions = (container: HTMLElement) =>
   [...container.querySelectorAll('ins')].map((el) => el.textContent).join('');

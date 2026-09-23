@@ -60,9 +60,9 @@ describe('Subject Header in the image-prompt request', () => {
     try {
       for (const [tagPrompt, expected] of [
         [undefined, DEFAULT_TAG_PROMPT.replace('<SUBJECT>', SUBJECT_GUIDANCE[kind])],
-        ['Before<SUBJECT|format=xml|header="image subject">After', `Before\n\n<image_subject>\n${SUBJECT_GUIDANCE[kind]}\n</image_subject>\n\nAfter`],
+        ['Before<SUBJECT|format=xml|header="image subject">After', `Before\n<image_subject>\n${SUBJECT_GUIDANCE[kind]}\n</image_subject>\nAfter`],
         ['<SUBJECT|format=xml>', SUBJECT_GUIDANCE[kind]],
-        ['<SUBJECT|format=markdown|header="image subject">', `## Image Subject\n${SUBJECT_GUIDANCE[kind]}`],
+        ['<SUBJECT|format=markdown|header="image subject">', `\n## Image Subject\n${SUBJECT_GUIDANCE[kind]}\n`],
       ]) {
         await buildImagePrompt({ description: 'A river town', kind }, { endpointUrl: 'http://x', apiToken: '', modelName: 'm', tagPrompt });
         const request = JSON.parse(fetchMock.mock.lastCall![1].body as string) as { messages: { content: string }[] };
