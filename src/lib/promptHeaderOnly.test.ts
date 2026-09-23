@@ -26,9 +26,9 @@ describe('Header-only formatting', () => {
       let token = vocab.setHeader!(base, 'player notes');
       expect(vocab.selection(token).format).toBeNull();
       for (const [format, expected] of [
-        [null, `PLAYER NOTES:\n${body}`],
-        ['markdown', `## Player Notes\n${body}`],
-        ['xml', `<player_notes>\n${body}\n</player_notes>`],
+        [null, `\nPLAYER NOTES:\n${body}\n`],
+        ['markdown', `\n## Player Notes\n${body}\n`],
+        ['xml', `\n<player_notes>\n${body}\n</player_notes>\n`],
       ] as const) {
         token = vocab.setAxis(token, 'format', format);
         expect(splitToken(token)?.key).toBe(base);
@@ -77,7 +77,7 @@ describe('Header-only formatting', () => {
     notes = vocab.setHeader!(notes, '');
     notes = vocab.setAffixes(notes, 'Read ', '.');
     notes = vocab.setHeader!(notes, 'notes');
-    expect(renderPromptTemplate(notes, { '<NOTES>': 'line one\nline two' })).toBe('<notes>\nRead line one\nline two.\n</notes>');
+    expect(renderPromptTemplate(notes, { '<NOTES>': 'line one\nline two' })).toBe('\n<notes>\nRead line one\nline two.\n</notes>\n');
   });
 
   it('agrees with gameplay assembly and owns the complete section in request anatomy', () => {
@@ -87,7 +87,7 @@ describe('Header-only formatting', () => {
     const rendered = buildNarrationPrompt({ template, ctx, action: 'look', history: [], dictionary: [],
       actionVec: null, semanticLore: false, embedVectors: new Map(), language: 'English', paragraphLimit: 'none',
       maxTokens: 512, markdownOutput: true, sectionStyle: 'markdown', resolvePH: text => text });
-    expect(rendered.prompt).toBe('Before\n\n<notes>\nKeep <b>this</b>\n\nAnd this.\n</notes>\n\nAfter');
+    expect(rendered.prompt).toBe('Before\n<notes>\nKeep <b>this</b>\n\nAnd this.\n</notes>\nAfter');
     expect(renderPromptTemplate(template, ctx)).toBe(rendered.prompt);
     expect(runsTile(rendered.prompt, rendered.runs)).toBe(true);
   });

@@ -9,9 +9,9 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import type { Placeholder } from '@/types';
 
-const SAMPLE = '<TRAITS DESCRIPTION|markdown|header="traits">\n'
-  + '<PERSONA|markdown|header="player character">\n'
-  + '<LOCATION|markdown|header="current location">\n'
+const SAMPLE = '<TRAITS DESCRIPTION|markdown|header="traits">'
+  + '<PERSONA|markdown|header="player character">'
+  + '<LOCATION|markdown|header="current location">'
   + '<NOTES|format=xml|header="player notes">';
 
 const PLACEHOLDERS: Placeholder[] = [{ id: 'reference-town', name: 'Town', values: [

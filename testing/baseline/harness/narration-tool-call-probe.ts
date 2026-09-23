@@ -232,7 +232,7 @@ function probeSystemTemplate(experimental = false, preparationGoal = false, requ
       const start = template.indexOf('<WORLD DESCRIPTION');
       const end = template.indexOf('## Preparation\n', start);
       if (start < 0 || end < 0) throw new Error('Experimental context chips are missing.');
-      return `${ROLE_ONLY_INSTRUCTION}\n\n${template.slice(start, end)}`;
+      return `${ROLE_ONLY_INSTRUCTION}\n${template.slice(start, end)}`;
     }
     if (preparationGoal) {
       const start = template.indexOf('## Preparation\n');

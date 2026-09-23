@@ -2,7 +2,7 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import {
-  DecoratorNode, ElementNode, $getNodeByKey, $getRoot, $isElementNode, $isLineBreakNode, SKIP_DOM_SELECTION_TAG,
+  DecoratorNode, ElementNode, $getNodeByKey, $isLineBreakNode, SKIP_DOM_SELECTION_TAG,
   type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -24,7 +24,6 @@ import { remintPlaceholderPlacements } from '@/lib/placeholders';
 import { OpenValueChip } from './OpenValueChip';
 import { EditValueContext, OpenValuesContext } from './openValueContext';
 import { startPlacedChipDrag, type ChipDragKey } from './chipDragSource';
-import { sectionSpacing } from '@/lib/promptHeader';
 
 /** Shared slot the dragged chip's node key is parked in on dragstart, so the editor's drop handler
  *  (in PromptField) knows which node to relocate. One ref per editor instance. */
@@ -84,7 +83,9 @@ function $startsOnEmptyLine(nodeKey: NodeKey, vocab: ChipVocabulary): boolean {
   let previous = $getNodeByKey(nodeKey)?.getPreviousSibling();
   while (previous) {
     const isChip = $isVariableNode(previous);
-    const text = $isVariableNode(previous) ? vocab.affixes(previous.getToken())?.post ?? '' : previous.getTextContent();
+    const text = $isVariableNode(previous)
+      ? `${vocab.affixes(previous.getToken())?.post ?? ''}${vocab.headerBoundaries?.(previous.getToken())?.post ?? ''}`
+      : previous.getTextContent();
     const lastBreak = text.lastIndexOf('\n');
     if (text.slice(lastBreak + 1).trim()) return false;
     if (lastBreak >= 0) return true;
@@ -92,25 +93,6 @@ function $startsOnEmptyLine(nodeKey: NodeKey, vocab: ChipVocabulary): boolean {
     previous = previous.getPreviousSibling();
   }
   return true;
-}
-
-function $headerSpacing(nodeKey: NodeKey, vocab: ChipVocabulary) {
-  const pieces: { key: string; text: string; section: boolean }[] = [];
-  const visit = (node: LexicalNode) => {
-    if ($isVariableNode(node)) {
-      const token = node.getToken();
-      const header = vocab.headerBoundaries?.(token);
-      const affixes = vocab.affixes(token);
-      pieces.push({ key: node.getKey(), section: !!header,
-        text: `${header?.pre ?? ''}${affixes?.pre ?? ''}${vocab.label(token)}${affixes?.post ?? ''}${header?.post ?? ''}` });
-    } else if ($isElementNode(node)) node.getChildren().forEach(visit);
-    else pieces.push({ key: node.getKey(), text: node.getTextContent(), section: false });
-  };
-  $getRoot().getChildren().forEach((node, index) => {
-    if (index) pieces.push({ key: '', text: '\n', section: false });
-    visit(node);
-  });
-  return sectionSpacing(pieces)[pieces.findIndex(piece => piece.key === nodeKey)] ?? { before: '', after: '' };
 }
 
 /** The interactive chip a `VariableNode` renders: label + remove (×), draggable to reposition, and a
@@ -147,16 +129,6 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   }, [editor, nodeKey, vocab, affixes?.pre]);
   const placementLabel = known ? vocab.placementLabel?.(token) ?? null : null;
   const header = known ? vocab.header?.(token) ?? null : null;
-  const [headerSpacing, setHeaderSpacing] = useState({ before: '', after: '' });
-  useEffect(() => {
-    if (!header?.trim()) { setHeaderSpacing({ before: '', after: '' }); return; }
-    const update = () => editor.getEditorState().read(() => {
-      const next = $headerSpacing(nodeKey, vocab);
-      setHeaderSpacing(previous => previous.before === next.before && previous.after === next.after ? previous : next);
-    });
-    update();
-    return editor.registerUpdateListener(update);
-  }, [editor, nodeKey, vocab, header]);
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
@@ -270,7 +242,6 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
           vocab={vocab}
           showAffixes
           startsOnEmptyLine={startsOnEmptyLine}
-          headerSpacing={headerSpacing}
           draggable={editable}
           onDragStart={editable ? handleDragStart : undefined}
           onDoubleClick={renameable ? startRename : undefined}

@@ -43,14 +43,15 @@ describe('built-in Header adoption', () => {
         const gameplay = buildNarrationPrompt({ ...settings, template: placement, ctx: {}, action: 'look', history: [],
           dictionary: [], actionVec: null, semanticLore: false, embedVectors: new Map(), resolvePH: text => text });
         const preview = renderPromptTemplate(placement, values);
-        expect(gameplay.prompt).toBe(preview);
+        // Narration assembly trims the message end.
+        expect(gameplay.prompt).toBe(preview.trimEnd());
         expect(runsTile(gameplay.prompt, gameplay.runs)).toBe(true);
         const name = placement.includes('Presentation') ? 'Presentation' : 'Formatting';
         const body = values['<MARKDOWN GUIDANCE>'];
         const expected = placement === '<MARKDOWN GUIDANCE>' ? body
-          : style === 'markdown' ? `## ${name}\n${body}`
-            : style === 'labels' ? `${name.toUpperCase()}:\n${body}`
-              : `<${name.toLowerCase()}>\n${body}\n</${name.toLowerCase()}>`;
+          : style === 'markdown' ? `\n## ${name}\n${body}\n`
+            : style === 'labels' ? `\n${name.toUpperCase()}:\n${body}\n`
+              : `\n<${name.toLowerCase()}>\n${body}\n</${name.toLowerCase()}>\n`;
         expect(preview).toBe(expected);
         expect(body).not.toMatch(/^(?:## |FORMATTING:|<formatting>)/m);
       }
@@ -119,7 +120,7 @@ describe('built-in Header adoption', () => {
         if (!parts.header) continue;
         const populated = renderPromptTemplate(seg.token, { [parts.key]: 'Body line one\nBody line two' });
         expect(populated).toContain('Body line one\nBody line two');
-        expect(runs.content.split(populated.split('\n')[0]), `${key}: ${parts.header}`).toHaveLength(2);
+        expect(runs.content.split(populated.trimStart().split('\n')[0]), `${key}: ${parts.header}`).toHaveLength(2);
         for (const value of ['', ' \n\t', 'N/A']) {
           expect(renderPromptTemplate(seg.token, { [parts.key]: value })).toBe('');
           const empty = renderPromptTemplateRuns(template, { ...ctx, [parts.key]: value }, { source: 'system-template' });

@@ -62,29 +62,45 @@ describe('Header in the shared prompt editor', () => {
     expect(screen.getByTestId('stored').textContent).toBe('<PERSONA|name.xml|pre="Meet "|post=".">');
   });
 
-  it('shows automatic header spacing in Edit and Preview', async () => {
+  it('shows the static header frame in Edit and Preview', async () => {
     const { container } = render(<Field initial={`Before${TOKEN}After`} />);
     await waitFor(() => expect(container.querySelector('[contenteditable]')?.textContent)
-      .toBe('Before\n\n<player_character>\nMeet Persona (Name, XML).\n</player_character>\n\nAfter'));
-    expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(2);
+      .toBe('Before\n<player_character>\nMeet Persona (Name, XML).\n</player_character>\nAfter'));
+    expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(0);
+    await userEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByTestId('prompt-preview').textContent).toBe('Before\n<player_character>\nMeet Mira.\n</player_character>\nAfter');
+  });
+
+  it('marks the blank line the frame opens when the chip starts its own line', async () => {
+    const { container } = render(<Field initial={`Before\n${TOKEN}\nAfter`} />);
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(1));
     await userEvent.click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Before\n\n<player_character>\nMeet Mira.\n</player_character>\n\nAfter');
   });
 
-  it.each(['Traits', 'Persona', 'Location'])('keeps consecutive chips compact when removing and undoing %s', async removed => {
+  it.each(['Traits', 'Persona', 'Location'])('keeps back-to-back chips self-contained when removing and undoing %s', async removed => {
     const first = '<TRAITS DESCRIPTION|markdown|header="traits">';
     const last = '<LOCATION|markdown|header="place">';
-    const { container } = render(<Field initial={`${first}\n\n${TOKEN}\n\n${last}`} />);
-    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(2));
+    const { container } = render(<Field initial={`${first}${TOKEN}${last}`} />);
+    // Each chip's frame opens a blank line: at the field start or after the previous frame.
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(3));
     expect(screen.getByText('<player_character>')).toBeVisible();
     expect(container.querySelector('[contenteditable]')?.textContent).toContain('Meet Persona (Name, XML).');
-    expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(2);
+    expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(0);
     await userEvent.click(screen.getByRole('button', { name: `Remove ${removed}` }));
-    const expected = { Traits: `${TOKEN}\n${last}`, Persona: `${first}\n${last}`, Location: `${first}\n${TOKEN}` }[removed];
+    const expected = { Traits: `${TOKEN}${last}`, Persona: `${first}${last}`, Location: `${first}${TOKEN}` }[removed];
     expect(screen.getByTestId('stored').textContent).toBe(expected);
-    expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(2);
     fireEvent.mouseDown(screen.getByLabelText('Undo'));
-    await waitFor(() => expect(screen.getByTestId('stored').textContent).toBe(`${first}\n${TOKEN}\n${last}`));
+    await waitFor(() => expect(screen.getByTestId('stored').textContent).toBe(`${first}${TOKEN}${last}`));
+  });
+
+  it('stores typed line breaks between chips exactly as typed', async () => {
+    const template = '<TRAITS DESCRIPTION|markdown|header="traits">\n\n<LOCATION|markdown|header="place">';
+    const { container } = render(<Field initial={template} />);
+    await waitFor(() => expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(2));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Location' }));
+    expect(screen.getByTestId('stored').textContent).toBe('<TRAITS DESCRIPTION|markdown|header="traits">\n\n');
   });
 
   it.each(['Prepend', 'Append'])('edits an existing long %s while preserving Header and focus', async label => {

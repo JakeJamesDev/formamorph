@@ -10,10 +10,9 @@ import {
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import { applyMarkdownAction, type MarkdownAction } from '@/lib/markdownToolbar';
 import { $createVariableNode, $isVariableNode } from './VariableNode';
-import { compactChipSeparators } from '@/lib/promptTemplate';
 
 export function appendSegments(para: ElementNode, value: string, parse: ChipVocabulary['parse']) {
-  for (const seg of compactChipSeparators(parse(value))) {
+  for (const seg of parse(value)) {
     if (seg.type === 'variable') {
       para.append($createVariableNode(seg.token));
       continue;

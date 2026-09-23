@@ -32,11 +32,10 @@ export interface TokenChipProps extends Omit<ComponentPropsWithoutRef<'span'>, '
   /** Display the placement's conditional text in the editor. */
   showAffixes?: boolean;
   startsOnEmptyLine?: boolean;
-  headerSpacing?: { before: string; after: string };
 }
 
 export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function TokenChip(
-  { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, startsOnEmptyLine = true, headerSpacing, className, ...rest },
+  { token, vocab, neutral, tip, onRemove, grabbable, showAffixes, startsOnEmptyLine = true, className, ...rest },
   ref,
 ) {
   const color = neutral ? undefined : vocab.color(token);
@@ -76,7 +75,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       {...rest}
       className={className ?? `${hasAffixes ? 'inline' : 'inline-block'} align-baseline`}
     >
-      {header && affixText((headerSpacing?.before ?? '') + header.pre, startsOnEmptyLine)}
+      {header && affixText(header.pre, startsOnEmptyLine)}
       {affixes?.pre && affixText(affixes.pre, header ? true : startsOnEmptyLine)}
       <Chip
         label={vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
@@ -88,7 +87,6 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       />
       {affixes?.post && affixText(affixes.post, false)}
       {header?.post && affixText(header.post, false)}
-      {header && headerSpacing?.after && affixText(headerSpacing.after, !!header.post?.endsWith('\n') || !!affixes?.post.endsWith('\n'))}
     </span>
   );
 });

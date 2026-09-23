@@ -180,11 +180,11 @@ describe('RequestAnatomyView plain (verbatim) rendering', () => {
 
 describe('RequestAnatomyView chips mode', () => {
   it.each([0, 1, 2, 3, 4, 5, 6, 7])('keeps headed chip spacing independent of populated values (mask %s)', mask => {
-    const template = '<WORLD DESCRIPTION|header="world">\n<TRAITS DESCRIPTION|header="traits">\n<NOTES|header="notes">';
+    const template = '<WORLD DESCRIPTION|header="world"><TRAITS DESCRIPTION|header="traits"><NOTES|header="notes">';
     const values = { '<WORLD DESCRIPTION>': mask & 1 ? 'World text' : '', '<TRAITS DESCRIPTION>': mask & 2 ? 'Trait text' : '', '<NOTES>': mask & 4 ? 'Note text' : '' };
     const request = { role: 'system' as const, ...renderPromptTemplateRuns(template, values, { source: 'system-template' }) };
     const { container, rerender } = render(<RequestAnatomyView blocks={[request]} mode="chips" />);
-    expect(container.querySelector('p')?.textContent).toBe('World\n\nTraits\n\nNotes');
+    expect(container.querySelector('p')?.textContent).toBe('\nWorld\n\nTraits\n\nNotes\n');
     expect(container.querySelectorAll('[data-anatomy-run]')).toHaveLength(request.runs.length);
     rerender(<RequestAnatomyView blocks={[request]} mode="resolved" />);
     expect(container.querySelector('p')?.textContent).toBe(request.content);

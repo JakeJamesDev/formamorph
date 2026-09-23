@@ -1,6 +1,6 @@
 import { TOKEN_PATTERN, splitToken } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
-import { promptHeader, sectionSpacing } from './promptHeader';
+import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
 import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, type TiledRuns } from './requestAnatomy';
 
@@ -8,15 +8,6 @@ import { tilePieces, type AnatomyPiece, type AnatomySource, type ContextLabel, t
 export type PromptSegment =
   | { type: 'text'; value: string }
   | { type: 'variable'; token: string };
-
-/** Headed chip sequences share one authored line break; headers supply rendered separation. */
-export function compactChipSeparators(segments: PromptSegment[]): PromptSegment[] {
-  return segments.map((segment, i) => segment.type === 'text'
-    && /^[ \t\r\n]*\n[ \t\r\n]*$/.test(segment.value)
-    && segments[i - 1]?.type === 'variable' && segments[i + 1]?.type === 'variable'
-    && [segments[i - 1], segments[i + 1]].some(s => s.type === 'variable' && splitToken(s.token)?.header?.trim())
-    ? { ...segment, value: segment.value.includes('\r\n') ? '\r\n' : '\n' } : segment);
-}
 
 // Shared grammar: base, variant, literal affixes, then JSON-escaped Header.
 const TOKEN_RE = new RegExp(TOKEN_PATTERN, 'g');
@@ -75,41 +66,13 @@ export function renderPromptTemplate(template: string, values: Record<string, st
   return resolvePromptSegments(parseTemplateWithPlaceholders(template), values).map(part => part.text).join('');
 }
 
-/** Resolve placements and their contextual section spacing for every rendering surface. */
+/** Resolve every placement for every rendering surface; each chip's text is self-contained. */
 export function resolvePromptSegments(segments: PromptSegment[], values: Record<string, string>) {
-  const parts = compactChipSeparators(segments).map(segment => {
+  return segments.map(segment => {
     const resolved = segment.type === 'variable' ? resolveToken(segment.token, values) ?? values[segment.token] : undefined;
     return { segment, resolved: resolved !== undefined,
       text: segment.type === 'text' ? segment.value : resolved ?? segment.token };
   });
-  const sections = parts.map(part => part.segment.type === 'variable' && part.resolved && !!splitToken(part.segment.token)?.header?.trim());
-  // Only template whitespace is collapsible; chip values and affixes remain intact.
-  const chunks = parts.flatMap((part, owner) => {
-    if (part.segment.type !== 'text') return [{ text: part.text, owner, gap: !part.text }];
-    const [, leading, body, trailing] = /^([ \t\r\n]*)([\s\S]*?)([ \t\r\n]*)$/.exec(part.text)!;
-    return [{ text: leading, owner, gap: true }, { text: body, owner, gap: !body }, { text: trailing, owner, gap: true }];
-  });
-  for (let start = 0; start < chunks.length;) {
-    if (!chunks[start].gap) { start++; continue; }
-    let end = start;
-    while (end < chunks.length && chunks[end].gap) end++;
-    const neighbors = chunks.slice(Math.max(0, start - 1), Math.min(chunks.length, end + 1));
-    if (neighbors.some(chunk => sections[chunk.owner])) {
-      const whitespace = chunks.slice(start, end).map(chunk => chunk.text).join('');
-      let remaining = start === 0 || end === chunks.length ? ''
-        : whitespace.replace(/(?:[ \t]*\r?\n){3,}/g, whitespace.includes('\r\n') ? '\r\n\r\n' : '\n\n');
-      for (let i = start; i < end; i++) {
-        const length = chunks[i].text.length;
-        chunks[i].text = remaining.slice(0, length);
-        remaining = remaining.slice(length);
-      }
-    }
-    start = end;
-  }
-  for (const part of parts) part.text = '';
-  for (const chunk of chunks) parts[chunk.owner].text += chunk.text;
-  const spacing = sectionSpacing(parts.map((part, i) => ({ text: part.text, section: sections[i] })));
-  return parts.map((part, i) => ({ ...part, text: spacing[i].before + part.text + spacing[i].after }));
 }
 
 /**
@@ -174,7 +137,9 @@ export function resolveToken(token: string, values: Record<string, string>): str
   const value = values[parts.key];
   if (value === undefined) return undefined;
   const header = promptHeader(parts.header, parts.headerFormat ?? parts.variantId?.split('.').find(id => id === 'markdown' || id === 'xml'));
-  if (header) return isBlankValue(value) ? '' : `${header.pre}${parts.pre}${value}${parts.post}${header.post}`;
+  // The value's own edge line breaks would shift the static frame.
+  if (header) return isBlankValue(value) ? ''
+    : `${header.pre}${parts.pre}${value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd()}${parts.post}${header.post}`;
   if (!parts.pre && !parts.post) return value;
   return isBlankValue(value) ? '' : `${parts.pre}${value}${parts.post}`;
 }

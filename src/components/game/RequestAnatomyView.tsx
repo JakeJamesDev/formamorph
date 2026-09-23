@@ -4,7 +4,6 @@ import type { AIRequestType } from '@/types';
 import { CHIP_BASE } from '@/components/Chip';
 import { TokenChip } from '@/components/prompt/TokenChip';
 import { promptVocabulary } from '@/lib/chipVocabulary';
-import { sectionSpacing } from '@/lib/promptHeader';
 import { PROMPT_LABELS } from '@/lib/promptGroups';
 import { resolveChipJump, resolveContextJump, resolvePromptJump, type PromptJumpTarget } from '@/lib/promptJump';
 import {
@@ -196,27 +195,6 @@ function peelBreaks(text: string): [string, string, string] {
   return [lead, body, text.slice(lead.length + body.length)];
 }
 
-/** Space headed placements using visible pills, including pills whose request text is empty. */
-function collapsedSectionSpacing(block: AnatomyBlock) {
-  const pieces: { text: string; section: boolean }[] = [];
-  const indices: number[] = [];
-  let at = 0;
-  for (const run of block.runs) {
-    pieces.push({ text: block.content.slice(at, run.start), section: false });
-    const text = block.content.slice(run.start, run.end);
-    const [lead, , tail] = peelBreaks(text);
-    const collapsed = !!(run.chip || run.contextLabel);
-    if (collapsed) pieces.push({ text: lead, section: false });
-    indices.push(pieces.length);
-    pieces.push({ text: collapsed ? 'chip' : text, section: !!run.section });
-    if (collapsed) pieces.push({ text: tail, section: false });
-    at = run.end;
-  }
-  pieces.push({ text: block.content.slice(at), section: false });
-  const spacing = sectionSpacing(pieces);
-  return indices.map(index => spacing[index]);
-}
-
 /** What the app assembled, drawn as the bytes it is: dimmed, so it reads apart from the player's own text
  *  without anything being said about it. */
 function ResolvedContext({ children }: { children: ReactNode }) {
@@ -308,7 +286,6 @@ function BlockBody({
   // A source is named once per block. A template broken up by a dozen chips is still one field, and a
   // dozen identical chips down the margin says nothing the first one didn't; the accent carries the rest.
   const named = new Set<AnatomySource>();
-  const chipSpacing = mode === 'chips' && !plain ? collapsedSectionSpacing(block) : [];
   let at = 0;
   block.runs.forEach((run, i) => {
     if (run.start > at) parts.push(<span key={`gap-${i}`}>{draw(block.content.slice(at, run.start), at)}</span>);
@@ -348,13 +325,12 @@ function BlockBody({
     } else if (mode === 'chips' && (run.chip || run.contextLabel)) {
       // The joins either side are the request's shape, so they survive the collapse — only the value the
       // run stands for is replaced by the chip that asked for it.
-      const [lead, , tail] = peelBreaks(text);
+      // An empty headed chip still draws its frame, so the layout reads the same whatever the values.
+      const [lead, , tail] = text || !run.section ? peelBreaks(text) : ['\n', '', '\n'];
       parts.push(
         <span key={i} {...{ [ANATOMY_RUN_ATTR]: '' }}>
           {lead || null}
-          {chipSpacing[i]?.before || null}
           <ChipRun run={run} jumpTo={chipJumpTo} />
-          {chipSpacing[i]?.after || null}
           {tail || null}
         </span>,
       );
