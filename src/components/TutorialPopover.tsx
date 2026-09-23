@@ -16,11 +16,13 @@ type Align = 'start' | 'center' | 'end';
  * `open` is fully controlled with no `onOpenChange`, so Radix's own dismissals (outside click, Escape) can't
  * close it, and a stray click can't silently retire a note the user never read.
  */
-export function TutorialNote({ open, title, body, points, footer, anchor, side = 'bottom', align = 'end', children }: {
+export function TutorialNote({ open, title, body, points, action, footer, anchor, side = 'bottom', align = 'end', children }: {
   open: boolean;
   title: string;
   body?: ReactNode;
   points?: { term: string; text: string }[];
+  /** A full-width control above the footer row. */
+  action?: ReactNode;
   footer: ReactNode;
   /** An element to point at in place of wrapping `children`. */
   anchor?: HTMLElement | null;
@@ -75,6 +77,7 @@ export function TutorialNote({ open, title, body, points, footer, anchor, side =
               ))}
             </div>
           )}
+          {action && <div className="pt-1">{action}</div>}
           <div className="flex items-center justify-end gap-2 pt-1">{footer}</div>
         </PopoverContent>
       )}

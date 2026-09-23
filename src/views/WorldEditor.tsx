@@ -561,6 +561,11 @@ const WorldEditorInner = ({
   const tour = useAuthoringTour({
     worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
   });
+  // Mobile has no room for the In Play pane, so Show Effect opens it as a sheet. Each sheet covers the other's
+  // way in, and the Bench's opening closes this one, so the two never share the screen.
+  const [effectOpen, setEffectOpen] = useState(false);
+  const effectShown = effectOpen && isMobile && !!tour.step && !bench.open;
+  if (effectOpen && !effectShown) setEffectOpen(false);
   // DEV dev-router: start the tour at a named step, once per world. A tour already running there resumes.
   const devTour = devRoute?.tour;
   const startTour = tour.start;
@@ -1391,6 +1396,24 @@ const WorldEditorInner = ({
           </DrawerContent>
         </Drawer>
       )}
+      {isMobile && tour.step && worldId && (
+        <Drawer open={effectShown} onOpenChange={(open) => { if (!open) setEffectOpen(false); }}>
+          <DrawerContent
+            className="h-[92dvh]"
+            // Back to the step's field rather than to Show Effect, whose note stands down with the sheet. Not
+            // when the Bench's sheet took over, which holds the focus.
+            onCloseAutoFocus={(e) => {
+              e.preventDefault();
+              if (tour.step && !bench.open) showTourStep(tour.step);
+            }}
+          >
+            <DrawerTitle className="sr-only">In Play</DrawerTitle>
+            <div className="min-h-0 flex-grow">
+              <TourInPlay worldId={worldId} step={tour.step} />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
       <UnsavedChangesDialog
         open={showExitPrompt}
         onOpenChange={setShowExitPrompt}
@@ -1443,7 +1466,9 @@ const WorldEditorInner = ({
         align="start"
         onPrimary={takeTourOffer}
       />
-      {tour.running && <TourStepNote tour={tour} />}
+      {tour.running && (
+        <TourStepNote tour={tour} onShowEffect={isMobile ? () => setEffectOpen(true) : undefined} />
+      )}
       <TourSaveNote tour={tour} />
     </div>
   );
