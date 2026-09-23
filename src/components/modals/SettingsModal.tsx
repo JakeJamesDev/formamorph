@@ -538,11 +538,13 @@ const QuoteColorField = memo(function QuoteColorField() {
   );
 });
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
   onWorldsRestored?: () => void;
+  /** Starts the Authoring Tour on a new world. Only the main menu supplies it, so a running game hides the row. */
+  onStartAuthoringTour?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
@@ -3134,6 +3136,16 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
                 {...rowCopy('autosave')}
               />
               </Section>
+
+              {onStartAuthoringTour && (
+              <Section title="Authoring">
+              <Row {...rowCopy('authoringTour')}>
+                <Button variant="outline" size="sm" onClick={onStartAuthoringTour}>
+                  {SETTINGS_BUTTONS.startAuthoringTour}
+                </Button>
+              </Row>
+              </Section>
+              )}
 
               {/* Housekeeping rather than settings — every one is a "put it back" a normal player never
                   needs, so Simple keeps the whole section out of the way. */}

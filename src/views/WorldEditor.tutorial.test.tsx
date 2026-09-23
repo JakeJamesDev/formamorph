@@ -3,7 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { useEffect, type ReactNode } from 'react';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { SettingsProvider } from '@/contexts/SettingsContext';
-import { TUTORIAL_APPEAR_DELAY_MS, resetTutorials, seenTutorials } from '@/lib/tutorials';
+import {
+  AUTHORING_TOUR_OFFER_ID, TUTORIAL_APPEAR_DELAY_MS, markTutorialSeen, resetTutorials, seenTutorials,
+} from '@/lib/tutorials';
 import WorldEditor from './WorldEditor';
 import type { World } from '@/types';
 
@@ -58,6 +60,8 @@ const settle = () => act(() => { vi.advanceTimersByTime(TUTORIAL_APPEAR_DELAY_MS
 beforeEach(() => {
   localStorage.clear();
   resetTutorials();
+  // An author who has answered the Authoring Tour offer, which shows before this note on a first visit.
+  markTutorialSeen(AUTHORING_TOUR_OFFER_ID);
   vi.useFakeTimers();
 });
 afterEach(() => vi.useRealTimers());

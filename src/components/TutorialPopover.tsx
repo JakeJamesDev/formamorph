@@ -95,13 +95,14 @@ export function TutorialPopover({ entry, nav, side = 'bottom', align = 'end', an
   align?: Align;
   /** An element to point at in place of wrapping `children`. */
   anchor?: HTMLElement | null;
-  onPrimary?: () => void;
+  /** Returns false when the action did not happen yet, so the note stays unread. */
+  onPrimary?: () => boolean | void;
   onSecondary?: () => void;
   children?: ReactNode;
 }) {
   const isTour = nav.total > 1;
   const isLast = nav.step >= nav.total;
-  const primary = () => { onPrimary?.(); nav.next(); };
+  const primary = () => { if (onPrimary?.() !== false) nav.next(); };
   const secondary = () => { onSecondary?.(); nav.next(); };
   return (
     <TutorialNote

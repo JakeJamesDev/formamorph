@@ -586,6 +586,13 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
 - Appears under **Load Game** with an **Auto** tag
 - Starts once the opening scene finishes`,
   },
+
+  // ── Data · Authoring ────────────────────────────────────────────────────────
+  authoringTour: {
+    label: 'Authoring Tour',
+    description: 'Walks you through building a new world, one field at a time',
+    info: "Opens the **World Editor** on a new world with an example for every step. Your other worlds don't change.",
+  },
 } as const satisfies Record<string, SettingCopy>;
 
 /** Buttons inside the modal, kept here so their casing is guarded alongside the row labels. */
@@ -595,6 +602,7 @@ export const SETTINGS_BUTTONS = {
   restoreDefaultWorlds: 'Restore Default Worlds',
   clearCachedImages: 'Clear Cached Images',
   resetTutorials: 'Reset Tutorials',
+  startAuthoringTour: 'Start Authoring Tour',
   resetAiEndpoint: 'Reset AI Endpoint',
   troubleConnecting: 'Trouble Connecting?',
   howToSetUp: 'How to Set Up',

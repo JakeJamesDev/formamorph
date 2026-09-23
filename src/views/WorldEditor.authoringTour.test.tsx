@@ -82,10 +82,10 @@ describe('Authoring Tour offer', () => {
     expect(screen.queryByRole('dialog', { name: 'Simple vs. Advanced' })).not.toBeInTheDocument();
   });
 
-  it('does not offer the tour on a world from the library', async () => {
+  // The first-visit offer, which builds a new world rather than touring this one (WorldEditor.tourStart.test).
+  it('offers a world from the library a tour on a new world', async () => {
     renderWorldEditorBench(NEW_WORLD, 'simple');
-    await screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 2000 });
-    expect(screen.queryByRole('dialog', { name: 'Take the Authoring Tour?' })).not.toBeInTheDocument();
+    expect(await findOffer()).toHaveTextContent('Build a new world one field at a time');
   });
 
   it('does not offer the tour on a world loaded over the new one', async () => {

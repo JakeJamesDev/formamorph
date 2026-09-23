@@ -4,7 +4,7 @@
  * in the test files — `vi.mock` is hoisted per file — but the fixture, the mount, and its lint exception
  * live here once.
  */
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ComponentProps, type ReactNode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
@@ -68,7 +68,7 @@ const Harness = ({ world, children, onReady }: {
 export const renderWorldEditorBench = (
   world: World,
   mode: EditorMode,
-  props: { newWorld?: boolean } = {},
+  props: Partial<Omit<ComponentProps<typeof WorldEditor>, 'onClose'>> = {},
 ) => {
   let ctx!: GameDataHandle;
   writeEditorMode(mode);
