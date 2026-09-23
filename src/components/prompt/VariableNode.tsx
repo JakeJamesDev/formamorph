@@ -16,7 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Hint } from '@/components/ui/typography';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AFFIX_MAX_LENGTH, AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
+import { AFFIX_FORBIDDEN, isValidAffix } from '@/lib/promptVariables';
 import { cn } from '@/lib/utils';
 import { ChipVocabularyContext } from '@/lib/chipVocabulary';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
@@ -55,13 +55,11 @@ export function AffixInput({ label, value, disabled, onChange }: {
       <Input
         value={value.split('\n').join(NEWLINE_MARK)}
         disabled={disabled}
-        maxLength={AFFIX_MAX_LENGTH}
         onChange={(e) => commit(e.target.value)}
         onKeyDown={(e) => {
           if (e.key !== 'Enter') return;
           e.preventDefault();
           const input = e.currentTarget;
-          if (input.value.length >= AFFIX_MAX_LENGTH) return;
           const start = input.selectionStart ?? input.value.length;
           const end = input.selectionEnd ?? start;
           commit(`${input.value.slice(0, start)}${NEWLINE_MARK}${input.value.slice(end)}`);

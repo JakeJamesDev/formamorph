@@ -327,9 +327,6 @@ export const TOKEN_PATTERN =
   `(?:${TOKEN_BASES})(?:\\|(?:${ALL_VARIANT_IDS.map(escapeRegExp).join('|')}))?` +
   `(?:\\|pre=${AFFIX_BODY})?(?:\\|post=${AFFIX_BODY})?(?:\\|format=(markdown|xml))?(?:\\|header=${HEADER_BODY})?>`;
 
-/** Longest an affix may be. They are connective phrases, not prose. */
-export const AFFIX_MAX_LENGTH = 40;
-
 /** The character an affix cannot contain (it delimits the affix in the token). */
 export const AFFIX_FORBIDDEN = '"';
 
@@ -375,9 +372,9 @@ export function joinToken(parts: { base: string; variantId?: string | null; pre?
   return `${inner}${variant}${pre}${post}${format}${header}>`;
 }
 
-/** True when `text` is usable as an affix (short enough, and free of the delimiter). */
+/** True when `text` is free of the affix delimiter. */
 export function isValidAffix(text: string): boolean {
-  return text.length <= AFFIX_MAX_LENGTH && !text.includes(AFFIX_FORBIDDEN);
+  return !text.includes(AFFIX_FORBIDDEN);
 }
 
 /** The base token (`<…>`) of a possibly-variant token, e.g. `<LOCATION|summary>` → `<LOCATION>`. */
