@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **2.0.0 – 3.0.0 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.0.0** — the latest released version.
+> ✅ **2.0.0 – 3.0.1 are released** (collapsed below). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.0.1** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more changes touch the same feature, they sit together under that feature's name.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.0.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.0.1** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.0.1 — Released 2026-09-23</strong> — Experimental prompt preset — headed prompt chips as self-contained sections — Prepend and Append on World and Dictionary chips — Night Pharmacy and Surveyor's Camp become places (click to expand)</summary>
 
 ### Minor Changes
 
@@ -27,12 +32,14 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Prompt Chips:**
-    - **Anatomy's Chips view keeps headed sections evenly spaced when sample values are empty.** An empty headed chip still shows its section frame. Inline chips keep their placement, and Resolved view still shows the exact request text.
     - **World and Dictionary chips have Prepend and Append fields.** Text added before or after these chips can be seen and edited in the chip editor.
     - **Long Prepend and Append text can be edited normally.** Removed the 40-character limit that blocked changes to section definitions.
     - **A chip with a Header is a self-contained section.** It adds a blank line, the heading, and its content, and it ends its own line. Place headed chips back to back for one blank line between sections. An empty headed chip adds nothing. Line breaks you type stay as typed. Edit shows the frame with `↵` on otherwise empty lines. Location and Entity lists no longer add an extra blank line before the section that follows an empty one.
+    - **Anatomy's Chips view keeps headed sections evenly spaced when sample values are empty.** An empty headed chip still shows its section frame. Inline chips keep their placement, and Resolved view still shows the exact request text.
   - **Slime Outbreak's Night Pharmacy and Veilwood's Surveyor's Camp are now places, not entities.** Each is a sublocation of the district or tree that holds it, so you can travel there. Unedited copies update on next launch.
   - **The website gallery and social preview show the updated interface and load fresh images after each screenshot update.** Captures use a 1600×900 viewport across all five palettes in light and dark themes. The gameplay image shows a submitted player action and its response, with Entities selected. The capture script rejects clipped action text, narration, choices or input and crowded tabs before saving the gameplay image. Website deployments give the gallery, thumbnails, and social preview content-based URLs so cached images do not hide new captures.
+
+</details>
 
 ---
 
