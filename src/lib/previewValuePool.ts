@@ -1,6 +1,6 @@
 import { lengthGuidance, type ParagraphLimit } from './outputLength';
 import { type SectionStyle } from './promptPresets';
-import { markdownGuidance, activeCharacterGuidance } from '@/components/game/GamePrompts';
+import { markdownGuidance, markdownDefinitions, activeCharacterGuidance } from '@/components/game/GamePrompts';
 import { languageDirective, type LanguageSurface } from './languages';
 import { DISCOVER_LATER_LABEL, DISCOVER_PASSAGE_LABEL } from './runtimeCharacters';
 import { milestoneMomentValues } from './milestoneMemory';
@@ -28,7 +28,7 @@ import {
  */
 
 /** Which tokens the derived layer owns — real settings values, never sampled. */
-export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<ACTIVE CHARACTER GUIDANCE>', '<LANGUAGE>'];
+export const DERIVED_TOKENS = ['<LENGTH GUIDANCE>', '<MARKDOWN GUIDANCE>', '<MARKDOWN GUIDANCE|definitions>', '<ACTIVE CHARACTER GUIDANCE>', '<LANGUAGE>'];
 
 const WORLD = `A quiet stretch of coast where the tide leaves more behind than it takes. People here trade in
 salvage and rumor, and nobody asks where either came from.`;
@@ -277,6 +277,7 @@ export function derivedPreviewValues(s: DerivedPreviewSettings): Record<string, 
   return {
     '<LENGTH GUIDANCE>': lengthGuidance(s.paragraphLimit, s.maxTokens),
     '<MARKDOWN GUIDANCE>': markdownGuidance(s.markdownOutput),
+    '<MARKDOWN GUIDANCE|definitions>': markdownDefinitions(s.markdownOutput),
     '<ACTIVE CHARACTER GUIDANCE>': activeCharacterGuidance(s.limitActiveCharacters, s.activeCharacterLimit),
     ...languagePreviewValue('narration', s.language),
   };

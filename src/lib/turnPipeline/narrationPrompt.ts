@@ -11,7 +11,7 @@ import { selectSemanticLore, applySemanticLore } from "../semanticDictionary";
 import { renderPromptTemplateRuns, templateChipKeys } from "../promptTemplate";
 import { trimEndTiled, type AnatomyRun } from "../requestAnatomy";
 import type { SectionStyle } from "../promptPresets";
-import { markdownGuidance } from "../../components/game/GamePrompts";
+import { markdownDefinitions, markdownGuidance } from "../../components/game/GamePrompts";
 import { lengthGuidance, type ParagraphLimit } from "../outputLength";
 import { NONE_PLACEHOLDER } from "../promptFallbacks";
 import { languageDirective } from "../languages";
@@ -101,6 +101,7 @@ export function buildNarrationPrompt(input: NarrationPromptInput): NarrationProm
     ...ctx,
     "<LENGTH GUIDANCE>": lengthGuidance(paragraphLimit, maxTokens),
     "<MARKDOWN GUIDANCE>": markdownGuidance(markdownOutput),
+    "<MARKDOWN GUIDANCE|definitions>": markdownDefinitions(markdownOutput),
     "<DICTIONARY>": resolvePH(buildDictionaryContext(afterEntries, false)) || NONE_PLACEHOLDER,
     "<DICTIONARY|before>": resolvePH(buildDictionaryContext(beforeEntries, false)) || NONE_PLACEHOLDER,
     "<LANGUAGE>": languageDirective("narration", language),
