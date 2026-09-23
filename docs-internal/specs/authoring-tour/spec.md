@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: Spec: Authoring Tour
-Status note: two items need the user's approval before their tickets start: the example world text (Appendix A) and the Settings placement of **Start Authoring Tour** (Implementation Decisions → Entry points).
+Status note: 13 tickets in `issues/`. The user approved the example world (Appendix A) and the Settings placement on 2026-09-23.
 Workspace: branch `feature/authoring-tour`, worktree `.claude/worktrees/authoring-tour`. Every ticket is built there, never on `main`. See Further Notes → Workspace.
 
 ## Problem Statement
@@ -176,7 +176,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 - **Offers** are one-time tutorial notes with two actions, **Start Tour** and **No Thanks**. There is one offer on a new blank world and one on the first editor visit to any other world. **They share one seen-state**, so declining either retires both, and taking the tour retires both.
 - The tutorial note component gains an optional second action for this.
 - On a new blank world, **Start Tour** runs the tour on that world. Anywhere else, it creates a new world with the same defaults as **New World** and opens it.
-- **Start Authoring Tour** in Settings always creates a new world. **Needs confirmation:** the grilling placed it "beside Reset Tutorials", but Reset Tutorials sits in Settings → Data → Storage and only shows in Advanced. The proposal is a **Start Authoring Tour** row on the **Data** tab that shows in both Settings modes. It is hidden while a game is running.
+- **Start Authoring Tour** in Settings always creates a new world. It is its own row on the **Data** tab and shows in both Settings modes. It is not placed beside Reset Tutorials, which sits in Data → Storage and only shows in Advanced. The row is hidden while a game is running.
 
 **Editor mode**
 - The tour forces Simple through a mode override, the same kind the dev router uses. It never writes the stored preference, so the author's mode is back the moment the tour is off screen. There is nothing to restore.
@@ -222,7 +222,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 - Step copy follows the UI help-copy pattern and the title-case rule for fragments.
 
 **Example world**
-- One fixed example world supplies every **Use Example** value. It uses a light transformation premise and stays SFW. Its text lives in the step registry. The draft is in Appendix A and awaits approval.
+- One fixed example world supplies every **Use Example** value. It uses a light transformation premise and stays SFW. Its text lives in the step registry. The approved text is in Appendix A.
 - An example can mention things from earlier examples. If the author typed their own text earlier, a later example may not fit it. That is accepted.
 
 **Dev tooling**
@@ -285,7 +285,7 @@ The tour is a long effort and is not part of the next release, so it lives on it
 - The branch merges to `main` only when the whole tour works and the user decides to ship it.
 - Before removing the worktree, delete the `node_modules` junction first. `git worktree remove` follows the junction and deletes the main checkout's packages.
 
-## Appendix A: Example world (draft, awaiting approval)
+## Appendix A: Example world (approved 2026-09-23)
 
 A cold-coast fishing village whose tide-fed spring slowly reshapes the people who bathe in it. Cozy and curious, never horror.
 
