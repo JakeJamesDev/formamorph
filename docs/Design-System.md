@@ -119,7 +119,7 @@ Every prompt-variable chip offers a single-line **Header** above any Prepend/App
 
 Chips without body formatting show **Format** only while Header contains nonblank text. The first Header uses Simple, independent of the preset's style. Format changes the heading and wrappers while preserving the body. Clearing Header hides Format and remembers its selection through editing and sharing. Placeholder Chips keep their existing controls.
 
-Headed chips form separate sections, reusing authored line breaks and preserving extra blank lines. The section contains Header, Prepend, the value, Append, and any XML closing tag. Blank values and the exact `N/A` sentinel omit the whole section. Custom XML parents remain authored text.
+Consecutive headed chips share one authored line break. Automatic header spacing stays attached to its chip in Edit, with a `↵` marker on otherwise empty lines, and supplies section spacing in Preview and the AI request. Header, Prepend, Append, and XML closing tags remain visible in Edit. Removing a chip from a sequence removes its empty line. A Header adds one blank line between rendered sections; a chip without a Header adds no section spacing. Blank values and the exact `N/A` sentinel omit the whole headed section. Content and affix whitespace remain authored text.
 
 Persona, Location and Entities use plain text for Name, including in Preview. Disable Format for Name only when Header is blank, through the shared read-only axis pattern. Clearing Header retains Format and affixes.
 

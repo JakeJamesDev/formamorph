@@ -40,7 +40,8 @@ export function sectionSpacing(parts: { text: string; section: boolean }[]): { b
     const leading = left.match(/[ \t\r\n]*$/)?.[0] ?? '';
     const trailing = (part.text.match(/[ \t\r\n]*$/)?.[0] ?? '') + (right.match(/^[ \t\r\n]*/)?.[0] ?? '');
     const before = left.trim() ? '\n'.repeat(Math.max(0, 2 - (leading.match(/\n/g)?.length ?? 0))) : '';
-    const after = right.trim() ? '\n'.repeat(Math.max(0, 2 - (trailing.match(/\n/g)?.length ?? 0))) : '';
+    const nextContent = parts.slice(i + 1).find(piece => piece.text.trim());
+    const after = right.trim() && !nextContent?.section ? '\n'.repeat(Math.max(0, 2 - (trailing.match(/\n/g)?.length ?? 0))) : '';
     text[i] = before + part.text + after;
     return { before, after };
   });

@@ -62,12 +62,29 @@ describe('Header in the shared prompt editor', () => {
     expect(screen.getByTestId('stored').textContent).toBe('<PERSONA|name.xml|pre="Meet "|post=".">');
   });
 
-  it('shows contextual spacing in Edit and exactly the same section in Preview', async () => {
+  it('shows automatic header spacing in Edit and Preview', async () => {
     const { container } = render(<Field initial={`Before${TOKEN}After`} />);
     await waitFor(() => expect(container.querySelector('[contenteditable]')?.textContent)
       .toBe('Before\n\n<player_character>\nMeet Persona (Name, XML).\n</player_character>\n\nAfter'));
+    expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(2);
     await userEvent.click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Before\n\n<player_character>\nMeet Mira.\n</player_character>\n\nAfter');
+  });
+
+  it.each(['Traits', 'Persona', 'Location'])('keeps consecutive chips compact when removing and undoing %s', async removed => {
+    const first = '<TRAITS DESCRIPTION|markdown|header="traits">';
+    const last = '<LOCATION|markdown|header="place">';
+    const { container } = render(<Field initial={`${first}\n\n${TOKEN}\n\n${last}`} />);
+    await waitFor(() => expect(container.querySelectorAll('[data-affix-newline]')).toHaveLength(2));
+    expect(screen.getByText('<player_character>')).toBeVisible();
+    expect(container.querySelector('[contenteditable]')?.textContent).toContain('Meet Persona (Name, XML).');
+    expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(2);
+    await userEvent.click(screen.getByRole('button', { name: `Remove ${removed}` }));
+    const expected = { Traits: `${TOKEN}\n${last}`, Persona: `${first}\n${last}`, Location: `${first}\n${TOKEN}` }[removed];
+    expect(screen.getByTestId('stored').textContent).toBe(expected);
+    expect(container.querySelector('[contenteditable]')?.querySelectorAll('br:not([data-lexical-managed-linebreak])')).toHaveLength(1);
+    fireEvent.mouseDown(screen.getByLabelText('Undo'));
+    await waitFor(() => expect(screen.getByTestId('stored').textContent).toBe(`${first}\n${TOKEN}\n${last}`));
   });
 
   it('protects both generated boundaries and Header in a read-only field', async () => {
