@@ -1,6 +1,6 @@
 # 11: Tour Ending
 
-Status: in-progress
+Status: ready-for-human
 Base: 81739da8
 Blocked by: 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -40,8 +40,16 @@ The ending steps sit last in the registry. Until the tab tickets land, the tour 
 
 **2026-09-23, implementation notes**
 
-- The Save note is owned by the tour, not the tutorial registry. It shows after the first save of a tour session, holds the step note back until **Got It**, and has its own seen id (`authoring-tour-save`). **Reset Tutorials** brings it back.
+- The Save note is owned by the tour, not the tutorial registry. It shows after the first save of a tour session, holds the step note back until **Got It**, and has its own seen id (`AUTHORING_TOUR_SAVE_NOTE_ID` in `tutorials.ts`). **Reset Tutorials** brings it back.
 - The mode step marks the Simple vs. Advanced note seen when the step is reached. An author who ends the tour before that step still gets the old note.
 - The final step shows **Finish** and **Play**. **Finish** ends the tour in the editor. **Play** shows only where the host can enter a world (the main menu), so the in-game editor offers **Finish** alone.
 - Ending steps have no tab (`tab: null`). They point at the header and footer, which show on every tab, so **Back to Tour** stays on the current tab.
 - Tests: `WorldEditor.authoringTourEnding.test.tsx` (bench harness) and `MainMenu.tourPlay.test.tsx` (Play through the Introduction and setup screen to game start). Each new guard was mutation-tested.
+
+**2026-09-23, review fold-in**
+
+- The Save note id moved beside the other tour ids in `tutorials.ts`. The note and step copy now name their controls ("the Play button", "Advanced mode") and no longer make "the tour" the subject.
+- The main menu's editor teardown is one `closeWorldEditor` helper, shared by Close and Play. If the world list cannot be read back after Play, a toast says the world is saved and where to open it.
+- The "shows once" test now covers the first save of a tour opened afresh.
+- Open for a ruling: **Play** is absent from the in-game editor, which has no entry flow of its own. Play also skips the Enter World source-block check. A tour world has no library links unless the author adds them outside the tour.
+- Not changed: the two tour test files share their mocks and helpers. They are candidates to move into the bench harness.

@@ -8,12 +8,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import WorldStorageService from '@/services/WorldStorageService';
 import { useMountedRef } from '@/lib/useMountedRef';
-import { markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
+import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
 import { TOUR_STEPS, tourStepIndex, type TourEditApi, type TourStep, type TourWorld } from './steps';
 import { clearTourRecord, pruneTourRecords, useTourRecord, writeTourRecord } from './progress';
-
-/** The one-time note on the editor's Save button, shown after the tour's first save. */
-export const TOUR_SAVE_NOTE_ID = 'authoring-tour-save';
 
 export interface AuthoringTour {
   running: boolean;
@@ -55,9 +52,9 @@ export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }
   const [saving, setSaving] = useState(false);
   // Session-only: the note waits for a save the author has just watched happen.
   const [saved, setSaved] = useState(false);
-  const saveNoteSeen = useTutorialSeen(TOUR_SAVE_NOTE_ID);
+  const saveNoteSeen = useTutorialSeen(AUTHORING_TOUR_SAVE_NOTE_ID);
   const showSaveNote = !!record && saved && !saveNoteSeen;
-  const dismissSaveNote = useCallback(() => markTutorialSeen(TOUR_SAVE_NOTE_ID), []);
+  const dismissSaveNote = useCallback(() => markTutorialSeen(AUTHORING_TOUR_SAVE_NOTE_ID), []);
   const mounted = useMountedRef();
 
   // Registry objects are stable, so this runs once per step reached.

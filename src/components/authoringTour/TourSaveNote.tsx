@@ -12,7 +12,7 @@ export function TourSaveNote({ tour }: { tour: AuthoringTour }) {
     <TutorialNote
       open={tour.showSaveNote && onTop}
       title="Your World Is Saved"
-      body="The tour saves after each step. After the tour, save your changes with this button."
+      body="Each step saves your world for you. After the tour, save your changes with this button."
       anchor={anchor}
       side="top"
       align="end"

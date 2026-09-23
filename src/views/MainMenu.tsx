@@ -1550,12 +1550,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setPlayAfterTour(null);
     startEntryRef.current();
   }, [playAfterTour, selectedWorld]);
-  const playFromEditor = (worldId: string) => {
+  /** Closes the World Editor and reloads the world grid, which the caller reads back. */
+  const closeWorldEditor = () => {
     setShowWorldEditor(false);
     setEditorOnNewWorld(false);
     setEditorStartsTour(false);
-    void refreshWorlds().then((list) => {
-      if (!list.some((w) => w.id === worldId)) return;
+    return refreshWorlds();
+  };
+  const playFromEditor = (worldId: string) => {
+    void closeWorldEditor().then((list) => {
+      if (!list.some((w) => w.id === worldId)) {
+        toast.error('Your world is saved. Open it from the library to play.');
+        return;
+      }
       resyncSelectedWorld(list, worldId);
       setPlayAfterTour(worldId);
     });
@@ -3187,11 +3194,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             startTour={editorStartsTour}
             onPlay={playFromEditor}
             onClose={() => {
-              setShowWorldEditor(false);
-              setEditorOnNewWorld(false);
-              setEditorStartsTour(false);
               const openId = selectedWorld?.id;
-              void refreshWorlds().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
+              void closeWorldEditor().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
             }}
           />
         </DialogContent>

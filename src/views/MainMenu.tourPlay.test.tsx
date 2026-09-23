@@ -7,6 +7,7 @@ import { acceptAgeGate } from '@/lib/ageGate';
 import { AUTHORING_TOUR_OFFER_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { readTourRecord, reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
+import { toast } from 'react-toastify';
 
 /** The Authoring Tour's Play, from the World Editor back through the main menu's own Enter World flow. */
 
@@ -80,5 +81,23 @@ describe('Authoring Tour Play', () => {
     fireEvent.click(within(setup).getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual(['touched']);
+  });
+
+  it('says where the world is when the library cannot be read back', async () => {
+    markTutorialSeen(AUTHORING_TOUR_OFFER_ID);
+    writeTourRecord(TOUR_WORLD.id, { step: 'play', items: {} });
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Brinewell'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+    const step = await screen.findByRole('dialog', { name: 'Play Your World' }, { timeout: 3000 });
+
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(WorldStorageService, 'getWorldMetadata').mockRejectedValueOnce(new Error('storage closed'));
+    fireEvent.click(within(step).getByRole('button', { name: 'Play' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Your world is saved. Open it from the library to play.'));
+    expect(screen.queryByRole('dialog', { name: 'Introduction' })).not.toBeInTheDocument();
+    expect(onStartGame).not.toHaveBeenCalled();
   });
 });

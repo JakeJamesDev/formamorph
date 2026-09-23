@@ -29,6 +29,9 @@ export const AUTHORING_TOUR_OFFER_ID = 'authoring-tour-offer';
 /** The offer's body on a world that is not new, where Start Tour builds a new one. */
 export const AUTHORING_TOUR_FIRST_VISIT_BODY = 'Build a new world one field at a time, with an example for every step';
 
+/** The Authoring Tour's one-time note on Save. The tour shows it, so it has no registry entry. */
+export const AUTHORING_TOUR_SAVE_NOTE_ID = 'authoring-tour-save';
+
 /** The World Editor's Simple vs. Advanced note. The Authoring Tour's mode step retires it. */
 export const EDITOR_MODE_TUTORIAL_ID = 'world-editor-mode-toggle';
 

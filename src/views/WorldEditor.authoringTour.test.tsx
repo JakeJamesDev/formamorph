@@ -2,10 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
-import { markTutorialSeen, resetTutorials } from '@/lib/tutorials';
+import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
-import { TOUR_SAVE_NOTE_ID } from '@/lib/authoringTour/useAuthoringTour';
 import { readEditorMode } from '@/lib/editorMode';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import WorldStorageService from '../services/WorldStorageService';
@@ -71,7 +70,7 @@ beforeEach(() => {
   localStorage.clear();
   resetTutorials();
   // The Save note has its own suite. These start from an author who has read it.
-  markTutorialSeen(TOUR_SAVE_NOTE_ID);
+  markTutorialSeen(AUTHORING_TOUR_SAVE_NOTE_ID);
   reloadTourProgress();
   vi.clearAllMocks();
   getWorldMetadata.mockResolvedValue([]);
