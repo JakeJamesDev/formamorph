@@ -350,7 +350,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [showWorldEditor, setShowWorldEditor] = useState(false);
   // The open editor holds a world New World just made, not one from the library.
   const [editorOnNewWorld, setEditorOnNewWorld] = useState(false);
-  // ...and the Authoring Tour starts on it at once.
+  // The Authoring Tour starts on that new world as soon as the editor opens.
   const [editorStartsTour, setEditorStartsTour] = useState(false);
   // A required source the world's last check found removed. Read from that recorded answer alone: a check
   // runs only when the author asks for one in the World Editor, so opening this menu makes no request and

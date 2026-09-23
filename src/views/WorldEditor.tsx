@@ -576,19 +576,18 @@ const WorldEditorInner = ({
   // ── More ways to start ────────────────────────────────────────────────────
   // Only New World's own world takes the tour in place. Any other start builds a new world, so the tour
   // never edits a world the author already had. Any start retires the offer.
-  const startTourNow = tour.start;
   useEffect(() => {
     if (!tourWorldId || worldId !== tourWorldId) return;
     setTourWorldId(null);
     markTutorialSeen(AUTHORING_TOUR_OFFER_ID);
-    if (!touring) startTourNow();
-  }, [tourWorldId, worldId, touring, startTourNow]);
+    if (!touring) startTour();
+  }, [tourWorldId, worldId, touring, startTour]);
   const startTourOnNewWorld = () => {
     const world = newBlankWorld();
     loadWorldData(world, true);
     setTourWorldId(world.id);
   };
-  const takeTourOffer = () => (newWorld ? startTourNow() : leaveWorld(startTourOnNewWorld));
+  const takeTourOffer = () => (newWorld ? startTour() : leaveWorld(startTourOnNewWorld));
 
   const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

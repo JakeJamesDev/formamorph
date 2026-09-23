@@ -1,6 +1,6 @@
 # 10: More Ways to Start
 
-Status: in-progress
+Status: ready-for-human
 Base: 81739da8
 Blocked by: 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
