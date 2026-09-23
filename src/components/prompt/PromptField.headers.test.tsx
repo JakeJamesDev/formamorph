@@ -87,6 +87,26 @@ describe('Header in the shared prompt editor', () => {
     await waitFor(() => expect(screen.getByTestId('stored').textContent).toBe(`${first}\n${TOKEN}\n${last}`));
   });
 
+  it.each(['Prepend', 'Append'])('edits an existing long %s while preserving Header and focus', async label => {
+    const user = userEvent.setup();
+    const definition = 'An entity is a character, creature, or object. These entries describe entities that may appear in the current location.';
+    const option = label === 'Prepend' ? 'pre' : 'post';
+    render(<Field initial={`<PERSONA|markdown|${option}="${definition}"|header="entities">`} />);
+    await user.click(screen.getByText('## Entities'));
+    const input = screen.getByLabelText(label);
+    await user.click(input);
+    await user.keyboard('{End}!');
+    expect(input).toHaveValue(definition + '!');
+    await user.keyboard('{Backspace}{Backspace}');
+    expect(input).toHaveValue(definition.slice(0, -1));
+    expect(input).toHaveFocus();
+    expect(screen.getByLabelText('Header')).toHaveValue('entities');
+    expect(splitToken(screen.getByTestId('stored').textContent!)).toMatchObject({ [option]: definition.slice(0, -1), header: 'entities' });
+    await user.keyboard('{Enter}');
+    expect(input).toHaveValue(definition.slice(0, -1) + '↵');
+    expect(splitToken(screen.getByTestId('stored').textContent!)).toMatchObject({ [option]: definition.slice(0, -1) + '\n' });
+  });
+
   it('protects both generated boundaries and Header in a read-only field', async () => {
     const { container } = render(<Field readOnly />);
     for (const boundary of ['<player_character>', '</player_character>']) {
