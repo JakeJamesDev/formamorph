@@ -1,4 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
+import { newBlankWorld } from "@/lib/blankWorld";
 import { DEFAULT_WORLDS, isDefaultWorldId } from "@/lib/defaultWorlds";
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
@@ -347,6 +348,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // World Editor as an in-place modal (keeps MainMenu mounted so it animates and only the world grid
   // refreshes on close). The editor's own back arrow + unsaved-changes prompt handle the dirty guard.
   const [showWorldEditor, setShowWorldEditor] = useState(false);
+  // The open editor holds a world New World just made, not one from the library.
+  const [editorOnNewWorld, setEditorOnNewWorld] = useState(false);
   // A required source the world's last check found removed. Read from that recorded answer alone: a check
   // runs only when the author asks for one in the World Editor, so opening this menu makes no request and
   // an installed world stays playable offline. Editing and loading a save are never gated — repair lives in
@@ -522,6 +525,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setCardType(devRoute.tab as typeof cardType);
     }
   }, [devRoute?.modal, devRoute?.tab, openCommunityBrowser]);
+
+  // DEV: the Authoring Tour always runs on a world of its own, so its route opens a new blank one.
+  useEffect(() => {
+    if (devRoute?.modal === 'worldEditor' && devRoute.tour) loadWorldData(newBlankWorld(), true);
+  }, [devRoute?.modal, devRoute?.tour, loadWorldData]);
 
   // DEV: open the World Editor on a *stored* world. The `worldEditor` modal route opens a blank draft, so
   // authoring an existing world otherwise means clicking through the library grid.
@@ -1612,41 +1620,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   const handleCreateNewWorld = async () => {
     try {
-      // Generate a unique ID for the new world
-      const worldId = `new-${randomUUID()}`;
-
-      // Create a basic blank world structure
-      const blankWorld: World = {
-        id: worldId,
-        worldOverview: {
-          name: 'New World',
-          description: 'A blank world ready for editing',
-          thumbnail: null,
-          use3DModel: false,
-          bgm: null,
-          systemPrompt: '',
-          author: '',
-          tags: []
-        },
-        stats: [],
-        traits: [],
-        // Seed the two default trait groups so authors start with World/Player folders.
-        traitGroups: [
-          { id: randomUUID(), name: 'World', parentId: null, order: 0 },
-          { id: randomUUID(), name: 'Player', parentId: null, order: 1 },
-        ],
-        locations: [],
-        entities: [],
-        statUpdates: [], // This field is required by WorldStorageService
-        // Seed one "Default" book so new worlds start with a dictionary (Foreground by default).
-        dictionaries: [{ id: randomUUID(), name: 'Default', enabled: true, entries: [] }],
-      };
-
       // Load the blank world into context for editing; it is NOT persisted until the user hits Save World
       // (so backing out without saving leaves no stray blank world behind).
-      loadWorldData(blankWorld, true);
+      loadWorldData(newBlankWorld(), true);
 
-      // Open the world editor
+      // Open the world editor on it, which offers the Authoring Tour there.
+      setEditorOnNewWorld(true);
       setShowWorldEditor(true);
     } catch (error) {
       console.error('Error creating new world:', error);
@@ -3180,8 +3159,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           <WorldEditor
             embedded
             backButton
+            newWorld={editorOnNewWorld}
             onClose={() => {
               setShowWorldEditor(false);
+              setEditorOnNewWorld(false);
               const openId = selectedWorld?.id;
               void refreshWorlds().then((list) => (openId ? resyncSelectedWorld(list, openId) : undefined));
             }}

@@ -65,21 +65,25 @@ const Harness = ({ world, children, onReady }: {
  * so a suite about alias repairs or stat code is a suite about the Advanced editor, and one about the fold
  * itself is about the Simple one.
  */
-export const renderWorldEditorBench = (world: World, mode: EditorMode) => {
+export const renderWorldEditorBench = (
+  world: World,
+  mode: EditorMode,
+  props: { newWorld?: boolean } = {},
+) => {
   let ctx!: GameDataHandle;
   writeEditorMode(mode);
-  render(
+  const view = render(
     <SettingsProvider>
       <TooltipProvider>
         <GameDataProvider>
           <Harness world={world} onReady={(c) => { ctx = c; }}>
-            <WorldEditor onClose={vi.fn()} embedded backButton />
+            <WorldEditor onClose={vi.fn()} embedded backButton {...props} />
           </Harness>
         </GameDataProvider>
       </TooltipProvider>
     </SettingsProvider>,
   );
-  return { ctx: () => ctx };
+  return { ctx: () => ctx, unmount: view.unmount };
 };
 
 /** Click the editor header's flask — whose first stop is the quick-triage popover, not the full panel. */

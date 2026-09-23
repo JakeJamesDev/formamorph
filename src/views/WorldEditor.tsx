@@ -6,7 +6,13 @@ import { editorTabsFor } from './worldEditorTabs';
 import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
-import { useTutorial } from '@/lib/tutorials';
+import { AUTHORING_TOUR_OFFER_ID, useTutorial, useTutorialSeen } from '@/lib/tutorials';
+import { TOUR_STEPS, type TourStep } from '@/lib/authoringTour/steps';
+import { useTourRecord } from '@/lib/authoringTour/progress';
+import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
+import { findTourAnchor, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
+import { TourStepNote } from '@/components/authoringTour/TourStepNote';
+import { TourBar } from '@/components/authoringTour/TourBar';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -108,9 +114,13 @@ import { Tip } from '@/components/ui/tooltip';
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
 
-const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
+const MODE_TUTORIAL_ID = 'world-editor-mode-toggle';
+
+const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = false }: {
   onClose: () => void;
   embedded?: boolean;
+  /** The world is one New World just made. The editor offers the Authoring Tour on it. */
+  newWorld?: boolean;
   /** Force the header back arrow on/off independent of `embedded`. Defaults to `!embedded`: a full-screen
    *  host (MainMenu modal) wants the back arrow without the toast/chrome; GameViewer's popup uses the X. */
   backButton?: boolean;
@@ -170,8 +180,23 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
   };
 
   const { mode, advanced, setMode } = useEditorMode();
-  const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('worldEditor');
-  const dismissTutorial = useCallback(() => { if (tutorial) dismiss(tutorial.id); }, [tutorial, dismiss]);
+  // The tour offer shows alone. The mode note waits while the offer or the tour is up, since the tour locks
+  // the switch it explains.
+  const touring = useTourRecord(worldId) !== null;
+  const offerSeen = useTutorialSeen(AUTHORING_TOUR_OFFER_ID);
+  // The first world the editor shows is the new one. A world loaded over it from a file is not.
+  const [newWorldId, setNewWorldId] = useState<string | null>(null);
+  useEffect(() => {
+    if (newWorld && worldId && newWorldId === null) setNewWorldId(worldId);
+  }, [newWorld, worldId, newWorldId]);
+  const offerPending = worldId !== null && worldId === newWorldId && !offerSeen && !touring;
+  const heldTutorials = useMemo(() => [
+    ...(offerPending ? [] : [AUTHORING_TOUR_OFFER_ID]),
+    ...(offerPending || touring ? [MODE_TUTORIAL_ID] : []),
+  ], [offerPending, touring]);
+  const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('worldEditor', { held: heldTutorials });
+  const dismissTutorial = useCallback(() => dismiss(MODE_TUTORIAL_ID), [dismiss]);
+  const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState("overview");
   // Switching to Simple while standing on a hidden tab would blank the panel with no way back to it.
@@ -487,6 +512,33 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
     }
     return ok;
   };
+
+  // ── Authoring Tour ────────────────────────────────────────────────────────
+  // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
+  // the tab has rendered it.
+  const showTourStep = useCallback((step: TourStep) => {
+    setActiveTab(step.tab);
+    setSearchTerm('');
+    deferReveal(() => {
+      findTourAnchor(step.anchor)
+        ?.querySelector<HTMLElement>('input, textarea, [contenteditable="true"]')
+        ?.focus();
+    });
+  }, [deferReveal]);
+  const tourApi = useMemo(() => ({ updateWorldOverview }), [updateWorldOverview]);
+  const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
+  const tour = useAuthoringTour({ worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep });
+  // DEV dev-router: start the tour at a named step, once per world. A tour already running there resumes.
+  const devTour = devRoute?.tour;
+  const startTour = tour.start;
+  const appliedDevTour = useRef<string | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV || !devTour || !worldId) return;
+    const key = `${worldId}:${devTour}`;
+    if (appliedDevTour.current === key) return;
+    appliedDevTour.current = key;
+    if (!touring) startTour(devTour);
+  }, [devTour, worldId, touring, startTour]);
 
   const loadWorld = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -949,39 +1001,48 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
           onClick={bench.toggleFlask}
         />
       </BenchPopover>
-      <TutorialPopover entry={tutorial} nav={tutorialNav}>
-        <ToggleGroup
-          type="single"
-          value={mode}
-          // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
-          onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as EditorMode); } }}
-          aria-label="Editor mode"
-          className={isMobile ? "h-8" : undefined}
-        >
-          <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
-          {/* The marker rides the switch that acts on it rather than sitting beside it as its own icon:
-              it says "there is more through here", which is exactly what this control does, and a row on a
-              mobile has no room for a second thing saying so. */}
-          <Tip
-            tip={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
-            labelsChild={false}
-          >
-            <ToggleGroupItem
-              value="advanced"
-              className={cn('relative', isMobile && 'px-2 py-1')}
+      {/* The span takes the tip: a disabled switch gets no pointer events of its own. */}
+      <Tip tip={touring ? 'End the Authoring Tour to switch modes' : undefined} labelsChild={false}>
+        <span className="inline-flex" tabIndex={touring ? 0 : undefined}>
+          <TutorialPopover entry={tutorial?.id === MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
+            <ToggleGroup
+              type="single"
+              value={mode}
+              disabled={touring}
+              // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
+              onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as EditorMode); } }}
+              aria-label="Editor mode"
+              className={isMobile ? "h-8" : undefined}
             >
-              Advanced
-              {hasHiddenData && (
-                <span
-                  aria-label="This world uses advanced features"
-                  className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-                />
-              )}
-            </ToggleGroupItem>
-          </Tip>
-        </ToggleGroup>
-      </TutorialPopover>
+              <ToggleGroupItem value="simple" className={isMobile ? "px-2 py-1" : undefined}>Simple</ToggleGroupItem>
+              {/* The marker rides the switch that acts on it rather than sitting beside it as its own icon:
+                  it says "there is more through here", which is exactly what this control does, and a row on a
+                  mobile has no room for a second thing saying so. */}
+              <Tip
+                tip={hasHiddenData ? 'This world uses advanced features. Switch to Advanced to see them.' : undefined}
+                labelsChild={false}
+              >
+                <ToggleGroupItem
+                  value="advanced"
+                  className={cn('relative', isMobile && 'px-2 py-1')}
+                >
+                  Advanced
+                  {hasHiddenData && (
+                    <span
+                      aria-label="This world uses advanced features"
+                      className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
+                    />
+                  )}
+                </ToggleGroupItem>
+              </Tip>
+            </ToggleGroup>
+          </TutorialPopover>
+        </span>
+      </Tip>
     </div>
+  );
+  const tourBar = tour.running && (
+    <TourBar tour={tour} onBackToTour={() => { if (tour.step) showTourStep(tour.step); }} />
   );
   // The strip fills its row and the tabs share it out. Not on mobile: there the strip is the one that
   // scrolls sideways, and tabs told to share a width they already overflow would squeeze rather than scroll.
@@ -1176,7 +1237,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         {isMobile ? (
           <div className="h-full w-full">
             <Card className="h-full flex flex-col rounded-none border-x-0">
-              <CardHeader className="space-y-0 p-2">{headerBar}</CardHeader>
+              <CardHeader className="space-y-0 p-2">{headerBar}{tourBar}</CardHeader>
               <CardContent className="flex-grow flex flex-col overflow-hidden p-2">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col min-h-0">
                   {/* The tab strip doesn't fit mobile, so it scrolls horizontally. */}
@@ -1210,7 +1271,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">
                 <Card className="h-full flex flex-col">
-                  <CardHeader className="space-y-0 p-3 pb-2">{headerBar}</CardHeader>
+                  <CardHeader className="space-y-0 p-3 pb-2">{headerBar}{tourBar}</CardHeader>
                   <CardContent className="flex-grow flex flex-col overflow-hidden p-3">
                     {/* The embedded Bench takes the tab strip, the add/search bar and the list; the detail
                         panel beside it stays live, so a finding's item opens visibly next to the list being
@@ -1311,6 +1372,14 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
         />
       )}
       {linking.dialogs}
+      <TutorialPopover
+        entry={tutorial?.id === AUTHORING_TOUR_OFFER_ID ? tutorial : null}
+        nav={tutorialNav}
+        anchor={offerAnchor}
+        align="start"
+        onPrimary={() => tour.start()}
+      />
+      {tour.running && <TourStepNote tour={tour} />}
     </div>
   );
 };
@@ -1319,6 +1388,9 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton }: {
  *  so verification can land in either mode without touching localStorage first. */
 const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
   const devRoute = useDevRoute();
+  // The Authoring Tour shows Simple while it runs on this world, without touching the stored preference.
+  const { worldId } = useGameData();
+  const touring = useTourRecord(worldId) !== null;
   const forcedMode = import.meta.env.DEV && (devRoute?.mode === 'simple' || devRoute?.mode === 'advanced')
     ? devRoute.mode
     : undefined;
@@ -1331,7 +1403,7 @@ const WorldEditor = (props: Parameters<typeof WorldEditorInner>[0]) => {
     nonce.current += 1;
   }
   return (
-    <EditorModeProvider forcedMode={forcedMode} forcedNonce={nonce.current}>
+    <EditorModeProvider forcedMode={forcedMode} forcedNonce={nonce.current} lockedMode={touring ? 'simple' : undefined}>
       {/* One set of preview rolls for the whole editor, so every field's Preview shows one value per
           placeholder until a Reroll draws again. Editor state only — a save never sees it. */}
       <EditorPreviewRollsProvider>

@@ -1,6 +1,7 @@
 # 03: Authoring Tour Tracer on Overview
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 7b6207bd
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,24 +24,34 @@ This ticket sets up the Authoring Tour module: the step registry, the progress s
 
 ## Acceptance criteria
 
-- [ ] The step registry is the only place that defines a step. Each step declares its id, tab, anchor, tour item, completion predicate over the world, example value and In Play slice. The slice is empty until ticket 04.
-- [ ] Anchors use a stable `data-tour-anchor` attribute on each field's existing wrapper. The note positions against that element. No step anchors by label text.
-- [ ] The note reuses the tutorial layer's look, its topmost-screen layering, and its stand-down while a modal covers the anchor.
-- [ ] The tutorial note component gains an optional second action. The new-world offer uses it for **Start Tour** / **No Thanks**.
-- [ ] The offer's seen-state id is shared, so ticket 10's first-visit offer can reuse it. **No Thanks** retires it for good.
-- [ ] Steps never auto-advance. A step whose field already has a value shows with **Next** enabled.
-- [ ] **Back to Tour** switches to the step's tab and returns focus to the step's field.
-- [ ] While the tour runs, the editor shows Simple, the stored mode preference is unchanged, and the toggle is disabled with its tip. With the tour off screen, the author's own mode shows.
-- [ ] The world is persisted after each completed step. A new world is stored after the World Name step.
-- [ ] Unmounting and remounting the editor on the same world resumes at the stored step. **End Tour** clears the record.
-- [ ] The dev route opens the World Editor with the tour at a named step. The dev-route drift guard covers it.
-- [ ] Tests run through the World Editor Bench harness and drive the tour as a user does: offer, Start Tour, Next gating, Use Example, Previous, End Tour, save, resume and mode.
-- [ ] A drift test iterates the registry and asserts that each step's anchor renders on its tab. Prove it by removing one anchor attribute and watching it fail.
-- [ ] A tour test that presses Escape waits for the note to stand down first. See the known Escape trap in the spec.
-- [ ] Preview check through the dev router at 1280 and 375 wide: the note, the tour bar and the disabled toggle, with static DOM evidence.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add one 👤 changelog entry for the Authoring Tour in the In Progress section. Later tickets adjust this entry and do not add new ones.
+- [x] The step registry is the only place that defines a step. Each step declares its id, tab, anchor, tour item, completion predicate over the world, example value and In Play slice. The slice is empty until ticket 04.
+- [x] Anchors use a stable `data-tour-anchor` attribute on each field's existing wrapper. The note positions against that element. No step anchors by label text.
+- [x] The note reuses the tutorial layer's look, its topmost-screen layering, and its stand-down while a modal covers the anchor.
+- [x] The tutorial note component gains an optional second action. The new-world offer uses it for **Start Tour** / **No Thanks**.
+- [x] The offer's seen-state id is shared, so ticket 10's first-visit offer can reuse it. **No Thanks** retires it for good.
+- [x] Steps never auto-advance. A step whose field already has a value shows with **Next** enabled.
+- [x] **Back to Tour** switches to the step's tab and returns focus to the step's field.
+- [x] While the tour runs, the editor shows Simple, the stored mode preference is unchanged, and the toggle is disabled with its tip. With the tour off screen, the author's own mode shows.
+- [x] The world is persisted after each completed step. A new world is stored after the World Name step.
+- [x] Unmounting and remounting the editor on the same world resumes at the stored step. **End Tour** clears the record.
+- [x] The dev route opens the World Editor with the tour at a named step. The dev-route drift guard covers it.
+- [x] Tests run through the World Editor Bench harness and drive the tour as a user does: offer, Start Tour, Next gating, Use Example, Previous, End Tour, save, resume and mode.
+- [x] A drift test iterates the registry and asserts that each step's anchor renders on its tab. Prove it by removing one anchor attribute and watching it fail.
+- [x] A tour test that presses Escape waits for the note to stand down first. See the known Escape trap in the spec.
+- [x] Preview check through the dev router at 1280 and 375 wide: the note, the tour bar and the disabled toggle, with static DOM evidence.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add one 👤 changelog entry for the Authoring Tour in the In Progress section. Later tickets adjust this entry and do not add new ones.
 
 ## Scope notes
 
 - **No world or save export-shape change.** All tour state is local.
 - Build on `feature/authoring-tour` in the worktree.
+
+## Comments
+
+**2026-09-23, implementation notes**
+
+- New World names the world "New World", so on a new world the World Name step opens with **Next** already enabled. This follows "a step whose field already has a value shows with **Next** enabled". Whether the default name should count as a value is open.
+- The last step's button reads **Finish**, not **Next**.
+- The mode note ("Simple vs. Advanced") waits while the offer or the tour is up, because the tour locks the switch it explains.
+- The offer shows only on the world New World made. A world loaded over it from a file gets no offer.
+- The step ids sit in the dev-route ledger as well as the registry. `devRouter.test.ts` guards that the two match.

@@ -353,6 +353,7 @@ const WorldDetailsManager = ({ focusField, onOpenEntity }: {
         onChange={(systemPrompt) => updateWorldOverview({ systemPrompt })}
         placeholders={placeholders}
         resizable
+        tourAnchor="world-ai-description"
       />
 
       <CustomPromptsSection focusField={focusField} onOpenEntity={onOpenEntity} />
