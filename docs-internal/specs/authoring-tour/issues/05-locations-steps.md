@@ -1,6 +1,7 @@
 # 05: Locations Steps
 
-Status: in-progress
+Status: ready-for-human
+Status note: Built in 1d32c839 and the review follow-up. Open for a ruling: a one-way Connection from the second location to the first completes the step, but the first location's destinations list then honestly shows nothing.
 Base: e56bc579
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

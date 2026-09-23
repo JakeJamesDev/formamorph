@@ -112,7 +112,7 @@ function patchLocation(
   if (location) api.updateLocation({ ...location, ...patch });
 }
 
-/** The Connection between the two tour locations, either way round. */
+/** The Connection between the two tour locations, in either direction. */
 function tourConnection(world: TourWorld, items: TourItems): Connection | undefined {
   const { location, secondLocation } = items;
   if (!location || !secondLocation) return undefined;

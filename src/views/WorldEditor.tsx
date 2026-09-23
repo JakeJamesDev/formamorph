@@ -11,10 +11,12 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import { newBlankWorld, newLocation } from '@/lib/blankWorld';
-import { TOUR_STEPS, replayTourSteps, tourStepIndex, type TourStep } from '@/lib/authoringTour/steps';
+import {
+  TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
+} from '@/lib/authoringTour/steps';
 import { readTourRecord, useTourRecord } from '@/lib/authoringTour/progress';
 import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
-import { findTourAnchor, focusTourField, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
+import { focusTourField, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import { TourStepNote } from '@/components/authoringTour/TourStepNote';
 import { TourSaveNote } from '@/components/authoringTour/TourSaveNote';
 import { TourBar } from '@/components/authoringTour/TourBar';
@@ -553,11 +555,7 @@ const WorldEditorInner = ({
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
     if (itemId) setSelectedItemId(itemId);
     if (step.tab === 'locations' && step.item) setLocationTab(step.panelTab ?? 'details');
-    deferReveal(() => {
-      findTourAnchor(step.anchor)
-        ?.querySelector<HTMLElement>('input, textarea, [contenteditable="true"]')
-        ?.focus();
-    });
+    deferReveal(() => focusTourField(step.anchor));
   }, [deferReveal, worldId]);
   const tourApi = useMemo(
     () => ({ updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection }),
@@ -577,6 +575,7 @@ const WorldEditorInner = ({
   const devTour = devRoute?.tour;
   const startTour = tour.start;
   const appliedDevTour = useRef<string | null>(null);
+  const [devStart, setDevStart] = useState<{ step: string; items: TourItems } | null>(null);
   useEffect(() => {
     if (!import.meta.env.DEV || !devTour || !worldId) return;
     const key = `${worldId}:${devTour}`;
@@ -585,8 +584,14 @@ const WorldEditorInner = ({
     if (touring) return;
     const replay = replayTourSteps(getWorldData(), tourStepIndex(devTour));
     loadWorldData({ ...replay.world, id: worldId, version: APP_VERSION }, true);
-    startTour(devTour, replay.items);
-  }, [devTour, worldId, touring, startTour, getWorldData, loadWorldData]);
+    setDevStart({ step: devTour, items: replay.items });
+  }, [devTour, worldId, touring, getWorldData, loadWorldData]);
+  // Starts a render after the replayed world lands, so no tour item reads as deleted.
+  useEffect(() => {
+    if (!devStart) return;
+    setDevStart(null);
+    startTour(devStart.step, devStart.items);
+  }, [devStart, startTour]);
 
   // ── More ways to start ────────────────────────────────────────────────────
   // Only New World's own world takes the tour in place. Any other start builds a new world, so the tour

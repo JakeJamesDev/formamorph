@@ -11,7 +11,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
 import {
   TOUR_ITEM_KINDS, TOUR_STEPS, addStepIndex, liveTourItem, tourItemIds, tourStepIndex,
-  type TourEditApi, type TourItem, type TourItems, type TourStep, type TourWorld,
+  type TourEditApi, type TourItems, type TourStep, type TourWorld,
 } from './steps';
 import { clearTourRecord, pruneTourRecords, useTourRecord, writeTourRecord } from './progress';
 
@@ -87,21 +87,13 @@ export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }
     showStep(step);
   }, [worldId, step, showStep]);
 
-  // Tour items follow the world by id. Each kind's ids from the last world seen tell an add from a delete, so
-  // an item the world has not caught up with yet is never mistaken for a deleted one.
-  const seenIds = useRef<Partial<Record<TourItem, Set<string>>>>({});
+  // The ids an add step's list held when the step became current. Only an id added after that is the tour's.
+  const addBaseline = useRef<{ key: string; ids: Set<string> } | null>(null);
   useEffect(() => {
-    const before = seenIds.current;
-    const now = Object.fromEntries(TOUR_ITEM_KINDS.map((k) => [k, new Set(tourItemIds(world, k))])) as
-      Record<TourItem, Set<string>>;
-    seenIds.current = now;
     if (!worldId || !record || !step) return;
 
     // A deleted tour item sends the tour back to the step that added it.
-    const gone = TOUR_ITEM_KINDS.filter((k) => {
-      const id = record.items[k];
-      return !!id && !!before[k]?.has(id) && !now[k].has(id);
-    });
+    const gone = TOUR_ITEM_KINDS.filter((k) => record.items[k] && !liveTourItem(world, record.items, k));
     if (gone.length) {
       const kept = { ...record.items };
       gone.forEach((k) => { delete kept[k]; });
@@ -111,11 +103,15 @@ export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }
       return;
     }
 
-    // On an add step, the first item new since the last world seen becomes the tour's.
     const kind = step.add ? step.item : null;
-    if (!kind || !before[kind] || liveTourItem(world, record.items, kind)) return;
+    if (!kind) return;
+    const ids = tourItemIds(world, kind);
+    const key = `${worldId}:${step.id}`;
+    if (addBaseline.current?.key !== key) addBaseline.current = { key, ids: new Set(ids) };
+    if (liveTourItem(world, record.items, kind)) return;
+    const baseline = addBaseline.current.ids;
     const taken = new Set(Object.values(record.items));
-    const added = [...now[kind]].find((id) => !before[kind]!.has(id) && !taken.has(id));
+    const added = ids.find((id) => !baseline.has(id) && !taken.has(id));
     if (!added) return;
     writeTourRecord(worldId, { ...record, items: { ...record.items, [kind]: added } });
     showStep(step);
