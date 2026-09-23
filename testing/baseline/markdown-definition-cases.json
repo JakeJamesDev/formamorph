@@ -1,0 +1,10 @@
+{
+  "cases": [
+    { "id": "idle", "kind": "calm", "action": "I sit at the end of the dock and watch the river go by." },
+    { "id": "talk", "kind": "dialogue", "action": "I ask Odette what brought her to the landing." },
+    { "id": "inner", "kind": "calm", "action": "I lean on the ferry rail and think about the home I left behind." },
+    { "id": "threat", "kind": "pivot", "action": "Halfway across, I hear the ferry rope start to fray." },
+    { "id": "find", "kind": "pivot", "action": "I pry up a loose board on the dock and look at what is hidden underneath." },
+    { "id": "name", "kind": "pivot", "action": "I ask the ferryman for his real name, and I wait until he answers." }
+  ]
+}

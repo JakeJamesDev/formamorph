@@ -19,6 +19,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **The Markdown Guidance chip has a Definitions variant, and the Experimental preset uses it.** It lists the inline syntax the story displays: bold, italics, strikethrough, highlight, colored highlight, and quoted dialogue. It gives no direction on when to use them. It's empty while **Markdown Formatting** is off, so its section disappears.
 
+- **🛠️ Developer tooling**
+  - **A Markdown definition probe compares syntax definitions, usage guidance, and no formatting section in the Experimental preset.** It narrates calm, dialogue, and pivot scenes in Sedge Landing at paired seeds. It counts each defined syntax per reply, prints every colored highlight with its key, and counts block syntax, unknown color keys, and unbalanced highlight markers as false positives.
+
 ---
 
 <details>
