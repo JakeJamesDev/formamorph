@@ -13,6 +13,7 @@ import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
 import { findTourAnchor, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import { TourStepNote } from '@/components/authoringTour/TourStepNote';
 import { TourBar } from '@/components/authoringTour/TourBar';
+import { TourInPlay } from '@/components/authoringTour/InPlayPane';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -438,6 +439,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
     advanced,
     routedTab: devRoute?.bench,
     navigateToItem: navigateToBenchItem,
+    // The tour's In Play pane holds the Bench's desktop slot while the tour runs.
+    panelSuspended: touring && !isMobile,
   });
   const benchPanel = <TestBench {...bench.panelProps} />;
 
@@ -1312,6 +1315,18 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
                 <Panel id="editor-bench" order={3} defaultSize={28} minSize={20}>
                   <div className="h-full p-3">
                     <Card className="h-full overflow-hidden">{benchPanel}</Card>
+                  </div>
+                </Panel>
+              </>
+            )}
+            {tour.step && worldId && (
+              <>
+                <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
+                <Panel id="editor-inplay" order={4} defaultSize={28} minSize={20}>
+                  <div className="h-full p-3">
+                    <Card className="h-full overflow-hidden">
+                      <TourInPlay worldId={worldId} step={tour.step} />
+                    </Card>
                   </div>
                 </Panel>
               </>

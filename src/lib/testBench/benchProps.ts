@@ -115,8 +115,9 @@ export interface BenchPopoverProps {
   onClose: () => void;
   issues: IssuesProps;
   onFixRule: (ruleId: string) => void;
-  /** The compact way on to the full panel — embedded or docked on desktop, the sheet on mobile. */
-  onOpenPanel: () => void;
+  /** The compact way on to the full panel — embedded or docked on desktop, the sheet on mobile. Absent while
+   *  the panel is suspended. */
+  onOpenPanel?: () => void;
 }
 
 /** One bundle per Instrument plus the bench chrome, so adding an Instrument adds a bundle, not a prop row. */
