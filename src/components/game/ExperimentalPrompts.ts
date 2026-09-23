@@ -2,6 +2,7 @@ import { PROMPT_TEXT_DEFAULTS } from './GamePrompts';
 import type { PromptValues } from '@/lib/promptPresets';
 
 export const experimentalSystemPrompt = `You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.
+<MARKDOWN GUIDANCE|definitions|pre="The game displays this syntax in your reply.\n\n"|format=markdown|header="Formatting">\
 <WORLD DESCRIPTION|pre="The setting, tone, and world-wide facts of this story.\n\n"|format=markdown|header="Game World">\
 <DICTIONARY|before|pre="Facts about the world that are true throughout the story.\n\n"|format=markdown|header="Background Lore">\
 <STATS DESCRIPTION|descriptions.markdown|pre="A stat is a named value that the game tracks and that changes during play.\n\n"|header="Stats">\

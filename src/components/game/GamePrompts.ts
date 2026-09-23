@@ -1,4 +1,5 @@
 import type { PromptValues } from '@/lib/promptPresets';
+import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 
 export const defaultSystemPrompt = `You are the narrator stage of an interactive story. Your one job is to write the story: vivid second-person prose describing what happens in response to the player's most recent action - or the opening scene, if the story is just beginning. Immediately after you, a separate step presents the player's choices, so offering options is never your job.
 
@@ -40,6 +41,19 @@ const MARKDOWN_ON = `- Write immersive, flowing prose - never a list, menu, or t
 /** The Markdown formatting directive injected into the game-text prompt (replaces `<MARKDOWN GUIDANCE>`). */
 export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
+}
+
+// The inline syntax the narration display renders, as shape only. Block syntax is left out on purpose.
+const MARKDOWN_DEFINITIONS = `- \`**text**\` displays text in bold.
+- \`*text*\` displays text in italics.
+- \`~~text~~\` displays text struck through.
+- \`==text==\` displays text highlighted.
+- \`=r=text==\` displays text highlighted in a color. The letter between the first two \`=\` sets the color: ${HIGHLIGHT_COLORS.map(c => `${c.key} ${c.label.toLowerCase()}`).join(', ')}.
+- \`"text"\` displays text as spoken dialogue.`;
+
+/** The syntax definitions for `<MARKDOWN GUIDANCE|definitions>`; empty while Markdown output is off. */
+export function markdownDefinitions(enabled: boolean): string {
+  return enabled ? MARKDOWN_DEFINITIONS : '';
 }
 
 /** Director cast-size guidance (the `<ACTIVE CHARACTER GUIDANCE>` chip), from the Limit Active Characters

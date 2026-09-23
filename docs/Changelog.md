@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.0.1** (just released below)._
 
+### Minor Changes
+
+#### ➕ Added
+
+- **👤 User-facing**
+  - **The Markdown Guidance chip has a Definitions variant, and the Experimental preset uses it.** It lists the inline syntax the story displays: bold, italics, strikethrough, highlight, colored highlight, and quoted dialogue. It gives no direction on when to use them. It's empty while **Markdown Formatting** is off, so its section disappears.
+
 ---
 
 <details>

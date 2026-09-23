@@ -143,7 +143,15 @@ const LOCATION: PromptVariable = { token: '<LOCATION>', label: 'Location', color
 const PERSONA: PromptVariable = { token: '<PERSONA>', label: 'Persona', color: HIGHLIGHT_PALETTE[17], axes: [PERSONA_CONTENT_AXIS, FORMAT_AXIS], affixable: true };
 const NOTES: PromptVariable = { token: '<NOTES>', label: 'Notes', color: HIGHLIGHT_PALETTE[4], affixable: true };
 const LENGTH: PromptVariable = { token: '<LENGTH GUIDANCE>', label: 'Length Guidance', color: HIGHLIGHT_PALETTE[5] };
-const MARKDOWN: PromptVariable = { token: '<MARKDOWN GUIDANCE>', label: 'Markdown Guidance', color: HIGHLIGHT_PALETTE[6] };
+const MARKDOWN: PromptVariable = {
+  token: '<MARKDOWN GUIDANCE>',
+  label: 'Markdown Guidance',
+  color: HIGHLIGHT_PALETTE[6],
+  variants: [
+    { id: null, label: 'Guidance', help: 'Tells the AI how to use Markdown, or to write plain prose while Markdown is off' },
+    { id: 'definitions', label: 'Definitions', help: 'Lists the inline syntax the story displays, with no usage direction. Empty while Markdown is off.' },
+  ],
+};
 // Director prompt only: expands to the cast-size guidance derived from the Limit Active Characters setting.
 const ACTIVE_CHARACTER: PromptVariable = { token: '<ACTIVE CHARACTER GUIDANCE>', label: 'Active Character Guidance', color: HIGHLIGHT_PALETTE[13] };
 // Entities are one chip whose `scope` axis picks here / sub-locations / reachable siblings.
