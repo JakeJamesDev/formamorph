@@ -89,7 +89,7 @@ describe('Authoring Tour offer', () => {
 
   // The first-visit offer, which builds a new world rather than touring this one (WorldEditor.tourStart.test).
   it('offers a world from the library a tour on a new world', async () => {
-    renderWorldEditorBench(NEW_WORLD, 'simple');
+    renderWorldEditorBench(benchEditorWorld({}), 'simple');
     expect(await findOffer()).toHaveTextContent('Build a new world one field at a time');
   });
 
