@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, clickFlask, clickOpenBench, renderWorldEditorBench } from '@/test/worldEditorBench';
+import {
+  asMobile as asMobileViewport, benchEditorWorld, clickFlask, clickOpenBench, renderWorldEditorBench,
+} from '@/test/worldEditorBench';
 
 /**
  * Guards the Bench's three chromes through the real editor: the flask's quick-triage popover, the panel
@@ -59,18 +61,8 @@ const popoverShown = () => screen.queryByRole('button', { name: 'Open Test Bench
  *  animation, and jsdom runs no animations to finish. */
 const sheet = () => screen.getByRole('dialog', { name: 'Test Bench' });
 
-/** Report mobile to `useIsMobile`, which reads the width once and then the media query. */
-const realMatchMedia = window.matchMedia;
-const realWidth = window.innerWidth;
-const asMobile = () => {
-  window.innerWidth = 400;
-  window.matchMedia = ((query: string) => ({
-    matches: query.includes('max-width: 767px'),
-    media: query, onchange: null,
-    addEventListener: () => {}, removeEventListener: () => {},
-    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
-  })) as unknown as typeof window.matchMedia;
-};
+let restoreViewport = () => {};
+const asMobile = () => { restoreViewport = asMobileViewport(); };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -78,8 +70,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  window.matchMedia = realMatchMedia;
-  window.innerWidth = realWidth;
+  restoreViewport();
+  restoreViewport = () => {};
 });
 
 describe('WorldEditor — the Bench Popover', () => {

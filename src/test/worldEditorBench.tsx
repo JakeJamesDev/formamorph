@@ -5,7 +5,7 @@
  * live here once.
  */
 import { useEffect, type ComponentProps, type ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
@@ -22,6 +22,31 @@ if (typeof window.matchMedia !== 'function') {
     addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+/** Report mobile to `useIsMobile`, which reads the width once and then the media query. Returns the undo. */
+export const asMobile = () => {
+  const realMatchMedia = window.matchMedia;
+  const realWidth = window.innerWidth;
+  window.innerWidth = 400;
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width: 767px'),
+    media: query, onchange: null,
+    addEventListener: () => {}, removeEventListener: () => {},
+    addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = realMatchMedia;
+    window.innerWidth = realWidth;
+  };
+};
+
+/** End a closed sheet's exit animation, which jsdom never runs: vaul unmounts the sheet, and the editor it
+ *  hid from assistive tech comes back. */
+export const finishSheetExit = (sheet: HTMLElement) => {
+  const end = new Event('animationend', { bubbles: true });
+  Object.defineProperty(end, 'animationName', { value: getComputedStyle(sheet).animationName });
+  act(() => { sheet.dispatchEvent(end); });
+};
 
 /** A loadable world with the base a suite doesn't care about filled in — a named overview with a prompt and
  *  readme, a flagged starting location, and one described resident keeping it occupied — clean under the full
