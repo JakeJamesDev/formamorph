@@ -2,7 +2,7 @@
    Lexical VariableNode class with its $create/$is helpers and the shared drag context; they're one unit. */
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import {
-  DecoratorNode, ElementNode, $getNodeByKey, $getRoot, $isElementNode, SKIP_DOM_SELECTION_TAG,
+  DecoratorNode, ElementNode, $getNodeByKey, $getRoot, $isElementNode, $isLineBreakNode, SKIP_DOM_SELECTION_TAG,
   type LexicalNode, type NodeKey, type SerializedElementNode, type SerializedLexicalNode, type Spread,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -162,7 +162,19 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
   // How many toggle (checkbox) axes are on — used to lock the last one so at least one piece stays selected.
   const toggleOnCount = axes.filter((a) => a.toggle && selection[a.id] != null).length;
 
-  const remove = () => editor.update(() => { $getNodeByKey(nodeKey)?.remove(); });
+  const remove = () => editor.update(() => {
+    const node = $getNodeByKey(nodeKey);
+    if (!node) return;
+    const previous = node.getPreviousSibling();
+    const next = node.getNextSibling();
+    const inSequence = ($isLineBreakNode(previous) && $isVariableNode(previous.getPreviousSibling()))
+      || ($isLineBreakNode(next) && $isVariableNode(next.getNextSibling()));
+    if (inSequence && (!previous || $isLineBreakNode(previous)) && (!next || $isLineBreakNode(next))) {
+      if (next) next.remove();
+      else previous?.remove();
+    }
+    node.remove();
+  });
 
   // A family with structure to walk can re-aim a placed chip; the static prompt variables have none, so the
   // row is simply absent there. A chip whose placeholder is gone still offers it — re-pointing it is the fix.

@@ -10,6 +10,12 @@ import { PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { buildStyledValues } from './sectionStyle';
 
 describe('authored prompt headers', () => {
+  it('preserves ordinary separators and adds section spacing for Header', () => {
+    const values = { '<PERSONA>': 'Mira', '<LOCATION>': 'Dock', '<NOTES>': 'Find map' };
+    expect(renderPromptTemplate('<PERSONA>\n\n<LOCATION>\n\n<NOTES>', values)).toBe('Mira\n\nDock\n\nFind map');
+    expect(renderPromptTemplate('<PERSONA|header="player">\n<LOCATION|header="place">\n<NOTES|header="notes">', values))
+      .toBe('PLAYER:\nMira\n\nPLACE:\nDock\n\nNOTES:\nFind map');
+  });
   it('round-trips raw heading text and renders a Markdown section', () => {
     const token = '<PERSONA|markdown|pre="Meet "|post="."|header="player character">';
     expect(serializeSegments(parsePromptTemplate(token))).toBe(token);
@@ -67,7 +73,7 @@ describe('authored prompt headers', () => {
     ['$', 'PLAYER:\nMira'],
     ['Before\n$\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
     ['Before\n\n$\n\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
-    ['Before\n\n\n$\n\n\nAfter', 'Before\n\n\nPLAYER:\nMira\n\n\nAfter'],
+    ['Before\n\n\n$\n\n\nAfter', 'Before\n\nPLAYER:\nMira\n\nAfter'],
     ['$$', 'PLAYER:\nMira\n\nPLAYER:\nMira'],
     ['$\n$', 'PLAYER:\nMira\n\nPLAYER:\nMira'],
     ['Before\r\n\r\n$\r\n\r\nAfter', 'Before\r\n\r\nPLAYER:\nMira\r\n\r\nAfter'],
@@ -86,6 +92,35 @@ describe('authored prompt headers', () => {
     expect(renderPromptTemplate(`${empty}${token}${empty}After`, { '<PERSONA>': 'Mira', '<LOCATION>': '' }))
       .toBe('PLAYER:\nMira\n\n\nAfter');
     expect(renderPromptTemplate(`Before${empty}After`, { '<LOCATION>': '' })).toBe('BeforeAfter');
+  });
+
+  it.each(['\n', '\r\n'])('removes empty headed chip gaps with %j line endings', newline => {
+    const chips = ['<NOTES|header="notes">', '<PERSONA|header="player">', '<LOCATION|header="place">'];
+    for (const separator of [newline, newline.repeat(3)]) {
+      const template = ['Intro', ...chips, 'End'].join(separator);
+      const values = { '<NOTES>': '', '<PERSONA>': 'N/A', '<LOCATION>': '' };
+      const expected = `Intro${newline.repeat(2)}End`;
+      expect(renderPromptTemplate(template, values)).toBe(expected);
+      const runs = renderPromptTemplateRuns(template, values, { source: 'system-template' });
+      expect(runs.content).toBe(expected);
+      expect(runsTile(expected, runs.runs)).toBe(true);
+      expect(runs.runs.filter(run => run.chip)).toHaveLength(3);
+      expect(renderPromptTemplate(separator + chips.join(separator) + separator, values)).toBe('');
+    }
+  });
+
+  it('gives consecutive sections one blank line and preserves body and inline whitespace', () => {
+    const template = '\n<NOTES|header="notes">\n<PERSONA|header="player">\n<LOCATION|header="place">\n';
+    const values = { '<NOTES>': 'First\n\n\nSecond', '<PERSONA>': '', '<LOCATION>': 'Here' };
+    expect(renderPromptTemplate(template, values)).toBe('NOTES:\nFirst\n\n\nSecond\n\nPLACE:\nHere');
+    expect(renderPromptTemplate(template, { ...values, '<PERSONA>': 'Mira' }))
+      .toBe('NOTES:\nFirst\n\n\nSecond\n\nPLAYER:\nMira\n\nPLACE:\nHere');
+    expect(renderPromptTemplate('Before  <PERSONA|header="player">  after\n\n\nEnd', values)).toBe('Before    after\n\n\nEnd');
+    expect(renderPromptTemplate('Before\n\n\n<PERSONA>\n\n\nAfter', values)).toBe('Before\n\n\n\n\n\nAfter');
+    expect(renderPromptTemplate(template, {})).toBe(template);
+    expect(renderPromptTemplate('Before\n\n\n<PERSONA|header="player">After', values)).toBe('Before\n\nAfter');
+    expect(renderPromptTemplate('Before\n\n\n<PERSONA|header="player">After', { ...values, '<PERSONA>': 'Mira' }))
+      .toBe('Before\n\nPLAYER:\nMira\n\nAfter');
   });
 
   it.each(['He said "go" | <now> & \\ later', '123 supplies', 'XML data', '!!!', 'café status', '旅行 🧭'])(
