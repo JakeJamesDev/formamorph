@@ -4,8 +4,8 @@ import type { PromptValues } from '@/lib/promptPresets';
 export const experimentalSystemPrompt = `You are the narrator of an interactive story. Narrate what happens in response to the player's action in second person, present tense.
 <WORLD DESCRIPTION|pre="The setting, tone, and world-wide facts of this story.\n\n"|format=markdown|header="Game World">\
 <DICTIONARY|before|pre="Facts about the world that are true throughout the story.\n\n"|format=markdown|header="Background Lore">\
-<STATS DESCRIPTION|descriptions.markdown|pre="Descriptions of the player character's current stat values.\n\n"|header="Player Stats">\
-<TRAITS DESCRIPTION|markdown|pre="The player character's active characteristics and conditions.\n\n"|header="Traits">\
+<STATS DESCRIPTION|descriptions.markdown|pre="A stat is a named value that the game tracks and that changes during play.\n\n"|header="Stats">\
+<TRAITS DESCRIPTION|markdown|pre="A trait is a characteristic or condition that is either active or inactive.\n\n"|header="Traits">\
 <PERSONA|markdown|pre="The identity and description of the character controlled by the player.\n\n"|header="Player Character">\
 <NOTES|pre="Additional information supplied by the player for this story.\n\n"|format=markdown|header="Important Player Notes">\
 <LOCATION|markdown|pre="The place where the player character currently is.\n\n"|header="Current Location">\
