@@ -6,12 +6,12 @@
 // pair they replaced), `none` (no definition on either lore chip). Every other byte of the prompt is shared.
 //
 // Checks (both directions):
-//   background-uptake / -contradiction — the fare case settles in salt, not coin
-//   foreground-uptake                  — the bell case carries the crack / flat ring
+//   background-uptake / -contradiction — fare (invited) and market (uninvited) settle in salt, not coin
+//   foreground-uptake / -mention       — bell (named) and departure (unnamed) carry the bell and its flat ring
 //   background-intrusion / foreground-intrusion — the idle case drags in salt / the bell (false-positive guard)
 //
 // Usage: npx vite-node testing/baseline/harness/lore-definition-probe.cli.ts --
-//          [--endpoint URL] [--model ID] [--runs 3] [--max 600] [--only fare] [--arms current,previous,none]
+//          [--endpoint URL] [--model ID] [--runs 3] [--max 600] [--only fare,market] [--arms current,previous,none]
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
@@ -64,12 +64,20 @@ const ARMS: Record<string, string> = {
   none: withLorePre({ before: '', after: '' }),
 };
 
-const CHECKS: Record<string, { re: RegExp; want: boolean }> = {
-  'background-uptake': { re: /\bsalt\b/i, want: true },
-  'background-contradiction': { re: /\b(coins?|copper|silver|gold|pennies|penny|money|purse)\b/i, want: false },
-  'foreground-uptake': { re: /\b(crack(ed)?|flat|sour)\b/i, want: true },
-  'background-intrusion': { re: /\bsalt\b/i, want: false },
-  'foreground-intrusion': { re: /\bbell\b/i, want: false },
+const sentences = (text: string) => text.split(/(?<=[.!?])\s+|\n+/);
+// Metal names are left out: the persona's silver hair would score as payment.
+const COIN = /\b(coins?|pennies|penny|money)\b/i;
+const NEGATED = /\b(no|not|never|nor|unheard|without|instead|rather|rarely|isn't|doesn't|don't)\b/i;
+const BELL_DETAIL = /\b(crack(ed|s)?|flat|sour)\b/i;
+
+const CHECKS: Record<string, { test: (text: string) => boolean; want: boolean }> = {
+  'background-uptake': { test: (t) => /\bsalt\b/i.test(t), want: true },
+  // A coin paid or named as currency; "coin is not used here" restates the fact.
+  'background-contradiction': { test: (t) => sentences(t).some((s) => COIN.test(s) && !NEGATED.test(s)), want: false },
+  'foreground-uptake': { test: (t) => sentences(t).some((s) => /\bbell\b/i.test(s) && BELL_DETAIL.test(s)), want: true },
+  'foreground-mention': { test: (t) => /\bbell\b/i.test(t), want: true },
+  'background-intrusion': { test: (t) => /\bsalt\b/i.test(t), want: false },
+  'foreground-intrusion': { test: (t) => /\bbell\b/i.test(t), want: false },
 };
 
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
@@ -122,7 +130,7 @@ async function narrate(model: string, system: string, action: string, seed: numb
 const model = await loadedModel();
 const started = Date.now();
 console.log(`model ${model} · runs ${runs} · arms ${armNames.join(', ')}`);
-const cases = fixture.cases.filter((c) => !only || c.id === only);
+const cases = fixture.cases.filter((c) => !only || only.split(',').includes(c.id));
 for (const c of cases) {
   const lore = systemPrompt(ARMS.current, c.action);
   const active = fixture.entries.filter((e) => lore.includes(e.value)).map((e) => e.name);
@@ -143,18 +151,22 @@ for (const arm of armNames) {
     const system = systemPrompt(ARMS[arm], c.action);
     for (let i = 0; i < runs; i++) {
       const text = await narrate(model, system, c.action, SEED + i);
-      const hits = c.checks.map((check) => `${check}=${CHECKS[check].re.test(text) ? 1 : 0}`);
-      for (const check of c.checks) totals[arm][check] = (totals[arm][check] ?? 0) + (CHECKS[check].re.test(text) ? 1 : 0);
+      const hits = c.checks.map((check) => `${check}=${CHECKS[check].test(text) ? 1 : 0}`);
+      for (const check of c.checks) {
+        const key = `${c.id}:${check}`;
+        totals[arm][key] = (totals[arm][key] ?? 0) + (CHECKS[check].test(text) ? 1 : 0);
+      }
       console.log(`[${arm}] ${c.id} #${i} ${hits.join(' ')} · ${text.split(/\s+/).length}w`);
       if (args.includes('--show')) console.log(`    ${text.replace(/\n+/g, ' ¶ ')}`);
     }
   }
 }
 
-console.log(`\nTOTALS (of ${runs} per check; ✓ = direction wanted)`);
-for (const check of Object.keys(CHECKS)) {
-  if (!cases.some((c) => c.checks.includes(check))) continue;
-  const row = armNames.map((arm) => `${arm} ${totals[arm][check] ?? 0}/${runs}`).join('  ·  ');
-  console.log(`${check.padEnd(26)} ${CHECKS[check].want ? '↑' : '↓'}  ${row}`);
+console.log(`\nTOTALS (of ${runs} per case check; ↑/↓ = direction wanted)`);
+for (const c of cases) {
+  for (const check of c.checks) {
+    const row = armNames.map((arm) => `${arm} ${totals[arm][`${c.id}:${check}`] ?? 0}/${runs}`).join('  ·  ');
+    console.log(`${`${c.id} ${check}`.padEnd(36)} ${CHECKS[check].want ? '↑' : '↓'}  ${row}`);
+  }
 }
 console.log(`duration ${((Date.now() - started) / 1000).toFixed(0)}s`);
