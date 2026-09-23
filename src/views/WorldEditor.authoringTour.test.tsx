@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
-import { resetTutorials } from '@/lib/tutorials';
+import { markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { TOUR_SAVE_NOTE_ID } from '@/lib/authoringTour/useAuthoringTour';
 import { readEditorMode } from '@/lib/editorMode';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import WorldStorageService from '../services/WorldStorageService';
@@ -59,6 +60,8 @@ const openTourOn = async (world: World, mode: 'simple' | 'advanced' = 'simple') 
   return view;
 };
 
+const TOTAL = TOUR_STEPS.length;
+
 const note = (title: string) => screen.getByRole('dialog', { name: title });
 const tourBar = () => screen.queryByRole('region', { name: 'Authoring Tour' });
 // By id: the step note carries the field's name too, so a label lookup finds both.
@@ -67,6 +70,8 @@ const worldNameField = () => document.getElementById('worldName') as HTMLInputEl
 beforeEach(() => {
   localStorage.clear();
   resetTutorials();
+  // The Save note has its own suite. These start from an author who has read it.
+  markTutorialSeen(TOUR_SAVE_NOTE_ID);
   reloadTourProgress();
   vi.clearAllMocks();
   getWorldMetadata.mockResolvedValue([]);
@@ -112,8 +117,8 @@ describe('Authoring Tour offer', () => {
   it('Start Tour runs the tour from the World Name step', async () => {
     await openTourOn(NEW_WORLD);
     expect(screen.queryByRole('dialog', { name: 'Take the Authoring Tour?' })).not.toBeInTheDocument();
-    expect(within(note('World Name')).getByText('1 / 2')).toBeInTheDocument();
-    expect(within(tourBar()!).getByText('Authoring Tour · 1 / 2')).toBeInTheDocument();
+    expect(within(note('World Name')).getByText(`1 / ${TOTAL}`)).toBeInTheDocument();
+    expect(within(tourBar()!).getByText(`Authoring Tour · 1 / ${TOTAL}`)).toBeInTheDocument();
     await waitFor(() => expect(document.activeElement).toBe(worldNameField()));
   });
 });
@@ -149,14 +154,14 @@ describe('Authoring Tour steps', () => {
     const second = await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     expect(storeWorld).toHaveBeenCalledTimes(1);
     expect(storeWorld.mock.calls[0][0]).toMatchObject({ id: 'w1', name: 'Brinewell' });
-    expect(within(second).getByText('2 / 2')).toBeInTheDocument();
-    expect(within(tourBar()!).getByText('Authoring Tour · 2 / 2')).toBeInTheDocument();
-    expect(within(second).getByRole('button', { name: 'Finish' })).toBeDisabled();
+    expect(within(second).getByText(`2 / ${TOTAL}`)).toBeInTheDocument();
+    expect(within(tourBar()!).getByText(`Authoring Tour · 2 / ${TOTAL}`)).toBeInTheDocument();
+    expect(within(second).getByRole('button', { name: 'Next' })).toBeDisabled();
 
     fireEvent.click(within(second).getByRole('button', { name: 'Use Example' }));
     await waitFor(() => expect(document.querySelector('[data-tour-anchor="world-ai-description"]')?.textContent)
       .toContain('Brinewell is a quiet fishing village'));
-    expect(within(second).getByRole('button', { name: 'Finish' })).toBeEnabled();
+    expect(within(second).getByRole('button', { name: 'Next' })).toBeEnabled();
 
     fireEvent.click(within(second).getByRole('button', { name: 'Previous' }));
     expect(await screen.findByRole('dialog', { name: 'World Name' })).toBeInTheDocument();
@@ -164,15 +169,15 @@ describe('Authoring Tour steps', () => {
     expect(storeWorld).toHaveBeenCalledTimes(1);
   });
 
-  it('Finish saves the world and ends the tour', async () => {
+  it('Next saves the AI-Facing Description and moves on', async () => {
     await openTourOn(NEW_WORLD);
     fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Next' }));
     const second = await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     fireEvent.click(within(second).getByRole('button', { name: 'Use Example' }));
-    fireEvent.click(within(second).getByRole('button', { name: 'Finish' }));
+    fireEvent.click(within(second).getByRole('button', { name: 'Next' }));
 
-    await waitFor(() => expect(tourBar()).not.toBeInTheDocument());
-    expect(screen.queryByRole('dialog', { name: 'AI-Facing Description' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: TOUR_STEPS[2].title })).toBeInTheDocument();
+    expect(within(tourBar()!).getByText(`Authoring Tour · 3 / ${TOTAL}`)).toBeInTheDocument();
     expect(storeWorld).toHaveBeenCalledTimes(2);
     expect(storeWorld.mock.calls[1][0]).toMatchObject({
       data: { worldOverview: { systemPrompt: expect.stringContaining('Brinewell is a quiet fishing village') } },
@@ -188,7 +193,7 @@ describe('Authoring Tour steps', () => {
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(next).toBeEnabled());
     expect(note('World Name')).toBeInTheDocument();
-    expect(within(tourBar()!).getByText('Authoring Tour · 1 / 2')).toBeInTheDocument();
+    expect(within(tourBar()!).getByText(`Authoring Tour · 1 / ${TOTAL}`)).toBeInTheDocument();
   });
 
   it('Back to Tour returns to the step tab and focuses its field', async () => {
@@ -221,9 +226,10 @@ describe('Authoring Tour steps', () => {
   it('renders every step anchor on its tab', async () => {
     renderWorldEditorBench(NEW_WORLD, 'simple');
     for (const step of TOUR_STEPS) {
-      const label = WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label;
+      // A step with no tab points at the header, so it is checked from a tab of no step's own.
+      const label = step.tab ? WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label : 'Stats';
       // Leave the tab first, so each step's anchor is found on a fresh render of its own tab.
-      fireEvent.mouseDown(screen.getByRole('tab', { name: 'Stats' }));
+      fireEvent.mouseDown(screen.getByRole('tab', { name: step.tab ? 'Stats' : 'Overview' }));
       fireEvent.mouseDown(screen.getByRole('tab', { name: label }));
       await waitFor(() => expect(
         document.querySelectorAll(`[data-tour-anchor="${step.anchor}"]`),
@@ -271,8 +277,8 @@ describe('Authoring Tour mode, End Tour and resume', () => {
 
     renderWorldEditorBench(NEW_WORLD, 'simple');
     const resumed = await screen.findByRole('dialog', { name: 'AI-Facing Description' });
-    expect(within(resumed).getByText('2 / 2')).toBeInTheDocument();
-    expect(within(tourBar()!).getByText('Authoring Tour · 2 / 2')).toBeInTheDocument();
+    expect(within(resumed).getByText(`2 / ${TOTAL}`)).toBeInTheDocument();
+    expect(within(tourBar()!).getByText(`Authoring Tour · 2 / ${TOTAL}`)).toBeInTheDocument();
   });
 
   it('drops the progress of a world that no longer exists', async () => {

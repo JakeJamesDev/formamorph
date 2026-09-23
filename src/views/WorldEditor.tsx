@@ -7,7 +7,8 @@ import { useEditorMode, type EditorMode } from '@/lib/editorMode';
 import { EditorModeProvider } from '@/components/EditorModeProvider';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import {
-  AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, markTutorialSeen, useTutorial, useTutorialSeen,
+  AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, EDITOR_MODE_TUTORIAL_ID, markTutorialSeen, useTutorial,
+  useTutorialSeen,
 } from '@/lib/tutorials';
 import { newBlankWorld } from '@/lib/blankWorld';
 import { TOUR_STEPS, type TourStep } from '@/lib/authoringTour/steps';
@@ -15,6 +16,7 @@ import { useTourRecord } from '@/lib/authoringTour/progress';
 import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
 import { findTourAnchor, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import { TourStepNote } from '@/components/authoringTour/TourStepNote';
+import { TourSaveNote } from '@/components/authoringTour/TourSaveNote';
 import { TourBar } from '@/components/authoringTour/TourBar';
 import { TourInPlay } from '@/components/authoringTour/InPlayPane';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
@@ -118,9 +120,9 @@ import { Tip } from '@/components/ui/tooltip';
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
 
-const MODE_TUTORIAL_ID = 'world-editor-mode-toggle';
-
-const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false }: {
+const WorldEditorInner = ({
+  onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
+}: {
   onClose: () => void;
   embedded?: boolean;
   /** The world is one New World just made. The editor offers the Authoring Tour on it. */
@@ -129,6 +131,8 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
   inGame?: boolean;
   /** The host opened a new world for the Authoring Tour. The tour starts on it at once. */
   startTour?: boolean;
+  /** Enters the world through the host's normal entry flow. The tour's last step offers it. */
+  onPlay?: (worldId: string) => void;
   /** Force the header back arrow on/off independent of `embedded`. Defaults to `!embedded`: a full-screen
    *  host (MainMenu modal) wants the back arrow without the toast/chrome; GameViewer's popup uses the X. */
   backButton?: boolean;
@@ -205,10 +209,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
     && !offerSeen && !touring;
   const heldTutorials = useMemo(() => [
     ...(offerPending ? [] : [AUTHORING_TOUR_OFFER_ID]),
-    ...(offerPending || touring || tourWorldId !== null ? [MODE_TUTORIAL_ID] : []),
+    ...(offerPending || touring || tourWorldId !== null ? [EDITOR_MODE_TUTORIAL_ID] : []),
   ], [offerPending, touring, tourWorldId]);
   const { active: tutorial, nav: tutorialNav, dismiss } = useTutorial('worldEditor', { held: heldTutorials });
-  const dismissTutorial = useCallback(() => dismiss(MODE_TUTORIAL_ID), [dismiss]);
+  const dismissTutorial = useCallback(() => dismiss(EDITOR_MODE_TUTORIAL_ID), [dismiss]);
   const offerAnchor = useTourAnchor(offerPending ? TOUR_STEPS[0].anchor : null);
   const visibleTabs = useMemo(() => editorTabsFor(advanced), [advanced]);
   const [activeTab, setActiveTab] = useState("overview");
@@ -541,8 +545,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
   // the tab has rendered it.
   const showTourStep = useCallback((step: TourStep) => {
-    setActiveTab(step.tab);
-    setSearchTerm('');
+    if (step.tab) {
+      setActiveTab(step.tab);
+      setSearchTerm('');
+    }
     deferReveal(() => {
       findTourAnchor(step.anchor)
         ?.querySelector<HTMLElement>('input, textarea, [contenteditable="true"]')
@@ -551,7 +557,10 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
   }, [deferReveal]);
   const tourApi = useMemo(() => ({ updateWorldOverview }), [updateWorldOverview]);
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
-  const tour = useAuthoringTour({ worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep });
+  const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
+  const tour = useAuthoringTour({
+    worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
+  });
   // DEV dev-router: start the tour at a named step, once per world. A tour already running there resumes.
   const devTour = devRoute?.tour;
   const startTour = tour.start;
@@ -1034,18 +1043,20 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
         </Button>
       </Tip>
       {/* The flask's first stop is quick triage; the full panel is one button inside it. */}
-      <BenchPopover {...bench.popoverProps}>
-        <TestBenchButton
-          count={bench.count}
-          newCount={bench.newCount}
-          open={bench.active}
-          onClick={bench.toggleFlask}
-        />
-      </BenchPopover>
+      <span data-tour-anchor="test-bench" className="inline-flex">
+        <BenchPopover {...bench.popoverProps}>
+          <TestBenchButton
+            count={bench.count}
+            newCount={bench.newCount}
+            open={bench.active}
+            onClick={bench.toggleFlask}
+          />
+        </BenchPopover>
+      </span>
       {/* The span takes the tip: a disabled switch gets no pointer events of its own. */}
       <Tip tip={touring ? 'End the Authoring Tour to switch modes' : undefined} labelsChild={false}>
-        <span className="inline-flex" tabIndex={touring ? 0 : undefined}>
-          <TutorialPopover entry={tutorial?.id === MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
+        <span data-tour-anchor="editor-mode" className="inline-flex" tabIndex={touring ? 0 : undefined}>
+          <TutorialPopover entry={tutorial?.id === EDITOR_MODE_TUTORIAL_ID ? tutorial : null} nav={tutorialNav}>
             <ToggleGroup
               type="single"
               value={mode}
@@ -1229,7 +1240,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
             </Button>
           </Tip>
         )}
-        <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty}>
+        <Button size="sm" onClick={saveWorld} disabled={!isWorldDirty} data-tour-anchor="save">
           <Save className="h-4 w-4 mr-2" />
           Save
         </Button>
@@ -1434,6 +1445,7 @@ const WorldEditorInner = ({ onClose, embedded = false, backButton, newWorld = fa
         onPrimary={takeTourOffer}
       />
       {tour.running && <TourStepNote tour={tour} />}
+      <TourSaveNote tour={tour} />
     </div>
   );
 };

@@ -8,8 +8,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import WorldStorageService from '@/services/WorldStorageService';
 import { useMountedRef } from '@/lib/useMountedRef';
+import { markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
 import { TOUR_STEPS, tourStepIndex, type TourEditApi, type TourStep, type TourWorld } from './steps';
 import { clearTourRecord, pruneTourRecords, useTourRecord, writeTourRecord } from './progress';
+
+/** The one-time note on the editor's Save button, shown after the tour's first save. */
+export const TOUR_SAVE_NOTE_ID = 'authoring-tour-save';
 
 export interface AuthoringTour {
   running: boolean;
@@ -20,14 +24,19 @@ export interface AuthoringTour {
   /** The step's field has a value, so Next is enabled. */
   complete: boolean;
   saving: boolean;
+  /** The Save note is up, so the step note waits behind it. */
+  showSaveNote: boolean;
+  dismissSaveNote: () => void;
   start: (stepId?: string) => void;
   next: () => Promise<void>;
   prev: () => void;
   applyExample: () => void;
   end: () => void;
+  /** Saves, ends the tour and enters the world. Null where the editor has no way to play. */
+  play: (() => Promise<void>) | null;
 }
 
-export function useAuthoringTour({ worldId, world, api, save, showStep }: {
+export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }: {
   worldId: string | null;
   world: TourWorld;
   api: TourEditApi;
@@ -35,6 +44,8 @@ export function useAuthoringTour({ worldId, world, api, save, showStep }: {
   save: () => Promise<boolean>;
   /** Brings a step's field on screen. */
   showStep: (step: TourStep) => void;
+  /** Enters the world the way the main menu does. */
+  onPlay?: () => void;
 }): AuthoringTour {
   const record = useTourRecord(worldId);
   const index = tourStepIndex(record?.step);
@@ -42,7 +53,15 @@ export function useAuthoringTour({ worldId, world, api, save, showStep }: {
   const items = record?.items;
   const complete = !!step && step.isComplete(world, items ?? {});
   const [saving, setSaving] = useState(false);
+  // Session-only: the note waits for a save the author has just watched happen.
+  const [saved, setSaved] = useState(false);
+  const saveNoteSeen = useTutorialSeen(TOUR_SAVE_NOTE_ID);
+  const showSaveNote = !!record && saved && !saveNoteSeen;
+  const dismissSaveNote = useCallback(() => markTutorialSeen(TOUR_SAVE_NOTE_ID), []);
   const mounted = useMountedRef();
+
+  // Registry objects are stable, so this runs once per step reached.
+  useEffect(() => { step?.onReach?.(); }, [step]);
 
   // A record whose world is gone is dropped. The open world may not be stored yet, so it always stays.
   useEffect(() => {
@@ -71,26 +90,36 @@ export function useAuthoringTour({ worldId, world, api, save, showStep }: {
 
   const end = useCallback(() => { if (worldId) clearTourRecord(worldId); }, [worldId]);
 
-  const next = useCallback(async () => {
+  // A failed save keeps the step, so the author can press the button again.
+  const saveThen = useCallback(async (then: () => void) => {
     if (!complete || saving) return;
     setSaving(true);
     const ok = await save();
     if (!mounted.current) return;
     setSaving(false);
-    // A failed save keeps the step, so the author can press Next again.
     if (!ok) return;
+    setSaved(true);
+    then();
+  }, [complete, saving, save, mounted]);
+
+  const next = useCallback(() => saveThen(() => {
     if (index + 1 >= TOUR_STEPS.length) end();
     else goTo(index + 1);
-  }, [complete, saving, save, mounted, index, end, goTo]);
+  }), [saveThen, index, end, goTo]);
+
+  const play = useCallback(() => saveThen(() => {
+    end();
+    onPlay?.();
+  }), [saveThen, end, onPlay]);
 
   const prev = useCallback(() => { if (index > 0) goTo(index - 1); }, [index, goTo]);
 
   const applyExample = useCallback(() => {
-    if (step) step.write(api, step.example, items ?? {});
+    if (step?.write && step.example !== undefined) step.write(api, step.example, items ?? {});
   }, [step, api, items]);
 
   return {
     running: !!record, step, stepNumber: index + 1, total: TOUR_STEPS.length, complete, saving,
-    start, next, prev, applyExample, end,
+    showSaveNote, dismissSaveNote, start, next, prev, applyExample, end, play: onPlay ? play : null,
   };
 }

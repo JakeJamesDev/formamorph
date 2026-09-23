@@ -7,6 +7,7 @@
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { WorldOverview, World } from '@/types';
 import { hasValue } from '@/lib/editorMode';
+import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec } from './inPlay';
 
 /** The world as the editor holds it while the tour reads it. */
@@ -25,7 +26,8 @@ export interface TourEditApi {
 
 export interface TourStep {
   id: string;
-  tab: (typeof WORLD_EDITOR_TABS)[number]['value'];
+  /** Null for a step that points at the editor's header, which shows on every tab. */
+  tab: (typeof WORLD_EDITOR_TABS)[number]['value'] | null;
   /** The `data-tour-anchor` value on the field's wrapper. */
   anchor: string;
   /** The tour item the step acts on, or null for a world-level field. */
@@ -33,16 +35,44 @@ export interface TourStep {
   title: string;
   body: string;
   isComplete: (world: TourWorld, items: TourItems) => boolean;
-  /** The example world's value for this field. */
-  example: string;
+  /** The example world's value for this field. A step with no field has none. */
+  example?: string;
   /** Writes a value into the field through its panel's own setter. */
-  write: (api: TourEditApi, value: string, items: TourItems) => void;
+  write?: (api: TourEditApi, value: string, items: TourItems) => void;
+  /** Runs each time the step becomes current. */
+  onReach?: () => void;
   /** What In Play shows for this step. */
   inPlay: InPlaySpec;
 }
 
 /** The In Play slice of a step that points at no field, such as an ending step. */
 export const NO_IN_PLAY: InPlaySpec = { sees: 'none', readers: [] };
+
+/** The steps that close the tour. They stay after every tab step. */
+const ENDING_STEPS: readonly TourStep[] = [
+  {
+    id: 'editor-mode',
+    tab: null,
+    anchor: 'editor-mode',
+    item: null,
+    title: 'More Fields in Advanced',
+    body: 'Advanced shows more fields for each part of your world. Switch to it any time after the tour.',
+    isComplete: () => true,
+    // This step explains the switch, so the switch's own one-time note has nothing left to say.
+    onReach: () => markTutorialSeen(EDITOR_MODE_TUTORIAL_ID),
+    inPlay: NO_IN_PLAY,
+  },
+  {
+    id: 'play',
+    tab: null,
+    anchor: 'test-bench',
+    item: null,
+    title: 'Play Your World',
+    body: 'Press Play to try what you built. Use the Test Bench here any time to check your world for problems.',
+    isComplete: () => true,
+    inPlay: NO_IN_PLAY,
+  },
+];
 
 const WORLD_NAME_EXAMPLE = 'Brinewell';
 const WORLD_AI_DESCRIPTION_EXAMPLE = 'Brinewell is a quiet fishing village on a cold northern coast. At its heart lies '
@@ -80,6 +110,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
       }],
     },
   },
+  ...ENDING_STEPS,
 ];
 
 /** The step with this id, or the first step for an id the registry no longer has. */
