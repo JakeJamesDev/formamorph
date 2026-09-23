@@ -6,7 +6,7 @@ The Dictionary is your world's lorebook. Each **book** holds **entries**. When a
 
 ## Why it exists
 
-The AI can't keep your whole world in its context at one time. If you write every detail into your world description, you use that context on every turn, relevant or not.
+The AI can't keep your whole world in its context at one time. If you write every detail into your world's AI-Facing Description, you use that context on every turn, relevant or not.
 
 A dictionary entry uses no context until a keyword matches. Mention the Gloamwater, and the AI knows what it is.
 
@@ -24,7 +24,7 @@ The rule: **if the AI reads it, it can activate an entry.** A **turn** is one ac
 
 The scan covers the blocks your prompt uses. If you remove the location, entities or notes chip from your prompt, the game doesn't scan that block.
 
-Text that is in **every** turn is **not scanned**: your world description, stats, traits and formatting guidance. Its words would activate entries on every turn.
+Text that is in **every** turn is **not scanned**: your world's AI-Facing Description, stats, traits and formatting guidance. Its words would activate entries on every turn.
 
 An entry's Value doesn't activate other entries, unless the other entry is **Recursive**.
 

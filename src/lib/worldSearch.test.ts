@@ -152,6 +152,17 @@ describe('collectSearchTargets', () => {
     expect(chipOf(true)).toBe(false);
   });
 
+  it('labels the overview descriptions by who reads them, as the editor captions them', () => {
+    const { src } = sources({
+      worldOverview: overview({ description: 'A drowned town.', systemPrompt: 'The tide never turns.' }),
+    });
+    const targets = collectSearchTargets(src);
+    expect(targetFor(targets, 'description'))
+      .toMatchObject({ itemLabel: 'World', fieldLabel: 'Player-Facing Description', chipCapable: false });
+    expect(targetFor(targets, 'systemPrompt'))
+      .toMatchObject({ itemLabel: 'World', fieldLabel: 'AI-Facing Description', chipCapable: true });
+  });
+
   it('reaches both readmes, each writing back to its own field', () => {
     const { src, writes } = sources({
       worldOverview: overview({ introReadme: 'Before you choose', readme: 'Now you play' }),

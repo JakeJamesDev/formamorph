@@ -314,7 +314,7 @@ New placeholders start as Wildcards, and one you have never touched reads as the
 
 **The roll is frozen for the playthrough.** A Wildcard is rolled once, when a game begins, and stored in that save. The stranger who had gray eyes on turn one still has them on turn ninety, and reloading the save changes nothing. A new game rolls fresh.
 
-**Where chips work.** Anywhere with the chip picker: entity, location and dictionary descriptions, the readme, the system prompt addition. They resolve both in what the AI reads and in what the player sees. The **World Description is the exception.** It's read in the library before any game exists, so there are no rolls yet, and it takes no chips.
+**Where chips work.** Anywhere with the chip picker: entity, location and dictionary descriptions, the readme, the world's AI-Facing Description. They resolve both in what the AI reads and in what the player sees. The world's **Player-Facing Description is the exception.** It's read in the library before any game exists, so there are no rolls yet, and it takes no chips.
 
 **Placeholders are Advanced-only.** The editor's mode switch has to be on Advanced for this tab and the chip palette to appear.
 
@@ -442,7 +442,7 @@ The AI can't hold your whole world in mind at once. Rather than spending context
 - your **notes** and the **action** you just took;
 - **earlier turns**, both your actions and the AI's replies, as far back as the entry's **Scan Depth** allows. All of them by default, none at 0.
 
-Text that's present every single turn is deliberately left out: your world description, stats, traits, and formatting guidance. Its terms would otherwise fire constantly.
+Text that's present every single turn is deliberately left out: your world's AI-Facing Description, stats, traits, and formatting guidance. Its terms would otherwise fire constantly.
 
 **The controls**
 

@@ -185,8 +185,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     add({ ...ovWhere, chipCapable: false }, 'author', 'Author', ov.author, (r, v) => ({ ...r, author: v }));
     addEach({ ...ovWhere, chipCapable: false }, 'tags', 'Tags', ov.tags, (r, v) => ({ ...r, tags: v }), (r) => r.tags ?? []);
     // Uses the plain prompt vocabulary rather than the placeholder one, so a chip here stays inert text.
-    add({ ...ovWhere, chipCapable: false }, 'description', 'World Description', ov.description, (r, v) => ({ ...r, description: v }));
-    add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'System Prompt Addition', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
+    add({ ...ovWhere, chipCapable: false }, 'description', 'Player-Facing Description', ov.description, (r, v) => ({ ...r, description: v }));
+    add({ ...ovWhere, chipCapable: true }, 'systemPrompt', 'AI-Facing Description', ov.systemPrompt, (r, v) => ({ ...r, systemPrompt: v }));
     // The two readmes share one caption ("Readme") and are told apart by their tab, so their labels carry
     // which one — the breadcrumb is all the author has to go on once both hold the same phrase.
     add({ ...ovWhere, chipCapable: true }, 'introReadme', 'Readme (Introduction)', ov.introReadme, (r, v) => ({ ...r, introReadme: v }));

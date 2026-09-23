@@ -18,8 +18,6 @@ const RELIED_ON = [
   'Player-Facing Description',
   'AI-Facing Description',
   'AI-Facing Summary',
-  'World Description',
-  'System Prompt Addition',
   'Readme',
   'Value',
 ];

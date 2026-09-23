@@ -82,10 +82,10 @@ Chips resolve **both** in the text the AI reads and in the text the player sees.
 - image tags
 - openings
 - both readme tabs
-- the system prompt addition
+- the world's AI-Facing Description
 - the values of other placeholders
 
-> ⚠️ **The World Description takes no chips.** The library shows it before a playthrough exists, so there are no rolls to use.
+> ⚠️ **The world's Player-Facing Description takes no chips.** The library shows it before a playthrough exists, so there are no rolls to use.
 
 ## Placeholders that belong to an entity or a dictionary
 

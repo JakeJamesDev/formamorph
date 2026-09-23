@@ -1,6 +1,7 @@
 # 01: Relabel Overview Descriptions
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: f3a536d3
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

@@ -51,11 +51,11 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | Field | Type | Description |
 |---|---|---|
 | `name` | String | Display name |
-| `description` | String | Detailed description |
+| `description` | String | The **Player-Facing Description**: library card and listing text, never sent to the AI |
 | `author` | String | Creator |
 | `thumbnail` | String \| null | Data-URL image for the menu card |
 | `bgm` | String \| null | Data-URL audio for background music |
-| `systemPrompt` | String | Extra context handed to the AI |
+| `systemPrompt` | String | The **AI-Facing Description**: the world's description for the AI, never shown to players |
 | `use3DModel` | Boolean | Whether the world uses a 3D VRM avatar |
 | `tags` | String[] | Tags shown/searchable in the world browser |
 | `customPlayerVRM` | [MediaAsset](#-media-fields) \| null | Optional per-world custom player `.vrm` |
@@ -258,7 +258,7 @@ Each **book** (`Dictionary`):
 
 Book order sets injection order; within a book, an entry's `position` picks the prompt block and array order sets order within it. Everything below `value` is an optional lorebook control — all absent ⇒ the original plain keyword→value behavior.
 
-> 🔍 **What "scanned" means.** Keywords are matched against the context the AI is actually given that turn — the location and entity blocks your prompt renders (**in their rendered form**, so a block sent as a summary is matched as a summary), player notes, the action, and message history per `scanDepth`. Always-present text is excluded: the world description, stats, traits, and formatting guidance. See [World Editor → Dictionary](World-Editor-Dictionary#what-gets-scanned).
+> 🔍 **What "scanned" means.** Keywords are matched against the context the AI is actually given that turn — the location and entity blocks your prompt renders (**in their rendered form**, so a block sent as a summary is matched as a summary), player notes, the action, and message history per `scanDepth`. Always-present text is excluded: the world's AI-Facing Description (`systemPrompt`), stats, traits, and formatting guidance. See [World Editor → Dictionary](World-Editor-Dictionary#what-gets-scanned).
 
 | Field | Type | Description |
 |---|---|---|

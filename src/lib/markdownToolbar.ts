@@ -1,4 +1,4 @@
-// Pure (DOM-free) text transforms behind the World Description markdown toolbar. Each action takes the
+// Pure (DOM-free) text transforms behind the Player-Facing Description markdown toolbar. Each action takes the
 // current value + selection and returns the new value plus the selection range to restore.
 //
 // Every action toggles: applying one that is already in effect removes it. Headings and lists share a
