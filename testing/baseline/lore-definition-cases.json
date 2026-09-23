@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "id": "dict-salt-trade",
+      "name": "salt trade",
+      "key": ["salt"],
+      "value": "No one along the Ashen River uses coin. Every fare, debt, and purchase is settled in salt, measured out by the palmful.",
+      "constant": true,
+      "position": "before"
+    },
+    {
+      "id": "dict-landing-bell",
+      "name": "landing bell",
+      "key": ["bell", "dock"],
+      "value": "The landing bell hangs from the ferry post at the end of the dock. It is cracked, and it rings flat and sour. It is rung only when the ferry is ready to cross.",
+      "position": "after"
+    }
+  ],
+  "cases": [
+    {
+      "id": "fare",
+      "action": "I ask the ferryman what the crossing costs, and I pay him.",
+      "checks": ["background-uptake", "background-contradiction"]
+    },
+    {
+      "id": "bell",
+      "action": "I walk to the ferry post and ring the landing bell.",
+      "checks": ["foreground-uptake"]
+    },
+    {
+      "id": "idle",
+      "action": "I crouch at the edge of the dock and study the pale water beneath it.",
+      "checks": ["background-intrusion", "foreground-intrusion"]
+    }
+  ]
+}
