@@ -7,6 +7,7 @@ import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
 import { PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
+import { TOUR_STEPS } from '@/lib/authoringTour/steps';
 import { LOCATION_VIEWS } from '@/views/locationViews';
 import { ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
@@ -122,6 +123,10 @@ describe('dev-router coverage guard', () => {
   it('ledger lists exactly the Test Bench instruments an author can stand on', () => {
     // Unbuilt instruments render disabled, so landing one means making it routable here too.
     expect([...DEV_MODAL_TABS.worldEditorBench]).toEqual(BUILT_BENCH_TABS);
+  });
+
+  it('ledger lists exactly the Authoring Tour steps', () => {
+    expect([...DEV_MODAL_TABS.worldEditorTour]).toEqual(TOUR_STEPS.map((s) => s.id));
   });
 
   it('ledger lists exactly the views the Locations tab switches between', () => {

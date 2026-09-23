@@ -18,10 +18,25 @@ export interface TutorialEntry {
   body?: string;
   /** Term-and-gloss lines, for a control whose sides are worth naming side by side. */
   points?: { term: string; text: string }[];
+  /** Replaces "Got It" on a lone note. */
+  primaryLabel?: string;
+  /** A second action beside the first. Either one retires the note. */
+  secondaryLabel?: string;
 }
+
+/** The Authoring Tour offer. Every place that offers the tour shares this one seen-state. */
+export const AUTHORING_TOUR_OFFER_ID = 'authoring-tour-offer';
 
 /** Registry order is display order: the first unseen entry for a screen is the one that shows. */
 export const TUTORIALS: readonly TutorialEntry[] = [
+  {
+    id: AUTHORING_TOUR_OFFER_ID,
+    screen: 'worldEditor',
+    title: 'Take the Authoring Tour?',
+    body: 'Build this world one field at a time, with an example for every step',
+    primaryLabel: 'Start Tour',
+    secondaryLabel: 'No Thanks',
+  },
   {
     id: 'world-editor-mode-toggle',
     screen: 'worldEditor',
@@ -145,6 +160,11 @@ function subscribe(onChange: () => void): () => void {
 
 const EMPTY: string[] = [];
 
+/** Whether the note with this id has been read. */
+export function useTutorialSeen(id: string): boolean {
+  return useSyncExternalStore(subscribe, () => snapshot.includes(id), () => false);
+}
+
 /** How many tutorials have been dismissed — drives the Settings reset control's state and hint. */
 export function useSeenTutorialCount(): number {
   return useSyncExternalStore(subscribe, () => snapshot, () => EMPTY).length;
@@ -166,6 +186,12 @@ function republishTop() {
 function subscribeScreens(onChange: () => void): () => void {
   screenListeners.add(onChange);
   return () => { screenListeners.delete(onChange); };
+}
+
+/** Whether `screen` is the innermost screen on view. Another layer that points at the screen's controls
+ *  follows this, so it stands down under a screen layered on top, as the screen's own tutorials do. */
+export function useTutorialScreenOnTop(screen: TutorialScreen): boolean {
+  return useSyncExternalStore(subscribeScreens, () => topScreen, () => null) === screen;
 }
 
 /** Where the reader is in a screen's tour, and how to move. `total` is 1 for a lone explanation. */

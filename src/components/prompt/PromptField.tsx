@@ -511,7 +511,7 @@ function MarkdownPreviewPane({ value, previewValues, vocab, scrollRef, onScroll 
  * With `markdown`, it also gains a formatting toolbar and its Preview renders markdown instead of tinting
  * chips — for author-facing prose fields (world description, readme) that the player reads as markdown.
  */
-const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint }: {
+const PromptField = ({ value, onChange, variables = [], vocabulary, previewValues, openValues, onReroll, insertOwnerId, markdown = false, resizable = false, placeholder, className, readOnly = false, ariaLabel, sampleData = false, onRequestEdit, readOnlyReason, onRequestFullscreen, fullscreen: fullscreenProp, insertTrigger, label, info, labelAside, hint, tourAnchor }: {
   value: string;
   onChange: (v: string) => void;
   /** Prompt-variable palette (used when no explicit `vocabulary` is given — the default prompt family). */
@@ -573,6 +573,8 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
    * Placeholder fields pass `{`; prompt fields omit it and keep their per-field row.
    */
   insertTrigger?: string;
+  /** The Authoring Tour step that points at this field, set on the field's own wrapper. */
+  tourAnchor?: string;
 }) => {
   const vocab = useMemo(() => vocabulary ?? promptVocabulary(variables), [vocabulary, variables]);
   const dragKey = useRef<string | null>(null);
@@ -959,6 +961,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
     <div
       ref={(element) => { measureRef(element); bodyRef.current = element; }}
       data-find-field={typeof label === 'string' ? label : undefined}
+      data-tour-anchor={tourAnchor}
       className={cn('flex flex-col flex-1 min-h-0 gap-2', className)}
     >
       {/* Above the chrome, not below it: the Options panel shows the same notice with nothing above it, so

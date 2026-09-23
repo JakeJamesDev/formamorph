@@ -151,6 +151,9 @@ export const DEV_MODAL_TABS = {
   // since an unbuilt tab renders
   // disabled and has nothing to land on, so adding one here is part of building it.
   worldEditorBench: ['issues', 'triggers', 'aiContext', 'opening'],
+  // The World Editor's Authoring Tour: `tour=…` opens the editor on a new blank world with the tour at that
+  // step (`#dev?modal=worldEditor&tour=world-ai-description`).
+  worldEditorTour: ['world-name', 'world-ai-description'],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.
   adminPanelPolicies: ['uploadGate', 'tagNotice', 'privacyPolicy'],
   // Admin Panel → Feedback uses the same `subtab=…` slot, one per branch.
