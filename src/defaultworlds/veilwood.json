@@ -277,6 +277,17 @@
       "ambientSound": null
     },
     {
+      "id": "64c2212e-cf1a-42b0-8d76-3b04252b4f43",
+      "name": "The Surveyor's Camp",
+      "parentId": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "playerDescription": "A collapsed canvas shelter inside the Hollow Fig: ration tins, a waterproof journal, and a hand-drawn map missing its other half.",
+      "aiDescription": "The surveyor's camp inside the Hollow Fig, left behind by {{ph:12382226-bdc4-45aa-a9a4-1089bec1c173:world:94ecb21a-d775-423f-98de-00bbedc5a529}}: a collapsed canvas shelter, ration tins (safe food — they restore Satiety with no risk), a waterproof journal, and a hand-drawn map fragment marking the Veilbreak east of the fig. The journal is precise and calm until its final entry: \"Moths all went east at dusk. So will I, at first light.\"",
+      "aiSummary": "Surveyor's camp: abandoned shelter with safe ration tins, a journal, and a map to the Veilbreak.",
+      "imageTags": "abandoned campsite inside hollow tree, canvas tarp, tin cans, weathered journal, hand-drawn map",
+      "backgroundImage": null,
+      "ambientSound": null
+    },
+    {
       "id": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
       "name": "The Veilbreak",
       "parentId": "1725037201878",
@@ -489,24 +500,6 @@
         "952e1bae-8503-46b7-9a66-15e05d3ec38c",
         "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
         "f0977527-8c51-47a3-b0d9-f2efdd11709c"
-      ]
-    },
-    {
-      "id": "e967d424-3fd8-4150-bf78-465060e9beb9",
-      "name": "The Surveyor's Camp",
-      "aliases": [
-        "camp"
-      ],
-      "type": "Object",
-      "playerDescription": "A collapsed canvas shelter inside the Hollow Fig: ration tins, a waterproof journal, and a hand-drawn map missing its other half.",
-      "aiDescription": "The surveyor's camp inside the Hollow Fig, left behind by {{ph:12382226-bdc4-45aa-a9a4-1089bec1c173:world:94ecb21a-d775-423f-98de-00bbedc5a529}}: a collapsed canvas shelter, ration tins (safe food — they restore Satiety with no risk), a waterproof journal, and a hand-drawn map fragment marking the Veilbreak east of the fig. The journal is precise and calm until its final entry: \"Moths all went east at dusk. So will I, at first light.\"",
-      "aiSummary": "Surveyor's camp: abandoned shelter with safe ration tins, a journal, and a map to the Veilbreak.",
-      "imageTags": "abandoned campsite inside hollow tree, canvas tarp, tin cans, weathered journal, hand-drawn map",
-      "images": [],
-      "sound": null,
-      "model": null,
-      "locations": [
-        "2dcf2b34-f694-4018-bfca-83a02db92e7a"
       ]
     }
   ],

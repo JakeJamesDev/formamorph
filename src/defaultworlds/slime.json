@@ -233,6 +233,17 @@
       "ambientSound": null
     },
     {
+      "id": "efc79653-fc16-458e-97b9-e5c5917208b3",
+      "name": "The Night Pharmacy",
+      "parentId": "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
+      "playerDescription": "Open all night on Vane Street, clerk long gone, honor jar on the counter. The shelves that matter are already half-bare.",
+      "aiDescription": "The Night Pharmacy on Vane Street: doors open, clerk gone, an honor jar filling with unspendable cash. Its remedies genuinely help — iodine washes, antihistamines, electrolyte salts — each application scrubbing the film back (Assimilation falls modestly). The useful shelves are half-bare and other desperate people come here too.",
+      "aiSummary": "The Night Pharmacy: unattended shop whose remedies modestly reduce assimilation.",
+      "imageTags": "small pharmacy interior at night, flickering fluorescent light, half empty shelves, honor jar on counter",
+      "backgroundImage": null,
+      "ambientSound": null
+    },
+    {
       "id": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
       "name": "Harborfront",
       "parentId": "b466e00a-68d1-47db-9424-979de478ae7f",
@@ -390,24 +401,6 @@
       "locations": [
         "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
         "cd878787-2a85-4b0a-8639-109c3afd89da"
-      ]
-    },
-    {
-      "id": "90b1f4d9-45f3-4e45-8187-0524a5c9123e",
-      "name": "The Night Pharmacy",
-      "aliases": [
-        "pharmacy"
-      ],
-      "type": "Object",
-      "playerDescription": "Open all night on Vane Street, clerk long gone, honor jar on the counter. The shelves that matter are already half-bare.",
-      "aiDescription": "The Night Pharmacy on Vane Street: doors open, clerk gone, an honor jar filling with unspendable cash. Its remedies genuinely help — iodine washes, antihistamines, electrolyte salts — each application scrubbing the film back (Assimilation falls modestly). The useful shelves are half-bare and other desperate people come here too.",
-      "aiSummary": "The Night Pharmacy: unattended shop whose remedies modestly reduce assimilation.",
-      "imageTags": "small pharmacy interior at night, flickering fluorescent light, half empty shelves, honor jar on counter",
-      "images": [],
-      "sound": null,
-      "model": null,
-      "locations": [
-        "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f"
       ]
     }
   ],

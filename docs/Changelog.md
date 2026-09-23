@@ -29,6 +29,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Anatomy's Chips view keeps headed sections evenly spaced when sample values are empty.** Inline chips keep their placement, and Resolved view still shows the exact request text.
     - **Long Prepend and Append text can be edited normally.** Removed the 40-character limit that blocked changes to section definitions.
     - **Headed chips keep consistent section spacing in Edit and Preview.** Automatic header spacing remains visible in Edit, with `↵` on otherwise empty lines. Header, Prepend, and Append remain visible. Removing a chip from a sequence removes its empty line, and empty rendered sections leave no extra gaps. Content and affix whitespace remain intact.
+  - **Slime Outbreak's Night Pharmacy and Veilwood's Surveyor's Camp are now places, not entities.** Each is a sublocation of the district or tree that holds it, so you can travel there. Unedited copies update on next launch.
   - **The website gallery and social preview show the updated interface and load fresh images after each screenshot update.** Captures use a 1600×900 viewport across all five palettes in light and dark themes. The gameplay image shows a submitted player action and its response, with Entities selected. The capture script rejects clipped action text, narration, choices or input and crowded tabs before saving the gameplay image. Website deployments give the gallery, thumbnails, and social preview content-based URLs so cached images do not hide new captures.
 
 ---
