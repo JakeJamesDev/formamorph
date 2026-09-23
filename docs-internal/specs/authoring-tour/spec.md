@@ -1,8 +1,9 @@
 # Spec: Authoring Tour
 
 Status: ready-for-agent
+Spec session: Spec: Authoring Tour
 Status note: two items need the user's approval before their tickets start: the example world text (Appendix A) and the Settings placement of **Start Authoring Tour** (Implementation Decisions → Entry points).
-Spec session: Authoring worlds tutorial approaches
+Workspace: branch `feature/authoring-tour`, worktree `.claude/worktrees/authoring-tour`. Every ticket is built there, never on `main`. See Further Notes → Workspace.
 
 ## Problem Statement
 
@@ -267,6 +268,22 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 4. The project memory placed Reset Tutorials in "Settings → Accessibility → Help". It is in Settings → Data → Storage, and it only shows in Advanced.
 
 **Domain terms:** Authoring Tour and In Play are in the glossary.
+
+**Workspace**
+
+The tour is a long effort and is not part of the next release, so it lives on its own branch.
+
+| | |
+|---|---|
+| Branch | `feature/authoring-tour`, cut from `main` at the spec commit |
+| Worktree | `.claude/worktrees/authoring-tour` (gitignored). `node_modules` is a junction to the main checkout's |
+| Dev server | launch entry `authoring-tour`, port 5220 |
+| End-to-end runs | `E2E_PORT=5221`, so Playwright never reuses another checkout's server on 5183 |
+
+- The spec and tickets on this branch are the current ones. The copy on `main` only points here.
+- Bring `main` into the branch regularly. Resolve conflicts on the branch, never on `main`.
+- The branch merges to `main` only when the whole tour works and the user decides to ship it.
+- Before removing the worktree, delete the `node_modules` junction first. `git worktree remove` follows the junction and deletes the main checkout's packages.
 
 ## Appendix A: Example world (draft, awaiting approval)
 
