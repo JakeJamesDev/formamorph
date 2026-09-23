@@ -48,7 +48,15 @@ const WORLD: World = benchEditorWorld({
     name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
     systemPrompt: '', use3DModel: false, tags: [],
   },
+  // A New World overview carries no readme or openings, which the overview type calls required.
 } as unknown as Partial<World>);
+
+/** The world as the last save stored it, the way the editor opens it again. */
+const lastSaved = (): World => ({
+  ...WORLD,
+  // The stored record types its payload's slices as `unknown`; the editor wrote them as a World.
+  ...(storeWorld.mock.calls.at(-1)![0].data as unknown as Partial<World>),
+});
 
 const TOTAL = TOUR_STEPS.length;
 const indexOf = (id: string) => TOUR_STEPS.findIndex((s) => s.id === id);
@@ -88,7 +96,7 @@ const next = async () => {
 /** Walks the tour to `id` the way an author in a hurry does: Add on an add step, then Use Example, then Next. */
 const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
-    if (TOUR_STEPS[stepNumber() - 1].id.startsWith('add-')) fireEvent.click(addButton());
+    if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
     const example = await waitFor(() => noteButton('Use Example') ?? noteButton('Next')!);
     if (example.textContent === 'Use Example') fireEvent.click(example);
     await next();
@@ -197,7 +205,7 @@ describe('Authoring Tour — add steps', () => {
 
     fireEvent.click(addButton());
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    const replacement = ctx().locations.find((l) => !['harbor'].includes(l.id) && l.name === 'New Location')!;
+    const replacement = ctx().locations.find((l) => l.id !== 'harbor' && l.name === 'New Location')!;
     await next();
     // The steps after it read the new location.
     fireEvent.click(noteButton('Use Example')!);
@@ -224,11 +232,21 @@ describe('Authoring Tour — add steps', () => {
     await walkTo('location-ai-description');
     first.unmount();
 
-    // The world opens again as the last Next saved it.
-    const saved = storeWorld.mock.calls.at(-1)![0] as unknown as { data: Omit<World, 'id'> };
-    renderWorldEditorBench({ ...saved.data, id: WORLD.id } as World, 'simple');
+    renderWorldEditorBench(lastSaved(), 'simple');
     await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('The Tidewell'));
+  });
+
+  it('reopens at the add step when the saved world no longer holds the tour location', async () => {
+    const first = await openTour();
+    await walkTo('location-ai-description');
+    first.unmount();
+
+    const saved = lastSaved();
+    renderWorldEditorBench({ ...saved, locations: saved.locations.filter((l) => l.name !== 'The Tidewell') }, 'simple');
+    await screen.findByRole('dialog', { name: 'Add a Location' });
+    expect(stepNumber()).toBe(indexOf('add-location') + 1);
+    expect(noteButton('Next')).toBeDisabled();
   });
 });
 
