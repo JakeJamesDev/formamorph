@@ -32,6 +32,14 @@ function openSettings(mode: 'light' | 'dark', stored: { light?: string; dark?: s
 
 const field = (name: RegExp) => screen.queryByRole('button', { name });
 
+/** The timed tutorial swallows Escape if it lands over an open picker, so the picker opens after it and outlives it. */
+const tutorial = () => screen.findByRole('dialog', { name: 'Simple vs. Advanced' }, { timeout: 3000 });
+async function openPicker(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+  const tip = await tutorial();
+  await user.click(await screen.findByRole('button', { name }));
+  await waitFor(() => expect(tip).not.toBeInTheDocument());
+}
+
 beforeEach(() => localStorage.clear());
 afterEach(() => {
   root.classList.remove('light', 'dark');
@@ -52,7 +60,7 @@ describe('Settings — custom quote color', () => {
     const user = userEvent.setup();
     openSettings('dark');
     // The theme provider sets the mode class after mount; the root observer reports it a microtask later.
-    await user.click(await screen.findByRole('button', { name: /Dark Mode Color/ }));
+    await openPicker(user, /Dark Mode Color/);
     expect(field(/Light Mode Color/)).toBeNull();
     const hex = screen.getByRole('textbox', { name: 'Hex Color' });
     await user.clear(hex);
@@ -73,7 +81,7 @@ describe('Settings — custom quote color', () => {
     openSettings('light', { light: '#c0392b', dark: '#88ccff' });
     expect(custom()).toBe('#c0392b');
 
-    await user.click(field(/Light Mode Color/)!);
+    await openPicker(user, /Light Mode Color/);
     await user.click(screen.getByRole('button', { name: 'Reset to Theme' }));
     expect(custom()).toBe('');
 
