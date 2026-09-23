@@ -1,6 +1,7 @@
 # 05: Locations Steps
 
-Status: ready-for-agent
+Status: in-progress
+Base: e56bc579
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -9,15 +10,15 @@ Reasoning effort: high
 
 **What to build:** After Overview, the tour builds two connected locations, and In Play shows each field's effect.
 
-| Step | Player Sees | Narration Prompt Reads |
+| Step | Player Sees | Prompt Reads |
 |---|---|---|
 | Add a location | (the Add button is the anchor) | none |
-| Name | Location tab with the name | The location block |
-| Player-Facing Description | Location tab body | "The AI never reads this field" |
-| AI-Facing Description | "Players never see this field" | The location block, marked |
+| Name | Location tab with the name | Narration: the location block |
+| Player-Facing Description | Location tab body | Narration: "The AI never reads this field" |
+| AI-Facing Description | "Players never see this field" | Narration: the location block, marked |
 | Starting Location | "A new game starts here" | none |
-| Add a second location | (the Add button is the anchor) | none |
-| Connection with Travel Hint | Connected Locations in the Location tab | The destinations list, with the hint attached |
+| Add a second location | (the Add button is the anchor) | none. **Use Example** shows once the location exists and fills its Name and both descriptions |
+| Connection with Travel Hint | Connected Locations in the Location tab | Location Change: the destinations list, with the hint attached. No Narration reader, because Narration never reads it |
 
 This ticket also adds the **add-step mechanics** that every later tab uses:
 
@@ -35,6 +36,7 @@ This ticket also adds the **add-step mechanics** that every later tab uses:
 - [ ] All seven steps run in order after Overview, and each saves when it completes.
 - [ ] Player Sees uses the Location tab body from ticket 02.
 - [ ] The location block and the destinations list come from the Test Bench builders. The Travel Hint shows attached to its destination.
+- [ ] Each reader names the prompt that really reads the field: Narration for the location block, Location Change for the destinations list (spec session ruling, 2026-09-23).
 - [ ] The Starting Location step completes when the tour's first location is a Starting Location.
 - [ ] The Connection step completes when a Connection joins the two tour locations. A Travel Hint is optional.
 - [ ] Deleting a tour location makes its add step current. The steps after it wait until a new one exists.

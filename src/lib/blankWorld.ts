@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import type { World } from '@/types';
+import type { GameLocation, World } from '@/types';
 
 /** The world New World opens in the editor. It is not stored until the author saves it. */
 export function newBlankWorld(): World {
@@ -28,4 +28,9 @@ export function newBlankWorld(): World {
     // Seed one "Default" book so new worlds start with a dictionary (Foreground by default).
     dictionaries: [{ id: randomUUID(), name: 'Default', enabled: true, entries: [] }],
   };
+}
+
+/** A location as the editor's Add button makes it. */
+export function newLocation(id: string, name = 'New Location'): GameLocation {
+  return { id, name, playerDescription: '', aiDescription: '', aiSummary: '' };
 }

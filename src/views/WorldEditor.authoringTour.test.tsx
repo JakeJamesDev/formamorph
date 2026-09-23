@@ -222,18 +222,31 @@ describe('Authoring Tour steps', () => {
     expect(await screen.findByRole('dialog', { name: 'World Name' })).toBeInTheDocument();
   });
 
-  it('renders every step anchor on its tab', async () => {
-    renderWorldEditorBench(NEW_WORLD, 'simple');
-    for (const step of TOUR_STEPS) {
-      // A step with no tab points at the header, so it is checked from a tab of no step's own.
-      const label = step.tab ? WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label : 'Stats';
-      // Leave the tab first, so each step's anchor is found on a fresh render of its own tab.
-      fireEvent.mouseDown(screen.getByRole('tab', { name: step.tab ? 'Stats' : 'Overview' }));
-      fireEvent.mouseDown(screen.getByRole('tab', { name: label }));
-      await waitFor(() => expect(
-        document.querySelectorAll(`[data-tour-anchor="${step.anchor}"]`),
-        `step ${step.id}`,
-      ).toHaveLength(1));
+  it('renders every step anchor once the tour shows the step', async () => {
+    try {
+      for (const step of TOUR_STEPS) {
+        localStorage.clear();
+        reloadTourProgress();
+        // The dev route opens a step with every earlier step taken, so a step's tour items exist.
+        window.location.hash = `#dev?tour=${step.id}`;
+        fireEvent(window, new Event('hashchange'));
+        const view = renderWorldEditorBench(NEW_WORLD, 'simple');
+        await waitFor(() => expect(tourBar(), `step ${step.id}`)
+          .toHaveTextContent(`Authoring Tour · ${TOUR_STEPS.indexOf(step) + 1} / ${TOTAL}`));
+        if (step.tab) {
+          const label = WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label;
+          await waitFor(() => expect(screen.getByRole('tab', { name: new RegExp(`^${label}`) }))
+            .toHaveAttribute('data-state', 'active'));
+        }
+        await waitFor(() => expect(
+          document.querySelectorAll(`[data-tour-anchor="${step.anchor}"]`),
+          `step ${step.id}`,
+        ).toHaveLength(1));
+        view.unmount();
+      }
+    } finally {
+      window.location.hash = '';
+      fireEvent(window, new Event('hashchange'));
     }
   });
 });

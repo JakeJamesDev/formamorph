@@ -6,11 +6,12 @@ import type { WorldRecord } from '@/components/WorldDetails';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
 import { buildAiContext, type ContextBlockId } from '@/lib/testBench/aiContext';
-import { buildLens, seedLens } from '@/lib/testBench/lens';
+import { buildLens, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
+import type { Connection, GameLocation } from '@/types';
 import type { TourItems, TourWorld } from './steps';
 
 /** The AI requests In Play can name, as the pane titles them. */
-export type TourPrompt = 'Narration Prompt';
+export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt';
 
 /**
  * Why a reader shows what it shows. `neverReads`: the prompt has no use for this field. `notInScene`: an
@@ -32,9 +33,17 @@ export interface InPlayReader {
   marks: MarkSpan[];
 }
 
-/** The game surface a field shows on. `never` is a field the player never sees; `none` is a step with no field. */
+/** Where a new game starts, as far as the tour's location is concerned. */
+export type StartsAt = 'here' | 'elsewhere' | 'anywhere';
+
+/**
+ * The game surface a field shows on. The Location tab shows the tour's first location, with its names and
+ * description resolved. `never` is a field the player never sees; `none` is a step with no field.
+ */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
+  | { kind: 'locationTab'; location: GameLocation | null; locations: GameLocation[]; connections: Connection[] }
+  | { kind: 'startsHere'; startsAt: StartsAt }
   | { kind: 'never' }
   | { kind: 'none' };
 
@@ -78,8 +87,35 @@ function libraryCardRecord(world: TourWorld, worldId: string): WorldRecord {
   };
 }
 
-function playerSurface(kind: PlayerSurface['kind'], world: TourWorld, worldId: string): PlayerSurface {
-  return kind === 'libraryCard' ? { kind, world: libraryCardRecord(world, worldId) } : { kind };
+/** The Location tab as a player standing where the lens stands reads it. */
+function locationTab(world: TourWorld, lens: BenchLens): PlayerSurface {
+  const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
+  const locations = (world.locations ?? []).map((l) => ({
+    ...l, name: resolve(l.name), playerDescription: resolve(l.playerDescription ?? ''),
+  }));
+  return {
+    kind: 'locationTab',
+    location: locations.find((l) => l.id === lens.location?.id) ?? null,
+    locations,
+    connections: world.connections ?? [],
+  };
+}
+
+function startsAt(world: TourWorld, locationId: string | undefined): StartsAt {
+  const starts = (world.locations ?? []).filter((l) => l.isStarting);
+  if (starts.some((l) => l.id === locationId)) return 'here';
+  return starts.length ? 'elsewhere' : 'anywhere';
+}
+
+function playerSurface(
+  kind: PlayerSurface['kind'], world: TourWorld, worldId: string, items: TourItems, lens: () => BenchLens,
+): PlayerSurface {
+  switch (kind) {
+    case 'libraryCard': return { kind, world: libraryCardRecord(world, worldId) };
+    case 'locationTab': return locationTab(world, lens());
+    case 'startsHere': return { kind, startsAt: startsAt(world, items.location) };
+    default: return { kind };
+  }
 }
 
 /** One step's In Play slice: the surface the player sees, and each prompt's read with the author's text marked. */
@@ -90,10 +126,10 @@ export function computeInPlay(
   items: TourItems,
 ): InPlaySlice {
   // The lens stands where the tour's own location is, or where a new game starts, with no player character.
+  let lens: BenchLens | null = null;
+  const lensHere = () => lens ??= buildLens(world, seedLens(world, null, items.location ?? null));
   const needsContext = spec.readers.some((r) => r.reads !== 'never');
-  const context = needsContext
-    ? buildAiContext(world, buildLens(world, seedLens(world, null, items.location ?? null)))
-    : null;
+  const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
     if (reader.reads === 'never' || !context) {
       return { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
@@ -102,5 +138,5 @@ export function computeInPlay(
     const text = context.blocks.find((b) => b.id === block)?.text ?? '';
     return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
   });
-  return { playerSees: playerSurface(spec.sees, world, worldId), readers };
+  return { playerSees: playerSurface(spec.sees, world, worldId, items, lensHere), readers };
 }

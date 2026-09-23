@@ -62,7 +62,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
   };
 
   return (
-    <div className="space-y-2">
+    <div data-tour-anchor="location-connections" className="space-y-2">
       <Label className="block">Connections</Label>
       <Hint>
         Sets the travel rule for a pair of locations. Without one, a location still connects to its parent,

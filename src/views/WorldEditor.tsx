@@ -10,11 +10,11 @@ import {
   AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, EDITOR_MODE_TUTORIAL_ID, markTutorialSeen, useTutorial,
   useTutorialSeen,
 } from '@/lib/tutorials';
-import { newBlankWorld } from '@/lib/blankWorld';
-import { TOUR_STEPS, type TourStep } from '@/lib/authoringTour/steps';
-import { useTourRecord } from '@/lib/authoringTour/progress';
+import { newBlankWorld, newLocation } from '@/lib/blankWorld';
+import { TOUR_STEPS, replayTourSteps, tourStepIndex, type TourStep } from '@/lib/authoringTour/steps';
+import { readTourRecord, useTourRecord } from '@/lib/authoringTour/progress';
 import { useAuthoringTour } from '@/lib/authoringTour/useAuthoringTour';
-import { findTourAnchor, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
+import { findTourAnchor, focusTourField, useTourAnchor } from '@/lib/authoringTour/useTourAnchor';
 import { TourStepNote } from '@/components/authoringTour/TourStepNote';
 import { TourSaveNote } from '@/components/authoringTour/TourSaveNote';
 import { TourBar } from '@/components/authoringTour/TourBar';
@@ -146,6 +146,7 @@ const WorldEditorInner = ({
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
+    addConnection, updateConnection,
     updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeLocation, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
@@ -549,24 +550,30 @@ const WorldEditorInner = ({
       setActiveTab(step.tab);
       setSearchTerm('');
     }
+    const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
+    if (itemId) setSelectedItemId(itemId);
+    if (step.tab === 'locations' && step.item) setLocationTab(step.panelTab ?? 'details');
     deferReveal(() => {
       findTourAnchor(step.anchor)
         ?.querySelector<HTMLElement>('input, textarea, [contenteditable="true"]')
         ?.focus();
     });
-  }, [deferReveal]);
-  const tourApi = useMemo(() => ({ updateWorldOverview }), [updateWorldOverview]);
+  }, [deferReveal, worldId]);
+  const tourApi = useMemo(
+    () => ({ updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection }),
+    [updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection],
+  );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
   const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
   const tour = useAuthoringTour({
     worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
   });
-  // Mobile has no room for the In Play pane, so Show Effect opens it as a sheet. Each sheet covers the other's
-  // way in, and the Bench's opening closes this one, so the two never share the screen.
+  // Mobile's In Play sheet. It closes for good when the Bench opens, so the two sheets are never open together.
   const [effectOpen, setEffectOpen] = useState(false);
   const effectShown = effectOpen && isMobile && !!tour.step && !bench.open;
   if (effectOpen && !effectShown) setEffectOpen(false);
-  // DEV dev-router: start the tour at a named step, once per world. A tour already running there resumes.
+  // DEV dev-router: start the tour at a named step, once per world, with every earlier step's Add and Use
+  // Example already taken. A tour already running there resumes.
   const devTour = devRoute?.tour;
   const startTour = tour.start;
   const appliedDevTour = useRef<string | null>(null);
@@ -575,8 +582,11 @@ const WorldEditorInner = ({
     const key = `${worldId}:${devTour}`;
     if (appliedDevTour.current === key) return;
     appliedDevTour.current = key;
-    if (!touring) startTour(devTour);
-  }, [devTour, worldId, touring, startTour]);
+    if (touring) return;
+    const replay = replayTourSteps(getWorldData(), tourStepIndex(devTour));
+    loadWorldData({ ...replay.world, id: worldId, version: APP_VERSION }, true);
+    startTour(devTour, replay.items);
+  }, [devTour, worldId, touring, startTour, getWorldData, loadWorldData]);
 
   // ── More ways to start ────────────────────────────────────────────────────
   // Only New World's own world takes the tour in place. Any other start builds a new world, so the tour
@@ -638,13 +648,7 @@ const WorldEditorInner = ({
         order: entityRootSiblingCount(),
       });
     } else if (activeTab === "locations") {
-      addLocation({
-        id: newId,
-        name: typed || 'New Location',
-        playerDescription: '',
-        aiDescription: '',
-        aiSummary: '',
-      });
+      addLocation(newLocation(newId, typed || undefined));
     } else if (activeTab === "statUpdates") {
       addStatUpdate({
         id: newId,
@@ -1131,7 +1135,7 @@ const WorldEditorInner = ({
       {advanced && grouped ? (
         <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
           <PopoverTrigger asChild>
-            <ListAddButton label={addLabel} />
+            <ListAddButton label={addLabel} data-tour-anchor="list-add" />
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-44 p-1">
             <button
@@ -1153,6 +1157,7 @@ const WorldEditorInner = ({
       ) : (
         <ListAddButton
           label={addLabel}
+          data-tour-anchor="list-add"
           onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem}
         />
       )}
@@ -1400,11 +1405,10 @@ const WorldEditorInner = ({
         <Drawer open={effectShown} onOpenChange={(open) => { if (!open) setEffectOpen(false); }}>
           <DrawerContent
             className="h-[92dvh]"
-            // Back to the step's field rather than to Show Effect, whose note stands down with the sheet. Not
-            // when the Bench's sheet took over, which holds the focus.
+            // Focus goes to the step's field, since Show Effect unmounted with the note. An open Bench keeps focus.
             onCloseAutoFocus={(e) => {
               e.preventDefault();
-              if (tour.step && !bench.open) showTourStep(tour.step);
+              if (tour.step && !bench.open) focusTourField(tour.step.anchor);
             }}
           >
             <DrawerTitle className="sr-only">In Play</DrawerTitle>
