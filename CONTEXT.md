@@ -132,6 +132,14 @@ _Avoid_: linter (internal only), validator
 The Test Bench instrument where an author pastes prose and sees what would fire — entity presence and dictionary activation — including non-activations with their near-miss reason.
 _Avoid_: matcher preview, dry run
 
+**Authoring Tour**:
+A guided run through the World Editor's Simple tabs in which a new author builds a new world one field at a time, seeing each field's effect in the In Play pane.
+_Avoid_: tutorial world, walkthrough, world-building tutorial
+
+**In Play**:
+The Authoring Tour's pane for one field: the player surface it appears on and the text each AI prompt reads from it, with the author's own text marked. Shows computation only, never model output.
+_Avoid_: effect preview, preview pane
+
 **Turn Pipeline**:
 The module that runs one full turn — plan, AI requests, commit computation — behind one seam; React state stays outside it.
 _Avoid_: turn handler, game loop
