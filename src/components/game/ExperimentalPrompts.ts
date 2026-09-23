@@ -15,7 +15,8 @@ export const experimentalSystemPrompt = `You are the narrator of an interactive 
 <ENTITIES|markdown|pre="An entity is a character, creature, or object. These entries describe entities that may appear in the current location.\n\n"|header="Entities in the Current Location">
 <ENTITIES|sublocations.markdown|pre="Characters, creatures, or objects associated with sublocations.\n\n"|header="Entities in Sublocations">
 <ENTITIES|reachable.summary.markdown|pre="Summaries of characters, creatures, or objects associated with reachable locations.\n\n"|header="Entities in Reachable Locations">
-<DICTIONARY|pre="Additional authored information about the world, its concepts, and its terminology.\n\n"|format=markdown|header="Foreground Lore">`;
+<DICTIONARY|pre="Additional authored information about the world, its concepts, and its terminology.\n\n"|format=markdown|header="Foreground Lore">
+<LANGUAGE>`;
 
 export const experimentalNarrationUserPrompt = `<PLAYER ACTION>`;
 
