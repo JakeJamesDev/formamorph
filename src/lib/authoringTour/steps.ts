@@ -7,6 +7,7 @@
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { WorldOverview, World } from '@/types';
 import { hasValue } from '@/lib/editorMode';
+import type { InPlaySpec } from './inPlay';
 
 /** The world as the editor holds it while the tour reads it. */
 export type TourWorld = Omit<World, 'id' | 'version'>;
@@ -36,9 +37,12 @@ export interface TourStep {
   example: string;
   /** Writes a value into the field through its panel's own setter. */
   write: (api: TourEditApi, value: string, items: TourItems) => void;
-  /** What In Play shows for this step. Empty until In Play exists. */
-  inPlay: readonly never[];
+  /** What In Play shows for this step. */
+  inPlay: InPlaySpec;
 }
+
+/** The In Play slice of a step that points at no field, such as an ending step. */
+export const NO_IN_PLAY: InPlaySpec = { sees: 'none', readers: [] };
 
 const WORLD_NAME_EXAMPLE = 'Brinewell';
 const WORLD_AI_DESCRIPTION_EXAMPLE = 'Brinewell is a quiet fishing village on a cold northern coast. At its heart lies '
@@ -57,7 +61,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     isComplete: (world) => hasValue(world.worldOverview.name.trim()),
     example: WORLD_NAME_EXAMPLE,
     write: (api, name) => api.updateWorldOverview({ name }),
-    inPlay: [],
+    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
   },
   {
     id: 'world-ai-description',
@@ -69,7 +73,12 @@ export const TOUR_STEPS: readonly TourStep[] = [
     isComplete: (world) => hasValue((world.worldOverview.systemPrompt ?? '').trim()),
     example: WORLD_AI_DESCRIPTION_EXAMPLE,
     write: (api, systemPrompt) => api.updateWorldOverview({ systemPrompt }),
-    inPlay: [],
+    inPlay: {
+      sees: 'never',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'world', authorText: (world) => world.worldOverview.systemPrompt ?? '',
+      }],
+    },
   },
 ];
 

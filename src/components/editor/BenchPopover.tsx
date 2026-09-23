@@ -46,12 +46,14 @@ export function BenchPopover({ open, onClose, issues, onFixRule, onOpenPanel, ch
         <div className="max-h-[50vh] overflow-y-auto">
           <IssuesInstrument issues={issues} onFix={onFixRule} />
         </div>
-        <div className="mt-2 border-t pt-2">
-          <Button variant="outline" size="sm" className="h-7 w-full text-meta" onClick={onOpenPanel}>
-            <PanelRight className="mr-1 h-3.5 w-3.5" aria-hidden />
-            Open Test Bench
-          </Button>
-        </div>
+        {onOpenPanel && (
+          <div className="mt-2 border-t pt-2">
+            <Button variant="outline" size="sm" className="h-7 w-full text-meta" onClick={onOpenPanel}>
+              <PanelRight className="mr-1 h-3.5 w-3.5" aria-hidden />
+              Open Test Bench
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
