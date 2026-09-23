@@ -1541,6 +1541,26 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     devEntryActions.current.start();
   }, [devEntryPending, selectedWorld]);
 
+  // The Authoring Tour's Play: once the saved world is the selected one, enter it as Enter World does.
+  const [playAfterTour, setPlayAfterTour] = useState<string | null>(null);
+  const startEntryRef = useRef(startEntry);
+  useEffect(() => { startEntryRef.current = startEntry; });
+  useEffect(() => {
+    if (!playAfterTour || selectedWorld?.id !== playAfterTour) return;
+    setPlayAfterTour(null);
+    startEntryRef.current();
+  }, [playAfterTour, selectedWorld]);
+  const playFromEditor = (worldId: string) => {
+    setShowWorldEditor(false);
+    setEditorOnNewWorld(false);
+    setEditorStartsTour(false);
+    void refreshWorlds().then((list) => {
+      if (!list.some((w) => w.id === worldId)) return;
+      resyncSelectedWorld(list, worldId);
+      setPlayAfterTour(worldId);
+    });
+  };
+
   /**
    * Download this world's linked pictures into the on-device cache so it stays viewable without a connection.
    * Nothing is written back into the world — the cache is keyed by URL and read only when rendering.
@@ -3165,6 +3185,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             backButton
             newWorld={editorOnNewWorld}
             startTour={editorStartsTour}
+            onPlay={playFromEditor}
             onClose={() => {
               setShowWorldEditor(false);
               setEditorOnNewWorld(false);

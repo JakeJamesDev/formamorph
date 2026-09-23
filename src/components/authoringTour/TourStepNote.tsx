@@ -12,7 +12,7 @@ export function TourStepNote({ tour }: { tour: AuthoringTour }) {
   const last = tour.stepNumber >= tour.total;
   return (
     <TutorialNote
-      open={!!step && onTop}
+      open={!!step && onTop && !tour.showSaveNote}
       title={step?.title ?? ''}
       body={step?.body}
       anchor={anchor}
@@ -24,10 +24,22 @@ export function TourStepNote({ tour }: { tour: AuthoringTour }) {
             {tour.stepNumber} / {tour.total}
           </span>
           <Button size="xs" variant="ghost" onClick={tour.prev} disabled={tour.stepNumber === 1}>Previous</Button>
-          <Button size="xs" variant="outline" onClick={tour.applyExample}>Use Example</Button>
-          <Button size="xs" onClick={() => { void tour.next(); }} disabled={!tour.complete || tour.saving}>
+          {step?.example !== undefined && (
+            <Button size="xs" variant="outline" onClick={tour.applyExample}>Use Example</Button>
+          )}
+          <Button
+            size="xs"
+            variant={last && tour.play ? 'outline' : 'default'}
+            onClick={() => { void tour.next(); }}
+            disabled={!tour.complete || tour.saving}
+          >
             {last ? 'Finish' : 'Next'}
           </Button>
+          {last && tour.play && (
+            <Button size="xs" onClick={() => { void tour.play?.(); }} disabled={!tour.complete || tour.saving}>
+              Play
+            </Button>
+          )}
         </>
       )}
     />
