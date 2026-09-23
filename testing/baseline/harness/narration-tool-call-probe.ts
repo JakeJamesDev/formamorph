@@ -1,5 +1,5 @@
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import { experimentalNarrationUserPrompt, experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
+import { experimentalNarrationUserPrompt, experimentalSystemPrompt } from './narration-experimental-snapshot';
 import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
