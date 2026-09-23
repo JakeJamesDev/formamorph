@@ -61,10 +61,11 @@ const resumeAt = (stepId: string, mode: 'simple' | 'advanced' = 'simple', props 
 };
 
 const startTour = async () => {
-  renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
+  const view = renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
   const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
+  return view;
 };
 
 beforeEach(() => {
@@ -94,16 +95,24 @@ describe('Authoring Tour Save note', () => {
   });
 
   it('shows once', async () => {
-    await startTour();
+    const first = await startTour();
     fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Next' }));
     fireEvent.click(within(await screen.findByRole('dialog', { name: SAVE_NOTE })).getByRole('button', { name: 'Got It' }));
 
-    // A later save on the same tour, then a save on a tour opened afresh.
+    // A later save on the same tour.
     fireEvent.click(within(await screen.findByRole('dialog', { name: TOUR_STEPS[1].title }))
       .getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note(TOUR_STEPS[1].title)).getByRole('button', { name: 'Next' }));
     await screen.findByRole('dialog', { name: TOUR_STEPS[2].title });
     expect(storeWorld).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('dialog', { name: SAVE_NOTE })).not.toBeInTheDocument();
+    first.unmount();
+
+    // The first save of a tour opened afresh.
+    resumeAt('editor-mode');
+    fireEvent.click(within(await screen.findByRole('dialog', { name: MODE_STEP })).getByRole('button', { name: 'Next' }));
+    await screen.findByRole('dialog', { name: PLAY_STEP });
+    expect(storeWorld).toHaveBeenCalledTimes(3);
     expect(screen.queryByRole('dialog', { name: SAVE_NOTE })).not.toBeInTheDocument();
   });
 });
@@ -112,7 +121,7 @@ describe('Authoring Tour mode step', () => {
   it('points at the mode switch and says Advanced shows more fields', async () => {
     resumeAt('editor-mode');
     const step = await screen.findByRole('dialog', { name: MODE_STEP });
-    expect(step).toHaveTextContent('Advanced shows more fields');
+    expect(step).toHaveTextContent('Advanced mode shows more fields');
     expect(within(step).getByText(`${TOTAL - 1} / ${TOTAL}`)).toBeInTheDocument();
     // Nothing to fill in, so no example and Next is open.
     expect(within(step).queryByRole('button', { name: 'Use Example' })).not.toBeInTheDocument();

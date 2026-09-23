@@ -56,7 +56,7 @@ const ENDING_STEPS: readonly TourStep[] = [
     anchor: 'editor-mode',
     item: null,
     title: 'More Fields in Advanced',
-    body: 'Advanced shows more fields for each part of your world. Switch to it any time after the tour.',
+    body: 'Advanced mode shows more fields for each part of your world. Switch to it any time after the tour.',
     isComplete: () => true,
     // This step explains the switch, so the switch's own one-time note has nothing left to say.
     onReach: () => markTutorialSeen(EDITOR_MODE_TUTORIAL_ID),
@@ -68,7 +68,7 @@ const ENDING_STEPS: readonly TourStep[] = [
     anchor: 'test-bench',
     item: null,
     title: 'Play Your World',
-    body: 'Press Play to try what you built. Use the Test Bench here any time to check your world for problems.',
+    body: 'Press the Play button to try what you built. Use the Test Bench here any time to check your world for problems.',
     isComplete: () => true,
     inPlay: NO_IN_PLAY,
   },
