@@ -1,5 +1,4 @@
 import type { PromptValues } from '@/lib/promptPresets';
-import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
 
 export const defaultSystemPrompt = `You are the narrator stage of an interactive story. Your one job is to write the story: vivid second-person prose describing what happens in response to the player's most recent action - or the opening scene, if the story is just beginning. Immediately after you, a separate step presents the player's choices, so offering options is never your job.
 
@@ -43,13 +42,12 @@ export function markdownGuidance(enabled: boolean): string {
   return enabled ? MARKDOWN_ON : MARKDOWN_OFF;
 }
 
-// The inline syntax the narration display renders, as shape only. Block syntax is left out on purpose.
-const MARKDOWN_DEFINITIONS = `- \`**text**\` displays text in bold.
-- \`*text*\` displays text in italics.
-- \`~~text~~\` displays text struck through.
-- \`==text==\` displays text highlighted.
-- \`=r=text==\` displays text highlighted in a color. The letter between the first two \`=\` sets the color: ${HIGHLIGHT_COLORS.map(c => `${c.key} ${c.label.toLowerCase()}`).join(', ')}.
-- \`"text"\` displays text as spoken dialogue.`;
+// Inline syntax the narration display renders: its shape and what it means to a reader, never when to use
+// it. Block syntax and highlights are left out on purpose.
+const MARKDOWN_DEFINITIONS = `- \`**text**\` displays text in bold. Bold text means words said or heard louder than the rest of the sentence, such as a shouted word or a word hit with heavy stress.
+- \`*text*\` displays text in italics. Italic text means words from outside the narration, such as a thought, a foreign word, or a sound written as it is heard.
+- \`~~text~~\` displays text struck through. Struck-through text means words written and then withdrawn.
+- \`"text"\` displays text as spoken dialogue. Quoted text means words spoken aloud.`;
 
 /** The syntax definitions for `<MARKDOWN GUIDANCE|definitions>`; empty while Markdown output is off. */
 export function markdownDefinitions(enabled: boolean): string {
