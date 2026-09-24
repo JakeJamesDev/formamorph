@@ -238,10 +238,10 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
 }
 
 /** One book ("dictionary") — a collapsible, reorderable, selectable header over two entry zones. */
-function BookRow({ book, first, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
+function BookRow({ book, addEntryTourAnchor, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
   book: Dictionary;
-  /** The top book, whose Add entry the Authoring Tour points at. */
-  first: boolean;
+  /** The Authoring Tour anchor on this book's Add entry button. */
+  addEntryTourAnchor?: string;
   collapsed: boolean;
   collapsedZones: Set<string>;
   selectedId: string | null;
@@ -284,7 +284,7 @@ function BookRow({ book, first, collapsed, collapsedZones, selectedId, onToggleC
         actions={[
           {
             icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => onAddEntry(book.id),
-            tourAnchor: first ? 'dictionary-add-entry' : undefined,
+            tourAnchor: addEntryTourAnchor,
           },
           { icon: <X className="h-4 w-4" />, title: 'Delete dictionary', onClick: () => onDeleteBook(book.id) },
         ]}
@@ -472,7 +472,7 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false }: {
               <BookRow
                 key={book.id}
                 book={book}
-                first={i === 0}
+                addEntryTourAnchor={i === 0 ? 'dictionary-add-entry' : undefined}
                 collapsed={draggingBook || collapsed.has(book.id)}
                 collapsedZones={collapsedZones}
                 selectedId={selectedId}

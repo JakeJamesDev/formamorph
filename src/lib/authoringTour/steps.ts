@@ -8,11 +8,11 @@ import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
 import type {
-  Connection, Dictionary, DictionaryEntry, Entity, GameLocation, Stat, WorldOverview, World,
+  Connection, DictionaryEntry, Entity, GameLocation, Stat, WorldOverview, World,
 } from '@/types';
 import { hasValue } from '@/lib/editorMode';
 import {
-  entityRootCount, newDefaultBook, newEntity, newLocation, newStat, withDefaultDescriptors,
+  entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors,
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
@@ -67,7 +67,6 @@ export interface TourEditApi {
   /** Gives the stat its default descriptors, as the world does for every added stat. */
   addStat: (stat: Omit<Stat, 'descriptors'>) => void;
   updateStat: (stat: Stat) => void;
-  addDictionary: (book: Dictionary) => void;
   addDictionaryEntry: (bookId: string, entry: DictionaryEntry) => void;
   updateDictionaryEntry: (entry: DictionaryEntry) => void;
 }
@@ -170,15 +169,11 @@ function patchStat(api: TourEditApi, world: TourWorld, items: TourItems, patch: 
   if (stat) api.updateStat({ ...stat, ...patch });
 }
 
-/** Adds an entry the way the top book's Add entry button does, first adding a Default book to a world with none. */
+/** Adds an entry the way the top book's Add entry button does. The editor always holds at least one book. */
 function addEntryItem(api: TourEditApi, world: TourWorld): string {
-  let book = world.dictionaries?.[0];
-  if (!book) {
-    book = newDefaultBook();
-    api.addDictionary(book);
-  }
   const entry = blankDictionaryEntry();
-  api.addDictionaryEntry(book.id, entry);
+  const book = world.dictionaries?.[0];
+  if (book) api.addDictionaryEntry(book.id, entry);
   return entry.id;
 }
 
@@ -616,7 +611,7 @@ const DICTIONARY_STEPS: readonly TourStep[] = [
     anchor: 'dictionary-value',
     item: 'entry',
     title: 'Value',
-    body: 'Write what the AI learns when a message has a keyword. Change the test line in In Play to try it.',
+    body: 'Write what the AI learns when a message has a keyword. Change the test line in the In Play pane to try it.',
     isComplete: (world, items) => hasValue((tourEntry(world, items)?.value ?? '').trim()),
     useExample: (api, world, items) => patchEntry(api, world, items, { value: DROWNED_BELL.value }),
     inPlay: {
@@ -660,7 +655,6 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
     addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },
     updateStat: (stat) => { draft = { ...draft, stats: replace(draft.stats, stat) }; },
-    addDictionary: (book) => { draft = { ...draft, dictionaries: [...(draft.dictionaries ?? []), book] }; },
     addDictionaryEntry: (bookId, entry) => {
       draft = { ...draft, dictionaries: (draft.dictionaries ?? []).map((b) => (b.id === bookId ? { ...b, entries: [...b.entries, entry] } : b)) };
     },

@@ -1,6 +1,6 @@
 # 09: Dictionary Steps
 
-Status: in-progress
+Status: ready-for-human
 Base: 99bbfe14
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -24,16 +24,23 @@ In Play has an editable **test line**. It starts as a sample action built from t
 
 ## Acceptance criteria
 
-- [ ] All three steps run in order, and each saves when it completes.
-- [ ] The test line is prefilled from the first keyword, and the author can edit it.
-- [ ] Activation runs through the Activation Tester's scan, with the entry's Whole Words and Case-Sensitive settings. In Play has no matcher of its own.
-- [ ] Removing the keyword from the test line switches the reader to the no-keyword state. Adding it back shows the entry again.
-- [ ] Tests through the World Editor Bench harness cover the prefill, the match, the no-keyword state, and the marked Value.
-- [ ] Preview check through the dev router: the Value step with a matching and a non-matching test line, with static DOM evidence.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
+- [x] All three steps run in order, and each saves when it completes.
+- [x] The test line is prefilled from the first keyword, and the author can edit it.
+- [x] Activation runs through the Activation Tester's scan, with the entry's Whole Words and Case-Sensitive settings. In Play has no matcher of its own.
+- [x] Removing the keyword from the test line switches the reader to the no-keyword state. Adding it back shows the entry again.
+- [x] Tests through the World Editor Bench harness cover the prefill, the match, the no-keyword state, and the marked Value.
+- [x] Preview check through the dev router: the Value step with a matching and a non-matching test line, with static DOM evidence.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
 
 ## Scope notes
 
 - **No world or save export-shape change.** The test line is never saved.
 - The step order in the registry puts Dictionary after Traits. This ticket can be built before ticket 08 lands.
 - Build on `feature/authoring-tour` in the worktree. Shares the step registry with tickets 06 and 07.
+
+## Comments
+
+- **Built** in `90e81681`, tidied after review in the follow-up commit. Spec-session rulings 1–6 (2026-09-23) are in the spec.
+- **Shared-file change:** `src/lib/testBench/triggers.ts` gains a `case-blocked` near-miss, mirroring `whole-word-blocked`. It is diagnosis only and never changes whether an entry fires. The Activation Tester's row shows the same sentence as In Play.
+- **Add step:** the editor always holds at least one book (load and delete both reseed a Default book), so the step anchors only on the top book's **Add entry**.
+- **Evidence:** the dev-route preview of the Value step shows the marked `The Drowned Bell: …` block for "You ask Maren about the bell." and the no-keyword line for "You ask Maren about the weather." Guards were shown to fail with their bug put back: the scan ignoring Whole Words, no prefill, no `noValue` state, and no `case-blocked` branch.

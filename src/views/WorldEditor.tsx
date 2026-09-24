@@ -567,11 +567,11 @@ const WorldEditorInner = ({
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addDictionary, addDictionaryEntry, updateDictionaryEntry,
+      addStat, updateStat, addDictionaryEntry, updateDictionaryEntry,
     }),
     [
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addDictionary, addDictionaryEntry, updateDictionaryEntry,
+      addStat, updateStat, addDictionaryEntry, updateDictionaryEntry,
     ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
@@ -1161,8 +1161,7 @@ const WorldEditorInner = ({
       ) : (
         <ListAddButton
           label={addLabel}
-          // With no book to hold an entry, the tour's Add entry step points at the + that adds one.
-          data-tour-anchor={activeTab === "dictionary" && !dictionaries.length ? 'dictionary-add-entry' : 'list-add'}
+          data-tour-anchor="list-add"
           onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem}
         />
       )}

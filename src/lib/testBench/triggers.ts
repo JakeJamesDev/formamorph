@@ -43,6 +43,7 @@ export type NearMiss =
   | 'secondary-absent'
   | 'beyond-scan-depth'
   | 'whole-word-blocked'
+  | 'case-blocked'
   | 'no-match';
 
 /** One dictionary entry's verdict with everything the row needs to explain itself. */
@@ -224,6 +225,13 @@ function classify(
       return { nearMiss: 'whole-word-blocked', nearMissKeywords: [loose[0].keyword], nearMissSample: wordAround(scanned, loose[0]) };
     }
   }
+
+  if (entry.caseSensitive) {
+    const anyCase = matchHits({ ...entry, caseSensitive: false }, scanned);
+    if (anyCase.length > 0) {
+      return { nearMiss: 'case-blocked', nearMissKeywords: [anyCase[0].keyword], nearMissSample: hitText(scanned, anyCase[0]) };
+    }
+  }
   return { nearMiss: 'no-match', nearMissKeywords: [] };
 }
 
@@ -249,6 +257,11 @@ function historyDistance(region: string, historyCount: number): number {
   if (!isHistoryRegion(region) || historyCount <= 0) return 0;
   const index = Number(region.slice(HISTORY_REGION_PREFIX.length));
   return Number.isInteger(index) ? Math.max(0, historyCount - index) : 0;
+}
+
+/** The text a hit covers, as written. */
+function hitText(sources: ScanSource[], hit: MatchHit): string | undefined {
+  return sources.find((s) => s.region === hit.region)?.text.slice(hit.start, hit.end);
 }
 
 /** The whole word a blocked substring sits inside — the thing the author has to see to believe the verdict. */
@@ -489,6 +502,10 @@ export function describeNearMiss(entry: TriggerEntry): string {
       return entry.nearMissSample
         ? `${keys} appears only inside ${quote(entry.nearMissSample)}, and whole-word matching is on.`
         : `${keys} appears only inside a longer word, and whole-word matching is on.`;
+    case 'case-blocked':
+      return entry.nearMissSample
+        ? `${keys} appears only as ${quote(entry.nearMissSample)}, and case-sensitive matching is on.`
+        : `${keys} appears only in another case, and case-sensitive matching is on.`;
     case 'no-match':
       return 'No keyword found in the text.';
     default:

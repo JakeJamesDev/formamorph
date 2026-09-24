@@ -227,6 +227,17 @@ describe('buildTriggerReport — every near-miss class, as the row states it', (
     expect(describeNearMiss(miss)).toBe('“tide” appears only inside “riptides”, and whole-word matching is on.');
   });
 
+  it('names the casing a case-sensitive rule blocked, without firing the entry', () => {
+    const miss = missOf(
+      [book([entry({ id: 'd1', key: ['tide'], caseSensitive: true })])],
+      'The Tide drags the channel.',
+      'd1',
+    );
+    expect(miss.fired).toBe(false);
+    expect(miss.nearMiss).toBe('case-blocked');
+    expect(describeNearMiss(miss)).toBe('“tide” appears only as “Tide”, and case-sensitive matching is on.');
+  });
+
   it('falls back to plain absence when nothing about the entry is at fault', () => {
     const miss = missOf([book([entry({ id: 'd1', key: ['storm'] })])], 'A quiet morning.', 'd1');
     expect(miss.nearMiss).toBe('no-match');
