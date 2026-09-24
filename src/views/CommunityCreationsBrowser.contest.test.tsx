@@ -360,7 +360,7 @@ describe('what the contest grid shows in each of its three states', () => {
     // Still on the ordinary catalog: the badge is on the card, not on the tab it was won in — and it
     // names the step, so a runner-up is not shown as the winner.
     expect(screen.getByRole('button', { name: 'Worlds' })).toHaveAttribute('aria-current', 'true');
-    const badge = (await screen.findByText('Winter World-Building Contest')).closest('p') as HTMLElement;
+    const badge = (await screen.findByText('Winter World-Building Contest')).closest('button') as HTMLElement;
     expect(badge).toHaveTextContent('2nd Place — Winter World-Building Contest');
     expect(badge).toHaveClass('place-chip-shine');
   });
@@ -374,7 +374,7 @@ describe('what the contest grid shows in each of its three states', () => {
     await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
 
     const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
-    expect(within(details).getByText('Winter World-Building Contest').closest('p') as HTMLElement).toHaveTextContent(
+    expect(within(details).getByText('Winter World-Building Contest').closest('button') as HTMLElement).toHaveTextContent(
       '1st Place — Winter World-Building Contest',
     );
   });
@@ -404,8 +404,8 @@ describe('what the contest grid shows in each of its three states', () => {
     await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Saltmarsh' }));
 
     const details = await screen.findByRole('dialog', { name: /Saltmarsh/ });
-    expect(within(details).getByText('Winter World-Building Contest').closest('p') as HTMLElement).toHaveTextContent('1st Place');
-    expect(within(details).getByText('Autumn Ruins Contest').closest('p') as HTMLElement).toHaveTextContent('3rd Place');
+    expect(within(details).getByText('Winter World-Building Contest').closest('button') as HTMLElement).toHaveTextContent('1st Place');
+    expect(within(details).getByText('Autumn Ruins Contest').closest('button') as HTMLElement).toHaveTextContent('3rd Place');
   });
 
   it('says a running contest is still waiting for its first entry', async () => {
@@ -414,6 +414,47 @@ describe('what the contest grid shows in each of its three states', () => {
     await openContestTab();
 
     expect(await screen.findByText(/Publish a world with the contest switch on/)).toBeInTheDocument();
+  });
+});
+
+describe('a place chip opens the contest it names', () => {
+  // An archived win beside a running contest: the chip must reach the archive, not the default.
+  const setup = () => {
+    server.events = [
+      decided(contest({ id: 'old', title: 'Autumn Ruins Contest', startsAt: at(-40), endsAt: at(-30) }), [['Ruinsong', 'Ruinsong']]),
+      contest(),
+    ];
+    catalog.items = [
+      listing('Saltmarsh', { contest_event_id: 'e1' }),
+      listing('Ruinsong', { contest_event_id: 'old' }),
+    ];
+    renderBrowser();
+  };
+
+  const expectOnArchive = async () => {
+    expect(screen.getByRole('button', { name: 'Contest' })).toHaveAttribute('aria-current', 'true');
+    expect(within(await screen.findByRole('combobox', { name: 'Contest' })).getByText('Autumn Ruins Contest')).toBeInTheDocument();
+    await waitFor(() => expect(gridNames()).toEqual(['Ruinsong']));
+  };
+
+  it('from the card, instead of opening the world', async () => {
+    setup();
+
+    await userEvent.click(await screen.findByRole('button', { name: /1st Place — Autumn Ruins Contest/ }));
+
+    await expectOnArchive();
+    expect(screen.queryByRole('dialog', { name: /Ruinsong/ })).not.toBeInTheDocument();
+  });
+
+  it('from the details, closing them', async () => {
+    setup();
+    await userEvent.click(await screen.findByRole('heading', { level: 3, name: 'Ruinsong' }));
+    const details = await screen.findByRole('dialog', { name: /Ruinsong/ });
+
+    await userEvent.click(within(details).getByRole('button', { name: /1st Place — Autumn Ruins Contest/ }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /Ruinsong/ })).not.toBeInTheDocument());
+    await expectOnArchive();
   });
 });
 

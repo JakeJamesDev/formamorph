@@ -56,6 +56,8 @@ interface RemoteWorldCardProps {
   onRelease?: (world: WorldRecord) => void;
   /** Where this listing placed — the badge travels with the world, not with the tab it was won in. */
   placements?: ContestPlacement[];
+  /** Opens a contest this listing placed in, from its place chip. */
+  onOpenContest?: (contestId: string) => void;
   /** Take this listing out of the contest it was entered in. Offered on the contest tab, to its author. */
   onWithdraw?: (world: WorldRecord) => void;
   /** Opens the add-on review. On the author's own world listing only: a review is a world author's
@@ -71,7 +73,7 @@ interface RemoteWorldCardProps {
 export function RemoteWorldCard({
   world, downloadState: dlState, downloadProgress, isAuthenticated, currentUser,
   onView, onHideWorld, onHideAuthor, onHideTag, onContextualDownload, onDeviceDownload, onDelete, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onQuarantine, onRelease,
-  placements = [], onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
+  placements = [], onOpenContest, onWithdraw, onManageAddons, likeTutorial, likeTutorialNav,
 }: RemoteWorldCardProps) {
   // Get the world ID (server uses _id)
   const worldId = world._id || world.id;
@@ -246,7 +248,7 @@ export function RemoteWorldCard({
 
       {/* Won a contest: said on the card itself, so the honor is visible wherever the world is found
           rather than only in the tab the contest was run in. */}
-      <PlaceBadges placements={placements} className="mb-2" shine />
+      <PlaceBadges placements={placements} className="mb-2" shine onSelect={onOpenContest} />
 
       {/* Tags */}
       <div className="mb-2">
