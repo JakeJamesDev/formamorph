@@ -122,8 +122,8 @@ describe('context blocks', () => {
         { id: 'de-fg', name: 'The Silt', key: ['silt'], value: 'The river carries silt every spring.' },
         { id: 'de-bg', name: 'The Founding', key: ['founding'], value: 'Eel-trappers built the first pier.', position: 'before' },
       ],
-    } as unknown as Dictionary];
-    const text = block(context(at('loc-harbor'), { dictionaries: split }), 'dictionary').text;
+    } as unknown as Dictionary]; // Only the fields the lore builder reads, as in the shared fixture.
+    const text =block(context(at('loc-harbor'), { dictionaries: split }), 'dictionary').text;
     expect(text).toBe('The Founding: Eel-trappers built the first pier.\nThe Silt: The river carries silt every spring.');
   });
 
