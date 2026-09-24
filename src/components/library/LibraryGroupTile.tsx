@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Tip } from '@/components/ui/tooltip';
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from '@/components/WorldCardShell';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
-import { thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
+import { cardLayoutFor, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 
 /** How many member thumbnails the detailed layout's folder card shows. */
 const MOSAIC_CELLS = 4;
@@ -79,6 +79,7 @@ export function LibraryGroupTile({
         style={style}
         {...attributes}
         {...listeners}
+        layout={cardLayoutFor(aspect)}
         frameClassName="h-full bg-card touch-pan-y"
         onClick={() => onOpen(group.id)}
         name={group.name}

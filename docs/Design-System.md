@@ -150,6 +150,7 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 - Put a concise description below the art, then align likes, downloads, and comments across one row.
 - Put tags after counts. Show two rows in the resting card and disclose the remainder on hover rather than making every card taller.
 - Keep the contextual download control in the art’s top-right corner. Other secondary actions remain in their established contextual placements.
+- Give entities the split layout. Their art is tall, so it sits at 2:3 on the left and the text sits on the right. The title and author move to the top of the art, and the art’s actions move to its bottom-right corner. A split card is about twice as wide, so the Entity grid shows three per row on wide screens, two on medium screens and one on phones.
 - Use controlled callbacks in the showcase. The reference never opens a listing, publishes, downloads, deletes, or changes a like outside its local state.
 
 ### Production mapping
@@ -157,6 +158,8 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 | Need | Component |
 | --- | --- |
 | Frame, artwork, title scrim, author, and description | `WorldCardShell` in [`WorldCardShell.tsx`](../src/components/WorldCardShell.tsx) |
+| Stacked or split layout per art aspect | `cardLayoutFor` in [`thumbAspect.ts`](../src/lib/thumbAspect.ts) |
+| The same card in the library's detailed view | `WorldCardFace` in [`WorldCardFace.tsx`](../src/components/WorldCardFace.tsx) and `LibraryGroupTile` in [`LibraryGroupTile.tsx`](../src/components/library/LibraryGroupTile.tsx) |
 | Community counts, tags, and contextual actions | `RemoteWorldCard` in [`RemoteWorldCard.tsx`](../src/components/community/RemoteWorldCard.tsx) |
 | Favorite selection and pending state | `LikeButton` in [`LikeButton.tsx`](../src/components/community/LikeButton.tsx) |
 | Tag density and overflow | `CardTags` in [`WorldDetails.tsx`](../src/components/WorldDetails.tsx) |
@@ -172,7 +175,8 @@ At desktop widths, cards form a two-column reference grid. At narrower widths th
 | Selected | A liked creation uses the production filled heart and pressed state. Selecting a card reports the local selected listing. |
 | Disabled | A pending favorite callback disables the production heart until the local callback completes. |
 | Focus | Thumbnail actions reveal on keyboard focus and use the shared ring. |
-| Overflow | Titles clamp in the resting card and expand up to three lines on hover; a tooltip preserves clipped titles. Tags disclose after two rows. |
+| Overflow | Titles clamp in the resting card and expand up to three lines on hover; a tooltip preserves clipped titles. Long author names truncate inside the art. Tags disclose after two rows. |
+| Loading | The Entity grid loads with split-card skeletons, so it keeps its shape when the listings arrive. |
 | Action | The update action and favorite callback report local outcomes only. |
 
 The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data.

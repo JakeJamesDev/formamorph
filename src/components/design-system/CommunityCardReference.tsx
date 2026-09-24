@@ -46,6 +46,25 @@ const UPDATE_WORLD: WorldRecord = {
   tags: ['Exploration', 'Folklore', 'Puzzle'],
 };
 
+const PORTRAIT_ART = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 720">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#3a3354"/><stop offset="1" stop-color="#16192a"/></linearGradient></defs>
+  <rect width="480" height="720" fill="url(#bg)"/><circle cx="240" cy="250" r="96" fill="#d9b99b"/><path d="M144 230q10-130 96-130t96 130q-30-60-96-60t-96 60Z" fill="#5b3a2e"/><path d="M90 720q0-260 150-260t150 260Z" fill="#3f6f73"/>
+</svg>`);
+
+const FEATURED_ENTITY: WorldRecord = {
+  id: 'showcase-ferry-keeper',
+  name: 'Maren Holloway, Keeper of the Last Ferry Across the Sedge',
+  description: 'A patient ferry keeper who trades crossings for stories. She remembers every passenger and never forgets a debt.',
+  kind: 'entity',
+  thumbnail: `data:image/svg+xml,${PORTRAIT_ART}`,
+  author: { id: 'river-quill', username: 'river-quill-with-a-long-handle' },
+  downloads: 342,
+  comment_count: 12,
+  likes: 58,
+  liked: false,
+  tags: ['NPC', 'Guide', 'Coastal', 'Merchant'],
+};
+
 type PendingLike = {
   complete: () => void;
   next: boolean;
@@ -78,7 +97,7 @@ export function CommunityCardReference() {
       <div className="grid gap-2">
         <h3 id="community-card-reference-title" className="text-heading">Community Creation Cards</h3>
         <Hint>
-          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image.
+          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity card puts its image beside the text instead.
         </Hint>
       </div>
 
@@ -106,6 +125,18 @@ export function CommunityCardReference() {
             setLastAction(`The selected creation is ${world.name}.`);
           }}
           onContextualDownload={(world) => setLastAction(`The local update action started for ${world.name}.`)}
+        />
+        <RemoteWorldCard
+          world={FEATURED_ENTITY}
+          downloadState="none"
+          downloadProgress={undefined}
+          isAuthenticated
+          currentUser={COMMUNITY_READER}
+          onView={(world) => {
+            setSelectedName(world.name);
+            setLastAction(`The selected creation is ${world.name}.`);
+          }}
+          onContextualDownload={(world) => setLastAction(`The local download action started for ${world.name}.`)}
         />
       </div>
 

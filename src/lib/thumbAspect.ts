@@ -4,6 +4,8 @@
  * frame ratio and its crop from here, so a thumbnail reads the same wherever it appears.
  */
 
+import type { CatalogKind } from '@/lib/catalogKinds';
+
 /** The shape a thumbnail's frame takes: wide scene art, or tall character art. */
 export type ThumbAspect = 'landscape' | 'portrait';
 
@@ -34,3 +36,15 @@ export const THUMB_FRAME: Record<ThumbAspect, string> = {
  */
 export const thumbFit = (content: ThumbAspect): string =>
   content === 'portrait' ? 'object-cover object-top' : 'object-cover';
+
+/**
+ * How a card arranges its art and text: `stacked` puts wide art above the text; `split` puts portrait
+ * art beside it, with the name at the top of the art.
+ */
+export type CardLayout = 'stacked' | 'split';
+
+/** The art a listing kind carries: character art for entities, scene art for the rest. */
+export const thumbAspectFor = (kind: CatalogKind): ThumbAspect => (kind === 'entity' ? 'portrait' : 'landscape');
+
+/** The card layout for an aspect: tall art sits beside the text rather than above it. */
+export const cardLayoutFor = (aspect: ThumbAspect): CardLayout => (aspect === 'portrait' ? 'split' : 'stacked');

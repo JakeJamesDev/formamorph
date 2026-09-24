@@ -215,6 +215,9 @@ const ENTITY_MIN_TILE = (WORLD_MIN_TILE - 16) / 2;
 /** Columns for the detailed (community-card) layout — pure CSS, since it keeps no cell arrangement.
  *  The minimum matches the narrowest card the old four-across breakpoint produced. */
 const DETAILED_GRID_CLASS = 'grid-cols-[repeat(auto-fill,minmax(236px,1fr))]';
+// Split cards put portrait art beside the text, so each needs about twice the width. The min() keeps a
+// phone to one full-width column.
+const DETAILED_SPLIT_GRID_CLASS = 'grid-cols-[repeat(auto-fill,minmax(min(100%,400px),1fr))]';
 const LAYOUT_MODE_KEY = 'FORMAMORPH_layoutMode';
 // Persisted preference to force the local world modal's single-column (portrait) layout at any width.
 const WORLD_MODAL_COLLAPSED_KEY = 'FORMAMORPH_worldModalCollapsed';
@@ -2205,7 +2208,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           layout={layoutMode}
           aspect="portrait"
           minMediumWidth={ENTITY_MIN_TILE}
-          detailedColumnsClass={DETAILED_GRID_CLASS}
+          detailedColumnsClass={DETAILED_SPLIT_GRID_CLASS}
           thumbnailOf={(entity) => entity.image}
           filter={entityPredicate}
           toolbar={(

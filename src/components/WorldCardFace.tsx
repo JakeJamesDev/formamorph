@@ -4,7 +4,7 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { OverlayTitle, TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tip } from "@/components/ui/tooltip";
-import { THUMB_FRAME, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
+import { THUMB_FRAME, cardLayoutFor, thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
 
 export interface WorldCardFaceOwnProps {
   world: WorldRecord;
@@ -37,15 +37,20 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
 ) {
   const select = loading ? undefined : onSelect;
 
-  // Detailed layout: the shared card shell (thumbnail on top, info beneath).
+  // Detailed layout: the shared card shell, with portrait art beside the info and landscape art above it.
   if (layout === 'detailed') {
+    const cardLayout = cardLayoutFor(aspect);
     return (
       <WorldCardShell
         ref={ref}
         {...frame}
+        layout={cardLayout}
         // content-visibility:auto lets the browser skip layout/paint for off-screen cards; the auto
         // intrinsic-size reserves space (remembered after first paint) so scrolling stays stable.
-        frameClassName="h-full bg-card touch-pan-y [content-visibility:auto] [contain-intrinsic-size:auto_360px]"
+        frameClassName={cn(
+          'h-full bg-card touch-pan-y [content-visibility:auto]',
+          cardLayout === 'split' ? '[contain-intrinsic-size:auto_280px]' : '[contain-intrinsic-size:auto_360px]',
+        )}
         onClick={() => select?.(world.id)}
         loading={loading}
         name={world.name}

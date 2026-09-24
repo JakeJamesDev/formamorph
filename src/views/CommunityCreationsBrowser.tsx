@@ -65,7 +65,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TITLE_SCRIM } from "@/components/WorldCardShell";
+import { TITLE_SCRIM, WorldCardShell } from "@/components/WorldCardShell";
+import { cardLayoutFor, thumbAspectFor } from "@/lib/thumbAspect";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -473,6 +474,9 @@ const CommunityCreationsBrowser = ({
     setRemoteWorlds(released);
     void replaceCatalog(released as CatalogWorld[]);
   }, [setRemoteWorlds]));
+
+  // Contest entries are worlds, so the contest tab keeps the stacked grid.
+  const gridLayout = browseTab === 'contest' ? 'stacked' : cardLayoutFor(thumbAspectFor(browseTab));
 
   const catalogInView = browseTab === 'contest'
     ? entriesOf(remoteWorlds, shownContest?.id)
@@ -1190,10 +1194,15 @@ const CommunityCreationsBrowser = ({
           {/* Scrollable results */}
           <TabsContent value={browseTab} className="contents">
           <ScrollArea className="flex-1 min-h-0">
-            {/* World grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 px-6 py-4">
+            {/* World grid. Split cards are about twice as wide, so they take fewer columns. */}
+            <div className={cn(
+              'grid grid-cols-1 gap-4 px-6 py-4',
+              gridLayout === 'split' ? 'lg:grid-cols-2 xl:grid-cols-3' : 'sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+            )}>
               {isLoadingRemoteWorlds ? (
-                Array(4).fill(0).map((_, index) => (
+                gridLayout === 'split' ? Array(4).fill(0).map((_, index) => (
+                  <WorldCardShell key={index} layout="split" loading name="" frameClassName="bg-card" />
+                )) : Array(4).fill(0).map((_, index) => (
                   <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                     <Skeleton className="w-full h-full" />
                     <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
