@@ -50,7 +50,7 @@ This ticket sets up the Authoring Tour module: the step registry, the progress s
 
 **2026-09-23, implementation notes**
 
-- New World names the world "New World", so on a new world the World Name step opens with **Next** already enabled. This follows "a step whose field already has a value shows with **Next** enabled". Whether the default name should count as a value is open.
+- New World names the world "New World", so on a new world the World Name step opens with **Next** already enabled. This follows "a step whose field already has a value shows with **Next** enabled". **Resolved:** the default name does not count as a value, and [ticket 14](14-world-name-step-ignores-the-default-name.md) builds it.
 - The last step's button reads **Finish**, not **Next**.
 - The mode note ("Simple vs. Advanced") waits while the offer or the tour is up, because the tour locks the switch it explains.
 - The offer shows only on the world New World made. A world loaded over it from a file gets no offer.
