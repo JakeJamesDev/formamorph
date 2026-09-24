@@ -3,7 +3,8 @@
  * with their rendered text and what each costs.
  *
  * Every block's value is the Chip Values module's, from a Chip Scene the authored adapter builds for the lens,
- * read by the chip token that serves the block. Nothing here decodes a token or re-derives a value; a second
+ * read by the chip token that serves the block. Nothing here re-derives a value, and the rosters' summary flags
+ * decode through the expander's own option tables; a second
  * implementation could disagree with play, which would make the whole instrument a liar. The tokens are the
  * shipped default prompts' own: prompts are a global setting the editor cannot read, so the defaults are the
  * only honest stand-in.
@@ -187,7 +188,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const reachIds = reachableEntityIds(location, locations, entities).filter((id) => !shown.has(id));
 
   // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
-  // byte-for-byte the block the model receives.
+  // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.
   const blocks = (Object.keys(BLOCK_TOKENS) as ContextBlockId[]).map((id): ContextBlock => {
     const text = blockValue(id, values);
     const empty = text.trim() === '' || text.trim() === NONE_PLACEHOLDER;
