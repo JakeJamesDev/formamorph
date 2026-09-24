@@ -258,7 +258,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - both offers appear, share a seen-state, and **No Thanks** retires both;
   - **Next** is disabled until the field has a value, and **Use Example** enables it;
   - add steps record the new item and select it; deleting a tour item makes its step current again;
-  - In Play shows the right readers per tab, marks the author's text, says "never reads" where true, shows the name-only narration read for a stat, and adds and removes the dictionary entry as the test line changes;
+  - In Play shows the right readers per tab, marks the author's text, says "never reads" where true, shows the narration read for a stat without its number or Description, and adds and removes the dictionary entry as the test line changes;
   - the editor is in Simple during the tour, the stored mode preference is unchanged, and the toggle is disabled;
   - the world is saved after each step; a remount on the same world resumes at the stored step; **End Tour** clears it;
   - **drift check:** for every registry step, its anchor renders on its tab. This test iterates the registry, so a new step is covered with no new test.
