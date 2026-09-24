@@ -15,12 +15,31 @@ export function sampleTestLine(world: TourWorld, items: TourItems): string {
   return who ? `You ask ${who} about the ${keyword}.` : `You ask about the ${keyword}.`;
 }
 
+/** A player action with none of the entry's keywords, the counterpart of `sampleTestLine`. */
+export function sampleMissLine(world: TourWorld, items: TourItems): string {
+  const who = tourEntity(world, items)?.name.trim();
+  return who ? `You ask ${who} how the day went.` : 'You ask how the day went.';
+}
+
+/** What the scan made of the tour entry for one test line, and how the pane shows it. */
+export interface TestLineScan {
+  /** The entry's trigger keywords, as the scan parses them. */
+  keywords: string[];
+  /** The keywords the line matched under the entry's rules. */
+  hitKeywords: string[];
+  /** The line split into runs, each marked when a keyword of the entry matched there. */
+  segments: { text: string; hit: boolean }[];
+  fired: boolean;
+  /** The Activation Tester's sentence when a rule of the entry stopped it, in place of a plain miss. */
+  reason?: string;
+}
+
 /** What the scan made of the tour entry for one test line. */
 export type TestLineRead =
   /** The entry fired, and `text` is the dictionary block that holds it. */
-  | { fired: true; text: string; rendered: boolean }
-  /** The entry did not fire. `reason` is the Activation Tester's sentence when a rule of the entry stopped it. */
-  | { fired: false; reason?: string };
+  | { fired: true; text: string; rendered: boolean; scan: TestLineScan }
+  /** The entry did not fire. */
+  | { fired: false; scan: TestLineScan };
 
 /** Near misses that mean the line has no keyword of the entry, which the pane says in its own words. */
 const NO_KEYWORD: ReadonlySet<NearMiss | undefined> = new Set(['no-match', 'no-keywords']);
@@ -32,11 +51,18 @@ export function readTestLine(
   const entry = tourEntry(world, items);
   const report = buildTriggerReport(world, testLine, { pins });
   const row = report.entries.find((e) => e.entryId === entry?.id);
-  if (!entry || !row?.fired) {
-    return row && !NO_KEYWORD.has(row.nearMiss) ? { fired: false, reason: describeNearMiss(row) } : { fired: false };
-  }
+  const scan: TestLineScan = {
+    keywords: entry ? parseKeywords(entry) : [],
+    hitKeywords: [...new Set((row?.hits ?? []).map((h) => h.keyword))],
+    segments: report.segments.map((s) => ({
+      text: s.text, hit: s.marks.some((m) => m.kind === 'entry' && m.id === entry?.id),
+    })),
+    fired: !!row?.fired,
+    ...(row && !row.fired && !NO_KEYWORD.has(row.nearMiss) ? { reason: describeNearMiss(row) } : {}),
+  };
+  if (!entry || !row?.fired) return { fired: false, scan };
   const position = entry.position === 'before' ? 'before' : 'after';
   const text = report.rendered.find((b) => b.position === position)?.text ?? '';
   // The game's renderer drops an entry with no Value, so a firing can add nothing to the block.
-  return { fired: true, text, rendered: !!entry.value };
+  return { fired: true, text, rendered: !!entry.value, scan };
 }

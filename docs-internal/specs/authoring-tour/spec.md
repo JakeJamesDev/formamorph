@@ -183,7 +183,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The in-game World Editor holds the first-visit offer. It is not spent, and it shows on the next editor visit from the main menu.
   - If the open world has unsaved edits, **Start Tour** shows the editor's Unsaved Changes dialog first. **Save** or **Discard** continues to the tour. **Cancel** keeps the world and leaves the offer on screen, unspent.
 - **Rulings from ticket 05 (2026-09-23):**
-  - The second location's example values (Appendix A) come from **Use Example** on the "Add a Second Location" step. It is offered only once the second location exists, and it fills that location's Name and both descriptions. The first add step has no **Use Example**, because the Name step follows it.
+  - The second location's descriptions (Appendix A) come from **Use Example** on the "Add a Second Location" step. It is offered only once the second location exists. Its name comes from the "Second Location Name" step that follows (added 2026-09-24: without it a tour that skipped the add step's example ended with a place still called "New Location"). Neither add step's example names the location, because a Name step follows each.
   - An add step detects its new item by comparing ids against the list as it stood when the step became current, so every add path counts.
   - A dev route to a mid-tour step replays each earlier step's add and example, so it opens on a filled step.
 - **Rulings from ticket 07 (2026-09-23):**

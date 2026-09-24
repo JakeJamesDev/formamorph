@@ -1,7 +1,7 @@
 # Spec: Default Stat Descriptors Follow a Rename
 
-Status: ready-for-agent
-Status note: no tickets; the spec is the unit. Found by the Authoring Tour's ticket 07. The user chose this fix (option A) on 2026-09-23.
+Status: done
+Status note: no tickets; the spec is the unit. Found by the Authoring Tour's ticket 07. The user chose this fix (option A) on 2026-09-23. Built on main 2026-09-24: `followRename` in `src/lib/statDescriptors.ts`, applied in `GameDataContext.updateStat`.
 
 ## Problem Statement
 

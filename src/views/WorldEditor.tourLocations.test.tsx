@@ -120,10 +120,10 @@ describe('Authoring Tour — Locations steps', () => {
     const saved = storeWorld.mock.calls.length;
 
     await walkTo(TOUR_STEPS[indexOf('location-connection') + 1].id);
-    expect(storeWorld.mock.calls.length - saved).toBe(7);
+    expect(storeWorld.mock.calls.length - saved).toBe(8);
     expect(TOUR_STEPS.slice(indexOf('add-location'), indexOf('location-connection') + 1).map((s) => s.id)).toEqual([
       'add-location', 'location-name', 'location-player-description', 'location-ai-description',
-      'location-starting', 'add-second-location', 'location-connection',
+      'location-starting', 'add-second-location', 'second-location-name', 'location-connection',
     ]);
 
     const [tidewell, lantern] = ctx().locations.filter((l) => l.id !== 'harbor');
@@ -192,13 +192,27 @@ describe('Authoring Tour — add steps', () => {
 
     fireEvent.click(addButton());
     fireEvent.click(await waitFor(() => noteButton('Use Example')!));
+    // The add step's example fills the descriptions; the Name step that follows owns the name.
     await waitFor(() => expect(ctx().locations.at(-1)).toMatchObject({
-      name: 'The Salt Lantern',
+      name: 'New Location',
       playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
       aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
     }));
     // The first tour location keeps its own text.
     expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
+  });
+
+  it('Second Location Name waits for a chosen name, and In Play stands at that place', async () => {
+    const { ctx } = await openTour();
+    await walkTo('second-location-name');
+    expect(noteButton('Next')).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('New Location');
+
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    expect(ctx().locations.at(-1)?.name).toBe('The Salt Lantern');
+    const narration = within(screen.getByRole('region', { name: 'In Play' })).getByRole('region', { name: 'Narration Prompt Reads' });
+    expect(Array.from(narration.querySelectorAll('mark')).map((m) => m.textContent)).toEqual(['The Salt Lantern']);
   });
 
   it('Back to Tour selects the step’s location again', async () => {
@@ -240,6 +254,8 @@ describe('Authoring Tour — add steps', () => {
     await waitFor(() => expect(stepNumber()).toBe(indexOf('add-second-location') + 1));
     fireEvent.click(addButton());
     fireEvent.click(await waitFor(() => noteButton('Use Example')!));
+    await next();
+    fireEvent.click(noteButton('Use Example')!);
     await next();
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(ctx().connections).toHaveLength(1));

@@ -19,7 +19,7 @@ import type { Connection, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGr
 import {
   liveTourItem, tourConnection, tourEntity, tourEntityPlaces, tourEntry, tourStat, type TourItems, type TourWorld,
 } from './steps';
-import { readTestLine } from './testLine';
+import { readTestLine, type TestLineScan } from './testLine';
 
 /** The AI requests In Play can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat Updates Prompt';
@@ -47,8 +47,6 @@ export interface InPlayReader {
   /** The block the prompt receives. Empty unless the state is `reads`. */
   text: string;
   marks: MarkSpan[];
-  /** The Activation Tester's reason an entry did not fire, in place of the state's own line. */
-  note?: string;
 }
 
 /** Where a new game starts, as far as the tour's location is concerned. */
@@ -87,6 +85,8 @@ export type PlayerSurface =
 export interface InPlaySlice {
   playerSees: PlayerSurface;
   readers: InPlayReader[];
+  /** The test line's scan, on a step that reads through one. */
+  testLine?: TestLineScan;
 }
 
 /** One prompt's read of a step's field, as a step declares it. */
@@ -104,9 +104,9 @@ export interface InPlaySpec {
   /**
    * `entity`: the lens stands at the tour entity's location, and while the entity is in no location every
    * reader that reads is `notInScene`. `connection`: the lens stands where the tour Connection leaves from.
-   * Otherwise the lens stands at the tour's first location.
+   * `secondLocation`: the lens stands at the tour's second location. Otherwise it stands at the first.
    */
-  scene?: 'entity' | 'connection';
+  scene?: 'entity' | 'connection' | 'secondLocation';
   /**
    * The lens plays a new game with the tour trait picked on the setup screen: the trait stands in as the lens
    * character, which applies it the way ticking it there does.
@@ -274,7 +274,8 @@ export function computeInPlay(
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts.
   const sceneId = spec.scene === 'entity' ? entitySceneId(world, items)
-    : spec.scene === 'connection' ? connectionSceneId(world, items) : null;
+    : spec.scene === 'connection' ? connectionSceneId(world, items)
+      : spec.scene === 'secondLocation' ? items.secondLocation ?? null : null;
   const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;
   const lensHere = () => lens ??= buildLens(world, {
@@ -283,6 +284,7 @@ export function computeInPlay(
   });
   const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
+  const read = usesTestLine(spec) ? readTestLine(world, items, testLine, lensHere().pins) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
     const never: InPlayReader = { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
     if (reader.reads === 'never') return never;
@@ -295,9 +297,8 @@ export function computeInPlay(
     if (reader.reads === 'testLine') {
       const position = tourEntry(world, items)?.position === 'before' ? 'before' : 'after';
       const chip = blockChipPlacedIn(template, 'dictionary', position);
-      if (chip === undefined) return never;
-      const read = readTestLine(world, items, testLine, lensHere().pins);
-      if (!read.fired) return { prompt: reader.prompt, state: 'noKeyword', text: '', marks: [], note: read.reason };
+      if (chip === undefined || !read) return never;
+      if (!read.fired) return { prompt: reader.prompt, state: 'noKeyword', text: '', marks: [] };
       if (!read.rendered) return { prompt: reader.prompt, state: 'noValue', text: '', marks: [] };
       return reads(chip, read.text);
     }
@@ -313,5 +314,6 @@ export function computeInPlay(
   return {
     playerSees: playerSurface(spec.sees, world, worldId, items, lensHere),
     readers,
+    ...(read ? { testLine: read.scan } : {}),
   };
 }

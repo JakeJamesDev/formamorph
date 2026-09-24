@@ -1,9 +1,13 @@
 import { useId, useMemo, type ReactNode } from 'react';
+import { Check, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { Hint } from '@/components/ui/typography';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
@@ -18,7 +22,7 @@ import {
 import type { PlayerStat, Trait } from '@/types';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
-import { sampleTestLine } from '@/lib/authoringTour/testLine';
+import { sampleMissLine, sampleTestLine, type TestLineScan } from '@/lib/authoringTour/testLine';
 
 const STARTS_LINES: Record<StartsAt, string> = {
   here: 'A new game starts here',
@@ -29,8 +33,8 @@ const STARTS_LINES: Record<StartsAt, string> = {
 const STATE_LINES: Record<Exclude<ReaderState, 'reads'>, string> = {
   neverReads: 'The AI never reads this field',
   notInScene: 'The AI never reads an entity with no location',
-  noKeyword: 'The AI reads this entry only when the test line has a keyword',
-  noValue: 'The AI reads this entry once it has a Value',
+  noKeyword: 'Nothing reaches the AI on this line',
+  noValue: 'The entry fires, but adds nothing until it has a Value',
 };
 
 /** The reader text with each of the author's own runs marked. */
@@ -176,7 +180,7 @@ const Reader = ({ reader }: { reader: InPlayReader }) => (
       <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
         {markedText(reader.text, reader.marks)}
       </pre>
-    ) : <Muted>{reader.note ?? STATE_LINES[reader.state]}</Muted>}
+    ) : <Muted>{STATE_LINES[reader.state]}</Muted>}
   </Section>
 );
 
@@ -184,15 +188,68 @@ const Reader = ({ reader }: { reader: InPlayReader }) => (
 export interface TestLineInput {
   value: string;
   onChange: (value: string) => void;
+  /** A line that fires the entry and one that misses, for the try button. Blank hit line: no keyword yet. */
+  samples: { hit: string; miss: string };
 }
 
-function TestLine({ value, onChange }: TestLineInput) {
+const quote = (text: string) => `“${text}”`;
+
+/** One line on whether the entry fires, and on which keyword. */
+function scanStatus(scan: TestLineScan): string {
+  if (scan.fired) {
+    return scan.hitKeywords.length ? `Fires on ${scan.hitKeywords.map(quote).join(', ')}` : 'Fires on every line';
+  }
+  if (scan.reason) return `Doesn't fire: ${scan.reason}`;
+  if (!scan.keywords.length) return "Doesn't fire: the entry has no keywords yet";
+  return "Doesn't fire: the line has none of this entry's keywords";
+}
+
+function TestLine({ value, onChange, samples, scan }: TestLineInput & { scan?: TestLineScan }) {
   const id = useId();
+  const tryLine = scan?.fired ? samples.miss : samples.hit;
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>Test Line</Label>
       <Hint>Type a player message to see when the entry loads</Hint>
-      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+      <div className="flex gap-2">
+        <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+        {tryLine && (
+          <Button size="sm" variant="outline" className="shrink-0" onClick={() => onChange(tryLine)}>
+            {scan?.fired ? 'Try a Miss' : 'Try a Hit'}
+          </Button>
+        )}
+      </div>
+      {scan && (
+        <>
+          {scan.keywords.length > 0 && (
+            <ul className="flex flex-wrap gap-1" aria-label="Keywords">
+              {scan.keywords.map((keyword) => {
+                const hit = scan.hitKeywords.includes(keyword);
+                return (
+                  <li key={keyword}>
+                    <Badge variant={hit ? 'default' : 'outline'} className={cn(!hit && 'text-muted-foreground')}>
+                      {keyword}
+                    </Badge>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {value.trim() && (
+            <p className="rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
+              {scan.segments.map((s, i) => s.hit
+                ? <mark key={i} className="rounded-sm bg-amber-400/25 px-0.5 text-inherit">{s.text}</mark>
+                : <span key={i}>{s.text}</span>)}
+            </p>
+          )}
+          <p role="status" className={cn('flex items-start gap-1.5 text-helper', !scan.fired && 'text-muted-foreground')}>
+            {scan.fired
+              ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              : <X className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />}
+            <span>{scanStatus(scan)}</span>
+          </p>
+        </>
+      )}
     </div>
   );
 }
@@ -205,7 +262,7 @@ export function InPlayPane({ slice, testLine }: { slice: InPlaySlice; testLine?:
       <ScrollArea className="min-h-0 flex-grow">
         <div className="space-y-4 p-3">
           <PlayerSees surface={slice.playerSees} />
-          {testLine && <TestLine {...testLine} />}
+          {testLine && <TestLine {...testLine} scan={slice.testLine} />}
           {slice.readers.map((reader) => <Reader key={reader.prompt} reader={reader} />)}
         </div>
       </ScrollArea>
@@ -239,6 +296,13 @@ export function TourInPlay({ worldId, step, testLineEdit, onTestLineEdit }: {
     [step, world, worldId, items, templates, testLine],
   );
   return (
-    <InPlayPane slice={slice} testLine={testLine === null ? undefined : { value: testLine, onChange: onTestLineEdit }} />
+    <InPlayPane
+      slice={slice}
+      testLine={testLine === null ? undefined : {
+        value: testLine,
+        onChange: onTestLineEdit,
+        samples: { hit: sampleTestLine(world, items ?? {}), miss: sampleMissLine(world, items ?? {}) },
+      }}
+    />
   );
 }

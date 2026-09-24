@@ -241,7 +241,8 @@ describe('In Play — Stats', () => {
 
     const narration = reader('Narration Prompt')!;
     const updates = reader('Stat Updates Prompt')!;
-    expect(marks(narration)).toEqual(['Sea Change']);
+    // The default descriptors follow the rename, so narration names the stat in the descriptor too.
+    expect(marks(narration)).toEqual(['Sea Change', 'Sea Change']);
     expect(marks(updates)).toEqual(['Sea Change']);
     // The shipped Stat Updates prompt places its Stats chip with no Header.
     expect(readText(updates)).toBe('- **Sea Change:** 0/100');

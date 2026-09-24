@@ -1,4 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
+import { defaultDescriptorBands } from '@/lib/statDescriptors';
 import type { Entity, GameLocation, Stat, Trait, World } from '@/types';
 
 /** The name New World gives a world. */
@@ -20,11 +21,8 @@ export function newBlankWorld(): World {
     },
     stats: [],
     traits: [],
-    // Seed the two default trait groups so authors start with World/Player folders.
-    traitGroups: [
-      { id: randomUUID(), name: 'World', parentId: null, order: 0 },
-      { id: randomUUID(), name: 'Player', parentId: null, order: 1 },
-    ],
+    // No seeded trait groups: Simple mode cannot make or manage groups, so a new world starts flat.
+    traitGroups: [],
     locations: [],
     entities: [],
     statUpdates: [], // This field is required by WorldStorageService
@@ -83,10 +81,6 @@ export function newStat(id: string, name = NEW_STAT_NAME): Omit<Stat, 'descripto
 export function withDefaultDescriptors(stat: Omit<Stat, 'descriptors'>): Stat {
   return {
     ...stat,
-    descriptors: [
-      { id: randomUUID(), threshold: 30, description: `${stat.name} is low` },
-      { id: randomUUID(), threshold: 60, description: `${stat.name} is medium` },
-      { id: randomUUID(), threshold: 100, description: `${stat.name} is high` },
-    ],
+    descriptors: defaultDescriptorBands(stat.name).map((band) => ({ id: randomUUID(), ...band })),
   };
 }

@@ -156,7 +156,7 @@ export const DEV_MODAL_TABS = {
   worldEditorTour: [
     'world-name', 'world-ai-description',
     'add-location', 'location-name', 'location-player-description', 'location-ai-description', 'location-starting',
-    'add-second-location', 'location-connection',
+    'add-second-location', 'second-location-name', 'location-connection',
     'add-entity', 'entity-name', 'entity-pronouns', 'entity-player-description', 'entity-ai-description',
     'entity-locations',
     'add-stat', 'stat-name', 'stat-description',

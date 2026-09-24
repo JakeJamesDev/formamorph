@@ -17,6 +17,8 @@ export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onSh
       title={step?.title ?? ''}
       body={step?.body}
       anchor={anchor}
+      // The note keeps to the pane its field is in, so it never covers In Play beside it.
+      within={anchor?.closest('[data-panel-id]') ?? null}
       side="bottom"
       align="start"
       width="w-80"

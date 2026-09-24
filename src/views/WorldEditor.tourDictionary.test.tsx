@@ -67,6 +67,9 @@ const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Se
 const narration = () => within(inPlay()).getByRole('region', { name: 'Narration Prompt Reads' });
 const testLine = () => within(inPlay()).getByRole<HTMLInputElement>('textbox', { name: 'Test Line' });
 const typeTestLine = (text: string) => fireEvent.change(testLine(), { target: { value: text } });
+const status = () => within(inPlay()).getByRole('status');
+const keywordChips = () => within(within(inPlay()).getByRole('list', { name: 'Keywords' })).getAllByRole('listitem');
+const lineMarks = () => Array.from(inPlay().querySelectorAll('p mark')).map((m) => m.textContent);
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
 
 const entries = (ctx: () => { dictionaries: World['dictionaries'] }) => ctx().dictionaries!.flatMap((b) => b.entries);
@@ -149,13 +152,13 @@ describe('Authoring Tour — Dictionary steps', () => {
     await openAt('dictionary-name-keywords');
     expect(within(playerSees()).getByText('Players never see dictionary entries')).toBeInTheDocument();
     expect(testLine()).toHaveValue('');
-    expect(within(narration()).getByText('The AI reads this entry only when the test line has a keyword'))
+    expect(within(narration()).getByText('Nothing reaches the AI on this line'))
       .toBeInTheDocument();
 
     await useExample();
     expect(testLine()).toHaveValue('You ask Maren about the bell.');
     // A match on an entry with no Value adds nothing to the block, and the reader says so.
-    expect(within(narration()).getByText('The AI reads this entry once it has a Value')).toBeInTheDocument();
+    expect(within(narration()).getByText('The entry fires, but adds nothing until it has a Value')).toBeInTheDocument();
 
     typeTestLine('Maren hums about the drowned bell.');
     await next();
@@ -173,11 +176,31 @@ describe('Authoring Tour — Dictionary steps', () => {
 
     typeTestLine('You ask Maren about the weather.');
     await waitFor(() => expect(within(narration())
-      .getByText('The AI reads this entry only when the test line has a keyword')).toBeInTheDocument());
+      .getByText('Nothing reaches the AI on this line')).toBeInTheDocument());
     expect(narration()).not.toHaveTextContent('The Drowned Bell');
 
     typeTestLine('You ask Maren about the weather and the bell.');
     await waitFor(() => expect(marks(narration())).toEqual([BELL_VALUE]));
+  });
+
+  it('says which keyword fires, lights its chip, marks it in the line, and swaps in a miss or a hit', async () => {
+    await openAt('dictionary-value');
+    await useExample();
+    await waitFor(() => expect(status()).toHaveTextContent('Fires on “bell”'));
+    expect(keywordChips().map((c) => c.textContent)).toEqual(['bell', 'drowned bell']);
+    expect(keywordChips()[0].firstElementChild).toHaveClass('bg-primary');
+    expect(keywordChips()[1].firstElementChild).not.toHaveClass('bg-primary');
+    expect(lineMarks()).toEqual(['bell']);
+
+    fireEvent.click(within(inPlay()).getByRole('button', { name: 'Try a Miss' }));
+    expect(testLine()).toHaveValue('You ask Maren how the day went.');
+    await waitFor(() => expect(status()).toHaveTextContent("Doesn't fire: the line has none of this entry's keywords"));
+    expect(lineMarks()).toEqual([]);
+    expect(keywordChips().every((c) => !c.firstElementChild?.classList.contains('bg-primary'))).toBe(true);
+
+    fireEvent.click(within(inPlay()).getByRole('button', { name: 'Try a Hit' }));
+    expect(testLine()).toHaveValue('You ask Maren about the bell.');
+    await waitFor(() => expect(status()).toHaveTextContent('Fires on “bell”'));
   });
 
   it('matches with the entry’s Whole Words and Case-Sensitive settings', async () => {
@@ -188,18 +211,18 @@ describe('Authoring Tour — Dictionary steps', () => {
     await waitFor(() => expect(marks(narration())).toEqual([BELL_VALUE]));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Whole Words' }));
     // The Activation Tester's own sentence names the rule that stopped the entry.
-    await waitFor(() => expect(narration()).toHaveTextContent('whole-word matching is on'));
+    await waitFor(() => expect(status()).toHaveTextContent('whole-word matching is on'));
     expect(marks(narration())).toEqual([]);
 
     typeTestLine('The Bell rings.');
     await waitFor(() => expect(marks(narration())).toEqual([BELL_VALUE]));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Case-Sensitive' }));
-    await waitFor(() => expect(within(narration())
-      .getByText('“bell” appears only as “Bell”, and case-sensitive matching is on.')).toBeInTheDocument());
+    await waitFor(() => expect(status())
+      .toHaveTextContent("Doesn't fire: “bell” appears only as “Bell”, and case-sensitive matching is on."));
     expect(marks(narration())).toEqual([]);
 
     typeTestLine('The Weather turns.');
     await waitFor(() => expect(within(narration())
-      .getByText('The AI reads this entry only when the test line has a keyword')).toBeInTheDocument());
+      .getByText('Nothing reaches the AI on this line')).toBeInTheDocument());
   });
 });
