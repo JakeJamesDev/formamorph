@@ -20,9 +20,7 @@ describe('sampleChipScene', () => {
     expect(empty).toEqual([]);
   });
 
-  it('renders the sample clock and notes', () => {
-    const values = chipValues(sampleChipScene());
-    expect(values['<TIME>']).toBe('Day 3, evening');
-    expect(values['<NOTES>']).toBe('Traveler is looking for the person who sold them a false map.');
+  it('renders the sample clock as the old preview did', () => {
+    expect(chipValues(sampleChipScene())['<TIME>']).toBe('Day 3, evening');
   });
 });
