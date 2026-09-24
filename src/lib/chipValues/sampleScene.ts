@@ -3,8 +3,7 @@ import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import type { ChipScene } from './chipScene';
 
-// Generic on purpose ("Sample Town"): a preview that looked like a bundled world would be taken for the
-// player's own. Code-only; nothing lists this world in the library.
+// Generic on purpose, so no one takes the preview for their own world. Code-only, never in the library.
 
 const overview: WorldOverview = {
   name: 'Sample Coast',
@@ -21,10 +20,12 @@ const overview: WorldOverview = {
 const boathouse: GameLocation = {
   id: 'boathouse', name: 'The Boathouse', parentId: 'landing',
   aiDescription: 'Low, tar-black, its door open on darkness.',
+  aiSummary: 'A dark, tar-black shed.',
 };
 const tidePools: GameLocation = {
   id: 'tide-pools', name: 'The Tide Pools', parentId: 'landing',
   aiDescription: 'Shallow basins the ebb has left standing.',
+  aiSummary: 'Shallow basins.',
 };
 const landing: GameLocation = {
   id: 'landing', name: 'The Landing', parentId: 'sample-town', isStarting: true,
@@ -34,6 +35,7 @@ const landing: GameLocation = {
 const causeway: GameLocation = {
   id: 'causeway', name: 'The Causeway', parentId: 'sample-town',
   aiDescription: 'A spit of stone that floods at high tide.',
+  aiSummary: 'A stone path, flooded at high tide.',
 };
 const sampleTown: GameLocation = {
   id: 'sample-town', name: 'Sample Town',
@@ -43,7 +45,7 @@ const sampleTown: GameLocation = {
 
 const wren: Entity = {
   id: 'wren', name: 'Wren', locations: ['landing'],
-  aiDescription: 'The lamp-keeper, grey-haired and unhurried, who has watched this shore longer than anyone will admit. Carries a hooked pole she uses for everything but its purpose.',
+  aiDescription: 'The lamp-keeper, gray-haired and unhurried, who has watched this shore longer than anyone will admit. Carries a hooked pole she uses for everything but its purpose.',
   aiSummary: 'The unhurried lamp-keeper.',
 };
 const gull: Entity = {
@@ -72,7 +74,7 @@ const trait = (id: string, name: string, aiDescription: string): Trait => ({
 });
 
 /** The sample world the Settings preview renders when no game runs. */
-export const SAMPLE_WORLD: AuthoredWorld = {
+const SAMPLE_WORLD: AuthoredWorld = {
   worldOverview: overview,
   stats: [
     stat('health', 'Health', 82, 'How much punishment the body still has in it.', [[30, 'Badly hurt'], [90, 'Bruised'], [100, 'Unhurt']]),
