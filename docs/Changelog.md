@@ -34,6 +34,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### 🔧 Fixed
 
 - **👤 User-facing**
+  - **The persona picker shows each persona's portrait and player-facing description.** In **Enter World** and in-game **Change Persona**, each persona shows a 2:3 portrait, as the library does, and up to three lines of its description. Square entity thumbnails, such as the in-game persona row and **Add Entity**, crop from the top, so they show the face.
   - **The Entities chip with Name content lists only who is in the scene in the Choices and re-roll prompts.** That variant read the whole location roster, past the presence filter the other variants respect. Every variant of the chip now comes from one enumerated set, so a new variant cannot miss the filter.
 
 ---
