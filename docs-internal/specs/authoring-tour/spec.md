@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: Spec: Authoring Tour
-Status note: 16 tickets in `issues/`. The user approved the example world (Appendix A) and the Settings placement on 2026-09-23.
+Status note: 17 tickets in `issues/`. The user approved the example world (Appendix A) and the Settings placement on 2026-09-23.
 Workspace: branch `feature/authoring-tour`, worktree `.claude/worktrees/authoring-tour`. Every ticket is built there, never on `main`. See Further Notes → Workspace.
 
 ## Problem Statement
@@ -190,6 +190,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The second Stats reader is titled "Stat Updates Prompt Reads", the app's own name for that prompt.
   - The narration reader shows the builder's real output, including the default descriptor. The step copy says only what stays true if the defaults change: narration never reads the number or the Description.
 - **Ruling on the World Name step (user, 2026-09-23):** the untouched default name that **New World** gives a world does not count as a value. **Next** stays disabled until the author changes the name or uses **Use Example**. Ticket 14 builds it.
+- **Ruling from ticket 13 (2026-09-23):** the same rule covers every item the tour adds. The untouched default name from the editor's **Add** ("New Location", "New Entity", "New Stat", "New Trait") does not count as a value, for the same reason as the world's name. Ticket 17 builds it and flips ticket 13's e2e assertion to match.
 - **Ruling from ticket 06 (2026-09-23):** before the entity has a location, Player Sees shows its row and card as they will look, captioned "Players meet this entity once it has a location". This mirrors the AI readers' not-in-the-scene state, and it is the one wording on every entity step. The caption goes once the entity is placed.
 - **Rulings from ticket 09 (2026-09-23):**
   - The test line reads "You ask {tour entity's name} about the {first keyword}.", or "You ask about the {first keyword}." when there is no named tour entity. It follows the first keyword until the author's first edit, then keeps the author's text for the session. It is never saved.
