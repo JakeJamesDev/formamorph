@@ -238,8 +238,10 @@ function DictZone({ bookId, position, entries, collapsed, onToggleCollapse, flat
 }
 
 /** One book ("dictionary") — a collapsible, reorderable, selectable header over two entry zones. */
-function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
+function BookRow({ book, first, collapsed, collapsedZones, selectedId, onToggleCollapse, onToggleZone, onSelect, onToggleEnabled, onAddEntry, onDeleteBook, entryHandlers }: {
   book: Dictionary;
+  /** The top book, whose Add entry the Authoring Tour points at. */
+  first: boolean;
   collapsed: boolean;
   collapsedZones: Set<string>;
   selectedId: string | null;
@@ -280,7 +282,10 @@ function BookRow({ book, collapsed, collapsedZones, selectedId, onToggleCollapse
         meta={advanced ? `${enabledCount}/${book.entries.length}` : book.entries.length}
         metaTitle={advanced ? 'Enabled entries / total entries' : 'Entries'}
         actions={[
-          { icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => onAddEntry(book.id) },
+          {
+            icon: <FilePlus className="h-4 w-4" />, title: 'Add entry', onClick: () => onAddEntry(book.id),
+            tourAnchor: first ? 'dictionary-add-entry' : undefined,
+          },
           { icon: <X className="h-4 w-4" />, title: 'Delete dictionary', onClick: () => onDeleteBook(book.id) },
         ]}
       />
@@ -463,10 +468,11 @@ const DictionaryTree = ({ selectedId, onSelect, hideBookRow = false }: {
         ) : (
         <StableSortableContext items={dictionaries} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-3">
-            {dictionaries.map((book) => (
+            {dictionaries.map((book, i) => (
               <BookRow
                 key={book.id}
                 book={book}
+                first={i === 0}
                 collapsed={draggingBook || collapsed.has(book.id)}
                 collapsedZones={collapsedZones}
                 selectedId={selectedId}

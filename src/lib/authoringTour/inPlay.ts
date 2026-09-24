@@ -9,6 +9,7 @@ import { buildAiContext, buildStatBlock, type ContextBlockId } from '@/lib/testB
 import { buildLens, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
 import type { Connection, Entity, GameLocation, PlayerStat } from '@/types';
 import { tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld } from './steps';
+import { readTestLine } from './testLine';
 
 /** The AI requests In Play can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat Updates Prompt';
@@ -16,8 +17,9 @@ export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat U
 /**
  * Why a reader shows what it shows. `neverReads`: the prompt has no use for this field. `notInScene`: an
  * entity in no location, which no roster lists. `noKeyword`: a dictionary entry the test line does not fire.
+ * `noValue`: a dictionary entry the test line fires, which adds nothing to the block until it has a Value.
  */
-export type ReaderState = 'reads' | 'neverReads' | 'notInScene' | 'noKeyword';
+export type ReaderState = 'reads' | 'neverReads' | 'notInScene' | 'noKeyword' | 'noValue';
 
 /** A run of reader text that is the author's own, as offsets into `text`. */
 export interface MarkSpan {
@@ -31,6 +33,8 @@ export interface InPlayReader {
   /** The block the prompt receives. Empty unless the state is `reads`. */
   text: string;
   marks: MarkSpan[];
+  /** The Activation Tester's reason an entry did not fire, in place of the state's own line. */
+  note?: string;
 }
 
 /** Where a new game starts, as far as the tour's location is concerned. */
@@ -49,6 +53,7 @@ export type PlayerSurface =
   | { kind: 'entityRow' | 'entityCard' | 'entityRowAndCard'; entity: Entity | null; at: string | null }
   | { kind: 'statRow'; stat: PlayerStat | null }
   | { kind: 'never' }
+  | { kind: 'neverDictionary' }
   | { kind: 'none' };
 
 export interface InPlaySlice {
@@ -61,7 +66,9 @@ export type ReaderSpec =
   | { prompt: TourPrompt; reads: 'never' }
   | { prompt: TourPrompt; reads: ContextBlockId; authorText: (world: TourWorld, items: TourItems) => string }
   /** The stats block in the shape `chip` asks for: a shipped prompt's own Stats chip. */
-  | { prompt: TourPrompt; reads: 'statsChip'; chip: string; authorText: (world: TourWorld, items: TourItems) => string };
+  | { prompt: TourPrompt; reads: 'statsChip'; chip: string; authorText: (world: TourWorld, items: TourItems) => string }
+  /** The dictionary block that holds the tour entry, when the test line fires it. */
+  | { prompt: TourPrompt; reads: 'testLine'; authorText: (world: TourWorld, items: TourItems) => string };
 
 /** A step's In Play slice, as the registry declares it. */
 export interface InPlaySpec {
@@ -84,6 +91,9 @@ export function findMarks(text: string, needle: string): MarkSpan[] {
   }
   return marks;
 }
+
+/** The step reads through In Play's test line, so the pane shows one. */
+export const usesTestLine = (spec: InPlaySpec): boolean => spec.readers.some((r) => r.reads === 'testLine');
 
 /** The library card's record for the open world, read the way the stored library reads it. */
 function libraryCardRecord(world: TourWorld, worldId: string): WorldRecord {
@@ -180,6 +190,7 @@ export function computeInPlay(
   world: TourWorld,
   worldId: string,
   items: TourItems,
+  testLine = '',
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts,
   // with no player character.
@@ -187,7 +198,7 @@ export function computeInPlay(
   const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;
   const lensHere = () => lens ??= buildLens(world, seedLens(world, null, sceneId ?? items.location ?? null));
-  const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip');
+  const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
     if (reader.reads !== 'never' && outOfScene) {
@@ -195,6 +206,14 @@ export function computeInPlay(
     }
     if (reader.reads === 'never') {
       return { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
+    }
+    if (reader.reads === 'testLine') {
+      const read = readTestLine(world, items, testLine, lensHere().pins);
+      if (!read.fired) return { prompt: reader.prompt, state: 'noKeyword', text: '', marks: [], note: read.reason };
+      if (!read.rendered) return { prompt: reader.prompt, state: 'noValue', text: '', marks: [] };
+      return {
+        prompt: reader.prompt, state: 'reads', text: read.text, marks: findMarks(read.text, reader.authorText(world, items)),
+      };
     }
     const block = reader.reads;
     const text = block === 'statsChip'

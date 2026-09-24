@@ -1,6 +1,9 @@
-import { useMemo, type ReactNode } from 'react';
+import { useId, useMemo, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Hint } from '@/components/ui/typography';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
 import { EntityListRow } from '@/components/game/EntityListRow';
@@ -8,10 +11,11 @@ import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard'
 import { StatRow } from '@/components/game/StatRow';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
-  type StartsAt,
+  type StartsAt, usesTestLine,
 } from '@/lib/authoringTour/inPlay';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
+import { sampleTestLine } from '@/lib/authoringTour/testLine';
 
 const STARTS_LINES: Record<StartsAt, string> = {
   here: 'A new game starts here',
@@ -23,6 +27,7 @@ const STATE_LINES: Record<Exclude<ReaderState, 'reads'>, string> = {
   neverReads: 'The AI never reads this field',
   notInScene: 'The AI never reads an entity with no location',
   noKeyword: 'The AI reads this entry only when the test line has a keyword',
+  noValue: 'The AI reads this entry once it has a Value',
 };
 
 /** The reader text with each of the author's own runs marked. */
@@ -113,6 +118,8 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
       );
     case 'never':
       return <Muted>Players never see this field</Muted>;
+    case 'neverDictionary':
+      return <Muted>Players never see dictionary entries</Muted>;
   }
 }
 
@@ -131,18 +138,36 @@ const Reader = ({ reader }: { reader: InPlayReader }) => (
       <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
         {markedText(reader.text, reader.marks)}
       </pre>
-    ) : <Muted>{STATE_LINES[reader.state]}</Muted>}
+    ) : <Muted>{reader.note ?? STATE_LINES[reader.state]}</Muted>}
   </Section>
 );
 
+/** The player message a Dictionary step scans for the tour entry's keywords. */
+export interface TestLineInput {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+function TestLine({ value, onChange }: TestLineInput) {
+  const id = useId();
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Test Line</Label>
+      <Hint>Type a player message to see when the entry loads</Hint>
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
 /** The Authoring Tour's In Play pane: the current step's field as the player sees it and as each prompt reads it. */
-export function InPlayPane({ slice }: { slice: InPlaySlice }) {
+export function InPlayPane({ slice, testLine }: { slice: InPlaySlice; testLine?: TestLineInput }) {
   return (
     <section aria-labelledby="in-play-title" className="flex h-full flex-col">
       <h2 id="in-play-title" className="flex-shrink-0 border-b px-3 py-2 text-heading font-semibold">In Play</h2>
       <ScrollArea className="min-h-0 flex-grow">
         <div className="space-y-4 p-3">
           <PlayerSees surface={slice.playerSees} />
+          {testLine && <TestLine {...testLine} />}
           {slice.readers.map((reader) => <Reader key={reader.prompt} reader={reader} />)}
         </div>
       </ScrollArea>
@@ -150,14 +175,26 @@ export function InPlayPane({ slice }: { slice: InPlaySlice }) {
   );
 }
 
-/** In Play for the open world's current tour step, recomputed on every edit. */
-export function TourInPlay({ worldId, step }: { worldId: string; step: TourStep }) {
+/**
+ * In Play for the open world's current tour step, recomputed on every edit. The test line follows the tour
+ * entry's first keyword until the author edits it; `testLineEdit` is that edit, held by the editor.
+ */
+export function TourInPlay({ worldId, step, testLineEdit, onTestLineEdit }: {
+  worldId: string;
+  step: TourStep;
+  testLineEdit: string | null;
+  onTestLineEdit: (value: string) => void;
+}) {
   const { getWorldData } = useGameData();
   const items = useTourRecord(worldId)?.items;
   // `getWorldData` is memoized on the world arrays, so its identity changes with each edit.
+  const world = useMemo(() => getWorldData(), [getWorldData]);
+  const testLine = usesTestLine(step.inPlay) ? testLineEdit ?? sampleTestLine(world, items ?? {}) : null;
   const slice = useMemo(
-    () => computeInPlay(step.inPlay, getWorldData(), worldId, items ?? {}),
-    [step, getWorldData, worldId, items],
+    () => computeInPlay(step.inPlay, world, worldId, items ?? {}, testLine ?? ''),
+    [step, world, worldId, items, testLine],
   );
-  return <InPlayPane slice={slice} />;
+  return (
+    <InPlayPane slice={slice} testLine={testLine === null ? undefined : { value: testLine, onChange: onTestLineEdit }} />
+  );
 }
