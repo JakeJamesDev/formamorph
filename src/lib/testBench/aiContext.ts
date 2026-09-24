@@ -25,6 +25,7 @@ import {
 } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { templateChipKeys } from '@/lib/promptTemplate';
 import { decodeVariant, tokenVariant, variableForToken } from '@/lib/promptVariables';
 import { buildStatContext, type StatPieces } from '@/lib/statContext';
 import { enabledStats } from '@/lib/traitEffects';
@@ -126,6 +127,8 @@ const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string }> = {
   dictionary: { label: 'Dictionary', token: '<DICTIONARY>' },
 };
 
+const STATS_TOKEN = '<STATS DESCRIPTION>';
+
 /** A token's per-axis selection, or an all-default selection for a token with no axes. */
 function selectionOf(token: string): Record<string, string | null> {
   const variable = variableForToken(token);
@@ -163,6 +166,22 @@ function statArgs(token: string): { pieces: StatPieces; format: ContextFormat } 
     },
     format: formatOf(selection),
   };
+}
+
+/** The Stats chip `template` places, as its affix-free token, or undefined when it places none. */
+export function statsChipIn(template: string): string | undefined {
+  return [...templateChipKeys(template)].find((key) => variableForToken(key)?.token === STATS_TOKEN);
+}
+
+/** The lens's stats in the shape `token` asks for, before the lens resolves any chips. */
+function renderStats(world: AiContextWorld, lens: BenchLens, token: string): string {
+  const { pieces, format } = statArgs(token);
+  return buildStatContext(lensStats(world, lens), pieces, format);
+}
+
+/** The stats block any Stats chip renders for the lens PC, with the PC's chips resolved. */
+export function buildStatBlock(world: AiContextWorld, lens: BenchLens, token: string): string {
+  return resolveLensText(renderStats(world, lens, token), allPlaceholders(world), lens.pins);
 }
 
 /** The scopes' rosters, each paired with the entity block that renders it. */
@@ -210,13 +229,12 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const reachIds = reachableEntityIds(location, locations, entities).filter((id) => !shown.has(id));
 
   const opts = (id: ContextBlockId) => scopedOpts(BLOCK_TOKENS[id].token);
-  const stats = statArgs(BLOCK_TOKENS.stats.token);
   // Every enabled entry, in book order — no turn text has narrowed them.
   const lore = flattenEnabledBookEntries(world.dictionaries).filter((entry) => entry.enabled !== false);
 
   const rendered: Record<ContextBlockId, string> = {
     world: world.worldOverview?.systemPrompt || NONE_PLACEHOLDER,
-    stats: buildStatContext(lensStats(world, lens), stats.pieces, stats.format),
+    stats: renderStats(world, lens, BLOCK_TOKENS.stats.token),
     traits: buildTraitContext(
       activeTraitIds(world, lens),
       world.traits ?? [],

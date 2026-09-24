@@ -189,7 +189,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
       {/* The identity line: the name takes the room it needs and the type select keeps a fixed width, so
           the two read as one row until the pane is too narrow to hold them side by side. */}
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
-        <div className="space-y-2">
+        <div data-tour-anchor="stat-name" className="space-y-2">
           <Label>Name</Label>
           <PlaceholderNameField
             value={editingStat.name || ""}
@@ -217,7 +217,7 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
           </Select>
         </div>
       </div>
-      <div className="space-y-2">
+      <div data-tour-anchor="stat-description" className="space-y-2">
         <Label>Description</Label>
         <PlaceholderNameField
           value={editingStat.description || ""}

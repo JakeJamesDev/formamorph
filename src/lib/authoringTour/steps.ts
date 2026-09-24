@@ -7,9 +7,11 @@
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
-import type { Connection, Entity, GameLocation, WorldOverview, World } from '@/types';
+import type { Connection, Entity, GameLocation, Stat, WorldOverview, World } from '@/types';
 import { hasValue } from '@/lib/editorMode';
-import { entityRootCount, newEntity, newLocation } from '@/lib/blankWorld';
+import { entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors } from '@/lib/blankWorld';
+import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { statsChipIn } from '@/lib/testBench/aiContext';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
 import { randomUUID } from '@/lib/uuid';
@@ -56,6 +58,9 @@ export interface TourEditApi {
   updateConnection: (connection: Connection) => void;
   addEntity: (entity: Entity) => void;
   updateEntity: (entity: Entity) => void;
+  /** Gives the stat its default descriptors, as the world does for every added stat. */
+  addStat: (stat: Omit<Stat, 'descriptors'>) => void;
+  updateStat: (stat: Stat) => void;
 }
 
 export interface TourStep {
@@ -139,6 +144,28 @@ export function tourEntityPlaces(world: TourWorld, items: TourItems): string[] {
     .filter((id): id is string => !!id && at.has(id));
 }
 
+/** Adds a stat the way the Stats tab's Add button does. */
+function addStatItem(api: TourEditApi): string {
+  const id = randomUUID();
+  api.addStat(newStat(id));
+  return id;
+}
+
+export const tourStat = (world: TourWorld, items: TourItems) =>
+  (world.stats ?? []).find((s) => s.id === items.stat);
+
+function patchStat(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Stat>) {
+  const stat = tourStat(world, items);
+  if (stat) api.updateStat({ ...stat, ...patch });
+}
+
+/** The Stats chip a shipped prompt places, so In Play reads a stat the way that prompt does. */
+function shippedStatsChip(template: string): string {
+  const chip = statsChipIn(template);
+  if (!chip) throw new Error('A shipped prompt places no Stats chip');
+  return chip;
+}
+
 /** The Connection between the two tour locations, in either direction. */
 function tourConnection(world: TourWorld, items: TourItems): Connection | undefined {
   const { location, secondLocation } = items;
@@ -199,6 +226,15 @@ const MAREN = {
   aiDescription: 'Maren tends the Tidewell and has bathed in it every week for twenty years. Silver scales now trace '
     + 'her jaw and forearms, and her fingers are lightly webbed. She is kind, nosy and fiercely protective of '
     + 'newcomers. She secretly fears the spring\'s pull on her is growing stronger.',
+};
+
+const SEA_CHANGE = {
+  name: 'Sea Change',
+  min: 0,
+  max: 100,
+  value: 0,
+  description: 'How far the Tidewell has reshaped your body. At 0 you are fully human. At 100 you belong to the '
+    + 'sea. Raise it when the player bathes in the Tidewell or drinks its water.',
 };
 
 const OVERVIEW_STEPS: readonly TourStep[] = [
@@ -438,8 +474,72 @@ const ENTITY_STEPS: readonly TourStep[] = [
   },
 ];
 
+const NARRATION_STATS_CHIP = shippedStatsChip(defaultSystemPrompt);
+const STAT_UPDATES_STATS_CHIP = shippedStatsChip(defaultStatUpdatesPrompt);
+
+const STAT_STEPS: readonly TourStep[] = [
+  addStep({
+    id: 'add-stat',
+    tab: 'stats',
+    item: 'stat',
+    title: 'Add a Stat',
+    body: 'Press the + button to add a stat the story can change',
+    add: addStatItem,
+  }),
+  {
+    id: 'stat-name',
+    tab: 'stats',
+    anchor: 'stat-name',
+    item: 'stat',
+    title: 'Stat Name',
+    body: 'Name the stat. Min, Max and Initial Value set its range and where it starts. Players see the name and '
+      + 'the number, and narration never reads the number.',
+    isComplete: (world, items) => hasValue((tourStat(world, items)?.name ?? '').trim()),
+    useExample: (api, world, items) => patchStat(api, world, items, {
+      name: SEA_CHANGE.name, min: SEA_CHANGE.min, max: SEA_CHANGE.max, value: SEA_CHANGE.value,
+    }),
+    inPlay: {
+      sees: 'statRow',
+      readers: [
+        {
+          prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP,
+          authorText: (world, items) => tourStat(world, items)?.name ?? '',
+        },
+        {
+          prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP,
+          authorText: (world, items) => tourStat(world, items)?.name ?? '',
+        },
+      ],
+    },
+  },
+  {
+    id: 'stat-description',
+    tab: 'stats',
+    anchor: 'stat-description',
+    item: 'stat',
+    title: 'Description',
+    body: 'Tell the AI what this stat measures and what changes it. The Stat Updates prompt uses it to decide how '
+      + 'the value changes. Players and narration never see it.',
+    isComplete: (world, items) => hasValue((tourStat(world, items)?.description ?? '').trim()),
+    useExample: (api, world, items) => patchStat(api, world, items, { description: SEA_CHANGE.description }),
+    inPlay: {
+      sees: 'never',
+      readers: [
+        {
+          prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP,
+          authorText: (world, items) => tourStat(world, items)?.description ?? '',
+        },
+        {
+          prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP,
+          authorText: (world, items) => tourStat(world, items)?.description ?? '',
+        },
+      ],
+    },
+  },
+];
+
 export const TOUR_STEPS: readonly TourStep[] = [
-  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...ENDING_STEPS,
+  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...STAT_STEPS, ...ENDING_STEPS,
 ];
 
 /** The step with this id, or the first step for an id the registry no longer has. */
@@ -470,6 +570,8 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
     updateConnection: (connection) => { draft = { ...draft, connections: replace(draft.connections, connection) }; },
     addEntity: (entity) => { draft = { ...draft, entities: [...(draft.entities ?? []), entity] }; },
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
+    addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },
+    updateStat: (stat) => { draft = { ...draft, stats: replace(draft.stats, stat) }; },
   };
   for (const step of TOUR_STEPS.slice(0, index)) {
     if (step.add && step.item) items[step.item] = step.add(api, draft);

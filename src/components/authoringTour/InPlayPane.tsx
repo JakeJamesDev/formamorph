@@ -5,6 +5,7 @@ import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
 import { EntityListRow } from '@/components/game/EntityListRow';
 import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard';
+import { StatRow } from '@/components/game/StatRow';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
   type StartsAt,
@@ -92,6 +93,24 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
     case 'entityCard':
     case 'entityRowAndCard':
       return <EntitySurface surface={surface} />;
+    case 'statRow':
+      return surface.stat && (
+        <div className="rounded-md border p-3 pb-1">
+          <StatRow
+            stat={surface.stat}
+            change={0}
+            barDelta={0}
+            draining={false}
+            page={0}
+            isViewingPast={false}
+            snap
+            fading={false}
+            editable={false}
+            reserveDescriptorLine={false}
+            onCommitValue={() => {}}
+          />
+        </div>
+      );
     case 'never':
       return <Muted>Players never see this field</Muted>;
   }
