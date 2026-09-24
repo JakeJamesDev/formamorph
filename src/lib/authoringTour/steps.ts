@@ -180,7 +180,7 @@ function addTraitItem(api: TourEditApi, world: TourWorld): string {
   return id;
 }
 
-export const tourTrait = (world: TourWorld, items: TourItems) =>
+const tourTrait = (world: TourWorld, items: TourItems) =>
   (world.traits ?? []).find((t) => t.id === items.trait);
 
 function patchTrait(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Trait>) {

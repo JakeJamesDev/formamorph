@@ -156,6 +156,9 @@ function brokenPinsOf(layers: LensPinLayer[], placeholders: Placeholder[]): Brok
  * own collector over what a fresh game as this PC would have in force: the active traits, the lens location,
  * and each stat's band at the value the traits leave it starting on. No roll is drawn at design time, so a
  * Wildcard's value pins wait for a source above them to fix its value.
+ *
+ * Any trait works as the PC here, not only an exclusive group's member. The Authoring Tour's In Play relies
+ * on that to pick a trait the way the setup screen does.
  */
 export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const traits = world.traits ?? [];
