@@ -1,6 +1,7 @@
 # 06: Entities Steps
 
-Status: ready-for-agent
+Status: in-progress
+Base: 99bbfe14
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -26,14 +27,14 @@ Until the entity has a location, every AI reader shows the **not in the scene** 
 
 ## Acceptance criteria
 
-- [ ] All six steps run in order after Locations, and each saves when it completes.
-- [ ] Player Sees uses the entity list row and entity card body from ticket 02.
-- [ ] The roster comes from the Test Bench builders, for the entity's location.
-- [ ] Before the entity has a location, each AI reader shows the not-in-the-scene state. After the Locations step, the roster shows the entity.
-- [ ] The Locations step completes when the entity is in at least one tour location.
-- [ ] Tests through the World Editor Bench harness cover each slice, the marks, and the not-in-the-scene state before and after placement.
-- [ ] Preview check through the dev router: the AI-Facing Description and Locations steps, with static DOM evidence.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
+- [x] All six steps run in order after Locations, and each saves when it completes.
+- [x] Player Sees uses the entity list row and entity card body from ticket 02.
+- [x] The roster comes from the Test Bench builders, for the entity's location.
+- [x] Before the entity has a location, each AI reader shows the not-in-the-scene state. After the Locations step, the roster shows the entity.
+- [x] The Locations step completes when the entity is in at least one tour location.
+- [x] Tests through the World Editor Bench harness cover each slice, the marks, and the not-in-the-scene state before and after placement.
+- [x] Preview check through the dev router: the AI-Facing Description and Locations steps, with static DOM evidence.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
 
 ## Scope notes
 

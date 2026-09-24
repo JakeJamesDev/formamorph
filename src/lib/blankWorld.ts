@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import type { GameLocation, World } from '@/types';
+import type { Entity, GameLocation, World } from '@/types';
 
 /** The world New World opens in the editor. It is not stored until the author saves it. */
 export function newBlankWorld(): World {
@@ -33,4 +33,15 @@ export function newBlankWorld(): World {
 /** A location as the editor's Add button makes it. */
 export function newLocation(id: string, name = 'New Location'): GameLocation {
   return { id, name, playerDescription: '', aiDescription: '', aiSummary: '' };
+}
+
+/** How many entities and entity groups sit at the entity tree's root: the `order` a new root item takes. */
+export function entityRootCount(world: Pick<World, 'entities' | 'entityGroups'>): number {
+  return (world.entities ?? []).filter((e) => (e.groupId ?? null) === null).length
+    + (world.entityGroups ?? []).filter((g) => (g.parentId ?? null) === null).length;
+}
+
+/** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
+export function newEntity(id: string, order: number, name = 'New Entity'): Entity {
+  return { id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order };
 }

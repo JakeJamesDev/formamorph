@@ -157,6 +157,8 @@ export const DEV_MODAL_TABS = {
     'world-name', 'world-ai-description',
     'add-location', 'location-name', 'location-player-description', 'location-ai-description', 'location-starting',
     'add-second-location', 'location-connection',
+    'add-entity', 'entity-name', 'entity-pronouns', 'entity-player-description', 'entity-ai-description',
+    'entity-locations',
     'editor-mode', 'play',
   ],
   // Admin Panel → Policies has a second level, one sub-tab per authored popup, reached with `subtab=…`.

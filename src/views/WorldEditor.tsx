@@ -10,7 +10,7 @@ import {
   AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, EDITOR_MODE_TUTORIAL_ID, markTutorialSeen, useTutorial,
   useTutorialSeen,
 } from '@/lib/tutorials';
-import { newBlankWorld, newLocation } from '@/lib/blankWorld';
+import { entityRootCount, newBlankWorld, newEntity, newLocation } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -554,12 +554,19 @@ const WorldEditorInner = ({
     }
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
     if (itemId) setSelectedItemId(itemId);
-    if (step.tab === 'locations' && step.item) setLocationTab(step.panelTab ?? 'details');
+    if (step.tab === 'locations' && step.item) {
+      setLocationTab(LOCATION_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'details');
+    }
+    if (step.tab === 'entities' && step.item) {
+      setEntityTab(ENTITY_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'profile');
+    }
     deferReveal(() => focusTourField(step.anchor));
   }, [deferReveal, worldId]);
   const tourApi = useMemo(
-    () => ({ updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection }),
-    [updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection],
+    () => ({
+      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
+    }),
+    [updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
   const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
@@ -642,16 +649,7 @@ const WorldEditorInner = ({
         regen: 0
       });
     } else if (activeTab === "entities") {
-      addEntity({
-        id: newId,
-        name: typed || 'New Entity',
-        playerDescription: '',
-        aiDescription: '',
-        aiSummary: '',
-        type: '',
-        groupId: null,
-        order: entityRootSiblingCount(),
-      });
+      addEntity(newEntity(newId, entityRootSiblingCount(), typed || undefined));
     } else if (activeTab === "locations") {
       addLocation(newLocation(newId, typed || undefined));
     } else if (activeTab === "statUpdates") {
@@ -729,9 +727,7 @@ const WorldEditorInner = ({
   };
 
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
-  const entityRootSiblingCount = () =>
-    entities.filter(e => (e.groupId ?? null) === null).length +
-    entityGroups.filter(g => (g.parentId ?? null) === null).length;
+  const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
   const handleAddEntityGroup = () => {
     const id = randomUUID();
