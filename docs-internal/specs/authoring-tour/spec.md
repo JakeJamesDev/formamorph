@@ -195,6 +195,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The test line reads "You ask {tour entity's name} about the {first keyword}.", or "You ask about the {first keyword}." when there is no named tour entity. It follows the first keyword until the author's first edit, then keeps the author's text for the session. It is never saved.
   - An entry that fires with an empty Value renders nothing, so the reader shows "The AI reads this entry once it has a Value". This is a fifth reader state.
   - When the scan does not fire the entry, the reader's text is the Activation Tester's near-miss reason when there is one, and "no keyword" only when the line holds no keyword.
+  - The Activation Tester gains a 'case-blocked' near-miss, beside 'whole-word-blocked', so a Case-Sensitive miss says why. It changes the diagnosis only, never whether an entry fires. The Tester's own row shows it too.
   - The add step anchors on the Default book's **Add entry** button, because the tab's **+** adds a book.
   - The Name and Trigger Keywords step needs a Name and at least one keyword.
 
