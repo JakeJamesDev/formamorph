@@ -163,3 +163,35 @@ That last one caused a real regression here: adding summaries to every location 
 - **Writing an `aiSummary` is a behavior change**, not just a context saving.
 - **Verify intent against the engine, not against the design.** The pass that checked *"does the world work the way it's written"* found more than any section's own verification did — an entire subsystem that would have silently never run.
 - **Measure voice against the author's own text in the same field**, not against a style memo. Their trait descriptions open uncontracted; their entity descriptions run 0.40 uncontracted-per-contraction. Both are conventions, and only measurement told them apart from drift.
+
+---
+
+# Third pass — Fantasy Futanari on 3.0.1
+
+Bringing the same world from 2.9.2 to 3.0.1, seven weeks and nine releases later. The interesting part is what an engine change does to a finished world.
+
+## 11. The Doctor earns its keep on the first run
+
+One `runRules` pass over the migrated file found the only real breakage: **descriptor thresholds now read raw by default**, so a stat whose bands were authored as percents of a small range (Pregnancy, 0–25) had four dead bands, and any stat whose max a trait raises (Health, Stamina) lost its top band for that race. The fix is `thresholdUnit: 'percent'` on exactly those stats. Nothing in play would have said why the pregnancy never showed.
+
+> **Rule:** after an engine release, run the Doctor over every finished world before playing it. The class of bug it finds is invisible in the editor and silent in play.
+
+## 12. Verify the premise, not just the change
+
+I read `matchKey` (case-fold + singular) and concluded alias matching was case-insensitive now, so the case variants could go. The verify run against the real `findEntityNames` said otherwise: **names** fold case (multi-word) or need a capital (single-word), but **aliases still match case-sensitively**. The variants stayed. A change built on a wrong premise would have passed by eye and broken presence for five entities.
+
+## 13. Workarounds retire when the feature lands — go back and check
+
+Three of the second pass's workarounds are now features:
+
+| Workaround (Aug) | Feature (now) | What changed in the world |
+|---|---|---|
+| The Weave visible as an "omen meter" because stats couldn't hide | `Stat.hidden` | hidden, readme row removed |
+| `elapsedHours` referenced in a roll that didn't need it, to force every-turn execution | stat code runs every turn | the reference and its warning comment are gone |
+| a fixed cue for everyone | Openings on entities, drawn at the start location | one Opening Narration per start town, owned by an entity placed *at* that town |
+
+A world-level Opening Narration would draw at any start; the entity has to sit at the top-level start location, not in a sublocation under it, so the town's obvious host (Synthia in the Throne Room) can't be the opener.
+
+## 14. Scoping is organization, not behavior
+
+Moving the 24 race-name pools under their blueprint entities through `movePlaceholderHome` kept every id, so no chip changed and the 0-duplicate result held. It is worth doing only because the Placeholders tab was a 27-row flat list; nothing the AI sees moved.
