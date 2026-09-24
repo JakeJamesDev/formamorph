@@ -198,6 +198,11 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The Activation Tester gains a 'case-blocked' near-miss, beside 'whole-word-blocked', so a Case-Sensitive miss says why. It changes the diagnosis only, never whether an entry fires. The Tester's own row shows it too.
   - The add step anchors on the Default book's **Add entry** button, because the tab's **+** adds a book.
   - The Name and Trigger Keywords step needs a Name and at least one keyword.
+- **Rulings on tickets 04, 05 and 11 (user, 2026-09-23):**
+  - 04, kept as built: the Test Bench panel returns when the tour ends, and during the tour the Bench popover has no **Open Test Bench** button, because a full Bench panel would take In Play's slot.
+  - 05, changed by ticket 15: the Connection step shows the location the tour Connection leaves from, both in Player Sees and in the Location Change reader. A one-way Connection in either direction then shows a real destinations list.
+  - 11, kept as built: **Play** is absent from the in-game World Editor, which has no entry flow.
+  - 11, changed by ticket 16: **Play** runs the same pre-entry checks as entering a world from the main menu, including the source-block check. The tour has no entry path of its own.
 
 **Editor mode**
 - The tour forces Simple through a mode override, the same kind the dev router uses. It never writes the stored preference, so the author's mode is back the moment the tour is off screen. There is nothing to restore.

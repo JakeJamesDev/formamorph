@@ -1,7 +1,7 @@
 # 07: Stats Steps
 
 Status: ready-for-human
-Status note: Built in d83b10d0 and the review follow-up. Open for the user: the stale "New Stat is low" default descriptors (spec session's product question).
+Status note: Built in d83b10d0 and the review follow-up. The stale default descriptors are fixed on `main` from `docs-internal/specs/stat-descriptor-rename/` (user's choice, 2026-09-23). No change to this ticket.
 Base: 99bbfe14
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

@@ -1,7 +1,7 @@
 # 04: In Play Pane With the Overview Slice
 
 Status: ready-for-human
-Status note: Built. Open rulings: whether the Bench panel returns after the tour (built: yes) and whether the popover drops Open Test Bench (built: yes). Proposed: move the library card record mapping into one shared function.
+Status note: Built. Both rulings resolved 2026-09-23, kept as built (spec: Rulings on tickets 04, 05 and 11). Still proposed: move the library card record mapping into one shared function.
 Base: 81739da8
 Blocked by: 02, 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
