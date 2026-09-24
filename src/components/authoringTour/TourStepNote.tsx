@@ -19,12 +19,13 @@ export function TourStepNote({ tour, onShowEffect }: { tour: AuthoringTour; onSh
       anchor={anchor}
       side="bottom"
       align="start"
+      width="w-80"
       action={onShowEffect && (
         <Button size="xs" variant="secondary" className="w-full" onClick={onShowEffect}>Show Effect</Button>
       )}
       footer={(
         <>
-          <span className="mr-auto text-meta text-muted-foreground tabular-nums">
+          <span className="mr-auto shrink-0 whitespace-nowrap text-meta text-muted-foreground tabular-nums">
             {tour.stepNumber} / {tour.total}
           </span>
           <Button size="xs" variant="ghost" onClick={tour.prev} disabled={tour.stepNumber === 1}>Previous</Button>

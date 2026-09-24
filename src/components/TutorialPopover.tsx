@@ -16,7 +16,7 @@ type Align = 'start' | 'center' | 'end';
  * `open` is fully controlled with no `onOpenChange`, so Radix's own dismissals (outside click, Escape) can't
  * close it, and a stray click can't silently retire a note the user never read.
  */
-export function TutorialNote({ open, title, body, points, action, footer, anchor, side = 'bottom', align = 'end', children }: {
+export function TutorialNote({ open, title, body, points, action, footer, anchor, side = 'bottom', align = 'end', width = 'w-72', children }: {
   open: boolean;
   title: string;
   body?: ReactNode;
@@ -28,6 +28,8 @@ export function TutorialNote({ open, title, body, points, action, footer, anchor
   anchor?: HTMLElement | null;
   side?: Side;
   align?: Align;
+  /** A Tailwind width class for the note. */
+  width?: string;
   children?: ReactNode;
 }) {
   const reduceMotion = usePrefersReducedMotion();
@@ -63,7 +65,7 @@ export function TutorialNote({ open, title, body, points, action, footer, anchor
           // Radix portals this to <body>, but React events bubble the React tree, not the DOM — so a
           // tutorial anchored inside a clickable ancestor hands it every click on Next.
           onClick={(e) => e.stopPropagation()}
-          className={`w-72 space-y-2 ${reduceMotion ? 'animate-none' : ''}`}
+          className={`${width} space-y-2 ${reduceMotion ? 'animate-none' : ''}`}
         >
           <PopoverArrow />
           <p className="font-medium leading-none">{title}</p>
