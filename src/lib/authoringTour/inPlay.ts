@@ -8,7 +8,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { buildAiContext, buildStatBlock, type ContextBlockId } from '@/lib/testBench/aiContext';
 import { buildLens, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
 import type { Connection, Entity, GameLocation, PlayerStat } from '@/types';
-import { tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld } from './steps';
+import { tourConnection, tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld } from './steps';
 import { readTestLine } from './testLine';
 
 /** The AI requests In Play can name, as the pane titles them. */
@@ -41,7 +41,7 @@ export interface InPlayReader {
 export type StartsAt = 'here' | 'elsewhere' | 'anywhere';
 
 /**
- * The game surface a field shows on. The Location tab shows the tour's first location, with its names and
+ * The game surface a field shows on. The Location tab shows the step's scene location, with its names and
  * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
  * naming the entity's location, or null while it has none. The stat row shows the tour stat at its starting
  * value. `never` is a field the player never sees; `none` is a step with no field.
@@ -75,9 +75,10 @@ export interface InPlaySpec {
   sees: PlayerSurface['kind'];
   /**
    * `entity`: the lens stands at the tour entity's location, and while the entity is in no location every
-   * reader that reads is `notInScene`. Otherwise the lens stands at the tour's first location.
+   * reader that reads is `notInScene`. `connection`: the lens stands where the tour Connection leaves from.
+   * Otherwise the lens stands at the tour's first location.
    */
-  scene?: 'entity';
+  scene?: 'entity' | 'connection';
   readers: readonly ReaderSpec[];
 }
 
@@ -134,6 +135,12 @@ function entitySceneId(world: TourWorld, items: TourItems): string | null {
   if (tourPlace) return tourPlace;
   const live = new Set((world.locations ?? []).map((l) => l.id));
   return tourEntity(world, items)?.locations?.find((id) => live.has(id)) ?? null;
+}
+
+/** Where the tour Connection leaves from: its `from` end when one-way, else the first tour location. */
+function connectionSceneId(world: TourWorld, items: TourItems): string | null {
+  const connection = tourConnection(world, items);
+  return connection && !connection.twoWay ? connection.from : items.location ?? null;
 }
 
 /** The tour entity with its name and Player-Facing Description resolved as a player there reads them. */
@@ -194,7 +201,8 @@ export function computeInPlay(
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts,
   // with no player character.
-  const sceneId = spec.scene === 'entity' ? entitySceneId(world, items) : null;
+  const sceneId = spec.scene === 'entity' ? entitySceneId(world, items)
+    : spec.scene === 'connection' ? connectionSceneId(world, items) : null;
   const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;
   const lensHere = () => lens ??= buildLens(world, seedLens(world, null, sceneId ?? items.location ?? null));

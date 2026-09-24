@@ -333,4 +333,37 @@ describe('In Play — Locations', () => {
     // Narration never reads the destinations list.
     expect(reader('Narration Prompt')).toBeNull();
   });
+
+  it('Connection: stands where the Connection leaves from, and follows a change of direction', async () => {
+    const { ctx } = await openTour();
+    await walkTo('location-connection');
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(ctx().connections).toHaveLength(1));
+    const [tidewell, lantern] = ['The Tidewell', 'The Salt Lantern'].map((n) => ctx().locations.find((l) => l.name === n)!.id);
+    // The step selects the second location, so the only direction control on screen runs from there.
+    const setDirection = async (name: 'Outgoing' | 'Incoming', from: string, to: string) => {
+      fireEvent.click(screen.getByRole('radio', { name }));
+      await waitFor(() => expect(ctx().connections[0]).toMatchObject({ from, to, twoWay: false }));
+    };
+
+    /** Player Sees and the Location Change reader both stand at `here` and list `there`, hint marked. */
+    const expectStandsAt = async (here: string, there: string) => {
+      await waitFor(() => expect(within(playerSees()).getByRole('button', { name: `Current Location: ${here}` }))
+        .toBeInTheDocument());
+      expect(within(playerSees()).getByRole('listitem')).toHaveTextContent(there);
+      const change = reader('Location Change Prompt')!;
+      expect(change.textContent).toContain(`- **${there}:**`);
+      expect(change.textContent).not.toContain(`- **${here}:**`);
+      expect(marks(change)).toEqual(['down the lane past the net sheds']);
+    };
+
+    // Two-Way: the first tour location.
+    await expectStandsAt('The Tidewell', 'The Salt Lantern');
+    // One-way, second → first: the second tour location, the only end with somewhere to go.
+    await setDirection('Outgoing', lantern, tidewell);
+    await expectStandsAt('The Salt Lantern', 'The Tidewell');
+    // One-way, first → second: the first tour location again.
+    await setDirection('Incoming', tidewell, lantern);
+    await expectStandsAt('The Tidewell', 'The Salt Lantern');
+  });
 });

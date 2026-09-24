@@ -1,6 +1,7 @@
 # 15: Connection Step Follows the Connection Direction
 
-Status: ready-for-agent
+Status: in-progress
+Base: a3685c8b
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
