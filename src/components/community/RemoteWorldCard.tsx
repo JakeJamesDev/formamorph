@@ -246,7 +246,7 @@ export function RemoteWorldCard({
 
       {/* Won a contest: said on the card itself, so the honor is visible wherever the world is found
           rather than only in the tab the contest was run in. */}
-      <PlaceBadges placements={placements} className="mb-2" />
+      <PlaceBadges placements={placements} className="mb-2" shine />
 
       {/* Tags */}
       <div className="mb-2">

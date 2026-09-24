@@ -362,6 +362,7 @@ describe('what the contest grid shows in each of its three states', () => {
     expect(screen.getByRole('button', { name: 'Worlds' })).toHaveAttribute('aria-current', 'true');
     const badge = (await screen.findByText('Winter World-Building Contest')).closest('p') as HTMLElement;
     expect(badge).toHaveTextContent('2nd Place — Winter World-Building Contest');
+    expect(badge).toHaveClass('place-chip-shine');
   });
 
   it('keeps the badge in the details opened from a placed card, worded as on the card', async () => {

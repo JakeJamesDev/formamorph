@@ -633,6 +633,39 @@ b {
   .narration-tool { transition: none; }
 }
 
+/* Contest placement chip. `--place` is the metal; the card base keeps the tint opaque over thumbnails. */
+.place-chip {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid hsl(var(--place) / 0.6);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  color: hsl(var(--place));
+  background:
+    linear-gradient(hsl(var(--place) / 0.18), hsl(var(--place) / 0.18)),
+    hsl(var(--card));
+}
+/* A sheen crosses the chip every 8s; opt-in, so the library stays still. */
+.place-chip-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 38%, hsl(0 0% 100% / 0.3) 50%, transparent 62%);
+  transform: translateX(-100%);
+  animation: place-sheen 8s ease-in-out 1.5s infinite;
+  pointer-events: none;
+}
+@keyframes place-sheen {
+  0%   { transform: translateX(-100%); }
+  15%  { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .place-chip-shine::after { animation: none; display: none; }
+}
+
 /* Streamdown animates each word in a bare inline <span>; transforms (move/scale) need a transformable
    box, so promote the animated words to inline-block within narration. Axis-scale anchors its growth
    to an edge via --rl-origin (set on the container); everything else uses center. */

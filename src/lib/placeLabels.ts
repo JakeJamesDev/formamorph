@@ -52,6 +52,13 @@ export const PLACE_COLORS: Record<ContestPlace, string> = {
   3: 'text-bronze',
 };
 
+/** The metal a `.place-chip` tints, sheens and inks itself with. */
+export const PLACE_CHIPS: Record<ContestPlace, string> = {
+  1: '[--place:var(--gold)]',
+  2: '[--place:var(--silver)]',
+  3: '[--place:var(--bronze)]',
+};
+
 /** The tinted plate a place wears where a badge needs a background rather than ink alone. */
 export const PLACE_PLATES: Record<ContestPlace, string> = {
   1: 'border-gold/50 bg-gold/10',
