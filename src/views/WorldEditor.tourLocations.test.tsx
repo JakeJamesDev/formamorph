@@ -102,6 +102,10 @@ const next = async () => {
 const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
     if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
+    // The one step with no example asks for the author's own click.
+    if (TOUR_STEPS[stepNumber() - 1].id === 'location-starting') {
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Starting Location' }));
+    }
     const example = await waitFor(() => noteButton('Use Example') ?? noteButton('Next')!);
     if (example.textContent === 'Use Example') {
       fireEvent.click(example);
@@ -192,25 +196,19 @@ describe('Authoring Tour — add steps', () => {
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 
-  it('offers the second location its example only once it exists', async () => {
+  it('asks only for the + press on the second add step, before and after the press', async () => {
     const { ctx } = await openTour();
     await walkTo('add-second-location');
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
 
     fireEvent.click(addButton());
-    fireEvent.click(await waitFor(() => noteButton('Use Example')!));
-    // The add step's example fills the descriptions; the Name step that follows owns the name.
-    await waitFor(() => expect(ctx().locations.at(-1)).toMatchObject({
-      name: 'New Location',
-      playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
-      aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
-    }));
-    // The first tour location keeps its own text.
-    expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    expect(noteButton('Use Example')).toBeNull();
+    expect(ctx().locations.at(-1)).toMatchObject({ name: 'New Location', playerDescription: '', aiDescription: '' });
   });
 
-  it('Second Location Name waits for a chosen name, and In Play stands at that place', async () => {
+  it('Second Location Name waits for a chosen name, and its example fills the whole place', async () => {
     const { ctx } = await openTour();
     await walkTo('second-location-name');
     expect(noteButton('Next')).toBeDisabled();
@@ -218,9 +216,17 @@ describe('Authoring Tour — add steps', () => {
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(ctx().locations.at(-1)?.name).toBe('The Salt Lantern');
-    const narration = within(screen.getByRole('region', { name: 'In Play' })).getByRole('region', { name: 'Narration Prompt Reads' });
-    expect(Array.from(narration.querySelectorAll('mark')).map((m) => m.textContent)).toEqual(['The Salt Lantern']);
+    expect(ctx().locations.at(-1)).toMatchObject({
+      name: 'The Salt Lantern',
+      playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
+      aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
+      backgroundImage: 'data:image/webp;base64,saltLantern',
+    });
+    // The first tour location keeps its own text.
+    expect(ctx().locations.filter((l) => l.name === 'The Tidewell')).toHaveLength(1);
+    // In Play stands at the new place.
+    expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Salt Lantern' })).toBeInTheDocument();
+    expect(marks(reader('Narration Prompt')!)).toEqual(['The Salt Lantern']);
   });
 
   it('Back to Tour selects the step’s location again', async () => {
@@ -261,9 +267,10 @@ describe('Authoring Tour — add steps', () => {
     fireEvent.click(within(row('The Salt Lantern')).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(stepNumber()).toBe(indexOf('add-second-location') + 1));
     fireEvent.click(addButton());
-    fireEvent.click(await waitFor(() => noteButton('Use Example')!));
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
     fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(ctx().connections).toHaveLength(1));
@@ -333,7 +340,10 @@ describe('In Play — Locations', () => {
     expect(ctx().locations.at(-1)?.backgroundImage).toBe('data:image/webp;base64,tidewell');
     expect(within(playerSees()).getByTestId('location-backdrop-image'))
       .toHaveStyle({ backgroundImage: 'url(data:image/webp;base64,tidewell)' });
-    expect(within(inPlay()).getByText('The AI never reads this field')).toBeInTheDocument();
+    // The location block stays, with nothing of the picture in it.
+    expect(reader('Narration Prompt')!.textContent).toContain('- **name:** The Tidewell');
+    expect(marks(reader('Narration Prompt')!)).toEqual([]);
+    expect(within(reader('Narration Prompt')!).getByText('The AI never reads the Background Image')).toBeInTheDocument();
   });
 
   it('Name: shows the Location tab and the location block with the name marked', async () => {
@@ -354,27 +364,40 @@ describe('In Play — Locations', () => {
 
     await waitFor(() => expect(within(playerSees())
       .getByText('A ring of worn stone around a pool that rises and falls with the sea.')).toBeInTheDocument());
-    expect(within(reader('Narration Prompt')!).getByText('The AI never reads this field')).toBeInTheDocument();
+    // The location block stays, without the description.
+    const narration = reader('Narration Prompt')!;
+    expect(narration.textContent).toContain('- **name:** The Tidewell');
+    expect(narration.textContent).not.toContain('A ring of worn stone');
+    expect(marks(narration)).toEqual([]);
+    expect(within(narration).getByText('The AI never reads the Player-Facing Description')).toBeInTheDocument();
   });
 
-  it('AI-Facing Description: players never see it, and the location block marks it', async () => {
+  it('AI-Facing Description: the Location tab stays with a caption, and the location block marks it', async () => {
     await openTour();
     await walkTo('location-ai-description');
-    expect(within(playerSees()).getByText('Players never see this field')).toBeInTheDocument();
+    expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Tidewell' })).toBeInTheDocument();
+    expect(within(playerSees()).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
 
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(marks(reader('Narration Prompt')!)).toHaveLength(1));
     expect(marks(reader('Narration Prompt')!)[0]).toMatch(/^A round stone basin in the village square\./);
+    expect(within(playerSees()).queryByText('A round stone basin', { exact: false })).toBeNull();
   });
 
-  it('Starting Location: says whether a new game starts here, and no prompt reads it', async () => {
-    await openTour();
+  it('Starting Location: offers no example, and says where a new game starts under the Location tab', async () => {
+    const { ctx } = await openTour();
     await walkTo('location-starting');
+    expect(noteButton('Use Example')).toBeNull();
+    expect(noteButton('Next')).toBeDisabled();
+    expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Tidewell' })).toBeInTheDocument();
     expect(within(playerSees()).getByText('A new game starts at another location')).toBeInTheDocument();
-    expect(reader('Narration Prompt')).toBeNull();
+    expect(reader('Narration Prompt')!.textContent).toContain('- **name:** The Tidewell');
+    expect(within(reader('Narration Prompt')!).getByText('The AI never reads the Starting Location')).toBeInTheDocument();
 
-    fireEvent.click(noteButton('Use Example')!);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Starting Location' }));
     await waitFor(() => expect(within(playerSees()).getByText('A new game starts here')).toBeInTheDocument());
+    expect(noteButton('Next')).toBeEnabled();
+    expect(ctx().locations.find((l) => l.name === 'The Tidewell')?.isStarting).toBe(true);
   });
 
   it('Connection: shows Connected Locations and the destinations list with the hint marked', async () => {

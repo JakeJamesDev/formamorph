@@ -108,7 +108,7 @@ describe('In Play on mobile', () => {
     fireEvent.click(showEffect(note)!);
 
     await waitFor(() => expect(effectSheet()).toHaveAttribute('data-state', 'open'));
-    expect(within(playerSees()).getByText('Players never see this field')).toBeInTheDocument();
+    expect(within(playerSees()).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
     const [marked] = marks(narration());
     expect(marked).toMatch(/^Brinewell is a quiet fishing village/);
   });

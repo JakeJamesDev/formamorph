@@ -78,6 +78,11 @@ test('a new author walks the whole tour by its examples and plays the world', as
       await expect(advance).toBeDisabled();
       await editor(page).locator(`[data-tour-anchor="${step.anchor}"]`).click();
     }
+    if (step.replay) {
+      // A step with no example asks for the author's own click: the Starting Location box.
+      await expect(advance).toBeDisabled();
+      await editor(page).locator(`[data-tour-anchor="${step.anchor}"]`).getByRole('checkbox').click();
+    }
     if (step.useExample) {
       // An add step completes on its add, so only a field step waits for its example.
       if (!step.add) await expect(advance).toBeDisabled();

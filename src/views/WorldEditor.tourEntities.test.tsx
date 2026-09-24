@@ -97,6 +97,10 @@ const next = async () => {
 const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
     if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
+    // The one step with no example asks for the author's own click.
+    if (TOUR_STEPS[stepNumber() - 1].id === 'location-starting') {
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Starting Location' }));
+    }
     const example = await waitFor(() => noteButton('Use Example') ?? noteButton('Next')!);
     if (example.textContent === 'Use Example') {
       fireEvent.click(example);
@@ -134,11 +138,12 @@ describe('Authoring Tour — Entities steps', () => {
     expect(TOUR_STEPS[indexOf('add-entity') - 1].id).toBe('location-connection');
     const saved = storeWorld.mock.calls.length;
 
-    await walkTo(TOUR_STEPS[indexOf('entity-locations') + 1].id);
+    await walkTo(TOUR_STEPS[indexOf('entity-ai-description') + 1].id);
     expect(storeWorld.mock.calls.length - saved).toBe(7);
-    expect(TOUR_STEPS.slice(indexOf('add-entity'), indexOf('entity-locations') + 1).map((s) => s.id)).toEqual([
-      'add-entity', 'entity-name', 'entity-pronouns', 'entity-image', 'entity-player-description', 'entity-ai-description',
-      'entity-locations',
+    // Locations comes second, so the entity is in the roster while the rest of it is written.
+    expect(TOUR_STEPS.slice(indexOf('add-entity'), indexOf('entity-ai-description') + 1).map((s) => s.id)).toEqual([
+      'add-entity', 'entity-name', 'entity-locations', 'entity-pronouns', 'entity-image', 'entity-player-description',
+      'entity-ai-description',
     ]);
 
     const tidewell = ctx().locations.find((l) => l.name === 'The Tidewell')!;
@@ -230,7 +235,10 @@ describe('In Play — Entities', () => {
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     expect(ctx().entities.at(-1)?.images).toEqual(['data:image/webp;base64,maren']);
     expect(within(playerSees()).getByRole('img', { name: 'Maren' })).toHaveAttribute('src', 'data:image/webp;base64,maren');
-    expect(within(inPlay()).getByText('The AI never reads this field')).toBeInTheDocument();
+    // The roster stays, with nothing of the picture in it.
+    expect(narration().textContent).toContain('- **Maren**');
+    expect(marks(narration())).toEqual([]);
+    expect(within(narration()).getByText('The AI never reads the Image')).toBeInTheDocument();
   });
 
   it('Name: shows the list row and the card, and the AI does not read the entity yet', async () => {
@@ -243,36 +251,6 @@ describe('In Play — Entities', () => {
     expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
   });
 
-  it('Pronouns: players never see them, and the AI does not read the entity yet', async () => {
-    await openTour();
-    await walkTo('entity-pronouns');
-    useExample();
-
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Pronouns' })).toHaveValue('she/her'));
-    expect(within(playerSees()).getByText('Players never see this field')).toBeInTheDocument();
-    expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
-  });
-
-  it('Player-Facing Description: shows it on the card, and the AI never reads it', async () => {
-    await openTour();
-    await walkTo('entity-player-description');
-    useExample();
-
-    await waitFor(() => expect(within(playerSees())
-      .getByText('The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.'))
-      .toBeInTheDocument());
-    expect(within(narration()).getByText('The AI never reads this field')).toBeInTheDocument();
-  });
-
-  it('AI-Facing Description: players never see it, and the AI does not read the entity yet', async () => {
-    await openTour();
-    await walkTo('entity-ai-description');
-    useExample();
-
-    expect(within(playerSees()).getByText('Players never see this field')).toBeInTheDocument();
-    expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
-  });
-
   it('Locations: placing the entity puts it in that location’s roster', async () => {
     await openTour();
     await walkTo('entity-locations');
@@ -282,46 +260,75 @@ describe('In Play — Entities', () => {
     useExample();
     await waitFor(() => expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument());
     expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
-    expect(within(playerSees()).getByText('Maren')).toBeInTheDocument();
+    // The row and the card, both named.
+    expect(within(playerSees()).getAllByText('Maren')).toHaveLength(2);
     expect(narration().textContent).toContain('- **Maren**');
     expect(marks(narration())).toContain('Maren');
     // Only the tour location's roster: the harness entity is elsewhere.
     expect(narration().textContent).not.toContain('Odd Wick');
   });
 
-  it('marks each field in the roster once the entity has a location', async () => {
+  it('Pronouns: the card stays with a caption, and the roster marks them', async () => {
     await openTour();
-    await walkTo('entity-locations');
+    await walkTo('entity-pronouns');
+    useExample();
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Pronouns' })).toHaveValue('she/her'));
+    expect(within(playerSees()).getByRole('heading', { name: 'Maren' })).toBeInTheDocument();
+    expect(within(playerSees()).getByText('Players never see the Pronouns')).toBeInTheDocument();
+    await waitFor(() => expect(marks(narration())).toEqual(['she/her']));
+    expect(narration().textContent).toContain('- **pronouns:** she/her');
+  });
+
+  it('Player-Facing Description: shows it on the card, and the roster stays with a caption', async () => {
+    await openTour();
+    await walkTo('entity-player-description');
+    useExample();
+
+    await waitFor(() => expect(within(playerSees())
+      .getByText('The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.'))
+      .toBeInTheDocument());
+    expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
+    expect(narration().textContent).toContain('- **Maren**');
+    expect(narration().textContent).not.toContain('keeper of the Tidewell');
+    expect(marks(narration())).toEqual([]);
+    expect(within(narration()).getByText('The AI never reads the Player-Facing Description')).toBeInTheDocument();
+  });
+
+  it('AI-Facing Description: the card stays with a caption, and the roster marks it', async () => {
+    await openTour();
+    await walkTo('entity-ai-description');
+    useExample();
+
+    expect(within(playerSees()).getByRole('heading', { name: 'Maren' })).toBeInTheDocument();
+    expect(within(playerSees()).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
+    await waitFor(() => expect(marks(narration())).toHaveLength(1));
+    expect(marks(narration())[0]).toMatch(/^Maren tends the Tidewell.*growing stronger\.$/);
+  });
+
+  it('keeps the roster marks on each step when the author goes back', async () => {
+    await openTour();
+    await walkTo('entity-ai-description');
     useExample();
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
 
-    await backTo('entity-ai-description');
-    await waitFor(() => expect(marks(narration())).toHaveLength(1));
-    expect(marks(narration())[0]).toMatch(/^Maren tends the Tidewell.*growing stronger\.$/);
-
     await backTo('entity-pronouns');
     await waitFor(() => expect(marks(narration())).toEqual(['she/her']));
-    expect(narration().textContent).toContain('- **pronouns:** she/her');
 
     await backTo('entity-name');
     await waitFor(() => expect(marks(narration())).toContain('Maren'));
     expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument();
   });
 
-  it('captions the row and card until the entity has a location, on every step that shows them', async () => {
+  it('captions the row and card only until the entity has a location', async () => {
     await openTour();
     await walkTo('entity-name');
     expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
-    await walkTo('entity-player-description');
-    expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
+    expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
 
-    await walkTo('entity-locations');
-    useExample();
-    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    await backTo('entity-player-description');
-    await waitFor(() => expect(within(playerSees())
-      .getByText('The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.')).toBeInTheDocument());
+    await walkTo('entity-image');
     expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
+    expect(within(narration()).queryByText(NOT_IN_SCENE)).toBeNull();
     await backTo('entity-name');
     await waitFor(() => expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument());
     expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();

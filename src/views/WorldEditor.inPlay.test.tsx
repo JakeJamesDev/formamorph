@@ -94,16 +94,17 @@ describe('In Play — World Name', () => {
 
   it('says the AI never reads the name', async () => {
     await startTour(worldWith(''));
-    expect(within(narration()).getByText('The AI never reads this field')).toBeInTheDocument();
+    expect(within(narration()).getByText('The AI never reads the World Name')).toBeInTheDocument();
     expect(marks(narration())).toEqual([]);
   });
 });
 
 describe('In Play — AI-Facing Description', () => {
-  it('shows the world block with the author text marked, and that players never see it', async () => {
+  it('shows the world block with the author text marked, and the library card with a caption', async () => {
     await startTour(worldWith(''));
     await nextStep();
-    expect(within(playerSees()).getByText('Players never see this field')).toBeInTheDocument();
+    expect(within(playerSees()).getByRole('heading', { name: 'Brinewell' })).toBeInTheDocument();
+    expect(within(playerSees()).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
 
     const note = screen.getByRole('dialog', { name: 'AI-Facing Description' });
     fireEvent.click(within(note).getByRole('button', { name: 'Use Example' }));
@@ -136,7 +137,10 @@ describe('In Play — Thumbnail', () => {
     fireEvent.click(within(note).getByRole('button', { name: 'Use Example' }));
     await waitFor(() => expect(within(note).getByRole('button', { name: 'Next' })).toBeEnabled());
     expect(within(playerSees()).getByRole('img')).toHaveAttribute('src', 'data:image/webp;base64,brinewell');
-    expect(within(narration()).getByText('The AI never reads this field')).toBeInTheDocument();
+    // The world block written on the step before stays, with nothing of the picture in it.
+    expect(narration().textContent).toContain('Brinewell is a quiet fishing village');
+    expect(marks(narration())).toEqual([]);
+    expect(within(narration()).getByText('The AI never reads the Thumbnail')).toBeInTheDocument();
   });
 });
 

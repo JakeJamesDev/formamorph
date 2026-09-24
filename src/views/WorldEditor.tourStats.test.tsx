@@ -217,13 +217,18 @@ describe('Authoring Tour — Stats steps', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('Sea Change'));
   });
 
-  it('replays the stat step the way the Add button makes the stat', async () => {
+  it('replays the stat step the way the Add button and the Name step make the stat', async () => {
     const replayed = (await replayTourSteps(WORLD, indexOf('stat-description'))).world.stats[0];
     const { ctx } = await resumeAt('add-stat');
     fireEvent.click(addButton());
     await waitFor(() => expect(ctx().stats).toHaveLength(1));
+    await next();
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(onlyStat(ctx).name).toBe('Sea Change'));
+    // The default descriptors follow the rename in both paths.
     const thresholds = (stat: Stat) => (stat.descriptors ?? []).map((d) => [d.threshold, d.description]);
     expect(thresholds(replayed)).toEqual(thresholds(onlyStat(ctx)));
+    expect(thresholds(replayed)[0]).toEqual([30, 'Sea Change is low']);
   });
 });
 
@@ -260,7 +265,7 @@ describe('In Play — Stats', () => {
     await addTourStat();
     fireEvent.click(noteButton('Use Example')!);
     await next();
-    expect(within(playerSees()!).getByText('Players never see this field')).toBeInTheDocument();
+    expect(within(playerSees()!).getByText('Players never see the Description')).toBeInTheDocument();
 
     fireEvent.click(noteButton('Use Example')!);
     const updates = reader('Stat Updates Prompt')!;
