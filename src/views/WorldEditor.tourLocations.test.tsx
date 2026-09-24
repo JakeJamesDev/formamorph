@@ -4,6 +4,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { NEW_LOCATION_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
 
@@ -163,6 +164,24 @@ describe('Authoring Tour — add steps', () => {
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(ctx().locations.find((l) => l.id === added.id)?.name).toBe('The Tidewell'));
     expect(ctx().locations.find((l) => l.id === 'harbor')?.name).toBe('Harbor Steps');
+  });
+
+  it('keeps Next disabled on the name Add gives until the author changes it', async () => {
+    const { ctx } = await openTour();
+    await walkTo('add-location');
+    fireEvent.click(addButton());
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    await next();
+    const added = () => ctx().locations.find((l) => l.id !== 'harbor')!;
+    expect(added().name).toBe(NEW_LOCATION_NAME);
+    expect(noteButton('Next')).toBeDisabled();
+
+    ctx().updateLocation({ ...added(), name: 'Kelp Yard' });
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    ctx().updateLocation({ ...added(), name: '' });
+    await waitFor(() => expect(noteButton('Next')).toBeDisabled());
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 
   it('offers the second location its example only once it exists', async () => {

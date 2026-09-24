@@ -13,8 +13,8 @@ import type {
 } from '@/types';
 import { hasValue } from '@/lib/editorMode';
 import {
-  NEW_WORLD_NAME, entityRootCount, newEntity, newLocation, newStat, newTrait, traitRootCount,
-  withDefaultDescriptors,
+  NEW_ENTITY_NAME, NEW_LOCATION_NAME, NEW_STAT_NAME, NEW_TRAIT_NAME, NEW_WORLD_NAME, entityRootCount, newEntity,
+  newLocation, newStat, newTrait, traitRootCount, withDefaultDescriptors,
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
@@ -103,6 +103,12 @@ export interface TourStep {
 
 /** The In Play slice of a step that points at no field, such as an ending step. */
 export const NO_IN_PLAY: InPlaySpec = { sees: 'none', readers: [] };
+
+/** Whether the author chose `name`: the untouched name the editor gave does not count. */
+const isChosenName = (name: string | undefined, defaultName: string) => {
+  const trimmed = (name ?? '').trim();
+  return hasValue(trimmed) && trimmed !== defaultName;
+};
 
 /** An add step, pointing at its list's Add button. */
 function addStep(
@@ -297,11 +303,7 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     item: null,
     title: 'World Name',
     body: 'Type the name players see in their library',
-    // The untouched default name is not the author's choice, so it does not count.
-    isComplete: (world) => {
-      const name = world.worldOverview.name.trim();
-      return hasValue(name) && name !== NEW_WORLD_NAME;
-    },
+    isComplete: (world) => isChosenName(world.worldOverview.name, NEW_WORLD_NAME),
     useExample: (api) => api.updateWorldOverview({ name: WORLD_NAME_EXAMPLE }),
     inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
   },
@@ -339,7 +341,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     item: 'location',
     title: 'Location Name',
     body: 'Name the place. Players see the name while they’re here, and the AI reads it.',
-    isComplete: (world, items) => hasValue((tourLocation(world, items, 'location')?.name ?? '').trim()),
+    isComplete: (world, items) => isChosenName(tourLocation(world, items, 'location')?.name, NEW_LOCATION_NAME),
     useExample: (api, world, items) => patchLocation(api, world, items, 'location', { name: TIDEWELL.name }),
     inPlay: {
       sees: 'locationTab',
@@ -445,7 +447,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     panelTab: 'profile',
     title: 'Entity Name',
     body: 'Name the entity. Players see the name in their entity list, and the AI reads it.',
-    isComplete: (world, items) => hasValue((tourEntity(world, items)?.name ?? '').trim()),
+    isComplete: (world, items) => isChosenName(tourEntity(world, items)?.name, NEW_ENTITY_NAME),
     useExample: (api, world, items) => patchEntity(api, world, items, { name: MAREN.name }),
     inPlay: {
       sees: 'entityRowAndCard',
@@ -563,7 +565,7 @@ const STAT_STEPS: readonly TourStep[] = [
     title: 'Stat Name',
     body: 'Name the stat. "Min", "Max" and "Initial Value" set its range and where it starts. Players see the name '
       + 'and the number, and the narration prompt never reads the number.',
-    isComplete: (world, items) => hasValue((tourStat(world, items)?.name ?? '').trim()),
+    isComplete: (world, items) => isChosenName(tourStat(world, items)?.name, NEW_STAT_NAME),
     useExample: (api, world, items) => patchStat(api, world, items, {
       name: SEA_CHANGE.name, min: SEA_CHANGE.min, max: SEA_CHANGE.max, value: SEA_CHANGE.value,
     }),
@@ -623,7 +625,7 @@ const TRAIT_STEPS: readonly TourStep[] = [
       + 'traits, and the AI never reads the description.',
     isComplete: (world, items) => {
       const trait = tourTrait(world, items);
-      return !!trait && hasValue(trait.name.trim()) && hasValue((trait.playerDescription ?? '').trim());
+      return !!trait && isChosenName(trait.name, NEW_TRAIT_NAME) && hasValue((trait.playerDescription ?? '').trim());
     },
     useExample: (api, world, items) => patchTrait(api, world, items, {
       name: TIDE_TOUCHED.name, playerDescription: TIDE_TOUCHED.playerDescription,

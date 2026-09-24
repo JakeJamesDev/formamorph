@@ -4,6 +4,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { NEW_ENTITY_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
 
@@ -161,6 +162,24 @@ describe('Authoring Tour — Entities steps', () => {
     useExample();
     await waitFor(() => expect(ctx().entities.find((e) => e.id === added.id)?.name).toBe('Maren'));
     expect(ctx().entities.find((e) => e.id === 'resident')?.name).toBe('Odd Wick');
+  });
+
+  it('keeps Next disabled on the name Add gives until the author changes it', async () => {
+    const { ctx } = await openTour();
+    await walkTo('add-entity');
+    fireEvent.click(addButton());
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    await next();
+    const added = () => ctx().entities.find((e) => e.id !== 'resident')!;
+    expect(added().name).toBe(NEW_ENTITY_NAME);
+    expect(noteButton('Next')).toBeDisabled();
+
+    ctx().updateEntity({ ...added(), name: 'Old Tam' });
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    ctx().updateEntity({ ...added(), name: '' });
+    await waitFor(() => expect(noteButton('Next')).toBeDisabled());
+    useExample();
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 
   it('makes the add step current again when its entity is deleted', async () => {

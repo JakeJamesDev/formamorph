@@ -4,6 +4,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
+import { NEW_STAT_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import { activeDescriptor } from '@/lib/statContext';
 import type { Stat, World } from '@/types';
@@ -150,13 +151,15 @@ describe('Authoring Tour — Stats steps', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('New Stat'));
   });
 
-  it('completes the Name step on any name, and keeps the range unless the author changes it', async () => {
+  it('keeps Next disabled on the name Add gives until the author changes it, and keeps the range', async () => {
     const { ctx } = await resumeAt('add-stat');
     await addTourStat();
     const added = onlyStat(ctx);
-    // The Add button's name already counts.
-    expect(noteButton('Next')).toBeEnabled();
+    expect(added.name).toBe(NEW_STAT_NAME);
+    expect(noteButton('Next')).toBeDisabled();
 
+    ctx().updateStat({ ...added, name: 'Grit' });
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     ctx().updateStat({ ...added, name: '  ' });
     await waitFor(() => expect(noteButton('Next')).toBeDisabled());
     ctx().updateStat({ ...added, name: 'Grit' });
@@ -167,9 +170,20 @@ describe('Authoring Tour — Stats steps', () => {
     expect(onlyStat(ctx)).toMatchObject({ name: 'Grit', min: 0, max: 100, value: 0 });
   });
 
+  it('enables Next once Use Example replaces the name Add gives', async () => {
+    const { ctx } = await resumeAt('add-stat');
+    await addTourStat();
+    expect(noteButton('Next')).toBeDisabled();
+
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    expect(onlyStat(ctx).name).not.toBe(NEW_STAT_NAME);
+  });
+
   it('completes the Description step on any text', async () => {
     const { ctx } = await resumeAt('add-stat');
     await addTourStat();
+    fireEvent.click(noteButton('Use Example')!);
     await next();
     expect(noteButton('Next')).toBeDisabled();
 

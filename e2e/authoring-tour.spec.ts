@@ -10,8 +10,6 @@ import { TOUR_STEPS, type TourStep } from '../src/lib/authoringTour/steps';
 
 const STEP_COUNT = TOUR_STEPS.length;
 const TOUR_TABS = [...new Set(TOUR_STEPS.map((s) => s.tab).filter((t): t is NonNullable<TourStep['tab']> => !!t))];
-// Add gives these items a default name, which counts as a value. Ticket 17 makes it stop counting.
-const OPENS_WITH_DEFAULT_NAME = new Set(['location-name', 'entity-name', 'stat-name']);
 
 /** Answers the game's model calls the way a model server would, so Play reaches the game view. */
 async function mockModel(page: Page) {
@@ -82,8 +80,7 @@ test('a new author walks the whole tour by its examples and plays the world', as
     }
     if (step.useExample) {
       // An add step completes on its add, so only a field step waits for its example.
-      if (OPENS_WITH_DEFAULT_NAME.has(step.id)) await expect(advance).toBeEnabled();
-      else if (!step.add) await expect(advance).toBeDisabled();
+      if (!step.add) await expect(advance).toBeDisabled();
       const before = new Set(await fieldValues(page));
       await note.getByRole('button', { name: 'Use Example' }).click();
       await nextFrame(page);
