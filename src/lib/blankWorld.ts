@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Entity, GameLocation, World } from '@/types';
+import type { Entity, GameLocation, Stat, World } from '@/types';
 
 /** The world New World opens in the editor. It is not stored until the author saves it. */
 export function newBlankWorld(): World {
@@ -44,4 +44,21 @@ export function entityRootCount(world: Pick<World, 'entities' | 'entityGroups'>)
 /** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
 export function newEntity(id: string, order: number, name = 'New Entity'): Entity {
   return { id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order };
+}
+
+/** A stat as the editor's Add button makes it, before the world gives it its default descriptors. */
+export function newStat(id: string, name = 'New Stat'): Omit<Stat, 'descriptors'> {
+  return { id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0 };
+}
+
+/** The stat with the low, medium and high descriptors every added stat starts with. */
+export function withDefaultDescriptors(stat: Omit<Stat, 'descriptors'>): Stat {
+  return {
+    ...stat,
+    descriptors: [
+      { id: randomUUID(), threshold: 30, description: `${stat.name} is low` },
+      { id: randomUUID(), threshold: 60, description: `${stat.name} is medium` },
+      { id: randomUUID(), threshold: 100, description: `${stat.name} is high` },
+    ],
+  };
 }

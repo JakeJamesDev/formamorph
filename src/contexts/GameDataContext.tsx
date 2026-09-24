@@ -9,6 +9,7 @@ import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
+import { withDefaultDescriptors } from '@/lib/blankWorld';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
 import {
@@ -113,13 +114,7 @@ function useProvideGameData() {
   const [savedSnapshot, setSavedSnapshot] = useState<string>('');
 
   const addStat = useCallback((newStat: Omit<Stat, 'descriptors'>) => {
-    const defaultDescriptors = [
-      { id: randomUUID(), threshold: 30, description: `${newStat.name} is low` },
-      { id: randomUUID(), threshold: 60, description: `${newStat.name} is medium` },
-      { id: randomUUID(), threshold: 100, description: `${newStat.name} is high` },
-    ];
-    const statWithDescriptors = { ...newStat, descriptors: defaultDescriptors };
-    setStats(prevStats => [...prevStats, statWithDescriptors]);
+    setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
   }, []);
 
   const updateStat = useCallback((updatedStat: Stat) => {

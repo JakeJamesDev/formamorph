@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { buildDestinationsContext, buildEntityContext, buildLocationContext } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
 import type { Connection, Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
-import { buildAiContext, type AiContextWorld, type ContextBlockId } from './aiContext';
+import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import {
+  buildAiContext, buildStatBlock, statsChipIn, type AiContextWorld, type ContextBlockId,
+} from './aiContext';
 import { buildLens, type LensState } from './lens';
 
 import { phValues } from '@/test/placeholderValues';
@@ -163,6 +166,20 @@ describe('the lens PC', () => {
   it('serves the stats the PC switches on and drops the ones it switches off', () => {
     expect(block(context(at('loc-harbor')), 'stats').text).not.toContain('Tide Sense');
     expect(block(context(at('loc-harbor', 't-sedge')), 'stats').text).toContain('Tide Sense');
+  });
+
+  it('renders the stats block in the shape the shipped narration prompt places it', () => {
+    expect(block(context(at('loc-harbor')), 'stats').token).toBe(statsChipIn(defaultSystemPrompt));
+  });
+
+  it('renders a stats chip in any shape through the one stat builder, for the lens PC', () => {
+    const w = world({ stats: [{ ...stats[0], description: `Steadiness near ${HAIR_CHIP} water.` }] });
+    const lens = buildLens({ ...w, traitGroups: w.traitGroups ?? [] }, at('loc-harbor', 't-sedge'));
+    const token = statsChipIn(defaultStatUpdatesPrompt);
+    expect(token).toBe('<STATS DESCRIPTION|numbers.meaning.markdown>');
+    expect(buildStatBlock(w, lens, token!)).toBe('- **Nerve:** 5/10 — Steadiness near copper water.');
+    expect(buildStatBlock(w, lens, '<STATS DESCRIPTION|descriptions.markdown>'))
+      .toBe(block(buildAiContext(w, lens), 'stats').text);
   });
 
   it('replaces the default trait its own exclusive group contributed', () => {

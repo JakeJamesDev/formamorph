@@ -10,7 +10,7 @@ import {
   AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, EDITOR_MODE_TUTORIAL_ID, markTutorialSeen, useTutorial,
   useTutorialSeen,
 } from '@/lib/tutorials';
-import { entityRootCount, newBlankWorld, newEntity, newLocation } from '@/lib/blankWorld';
+import { entityRootCount, newBlankWorld, newEntity, newLocation, newStat } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -560,13 +560,18 @@ const WorldEditorInner = ({
     if (step.tab === 'entities' && step.item) {
       setEntityTab(ENTITY_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'profile');
     }
+    if (step.tab === 'stats' && step.item) setStatTab('details');
     deferReveal(() => focusTourField(step.anchor));
   }, [deferReveal, worldId]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
+      addStat, updateStat,
     }),
-    [updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity],
+    [
+      updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
+      addStat, updateStat,
+    ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
   const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
@@ -638,16 +643,7 @@ const WorldEditorInner = ({
     const typed = searchTerm.trim();
 
     if (activeTab === "stats") {
-      addStat({
-        id: newId,
-        name: typed || 'New Stat',
-        type: 'number',
-        description: '',
-        min: 0,
-        max: 100,
-        value: 0,
-        regen: 0
-      });
+      addStat(newStat(newId, typed || undefined));
     } else if (activeTab === "entities") {
       addEntity(newEntity(newId, entityRootSiblingCount(), typed || undefined));
     } else if (activeTab === "locations") {
