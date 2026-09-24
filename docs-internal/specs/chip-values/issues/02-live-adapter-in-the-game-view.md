@@ -1,6 +1,7 @@
 # 02: Live adapter in the game view
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 62982835
 Blocked by: 01 — Chip Values module with the authored adapter
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -32,3 +33,16 @@ The game view's own context builder and its scene override closure go. The Choic
 ## Blocked by
 
 - 01 — Chip Values module with the authored adapter
+
+## Comments
+
+**2026-09-24, rulings from the spec session (build):**
+
+- **Persona helper kept.** Seven test files import `personaContextValues`, including the turn-plan parity test that must pass unedited and the preview pool test ticket 03 owns. The module's Persona family now calls it, so it has a production caller. The "deleted" criterion is dropped for that reason.
+- **Lore in play.** The live scene carries no lore, and the game view drops the Dictionary family from the module's output before merging, the same pattern as the Notes and Time ruling. The narration prompt builder keeps activating lore per turn. Follow-up after 02–04: make lore optional in the scene so both caller-side drops go away.
+- **Two additive scene fields, both optional.** `outerScopeEntities` is the roster the Sub-locations and Reachable scopes list; play passes the authored cast so a runtime character never appears in an outer scope. `inSceneNames` holds participant names that match nobody; they join the In Scene Name content only, after the ids. The authored and sample adapters leave both absent.
+- **Override shape.** `sceneEntityChipValues(scene, sceneIds)` returns only the unscoped Entities tokens from the scene with `presentIds` replaced; scoped variants in the Choices prompt keep their base values. The override test moved into the module's suite with its registry-derived expectation.
+- **In Scene Name spelling.** A matched participant renders as the entity's own name, no longer as the narration spelled it; the match ignores case and edge spaces, so only those can differ. This follows from the ids ruling and is accepted with the ordering nuance.
+- **Hand-mirror test kept.** Only its six-line helper mirrored the builder; the eleven cases are the only integration coverage of persona rolls across turns, an undo, a switch, a save and reload, and a pin. The helper now renders through `chipValues` on a scene holding the live persona and resolve. The "deleted" criterion is amended for that reason.
+
+**Live check (2026-09-24):** Veilwood, one real turn against a local Cydonia 24B. The narration request captured in the AI Context viewer and the Test Bench's AI Context instrument at The Drowned Hollow were compared byte for byte: Current Location (288 chars), Entities Here (1115 chars) and Entities Reachable (858 chars) all equal.

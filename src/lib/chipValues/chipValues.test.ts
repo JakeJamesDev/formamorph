@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { chipValues } from './chipValues';
+import { chipValues, sceneEntityChipValues } from './chipValues';
 import type { ChipScene } from './chipScene';
 import { knownPersonaLine } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
-import { variableForToken, variableVariantIds, withVariant } from '../promptVariables';
+import { decodeVariant, variableForToken, variableVariantIds, withVariant } from '../promptVariables';
 import type { Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Trait, TraitGroup } from '@/types';
 import type { ResolvedPersona } from '../persona';
 
@@ -126,6 +126,55 @@ describe('the Entities chip', () => {
     for (const token of ['<ENTITIES>', '<ENTITIES|sublocations.name>', '<ENTITIES|reachable.xml>', '<ENTITIES|inscene>']) {
       expect(values[token]).toBe(NONE_PLACEHOLDER);
     }
+  });
+
+  it('lists the outer scopes from their own roster when the scene names one, and Here from the full roster', () => {
+    // A runtime character invented in the Gatehouse: Here and In Scene know it; the outer scopes list the
+    // authored cast only, as play does.
+    const stray: Entity = { id: 'stray', name: 'Stray', locations: ['gatehouse'], aiDescription: 'Turned up one night.' };
+    const values = chipValues(scene({ entities: [...entities, stray], outerScopeEntities: entities, inSceneIds: ['stray'] }));
+    expect(values['<ENTITIES|sublocations.name>']).toBe('Merchant');
+    expect(values['<ENTITIES|inscene.name>']).toBe('Stray');
+    // Without the field, one roster serves every scope.
+    expect(chipValues(scene({ entities: [...entities, stray] }))['<ENTITIES|sublocations.name>']).toBe('Merchant, Stray');
+  });
+
+  it('keeps an unresolved participant name in the In Scene Name content only', () => {
+    const values = chipValues(scene({ inSceneIds: ['guard'], inSceneNames: ['the ferryman'] }));
+    expect(values['<ENTITIES|inscene.name>']).toBe('Guard, the ferryman');
+    expect(values['<ENTITIES|inscene.name.xml>']).toBe('Guard, the ferryman');
+    expect(values['<ENTITIES|inscene>']).not.toContain('ferryman');
+    // With nobody resolved, the names alone are the list.
+    expect(chipValues(scene({ inSceneIds: [], inSceneNames: ['the ferryman'] }))['<ENTITIES|inscene.name>']).toBe('the ferryman');
+  });
+});
+
+describe('the scene-roster override for the Choices prompt', () => {
+  it('covers every unscoped Entities token the registry defines, so no chip can slip the scene filter', () => {
+    const entitiesChip = variableForToken('<ENTITIES>')!;
+    // The registry is the source of truth: the base token plus every variant whose scope axis is "here".
+    const expected = [
+      '<ENTITIES>',
+      ...variableVariantIds(entitiesChip)
+        .filter((id) => decodeVariant(entitiesChip, id).scope == null)
+        .map((id) => withVariant('<ENTITIES>', id)),
+    ].sort();
+    expect(Object.keys(sceneEntityChipValues(scene(), ['guard'])).sort()).toEqual(expected);
+  });
+
+  it('lists only the scene cast under the Name content, resolved, and leaves the scoped variants alone', () => {
+    const values = sceneEntityChipValues(
+      scene({ resolve: (text) => text.replace('Merchant', 'Peddler') }),
+      ['guard', 'merchant'],
+    );
+    expect(values['<ENTITIES|name>']).toBe('Guard, Peddler');
+    expect(values['<ENTITIES|name.markdown>']).toBe('Guard, Peddler');
+    expect(values['<ENTITIES>']).toContain('Sells maps.');
+    expect(values['<ENTITIES|sublocations.name>']).toBeUndefined();
+  });
+
+  it('renders the placeholder when nobody is in the scene', () => {
+    expect(sceneEntityChipValues(scene(), [])['<ENTITIES|name>']).toBe(NONE_PLACEHOLDER);
   });
 });
 

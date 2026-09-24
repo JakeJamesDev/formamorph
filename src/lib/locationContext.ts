@@ -355,10 +355,14 @@ export function buildSceneEntitiesContext(
 ): string {
   if (names.length === 0) return NONE_PLACEHOLDER;
   if (opts.nameOnly) return names.join(', ');
-  const ids = names
-    .map((n) => entities.find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase())?.id)
-    .filter((id): id is string => !!id);
+  const ids = names.map((n) => entityNamed(entities, n)?.id).filter((id): id is string => !!id);
   return renderEntityRoster(ids, entities, opts);
+}
+
+/** The entity a narration name refers to, matched without case or edge spaces; none for an ad-hoc name. */
+export function entityNamed(entities: Entity[], name: string): Entity | undefined {
+  const wanted = name.trim().toLowerCase();
+  return entities.find((e) => e.name.trim().toLowerCase() === wanted);
 }
 
 /**
@@ -371,7 +375,7 @@ export function buildSceneEntitiesContext(
 export function scenePresentHere(names: string[], entities: Entity[], hereIds: string[]): string[] {
   const here = new Set(hereIds);
   return names.filter((name) => {
-    const defined = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const defined = entityNamed(entities, name);
     return !defined || here.has(defined.id);
   });
 }
@@ -475,19 +479,4 @@ export function expandScopedTokens(
     }
   }
   return values;
-}
-
-/**
- * The scene-roster override for the choices and re-roll prompts: every unscoped `<ENTITIES>` token, built
- * from who is actually in the scene rather than the location's whole roster. Any variant left out here
- * would fall through to the full roster, so the set is enumerated, never listed by hand.
- */
-export function sceneEntityTokens(
-  sceneLocation: MaybeLocation,
-  sceneEntities: Entity[],
-  resolve: (text: string) => string,
-): Record<string, string> {
-  return expandScopedTokens("<ENTITIES>", {
-    "": (opts) => resolve(buildEntityContext(sceneLocation, sceneEntities, opts)),
-  });
 }

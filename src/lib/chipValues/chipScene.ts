@@ -42,4 +42,10 @@ export interface ChipScene {
   time: ChipSceneTime | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;
+  /** The roster the Sub-locations and Reachable scopes list; `entities` when absent. Play passes the
+   *  authored cast, since a runtime character belongs where it was invented and the outer scopes never
+   *  list one. */
+  outerScopeEntities?: Entity[];
+  /** Participant names that match nobody in the roster. They join the In Scene Name content only. */
+  inSceneNames?: string[];
 }
