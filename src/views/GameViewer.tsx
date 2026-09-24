@@ -4398,7 +4398,9 @@ const GameViewer = ({
         // AI-facing field, so show that as its player description or the modal reads "No description
         // provided". Scoped to discovered characters: an authored entity's aiDescription is author-only
         // notes and must never surface to the player.
-        const found = allEntities.find((f) => f.name === selectedEntity) ?? null;
+        // The persona opens from the Entities tab too, though it is never part of the cast.
+        const found = allEntities.find((f) => f.name === selectedEntity)
+          ?? (persona?.entity.name === selectedEntity ? persona.entity : null);
         const isDiscovered = !!found && discoveredEntities.some((d) => d.entity.name === found.name);
         const shown = found && isDiscovered && !found.playerDescription?.trim()
           ? { ...found, playerDescription: found.aiDescription }

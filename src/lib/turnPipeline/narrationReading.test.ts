@@ -30,6 +30,15 @@ describe('readNarration', () => {
     expect(spoken.participants).not.toContain('Professor Serana');
   });
 
+  it('counts an entity whose only mention is introducing herself, the rest pronouns', () => {
+    const narration = [
+      '"Thank you for the food," you say. "What\'s your name?"',
+      'The gardener\'s ears perk up. She beams at you. "Oh, don\'t be silly! I\'m Lyria."',
+      'She steps forward again and pats your cheek. "Come inside."',
+    ].join('\n\n');
+    expect(read(narration, { entities: [MAREN, SERANA, ent('e3', 'Lyria')] }).participants).toEqual(['Lyria']);
+  });
+
   it('confirms a director candidate loosely and an ad-hoc one strictly', () => {
     // The planner already vouched a defined entity is present, so a partial name confirms it.
     expect(read('The tank grinds forward.', { directorCandidates: ['Battle Tank'] }).participants)

@@ -53,7 +53,7 @@ describe('entity readers in play', () => {
     { reader: "planner's cast", source: viewer, pattern: /classifyCast\(cast, allEntities, playerNames\)/ },
     { reader: 'in-game entity panel', source: viewer, pattern: /entities=\{allEntities\}/ },
     { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
-    { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities \} = useResolvedWorld\(\)/ },
+    { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
     { reader: 'panels, narration names', source: panels, pattern: /const \{ entities \} = useResolvedWorld\(\)/ },
   ];
 

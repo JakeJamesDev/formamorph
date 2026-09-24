@@ -91,7 +91,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   // The authored cast, separate from the `entities` prop (authored + runtime-discovered).
   // Resolved, not the authored context: a chip-bearing name compared against a resolved scene name would
   // read as a character the world never defined.
-  const { entities: authoredEntities } = useResolvedWorld();
+  const { entities: authoredEntities, persona } = useResolvedWorld();
+  // The played entity heads the Entities tab in every scene; the scene parse never lists it.
+  const personaEntity = persona?.entity;
   const {
     // Aliased to the viewed-page values so paging back shows that turn's appearance + scene (they equal
     // the live values on the latest page). Body morphs still ride live `bodyMorphValues`, which the
@@ -143,7 +145,8 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const [leftTab, setLeftTab] = React.useState(isMobile ? "model" : "notes");
 
   const entityViewEntity =
-    entities.find((e) => e.name === selectedEntityName) ?? firstShowableEntity;
+    [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.name === selectedEntityName)
+    ?? firstShowableEntity;
   const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
   const entityViewGallery = useEntityGallery(entityViewEntity);
 
@@ -154,13 +157,16 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
   const handleEntityListClick = (se: SceneEntity) => {
     const match = resolveEntityByName(se.name, entities);
     if (!match) return; // un-named (ad-hoc) participant — nothing to show
+    openEntity(match, se.revealed);
+  };
 
+  const openEntity = (match: Entity, revealed: boolean) => {
     const entitiesViewActive = !characterData || modelTab === "entities";
     const alreadyShown = entitiesViewActive && match === entityViewEntity;
     if (!isMobile && showModel && hasEntityVisual(match) && !alreadyShown) {
       setSelectedEntityName(match.name);
       setModelTab("entities");
-    } else if (se.revealed) {
+    } else if (revealed) {
       onEntityClick(match.name);
     }
   };
@@ -292,6 +298,9 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
           </div>
           <ScrollArea className="flex-grow min-h-0">
             <div className="p-2">
+              {personaEntity && (
+                <EntityListRow label={`${personaEntity.name} (You)`} onClick={() => openEntity(personaEntity, true)} />
+              )}
               {visibleEntities.length > 0 ? (
                 visibleEntities.map((se, index) => {
                   const entityItem = resolveEntityByName(se.name, entities);
@@ -315,7 +324,7 @@ export const LeftPanel = ({ entities, onEntityClick, onRegenerateMemory, narrati
                     />
                   );
                 })
-              ) : (
+              ) : personaEntity ? null : (
                 <p>No entity visible.</p>
               )}
             </div>
