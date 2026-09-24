@@ -241,6 +241,21 @@ describe('LeftPanel', () => {
     expect(screen.getByText('Direwolf')).toBeInTheDocument();
     expect(screen.queryByText('Wolf')).not.toBeInTheDocument();
   });
+
+  it('lists the persona first in every scene, marked as the player, and opens it like any entity', () => {
+    const onEntityClick = vi.fn();
+    const world = [{ id: 'p1', name: 'Kira', persona: true }, { id: 'e1', name: 'Wolf' }];
+    renderLeftPanel({ entities: [world[1]] as never, onEntityClick }, {
+      world: { entities: world } as never,
+      seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'p1' }),
+    });
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: /Entities/i }));
+    expect(screen.getByText('Kira (You)')).toBeInTheDocument();
+    expect(screen.queryByText('No entity visible.')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Kira (You)'));
+    expect(onEntityClick).toHaveBeenCalledWith('Kira');
+  });
 });
 
 describe('MiddlePanel — editing a turn\'s narration', () => {

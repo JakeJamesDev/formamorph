@@ -395,6 +395,40 @@ describe('stripQuotedSpeech (presence reads prose, not dialogue)', () => {
     expect(findEntityNames(narration, entities)).toEqual(['Professor Serana', 'Wolfram']);
     expect(findEntityNames(stripQuotedSpeech(narration), entities)).toEqual(['Wolfram']);
   });
+
+  it('keeps a speaker who names themself, since whoever speaks is present', () => {
+    const narration = 'Her ears perk up. "Oh, don\'t be silly! I\'m Serana." She steps closer.';
+    expect(findEntityNames(stripQuotedSpeech(narration), [ent('Serana')])).toEqual(['Serana']);
+    for (const intro of ['My name is Serana.', "Name's Serana.", 'Call me Serana.', 'I am Serana.']) {
+      expect(findEntityNames(stripQuotedSpeech(`"${intro}" she says.`), [ent('Serana')])).toEqual(['Serana']);
+    }
+  });
+
+  it('keeps only the introduction, so the rest of the line stays speech', () => {
+    const text = '"Tell Wolfram I\'m Serana," she says.';
+    expect(stripQuotedSpeech(text)).toHaveLength(text.length);
+    expect(stripQuotedSpeech(text)).not.toContain('Wolfram');
+    expect(stripQuotedSpeech(text)).toContain("I'm Serana");
+  });
+
+  it('does not read a possessive as an introduction', () => {
+    expect(findEntityNames(stripQuotedSpeech('"I\'m Serana\'s cousin," he says.'), [ent('Serana')])).toEqual([]);
+  });
+
+  it("blanks the player's own introduction whole", () => {
+    const entities = [ent('Serana')];
+    expect(findEntityNames(stripQuotedSpeech('"I\'m Serana," you say.'), entities)).toEqual([]);
+    expect(findEntityNames(stripQuotedSpeech('You clear your throat and say, "My name is Serana."'), entities)).toEqual([]);
+    // One speaker holds a paragraph, so the player's second line is theirs too.
+    expect(findEntityNames(stripQuotedSpeech('"Thanks," you say, stepping back. "I\'m Serana."'), entities)).toEqual([]);
+    // A new paragraph is a new speaker.
+    expect(findEntityNames(stripQuotedSpeech('"Hello," you say.\n\n"I\'m Serana," she says.'), entities)).toEqual(['Serana']);
+  });
+
+  it("does not take a line that addresses or follows the player as theirs", () => {
+    expect(findEntityNames(stripQuotedSpeech('"I\'m Serana," she tells you.'), [ent('Serana')])).toEqual(['Serana']);
+    expect(findEntityNames(stripQuotedSpeech('You watch her. "I\'m Serana," she says.'), [ent('Serana')])).toEqual(['Serana']);
+  });
 });
 
 describe('stripQuotedSpeech + partial:false (the visitor-pull parse)', () => {

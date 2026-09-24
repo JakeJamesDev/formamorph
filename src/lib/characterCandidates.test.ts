@@ -165,6 +165,15 @@ describe('extractCharacterCandidates', () => {
     expect(extractCharacterCandidates(present, {})).toEqual(['Ms Winters']);
   });
 
+  it('qualifies a speaker who names themself on sight', () => {
+    expect(extractCharacterCandidates('Her ears perk up. "Oh, don\'t be silly! I\'m Lyria."', {})).toEqual(['Lyria']);
+  });
+
+  it("does not discover the player's own introduction, or an everyday word", () => {
+    expect(extractCharacterCandidates('"I\'m Lyria," you say.', {})).toEqual([]);
+    expect(extractCharacterCandidates('"I\'m Sorry," she mutters.', {})).toEqual([]);
+  });
+
   it('applies the surname rule to people only, never to places or lore', () => {
     // Measured on four real worlds: taking the last word of every exclusion barred anything ending
     // `office` (6 location names), `demi-human` (17 traits), `studio` (8 lore terms), `skill` (4 stats).
@@ -209,8 +218,8 @@ describe('evidence helpers', () => {
   });
 
   it('qualifies a titled name regardless of position count', () => {
-    expect(qualifiesAsCharacter({ name: 'Doctor Chen', mid: 0, total: 1, titled: true, person: false, inProse: true, bodied: false })).toBe(true);
-    expect(qualifiesAsCharacter({ name: 'Sarah', mid: 1, total: 9, titled: false, person: true, inProse: true, bodied: false })).toBe(false);
+    expect(qualifiesAsCharacter({ name: 'Doctor Chen', mid: 0, total: 1, titled: true, person: false, inProse: true, bodied: false, introduced: false })).toBe(true);
+    expect(qualifiesAsCharacter({ name: 'Sarah', mid: 1, total: 9, titled: false, person: true, inProse: true, bodied: false, introduced: false })).toBe(false);
   });
 });
 

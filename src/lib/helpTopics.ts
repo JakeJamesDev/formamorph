@@ -124,11 +124,11 @@ Memories under the **Recent** line are still fresh enough that the story has the
   'game.entities': {
     title: 'Entities in Play',
     wikiPage: 'Entities',
-    body: `Who the story counts as being here with you right now. The list changes as the scene does — people arrive, people leave.
+    body: `Who the story counts as being here with you right now. The list changes as the scene does — people arrive, people leave. Your persona always heads the list, marked **(You)**.
 
 Most of these are characters the world's author wrote. Some the story **invented on the spot**: ask a shopkeeper for directions and it may answer with a name nobody wrote down. Those are remembered from the moment they're named, so the story can keep them consistent and offer you things to do with them.
 
-Someone merely *talked about* isn't added — only characters the story actually shows in the scene.
+Someone merely *talked about* isn't added — only characters the story actually shows in the scene. A character who introduces themselves ("I'm Freya") counts as shown.
 
 **When something isn't a person**
 

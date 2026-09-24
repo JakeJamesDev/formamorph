@@ -12,7 +12,7 @@
  * yields no candidates, which is exactly the pre-feature behavior.
  */
 
-import { sameCharacterName } from './entityMatch';
+import { SELF_INTRO_BEFORE, isEverydayName, sameCharacterName, stripQuotedSpeech } from './entityMatch';
 
 /** Mid-sentence uses (accumulated across turns) before an untitled name counts as a character.
  *  Sentence-initial uses are ignored because every sentence opener is capitalized: measured over
@@ -129,6 +129,9 @@ export interface CandidateEvidence {
   /** This name owned a body or expression ("Lyria's hand is warm"), which qualifies it regardless of
    *  `mid` — see `qualifiesAsCharacter`. */
   bodied: boolean;
+  /** A speaker named themself with it ("I'm Freya"), which qualifies it regardless of `mid`. An everyday
+   *  word ("I'm Sorry") never counts. */
+  introduced: boolean;
 }
 
 /** Markdown headings and stand-alone bold labels are page furniture, not narration. A real turn
@@ -152,11 +155,6 @@ function splitSentences(text: string): string[] {
   return prose.replace(ABBREV_PERIOD, '$1 ').split(/(?<=[.!?])["'*_)\]”’]*\s+|\n+/);
 }
 
-/** Quoted speech removed, leaving what the narrator said in their own voice. */
-function stripQuotes(text: string): string {
-  return (text || '').replace(/[“"][^”"]{0,400}[”"]/g, ' ');
-}
-
 /**
  * Every capitalized run in `text` with its sentence-position evidence, before exclusions.
  *
@@ -164,11 +162,12 @@ function stripQuotes(text: string): string {
  * which names the narrator actually says. A name that only ever appears inside someone's dialogue is
  * being talked about, not shown — measured across 36 sessions, that split cleanly separated present
  * characters from an absent library patron ("Ms Drake hasn't arrived yet today") and a child's
- * stuffed toy ("'Mr Rabbit approves of you,' she announces").
+ * stuffed toy ("'Mr Rabbit approves of you,' she announces"). A self-introduction ("I'm Freya") counts as
+ * shown: the speaker is on the page.
  */
 export function collectCandidateEvidence(text: string): Map<string, CandidateEvidence> {
   const out = scanRuns(text || '');
-  const inProse = scanRuns(stripQuotes(text || ''));
+  const inProse = scanRuns(stripQuotedSpeech(text || ''));
   for (const [name, record] of out) record.inProse = inProse.has(name);
   return out;
 }
@@ -226,6 +225,7 @@ function scanRuns(text: string): Map<string, CandidateEvidence> {
       // body/expression list, so only a person owns one. Tracked separately from `person` because it
       // carries on its own, where the other signals need repetition.
       const bodied = /['’]s$/.test(match[0]) && POSSESSIVE_AFTER.test(after);
+      const introduced = SELF_INTRO_BEFORE.test(before) && !isEverydayName(name);
       const person =
         VERB_AFTER.test(after) || VERB_BEFORE.test(before) || PERSON_INTRO.test(before) || bodied;
       const record = out.get(name) ?? {
@@ -236,11 +236,13 @@ function scanRuns(text: string): Map<string, CandidateEvidence> {
         person: false,
         inProse: false,
         bodied: false,
+        introduced: false,
       };
       record.total += 1;
       if (!sentenceInitial) record.mid += 1;
       record.person = record.person || person;
       record.bodied = record.bodied || bodied;
+      record.introduced = record.introduced || introduced;
       out.set(name, record);
     }
   }
@@ -262,6 +264,7 @@ export function mergeCandidateEvidence(
       record.person = record.person || add.person;
       record.inProse = record.inProse || add.inProse;
       record.bodied = record.bodied || add.bodied;
+      record.introduced = record.introduced || add.introduced;
     } else {
       into.set(name, { ...add });
     }
@@ -279,14 +282,14 @@ export function mergeCandidateEvidence(
  * characters whose name happened to open every sentence it appeared in — the mid-sentence tally
  * ignores sentence-initial uses by design, so a name written only as "Lyria's hand…" / "Lyria
  * glances…" never scored. Measured across 47 real sessions this promotes two names, both genuine
- * characters, and demotes none.
+ * characters, and demotes none. A self-introduction carries too: only a person names themself.
  *
  * Repetition alone is still not enough: a name that merely recurs is as likely to be an agency, a
  * café or a weekday, so it must also have behaved like a person somewhere.
  */
 export function qualifiesAsCharacter(evidence: CandidateEvidence): boolean {
   if (!evidence.inProse) return false;
-  return evidence.titled || evidence.bodied || (evidence.mid >= MID_SENTENCE_THRESHOLD && evidence.person);
+  return evidence.titled || evidence.bodied || evidence.introduced || (evidence.mid >= MID_SENTENCE_THRESHOLD && evidence.person);
 }
 
 /**

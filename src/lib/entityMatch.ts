@@ -188,12 +188,54 @@ const QUOTED_SPEECH_RE = /["“][^"”]*(?:["”]|$)/g;
 // every consumer of the prose, so this is a positional change only.
 const blankOut = (run: string): string => run.replace(/[^\n]/g, ' ');
 
+// The words a speaker names themself with: "I'm", "My name is", "Call me".
+const SELF_INTRO_LEAD = String.raw`\b(?:I['’]m|I am|[Mm]y name(?:['’]s| is)|[Nn]ame['’]s|[Cc]all me)\s+`;
+// A self-introduction with up to three capitalized words of name: "I'm Freya", "My name is Ada Vance".
+const SELF_INTRO_RE = new RegExp(String.raw`${SELF_INTRO_LEAD}[A-Z][\w-]*(?:\s+[A-Z][\w-]*){0,2}`, 'g');
+
+/** Text that ends in a self-introduction's lead, so the name after it is the speaker's own. */
+export const SELF_INTRO_BEFORE = new RegExp(`${SELF_INTRO_LEAD}$`);
+
+// A quoted run blanked except its self-introductions. A possessive ("I'm Freya's cousin") names someone else.
+// A period replaces the character after a kept name, so the name cannot run into the prose after the quote.
+function keepSelfIntroductions(run: string): string {
+  let out = '';
+  let at = 0;
+  for (const m of run.matchAll(SELF_INTRO_RE)) {
+    const end = m.index + m[0].length;
+    if (/^['’]s\b/.test(run.slice(end))) continue;
+    const stop = end < run.length && run[end] !== '\n' ? '.' : '';
+    out += blankOut(run.slice(at, m.index)) + m[0] + stop;
+    at = end + stop.length;
+  }
+  return out + blankOut(run.slice(at));
+}
+
+// The quote at [start, end) of `paragraph` is the player's: "you" is the subject right after it
+// (`"…," you say`), or of the lead-in that ends at it (`You say, "…"`).
+function spokenByPlayer(paragraph: string, start: number, end: number): boolean {
+  return /^\s*,?\s*you\b(?!['’])/i.test(paragraph.slice(end))
+    || /(?:^|[.!?]["”]?\s+)you\b[^.!?"“”]*[,:]\s*$/i.test(paragraph.slice(0, start));
+}
+
+// One paragraph's speech blanked. One speaker holds a paragraph, so once the player speaks, the rest is theirs.
+function stripParagraphSpeech(paragraph: string): string {
+  let playerSpeaking = false;
+  return paragraph.replace(QUOTED_SPEECH_RE, (run: string, offset: number) => {
+    playerSpeaking ||= spokenByPlayer(paragraph, offset, offset + run.length);
+    return playerSpeaking ? blankOut(run) : keepSelfIntroductions(run);
+  });
+}
+
 /**
  * The narrative prose of `text` with quoted speech blanked out — what a character is *doing* on the page,
  * rather than what other characters say about them. Presence parses read this: a name that only ever
  * appears inside quotation marks was talked about, not present. Mid-stream, an unterminated opening
  * quote swallows the rest, so a partial narration errs toward "this is dialogue" and resolves on the
  * next tick.
+ *
+ * A self-introduction survives ("I'm Freya"): whoever names themself is speaking, so is present. The
+ * player's own speech is blanked whole, since the player is never a scene character.
  *
  * Offsets are preserved: speech becomes spaces rather than disappearing, so a match's `start`/`end` still
  * point into the text as the author wrote it — what lets a surface highlight the hit in the original.
@@ -203,8 +245,13 @@ export function stripQuotedSpeech(text: string): string {
   // Per paragraph: continuing speech re-opens each paragraph and closes only the last, so a span never
   // crosses a paragraph break — matching across one reads the next opener as a closer and leaks the
   // second paragraph's speech into prose.
-  return text.split(/(\n\s*\n)/).map((part, i) => (i % 2 ? part : part.replace(QUOTED_SPEECH_RE, blankOut))).join('');
+  return text.split(/(\n\s*\n)/).map((part, i) => (i % 2 ? part : stripParagraphSpeech(part))).join('');
 }
+
+/** Whether every word of `name` is an everyday English word ("Hope", "Rose Wolf"), so it cannot identify
+ *  anyone on its own. */
+export const isEverydayName = (name: string): boolean =>
+  name.trim().split(/\s+/).every((w) => COMMON_WORDS.has(w.toLowerCase()));
 
 /**
  * The defined entities that appear in `text`, each with the written form that matched and where it hit.
