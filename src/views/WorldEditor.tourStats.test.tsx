@@ -5,6 +5,7 @@ import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
 import WorldStorageService from '../services/WorldStorageService';
+import { activeDescriptor } from '@/lib/statContext';
 import type { Stat, World } from '@/types';
 
 /**
@@ -69,12 +70,18 @@ const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((
 /** The text a reader shows the prompt receiving, without its heading. */
 const readText = (el: HTMLElement) => el.querySelector('pre')!.textContent;
 
+/** The narration line a stat gets: its name, then the status its starting value falls in, and no number. */
+const narrationLine = (stat: Stat) => {
+  const band = activeDescriptor(stat, stat.value ?? stat.min);
+  return band ? `- **${stat.name}:** ${band.description}` : `- **${stat.name}**`;
+};
+
 const row = (name: string) => screen.getAllByText(name)
   .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
   .find(Boolean)!;
 
-/** The tour stat: the one stat the tour's world holds. */
-const tourStat = (ctx: () => { stats: Stat[] }) => ctx().stats[0];
+/** The one stat the tour's world holds, which is the tour stat. */
+const onlyStat = (ctx: () => { stats: Stat[] }) => ctx().stats[0];
 
 /**
  * Reopens the world as an author who took every step before `stepId` left it: each earlier Add and Use
@@ -124,7 +131,7 @@ describe('Authoring Tour — Stats steps', () => {
     await next();
 
     expect(storeWorld).toHaveBeenCalledTimes(3);
-    expect(tourStat(ctx)).toMatchObject({
+    expect(onlyStat(ctx)).toMatchObject({
       name: 'Sea Change', min: 0, max: 100, value: 0, description: SEA_CHANGE_DESCRIPTION,
     });
     expect(storeWorld.mock.calls.at(-1)![0]).toMatchObject({
@@ -146,7 +153,7 @@ describe('Authoring Tour — Stats steps', () => {
   it('completes the Name step on any name, and keeps the range unless the author changes it', async () => {
     const { ctx } = await resumeAt('add-stat');
     await addTourStat();
-    const added = tourStat(ctx);
+    const added = onlyStat(ctx);
     // The Add button's name already counts.
     expect(noteButton('Next')).toBeEnabled();
 
@@ -154,10 +161,10 @@ describe('Authoring Tour — Stats steps', () => {
     await waitFor(() => expect(noteButton('Next')).toBeDisabled());
     ctx().updateStat({ ...added, name: 'Grit' });
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
-    expect(tourStat(ctx)).toMatchObject({ min: 0, max: 100, value: 0 });
+    expect(onlyStat(ctx)).toMatchObject({ min: 0, max: 100, value: 0 });
 
     await next();
-    expect(tourStat(ctx)).toMatchObject({ name: 'Grit', min: 0, max: 100, value: 0 });
+    expect(onlyStat(ctx)).toMatchObject({ name: 'Grit', min: 0, max: 100, value: 0 });
   });
 
   it('completes the Description step on any text', async () => {
@@ -166,7 +173,7 @@ describe('Authoring Tour — Stats steps', () => {
     await next();
     expect(noteButton('Next')).toBeDisabled();
 
-    ctx().updateStat({ ...tourStat(ctx), description: 'Nerve.' });
+    ctx().updateStat({ ...onlyStat(ctx), description: 'Nerve.' });
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 
@@ -184,7 +191,7 @@ describe('Authoring Tour — Stats steps', () => {
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
     fireEvent.click(noteButton('Use Example')!);
-    await waitFor(() => expect(tourStat(ctx).name).toBe('Sea Change'));
+    await waitFor(() => expect(onlyStat(ctx).name).toBe('Sea Change'));
   });
 
   it('resumes the Description step with the tour stat selected', async () => {
@@ -198,7 +205,7 @@ describe('Authoring Tour — Stats steps', () => {
     fireEvent.click(addButton());
     await waitFor(() => expect(ctx().stats).toHaveLength(1));
     const thresholds = (stat: Stat) => (stat.descriptors ?? []).map((d) => [d.threshold, d.description]);
-    expect(thresholds(replayed)).toEqual(thresholds(tourStat(ctx)));
+    expect(thresholds(replayed)).toEqual(thresholds(onlyStat(ctx)));
   });
 });
 
@@ -211,7 +218,7 @@ describe('In Play — Stats', () => {
   });
 
   it('Name: shows the stat row, and both prompts read the name, each in its own shape', async () => {
-    await resumeAt('add-stat');
+    const { ctx } = await resumeAt('add-stat');
     await addTourStat();
     fireEvent.click(noteButton('Use Example')!);
 
@@ -223,13 +230,13 @@ describe('In Play — Stats', () => {
     expect(marks(narration)).toEqual(['Sea Change']);
     expect(marks(updates)).toEqual(['Sea Change']);
     expect(readText(updates)).toBe('- **Sea Change:** 0/100');
-    // Narration reads what the stat's Add gave it, and never the number.
-    expect(readText(narration)).toMatch(/^- \*\*Sea Change/);
-    expect(readText(narration)).not.toContain('0/100');
+    // Narration reads the status the Add button's descriptors give the stat, and never the number.
+    expect(readText(narration)).toBe(narrationLine(onlyStat(ctx)));
+    expect(readText(narration)).not.toMatch(/\d/);
   });
 
   it('Description: players never see it, Stat Updates marks it, and narration never reads it', async () => {
-    await resumeAt('add-stat');
+    const { ctx } = await resumeAt('add-stat');
     await addTourStat();
     fireEvent.click(noteButton('Use Example')!);
     await next();
@@ -241,8 +248,8 @@ describe('In Play — Stats', () => {
     expect(readText(updates)).toBe(`- **Sea Change:** 0/100 — ${SEA_CHANGE_DESCRIPTION}`);
 
     const narration = reader('Narration Prompt')!;
-    expect(readText(narration)).toMatch(/^- \*\*Sea Change/);
-    expect(readText(narration)).not.toContain('0/100');
+    expect(readText(narration)).toBe(narrationLine(onlyStat(ctx)));
+    expect(readText(narration)).not.toMatch(/\d/);
     expect(readText(narration)).not.toContain(SEA_CHANGE_DESCRIPTION);
     expect(marks(narration)).toEqual([]);
   });
