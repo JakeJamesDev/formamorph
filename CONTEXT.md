@@ -164,6 +164,14 @@ _Avoid_: user text, prompt segment
 A stretch of a message the app assembled rather than the player writing — injected world data, condensed memories, a recalled scene, an earlier turn, the typed action. Muted beneath the Authored Runs, each explained in the player's own words.
 _Avoid_: filler, scaffolding
 
+**Chip Scene**:
+The plain-value snapshot of one moment that chip values are built from: the world overview, the stats and traits in force, the persona, the location with its neighbors and connections, the roster with who is present and who is in scene, the lore entries, the notes, the time, and the placeholder resolution. Play supplies a live one, the editor an authored one, the Settings preview a sample one.
+_Avoid_: context, view, snapshot (unqualified)
+
+**Chip Values**:
+The module that turns a Chip Scene into a value for every chip token the registry defines, walking the registry's axes so no token can be missed. Per-turn tokens (Player Action, Narration, Character Name, Subject, activated lore) are not scene-derived and come from the pass records or the sample turn instead.
+_Avoid_: context values, value map
+
 ### Placeholders
 
 **Placeholder**:
