@@ -59,13 +59,20 @@ describe('a downloaded world that placed in a contest', () => {
   });
 
   it.each([
-    [1, 'text-gold'],
-    [2, 'text-silver'],
-    [3, 'text-bronze'],
+    [1, '[--place:var(--gold)]'],
+    [2, '[--place:var(--silver)]'],
+    [3, '[--place:var(--bronze)]'],
   ] as const)('colors place %i with its own metal', (place, token) => {
     view(localWorld({ sourceId: 'srv-salt' }), [decided(place)]);
 
     expect(badge('Winter World-Building Contest')).toHaveClass(token);
+  });
+
+  it.each(['grid', 'detailed'] as const)('keeps the %s badge still, since the world is already downloaded', (layout) => {
+    view(localWorld({ sourceId: 'srv-salt' }), [decided(1)], layout);
+
+    expect(badge('Winter World-Building Contest')).toHaveClass('place-chip');
+    expect(badge('Winter World-Building Contest')).not.toHaveClass('place-chip-shine');
   });
 
   it('wears the same badge in the detailed layout, so a layout choice hides nothing', () => {

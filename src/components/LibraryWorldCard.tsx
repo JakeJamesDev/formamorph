@@ -34,11 +34,11 @@ export function LibraryWorldCard({ world, contests, layout, onSelect, fill, comp
       fill={fill}
       compact={compact}
       loading={loading}
-      // The grid tile is all thumbnail, so the badge rides a plate over it; the detailed card has a body
-      // to put the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
+      // The grid tile is all thumbnail, so the badge rides over it; the detailed card has a body to put
+      // the same line in. Only the overlay is guarded — that slot wraps whatever it is given in a
       // positioned box, and a box around nothing is still a box.
       badge={placements.length > 0
-        ? <PlaceBadges placements={placements} className="rounded bg-overlay/70 px-1.5 py-0.5" />
+        ? <PlaceBadges placements={placements} />
         : undefined}
       note={<PlaceBadges placements={placements} className="mb-2" />}
       onSelect={onSelect}

@@ -363,7 +363,7 @@ export function RemoteWorldDetailsModal({
             </Tip>
           </div>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
-          {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" />}
+          {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine />}
         </DialogHeader>
 
         {world && (
