@@ -1,5 +1,6 @@
 import { useId, useMemo, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { StatRow } from '@/components/game/StatRow';
 import { SetupTraitList } from '@/components/game/SetupTraitList';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
-  type SetupTraitCategory, type StartsAt, usesTestLine,
+  type SetupTraitCategory, type StartsAt, type TourPromptTemplates, usesTestLine,
 } from '@/lib/authoringTour/inPlay';
 import type { PlayerStat, Trait } from '@/types';
 import { useTourRecord } from '@/lib/authoringTour/progress';
@@ -223,13 +224,19 @@ export function TourInPlay({ worldId, step, testLineEdit, onTestLineEdit }: {
   onTestLineEdit: (value: string) => void;
 }) {
   const { getWorldData } = useGameData();
+  const { systemPrompt, locationChangePromptText, statUpdatesPrompt } = useSettings();
   const items = useTourRecord(worldId)?.items;
   // `getWorldData` is memoized on the world arrays, so its identity changes with each edit.
   const world = useMemo(() => getWorldData(), [getWorldData]);
+  const templates = useMemo((): TourPromptTemplates => ({
+    'Narration Prompt': systemPrompt,
+    'Location Change Prompt': locationChangePromptText,
+    'Stat Updates Prompt': statUpdatesPrompt,
+  }), [systemPrompt, locationChangePromptText, statUpdatesPrompt]);
   const testLine = usesTestLine(step.inPlay) ? testLineEdit ?? sampleTestLine(world, items ?? {}) : null;
   const slice = useMemo(
-    () => computeInPlay(step.inPlay, world, worldId, items ?? {}, testLine ?? ''),
-    [step, world, worldId, items, testLine],
+    () => computeInPlay(step.inPlay, world, worldId, items ?? {}, templates, testLine ?? ''),
+    [step, world, worldId, items, templates, testLine],
   );
   return (
     <InPlayPane slice={slice} testLine={testLine === null ? undefined : { value: testLine, onChange: onTestLineEdit }} />

@@ -20,8 +20,8 @@ import {
 } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
-import { templateChipKeys } from '@/lib/promptTemplate';
-import { variableForToken } from '@/lib/promptVariables';
+import { placedChip } from '@/lib/promptTemplate';
+import { splitToken, variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
 import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
@@ -140,9 +140,22 @@ function blockValue(id: ContextBlockId, values: Record<string, string>): string 
   return served.length ? served.join('\n') : NONE_PLACEHOLDER;
 }
 
+/** The Stats chip `template` places, with its affixes and Header kept. */
+export function statsChipPlacedIn(template: string): string | undefined {
+  return placedChip(template, (key) => variableForToken(key)?.token === STATS_TOKEN);
+}
+
 /** The Stats chip `template` places, as its affix-free token. */
 export function statsChipIn(template: string): string | undefined {
-  return [...templateChipKeys(template)].find((key) => variableForToken(key)?.token === STATS_TOKEN);
+  const chip = statsChipPlacedIn(template);
+  return chip === undefined ? undefined : splitToken(chip)?.key ?? chip;
+}
+
+/** The chip `template` places for block `id`, with its affixes and Header kept. `position` picks the Dictionary part. */
+export function blockChipPlacedIn(template: string, id: ContextBlockId, position: 'before' | 'after' = 'after'): string | undefined {
+  const { token, parts } = BLOCK_TOKENS[id];
+  const want = splitToken(parts ? parts[position === 'before' ? 0 : 1] : token)?.key;
+  return placedChip(template, (key) => key === want);
 }
 
 /** The lens's stats in the shape `token` asks for, before the lens resolves any chips. An unregistered token

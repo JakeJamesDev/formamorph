@@ -244,12 +244,12 @@ describe('In Play — Traits', () => {
     await resumeAt('trait-ai-description');
     expect(within(playerSees()!).getByText('Players never see this field')).toBeInTheDocument();
     // The picked trait is in the block by name before it has a description.
-    expect(readText(reader('Narration Prompt')!)).toBe('- **Tide-Touched**');
+    expect(readText(reader('Narration Prompt')!)).toBe('## Traits\n- **Tide-Touched**');
 
     fireEvent.click(noteButton('Use Example')!);
     const narration = reader('Narration Prompt')!;
     await waitFor(() => expect(marks(narration)).toEqual([TIDE_TOUCHED_AI]));
-    expect(readText(narration)).toBe(`- **Tide-Touched:** ${TIDE_TOUCHED_AI}`);
+    expect(readText(narration)).toBe(`## Traits\n- **Tide-Touched:** ${TIDE_TOUCHED_AI}`);
   });
 
   it('Stat Change: shows the change on the setup screen and the stat starting at the settled value', async () => {
@@ -262,7 +262,7 @@ describe('In Play — Traits', () => {
     expect(within(sees).getByRole('listitem')).toHaveTextContent('Sea Change: +15');
     // The traits block never lists stat changes, so nothing in it is marked.
     const narration = reader('Narration Prompt')!;
-    expect(readText(narration)).toBe(`- **Tide-Touched:** ${TIDE_TOUCHED_AI}`);
+    expect(readText(narration)).toBe(`## Traits\n- **Tide-Touched:** ${TIDE_TOUCHED_AI}`);
     expect(marks(narration)).toEqual([]);
   });
 
