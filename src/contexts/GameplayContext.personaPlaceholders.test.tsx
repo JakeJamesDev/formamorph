@@ -8,7 +8,7 @@ import { PlaceholderSessionProvider, usePlaceholderSession } from './Placeholder
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
 import { PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
-import { personaContextValues } from '@/lib/personaContext';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import { encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import EntityStorageService from '@/services/EntityStorageService';
 import { worldFixture } from '@/test/gamePanels';
@@ -81,12 +81,13 @@ const start = async (persona: Entity) => {
   return live;
 };
 
-/** The default narration prompt as a turn sends it: the persona chip's values, resolved like every value. */
-const narrationPrompt = (live: () => Live): string => {
-  const values = personaContextValues(live().world.persona);
-  for (const k in values) values[k] = live().world.resolvePH(values[k]);
-  return renderPromptTemplate(PROMPT_TEXT_DEFAULTS.systemPrompt, values);
-};
+/** The default narration prompt as a turn sends it: the chip values of a scene holding the live persona
+ *  and resolution, and nothing else. */
+const narrationPrompt = (live: () => Live): string => renderPromptTemplate(PROMPT_TEXT_DEFAULTS.systemPrompt, chipValues({
+  overview: '', stats: [], traits: [], traitGroups: [], location: null, locations: [], connections: [], entities: [],
+  presentIds: [], inSceneIds: [], lore: [], notes: '', time: null,
+  persona: live().world.persona, resolve: live().world.resolvePH,
+}));
 
 /** The eye color the prompt names, or null when the chip did not resolve to one. */
 const eyesIn = (prompt: string) => prompt.match(/Wren has (hue-\d+) eyes\./)?.[1] ?? null;

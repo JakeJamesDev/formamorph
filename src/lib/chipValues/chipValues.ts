@@ -5,7 +5,7 @@ import {
   buildReachableLocationsContext, buildSublocationEntitiesContext, buildSublocationsContext, chipFormat,
   expandScopedTokens, renderEntityRoster, sublocationEntityIds, type ContextOpts,
 } from '../locationContext';
-import { buildPersonaContext } from '../personaContext';
+import { personaContextValues } from '../personaContext';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import {
   decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant, type PromptVariable,
@@ -21,6 +21,7 @@ const TRAITS = variableForToken('<TRAITS DESCRIPTION>')!;
 const NOTES = variableForToken('<NOTES>')!;
 const TIME = variableForToken('<TIME>')!;
 const DICTIONARY = variableForToken('<DICTIONARY>')!;
+const ENTITIES = variableForToken('<ENTITIES>')!;
 
 /** Every concrete token one chip produces: its base form and each variant the registry defines. */
 const familyTokens = (variable: PromptVariable): string[] =>
@@ -56,22 +57,13 @@ export function statChipValues(stats: PlayerStat[]): Record<string, string> {
  * resolved in every value.
  */
 export function chipValues(scene: ChipScene): Record<string, string> {
-  const { location, locations, connections, entities, presentIds } = scene;
+  const { location, locations, connections } = scene;
   const locationScopes: Record<string, (opts: ContextOpts) => string> = {
     '': (opts) => buildLocationContext(location, opts),
     sublocations: (opts) => buildSublocationsContext(location, locations, opts),
     parent: (opts) => buildParentLocationContext(location, locations, opts),
     reachable: (opts) => buildReachableLocationsContext(location, locations, opts),
     destinations: (opts) => buildDestinationsContext(location, locations, connections, opts),
-  };
-  // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
-  // belongs to, so the lower scopes drop the ids the higher ones list.
-  const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, entities)];
-  const entityScopes: Record<string, (opts: ContextOpts) => string> = {
-    '': (opts) => renderEntityRoster(presentIds, entities, opts),
-    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, entities, { ...opts, excludeIds: presentIds }),
-    reachable: (opts) => buildReachableEntitiesContext(location, locations, entities, { ...opts, excludeIds: reachableExclude }),
-    inscene: (opts) => renderEntityRoster(scene.inSceneIds, entities, opts),
   };
 
   const traitIds = scene.traits.map((trait) => trait.id);
@@ -83,7 +75,7 @@ export function chipValues(scene: ChipScene): Record<string, string> {
         ? buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format))
         : NONE_PLACEHOLDER
     )),
-    ...expandScopedTokens('<PERSONA>', { '': (opts) => buildPersonaContext(scene.persona, opts) }),
+    ...personaContextValues(scene.persona),
     ...familyValues(DICTIONARY, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';
       const entries = scene.lore.filter((entry) => (entry.position ?? 'after') === position);
@@ -93,9 +85,42 @@ export function chipValues(scene: ChipScene): Record<string, string> {
     // Off or unknown reads as the uniform placeholder, so an affixed placement simply vanishes.
     [TIME.token]: scene.time ? formatAbsolute(scene.time.elapsed, scene.time.calendar) : NONE_PLACEHOLDER,
     ...expandScopedTokens('<LOCATION>', locationScopes),
-    ...expandScopedTokens('<ENTITIES>', entityScopes),
+    ...expandScopedTokens(ENTITIES.token, entityScopes(scene)),
   };
+  return resolveAll(values, scene.resolve);
+}
 
-  for (const token in values) values[token] = scene.resolve(values[token]);
+/** Every value with its placeholder chips resolved. */
+function resolveAll(values: Record<string, string>, resolve: (text: string) => string): Record<string, string> {
+  for (const token in values) values[token] = resolve(values[token]);
   return values;
+}
+
+/** The Entities chip's scope builders over one scene. */
+function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => string> {
+  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [] } = scene;
+  const outer = scene.outerScopeEntities ?? entities;
+  // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
+  // belongs to, so the lower scopes drop the ids the higher ones list.
+  const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
+  return {
+    '': (opts) => renderEntityRoster(presentIds, entities, opts),
+    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...opts, excludeIds: presentIds }),
+    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...opts, excludeIds: reachableExclude }),
+    inscene: (opts) => {
+      const block = renderEntityRoster(inSceneIds, entities, opts);
+      if (!opts.nameOnly || !inSceneNames.length) return block;
+      return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
+    },
+  };
+}
+
+/**
+ * The scene-roster override for the Choices and re-roll prompts: every unscoped Entities token, built from
+ * who is in the scene in place of the location's roster. The same builder and expander as `chipValues`,
+ * so the override cannot enumerate a set the base values do not.
+ */
+export function sceneEntityChipValues(scene: ChipScene, sceneIds: string[]): Record<string, string> {
+  const { '': here } = entityScopes({ ...scene, presentIds: sceneIds });
+  return resolveAll(expandScopedTokens(ENTITIES.token, { '': here }), scene.resolve);
 }

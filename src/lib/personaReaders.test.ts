@@ -30,6 +30,7 @@ describe('entity readers in play', () => {
 
   const viewer = read('src/views/GameViewer.tsx');
   const panels = read('src/components/game/GamePanels.tsx');
+  const liveScene = read('src/lib/chipValues/liveScene.ts');
 
   it('builds the game view cast from the resolved world, plus the discovered characters', () => {
     expect(destructuredFrom(viewer, 'useResolvedWorld')).toEqual(['entities']);
@@ -38,9 +39,11 @@ describe('entity readers in play', () => {
 
   // One row per reader the spec names. Each pattern pins the list the reader is handed to a cast name.
   const readers: Array<{ reader: string; source: string; pattern: RegExp }> = [
-    { reader: 'roster chip', source: viewer, pattern: /buildEntityContext\(loc, allEntities,/ },
-    { reader: 'roster chip, sublocations', source: viewer, pattern: /buildSublocationEntitiesContext\(loc, locations, entities,/ },
-    { reader: 'roster chip, reachable', source: viewer, pattern: /buildReachableEntitiesContext\(loc, locations, entities,/ },
+    // The roster chips read the live Chip Scene: Here and In Scene from the full cast, the outer scopes from
+    // the authored cast. liveScene.test.ts proves the rendering; this pins which list the scene is handed.
+    { reader: 'roster chip', source: liveScene, pattern: /entities: allEntities,/ },
+    { reader: 'roster chip, sublocations and reachable', source: liveScene, pattern: /outerScopeEntities: sources\.entities,/ },
+    { reader: 'roster chip, live view hands the adapter both casts', source: viewer, pattern: /entities,\s*allEntities,\s*participants,/ },
     { reader: 'prose parse for participation', source: viewer, pattern: /readNarration\(\{[^}]*entities: allEntities,/ },
     { reader: 'participation fan-out', source: viewer, pattern: /splitParticipants\(turnParticipants, allEntities,/ },
     { reader: 'diaries', source: viewer, pattern: /const entity = allEntities\.find\(\(e\) => e\.name\.trim\(\)/ },

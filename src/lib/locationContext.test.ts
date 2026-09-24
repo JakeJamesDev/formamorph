@@ -3,10 +3,9 @@ import {
   buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext,
   buildReachableLocationsContext, buildReachableEntitiesContext,
   navigableDestinations, buildDestinationsContext, sublocationEntityIds, reachableEntityIds, renderEntityRoster,
-  buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, sceneEntityTokens,
+  buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere,
 } from "./locationContext";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
-import { variableForToken, variableVariantIds, decodeVariant, withVariant } from "./promptVariables";
 import type { Connection, Entity, GameLocation } from "@/types";
 
 const guard: Entity = {
@@ -585,27 +584,5 @@ describe('scenePresentHere (phantom-presence filter for the now-line)', () => {
 
   it('with an empty location roster, only unresolvable names survive', () => {
     expect(scenePresentHere(['Dean Wolfram', 'the ferryman'], cast, [])).toEqual(['the ferryman']);
-  });
-});
-
-describe("sceneEntityTokens", () => {
-  const merchant: Entity = { id: "e2", name: "Merchant", aiDescription: "A merchant with a cart.", locations: ["loc1"] };
-
-  it("covers every unscoped Entities token the registry defines, so no chip can slip the scene filter", () => {
-    const entitiesChip = variableForToken("<ENTITIES>")!;
-    // The registry is the source of truth: the base token plus every variant whose scope axis is "here".
-    const expected = [
-      "<ENTITIES>",
-      ...variableVariantIds(entitiesChip)
-        .filter((id) => decodeVariant(entitiesChip, id).scope == null)
-        .map((id) => withVariant("<ENTITIES>", id)),
-    ].sort();
-    expect(Object.keys(sceneEntityTokens(location, [guard], (t) => t)).sort()).toEqual(expected);
-  });
-
-  it("lists only the scene cast under the Name content, resolved", () => {
-    const tokens = sceneEntityTokens(location, [guard, merchant], (t) => t.replace("Merchant", "Peddler"));
-    expect(tokens["<ENTITIES|name>"]).toBe("Guard, Peddler");
-    expect(tokens["<ENTITIES|name.markdown>"]).toBe("Guard, Peddler");
   });
 });
