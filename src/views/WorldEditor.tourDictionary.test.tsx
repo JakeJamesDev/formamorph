@@ -108,7 +108,7 @@ afterEach(() => {
 });
 
 describe('Authoring Tour — Dictionary steps', () => {
-  it('runs the three steps after Traits in order, saving each one', async () => {
+  it('runs the three steps after the other tabs, in order, saving each one', async () => {
     const { ctx } = await openAt('add-dictionary-entry');
     const at = indexOf('add-dictionary-entry');
     expect(TOUR_STEPS.slice(at, at + 3).map((s) => s.id))
@@ -194,6 +194,11 @@ describe('Authoring Tour — Dictionary steps', () => {
     typeTestLine('The Bell rings.');
     await waitFor(() => expect(marks(narration())).toEqual([BELL_VALUE]));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Case-Sensitive' }));
+    await waitFor(() => expect(within(narration())
+      .getByText('“bell” appears only as “Bell”, and case-sensitive matching is on.')).toBeInTheDocument());
+    expect(marks(narration())).toEqual([]);
+
+    typeTestLine('The Weather turns.');
     await waitFor(() => expect(within(narration())
       .getByText('The AI reads this entry only when the test line has a keyword')).toBeInTheDocument());
   });
