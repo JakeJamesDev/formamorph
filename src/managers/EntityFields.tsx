@@ -202,6 +202,7 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
 export const EntityImageWidget = ({ value, onChange, placeholders = [], ownerId, children }: EntityFieldGroupProps & { children: ReactNode }) => (
   <ImageWidget
     label="Image"
+    tourAnchor="entity-image"
     images={entityImages(value)}
     onImagesChange={(list) => onChange('images', list)}
     slots={Infinity}

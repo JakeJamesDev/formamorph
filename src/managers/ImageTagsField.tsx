@@ -35,6 +35,8 @@ import { Tip } from '@/components/ui/tooltip';
 interface ImageWidgetProps {
   /** Field label above the upload — "Background Image" for locations, "Image" for entities. */
   label: string;
+  /** The Authoring Tour's `data-tour-anchor` for the widget, when a step points at it. */
+  tourAnchor?: string;
   /** The pictures this subject carries, in order; slot 0 is the primary. */
   images: string[];
   onImagesChange: (next: string[]) => void;
@@ -181,7 +183,7 @@ const AddTile = ({ htmlFor, selected, onSelect, onUrl, onFiles }: {
  */
 export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   const {
-    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, tags, onTagsChange,
+    label, images, onImagesChange, slots = 1, imageId, cap, description, kind, tags, onTagsChange, tourAnchor,
   } = useImageWidget();
   // SD prompt pulled from an uploaded image, pending the user's OK to use it as Image Tags.
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
@@ -311,7 +313,7 @@ export const ImageGallery = ({ tagsSlot }: { tagsSlot?: ReactNode }) => {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-tour-anchor={tourAnchor}>
       {batchDialog}
       <Label>{label}</Label>
       {/* Every slot is rendered and only the shown one is visible, rather than mounting the selected slot

@@ -13,6 +13,10 @@ import type { World } from '@/types';
  * they record, each field step with its In Play slice, and the recovery after a tour location is deleted.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),
@@ -99,7 +103,11 @@ const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
     if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
     const example = await waitFor(() => noteButton('Use Example') ?? noteButton('Next')!);
-    if (example.textContent === 'Use Example') fireEvent.click(example);
+    if (example.textContent === 'Use Example') {
+      fireEvent.click(example);
+      // A picture example loads its file first.
+      await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    }
     await next();
   }
 };
@@ -120,9 +128,9 @@ describe('Authoring Tour — Locations steps', () => {
     const saved = storeWorld.mock.calls.length;
 
     await walkTo(TOUR_STEPS[indexOf('location-connection') + 1].id);
-    expect(storeWorld.mock.calls.length - saved).toBe(8);
+    expect(storeWorld.mock.calls.length - saved).toBe(9);
     expect(TOUR_STEPS.slice(indexOf('add-location'), indexOf('location-connection') + 1).map((s) => s.id)).toEqual([
-      'add-location', 'location-name', 'location-player-description', 'location-ai-description',
+      'add-location', 'location-name', 'location-player-description', 'location-ai-description', 'location-image',
       'location-starting', 'add-second-location', 'second-location-name', 'location-connection',
     ]);
 
@@ -313,6 +321,21 @@ describe('Authoring Tour — completion', () => {
 });
 
 describe('In Play — Locations', () => {
+  it('Background Image: opens the Media tab, and the picture sits behind the Location tab', async () => {
+    const { ctx } = await openTour();
+    await walkTo('location-image');
+    expect(screen.getByRole('tab', { name: 'Media' })).toHaveAttribute('aria-selected', 'true');
+    expect(noteButton('Next')).toBeDisabled();
+    expect(within(playerSees()).queryByTestId('location-backdrop-image')).toBeNull();
+
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    expect(ctx().locations.at(-1)?.backgroundImage).toBe('data:image/webp;base64,tidewell');
+    expect(within(playerSees()).getByTestId('location-backdrop-image'))
+      .toHaveStyle({ backgroundImage: 'url(data:image/webp;base64,tidewell)' });
+    expect(within(inPlay()).getByText('The AI never reads this field')).toBeInTheDocument();
+  });
+
   it('Name: shows the Location tab and the location block with the name marked', async () => {
     await openTour();
     await walkTo('location-name');

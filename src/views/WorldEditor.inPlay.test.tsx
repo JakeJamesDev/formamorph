@@ -10,6 +10,10 @@ import type { World } from '@/types';
  * prompt reads for the current step, updated as the author types, and the dock it borrows from the Bench.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),
@@ -115,6 +119,24 @@ describe('In Play — AI-Facing Description', () => {
     // The chip reads as its label in the world block, so the field's own text is nowhere in it.
     expect(narration().textContent).toContain('Greet Player Name at the gate.');
     expect(marks(narration())).toEqual([]);
+  });
+});
+
+describe('In Play — Thumbnail', () => {
+  it('puts the picture on the library card once Use Example loads it', async () => {
+    await startTour(worldWith(''));
+    await nextStep();
+    const description = screen.getByRole('dialog', { name: 'AI-Facing Description' });
+    fireEvent.click(within(description).getByRole('button', { name: 'Use Example' }));
+    fireEvent.click(within(description).getByRole('button', { name: 'Next' }));
+    const note = await screen.findByRole('dialog', { name: 'Thumbnail' });
+    expect(within(note).getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(within(playerSees()).queryByRole('img')).toBeNull();
+
+    fireEvent.click(within(note).getByRole('button', { name: 'Use Example' }));
+    await waitFor(() => expect(within(note).getByRole('button', { name: 'Next' })).toBeEnabled());
+    expect(within(playerSees()).getByRole('img')).toHaveAttribute('src', 'data:image/webp;base64,brinewell');
+    expect(within(narration()).getByText('The AI never reads this field')).toBeInTheDocument();
   });
 });
 
