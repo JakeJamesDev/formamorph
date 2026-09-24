@@ -1,7 +1,7 @@
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { experimentalNarrationUserPrompt, experimentalSystemPrompt } from './narration-experimental-snapshot';
-import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
-import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { scannedEntries } from '@/lib/testBench/triggers';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -295,15 +295,11 @@ export function prepareNarrationToolCallCase(input: {
   const activeTraitIds = input.world.traits.filter((trait) => trait.isDefault).map((trait) => trait.id);
   if (!activeTraitIds.includes('trait-wren')) throw new Error('Sedge Landing fixture is missing default Wren.');
 
-  const ctx = {
-    ...authoredPreviewValues(input.world, {
-      location,
-      activeTraitIds,
-      resolve: (text: string) => text,
-    }),
-    '<NOTES>': NONE_PLACEHOLDER,
-    '<TIME>': NONE_PLACEHOLDER,
-  };
+  const ctx = chipValues(authoredChipScene(input.world, {
+    location,
+    activeTraitIds,
+    resolve: (text: string) => text,
+  }));
   let system = buildNarrationPrompt({
     template: probeSystemTemplate(input.promptMode === 'experimental', input.experiment?.preparationGoal, input.experiment?.requiredLore, input.experiment?.decisionNotes, input.experiment?.roleOnly),
     ctx,

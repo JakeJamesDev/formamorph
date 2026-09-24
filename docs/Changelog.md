@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **A Markdown definition probe compares syntax definitions, usage guidance, and no formatting section in the Experimental preset.** It narrates calm, dialogue, and pivot scenes in Sedge Landing at paired seeds. It counts each defined syntax per reply, prints every colored highlight with its key, and counts block syntax, unknown color keys, and unbalanced highlight markers as false positives.
+  - **Chip Values is one module that turns a Chip Scene into a value for every scene-derived chip.** A Chip Scene is a plain value for one moment: the overview, stats, traits, persona, location, roster, lore, notes, time and placeholder resolution. The module walks the registry's axes for World, Stats, Traits, Persona, Location, Entities, Notes, Time and the lore blocks, and a drift guard fails when a registry token has no value. The scoped-token expander reads its content and format options from the registry too. An authored adapter builds the scene from the world being edited, and the World Editor's Preview tab and the Opening instrument read it in place of the editor's own preview builder. One visible change: a world with no default traits previews the Traits chip as N/A instead of blank, as play renders it.
 
 #### 🔧 Fixed
 

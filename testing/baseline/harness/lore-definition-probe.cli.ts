@@ -15,8 +15,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
-import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
-import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import { parsePromptTemplate, serializeSegments } from '@/lib/promptTemplate';
 import { baseToken, joinToken, splitToken } from '@/lib/promptVariables';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -82,15 +82,11 @@ const CHECKS: Record<string, { test: (text: string) => boolean; want: boolean }>
 
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
 if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
-const ctx = {
-  ...authoredPreviewValues(world, {
+const ctx = chipValues(authoredChipScene(world, {
     location,
     activeTraitIds: world.traits.filter((trait) => trait.isDefault).map((trait) => trait.id),
     resolve: (text: string) => text,
-  }),
-  '<NOTES>': NONE_PLACEHOLDER,
-  '<TIME>': NONE_PLACEHOLDER,
-};
+  }));
 const dictionary = [...(world.dictionaries ?? []).flatMap((book) => book.entries ?? []), ...fixture.entries];
 
 function systemPrompt(template: string, action: string): string {
