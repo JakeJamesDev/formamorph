@@ -29,14 +29,6 @@ const SETTINGS = {
 const LANGUAGE = '<LANGUAGE>';
 
 describe('the pool as a whole', () => {
-  it('covers every token the vocabulary can render', () => {
-    // The guard that matters: a token added to the registry later must not reach a preview with no value
-    // and render as a raw `<TOKEN>` to someone writing a prompt.
-    const pool = composePreviewValues(SETTINGS);
-    const missing = everyToken.filter((t) => pool[t] === undefined);
-    expect(missing).toEqual([]);
-  });
-
   it('gives every token non-empty content', () => {
     const pool = composePreviewValues(SETTINGS);
     const blank = everyToken.filter((t) => !pool[t]?.trim());
