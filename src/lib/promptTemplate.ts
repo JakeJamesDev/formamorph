@@ -1,4 +1,4 @@
-import { TOKEN_PATTERN, splitToken } from './promptVariables';
+import { TOKEN_PATTERN, splitToken, type TokenParts } from './promptVariables';
 import { NONE_PLACEHOLDER } from './promptFallbacks';
 import { promptHeader } from './promptHeader';
 import { decodePlaceholderToken, parsePlaceholderText } from './placeholders';
@@ -41,6 +41,14 @@ export function templateChipKeys(template: string): Set<string> {
       s.type === 'variable' ? [splitToken(s.token)?.key ?? s.token] : [],
     ),
   );
+}
+
+/** The first chip in `template` whose key `matches`, with its affixes and Header kept. */
+export function placedChip(template: string, matches: (key: string) => boolean): string | undefined {
+  for (const seg of parsePromptTemplate(template)) {
+    if (seg.type === 'variable' && matches(splitToken(seg.token)?.key ?? seg.token)) return seg.token;
+  }
+  return undefined;
 }
 
 /** Inverse of `parsePromptTemplate`: re-joins segments into the stored token-string. Round-trips
@@ -122,6 +130,11 @@ export function promptTemplatePieces(
   });
 }
 
+/** The style a chip's Header renders in: its `format=` option, else a `markdown` or `xml` axis of its variant, else labels. */
+export function chipHeaderFormat(parts: TokenParts): 'markdown' | 'xml' | undefined {
+  return parts.headerFormat ?? parts.variantId?.split('.').find((id): id is 'markdown' | 'xml' => id === 'markdown' || id === 'xml');
+}
+
 /**
  * What one token renders to, or `undefined` when it has no value in the map (callers keep the raw token).
  * An empty string is a real result — an affixed placement whose value is absent renders as nothing — so
@@ -136,7 +149,7 @@ export function resolveToken(token: string, values: Record<string, string>): str
   if (!parts) return undefined;
   const value = values[parts.key];
   if (value === undefined) return undefined;
-  const header = promptHeader(parts.header, parts.headerFormat ?? parts.variantId?.split('.').find(id => id === 'markdown' || id === 'xml'));
+  const header = promptHeader(parts.header, chipHeaderFormat(parts));
   // The value's own edge line breaks would shift the static frame.
   if (header) return isBlankValue(value) ? ''
     : `${header.pre}${parts.pre}${value.replace(/^(?:[ \t]*\r?\n)+/, '').trimEnd()}${parts.post}${header.post}`;

@@ -18,8 +18,6 @@ import {
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
-import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import { statsChipIn } from '@/lib/testBench/aiContext';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
 import { randomUUID } from '@/lib/uuid';
@@ -215,13 +213,6 @@ export function tourEntry(world: TourWorld, items: TourItems): DictionaryEntry |
 function patchEntry(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<DictionaryEntry>) {
   const entry = tourEntry(world, items);
   if (entry) api.updateDictionaryEntry({ ...entry, ...patch });
-}
-
-/** The Stats chip a shipped prompt places, so In Play reads a stat the way that prompt does. */
-function shippedStatsChip(template: string): string {
-  const chip = statsChipIn(template);
-  if (!chip) throw new Error('A shipped prompt places no Stats chip');
-  return chip;
 }
 
 /** The Connection between the two tour locations, in either direction. */
@@ -533,9 +524,6 @@ const ENTITY_STEPS: readonly TourStep[] = [
   },
 ];
 
-const NARRATION_STATS_CHIP = shippedStatsChip(defaultSystemPrompt);
-const STAT_UPDATES_STATS_CHIP = shippedStatsChip(defaultStatUpdatesPrompt);
-
 /** Both prompts' reads of the tour stat, each marking the field `field` picks. */
 function statReaders(field: (stat: Stat) => string): ReaderSpec[] {
   const authorText = (world: TourWorld, items: TourItems) => {
@@ -543,8 +531,8 @@ function statReaders(field: (stat: Stat) => string): ReaderSpec[] {
     return stat ? field(stat) : '';
   };
   return [
-    { prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP, authorText },
-    { prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP, authorText },
+    { prompt: 'Narration Prompt', reads: 'statsChip', authorText },
+    { prompt: 'Stat Updates Prompt', reads: 'statsChip', authorText },
   ];
 }
 

@@ -7,20 +7,29 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { buildTraitWorkspace } from '@/lib/setupTraitWorkspace';
-import { buildAiContext, buildStatBlock, type ContextBlockId } from '@/lib/testBench/aiContext';
+import { promptHeader } from '@/lib/promptHeader';
+import { chipHeaderFormat } from '@/lib/promptTemplate';
+import { splitToken } from '@/lib/promptVariables';
+import {
+  blockChipPlacedIn, buildAiContext, buildStatBlock, statsChipPlacedIn, type ContextBlockId,
+} from '@/lib/testBench/aiContext';
 import { buildLens, lensActiveTraits, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
 import { settledOpeningStats } from '@/lib/testBench/opening';
 import type { Connection, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import {
-  liveTourItem, tourConnection, tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld,
+  liveTourItem, tourConnection, tourEntity, tourEntityPlaces, tourEntry, tourStat, type TourItems, type TourWorld,
 } from './steps';
 import { readTestLine } from './testLine';
 
 /** The AI requests In Play can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat Updates Prompt';
 
+/** Each request's template in the active prompt preset. A reader takes its chip, and its Header, from here. */
+export type TourPromptTemplates = Record<TourPrompt, string>;
+
 /**
- * Why a reader shows what it shows. `neverReads`: the prompt has no use for this field. `notInScene`: an
+ * Why a reader shows what it shows. `neverReads`: the prompt has no use for this field, or the active preset
+ * places no chip that carries it. `notInScene`: an
  * entity in no location, which no roster lists. `noKeyword`: a dictionary entry the test line does not fire.
  * `noValue`: a dictionary entry the test line fires, which adds nothing to the block until it has a Value.
  */
@@ -84,8 +93,8 @@ export interface InPlaySlice {
 export type ReaderSpec =
   | { prompt: TourPrompt; reads: 'never' }
   | { prompt: TourPrompt; reads: ContextBlockId; authorText: (world: TourWorld, items: TourItems) => string }
-  /** The stats block in the shape `chip` asks for: a shipped prompt's own Stats chip. */
-  | { prompt: TourPrompt; reads: 'statsChip'; chip: string; authorText: (world: TourWorld, items: TourItems) => string }
+  /** The stats block in the shape the prompt's own Stats chip asks for. */
+  | { prompt: TourPrompt; reads: 'statsChip'; authorText: (world: TourWorld, items: TourItems) => string }
   /** The dictionary block that holds the tour entry, when the test line fires it. */
   | { prompt: TourPrompt; reads: 'testLine'; authorText: (world: TourWorld, items: TourItems) => string };
 
@@ -246,12 +255,21 @@ function playerSurface(
   }
 }
 
+/** `body` under the Header `chip` carries, in the chip's own style, with the frame's outer blank lines dropped. */
+export function headedBlock(chip: string, body: string): string {
+  const parts = splitToken(chip);
+  const frame = parts ? promptHeader(parts.header, chipHeaderFormat(parts)) : null;
+  if (!frame) return body;
+  return `${frame.pre}${body}${frame.post}`.replace(/^\n+/, '').replace(/\n+$/, '');
+}
+
 /** One step's In Play slice: the surface the player sees, and each prompt's read with the author's text marked. */
 export function computeInPlay(
   spec: InPlaySpec,
   world: TourWorld,
   worldId: string,
   items: TourItems,
+  templates: TourPromptTemplates,
   testLine = '',
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts.
@@ -266,25 +284,31 @@ export function computeInPlay(
   const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
-    if (reader.reads !== 'never' && outOfScene) {
-      return { prompt: reader.prompt, state: 'notInScene', text: '', marks: [] };
-    }
-    if (reader.reads === 'never') {
-      return { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
-    }
+    const never: InPlayReader = { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
+    if (reader.reads === 'never') return never;
+    if (outOfScene) return { prompt: reader.prompt, state: 'notInScene', text: '', marks: [] };
+    const template = templates[reader.prompt];
+    const reads = (chip: string, body: string): InPlayReader => {
+      const text = headedBlock(chip, body);
+      return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
+    };
     if (reader.reads === 'testLine') {
+      const position = tourEntry(world, items)?.position === 'before' ? 'before' : 'after';
+      const chip = blockChipPlacedIn(template, 'dictionary', position);
+      if (chip === undefined) return never;
       const read = readTestLine(world, items, testLine, lensHere().pins);
       if (!read.fired) return { prompt: reader.prompt, state: 'noKeyword', text: '', marks: [], note: read.reason };
       if (!read.rendered) return { prompt: reader.prompt, state: 'noValue', text: '', marks: [] };
-      return {
-        prompt: reader.prompt, state: 'reads', text: read.text, marks: findMarks(read.text, reader.authorText(world, items)),
-      };
+      return reads(chip, read.text);
     }
-    const block = reader.reads;
-    const text = block === 'statsChip'
-      ? buildStatBlock(world, lensHere(), reader.chip)
-      : context?.blocks.find((b) => b.id === block)?.text ?? '';
-    return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
+    if (reader.reads === 'statsChip') {
+      const chip = statsChipPlacedIn(template);
+      if (chip === undefined) return never;
+      return reads(chip, buildStatBlock(world, lensHere(), splitToken(chip)?.key ?? chip));
+    }
+    const chip = blockChipPlacedIn(template, reader.reads);
+    if (chip === undefined) return never;
+    return reads(chip, context?.blocks.find((b) => b.id === reader.reads)?.text ?? '');
   });
   return {
     playerSees: playerSurface(spec.sees, world, worldId, items, lensHere),

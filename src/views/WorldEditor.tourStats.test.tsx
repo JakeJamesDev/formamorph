@@ -243,9 +243,10 @@ describe('In Play — Stats', () => {
     const updates = reader('Stat Updates Prompt')!;
     expect(marks(narration)).toEqual(['Sea Change']);
     expect(marks(updates)).toEqual(['Sea Change']);
+    // The shipped Stat Updates prompt places its Stats chip with no Header.
     expect(readText(updates)).toBe('- **Sea Change:** 0/100');
-    // Narration reads the status the Add button's descriptors give the stat, and never the number.
-    expect(readText(narration)).toBe(narrationLine(onlyStat(ctx)));
+    // Narration reads the status the Add button's descriptors give the stat, and never the number, under its chip's Header.
+    expect(readText(narration)).toBe(`## Player Stats\n${narrationLine(onlyStat(ctx))}`);
     expect(readText(narration)).not.toMatch(/\d/);
   });
 
@@ -262,7 +263,7 @@ describe('In Play — Stats', () => {
     expect(readText(updates)).toBe(`- **Sea Change:** 0/100 — ${SEA_CHANGE_DESCRIPTION}`);
 
     const narration = reader('Narration Prompt')!;
-    expect(readText(narration)).toBe(narrationLine(onlyStat(ctx)));
+    expect(readText(narration)).toBe(`## Player Stats\n${narrationLine(onlyStat(ctx))}`);
     expect(readText(narration)).not.toMatch(/\d/);
     expect(readText(narration)).not.toContain(SEA_CHANGE_DESCRIPTION);
     expect(marks(narration)).toEqual([]);
