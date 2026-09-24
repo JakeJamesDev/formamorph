@@ -122,7 +122,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
 
   const detailsPanel = (
     <>
-      <div className="space-y-2">
+      <div data-tour-anchor="trait-name" className="space-y-2">
         <Label>Name</Label>
         <PlaceholderNameField
           value={editingTrait.name || ''}
@@ -147,6 +147,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
         resizable
+        tourAnchor="trait-ai-description"
       />
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
@@ -169,7 +170,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
 
   const statsPanel = (
     <>
-      <div className="space-y-2">
+      <div data-tour-anchor="trait-stat-changes" className="space-y-2">
         <div className="flex items-center gap-2">
           <Label>Stat Changes</Label>
           <HelpButton topicId="worldEditor.statChanges" className="h-6 w-6" />

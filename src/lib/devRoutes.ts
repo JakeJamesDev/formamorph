@@ -160,6 +160,7 @@ export const DEV_MODAL_TABS = {
     'add-entity', 'entity-name', 'entity-pronouns', 'entity-player-description', 'entity-ai-description',
     'entity-locations',
     'add-stat', 'stat-name', 'stat-description',
+    'add-trait', 'trait-name', 'trait-ai-description', 'trait-stat-change',
     'add-dictionary-entry', 'dictionary-name-keywords', 'dictionary-value',
     'editor-mode', 'play',
   ],

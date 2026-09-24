@@ -5,10 +5,15 @@
 import type { WorldRecord } from '@/components/WorldDetails';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
+import { traitScopedPins } from '@/lib/placeholderPins';
+import { buildTraitWorkspace } from '@/lib/setupTraitWorkspace';
 import { buildAiContext, buildStatBlock, type ContextBlockId } from '@/lib/testBench/aiContext';
-import { buildLens, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
-import type { Connection, Entity, GameLocation, PlayerStat } from '@/types';
-import { tourConnection, tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld } from './steps';
+import { buildLens, lensActiveTraits, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
+import { settledOpeningStats } from '@/lib/testBench/opening';
+import type { Connection, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
+import {
+  liveTourItem, tourConnection, tourEntity, tourEntityPlaces, tourStat, type TourItems, type TourWorld,
+} from './steps';
 import { readTestLine } from './testLine';
 
 /** The AI requests In Play can name, as the pane titles them. */
@@ -40,11 +45,23 @@ export interface InPlayReader {
 /** Where a new game starts, as far as the tour's location is concerned. */
 export type StartsAt = 'here' | 'elsewhere' | 'anywhere';
 
+/** The setup screen's trait category that holds the tour trait, with every text resolved as a player there reads it. */
+export interface SetupTraitCategory {
+  name: string;
+  groups: TraitGroup[];
+  traits: Trait[];
+  exclusive: boolean;
+  stats: Stat[];
+  /** The traits ticked: the world's defaults, with the tour trait picked. */
+  selected: string[];
+}
+
 /**
  * The game surface a field shows on. The Location tab shows the step's scene location, with its names and
  * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
- * naming the entity's location, or null while it has none. The stat row shows the tour stat at its starting
- * value. `never` is a field the player never sees; `none` is a step with no field.
+ * naming the entity's location, or null while it has none. The stat row shows the tour stat at the value a new
+ * game settles it on. The setup surfaces show the tour trait's category on the setup screen, and the second
+ * adds the stat row. `never` is a field the player never sees; `none` is a step with no field.
  */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
@@ -52,6 +69,8 @@ export type PlayerSurface =
   | { kind: 'startsHere'; startsAt: StartsAt }
   | { kind: 'entityRow' | 'entityCard' | 'entityRowAndCard'; entity: Entity | null; at: string | null }
   | { kind: 'statRow'; stat: PlayerStat | null }
+  | { kind: 'setupTraits'; category: SetupTraitCategory | null }
+  | { kind: 'setupTraitsAndStat'; category: SetupTraitCategory | null; stat: PlayerStat | null }
   | { kind: 'never' }
   | { kind: 'neverDictionary' }
   | { kind: 'none' };
@@ -79,6 +98,8 @@ export interface InPlaySpec {
    * Otherwise the lens stands at the tour's first location.
    */
   scene?: 'entity' | 'connection';
+  /** The lens plays a new game with the tour trait picked on the setup screen. */
+  picksTrait?: boolean;
   readers: readonly ReaderSpec[];
 }
 
@@ -160,19 +181,41 @@ function entitySurface(
   };
 }
 
-/** The tour stat as a new game shows it, with its names resolved as a player there reads them. */
-function statSurface(world: TourWorld, items: TourItems, lens: BenchLens): PlayerSurface {
-  const stat = tourStat(world, items);
-  if (!stat) return { kind: 'statRow', stat: null };
+/** The tour stat as a new game settles it, with its names resolved as a player there reads them. */
+function tourStatRow(world: TourWorld, items: TourItems, lens: BenchLens): PlayerStat | null {
+  const id = tourStat(world, items)?.id;
+  const stat = id ? settledOpeningStats(world, lens).find((s) => s.id === id) : undefined;
+  if (!stat) return null;
   const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
   return {
-    kind: 'statRow',
-    stat: {
-      ...stat,
-      name: resolve(stat.name),
-      value: typeof stat.value === 'number' ? stat.value : stat.min,
-      descriptors: (stat.descriptors ?? []).map((d) => ({ ...d, description: resolve(d.description) })),
-    },
+    ...stat,
+    name: resolve(stat.name),
+    descriptors: (stat.descriptors ?? []).map((d) => ({ ...d, description: resolve(d.description) })),
+  };
+}
+
+/** The setup screen's category for the tour trait, as a player ticking it reads it. */
+function setupCategory(world: TourWorld, items: TourItems, lens: BenchLens): SetupTraitCategory | null {
+  const id = liveTourItem(world, items, 'trait');
+  const category = id
+    ? buildTraitWorkspace(world.traits ?? [], world.traitGroups ?? []).categories
+      .find((c) => c.traits.some((t) => t.id === id))
+    : undefined;
+  if (!category) return null;
+  const placeholders = allPlaceholders(world);
+  const resolve = (text: string) => resolveLensText(text, placeholders, lens.pins);
+  // A trait's own text reads its own pins over the active ones, as the setup screen reads it.
+  const resolveOwn = (trait: Trait, text: string) =>
+    resolveLensText(text, placeholders, traitScopedPins(trait, lens.pins, placeholders));
+  return {
+    name: resolve(category.name),
+    groups: category.path.map((g) => ({ ...g, playerDescription: resolve(g.playerDescription ?? '') })),
+    traits: category.traits.map((t) => ({
+      ...t, name: resolveOwn(t, t.name), playerDescription: resolveOwn(t, t.playerDescription ?? ''),
+    })),
+    exclusive: category.group?.exclusive === true,
+    stats: (world.stats ?? []).map((s) => ({ ...s, name: resolve(s.name) })),
+    selected: lensActiveTraits(world, lens).map((t) => t.id),
   };
 }
 
@@ -186,7 +229,10 @@ function playerSurface(
     case 'entityRow':
     case 'entityCard':
     case 'entityRowAndCard': return entitySurface(kind, world, items, lens());
-    case 'statRow': return statSurface(world, items, lens());
+    case 'statRow': return { kind, stat: tourStatRow(world, items, lens()) };
+    case 'setupTraits': return { kind, category: setupCategory(world, items, lens()) };
+    case 'setupTraitsAndStat':
+      return { kind, category: setupCategory(world, items, lens()), stat: tourStatRow(world, items, lens()) };
     default: return { kind };
   }
 }
@@ -199,13 +245,17 @@ export function computeInPlay(
   items: TourItems,
   testLine = '',
 ): InPlaySlice {
-  // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts,
-  // with no player character.
+  // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts.
+  // On a step that picks the tour trait, the trait stands in as the character, which applies it the way ticking
+  // it on the setup screen does. Otherwise there is no character.
   const sceneId = spec.scene === 'entity' ? entitySceneId(world, items)
     : spec.scene === 'connection' ? connectionSceneId(world, items) : null;
   const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;
-  const lensHere = () => lens ??= buildLens(world, seedLens(world, null, sceneId ?? items.location ?? null));
+  const lensHere = () => lens ??= buildLens(world, {
+    ...seedLens(world, null, sceneId ?? items.location ?? null),
+    pcTraitId: spec.picksTrait ? liveTourItem(world, items, 'trait') : null,
+  });
   const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const readers = spec.readers.map((reader): InPlayReader => {

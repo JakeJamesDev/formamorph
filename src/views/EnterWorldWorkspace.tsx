@@ -14,28 +14,8 @@ import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
+import { buildTraitWorkspace } from '@/lib/setupTraitWorkspace';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
-
-interface TraitCategory {
-  kind: 'traits';
-  id: string | null;
-  name: string;
-  group?: TraitGroup;
-  path: TraitGroup[];
-  depth: number;
-  traits: Trait[];
-}
-
-interface NavigationGroup {
-  group: TraitGroup;
-  depth: number;
-  categoryIndex: number;
-}
-
-interface TraitWorkspace {
-  categories: TraitCategory[];
-  navigationGroups: NavigationGroup[];
-}
 
 export interface EnterWorldWorkspaceProps {
   /** False plays the exit animation; the host keeps the workspace mounted until it finishes. */
@@ -78,42 +58,6 @@ export interface EnterWorldWorkspaceProps {
 }
 
 const REMEMBERED_MS = 3000;
-
-const authoredOrder = <T extends { order?: number }>(items: T[]): T[] =>
-  [...items].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-const buildTraitWorkspace = (traits: Trait[], groups: TraitGroup[]): TraitWorkspace => {
-  const directTraits = (groupId: string | null) => authoredOrder(
-    traits.filter((trait) => (trait.groupId ?? null) === groupId),
-  );
-  const children = (parentId: string | null) => authoredOrder(
-    groups.filter((group) => (group.parentId ?? null) === parentId),
-  );
-  const hasTraits = (groupId: string): boolean =>
-    directTraits(groupId).length > 0 || children(groupId).some((group) => hasTraits(group.id));
-
-  const categories: TraitCategory[] = [];
-  const navigationGroups: NavigationGroup[] = [];
-  const general = directTraits(null);
-  if (general.length > 0) {
-    categories.push({ kind: 'traits', id: null, name: 'General', path: [], depth: 0, traits: general });
-  }
-
-  const walk = (parentId: string | null, path: TraitGroup[], depth: number) => {
-    for (const group of children(parentId).filter((candidate) => hasTraits(candidate.id))) {
-      const nextPath = [...path, group];
-      const ownTraits = directTraits(group.id);
-      const categoryIndex = ownTraits.length > 0 ? categories.length : -1;
-      if (ownTraits.length > 0) {
-        categories.push({ kind: 'traits', id: group.id, name: group.name, group, path: nextPath, depth, traits: ownTraits });
-      }
-      navigationGroups.push({ group, depth, categoryIndex });
-      walk(group.id, nextPath, depth + 1);
-    }
-  };
-  walk(null, [], 0);
-  return { categories, navigationGroups };
-};
 
 export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const viewportMobile = useIsMobile();
