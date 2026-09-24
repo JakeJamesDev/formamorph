@@ -10,7 +10,9 @@ import {
   AUTHORING_TOUR_FIRST_VISIT_BODY, AUTHORING_TOUR_OFFER_ID, EDITOR_MODE_TUTORIAL_ID, markTutorialSeen, useTutorial,
   useTutorialSeen,
 } from '@/lib/tutorials';
-import { entityRootCount, newBlankWorld, newEntity, newLocation, newStat } from '@/lib/blankWorld';
+import {
+  entityRootCount, newBlankWorld, newEntity, newLocation, newStat, newTrait, traitRootCount,
+} from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
 } from '@/lib/authoringTour/steps';
@@ -561,17 +563,20 @@ const WorldEditorInner = ({
       setEntityTab(ENTITY_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'profile');
     }
     if (step.tab === 'stats' && step.item) setStatTab('details');
+    if (step.tab === 'traits' && step.item) {
+      setTraitTab(TRAIT_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'details');
+    }
     if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
   }, [deferReveal, worldId]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addDictionaryEntry, updateDictionaryEntry,
+      addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
     }),
     [
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat, addDictionaryEntry, updateDictionaryEntry,
+      addStat, updateStat, addTrait, updateTrait, addDictionaryEntry, updateDictionaryEntry,
     ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
@@ -695,22 +700,11 @@ const WorldEditorInner = ({
   };
 
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
-  const rootSiblingCount = () =>
-    traits.filter(t => (t.groupId ?? null) === null).length +
-    traitGroups.filter(g => (g.parentId ?? null) === null).length;
+  const rootSiblingCount = () => traitRootCount({ traits, traitGroups });
 
   const handleAddTrait = () => {
     const id = randomUUID();
-    addTrait({
-      id,
-      name: searchTerm.trim() || 'New Trait',
-      playerDescription: '',
-      aiDescription: '',
-      statChanges: [],
-      groupId: null,
-      isDefault: false,
-      order: rootSiblingCount(),
-    });
+    addTrait(newTrait(id, rootSiblingCount(), searchTerm.trim() || undefined));
     setSearchTerm('');
     setSelectedItemId(id);
   };

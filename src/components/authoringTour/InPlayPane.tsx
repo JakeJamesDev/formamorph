@@ -9,10 +9,12 @@ import { LocationTabBody } from '@/components/game/LocationTabBody';
 import { EntityListRow } from '@/components/game/EntityListRow';
 import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard';
 import { StatRow } from '@/components/game/StatRow';
+import { SetupTraitList } from '@/components/game/SetupTraitList';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
-  type StartsAt, usesTestLine,
+  type SetupTraitCategory, type StartsAt, usesTestLine,
 } from '@/lib/authoringTour/inPlay';
+import type { PlayerStat } from '@/types';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
 import { sampleTestLine } from '@/lib/authoringTour/testLine';
@@ -81,6 +83,43 @@ function EntitySurface({ surface }: { surface: Extract<PlayerSurface, { entity: 
   );
 }
 
+const StatSurface = ({ stat }: { stat: PlayerStat }) => (
+  <div className="rounded-md border p-3 pb-1">
+    <StatRow
+      stat={stat}
+      change={0}
+      barDelta={0}
+      draining={false}
+      page={0}
+      isViewingPast={false}
+      snap
+      fading={false}
+      editable={false}
+      reserveDescriptorLine={false}
+      onCommitValue={() => {}}
+    />
+  </div>
+);
+
+const asWritten = (text: string) => text;
+
+/** The tour trait's category on the setup screen, ticked as the player picks it. Its text arrives resolved. */
+const SetupTraitSurface = ({ category }: { category: SetupTraitCategory }) => (
+  <div className="rounded-md border p-3">
+    <SetupTraitList
+      name={category.name}
+      groups={category.groups}
+      traits={category.traits}
+      exclusive={category.exclusive}
+      stats={category.stats}
+      selectedTraits={category.selected}
+      resolveText={asWritten}
+      resolveTraitText={(_trait, text) => text}
+      onTraitSelect={() => {}}
+    />
+  </div>
+);
+
 function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }> }) {
   switch (surface.kind) {
     case 'libraryCard':
@@ -98,21 +137,19 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
     case 'entityRowAndCard':
       return <EntitySurface surface={surface} />;
     case 'statRow':
-      return surface.stat && (
-        <div className="rounded-md border p-3 pb-1">
-          <StatRow
-            stat={surface.stat}
-            change={0}
-            barDelta={0}
-            draining={false}
-            page={0}
-            isViewingPast={false}
-            snap
-            fading={false}
-            editable={false}
-            reserveDescriptorLine={false}
-            onCommitValue={() => {}}
-          />
+      return surface.stat && <StatSurface stat={surface.stat} />;
+    case 'setupTraits':
+      return surface.category && <SetupTraitSurface category={surface.category} />;
+    case 'setupTraitsAndStat':
+      return (
+        <div className="space-y-3">
+          {surface.category && <SetupTraitSurface category={surface.category} />}
+          {surface.stat && (
+            <div className="space-y-1">
+              <Muted>When a new game starts</Muted>
+              <StatSurface stat={surface.stat} />
+            </div>
+          )}
         </div>
       );
     case 'never':

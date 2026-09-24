@@ -264,6 +264,11 @@ function settleOpeningStats(world: OpeningWorld, active: Trait[]): { settled: Pl
   return { settled: state.stats, seeded };
 }
 
+/** Every stat a fresh game as the lens PC starts with, settled, including any the PC switches off. */
+export function settledOpeningStats(world: OpeningWorld, lens: BenchLens): PlayerStat[] {
+  return settleOpeningStats(world, lensActiveTraits(world, lens)).settled;
+}
+
 /** What the author picked to look at: a start from the start pool and a row from its opening pool. */
 export interface OpeningChoice {
   startLocationId?: string | null;

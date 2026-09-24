@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Entity, GameLocation, Stat, World } from '@/types';
+import type { Entity, GameLocation, Stat, Trait, World } from '@/types';
 
 /** The name New World gives a world. */
 export const NEW_WORLD_NAME = 'New World';
@@ -47,6 +47,19 @@ export function entityRootCount(world: Pick<World, 'entities' | 'entityGroups'>)
 /** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
 export function newEntity(id: string, order: number, name = 'New Entity'): Entity {
   return { id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order };
+}
+
+/** How many traits and trait groups sit at the trait tree's root: the `order` a new root item takes. */
+export function traitRootCount(world: Pick<World, 'traits' | 'traitGroups'>): number {
+  return (world.traits ?? []).filter((t) => (t.groupId ?? null) === null).length
+    + (world.traitGroups ?? []).filter((g) => (g.parentId ?? null) === null).length;
+}
+
+/** A trait as the editor's Add button makes it, placed `order`th at the trait tree's root. */
+export function newTrait(id: string, order: number, name = 'New Trait'): Trait {
+  return {
+    id, name, playerDescription: '', aiDescription: '', statChanges: [], groupId: null, isDefault: false, order,
+  };
 }
 
 /** A stat as the editor's Add button makes it, before the world gives it its default descriptors. */

@@ -7,12 +7,14 @@
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
+import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, Stat, WorldOverview, World,
+  Connection, DictionaryEntry, Entity, GameLocation, Stat, Trait, WorldOverview, World,
 } from '@/types';
 import { hasValue } from '@/lib/editorMode';
 import {
-  NEW_WORLD_NAME, entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors,
+  NEW_WORLD_NAME, entityRootCount, newEntity, newLocation, newStat, newTrait, traitRootCount,
+  withDefaultDescriptors,
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
@@ -67,6 +69,8 @@ export interface TourEditApi {
   /** Gives the stat its default descriptors, as the world does for every added stat. */
   addStat: (stat: Omit<Stat, 'descriptors'>) => void;
   updateStat: (stat: Stat) => void;
+  addTrait: (trait: Trait) => void;
+  updateTrait: (trait: Trait) => void;
   addDictionaryEntry: (bookId: string, entry: DictionaryEntry) => void;
   updateDictionaryEntry: (entry: DictionaryEntry) => void;
 }
@@ -80,7 +84,7 @@ export interface TourStep {
   /** The tour item the step acts on, or null for a world-level field. */
   item: TourItem | null;
   /** The item panel's tab that holds the field, when it is not the panel's first tab. */
-  panelTab?: LocationPanelTab | EntityPanelTab;
+  panelTab?: LocationPanelTab | EntityPanelTab | TraitPanelTab;
   title: string;
   body: string;
   isComplete: (world: TourWorld, items: TourItems) => boolean;
@@ -167,6 +171,21 @@ export const tourStat = (world: TourWorld, items: TourItems) =>
 function patchStat(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Stat>) {
   const stat = tourStat(world, items);
   if (stat) api.updateStat({ ...stat, ...patch });
+}
+
+/** Adds a trait the way the Traits tab's Add button does. */
+function addTraitItem(api: TourEditApi, world: TourWorld): string {
+  const id = randomUUID();
+  api.addTrait(newTrait(id, traitRootCount(world)));
+  return id;
+}
+
+export const tourTrait = (world: TourWorld, items: TourItems) =>
+  (world.traits ?? []).find((t) => t.id === items.trait);
+
+function patchTrait(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Trait>) {
+  const trait = tourTrait(world, items);
+  if (trait) api.updateTrait({ ...trait, ...patch });
 }
 
 /** Adds an entry the way the top book's Add entry button does. The editor always holds at least one book. */
@@ -564,6 +583,95 @@ const STAT_STEPS: readonly TourStep[] = [
   },
 ];
 
+const TIDE_TOUCHED = {
+  name: 'Tide-Touched',
+  playerDescription: 'You bathed in the Tidewell once as a child, and it remembers you.',
+  aiDescription: 'The player bathed in the Tidewell as a child. Faint gill lines mark their neck, and they can '
+    + 'breathe underwater for short stretches. Villagers greet them as one of their own.',
+  seaChange: 15,
+};
+
+/** The traits block as narration reads it once a player picks the tour trait, marking the field `field` picks. */
+function traitReader(field: (trait: Trait) => string): ReaderSpec {
+  return {
+    prompt: 'Narration Prompt',
+    reads: 'traits',
+    authorText: (world, items) => {
+      const trait = tourTrait(world, items);
+      return trait ? field(trait) : '';
+    },
+  };
+}
+
+const TRAIT_STEPS: readonly TourStep[] = [
+  addStep({
+    id: 'add-trait',
+    tab: 'traits',
+    item: 'trait',
+    title: 'Add a Trait',
+    body: 'Press the + button to add a trait players can pick when a new game starts',
+    add: addTraitItem,
+  }),
+  {
+    id: 'trait-name',
+    tab: 'traits',
+    anchor: 'trait-name',
+    item: 'trait',
+    panelTab: 'details',
+    title: 'Name and Player-Facing Description',
+    body: 'Name the trait, then describe it in "Player-Facing Description". Players read both when they pick '
+      + 'traits, and the AI never reads the description.',
+    isComplete: (world, items) => {
+      const trait = tourTrait(world, items);
+      return !!trait && hasValue(trait.name.trim()) && hasValue((trait.playerDescription ?? '').trim());
+    },
+    useExample: (api, world, items) => patchTrait(api, world, items, {
+      name: TIDE_TOUCHED.name, playerDescription: TIDE_TOUCHED.playerDescription,
+    }),
+    inPlay: { sees: 'setupTraits', picksTrait: true, readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+  },
+  {
+    id: 'trait-ai-description',
+    tab: 'traits',
+    anchor: 'trait-ai-description',
+    item: 'trait',
+    panelTab: 'details',
+    title: 'AI-Facing Description',
+    body: 'Tell the AI what this trait means for the player. The AI reads it every turn while the trait is '
+      + 'active, and players never see it.',
+    isComplete: (world, items) => hasValue((tourTrait(world, items)?.aiDescription ?? '').trim()),
+    useExample: (api, world, items) => patchTrait(api, world, items, { aiDescription: TIDE_TOUCHED.aiDescription }),
+    inPlay: { sees: 'never', picksTrait: true, readers: [traitReader((trait) => trait.aiDescription ?? '')] },
+  },
+  {
+    id: 'trait-stat-change',
+    tab: 'traits',
+    anchor: 'trait-stat-changes',
+    item: 'trait',
+    panelTab: 'stats',
+    title: 'Stat Change',
+    body: 'Press "Add Stat Change" and pick your stat. A "Starting Value" change moves where the stat starts in a '
+      + 'new game.',
+    isComplete: (world, items) => {
+      const stat = liveTourItem(world, items, 'stat');
+      return !!stat && !!tourTrait(world, items)?.statChanges.some((c) => c.statId === stat);
+    },
+    useExample: (api, world, items) => {
+      const trait = tourTrait(world, items);
+      const stat = liveTourItem(world, items, 'stat');
+      if (!trait || !stat) return;
+      const change = { statId: stat, value: TIDE_TOUCHED.seaChange, type: 'starting' as const };
+      const at = trait.statChanges.findIndex((c) => c.statId === stat);
+      api.updateTrait({
+        ...trait,
+        statChanges: at < 0 ? [...trait.statChanges, change] : trait.statChanges.map((c, i) => (i === at ? change : c)),
+      });
+    },
+    // The traits block never lists stat changes, so it marks nothing here.
+    inPlay: { sees: 'setupTraitsAndStat', picksTrait: true, readers: [traitReader(() => '')] },
+  },
+];
+
 const DROWNED_BELL = {
   name: 'The Drowned Bell',
   key: ['bell', 'drowned bell'],
@@ -615,7 +723,8 @@ const DICTIONARY_STEPS: readonly TourStep[] = [
 ];
 
 export const TOUR_STEPS: readonly TourStep[] = [
-  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...STAT_STEPS, ...DICTIONARY_STEPS, ...ENDING_STEPS,
+  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...STAT_STEPS, ...TRAIT_STEPS, ...DICTIONARY_STEPS,
+  ...ENDING_STEPS,
 ];
 
 /** The step with this id, or the first step for an id the registry no longer has. */
@@ -648,6 +757,8 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
     addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },
     updateStat: (stat) => { draft = { ...draft, stats: replace(draft.stats, stat) }; },
+    addTrait: (trait) => { draft = { ...draft, traits: [...(draft.traits ?? []), trait] }; },
+    updateTrait: (trait) => { draft = { ...draft, traits: replace(draft.traits, trait) }; },
     addDictionaryEntry: (bookId, entry) => {
       draft = { ...draft, dictionaries: (draft.dictionaries ?? []).map((b) => (b.id === bookId ? { ...b, entries: [...b.entries, entry] } : b)) };
     },
