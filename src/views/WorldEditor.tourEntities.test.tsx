@@ -66,6 +66,7 @@ const playerSees = () => within(inPlay()).getByRole('region', { name: 'Player Se
 const narration = () => within(inPlay()).getByRole('region', { name: 'Narration Prompt Reads' });
 const marks = (el: HTMLElement) => Array.from(el.querySelectorAll('mark')).map((m) => m.textContent);
 const NOT_IN_SCENE = 'The AI never reads an entity with no location';
+const MEET_ONCE_PLACED = 'Players meet this entity once it has a location';
 
 const row = (name: string) => screen.getAllByText(name)
   .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
@@ -235,11 +236,12 @@ describe('In Play — Entities', () => {
   it('Locations: placing the entity puts it in that location’s roster', async () => {
     await openTour();
     await walkTo('entity-locations');
-    expect(within(playerSees()).getByText('Players never see an entity with no location')).toBeInTheDocument();
+    expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
     expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
 
     useExample();
     await waitFor(() => expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument());
+    expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
     expect(within(playerSees()).getByText('Maren')).toBeInTheDocument();
     expect(narration().textContent).toContain('- **Maren**');
     expect(marks(narration())).toContain('Maren');
@@ -264,5 +266,24 @@ describe('In Play — Entities', () => {
     await backTo('entity-name');
     await waitFor(() => expect(marks(narration())).toContain('Maren'));
     expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument();
+  });
+
+  it('captions the row and card until the entity has a location, on every step that shows them', async () => {
+    await openTour();
+    await walkTo('entity-name');
+    expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
+    await walkTo('entity-player-description');
+    expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
+
+    await walkTo('entity-locations');
+    useExample();
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    await backTo('entity-player-description');
+    await waitFor(() => expect(within(playerSees())
+      .getByText('The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.')).toBeInTheDocument());
+    expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
+    await backTo('entity-name');
+    await waitFor(() => expect(within(playerSees()).getByText('While players are at The Tidewell')).toBeInTheDocument());
+    expect(within(playerSees()).queryByText(MEET_ONCE_PLACED)).toBeNull();
   });
 });

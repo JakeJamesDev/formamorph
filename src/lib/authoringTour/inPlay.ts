@@ -43,8 +43,8 @@ export type StartsAt = 'here' | 'elsewhere' | 'anywhere';
 /**
  * The game surface a field shows on. The Location tab shows the tour's first location, with its names and
  * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
- * naming the location the lens stands at. The stat row shows the tour stat at its starting value. `never` is a
- * field the player never sees; `none` is a step with no field.
+ * naming the entity's location, or null while it has none. The stat row shows the tour stat at its starting
+ * value. `never` is a field the player never sees; `none` is a step with no field.
  */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
@@ -139,16 +139,17 @@ function entitySceneId(world: TourWorld, items: TourItems): string | null {
 /** The tour entity with its name and Player-Facing Description resolved as a player there reads them. */
 function entitySurface(
   kind: Extract<PlayerSurface, { entity: unknown }>['kind'], world: TourWorld, items: TourItems, lens: BenchLens,
-  placed: boolean,
 ): PlayerSurface {
   const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
   const entity = tourEntity(world, items);
+  const sceneId = entitySceneId(world, items);
+  const scene = (world.locations ?? []).find((l) => l.id === sceneId);
   return {
     kind,
     entity: entity
       ? { ...entity, name: resolve(entity.name), playerDescription: resolve(entity.playerDescription ?? '') }
       : null,
-    at: placed && lens.location ? resolve(lens.location.name) : null,
+    at: scene ? resolve(scene.name) : null,
   };
 }
 
@@ -170,7 +171,6 @@ function statSurface(world: TourWorld, items: TourItems, lens: BenchLens): Playe
 
 function playerSurface(
   kind: PlayerSurface['kind'], world: TourWorld, worldId: string, items: TourItems, lens: () => BenchLens,
-  entityPlaced: boolean,
 ): PlayerSurface {
   switch (kind) {
     case 'libraryCard': return { kind, world: libraryCardRecord(world, worldId) };
@@ -178,7 +178,7 @@ function playerSurface(
     case 'startsHere': return { kind, startsAt: startsAt(world, items.location) };
     case 'entityRow':
     case 'entityCard':
-    case 'entityRowAndCard': return entitySurface(kind, world, items, lens(), entityPlaced);
+    case 'entityRowAndCard': return entitySurface(kind, world, items, lens());
     case 'statRow': return statSurface(world, items, lens());
     default: return { kind };
   }
@@ -222,7 +222,7 @@ export function computeInPlay(
     return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
   });
   return {
-    playerSees: playerSurface(spec.sees, world, worldId, items, lensHere, spec.scene === 'entity' && !outOfScene),
+    playerSees: playerSurface(spec.sees, world, worldId, items, lensHere),
     readers,
   };
 }

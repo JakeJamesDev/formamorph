@@ -410,7 +410,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     tab: 'entities',
     item: 'entity',
     title: 'Add an Entity',
-    body: 'Press the + button to add a character for players to meet',
+    body: 'Press the + button to add an entity for players to meet',
     add: addEntityItem,
   }),
   {
@@ -420,7 +420,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'profile',
     title: 'Entity Name',
-    body: 'Name the character. Players see the name in their entity list, and the AI reads it.',
+    body: 'Name the entity. Players see the name in their entity list, and the AI reads it.',
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.name ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, { name: MAREN.name }),
     inPlay: {
@@ -438,7 +438,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'profile',
     title: 'Pronouns',
-    body: 'Tell the AI how to refer to this character. Players never see this field.',
+    body: 'Tell the AI how to refer to this entity. Players never see this field.',
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.pronouns ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, { pronouns: MAREN.pronouns }),
     inPlay: {
@@ -457,7 +457,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'descriptions',
     title: 'Player-Facing Description',
-    body: 'Describe what players see when they open this character. The AI never reads this field.',
+    body: 'Describe what players see when they open this entity. The AI never reads this field.',
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.playerDescription ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, {
       playerDescription: MAREN.playerDescription,
@@ -471,7 +471,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'descriptions',
     title: 'AI-Facing Description',
-    body: 'Tell the AI who this character is, secrets and motives included. Players never see it.',
+    body: 'Tell the AI who this entity is, secrets and motives included. Players never see it.',
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.aiDescription ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, { aiDescription: MAREN.aiDescription }),
     inPlay: {
@@ -490,7 +490,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     item: 'entity',
     panelTab: 'profile',
     title: 'Locations',
-    body: 'Place the character in one of your locations. The AI reads an entity only where it is.',
+    body: 'Place the entity in one of your locations. The AI reads an entity only at its locations.',
     isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
     useExample: (api, world, items) => {
       const entity = tourEntity(world, items);

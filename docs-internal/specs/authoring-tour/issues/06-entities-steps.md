@@ -1,6 +1,6 @@
 # 06: Entities Steps
 
-Status: in-progress
+Status: ready-for-human
 Base: 99bbfe14
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

@@ -54,16 +54,15 @@ const Muted = ({ children }: { children: ReactNode }) => (
   <p className="text-helper text-muted-foreground">{children}</p>
 );
 
-/** The tour entity's row in the Entities tab, its card, or both. The row only shows while the entity has a
- *  location, except on the Name step, which shows the entity the way players meet it. */
+/** The tour entity's row in the Entities tab, its card, or both, as players will meet it. */
 function EntitySurface({ surface }: { surface: Extract<PlayerSurface, { entity: unknown }> }) {
   const { entity, at, kind } = surface;
   if (!entity) return null;
   const row = kind !== 'entityCard';
   const card = kind !== 'entityRow';
-  if (kind === 'entityRow' && !at) return <Muted>Players never see an entity with no location</Muted>;
   return (
     <div className="space-y-3">
+      {!at && <Muted>Players meet this entity once it has a location</Muted>}
       {row && (
         <div className="space-y-1">
           {at && <Muted>{`While players are at ${at}`}</Muted>}
