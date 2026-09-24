@@ -1,6 +1,7 @@
 # 16: Play Runs the Main Menu Entry Checks
 
-Status: ready-for-agent
+Status: in-progress
+Base: a3685c8b
 Blocked by: 11
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

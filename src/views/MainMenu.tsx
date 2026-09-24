@@ -1499,7 +1499,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     void enterWorld(draft);
   };
 
+  // Enter World, the tour's Play and the dev route all start here, so they share these checks.
   const startEntry = () => {
+    // The world modal carries the block's message and its repair.
+    if (sourceBlock) {
+      setShowWorldModal(true);
+      return;
+    }
     const defaults = collapseExclusiveDefaults(
       rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
     const additions = restoreWorldAdditionDefaults(

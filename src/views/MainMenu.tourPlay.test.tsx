@@ -6,6 +6,7 @@ import { DEFAULT_WORLDS, tombstoneDefaultWorld } from '@/lib/defaultWorlds';
 import { acceptAgeGate } from '@/lib/ageGate';
 import { AUTHORING_TOUR_OFFER_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { readTourRecord, reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
+import { writeSourceCheck } from '@/lib/sourceCheckStore';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
 import { toast } from 'react-toastify';
 
@@ -81,6 +82,42 @@ describe('Authoring Tour Play', () => {
     fireEvent.click(within(setup).getByRole('button', { name: 'Start game' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][0]).toEqual(['touched']);
+  });
+
+  it('stops at the same source gate Enter World stops at', async () => {
+    // The author linked a library entity outside the tour, and a check found its required source removed.
+    await WorldStorageService.storeWorld({
+      ...TOUR_WORLD,
+      data: {
+        ...TOUR_WORLD.data,
+        entities: [{
+          id: 'keeper', name: 'Lamp Keeper', playerDescription: '', aiDescription: '', aiSummary: '',
+          link: { libraryId: 'lib-a', sourceId: 'src-a', sourceName: 'Lamp Keeper' },
+        }],
+      },
+    } as unknown as StoredWorldRecord);
+    writeSourceCheck(TOUR_WORLD.id, {
+      checkedAt: '2026-09-23T10:00:00.000Z', results: { 'src-a': 'not_found' }, required: ['src-a'],
+    });
+    markTutorialSeen(AUTHORING_TOUR_OFFER_ID);
+    writeTourRecord(TOUR_WORLD.id, { step: 'play', items: {} });
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Brinewell'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit World' }));
+
+    const step = await screen.findByRole('dialog', { name: 'Play Your World' }, { timeout: 3000 });
+    fireEvent.click(within(step).getByRole('button', { name: 'Play' }));
+
+    // The unblocked case shows the Introduction inside this same default window.
+    await expect(screen.findByRole('dialog', { name: 'Introduction' })).rejects.toThrow();
+    expect(readTourRecord(TOUR_WORLD.id)).toBeNull();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('This world requires a source its author removed: Lamp Keeper.');
+    expect(within(alert).getByRole('button', { name: 'Repair Sources' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Enter World/ })).toBeDisabled();
+    expect(screen.queryByRole('dialog', { name: 'Enter Brinewell' })).not.toBeInTheDocument();
+    expect(onStartGame).not.toHaveBeenCalled();
   });
 
   it('says where the world is when the library cannot be read back', async () => {
