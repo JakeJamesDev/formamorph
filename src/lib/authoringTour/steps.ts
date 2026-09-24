@@ -6,9 +6,11 @@
  */
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
-import type { Connection, GameLocation, WorldOverview, World } from '@/types';
+import type { EntityPanelTab } from '@/views/entityPanelTabs';
+import type { Connection, Entity, GameLocation, WorldOverview, World } from '@/types';
 import { hasValue } from '@/lib/editorMode';
-import { newLocation } from '@/lib/blankWorld';
+import { entityRootCount, newEntity, newLocation } from '@/lib/blankWorld';
+import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
@@ -52,6 +54,8 @@ export interface TourEditApi {
   updateLocation: (location: GameLocation) => void;
   addConnection: (connection: Connection) => void;
   updateConnection: (connection: Connection) => void;
+  addEntity: (entity: Entity) => void;
+  updateEntity: (entity: Entity) => void;
 }
 
 export interface TourStep {
@@ -62,8 +66,8 @@ export interface TourStep {
   anchor: string;
   /** The tour item the step acts on, or null for a world-level field. */
   item: TourItem | null;
-  /** The Location panel tab that holds the field, when it is not Details. */
-  panelTab?: LocationPanelTab;
+  /** The item panel's tab that holds the field, when it is not the panel's first tab. */
+  panelTab?: LocationPanelTab | EntityPanelTab;
   title: string;
   body: string;
   isComplete: (world: TourWorld, items: TourItems) => boolean;
@@ -71,7 +75,7 @@ export interface TourStep {
    * Makes the step's item the way its Add button does, and returns its id. Only an add step has it: the step
    * completes once a new item exists, and the tour's dev route replays it.
    */
-  add?: (api: TourEditApi) => string;
+  add?: (api: TourEditApi, world: TourWorld) => string;
   /** Fills the field with the example world's text through its panel's own setter. */
   useExample?: (api: TourEditApi, world: TourWorld, items: TourItems) => void;
   /** Runs each time the step becomes current. */
@@ -110,6 +114,29 @@ function patchLocation(
 ) {
   const location = tourLocation(world, items, item);
   if (location) api.updateLocation({ ...location, ...patch });
+}
+
+/** Adds an entity the way the Entities tab's Add button does. */
+function addEntityItem(api: TourEditApi, world: TourWorld): string {
+  const id = randomUUID();
+  api.addEntity(newEntity(id, entityRootCount(world)));
+  return id;
+}
+
+export const tourEntity = (world: TourWorld, items: TourItems) =>
+  (world.entities ?? []).find((e) => e.id === items.entity);
+
+function patchEntity(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Entity>) {
+  const entity = tourEntity(world, items);
+  if (entity) api.updateEntity({ ...entity, ...patch });
+}
+
+/** The tour locations the tour entity is in, the first location first. */
+export function tourEntityPlaces(world: TourWorld, items: TourItems): string[] {
+  const at = new Set(tourEntity(world, items)?.locations ?? []);
+  return (['location', 'secondLocation'] as const)
+    .map((item) => liveTourItem(world, items, item))
+    .filter((id): id is string => !!id && at.has(id));
 }
 
 /** The Connection between the two tour locations, in either direction. */
@@ -165,6 +192,14 @@ const SALT_LANTERN = {
     + 'that looks out on the Tidewell. Fishers gather here at dusk to trade gossip and tall tales.',
 };
 const TRAVEL_HINT_EXAMPLE = 'down the lane past the net sheds';
+const MAREN = {
+  name: 'Maren',
+  pronouns: 'she/her',
+  playerDescription: 'The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw.',
+  aiDescription: 'Maren tends the Tidewell and has bathed in it every week for twenty years. Silver scales now trace '
+    + 'her jaw and forearms, and her fingers are lightly webbed. She is kind, nosy and fiercely protective of '
+    + 'newcomers. She secretly fears the spring\'s pull on her is growing stronger.',
+};
 
 const OVERVIEW_STEPS: readonly TourStep[] = [
   {
@@ -300,7 +335,112 @@ const LOCATION_STEPS: readonly TourStep[] = [
   },
 ];
 
-export const TOUR_STEPS: readonly TourStep[] = [...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENDING_STEPS];
+const ENTITY_STEPS: readonly TourStep[] = [
+  addStep({
+    id: 'add-entity',
+    tab: 'entities',
+    item: 'entity',
+    title: 'Add an Entity',
+    body: 'Press the + button to add a character for players to meet',
+    add: addEntityItem,
+  }),
+  {
+    id: 'entity-name',
+    tab: 'entities',
+    anchor: 'entity-name',
+    item: 'entity',
+    panelTab: 'profile',
+    title: 'Entity Name',
+    body: 'Name the character. Players see the name in their entity list, and the AI reads it.',
+    isComplete: (world, items) => hasValue((tourEntity(world, items)?.name ?? '').trim()),
+    useExample: (api, world, items) => patchEntity(api, world, items, { name: MAREN.name }),
+    inPlay: {
+      sees: 'entityRowAndCard',
+      scene: 'entity',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'entities', authorText: (world, items) => tourEntity(world, items)?.name ?? '',
+      }],
+    },
+  },
+  {
+    id: 'entity-pronouns',
+    tab: 'entities',
+    anchor: 'entity-pronouns',
+    item: 'entity',
+    panelTab: 'profile',
+    title: 'Pronouns',
+    body: 'Tell the AI how to refer to this character. Players never see this field.',
+    isComplete: (world, items) => hasValue((tourEntity(world, items)?.pronouns ?? '').trim()),
+    useExample: (api, world, items) => patchEntity(api, world, items, { pronouns: MAREN.pronouns }),
+    inPlay: {
+      sees: 'never',
+      scene: 'entity',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'entities',
+        authorText: (world, items) => tourEntity(world, items)?.pronouns ?? '',
+      }],
+    },
+  },
+  {
+    id: 'entity-player-description',
+    tab: 'entities',
+    anchor: 'entity-player-description',
+    item: 'entity',
+    panelTab: 'descriptions',
+    title: 'Player-Facing Description',
+    body: 'Describe what players see when they open this character. The AI never reads this field.',
+    isComplete: (world, items) => hasValue((tourEntity(world, items)?.playerDescription ?? '').trim()),
+    useExample: (api, world, items) => patchEntity(api, world, items, {
+      playerDescription: MAREN.playerDescription,
+    }),
+    inPlay: { sees: 'entityCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+  },
+  {
+    id: 'entity-ai-description',
+    tab: 'entities',
+    anchor: 'entity-ai-description',
+    item: 'entity',
+    panelTab: 'descriptions',
+    title: 'AI-Facing Description',
+    body: 'Tell the AI who this character is, secrets and motives included. Players never see it.',
+    isComplete: (world, items) => hasValue((tourEntity(world, items)?.aiDescription ?? '').trim()),
+    useExample: (api, world, items) => patchEntity(api, world, items, { aiDescription: MAREN.aiDescription }),
+    inPlay: {
+      sees: 'never',
+      scene: 'entity',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'entities',
+        authorText: (world, items) => tourEntity(world, items)?.aiDescription ?? '',
+      }],
+    },
+  },
+  {
+    id: 'entity-locations',
+    tab: 'entities',
+    anchor: 'entity-locations',
+    item: 'entity',
+    panelTab: 'profile',
+    title: 'Locations',
+    body: 'Place the character in one of your locations. The AI reads an entity only where it is.',
+    isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
+    useExample: (api, world, items) => {
+      const entity = tourEntity(world, items);
+      const place = liveTourItem(world, items, 'location');
+      if (entity && place) api.updateEntity(withEntityLocations(entity, [...(entity.locations ?? []), place]));
+    },
+    inPlay: {
+      sees: 'entityRow',
+      scene: 'entity',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'entities', authorText: (world, items) => tourEntity(world, items)?.name ?? '',
+      }],
+    },
+  },
+];
+
+export const TOUR_STEPS: readonly TourStep[] = [
+  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...ENDING_STEPS,
+];
 
 /** The step with this id, or the first step for an id the registry no longer has. */
 export function tourStepIndex(id: string | undefined): number {
@@ -328,9 +468,11 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
     updateLocation: (location) => { draft = { ...draft, locations: replace(draft.locations, location) }; },
     addConnection: (connection) => { draft = { ...draft, connections: [...(draft.connections ?? []), connection] }; },
     updateConnection: (connection) => { draft = { ...draft, connections: replace(draft.connections, connection) }; },
+    addEntity: (entity) => { draft = { ...draft, entities: [...(draft.entities ?? []), entity] }; },
+    updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
   };
   for (const step of TOUR_STEPS.slice(0, index)) {
-    if (step.add && step.item) items[step.item] = step.add(api);
+    if (step.add && step.item) items[step.item] = step.add(api, draft);
     step.useExample?.(api, draft, items);
   }
   return { world: draft, items };

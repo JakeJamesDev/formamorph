@@ -7,8 +7,8 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
 import { buildAiContext, type ContextBlockId } from '@/lib/testBench/aiContext';
 import { buildLens, resolveLensText, seedLens, type BenchLens } from '@/lib/testBench/lens';
-import type { Connection, GameLocation } from '@/types';
-import type { TourItems, TourWorld } from './steps';
+import type { Connection, Entity, GameLocation } from '@/types';
+import { tourEntity, tourEntityPlaces, type TourItems, type TourWorld } from './steps';
 
 /** The AI requests In Play can name, as the pane titles them. */
 export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt';
@@ -38,12 +38,15 @@ export type StartsAt = 'here' | 'elsewhere' | 'anywhere';
 
 /**
  * The game surface a field shows on. The Location tab shows the tour's first location, with its names and
- * description resolved. `never` is a field the player never sees; `none` is a step with no field.
+ * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
+ * naming the location the lens stands at. `never` is a field the player never sees; `none` is a step with no
+ * field.
  */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
   | { kind: 'locationTab'; location: GameLocation | null; locations: GameLocation[]; connections: Connection[] }
   | { kind: 'startsHere'; startsAt: StartsAt }
+  | { kind: 'entityRow' | 'entityCard' | 'entityRowAndCard'; entity: Entity | null; at: string | null }
   | { kind: 'never' }
   | { kind: 'none' };
 
@@ -60,6 +63,11 @@ export type ReaderSpec =
 /** A step's In Play slice, as the registry declares it. */
 export interface InPlaySpec {
   sees: PlayerSurface['kind'];
+  /**
+   * `entity`: the lens stands at the tour entity's location, and while the entity is in no location every
+   * reader that reads is `notInScene`. Otherwise the lens stands at the tour's first location.
+   */
+  scene?: 'entity';
   readers: readonly ReaderSpec[];
 }
 
@@ -107,13 +115,41 @@ function startsAt(world: TourWorld, locationId: string | undefined): StartsAt {
   return starts.length ? 'elsewhere' : 'anywhere';
 }
 
+/** Where the tour entity is: a tour location it is in, else any location it is in, else nowhere. */
+function entitySceneId(world: TourWorld, items: TourItems): string | null {
+  const [tourPlace] = tourEntityPlaces(world, items);
+  if (tourPlace) return tourPlace;
+  const live = new Set((world.locations ?? []).map((l) => l.id));
+  return tourEntity(world, items)?.locations?.find((id) => live.has(id)) ?? null;
+}
+
+/** The tour entity with its name and Player-Facing Description resolved as a player there reads them. */
+function entitySurface(
+  kind: Extract<PlayerSurface, { entity: unknown }>['kind'], world: TourWorld, items: TourItems, lens: BenchLens,
+  placed: boolean,
+): PlayerSurface {
+  const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
+  const entity = tourEntity(world, items);
+  return {
+    kind,
+    entity: entity
+      ? { ...entity, name: resolve(entity.name), playerDescription: resolve(entity.playerDescription ?? '') }
+      : null,
+    at: placed && lens.location ? resolve(lens.location.name) : null,
+  };
+}
+
 function playerSurface(
   kind: PlayerSurface['kind'], world: TourWorld, worldId: string, items: TourItems, lens: () => BenchLens,
+  entityPlaced: boolean,
 ): PlayerSurface {
   switch (kind) {
     case 'libraryCard': return { kind, world: libraryCardRecord(world, worldId) };
     case 'locationTab': return locationTab(world, lens());
     case 'startsHere': return { kind, startsAt: startsAt(world, items.location) };
+    case 'entityRow':
+    case 'entityCard':
+    case 'entityRowAndCard': return entitySurface(kind, world, items, lens(), entityPlaced);
     default: return { kind };
   }
 }
@@ -125,12 +161,18 @@ export function computeInPlay(
   worldId: string,
   items: TourItems,
 ): InPlaySlice {
-  // The lens stands where the tour's own location is, or where a new game starts, with no player character.
+  // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts,
+  // with no player character.
+  const sceneId = spec.scene === 'entity' ? entitySceneId(world, items) : null;
+  const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;
-  const lensHere = () => lens ??= buildLens(world, seedLens(world, null, items.location ?? null));
-  const needsContext = spec.readers.some((r) => r.reads !== 'never');
+  const lensHere = () => lens ??= buildLens(world, seedLens(world, null, sceneId ?? items.location ?? null));
+  const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
+    if (reader.reads !== 'never' && outOfScene) {
+      return { prompt: reader.prompt, state: 'notInScene', text: '', marks: [] };
+    }
     if (reader.reads === 'never' || !context) {
       return { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
     }
@@ -138,5 +180,8 @@ export function computeInPlay(
     const text = context.blocks.find((b) => b.id === block)?.text ?? '';
     return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
   });
-  return { playerSees: playerSurface(spec.sees, world, worldId, items, lensHere), readers };
+  return {
+    playerSees: playerSurface(spec.sees, world, worldId, items, lensHere, spec.scene === 'entity' && !outOfScene),
+    readers,
+  };
 }

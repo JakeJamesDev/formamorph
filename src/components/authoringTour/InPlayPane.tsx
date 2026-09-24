@@ -3,6 +3,8 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
+import { EntityListRow } from '@/components/game/EntityListRow';
+import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard';
 import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
   type StartsAt,
@@ -46,6 +48,34 @@ const Muted = ({ children }: { children: ReactNode }) => (
   <p className="text-helper text-muted-foreground">{children}</p>
 );
 
+/** The tour entity's row in the Entities tab, its card, or both. The row only shows while the entity has a
+ *  location, except on the Name step, which shows the entity the way players meet it. */
+function EntitySurface({ surface }: { surface: Extract<PlayerSurface, { entity: unknown }> }) {
+  const { entity, at, kind } = surface;
+  if (!entity) return null;
+  const row = kind !== 'entityCard';
+  const card = kind !== 'entityRow';
+  if (kind === 'entityRow' && !at) return <Muted>Players never see an entity with no location</Muted>;
+  return (
+    <div className="space-y-3">
+      {row && (
+        <div className="space-y-1">
+          {at && <Muted>{`While players are at ${at}`}</Muted>}
+          <div className="rounded-md border p-1"><EntityListRow label={entity.name} /></div>
+        </div>
+      )}
+      {card && (
+        <div className="flex flex-col rounded-md border">
+          <h4 className="border-b px-4 py-2 text-heading font-semibold">{entity.name}</h4>
+          <EntityCardBody entity={entity}>
+            <EntityDescription text={entity.playerDescription ?? ''} />
+          </EntityCardBody>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }> }) {
   switch (surface.kind) {
     case 'libraryCard':
@@ -58,6 +88,10 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
       );
     case 'startsHere':
       return <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>;
+    case 'entityRow':
+    case 'entityCard':
+    case 'entityRowAndCard':
+      return <EntitySurface surface={surface} />;
     case 'never':
       return <Muted>Players never see this field</Muted>;
   }

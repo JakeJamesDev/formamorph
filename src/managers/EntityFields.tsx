@@ -37,7 +37,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
   const { advanced } = useEditorMode();
   return (
     <>
-      <div className="space-y-2">
+      <div data-tour-anchor="entity-name" className="space-y-2">
         <Label>Name</Label>
         <PlaceholderNameField
           value={value.name || ''}
@@ -63,7 +63,7 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
         />
       </div>
       )}
-      <div className="space-y-2">
+      <div data-tour-anchor="entity-pronouns" className="space-y-2">
         <Label htmlFor={`entity-pronouns-${value.id}`}>Pronouns</Label>
         <Hint>Tells the AI how to refer to this entity</Hint>
         <Input
@@ -132,6 +132,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         placeholders={placeholders}
         ownerId={ownerId}
         resizable
+        tourAnchor="entity-player-description"
       />
       <PlaceholderField
         label="AI-Facing Description"
@@ -148,6 +149,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         placeholders={placeholders}
         ownerId={ownerId}
         resizable
+        tourAnchor="entity-ai-description"
       />
       {advanced && (
         <PlaceholderField
@@ -180,7 +182,7 @@ export interface EntityLocationsFieldProps extends EntityFieldGroupProps {
 
 /** The locations the entity belongs to. World Editor only: a library character has no world locations. */
 export const EntityLocationsField = ({ value, options, selectedIds, onLocationsChange }: EntityLocationsFieldProps) => (
-  <div className="space-y-2">
+  <div data-tour-anchor="entity-locations" className="space-y-2">
     <Label>Locations</Label>
     <MultiSelect
       key={value.id}

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
@@ -222,32 +222,28 @@ describe('Authoring Tour steps', () => {
     expect(await screen.findByRole('dialog', { name: 'World Name' })).toBeInTheDocument();
   });
 
-  it('renders every step anchor once the tour shows the step', async () => {
-    try {
-      for (const step of TOUR_STEPS) {
-        localStorage.clear();
-        reloadTourProgress();
-        // The dev route opens a step with every earlier step taken, so a step's tour items exist.
-        window.location.hash = `#dev?tour=${step.id}`;
-        fireEvent(window, new Event('hashchange'));
-        const view = renderWorldEditorBench(NEW_WORLD, 'simple');
-        await waitFor(() => expect(tourBar(), `step ${step.id}`)
-          .toHaveTextContent(`Authoring Tour · ${TOUR_STEPS.indexOf(step) + 1} / ${TOTAL}`));
-        if (step.tab) {
-          const label = WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label;
-          await waitFor(() => expect(screen.getByRole('tab', { name: new RegExp(`^${label}`) }))
-            .toHaveAttribute('data-state', 'active'));
-        }
-        await waitFor(() => expect(
-          document.querySelectorAll(`[data-tour-anchor="${step.anchor}"]`),
-          `step ${step.id}`,
-        ).toHaveLength(1));
-        view.unmount();
-      }
-    } finally {
-      window.location.hash = '';
-      fireEvent(window, new Event('hashchange'));
+});
+
+// One case per registry step, so a new step is covered with no new test.
+describe('Authoring Tour step anchors', () => {
+  afterEach(() => {
+    window.location.hash = '';
+    fireEvent(window, new Event('hashchange'));
+  });
+
+  it.each(TOUR_STEPS.map((step) => [step.id, step] as const))('renders the %s anchor once the tour shows it', async (id, step) => {
+    // The dev route opens a step with every earlier step taken, so a step's tour items exist.
+    window.location.hash = `#dev?tour=${id}`;
+    fireEvent(window, new Event('hashchange'));
+    renderWorldEditorBench(NEW_WORLD, 'simple');
+    await waitFor(() => expect(tourBar())
+      .toHaveTextContent(`Authoring Tour · ${TOUR_STEPS.indexOf(step) + 1} / ${TOTAL}`));
+    if (step.tab) {
+      const label = WORLD_EDITOR_TABS.find((t) => t.value === step.tab)!.label;
+      await waitFor(() => expect(screen.getByRole('tab', { name: new RegExp(`^${label}`) }))
+        .toHaveAttribute('data-state', 'active'));
     }
+    await waitFor(() => expect(document.querySelectorAll(`[data-tour-anchor="${step.anchor}"]`)).toHaveLength(1));
   });
 });
 
