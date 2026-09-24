@@ -22,7 +22,7 @@ import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
-import type { InPlaySpec } from './inPlay';
+import type { InPlaySpec, ReaderSpec } from './inPlay';
 
 /** The world as the editor holds it while the tour reads it. */
 export type TourWorld = Omit<World, 'id' | 'version'>;
@@ -510,6 +510,18 @@ const ENTITY_STEPS: readonly TourStep[] = [
 const NARRATION_STATS_CHIP = shippedStatsChip(defaultSystemPrompt);
 const STAT_UPDATES_STATS_CHIP = shippedStatsChip(defaultStatUpdatesPrompt);
 
+/** Both prompts' reads of the tour stat, each marking the field `field` picks. */
+function statReaders(field: (stat: Stat) => string): ReaderSpec[] {
+  const authorText = (world: TourWorld, items: TourItems) => {
+    const stat = tourStat(world, items);
+    return stat ? field(stat) : '';
+  };
+  return [
+    { prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP, authorText },
+    { prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP, authorText },
+  ];
+}
+
 const STAT_STEPS: readonly TourStep[] = [
   addStep({
     id: 'add-stat',
@@ -525,25 +537,13 @@ const STAT_STEPS: readonly TourStep[] = [
     anchor: 'stat-name',
     item: 'stat',
     title: 'Stat Name',
-    body: 'Name the stat. Min, Max and Initial Value set its range and where it starts. Players see the name and '
-      + 'the number, and narration never reads the number.',
+    body: 'Name the stat. "Min", "Max" and "Initial Value" set its range and where it starts. Players see the name '
+      + 'and the number, and the narration prompt never reads the number.',
     isComplete: (world, items) => hasValue((tourStat(world, items)?.name ?? '').trim()),
     useExample: (api, world, items) => patchStat(api, world, items, {
       name: SEA_CHANGE.name, min: SEA_CHANGE.min, max: SEA_CHANGE.max, value: SEA_CHANGE.value,
     }),
-    inPlay: {
-      sees: 'statRow',
-      readers: [
-        {
-          prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP,
-          authorText: (world, items) => tourStat(world, items)?.name ?? '',
-        },
-        {
-          prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP,
-          authorText: (world, items) => tourStat(world, items)?.name ?? '',
-        },
-      ],
-    },
+    inPlay: { sees: 'statRow', readers: statReaders((stat) => stat.name) },
   },
   {
     id: 'stat-description',
@@ -552,22 +552,10 @@ const STAT_STEPS: readonly TourStep[] = [
     item: 'stat',
     title: 'Description',
     body: 'Tell the AI what this stat measures and what changes it. The Stat Updates prompt uses it to decide how '
-      + 'the value changes. Players and narration never see it.',
+      + 'the value changes. Players never see it, and the narration prompt never reads it.',
     isComplete: (world, items) => hasValue((tourStat(world, items)?.description ?? '').trim()),
     useExample: (api, world, items) => patchStat(api, world, items, { description: SEA_CHANGE.description }),
-    inPlay: {
-      sees: 'never',
-      readers: [
-        {
-          prompt: 'Narration Prompt', reads: 'statsChip', chip: NARRATION_STATS_CHIP,
-          authorText: (world, items) => tourStat(world, items)?.description ?? '',
-        },
-        {
-          prompt: 'Stat Updates Prompt', reads: 'statsChip', chip: STAT_UPDATES_STATS_CHIP,
-          authorText: (world, items) => tourStat(world, items)?.description ?? '',
-        },
-      ],
-    },
+    inPlay: { sees: 'never', readers: statReaders((stat) => stat.description ?? '') },
   },
 ];
 

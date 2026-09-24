@@ -168,7 +168,7 @@ function statArgs(token: string): { pieces: StatPieces; format: ContextFormat } 
   };
 }
 
-/** The Stats chip `template` places, as its affix-free token, or undefined when it places none. */
+/** The Stats chip `template` places, as its affix-free token. */
 export function statsChipIn(template: string): string | undefined {
   return [...templateChipKeys(template)].find((key) => variableForToken(key)?.token === STATS_TOKEN);
 }
