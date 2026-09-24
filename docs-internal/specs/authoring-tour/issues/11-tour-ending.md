@@ -53,3 +53,8 @@ The ending steps sit last in the registry. Until the tab tickets land, the tour 
 - The "shows once" test now covers the first save of a tour opened afresh.
 - Open for a ruling: **Play** is absent from the in-game editor, which has no entry flow of its own. Play also skips the Enter World source-block check. A tour world has no library links unless the author adds them outside the tour.
 - Not changed: the two tour test files share their mocks and helpers. They are candidates to move into the bench harness.
+
+**2026-09-23, rulings (user)**
+
+- **Play** stays absent from the in-game editor.
+- **Play** must run the main menu's entry checks, including the source-block check. Ticket 16 builds it.
