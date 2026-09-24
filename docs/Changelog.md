@@ -24,6 +24,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **🛠️ Developer tooling**
   - **A Markdown definition probe compares syntax definitions, usage guidance, and no formatting section in the Experimental preset.** It narrates calm, dialogue, and pivot scenes in Sedge Landing at paired seeds. It counts each defined syntax per reply, prints every colored highlight with its key, and counts block syntax, unknown color keys, and unbalanced highlight markers as false positives.
+  - **A Playwright spec walks the whole Authoring Tour as a new author.** `e2e/authoring-tour.spec.ts` makes a world with **New World**, starts the tour, and takes each step from the step list with **+** or **Use Example**. It checks the step counter on every step, that **Next** waits for the example on each step whose field opens empty, and that In Play marks the example text on every tab. Then it presses **Play** and checks that the game starts in The Tidewell. A stub answers the model calls, so no model server is needed. It runs under `npm run test:e2e`, outside the four gates, in about 12 seconds.
 
 ---
 
