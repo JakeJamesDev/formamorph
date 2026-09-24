@@ -106,8 +106,8 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 **Stats**
 
 51. As a tour user naming a stat and setting Min, Max and Initial Value, I want to see the stat bar the player sees, so that I understand the numbers.
-52. As a tour user, I want to see that the narration prompt reads only the stat's name, so that I know what narration can and cannot see.
-53. As a tour user writing the stat's Description, I want to see it in the Stats prompt's text with the numbers, so that I know the Description tells the AI how to change the stat.
+52. As a tour user, I want to see that the narration prompt never reads the stat's number or Description, so that I know what narration can and cannot see.
+53. As a tour user writing the stat's Description, I want to see it in the Stat Updates prompt's text with the numbers, so that I know the Description tells the AI how to change the stat.
 54. As a tour user, I want the step to say the player never sees the Description, so that I write it for the AI.
 
 **Traits**
@@ -186,6 +186,15 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The second location's example values (Appendix A) come from **Use Example** on the "Add a Second Location" step. It is offered only once the second location exists, and it fills that location's Name and both descriptions. The first add step has no **Use Example**, because the Name step follows it.
   - An add step detects its new item by comparing ids against the list as it stood when the step became current, so every add path counts.
   - A dev route to a mid-tour step replays each earlier step's add and example, so it opens on a filled step.
+- **Rulings from ticket 07 (2026-09-23):**
+  - The second Stats reader is titled "Stat Updates Prompt Reads", the app's own name for that prompt.
+  - The narration reader shows the builder's real output, including the default descriptor. The step copy says only what stays true if the defaults change: narration never reads the number or the Description.
+- **Rulings from ticket 09 (2026-09-23):**
+  - The test line reads "You ask {tour entity's name} about the {first keyword}.", or "You ask about the {first keyword}." when there is no named tour entity. It follows the first keyword until the author's first edit, then keeps the author's text for the session. It is never saved.
+  - An entry that fires with an empty Value renders nothing, so the reader shows "The AI reads this entry once it has a Value". This is a fifth reader state.
+  - When the scan does not fire the entry, the reader's text is the Activation Tester's near-miss reason when there is one, and "no keyword" only when the line holds no keyword.
+  - The add step anchors on the Default book's **Add entry** button, because the tab's **+** adds a book.
+  - The Name and Trigger Keywords step needs a Name and at least one keyword.
 
 **Editor mode**
 - The tour forces Simple through a mode override, the same kind the dev router uses. It never writes the stored preference, so the author's mode is back the moment the tour is off screen. There is nothing to restore.
@@ -206,7 +215,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 | Overview | Narration Prompt (world block) |
 | Locations | Narration Prompt (location block). The Connection step shows Location Change Prompt (destinations list with the Travel Hint) and no Narration reader, because narration never reads destinations. |
 | Entities | Narration Prompt (the roster of the entity's location) |
-| Stats | Narration Prompt (name only, in Simple) and Stats Prompt (numbers and Description) |
+| Stats | Narration Prompt (the name and the current descriptor, never the number or Description) and Stat Updates Prompt (numbers and Description) |
 | Traits | Narration Prompt (traits block, with the tour trait active) |
 | Dictionary | Narration Prompt (dictionary block, driven by the test line) |
 
@@ -271,7 +280,7 @@ Before the tour, two Overview labels change so that Overview follows the same pl
 ## Further Notes
 
 **Named during the grilling, not part of this spec:**
-1. In Simple mode the narration prompt never sees a stat's value, because descriptors are Advanced-only. The Stats step shows this honestly; whether Simple stats should reach narration is a separate product question.
+1. **Stale default descriptors (corrected 2026-09-23, awaiting the user).** Adding a stat in the editor gives it three descriptors built from its name at that moment: "New Stat is low / medium / high". A rename does not update them, and Simple mode cannot show or edit them. So narration reads `Sea Change: New Stat is low`, and the stat row shows the same text. An earlier version of this note said narration reads only the name, which was wrong. In Play shows the real output. Whether and how to fix the defaults is a product decision outside this spec.
 2. Two docs are stale: the editor-mode module comment says Simple hides the Dictionary tab, and the Simple-mode design doc says Simple keeps the stat Enabled toggle. The code does neither.
 3. The standalone trait-selection and starting-location modals are imported only by their own tests.
 4. The project memory placed Reset Tutorials in "Settings → Accessibility → Help". It is in Settings → Data → Storage, and it only shows in Advanced.
