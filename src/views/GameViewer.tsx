@@ -84,7 +84,7 @@ import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverri
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
+import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens, sceneEntityTokens } from "../lib/locationContext";
 import { personaContextValues } from "../lib/personaContext";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -1677,23 +1677,10 @@ const GameViewer = ({
   }, [activeTraits, traitGroups, resolvePH, resolveTraitText]);
 
 
-  // Scene-roster override for the entity chips. Choices/re-roll prompts must see only who is actually in the
-  // scene, not the whole location roster — so replace EVERY unscoped <ENTITIES> variant (full/summary × the
-  // three formats). Missing one (the xml pair was the bug) lets an edited prompt using that chip slip the
-  // full roster past the presence filter. Mirrors the variant set addScoped() emits for the "" entity scope.
+  // Scene-roster override for the entity chips: choices and re-roll prompts see only who is in the scene.
   const sceneEntityOverride = useCallback(
-    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> => {
-      const build = (opts: { preferSummary?: boolean; format?: "markdown" | "xml" }) =>
-        resolvePH(buildEntityContext(sceneLoc, sceneEntities, opts));
-      return {
-        "<ENTITIES>": build({}),
-        "<ENTITIES|markdown>": build({ format: "markdown" }),
-        "<ENTITIES|xml>": build({ format: "xml" }),
-        "<ENTITIES|summary>": build({ preferSummary: true }),
-        "<ENTITIES|summary.markdown>": build({ preferSummary: true, format: "markdown" }),
-        "<ENTITIES|summary.xml>": build({ preferSummary: true, format: "xml" }),
-      };
-    },
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> =>
+      sceneEntityTokens(sceneLoc, sceneEntities, resolvePH),
     [resolvePH],
   );
 

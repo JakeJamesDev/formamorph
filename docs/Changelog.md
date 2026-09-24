@@ -22,6 +22,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **🛠️ Developer tooling**
   - **A Markdown definition probe compares syntax definitions, usage guidance, and no formatting section in the Experimental preset.** It narrates calm, dialogue, and pivot scenes in Sedge Landing at paired seeds. It counts each defined syntax per reply, prints every colored highlight with its key, and counts block syntax, unknown color keys, and unbalanced highlight markers as false positives.
 
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The Entities chip with Name content lists only who is in the scene in the Choices and re-roll prompts.** That variant read the whole location roster, past the presence filter the other variants respect. Every variant of the chip now comes from one enumerated set, so a new variant cannot miss the filter.
+
 ---
 
 <details>
