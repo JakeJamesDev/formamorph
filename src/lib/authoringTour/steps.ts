@@ -12,7 +12,7 @@ import type {
 } from '@/types';
 import { hasValue } from '@/lib/editorMode';
 import {
-  entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors,
+  NEW_WORLD_NAME, entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors,
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
@@ -278,7 +278,11 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     item: null,
     title: 'World Name',
     body: 'Type the name players see in their library',
-    isComplete: (world) => hasValue(world.worldOverview.name.trim()),
+    // The untouched default name is not the author's choice, so it does not count.
+    isComplete: (world) => {
+      const name = world.worldOverview.name.trim();
+      return hasValue(name) && name !== NEW_WORLD_NAME;
+    },
     useExample: (api) => api.updateWorldOverview({ name: WORLD_NAME_EXAMPLE }),
     inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
   },

@@ -80,6 +80,7 @@ describe('Authoring Tour Save note', () => {
   it('points at Save after the first save, then gives the step back', async () => {
     await startTour();
     expect(screen.queryByRole('dialog', { name: SAVE_NOTE })).not.toBeInTheDocument();
+    fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Next' }));
 
     const saveNote = await screen.findByRole('dialog', { name: SAVE_NOTE });
@@ -96,6 +97,7 @@ describe('Authoring Tour Save note', () => {
 
   it('shows once', async () => {
     const first = await startTour();
+    fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Next' }));
     fireEvent.click(within(await screen.findByRole('dialog', { name: SAVE_NOTE })).getByRole('button', { name: 'Got It' }));
 

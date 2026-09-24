@@ -1,12 +1,15 @@
 import { randomUUID } from '@/lib/uuid';
 import type { Entity, GameLocation, Stat, World } from '@/types';
 
+/** The name New World gives a world. */
+export const NEW_WORLD_NAME = 'New World';
+
 /** The world New World opens in the editor. It is not stored until the author saves it. */
 export function newBlankWorld(): World {
   return {
     id: `new-${randomUUID()}`,
     worldOverview: {
-      name: 'New World',
+      name: NEW_WORLD_NAME,
       description: 'A blank world ready for editing',
       thumbnail: null,
       use3DModel: false,

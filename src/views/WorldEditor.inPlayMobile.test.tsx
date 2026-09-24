@@ -55,6 +55,7 @@ const startTour = async () => {
 
 /** From World Name to the AI-Facing Description step, past the one-time Save note. */
 const toAiDescription = async () => {
+  fireEvent.click(within(screen.getByRole('dialog', { name: 'World Name' })).getByRole('button', { name: 'Use Example' }));
   fireEvent.click(within(screen.getByRole('dialog', { name: 'World Name' })).getByRole('button', { name: 'Next' }));
   const step = () => screen.queryByRole('dialog', { name: 'AI-Facing Description' });
   const saved = () => screen.queryByRole('dialog', { name: 'Your World Is Saved' });

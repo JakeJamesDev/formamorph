@@ -1,6 +1,7 @@
 # 14: World Name Step Ignores the Default Name
 
-Status: ready-for-agent
+Status: in-progress
+Base: a3685c8b
 Blocked by: 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

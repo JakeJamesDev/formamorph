@@ -5,6 +5,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { NEW_WORLD_NAME } from '@/lib/blankWorld';
 import { readEditorMode } from '@/lib/editorMode';
 import { WORLD_EDITOR_TABS } from './worldEditorTabs';
 import WorldStorageService from '../services/WorldStorageService';
@@ -38,9 +39,13 @@ const getWorldMetadata = vi.mocked(WorldStorageService.getWorldMetadata);
 /** A world as New World makes it: a placeholder name and nothing for the AI. */
 const NEW_WORLD: World = benchEditorWorld({
   worldOverview: {
-    name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
+    name: NEW_WORLD_NAME, description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
     systemPrompt: '', use3DModel: false, tags: [],
   },
+} as unknown as Partial<World>);
+
+const NAMED_WORLD: World = benchEditorWorld({
+  worldOverview: { ...NEW_WORLD.worldOverview, name: 'Fenmoor' },
 } as unknown as Partial<World>);
 
 const UNNAMED_WORLD: World = benchEditorWorld({
@@ -124,7 +129,24 @@ describe('Authoring Tour offer', () => {
 
 describe('Authoring Tour steps', () => {
   it('shows Next enabled on a step whose field already has a value', async () => {
+    await openTourOn(NAMED_WORLD);
+    expect(within(note('World Name')).getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
+  it('keeps Next disabled on the name New World gives until the author changes it', async () => {
     await openTourOn(NEW_WORLD);
+    const next = within(note('World Name')).getByRole('button', { name: 'Next' });
+    expect(next).toBeDisabled();
+    fireEvent.change(worldNameField(), { target: { value: 'Fenmoor' } });
+    expect(next).toBeEnabled();
+    fireEvent.change(worldNameField(), { target: { value: '' } });
+    expect(next).toBeDisabled();
+  });
+
+  it('Use Example on the name New World gives enables Next', async () => {
+    await openTourOn(NEW_WORLD);
+    fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Use Example' }));
+    expect(worldNameField().value).toBe('Brinewell');
     expect(within(note('World Name')).getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
@@ -170,6 +192,7 @@ describe('Authoring Tour steps', () => {
 
   it('Next saves the AI-Facing Description and moves on', async () => {
     await openTourOn(NEW_WORLD);
+    fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Next' }));
     const second = await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     fireEvent.click(within(second).getByRole('button', { name: 'Use Example' }));
@@ -186,7 +209,7 @@ describe('Authoring Tour steps', () => {
   it('keeps the step when the save fails', async () => {
     storeWorld.mockRejectedValueOnce(new Error('disk full'));
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    await openTourOn(NEW_WORLD);
+    await openTourOn(NAMED_WORLD);
     const next = within(note('World Name')).getByRole('button', { name: 'Next' });
     fireEvent.click(next);
     await waitFor(() => expect(storeWorld).toHaveBeenCalledTimes(1));
@@ -279,6 +302,7 @@ describe('Authoring Tour mode, End Tour and resume', () => {
 
   it('resumes at the stored step when the world opens again', async () => {
     const first = await openTourOn(NEW_WORLD);
+    fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note('World Name')).getByRole('button', { name: 'Next' }));
     await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     first.unmount();
@@ -287,6 +311,16 @@ describe('Authoring Tour mode, End Tour and resume', () => {
     const resumed = await screen.findByRole('dialog', { name: 'AI-Facing Description' });
     expect(within(resumed).getByText(`2 / ${TOTAL}`)).toBeInTheDocument();
     expect(within(tourBar()!).getByText(`Authoring Tour · 2 / ${TOTAL}`)).toBeInTheDocument();
+  });
+
+  it('resumes the World Name step with Next disabled on the name New World gives', async () => {
+    const first = await openTourOn(NEW_WORLD);
+    first.unmount();
+
+    renderWorldEditorBench(NEW_WORLD, 'simple');
+    const resumed = await screen.findByRole('dialog', { name: 'World Name' });
+    expect(within(resumed).getByText(`1 / ${TOTAL}`)).toBeInTheDocument();
+    expect(within(resumed).getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('drops the progress of a world that no longer exists', async () => {
