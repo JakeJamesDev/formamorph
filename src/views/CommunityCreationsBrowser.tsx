@@ -413,6 +413,21 @@ const CommunityCreationsBrowser = ({
     else onOpenEvent?.(event);
   }, [onOpenEvent]);
 
+  const closeDetails = useCallback(() => {
+    setShowRemoteWorldDetailsModal(false);
+    if (controlledListing !== undefined) {
+      setSelectedRemoteWorld(null);
+      onListingChange?.(null);
+    }
+  }, [controlledListing, onListingChange]);
+
+  // A place chip opens the contest it names, on the card or over the details view.
+  const openContest = useCallback((contestId: string) => {
+    setSelectedContestId(contestId);
+    setBrowseTab('contest');
+    closeDetails();
+  }, [closeDetails]);
+
   // A fresh shuffle seed each time the browser opens, so a live contest is re-ordered per visit but holds
   // still while the reader is looking at it. The archive picked last time is dropped at the same moment:
   // the running contest is what a visit opens on, not whichever old one was last read.
@@ -1225,6 +1240,7 @@ const CommunityCreationsBrowser = ({
                       onQuarantine={capabilities.moderation ? setQuarantining : undefined}
                       onRelease={capabilities.moderation ? handleRelease : undefined}
                       placements={placementsBy(world, contests)}
+                      onOpenContest={openContest}
                       // Only where the entry is the subject, and only while it is still an entry: a
                       // decided contest keeps its podium, and the server refuses to release a placed world.
                       onWithdraw={capabilities.contestParticipation && browseTab === 'contest' && shownContest && contestPhase(shownContest) !== 'decided'
@@ -1269,13 +1285,8 @@ const CommunityCreationsBrowser = ({
 
       <RemoteWorldDetailsModal
         open={showRemoteWorldDetailsModal}
-        onOpenChange={(detailsOpen) => {
-          setShowRemoteWorldDetailsModal(detailsOpen);
-          if (!detailsOpen && controlledListing !== undefined) {
-            setSelectedRemoteWorld(null);
-            onListingChange?.(null);
-          }
-        }}
+        onOpenChange={(detailsOpen) => { if (detailsOpen) setShowRemoteWorldDetailsModal(true); else closeDetails(); }}
+        onOpenContest={openContest}
         world={selectedRemoteWorld}
         collapsed={communityBrowserModalCollapsed}
         onToggleCollapsed={toggleCommunityBrowserModalCollapsed}

@@ -77,6 +77,8 @@ interface RemoteWorldDetailsModalProps {
   onAnonymousLikes?: (on: boolean) => void;
   /** The contest archive the browser already fetched, so a placement is badged here as on its card. */
   contests?: ServerEvent[];
+  /** Opens a contest this listing placed in, from its place chip. */
+  onOpenContest?: (contestId: string) => void;
   /** Records a new like count after a staff removal, so the card behind this modal agrees. */
   onLikesChanged?: (world: WorldRecord, likes: number) => void;
   /** DEV only: raise the likers dialog as soon as the modal opens, for the dev route. */
@@ -106,7 +108,7 @@ export function RemoteWorldDetailsModal({
   open, onOpenChange, world, collapsed, onToggleCollapsed,
   isAuthenticated, openImageViewer, downloadStateForWorld, downloadProgress, onContextualDownload, onDeviceDownload,
   currentUser, onLike, onGuestLike, guestLikes = false, serverTakesLikes = false, onAnonymousLikes,
-  contests = [], onLikesChanged, openLikersOnMount = false,
+  contests = [], onOpenContest, onLikesChanged, openLikersOnMount = false,
   capabilities = APP_DETAILS_CAPABILITIES,
   detailsAction, onOpenListing, presetUse,
 }: RemoteWorldDetailsModalProps) {
@@ -363,7 +365,7 @@ export function RemoteWorldDetailsModal({
             </Tip>
           </div>
           {/* Under the title, as on the card: opening a winning card must not lose what the card said. */}
-          {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine />}
+          {world && <PlaceBadges placements={placementsBy(world, contests)} className="mr-8" shine onSelect={onOpenContest} />}
         </DialogHeader>
 
         {world && (
