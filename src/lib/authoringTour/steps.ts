@@ -200,7 +200,7 @@ function shippedStatsChip(template: string): string {
 }
 
 /** The Connection between the two tour locations, in either direction. */
-function tourConnection(world: TourWorld, items: TourItems): Connection | undefined {
+export function tourConnection(world: TourWorld, items: TourItems): Connection | undefined {
   const { location, secondLocation } = items;
   if (!location || !secondLocation) return undefined;
   return (world.connections ?? []).find((c) => (c.from === location && c.to === secondLocation)
@@ -400,6 +400,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     },
     inPlay: {
       sees: 'locationTab',
+      scene: 'connection',
       readers: [{
         prompt: 'Location Change Prompt', reads: 'destinations',
         authorText: (world, items) => tourConnection(world, items)?.aiHint ?? '',
