@@ -2,7 +2,7 @@
 
 Status: ready-for-agent
 Spec session: Spec: Authoring Tour
-Status note: 13 tickets in `issues/`. The user approved the example world (Appendix A) and the Settings placement on 2026-09-23.
+Status note: 16 tickets in `issues/`. The user approved the example world (Appendix A) and the Settings placement on 2026-09-23.
 Workspace: branch `feature/authoring-tour`, worktree `.claude/worktrees/authoring-tour`. Every ticket is built there, never on `main`. See Further Notes → Workspace.
 
 ## Problem Statement
