@@ -108,7 +108,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
   const detailsPanel = (
     <>
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour-anchor="dictionary-name">
         <Label>Name</Label>
         <Hint>Names the entry in the list and prefixes the Value in the prompt. Blank uses the first Trigger Keyword.</Hint>
         <PlaceholderNameField
@@ -141,6 +141,7 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
         placeholders={placeholders}
         ownerId={ownerId}
         resizable
+        tourAnchor="dictionary-value"
       />
     </>
   );

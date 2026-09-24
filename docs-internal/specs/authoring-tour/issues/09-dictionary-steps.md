@@ -1,6 +1,7 @@
 # 09: Dictionary Steps
 
-Status: ready-for-agent
+Status: in-progress
+Base: 99bbfe14
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

@@ -7,9 +7,15 @@
 import type { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import type { LocationPanelTab } from '@/views/locationPanelTabs';
 import type { EntityPanelTab } from '@/views/entityPanelTabs';
-import type { Connection, Entity, GameLocation, Stat, WorldOverview, World } from '@/types';
+import type {
+  Connection, Dictionary, DictionaryEntry, Entity, GameLocation, Stat, WorldOverview, World,
+} from '@/types';
 import { hasValue } from '@/lib/editorMode';
-import { entityRootCount, newEntity, newLocation, newStat, withDefaultDescriptors } from '@/lib/blankWorld';
+import {
+  entityRootCount, newDefaultBook, newEntity, newLocation, newStat, withDefaultDescriptors,
+} from '@/lib/blankWorld';
+import { blankDictionaryEntry } from '@/lib/dictionaryTree';
+import { parseKeywords } from '@/lib/dictionaryUtils';
 import { defaultStatUpdatesPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { statsChipIn } from '@/lib/testBench/aiContext';
 import { withEntityLocations } from '@/lib/entityPresence';
@@ -61,6 +67,9 @@ export interface TourEditApi {
   /** Gives the stat its default descriptors, as the world does for every added stat. */
   addStat: (stat: Omit<Stat, 'descriptors'>) => void;
   updateStat: (stat: Stat) => void;
+  addDictionary: (book: Dictionary) => void;
+  addDictionaryEntry: (bookId: string, entry: DictionaryEntry) => void;
+  updateDictionaryEntry: (entry: DictionaryEntry) => void;
 }
 
 export interface TourStep {
@@ -93,7 +102,9 @@ export interface TourStep {
 export const NO_IN_PLAY: InPlaySpec = { sees: 'none', readers: [] };
 
 /** An add step, pointing at its list's Add button. */
-function addStep(fields: Omit<TourStep, 'anchor' | 'isComplete' | 'inPlay' | 'item'> & { item: TourItem }): TourStep {
+function addStep(
+  fields: Omit<TourStep, 'anchor' | 'isComplete' | 'inPlay' | 'item'> & { item: TourItem; anchor?: string },
+): TourStep {
   return {
     anchor: 'list-add',
     isComplete: (world, items) => liveTourItem(world, items, fields.item) !== null,
@@ -157,6 +168,33 @@ export const tourStat = (world: TourWorld, items: TourItems) =>
 function patchStat(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<Stat>) {
   const stat = tourStat(world, items);
   if (stat) api.updateStat({ ...stat, ...patch });
+}
+
+/** Adds an entry the way the top book's Add entry button does, first adding a Default book to a world with none. */
+function addEntryItem(api: TourEditApi, world: TourWorld): string {
+  let book = world.dictionaries?.[0];
+  if (!book) {
+    book = newDefaultBook();
+    api.addDictionary(book);
+  }
+  const entry = blankDictionaryEntry();
+  api.addDictionaryEntry(book.id, entry);
+  return entry.id;
+}
+
+/** The dictionary entry the tour created, in whichever book it now sits. */
+export function tourEntry(world: TourWorld, items: TourItems): DictionaryEntry | undefined {
+  if (!items.entry) return undefined;
+  for (const book of world.dictionaries ?? []) {
+    const entry = book.entries.find((e) => e.id === items.entry);
+    if (entry) return entry;
+  }
+  return undefined;
+}
+
+function patchEntry(api: TourEditApi, world: TourWorld, items: TourItems, patch: Partial<DictionaryEntry>) {
+  const entry = tourEntry(world, items);
+  if (entry) api.updateDictionaryEntry({ ...entry, ...patch });
 }
 
 /** The Stats chip a shipped prompt places, so In Play reads a stat the way that prompt does. */
@@ -538,8 +576,58 @@ const STAT_STEPS: readonly TourStep[] = [
   },
 ];
 
+const DROWNED_BELL = {
+  name: 'The Drowned Bell',
+  key: ['bell', 'drowned bell'],
+  value: 'A bronze bell that sank in the harbor long ago. Villagers say it rings beneath the water on the night '
+    + 'before someone changes completely.',
+};
+
+const DICTIONARY_STEPS: readonly TourStep[] = [
+  addStep({
+    id: 'add-dictionary-entry',
+    tab: 'dictionary',
+    anchor: 'dictionary-add-entry',
+    item: 'entry',
+    title: 'Add a Dictionary Entry',
+    body: 'Press the Add entry button on your dictionary to add an entry',
+    add: addEntryItem,
+  }),
+  {
+    id: 'dictionary-name-keywords',
+    tab: 'dictionary',
+    anchor: 'dictionary-name',
+    item: 'entry',
+    title: 'Name and Trigger Keywords',
+    body: 'Name the entry, then add the words that bring it up. The AI reads the entry only when a message has one.',
+    isComplete: (world, items) => {
+      const entry = tourEntry(world, items);
+      return !!entry && hasValue((entry.name ?? '').trim()) && parseKeywords(entry).length > 0;
+    },
+    useExample: (api, world, items) => patchEntry(api, world, items, { name: DROWNED_BELL.name, key: DROWNED_BELL.key }),
+    inPlay: {
+      sees: 'neverDictionary',
+      readers: [{ prompt: 'Narration Prompt', reads: 'testLine', authorText: (world, items) => tourEntry(world, items)?.name ?? '' }],
+    },
+  },
+  {
+    id: 'dictionary-value',
+    tab: 'dictionary',
+    anchor: 'dictionary-value',
+    item: 'entry',
+    title: 'Value',
+    body: 'Write what the AI learns when a message has a keyword. Change the test line in In Play to try it.',
+    isComplete: (world, items) => hasValue((tourEntry(world, items)?.value ?? '').trim()),
+    useExample: (api, world, items) => patchEntry(api, world, items, { value: DROWNED_BELL.value }),
+    inPlay: {
+      sees: 'neverDictionary',
+      readers: [{ prompt: 'Narration Prompt', reads: 'testLine', authorText: (world, items) => tourEntry(world, items)?.value ?? '' }],
+    },
+  },
+];
+
 export const TOUR_STEPS: readonly TourStep[] = [
-  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...STAT_STEPS, ...ENDING_STEPS,
+  ...OVERVIEW_STEPS, ...LOCATION_STEPS, ...ENTITY_STEPS, ...STAT_STEPS, ...DICTIONARY_STEPS, ...ENDING_STEPS,
 ];
 
 /** The step with this id, or the first step for an id the registry no longer has. */
@@ -572,6 +660,13 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
     addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },
     updateStat: (stat) => { draft = { ...draft, stats: replace(draft.stats, stat) }; },
+    addDictionary: (book) => { draft = { ...draft, dictionaries: [...(draft.dictionaries ?? []), book] }; },
+    addDictionaryEntry: (bookId, entry) => {
+      draft = { ...draft, dictionaries: (draft.dictionaries ?? []).map((b) => (b.id === bookId ? { ...b, entries: [...b.entries, entry] } : b)) };
+    },
+    updateDictionaryEntry: (entry) => {
+      draft = { ...draft, dictionaries: (draft.dictionaries ?? []).map((b) => ({ ...b, entries: replace(b.entries, entry) })) };
+    },
   };
   for (const step of TOUR_STEPS.slice(0, index)) {
     if (step.add && step.item) items[step.item] = step.add(api, draft);

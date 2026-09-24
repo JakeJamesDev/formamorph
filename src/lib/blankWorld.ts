@@ -1,5 +1,5 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Entity, GameLocation, Stat, World } from '@/types';
+import type { Dictionary, Entity, GameLocation, Stat, World } from '@/types';
 
 /** The world New World opens in the editor. It is not stored until the author saves it. */
 export function newBlankWorld(): World {
@@ -26,8 +26,13 @@ export function newBlankWorld(): World {
     entities: [],
     statUpdates: [], // This field is required by WorldStorageService
     // Seed one "Default" book so new worlds start with a dictionary (Foreground by default).
-    dictionaries: [{ id: randomUUID(), name: 'Default', enabled: true, entries: [] }],
+    dictionaries: [newDefaultBook()],
   };
+}
+
+/** The empty "Default" dictionary a new world starts with. */
+export function newDefaultBook(): Dictionary {
+  return { id: randomUUID(), name: 'Default', enabled: true, entries: [] };
 }
 
 /** A location as the editor's Add button makes it. */

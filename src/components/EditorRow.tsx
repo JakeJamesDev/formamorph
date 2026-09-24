@@ -27,6 +27,8 @@ export interface EditorRowAction {
   title: string;
   onClick: () => void;
   disabled?: boolean;
+  /** The Authoring Tour anchor on the button, when a tour step points at it. */
+  tourAnchor?: string;
 }
 
 export interface EditorRowProps {
@@ -202,6 +204,7 @@ export function EditorRow({
             onClick={(e) => { e.stopPropagation(); action.onClick(); }}
             disabled={action.disabled}
             aria-label={action.title}
+            data-tour-anchor={action.tourAnchor}
           >
             {action.icon}
           </Button>

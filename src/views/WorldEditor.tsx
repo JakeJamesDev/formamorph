@@ -149,7 +149,7 @@ const WorldEditorInner = ({
     addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
-    updateDictionary, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
+    updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeLocation, removeTrait, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
@@ -561,16 +561,17 @@ const WorldEditorInner = ({
       setEntityTab(ENTITY_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'profile');
     }
     if (step.tab === 'stats' && step.item) setStatTab('details');
+    if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
   }, [deferReveal, worldId]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat,
+      addStat, updateStat, addDictionary, addDictionaryEntry, updateDictionaryEntry,
     }),
     [
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
-      addStat, updateStat,
+      addStat, updateStat, addDictionary, addDictionaryEntry, updateDictionaryEntry,
     ],
   );
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
@@ -578,6 +579,12 @@ const WorldEditorInner = ({
   const tour = useAuthoringTour({
     worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
   });
+  // The Dictionary steps' test line once the author edits it, for this world only. It is never saved.
+  const [testLineEdit, setTestLineEdit] = useState<{ worldId: string | null; text: string } | null>(null);
+  const tourTestLine = {
+    testLineEdit: testLineEdit?.worldId === worldId ? testLineEdit.text : null,
+    onTestLineEdit: (text: string) => setTestLineEdit({ worldId, text }),
+  };
   // Mobile's In Play sheet. It closes for good when the Bench opens, so the two sheets are never open together.
   const [effectOpen, setEffectOpen] = useState(false);
   const effectShown = effectOpen && isMobile && !!tour.step && !bench.open;
@@ -1154,7 +1161,8 @@ const WorldEditorInner = ({
       ) : (
         <ListAddButton
           label={addLabel}
-          data-tour-anchor="list-add"
+          // With no book to hold an entry, the tour's Add entry step points at the + that adds one.
+          data-tour-anchor={activeTab === "dictionary" && !dictionaries.length ? 'dictionary-add-entry' : 'list-add'}
           onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem}
         />
       )}
@@ -1380,7 +1388,7 @@ const WorldEditorInner = ({
                 <Panel id="editor-inplay" order={4} defaultSize={28} minSize={20}>
                   <div className="h-full p-3">
                     <Card className="h-full overflow-hidden">
-                      <TourInPlay worldId={worldId} step={tour.step} />
+                      <TourInPlay worldId={worldId} step={tour.step} {...tourTestLine} />
                     </Card>
                   </div>
                 </Panel>
@@ -1410,7 +1418,7 @@ const WorldEditorInner = ({
           >
             <DrawerTitle className="sr-only">In Play</DrawerTitle>
             <div className="min-h-0 flex-grow">
-              <TourInPlay worldId={worldId} step={tour.step} />
+              <TourInPlay worldId={worldId} step={tour.step} {...tourTestLine} />
             </div>
           </DrawerContent>
         </Drawer>
