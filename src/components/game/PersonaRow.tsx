@@ -75,7 +75,7 @@ export function PersonaRow() {
       </span>
       <Button variant="outline" size="sm" className="shrink-0" onClick={() => showPicker(true)}>Change</Button>
       <Dialog open={open} onOpenChange={showPicker}>
-        <DialogContent className="flex max-h-[calc(var(--app-h,100dvh)-1rem)] w-[min(96vw,640px)] max-w-none flex-col">
+        <DialogContent className="flex h-[90dvh] w-[95vw] max-w-none flex-col sm:w-[47.5vw]">
           <DialogHeader className="shrink-0 text-left">
             <DialogTitle>Change Persona</DialogTitle>
             <DialogDescription>Pick who you play. Memories written before the change keep the old name.</DialogDescription>
