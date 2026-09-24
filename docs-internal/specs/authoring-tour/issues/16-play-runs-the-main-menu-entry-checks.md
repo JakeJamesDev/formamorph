@@ -1,6 +1,7 @@
 # 16: Play Runs the Main Menu Entry Checks
 
-Status: in-progress
+Status: ready-for-human
+Status note: Built. The gate now sits in `startEntry`. A blocked Play opens the world modal, which only a New World tour reaches untested. A blocked Play still ends the tour, as every Play does.
 Base: a3685c8b
 Blocked by: 11
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
