@@ -1,6 +1,6 @@
 # 14: World Name Step Ignores the Default Name
 
-Status: in-progress
+Status: ready-for-human
 Base: a3685c8b
 Blocked by: 03
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -14,14 +14,14 @@ Reasoning effort: medium
 
 ## Acceptance criteria
 
-- [ ] **New World** and the World Name step's predicate read the default name from one shared constant. Neither has its own copy of the string.
-- [ ] On a new world, the World Name step shows **Next** disabled.
-- [ ] Typing any other name, or using **Use Example**, enables **Next**.
-- [ ] Clearing the name back to empty disables **Next** again.
-- [ ] Resuming a tour on a world still named with the default opens the step with **Next** disabled.
-- [ ] Tests run through the World Editor Bench harness. Prove the guard by letting the default name count and watching the test fail.
-- [ ] Remove the open point about the default name from ticket 03's Comments, or mark it resolved there with a pointer to this ticket.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
+- [x] **New World** and the World Name step's predicate read the default name from one shared constant. Neither has its own copy of the string.
+- [x] On a new world, the World Name step shows **Next** disabled.
+- [x] Typing any other name, or using **Use Example**, enables **Next**.
+- [x] Clearing the name back to empty disables **Next** again.
+- [x] Resuming a tour on a world still named with the default opens the step with **Next** disabled.
+- [x] Tests run through the World Editor Bench harness. Prove the guard by letting the default name count and watching the test fail.
+- [x] Remove the open point about the default name from ticket 03's Comments, or mark it resolved there with a pointer to this ticket.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph.
 
 ## Scope notes
 

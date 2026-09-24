@@ -60,11 +60,13 @@ const resumeAt = (stepId: string, mode: 'simple' | 'advanced' = 'simple', props 
   return renderWorldEditorBench(NEW_WORLD, mode, props);
 };
 
+/** Starts the tour on a new world and names it, so the World Name step's Next is ready. */
 const startTour = async () => {
   const view = renderWorldEditorBench(NEW_WORLD, 'simple', { newWorld: true });
   const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
-  await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
+  const first = await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
+  fireEvent.click(within(first).getByRole('button', { name: 'Use Example' }));
   return view;
 };
 
@@ -80,7 +82,6 @@ describe('Authoring Tour Save note', () => {
   it('points at Save after the first save, then gives the step back', async () => {
     await startTour();
     expect(screen.queryByRole('dialog', { name: SAVE_NOTE })).not.toBeInTheDocument();
-    fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Next' }));
 
     const saveNote = await screen.findByRole('dialog', { name: SAVE_NOTE });
@@ -97,7 +98,6 @@ describe('Authoring Tour Save note', () => {
 
   it('shows once', async () => {
     const first = await startTour();
-    fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Use Example' }));
     fireEvent.click(within(note(TOUR_STEPS[0].title)).getByRole('button', { name: 'Next' }));
     fireEvent.click(within(await screen.findByRole('dialog', { name: SAVE_NOTE })).getByRole('button', { name: 'Got It' }));
 
