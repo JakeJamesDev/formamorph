@@ -1,6 +1,7 @@
 # 15: Connection Step Follows the Connection Direction
 
-Status: in-progress
+Status: ready-for-human
+Status note: the dev-router preview check is still open. The Browser pane was hidden, so the page never rendered.
 Base: a3685c8b
 Blocked by: 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
