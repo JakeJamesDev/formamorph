@@ -224,7 +224,7 @@ describe('In Play — Traits', () => {
     expect(reader('Narration Prompt')).toBeNull();
   });
 
-  it('Name: shows the trait on the setup screen, picked, and the AI never reads the description', async () => {
+  it('Name: shows the trait on the setup screen, picked, and the traits block marks the name alone', async () => {
     await resumeAt('add-trait');
     await addTourTrait();
     fireEvent.click(noteButton('Use Example')!);
@@ -238,12 +238,16 @@ describe('In Play — Traits', () => {
     expect(within(sees).getByRole('heading', { name: 'General' })).toBeInTheDocument();
     expect(within(sees).getByText(TIDE_TOUCHED_PLAYER)).toBeInTheDocument();
     expect(within(sees).getByRole('checkbox', { name: 'Tide-Touched' })).toBeChecked();
-    expect(within(reader('Narration Prompt')!).getByText('The AI never reads this field')).toBeInTheDocument();
+    // The AI reads the name, not the Player-Facing Description.
+    const narration = reader('Narration Prompt')!;
+    await waitFor(() => expect(marks(narration)).toEqual(['Tide-Touched']));
+    expect(readText(narration)).not.toContain(TIDE_TOUCHED_PLAYER);
+    expect(within(narration).queryByText(/never reads/)).toBeNull();
   });
 
   it('AI-Facing Description: players never see it, and the traits block holds it with the trait active', async () => {
     await resumeAt('trait-ai-description');
-    expect(within(playerSees()!).getByText('Players never see this field')).toBeInTheDocument();
+    expect(within(playerSees()!).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
     // The picked trait is in the block by name before it has a description.
     expect(readText(reader('Narration Prompt')!)).toBe('## Traits\n- **Tide-Touched**');
 

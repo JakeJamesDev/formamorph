@@ -31,8 +31,7 @@ const STARTS_LINES: Record<StartsAt, string> = {
   anywhere: 'A new game starts at a random location',
 };
 
-const STATE_LINES: Record<Exclude<ReaderState, 'reads'>, string> = {
-  neverReads: 'The AI never reads this field',
+const STATE_LINES: Record<Exclude<ReaderState, 'reads' | 'neverReads'>, string> = {
   notInScene: 'The AI never reads an entity with no location',
   noKeyword: 'Nothing reaches the AI on this line',
   noValue: 'The entry fires, but adds nothing until it has a Value',
@@ -134,14 +133,15 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
       return <div className="w-56 max-w-full"><WorldCardFace world={surface.world} layout="grid" /></div>;
     case 'locationTab':
       return (
-        // The location's picture sits behind the tab the way it sits behind the story, under the same fade.
-        <div className="relative isolate overflow-hidden rounded-md border">
-          <LocationBackdrop image={surface.location?.backgroundImage} overlay={0.7} overlayHidden={false} />
-          <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
+        <div className="space-y-2">
+          {/* The location's picture sits behind the tab the way it sits behind the story, under the same fade. */}
+          <div className="relative isolate overflow-hidden rounded-md border">
+            <LocationBackdrop image={surface.location?.backgroundImage} overlay={0.7} overlayHidden={false} />
+            <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
+          </div>
+          {surface.startsAt && <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>}
         </div>
       );
-    case 'startsHere':
-      return <p className="text-label">{STARTS_LINES[surface.startsAt]}</p>;
     case 'entityRow':
     case 'entityCard':
     case 'entityRowAndCard':
@@ -162,29 +162,32 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
           )}
         </div>
       );
-    case 'never':
-      return <Muted>Players never see this field</Muted>;
     case 'neverDictionary':
       return <Muted>Players never see dictionary entries</Muted>;
   }
 }
 
-function PlayerSees({ surface }: { surface: PlayerSurface }) {
+/** The item as players see it so far. A field they never see is named above it, so the surface reads as the rest. */
+function PlayerSees({ surface, hidden, field }: { surface: PlayerSurface; hidden: boolean; field: string }) {
   if (surface.kind === 'none') return null;
   return (
     <Section title="Player Sees">
+      {hidden && <Muted>{`Players never see the ${field}`}</Muted>}
       <Surface surface={surface} />
     </Section>
   );
 }
 
-const Reader = ({ reader }: { reader: InPlayReader }) => (
+/** The block as the prompt reads it so far. A field it never reads is named above it, so the block reads as the rest. */
+const Reader = ({ reader, field }: { reader: InPlayReader; field: string }) => (
   <Section title={`${reader.prompt} Reads`}>
-    {reader.state === 'reads' ? (
+    {(reader.state === 'neverReads' || !reader.readsField) && <Muted>{`The AI never reads the ${field}`}</Muted>}
+    {reader.state === 'reads' && (
       <pre className="whitespace-pre-wrap break-words rounded-md border bg-muted/30 p-2 text-meta leading-relaxed">
         {markedText(reader.text, reader.marks)}
       </pre>
-    ) : <Muted>{STATE_LINES[reader.state]}</Muted>}
+    )}
+    {reader.state !== 'reads' && reader.state !== 'neverReads' && <Muted>{STATE_LINES[reader.state]}</Muted>}
   </Section>
 );
 
@@ -258,16 +261,19 @@ function TestLine({ value, onChange, samples, scan }: TestLineInput & { scan?: T
   );
 }
 
-/** The Authoring Tour's In Play pane: the current step's field as the player sees it and as each prompt reads it. */
-export function InPlayPane({ slice, testLine }: { slice: InPlaySlice; testLine?: TestLineInput }) {
+/**
+ * The Authoring Tour's In Play pane: the current step's item as the player sees it and as each prompt reads it.
+ * `field` names the step's field, as its captions say it.
+ */
+export function InPlayPane({ slice, field, testLine }: { slice: InPlaySlice; field: string; testLine?: TestLineInput }) {
   return (
     <section aria-labelledby="in-play-title" className="flex h-full flex-col">
       <h2 id="in-play-title" className="flex-shrink-0 border-b px-3 py-2 text-heading font-semibold">In Play</h2>
       <ScrollArea className="min-h-0 flex-grow">
         <div className="space-y-4 p-3">
-          <PlayerSees surface={slice.playerSees} />
+          <PlayerSees surface={slice.playerSees} hidden={slice.playerHidden} field={field} />
           {testLine && <TestLine {...testLine} scan={slice.testLine} />}
-          {slice.readers.map((reader) => <Reader key={reader.prompt} reader={reader} />)}
+          {slice.readers.map((reader) => <Reader key={reader.prompt} reader={reader} field={field} />)}
         </div>
       </ScrollArea>
     </section>
@@ -302,6 +308,7 @@ export function TourInPlay({ worldId, step, testLineEdit, onTestLineEdit }: {
   return (
     <InPlayPane
       slice={slice}
+      field={step.title}
       testLine={testLine === null ? undefined : {
         value: testLine,
         onChange: onTestLineEdit,

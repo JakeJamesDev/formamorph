@@ -1,6 +1,7 @@
 /**
- * In Play: one tour step's field as the player sees it and as each prompt reads it. Reader text comes from
- * the Test Bench's AI Context builders, so it is the block a real turn sends.
+ * In Play: the tour item a step builds, as the player sees it and as each prompt reads it, with the step's
+ * own field marked where it lands. Reader text comes from the Test Bench's AI Context builders, so it is the
+ * block a real turn sends.
  */
 import type { WorldRecord } from '@/components/WorldDetails';
 import { allPlaceholders } from '@/lib/placeholderHomes';
@@ -28,10 +29,10 @@ export type TourPrompt = 'Narration Prompt' | 'Location Change Prompt' | 'Stat U
 export type TourPromptTemplates = Record<TourPrompt, string>;
 
 /**
- * Why a reader shows what it shows. `neverReads`: the prompt has no use for this field, or the active preset
- * places no chip that carries it. `notInScene`: an
- * entity in no location, which no roster lists. `noKeyword`: a dictionary entry the test line does not fire.
- * `noValue`: a dictionary entry the test line fires, which adds nothing to the block until it has a Value.
+ * Why a reader shows what it shows. `neverReads`: the prompt has nothing of the item to read yet, or the
+ * active preset places no chip that carries it. `notInScene`: an entity in no location, which no roster
+ * lists. `noKeyword`: a dictionary entry the test line does not fire. `noValue`: a dictionary entry the test
+ * line fires, which adds nothing to the block until it has a Value.
  */
 export type ReaderState = 'reads' | 'neverReads' | 'notInScene' | 'noKeyword' | 'noValue';
 
@@ -47,6 +48,8 @@ export interface InPlayReader {
   /** The block the prompt receives. Empty unless the state is `reads`. */
   text: string;
   marks: MarkSpan[];
+  /** False when the prompt never reads the step's field: the block is the item's other fields. */
+  readsField: boolean;
 }
 
 /** Where a new game starts, as far as the tour's location is concerned. */
@@ -64,43 +67,58 @@ export interface SetupTraitCategory {
 }
 
 /**
- * The game surface a field shows on. The Location tab shows the step's scene location, with its names and
- * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
- * naming the entity's location, or null while it has none. The stat row shows the tour stat at its authored
- * starting value. The setup surfaces show the tour trait's category on the setup screen, and the second adds
- * the stat row at the value a new game settles it on. `never` is a field the player never sees; `none` is a step with no field.
+ * The game surface a step's item shows on. The Location tab shows the step's scene location, with its names
+ * and description resolved, and says where a new game starts when the step asks. The entity surfaces show
+ * the tour entity's list row, its card, or both, with `at` naming the entity's location, or null while it
+ * has none. The stat row shows the tour stat at its authored starting value. The setup surfaces show the
+ * tour trait's category on the setup screen, and the second adds the stat row at the value a new game
+ * settles it on. `neverDictionary` is an entry, which no surface shows; `none` is a step with no field.
  */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
-  | { kind: 'locationTab'; location: GameLocation | null; locations: GameLocation[]; connections: Connection[] }
-  | { kind: 'startsHere'; startsAt: StartsAt }
+  | {
+    kind: 'locationTab';
+    location: GameLocation | null;
+    locations: GameLocation[];
+    connections: Connection[];
+    startsAt?: StartsAt;
+  }
   | { kind: 'entityRow' | 'entityCard' | 'entityRowAndCard'; entity: Entity | null; at: string | null }
   | { kind: 'statRow'; stat: PlayerStat | null }
   | { kind: 'setupTraits'; category: SetupTraitCategory | null }
   | { kind: 'setupTraitsAndStat'; category: SetupTraitCategory | null; stat: PlayerStat | null }
-  | { kind: 'never' }
   | { kind: 'neverDictionary' }
   | { kind: 'none' };
 
+/** A surface a step can ask for: `startsHere` is the Location tab with the starting-location line. */
+export type SurfaceKind = PlayerSurface['kind'] | 'startsHere';
+
 export interface InPlaySlice {
   playerSees: PlayerSurface;
+  /** True when players never see the step's field: the surface is the item's other fields. */
+  playerHidden: boolean;
   readers: InPlayReader[];
   /** The test line's scan, on a step that reads through one. */
   testLine?: TestLineScan;
 }
 
-/** One prompt's read of a step's field, as a step declares it. */
-export type ReaderSpec =
-  | { prompt: TourPrompt; reads: 'never' }
-  | { prompt: TourPrompt; reads: ContextBlockId; authorText: (world: TourWorld, items: TourItems) => string }
-  /** The stats block in the shape the prompt's own Stats chip asks for. */
-  | { prompt: TourPrompt; reads: 'statsChip'; authorText: (world: TourWorld, items: TourItems) => string }
-  /** The dictionary block that holds the tour entry, when the test line fires it. */
-  | { prompt: TourPrompt; reads: 'testLine'; authorText: (world: TourWorld, items: TourItems) => string };
+/**
+ * One prompt's read of a step's item, as a step declares it. `statsChip` is the stats block in the shape the
+ * prompt's own Stats chip asks for; `testLine` is the dictionary block that holds the tour entry, when the
+ * test line fires it. `authorText` is the step's field as the block spells it, left out when the prompt never
+ * reads that field.
+ */
+export interface ReaderSpec {
+  prompt: TourPrompt;
+  reads: ContextBlockId | 'statsChip' | 'testLine';
+  authorText?: (world: TourWorld, items: TourItems) => string;
+}
 
 /** A step's In Play slice, as the registry declares it. */
 export interface InPlaySpec {
-  sees: PlayerSurface['kind'];
+  sees: SurfaceKind;
+  /** Players never see the step's field. The surface still shows the item they do see. */
+  playerHidden?: boolean;
   /**
    * `entity`: the lens stands at the tour entity's location, and while the entity is in no location every
    * reader that reads is `notInScene`. `connection`: the lens stands where the tour Connection leaves from.
@@ -143,7 +161,7 @@ function libraryCardRecord(world: TourWorld, worldId: string): WorldRecord {
 }
 
 /** The Location tab as a player standing where the lens stands reads it. */
-function locationTab(world: TourWorld, lens: BenchLens): PlayerSurface {
+function locationTab(world: TourWorld, lens: BenchLens, startsAt?: StartsAt): PlayerSurface {
   const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
   const locations = (world.locations ?? []).map((l) => ({
     ...l, name: resolve(l.name), playerDescription: resolve(l.playerDescription ?? ''),
@@ -153,6 +171,7 @@ function locationTab(world: TourWorld, lens: BenchLens): PlayerSurface {
     location: locations.find((l) => l.id === lens.location?.id) ?? null,
     locations,
     connections: world.connections ?? [],
+    ...(startsAt ? { startsAt } : {}),
   };
 }
 
@@ -238,12 +257,12 @@ function setupCategory(world: TourWorld, items: TourItems, lens: BenchLens): Set
 }
 
 function playerSurface(
-  kind: PlayerSurface['kind'], world: TourWorld, worldId: string, items: TourItems, lens: () => BenchLens,
+  kind: SurfaceKind, world: TourWorld, worldId: string, items: TourItems, lens: () => BenchLens,
 ): PlayerSurface {
   switch (kind) {
     case 'libraryCard': return { kind, world: libraryCardRecord(world, worldId) };
     case 'locationTab': return locationTab(world, lens());
-    case 'startsHere': return { kind, startsAt: startsAt(world, items.location) };
+    case 'startsHere': return locationTab(world, lens(), startsAt(world, items.location));
     case 'entityRow':
     case 'entityCard':
     case 'entityRowAndCard': return entitySurface(kind, world, items, lens());
@@ -263,7 +282,7 @@ export function headedBlock(chip: string, body: string): string {
   return `${frame.pre}${body}${frame.post}`.replace(/^\n+/, '').replace(/\n+$/, '');
 }
 
-/** One step's In Play slice: the surface the player sees, and each prompt's read with the author's text marked. */
+/** One step's In Play slice: the surface the player sees, and each prompt's read with the step's field marked. */
 export function computeInPlay(
   spec: InPlaySpec,
   world: TourWorld,
@@ -282,24 +301,29 @@ export function computeInPlay(
     ...seedLens(world, null, sceneId ?? items.location ?? null),
     pcTraitId: spec.picksTrait ? liveTourItem(world, items, 'trait') : null,
   });
-  const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'never' && r.reads !== 'statsChip' && r.reads !== 'testLine');
+  const needsContext = !outOfScene && spec.readers.some((r) => r.reads !== 'statsChip' && r.reads !== 'testLine');
   const context = needsContext ? buildAiContext(world, lensHere()) : null;
   const read = usesTestLine(spec) ? readTestLine(world, items, testLine, lensHere().pins) : null;
   const readers = spec.readers.map((reader): InPlayReader => {
-    const never: InPlayReader = { prompt: reader.prompt, state: 'neverReads', text: '', marks: [] };
-    if (reader.reads === 'never') return never;
-    if (outOfScene) return { prompt: reader.prompt, state: 'notInScene', text: '', marks: [] };
+    const readsField = !!reader.authorText;
+    const only = (state: Exclude<ReaderState, 'reads'>): InPlayReader =>
+      ({ prompt: reader.prompt, state, text: '', marks: [], readsField });
+    const never = only('neverReads');
+    if (outOfScene) return only('notInScene');
     const template = templates[reader.prompt];
     const reads = (chip: string, body: string): InPlayReader => {
+      // A block with nothing of the item in it yet says so, rather than showing a bare Header.
+      if (!body.trim()) return never;
       const text = headedBlock(chip, body);
-      return { prompt: reader.prompt, state: 'reads', text, marks: findMarks(text, reader.authorText(world, items)) };
+      const marks = reader.authorText ? findMarks(text, reader.authorText(world, items)) : [];
+      return { prompt: reader.prompt, state: 'reads', text, marks, readsField };
     };
     if (reader.reads === 'testLine') {
       const position = tourEntry(world, items)?.position === 'before' ? 'before' : 'after';
       const chip = blockChipPlacedIn(template, 'dictionary', position);
       if (chip === undefined || !read) return never;
-      if (!read.fired) return { prompt: reader.prompt, state: 'noKeyword', text: '', marks: [] };
-      if (!read.rendered) return { prompt: reader.prompt, state: 'noValue', text: '', marks: [] };
+      if (!read.fired) return only('noKeyword');
+      if (!read.rendered) return only('noValue');
       return reads(chip, read.text);
     }
     if (reader.reads === 'statsChip') {
@@ -313,6 +337,7 @@ export function computeInPlay(
   });
   return {
     playerSees: playerSurface(spec.sees, world, worldId, items, lensHere),
+    playerHidden: spec.playerHidden === true,
     readers,
     ...(read ? { testLine: read.scan } : {}),
   };

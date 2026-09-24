@@ -21,6 +21,7 @@ import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
+import { followRename } from '@/lib/statDescriptors';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec, ReaderSpec } from './inPlay';
@@ -95,6 +96,8 @@ export interface TourStep {
   add?: (api: TourEditApi, world: TourWorld) => string;
   /** Fills the field with the example world's value through its panel's own setter. Async for a bundled picture. */
   useExample?: (api: TourEditApi, world: TourWorld, items: TourItems) => void | Promise<void>;
+  /** Completes a step that offers no example, the way the author's own click does, for the dev route's replay. */
+  replay?: (api: TourEditApi, world: TourWorld, items: TourItems) => void;
   /** Runs each time the step becomes current. */
   onReach?: () => void;
   /** What In Play shows for this step. */
@@ -298,7 +301,7 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     body: 'Type the name players see in their library',
     isComplete: (world) => isChosenName(world.worldOverview.name, NEW_WORLD_NAME),
     useExample: (api) => api.updateWorldOverview({ name: WORLD_NAME_EXAMPLE }),
-    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'world' }] },
   },
   {
     id: 'world-ai-description',
@@ -310,7 +313,8 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     isComplete: (world) => hasValue((world.worldOverview.systemPrompt ?? '').trim()),
     useExample: (api) => api.updateWorldOverview({ systemPrompt: WORLD_AI_DESCRIPTION_EXAMPLE }),
     inPlay: {
-      sees: 'never',
+      sees: 'libraryCard',
+      playerHidden: true,
       readers: [{
         prompt: 'Narration Prompt', reads: 'world', authorText: (world) => world.worldOverview.systemPrompt ?? '',
       }],
@@ -325,7 +329,7 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
     body: 'Add a picture for the library card. Players see it beside the name, and the AI never reads it.',
     isComplete: (world) => !!world.worldOverview.thumbnail,
     useExample: async (api) => api.updateWorldOverview({ thumbnail: await loadTourImage('brinewell') }),
-    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'world' }] },
   },
 ];
 
@@ -366,7 +370,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     useExample: (api, world, items) => patchLocation(api, world, items, 'location', {
       playerDescription: TIDEWELL.playerDescription,
     }),
-    inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'location' }] },
   },
   {
     id: 'location-ai-description',
@@ -380,7 +384,8 @@ const LOCATION_STEPS: readonly TourStep[] = [
       aiDescription: TIDEWELL.aiDescription,
     }),
     inPlay: {
-      sees: 'never',
+      sees: 'locationTab',
+      playerHidden: true,
       readers: [{
         prompt: 'Narration Prompt', reads: 'location',
         authorText: (world, items) => tourLocation(world, items, 'location')?.aiDescription ?? '',
@@ -399,7 +404,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
     useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
       backgroundImage: await loadTourImage('tidewell'),
     }),
-    inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'location' }] },
   },
   {
     id: 'location-starting',
@@ -409,8 +414,8 @@ const LOCATION_STEPS: readonly TourStep[] = [
     title: 'Starting Location',
     body: 'Check the box so a new game starts here',
     isComplete: (world, items) => !!tourLocation(world, items, 'location')?.isStarting,
-    useExample: (api, world, items) => patchLocation(api, world, items, 'location', { isStarting: true }),
-    inPlay: { sees: 'startsHere', readers: [] },
+    replay: (api, world, items) => patchLocation(api, world, items, 'location', { isStarting: true }),
+    inPlay: { sees: 'startsHere', readers: [{ prompt: 'Narration Prompt', reads: 'location' }] },
   },
   addStep({
     id: 'add-second-location',
@@ -419,10 +424,6 @@ const LOCATION_STEPS: readonly TourStep[] = [
     title: 'Add a Second Location',
     body: 'Press the + button again to add a place to travel to',
     add: addLocationItem,
-    useExample: async (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
-      playerDescription: SALT_LANTERN.playerDescription, aiDescription: SALT_LANTERN.aiDescription,
-      backgroundImage: await loadTourImage('saltLantern'),
-    }),
   }),
   {
     id: 'second-location-name',
@@ -430,9 +431,15 @@ const LOCATION_STEPS: readonly TourStep[] = [
     anchor: 'location-name',
     item: 'secondLocation',
     title: 'Second Location Name',
-    body: 'Name this place too. Players see the name while they’re here, and the AI reads it.',
+    body: 'Name this place too. Players see the name while they’re here, and the AI reads it. Use Example also '
+      + 'fills in its descriptions and picture.',
     isComplete: (world, items) => isChosenName(tourLocation(world, items, 'secondLocation')?.name, NEW_LOCATION_NAME),
-    useExample: (api, world, items) => patchLocation(api, world, items, 'secondLocation', { name: SALT_LANTERN.name }),
+    useExample: async (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
+      name: SALT_LANTERN.name,
+      playerDescription: SALT_LANTERN.playerDescription,
+      aiDescription: SALT_LANTERN.aiDescription,
+      backgroundImage: await loadTourImage('saltLantern'),
+    }),
     inPlay: {
       sees: 'locationTab',
       scene: 'secondLocation',
@@ -497,6 +504,28 @@ const ENTITY_STEPS: readonly TourStep[] = [
     },
   },
   {
+    id: 'entity-locations',
+    tab: 'entities',
+    anchor: 'entity-locations',
+    item: 'entity',
+    panelTab: 'profile',
+    title: 'Locations',
+    body: 'Place the entity in one of your locations. The AI reads an entity only at its locations.',
+    isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
+    useExample: (api, world, items) => {
+      const entity = tourEntity(world, items);
+      const place = liveTourItem(world, items, 'location');
+      if (entity && place) api.updateEntity(withEntityLocations(entity, [...(entity.locations ?? []), place]));
+    },
+    inPlay: {
+      sees: 'entityRowAndCard',
+      scene: 'entity',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'entities', authorText: (world, items) => tourEntity(world, items)?.name ?? '',
+      }],
+    },
+  },
+  {
     id: 'entity-pronouns',
     tab: 'entities',
     anchor: 'entity-pronouns',
@@ -507,7 +536,8 @@ const ENTITY_STEPS: readonly TourStep[] = [
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.pronouns ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, { pronouns: MAREN.pronouns }),
     inPlay: {
-      sees: 'never',
+      sees: 'entityCard',
+      playerHidden: true,
       scene: 'entity',
       readers: [{
         prompt: 'Narration Prompt', reads: 'entities',
@@ -525,7 +555,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     body: 'Add a picture of the entity. Players see it on the entity’s card, and the AI never reads it.',
     isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
     useExample: async (api, world, items) => patchEntity(api, world, items, { images: [await loadTourImage('maren')] }),
-    inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },
   {
     id: 'entity-player-description',
@@ -539,7 +569,7 @@ const ENTITY_STEPS: readonly TourStep[] = [
     useExample: (api, world, items) => patchEntity(api, world, items, {
       playerDescription: MAREN.playerDescription,
     }),
-    inPlay: { sees: 'entityCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'entities' }] },
   },
   {
     id: 'entity-ai-description',
@@ -552,7 +582,8 @@ const ENTITY_STEPS: readonly TourStep[] = [
     isComplete: (world, items) => hasValue((tourEntity(world, items)?.aiDescription ?? '').trim()),
     useExample: (api, world, items) => patchEntity(api, world, items, { aiDescription: MAREN.aiDescription }),
     inPlay: {
-      sees: 'never',
+      sees: 'entityCard',
+      playerHidden: true,
       scene: 'entity',
       readers: [{
         prompt: 'Narration Prompt', reads: 'entities',
@@ -560,41 +591,13 @@ const ENTITY_STEPS: readonly TourStep[] = [
       }],
     },
   },
-  {
-    id: 'entity-locations',
-    tab: 'entities',
-    anchor: 'entity-locations',
-    item: 'entity',
-    panelTab: 'profile',
-    title: 'Locations',
-    body: 'Place the entity in one of your locations. The AI reads an entity only at its locations.',
-    isComplete: (world, items) => tourEntityPlaces(world, items).length > 0,
-    useExample: (api, world, items) => {
-      const entity = tourEntity(world, items);
-      const place = liveTourItem(world, items, 'location');
-      if (entity && place) api.updateEntity(withEntityLocations(entity, [...(entity.locations ?? []), place]));
-    },
-    inPlay: {
-      sees: 'entityRow',
-      scene: 'entity',
-      readers: [{
-        prompt: 'Narration Prompt', reads: 'entities', authorText: (world, items) => tourEntity(world, items)?.name ?? '',
-      }],
-    },
-  },
 ];
 
-/** Both prompts' reads of the tour stat, each marking the field `field` picks. */
-function statReaders(field: (stat: Stat) => string): ReaderSpec[] {
-  const authorText = (world: TourWorld, items: TourItems) => {
-    const stat = tourStat(world, items);
-    return stat ? field(stat) : '';
-  };
-  return [
-    { prompt: 'Narration Prompt', reads: 'statsChip', authorText },
-    { prompt: 'Stat Updates Prompt', reads: 'statsChip', authorText },
-  ];
-}
+/** The tour stat's `field`, as a reader marks it. */
+const statField = (field: (stat: Stat) => string) => (world: TourWorld, items: TourItems) => {
+  const stat = tourStat(world, items);
+  return stat ? field(stat) : '';
+};
 
 const STAT_STEPS: readonly TourStep[] = [
   addStep({
@@ -617,7 +620,13 @@ const STAT_STEPS: readonly TourStep[] = [
     useExample: (api, world, items) => patchStat(api, world, items, {
       name: SEA_CHANGE.name, min: SEA_CHANGE.min, max: SEA_CHANGE.max, value: SEA_CHANGE.value,
     }),
-    inPlay: { sees: 'statRow', readers: statReaders((stat) => stat.name) },
+    inPlay: {
+      sees: 'statRow',
+      readers: [
+        { prompt: 'Narration Prompt', reads: 'statsChip', authorText: statField((stat) => stat.name) },
+        { prompt: 'Stat Updates Prompt', reads: 'statsChip', authorText: statField((stat) => stat.name) },
+      ],
+    },
   },
   {
     id: 'stat-description',
@@ -629,7 +638,14 @@ const STAT_STEPS: readonly TourStep[] = [
       + 'the value changes. Players never see it, and the narration prompt never reads it.',
     isComplete: (world, items) => hasValue((tourStat(world, items)?.description ?? '').trim()),
     useExample: (api, world, items) => patchStat(api, world, items, { description: SEA_CHANGE.description }),
-    inPlay: { sees: 'never', readers: statReaders((stat) => stat.description ?? '') },
+    inPlay: {
+      sees: 'statRow',
+      playerHidden: true,
+      readers: [
+        { prompt: 'Narration Prompt', reads: 'statsChip' },
+        { prompt: 'Stat Updates Prompt', reads: 'statsChip', authorText: statField((stat) => stat.description ?? '') },
+      ],
+    },
   },
 ];
 
@@ -678,7 +694,7 @@ const TRAIT_STEPS: readonly TourStep[] = [
     useExample: (api, world, items) => patchTrait(api, world, items, {
       name: TIDE_TOUCHED.name, playerDescription: TIDE_TOUCHED.playerDescription,
     }),
-    inPlay: { sees: 'setupTraits', picksTrait: true, readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+    inPlay: { sees: 'setupTraits', picksTrait: true, readers: [traitReader((trait) => trait.name)] },
   },
   {
     id: 'trait-ai-description',
@@ -691,7 +707,9 @@ const TRAIT_STEPS: readonly TourStep[] = [
       + 'active, and players never see it.',
     isComplete: (world, items) => hasValue((tourTrait(world, items)?.aiDescription ?? '').trim()),
     useExample: (api, world, items) => patchTrait(api, world, items, { aiDescription: TIDE_TOUCHED.aiDescription }),
-    inPlay: { sees: 'never', picksTrait: true, readers: [traitReader((trait) => trait.aiDescription ?? '')] },
+    inPlay: {
+      sees: 'setupTraits', playerHidden: true, picksTrait: true, readers: [traitReader((trait) => trait.aiDescription ?? '')],
+    },
   },
   {
     id: 'trait-stat-change',
@@ -789,8 +807,8 @@ export function addStepIndex(item: TourItem): number {
 }
 
 /**
- * The world and tour items an author leaves who took every step before `index` with its Add and its Use
- * Example. The tour's dev route opens a mid-tour step this way.
+ * The world and tour items an author leaves who took every step before `index`: its Add, its Use Example,
+ * or the click a step without an example asks for. The tour's dev route opens a mid-tour step this way.
  */
 export async function replayTourSteps(world: TourWorld, index: number): Promise<{ world: TourWorld; items: TourItems }> {
   let draft = world;
@@ -806,7 +824,12 @@ export async function replayTourSteps(world: TourWorld, index: number): Promise<
     addEntity: (entity) => { draft = { ...draft, entities: [...(draft.entities ?? []), entity] }; },
     updateEntity: (entity) => { draft = { ...draft, entities: replace(draft.entities, entity) }; },
     addStat: (stat) => { draft = { ...draft, stats: [...(draft.stats ?? []), withDefaultDescriptors(stat)] }; },
-    updateStat: (stat) => { draft = { ...draft, stats: replace(draft.stats, stat) }; },
+    updateStat: (stat) => {
+      // The editor's own setter moves a default descriptor with a rename; the replay does the same.
+      const before = (draft.stats ?? []).find((s) => s.id === stat.id);
+      const next = before ? { ...stat, descriptors: followRename(before, stat) } : stat;
+      draft = { ...draft, stats: replace(draft.stats, next) };
+    },
     addTrait: (trait) => { draft = { ...draft, traits: [...(draft.traits ?? []), trait] }; },
     updateTrait: (trait) => { draft = { ...draft, traits: replace(draft.traits, trait) }; },
     addDictionaryEntry: (bookId, entry) => {
@@ -820,6 +843,7 @@ export async function replayTourSteps(world: TourWorld, index: number): Promise<
     if (step.add && step.item) items[step.item] = step.add(api, draft);
     // A picture that fails to load leaves its field empty; the route still opens at the step.
     try { await step.useExample?.(api, draft, items); } catch { /* replayed without that example */ }
+    step.replay?.(api, draft, items);
   }
   return { world: draft, items };
 }
