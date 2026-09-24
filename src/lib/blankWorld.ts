@@ -33,8 +33,11 @@ export function newBlankWorld(): World {
   };
 }
 
+/** The name the Locations tab's Add button gives a location. */
+export const NEW_LOCATION_NAME = 'New Location';
+
 /** A location as the editor's Add button makes it. */
-export function newLocation(id: string, name = 'New Location'): GameLocation {
+export function newLocation(id: string, name = NEW_LOCATION_NAME): GameLocation {
   return { id, name, playerDescription: '', aiDescription: '', aiSummary: '' };
 }
 
@@ -44,8 +47,11 @@ export function entityRootCount(world: Pick<World, 'entities' | 'entityGroups'>)
     + (world.entityGroups ?? []).filter((g) => (g.parentId ?? null) === null).length;
 }
 
+/** The name the Entities tab's Add button gives an entity. */
+export const NEW_ENTITY_NAME = 'New Entity';
+
 /** An entity as the editor's Add button makes it, placed `order`th among the ungrouped entities. */
-export function newEntity(id: string, order: number, name = 'New Entity'): Entity {
+export function newEntity(id: string, order: number, name = NEW_ENTITY_NAME): Entity {
   return { id, name, playerDescription: '', aiDescription: '', aiSummary: '', type: '', groupId: null, order };
 }
 
@@ -55,15 +61,21 @@ export function traitRootCount(world: Pick<World, 'traits' | 'traitGroups'>): nu
     + (world.traitGroups ?? []).filter((g) => (g.parentId ?? null) === null).length;
 }
 
+/** The name the Traits tab's Add button gives a trait. */
+export const NEW_TRAIT_NAME = 'New Trait';
+
 /** A trait as the editor's Add button makes it, placed `order`th at the trait tree's root. */
-export function newTrait(id: string, order: number, name = 'New Trait'): Trait {
+export function newTrait(id: string, order: number, name = NEW_TRAIT_NAME): Trait {
   return {
     id, name, playerDescription: '', aiDescription: '', statChanges: [], groupId: null, isDefault: false, order,
   };
 }
 
+/** The name the Stats tab's Add button gives a stat. */
+export const NEW_STAT_NAME = 'New Stat';
+
 /** A stat as the editor's Add button makes it, before the world gives it its default descriptors. */
-export function newStat(id: string, name = 'New Stat'): Omit<Stat, 'descriptors'> {
+export function newStat(id: string, name = NEW_STAT_NAME): Omit<Stat, 'descriptors'> {
   return { id, name, type: 'number', description: '', min: 0, max: 100, value: 0, regen: 0 };
 }
 

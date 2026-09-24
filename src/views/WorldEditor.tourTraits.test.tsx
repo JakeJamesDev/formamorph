@@ -4,6 +4,7 @@ import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBenc
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
+import { NEW_TRAIT_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import type { Stat, Trait, World } from '@/types';
 
@@ -159,13 +160,24 @@ describe('Authoring Tour — Traits steps', () => {
   it('completes the Name step once the trait has a name and a Player-Facing Description', async () => {
     const { ctx } = await resumeAt('add-trait');
     await addTourTrait();
-    // The Add button's name alone does not count.
+    expect(onlyTrait(ctx).name).toBe(NEW_TRAIT_NAME);
     expect(noteButton('Next')).toBeDisabled();
 
+    // The name Add gives never satisfies the name half, even with a description.
     ctx().updateTrait({ ...onlyTrait(ctx), playerDescription: 'Salt in the blood.' });
+    await waitFor(() => expect(onlyTrait(ctx).playerDescription).toBe('Salt in the blood.'));
+    expect(noteButton('Next')).toBeDisabled();
+
+    ctx().updateTrait({ ...onlyTrait(ctx), name: 'Brine-Blooded' });
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     ctx().updateTrait({ ...onlyTrait(ctx), name: '  ' });
     await waitFor(() => expect(noteButton('Next')).toBeDisabled());
+    ctx().updateTrait({ ...onlyTrait(ctx), name: 'Brine-Blooded' });
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    ctx().updateTrait({ ...onlyTrait(ctx), name: NEW_TRAIT_NAME });
+    await waitFor(() => expect(noteButton('Next')).toBeDisabled());
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 
   it('completes the AI-Facing Description step on any text', async () => {

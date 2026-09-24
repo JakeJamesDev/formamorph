@@ -1,6 +1,7 @@
 # 17: Default Item Names Do Not Unlock Next
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: e47d01c9
 Blocked by: 13, 14
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -13,17 +14,21 @@ Reasoning effort: medium
 
 ## Acceptance criteria
 
-- [ ] Each default name lives once, beside the constructor that uses it, as the world's name already does. The editor's **Add** and the step predicates read the same constant.
-- [ ] The location, entity, stat and trait Name steps open with **Next** disabled on a freshly added item.
-- [ ] Typing any other name, or using **Use Example**, enables **Next**. Clearing the name disables it again.
-- [ ] A step that also needs another field (such as the trait's Player-Facing Description) still needs both. A default name never satisfies the name half.
-- [ ] If a dictionary entry gets a default name on add, the Dictionary Name step follows the same rule. If it does not, record that in Comments.
-- [ ] Ticket 13's e2e walk asserts **Next** disabled on every field step before **Use Example**. Remove its exception for the three default-named steps.
-- [ ] Tests run through the World Editor Bench harness, one per item kind. Prove the guard by letting the default name count and watching the tests fail.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Run the e2e walk once with `E2E_PORT=5221`. Update the code graph.
+- [x] Each default name lives once, beside the constructor that uses it, as the world's name already does. The editor's **Add** and the step predicates read the same constant.
+- [x] The location, entity, stat and trait Name steps open with **Next** disabled on a freshly added item.
+- [x] Typing any other name, or using **Use Example**, enables **Next**. Clearing the name disables it again.
+- [x] A step that also needs another field (such as the trait's Player-Facing Description) still needs both. A default name never satisfies the name half.
+- [x] If a dictionary entry gets a default name on add, the Dictionary Name step follows the same rule. If it does not, record that in Comments.
+- [x] Ticket 13's e2e walk asserts **Next** disabled on every field step before **Use Example**. Remove its exception for the three default-named steps.
+- [x] Tests run through the World Editor Bench harness, one per item kind. Prove the guard by letting the default name count and watching the tests fail.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Run the e2e walk once with `E2E_PORT=5221`. Update the code graph.
 
 ## Scope notes
 
 - **No world or save export-shape change.**
 - The editor's own default names do not change. Only what the tour counts as a value changes.
 - Build on `feature/authoring-tour` in the worktree. The step registry is shared with other tickets, so sequence edits with any parallel session.
+
+## Comments
+
+- The dictionary entry gets no default name. `blankDictionaryEntry` in `src/lib/dictionaryTree.ts` makes an entry with `name: ''`, so the Dictionary Name step already opens with **Next** disabled. It keeps the plain "any value" rule.
