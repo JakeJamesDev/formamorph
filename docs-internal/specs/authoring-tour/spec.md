@@ -198,6 +198,9 @@ Before the tour, two Overview labels change so that Overview follows the same pl
   - The Activation Tester gains a 'case-blocked' near-miss, beside 'whole-word-blocked', so a Case-Sensitive miss says why. It changes the diagnosis only, never whether an entry fires. The Tester's own row shows it too.
   - The add step anchors on the Default book's **Add entry** button, because the tab's **+** adds a book.
   - The Name and Trigger Keywords step needs a Name and at least one keyword.
+- **Rulings from ticket 08 (2026-09-23):**
+  - The tour trait stays where the Traits tab's **+** puts it, at the root, so the setup screen lists it under "General". The tour never moves it into a group. **Use Example** fills fields and never changes structure, and the tour has no add path of its own.
+  - The Stat Change step's **Use Example** writes the change as a Starting Value, because that is the type whose effect the step shows.
 - **Rulings on tickets 04, 05 and 11 (user, 2026-09-23):**
   - 04, kept as built: the Test Bench panel returns when the tour ends, and during the tour the Bench popover has no **Open Test Bench** button, because a full Bench panel would take In Play's slot.
   - 05, changed by ticket 15: the Connection step shows the location the tour Connection leaves from, both in Player Sees and in the Location Change reader. A one-way Connection in either direction then shows a real destinations list.
