@@ -449,3 +449,18 @@ export function expandScopedTokens(
   }
   return values;
 }
+
+/**
+ * The scene-roster override for the choices and re-roll prompts: every unscoped `<ENTITIES>` token, built
+ * from who is actually in the scene rather than the location's whole roster. Any variant left out here
+ * would fall through to the full roster, so the set is enumerated, never listed by hand.
+ */
+export function sceneEntityTokens(
+  sceneLocation: MaybeLocation,
+  sceneEntities: Entity[],
+  resolve: (text: string) => string,
+): Record<string, string> {
+  return expandScopedTokens("<ENTITIES>", {
+    "": (opts) => resolve(buildEntityContext(sceneLocation, sceneEntities, opts)),
+  });
+}
