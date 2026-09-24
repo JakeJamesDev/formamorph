@@ -12,7 +12,7 @@ import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf, kindHasThumbnail } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
-import { thumbFit, type ThumbAspect } from "@/lib/thumbAspect";
+import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -79,7 +79,8 @@ export function RemoteWorldCard({
   const worldId = world._id || world.id;
   // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
-  const thumbAspect: ThumbAspect = kindOf(world) === 'entity' ? 'portrait' : 'landscape';
+  const thumbAspect = thumbAspectFor(kindOf(world));
+  const layout = cardLayoutFor(thumbAspect);
   const thumbClass = cn("w-full h-full", thumbFit(thumbAspect));
 
   // Whether to offer the moderation controls at all. What the server will actually allow is narrower —
@@ -132,6 +133,7 @@ export function RemoteWorldCard({
           : "bg-card",
       )}
       onClick={() => onView(world)}
+      layout={layout}
       name={world.name}
       description={world.description}
       thumbnailOverlay={downloadProgress !== undefined ? (
@@ -147,10 +149,10 @@ export function RemoteWorldCard({
           )}
         </div>
       ) : (
-        /* Both actions fade in when the art is hovered, so an idle card is all art: a top-right
-           cluster with download — the primary action — in the corner, clear of names expanding at
-           the bottom. Icon reflects whether the world is new, current (refresh), or has an update. */
-        <div className="absolute top-1 right-1 z-10 flex gap-1">
+        /* Both actions fade in when the art is hovered, so an idle card is all art: a cluster with
+           download — the primary action — in the corner opposite the name. Icon reflects whether the
+           world is new, current (refresh), or has an update. */
+        <div className={cn("absolute right-1 z-10 flex gap-1", layout === 'split' ? "bottom-1" : "top-1")}>
           {onHideWorld && <Tip tip="Hide this world">
             <button
               onClick={(e) => { e.stopPropagation(); onHideWorld(worldId); }}

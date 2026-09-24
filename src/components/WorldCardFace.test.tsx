@@ -40,3 +40,22 @@ describe('WorldCardFace outside the library board', () => {
     }
   });
 });
+
+describe('WorldCardFace detailed layout by aspect', () => {
+  const frameOf = () => screen.getByRole('heading', { name: 'Saltmarsh' }).closest('[data-layout]') as HTMLElement;
+
+  it('puts portrait art beside the text', () => {
+    render(<WorldCardFace world={world} layout="detailed" aspect="portrait" />);
+    expect(frameOf().dataset.layout).toBe('split');
+  });
+
+  it('keeps landscape art above the text', () => {
+    render(<WorldCardFace world={world} layout="detailed" />);
+    expect(frameOf().dataset.layout).toBe('stacked');
+  });
+
+  it('truncates a plain-text author on one line', () => {
+    render(<WorldCardFace world={{ ...world, author: 'river-quill-with-a-long-handle' }} layout="detailed" aspect="portrait" />);
+    expect(screen.getByText('By river-quill-with-a-long-handle')).toHaveClass('truncate');
+  });
+});
