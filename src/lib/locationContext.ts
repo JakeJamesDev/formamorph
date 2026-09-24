@@ -2,6 +2,9 @@ import type { Connection, Entity, GameLocation } from "@/types";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
+import {
+  decodeVariant, encodeVariant, tokenVariant, variableAxes, variableForToken, withVariant,
+} from "./promptVariables";
 import { xmlEscape } from "./utils";
 
 /** The location a builder is scoped to, or none at all (no world, or nowhere resolved yet). */
@@ -352,10 +355,14 @@ export function buildSceneEntitiesContext(
 ): string {
   if (names.length === 0) return NONE_PLACEHOLDER;
   if (opts.nameOnly) return names.join(', ');
-  const ids = names
-    .map((n) => entities.find((e) => e.name.trim().toLowerCase() === n.trim().toLowerCase())?.id)
-    .filter((id): id is string => !!id);
+  const ids = names.map((n) => entityNamed(entities, n)?.id).filter((id): id is string => !!id);
   return renderEntityRoster(ids, entities, opts);
+}
+
+/** The entity a narration name refers to, matched without case or edge spaces; none for an ad-hoc name. */
+export function entityNamed(entities: Entity[], name: string): Entity | undefined {
+  const wanted = name.trim().toLowerCase();
+  return entities.find((e) => e.name.trim().toLowerCase() === wanted);
 }
 
 /**
@@ -368,7 +375,7 @@ export function buildSceneEntitiesContext(
 export function scenePresentHere(names: string[], entities: Entity[], hereIds: string[]): string[] {
   const here = new Set(hereIds);
   return names.filter((name) => {
-    const defined = entities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const defined = entityNamed(entities, name);
     return !defined || here.has(defined.id);
   });
 }
@@ -416,10 +423,39 @@ export function buildReachableEntitiesContext(
 /** The axes a scoped context chip carries, as the builders take them. */
 export type ContextOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: ContextFormat };
 
+// What each registry option means to the builders. The ids come from the registry; only their meaning is
+// spelled here, and an option with no meaning throws so the drift guard fails before a prompt renders a
+// raw token.
+const CONTENT_OPTS: Record<string, ContextOpts> = { summary: { preferSummary: true }, name: { nameOnly: true } };
+const FORMATS: Record<string, ContextFormat> = { markdown: "markdown", xml: "xml" };
+
+/** The builders' format for a chip's format option; the default option is the plain shape. */
+export function chipFormat(optionId: string | null): ContextFormat {
+  if (optionId === null) return "simple";
+  const format = FORMATS[optionId];
+  if (!format) throw new Error(`No builder shape for the format option "${optionId}"`);
+  return format;
+}
+
+function chipContent(optionId: string | null): ContextOpts {
+  if (optionId === null) return {};
+  const opts = CONTENT_OPTS[optionId];
+  if (!opts) throw new Error(`No builder option for the content option "${optionId}"`);
+  return opts;
+}
+
+/** The builder options one concrete scoped chip token encodes, read through the same tables as the expander. */
+export function scopedChipOpts(token: string): ContextOpts {
+  const variable = variableForToken(token);
+  if (!variable) throw new Error(`No chip is registered for ${token}`);
+  const selection = decodeVariant(variable, tokenVariant(token));
+  return { ...chipContent(selection.content), format: chipFormat(selection.format) };
+}
+
 /**
- * Every concrete token one scoped chip family produces — scope × content (full/summary/name) × format —
- * mapped to its built value. The id order (scope.content.format) mirrors the chip's own axis order, so the
- * tokens match what `encodeVariant` emits.
+ * Every concrete token one scoped chip family produces — scope × content × format — mapped to its built
+ * value. The content and format options are read from the chip's registry axes, so an option added there
+ * reaches every value builder at once; the scopes are the caller's, since a builder can serve a subset.
  *
  * Shared so the live game and the world editor's preview enumerate the same set: a variant only one of them
  * generates renders as a raw `<TOKEN>` wherever it was missed.
@@ -428,22 +464,17 @@ export function expandScopedTokens(
   base: string,
   scopes: Record<string, (opts: ContextOpts) => string>,
 ): Record<string, string> {
-  const formats: { id: string; format: ContextFormat }[] = [
-    { id: "", format: "simple" },
-    { id: "markdown", format: "markdown" },
-    { id: "xml", format: "xml" },
-  ];
-  const contents: { id: string; opts: ContextOpts }[] = [
-    { id: "", opts: {} },
-    { id: "summary", opts: { preferSummary: true } },
-    { id: "name", opts: { nameOnly: true } },
-  ];
+  const variable = variableForToken(base);
+  if (!variable) throw new Error(`No chip is registered for ${base}`);
+  const axes = variableAxes(variable);
+  const options = (axisId: string): (string | null)[] =>
+    axes.find((axis) => axis.id === axisId)?.options.map((option) => option.id) ?? [null];
   const values: Record<string, string> = {};
   for (const [scope, build] of Object.entries(scopes)) {
-    for (const { id: contentId, opts: contentOpts } of contents) {
-      for (const { id: fmtId, format } of formats) {
-        const id = [scope, contentId, fmtId].filter(Boolean).join(".");
-        values[id ? `${base.slice(0, -1)}|${id}>` : base] = build({ ...contentOpts, format });
+    for (const content of options("content")) {
+      for (const format of options("format")) {
+        const id = encodeVariant(variable, { scope: scope || null, content, format });
+        values[withVariant(base, id)] = build({ ...chipContent(content), format: chipFormat(format) });
       }
     }
   }

@@ -83,15 +83,14 @@ import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS }
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
-import { buildTraitContext } from "../lib/traitTree";
-import { buildLocationContext, buildEntityContext, buildSublocationsContext, buildSublocationEntitiesContext, buildReachableLocationsContext, buildReachableEntitiesContext, buildDestinationsContext, buildParentLocationContext, buildSceneEntitiesContext, scenePresentHere, navigableDestinations, sublocationEntityIds, expandScopedTokens } from "../lib/locationContext";
-import { personaContextValues } from "../lib/personaContext";
+import { navigableDestinations } from "../lib/locationContext";
+import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
+import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
+import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
 import { resolveStartingLocation } from "../lib/startingLocation";
-import { NONE_PLACEHOLDER } from "../lib/promptFallbacks";
-import { buildStatContext } from "../lib/statContext";
-import { variableForToken, variableVariantIds, decodeVariant, tokenVariant, withVariant } from "../lib/promptVariables";
+import { variableForToken, variableVariantIds, tokenVariant, withVariant } from "../lib/promptVariables";
 import { renderPromptTemplate } from "../lib/promptTemplate";
 import { useBaselineTestHook } from "../lib/baselineTestHook";
 import { recordParityRequest, recordParityResponse, recordParityTurn } from "../lib/turnPipeline/parityRecorder";
@@ -120,7 +119,7 @@ import { RequestAnatomyView } from "../components/game/RequestAnatomyView";
 import {
   markFindHits, markFraction, parseFindTerms, planFindHits, type FindMarked,
 } from "@/lib/findMarks";
-import { buildStamper, formatAbsolute, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
+import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { milestoneCandidates, agedMilestoneCandidates, resolveMilestoneDrop, resolveMilestoneKeep, applyIncrementalVerdict } from "../lib/milestoneMemory";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
@@ -266,15 +265,6 @@ type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledT
  *  passes, which run before React re-renders with it. */
 type TurnCodeState = Pick<GameState, 'playerStats'> & PreTurnCodeState;
 
-/** The world a turn's passes read under a before box's writes: the same three views `buildContextValues`
- *  and the prompt builders take from state, rebuilt over what the box left. */
-interface TurnCodeView {
-  activeStats: PlayerStat[];
-  activeTraits: Trait[];
-  resolve: (text: string) => string;
-  resolveTrait: (trait: Trait, text: string) => string;
-}
-
 /** The traits in force on one slice of saved trait state, and the stats live under them. The live pair is
  *  derived in two steps because `statEnabled` is read on its own; a paged-back turn and a turn's own
  *  before-box pass both want the pair in one go. */
@@ -283,7 +273,7 @@ const activeUnderTraits = (
   acquired: readonly Trait[],
   disabledTraitIds: readonly string[],
   traitOrder: Parameters<typeof inAuthoredOrder>[1],
-): Pick<TurnCodeView, 'activeStats' | 'activeTraits'> => {
+): Pick<SceneWrites, 'activeStats' | 'activeTraits'> => {
   const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
   return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, inForce)) };
 };
@@ -292,10 +282,9 @@ const activeUnderTraits = (
 // the next turn's context assembly. Per-pass caps and their sizing live with the pass records.
 const DIGEST_MAX_TOKENS = TURN_PASS_CAPS.summary;
 
-// Every Stats chip token (base + all piece/format combos), so buildContextValues can render each. The pieces
-// (Values/Status/Meaning) are decoded per token and handed to buildStatContext; ids mirror encodeVariant.
-const STATS_VARIABLE = variableForToken('<STATS DESCRIPTION>')!;
-const STATS_TOKENS = ['<STATS DESCRIPTION>', ...variableVariantIds(STATS_VARIABLE).map((id) => withVariant('<STATS DESCRIPTION>', id))];
+// The lore blocks the module emits for a scene, which play fills per turn instead.
+const DICTIONARY_VARIABLE = variableForToken('<DICTIONARY>')!;
+const LORE_TOKENS = ['<DICTIONARY>', ...variableVariantIds(DICTIONARY_VARIABLE).map((id) => withVariant('<DICTIONARY>', id))];
 
 const DIARY_MAX_TOKENS = TURN_PASS_CAPS.diary;
 
@@ -1290,7 +1279,7 @@ const GameViewer = ({
       ]);
       const sceneEntities = allEntities.filter((e) => presentNames.has(e.name));
       const response = await requestChoices(
-        buildContextValues(),
+        contextValues(),
         sceneEntityOverride(currentLocation, sceneEntities),
         action,
         prev.narration ?? "",
@@ -1349,7 +1338,7 @@ const GameViewer = ({
           statEnabledRef.current,
         ));
         const response = await requestStats(
-          buildContextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
+          contextValues(null, turnCodeView(written)), snapshot, action, prev.narration ?? "", signal,
         );
         if (signal.aborted) return;
         const parsed = readStatResponse(response, snapshot);
@@ -1423,9 +1412,9 @@ const GameViewer = ({
 
   // `liveRecall` marks the real turn's call: it evaluates the cooldown at the current turn and
   // records what fired. The meter leaves it false and replays the live call's window.
-  // buildContextValues is declared further down (it depends on callbacks defined below), so the history
+  // contextValues is declared further down (it depends on callbacks defined below), so the history
   // builder reaches it through a ref rather than the closure — same dodge as makeAIRequestRef.
-  const buildContextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
+  const contextValuesRef = useRef<(loc?: GameLocation | null) => Record<string, string>>(() => ({}));
 
   // Narration's resolved target backs every budget the story history is trimmed against — the window and the
   // reserved output belong to whichever endpoint narration actually sends to, not the globally-selected one.
@@ -1469,7 +1458,7 @@ const GameViewer = ({
       const stamp = timeContext ? buildStamper({ nowHours: gameTime, hoursAt: hoursByPosition(turns), calendar }) : undefined;
       // Assembled from the same context values every other prompt uses: each chip carries its own wording
       // in its affixes and disappears with its value, so any combination still reads as a sentence.
-      const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, buildContextValuesRef.current()) : undefined;
+      const nowLine = currentLocation ? renderPromptTemplate(nowLinePrompt, contextValuesRef.current()) : undefined;
       const { messages, runs, counts, bandTurnIds, rehydratedTurnIds } = buildBandedHistory({
         turns,
         contextWindow,
@@ -1645,7 +1634,7 @@ const GameViewer = ({
 
   // The world as this turn's passes read it, over what a before box wrote and React has not rendered yet.
   // Null for a box that moved nothing, which leaves every pass on the memoized state reads.
-  const turnCodeView = useCallback((over: TurnCodeState | null): TurnCodeView | null => {
+  const turnCodeView = useCallback((over: TurnCodeState | null): SceneWrites | null => {
     if (!over) return null;
     const overPins = pinsFor(over.codePins ?? {}, {
       traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, stats: over.playerStats,
@@ -1659,44 +1648,6 @@ const GameViewer = ({
     };
   }, [pinsFor, resolveFor, resolveTraitFor, traits, traitOrder]);
 
-  const generateTraitDescriptions = useCallback((format: 'simple' | 'markdown' | 'xml' = 'simple', view?: TurnCodeView | null) => {
-    const inForce = view?.activeTraits ?? activeTraits;
-    const resolve = view?.resolve ?? resolvePH;
-    const resolveOwn = view?.resolveTrait ?? resolveTraitText;
-    if (!inForce.length) {
-      return NONE_PLACEHOLDER;
-    }
-    // Group-aware: each selected trait's group emits its AI header above its traits (blank → omitted).
-    // A trait's own description resolves with its own pins (names already did, via the collection), so the
-    // AI reads the same words the player's card shows. The outer pass resolves the group headers; trait
-    // text is token-free by then, so it passes through untouched.
-    const selfResolved = inForce.map((t) =>
-      t.aiDescription ? { ...t, aiDescription: resolveOwn(t, t.aiDescription) } : t,
-    );
-    return resolve(buildTraitContext(selfResolved.map((t) => t.id), selfResolved, traitGroups, format));
-  }, [activeTraits, traitGroups, resolvePH, resolveTraitText]);
-
-
-  // Scene-roster override for the entity chips. Choices/re-roll prompts must see only who is actually in the
-  // scene, not the whole location roster — so replace EVERY unscoped <ENTITIES> variant (full/summary × the
-  // three formats). Missing one (the xml pair was the bug) lets an edited prompt using that chip slip the
-  // full roster past the presence filter. Mirrors the variant set addScoped() emits for the "" entity scope.
-  const sceneEntityOverride = useCallback(
-    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> => {
-      const build = (opts: { preferSummary?: boolean; format?: "markdown" | "xml" }) =>
-        resolvePH(buildEntityContext(sceneLoc, sceneEntities, opts));
-      return {
-        "<ENTITIES>": build({}),
-        "<ENTITIES|markdown>": build({ format: "markdown" }),
-        "<ENTITIES|xml>": build({ format: "xml" }),
-        "<ENTITIES|summary>": build({ preferSummary: true }),
-        "<ENTITIES|summary.markdown>": build({ preferSummary: true, format: "markdown" }),
-        "<ENTITIES|summary.xml>": build({ preferSummary: true, format: "xml" }),
-      };
-    },
-    [resolvePH],
-  );
-
   // The README is authored text shown to the player, so its chips resolve like any other.
   const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
 
@@ -1705,92 +1656,60 @@ const GameViewer = ({
   // forever, but `isGameStarted` is true by then, so it is never treated as pending.
   const openingHourPending = aiClock && startHour === null && !isGameStarted;
 
-  const buildContextValues = useCallback((
+  // The story clock as the Time chip reads it. Off ⇒ none, so an affixed placement (the now-line's) simply
+  // vanishes and the setting needs no special case anywhere else. Also withheld until the opening hour is
+  // known: on the opening turn the clock would read the untested 08:00 default, and the opening-time pass is
+  // about to ask the model what time it is from that very narration. Telling it first would make the answer
+  // a restatement of the guess.
+  const chipTime = useMemo<ChipSceneTime | null>(
+    () => (timeContext && !openingHourPending ? { elapsed: gameTime, calendar } : null),
+    [timeContext, openingHourPending, gameTime, calendar],
+  );
+  const participants = useMemo(
+    () => recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS),
+    [fullMessageHistory],
+  );
+  // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
+  // yield their own scene.
+  const liveScene = useLiveChipScene({
+    overview: worldOverview.systemPrompt || "",
+    stats: activeStats,
+    traits: activeTraits,
+    traitGroups,
+    resolve: resolvePH,
+    resolveTrait: resolveTraitText,
+    persona,
+    location: currentLocation,
+    locations,
+    connections,
+    entities,
+    allEntities,
+    participants,
+    notes: playerNotes,
+    time: chipTime,
+  });
+
+  const contextValues = useCallback((
     locationOverride?: GameLocation | null,
     /** The world under a before box's writes; absent, every value reads live state. */
-    view?: TurnCodeView | null,
+    box?: SceneWrites | null,
   ): Record<string, string> => {
-    const resolve = view?.resolve ?? resolvePH;
-    // The location this turn is scoped to — an override (e.g. a move auto-applied before the narration)
-    // or the live current location.
-    const loc = locationOverride ?? currentLocation;
-    // Who's present at the location (authored + any discovered/visiting), used to keep the
-    // reachable-entities roster from re-listing someone who has already come over.
-    const presentIds = presentIdsAt(loc);
-    type CtxOpts = { preferSummary?: boolean; nameOnly?: boolean; format?: "simple" | "markdown" | "xml" };
-
-    // Entity roster precedence: here > sub-location > reachable. A character shows only in the highest scope
-    // it belongs to — sub-location drops anyone present here; reachable drops present + sub-location ids.
-    // Gathered from the authored cast only: a discovered or visiting character belongs to the location it
-    // was invented at, and the scopes beyond here have never listed them.
-    const subEntityIds = sublocationEntityIds(loc, locations, entities);
-    const reachableExclude = [...presentIds, ...subEntityIds];
-
-    // The <LOCATION> and <ENTITIES> chips each carry a `scope` axis; each scope maps to its builder.
-    const locationScopes: Record<string, (opts: CtxOpts) => string> = {
-      "": (opts) => buildLocationContext(loc, opts),
-      sublocations: (opts) => buildSublocationsContext(loc, locations, opts),
-      parent: (opts) => buildParentLocationContext(loc, locations, opts),
-      reachable: (opts) => buildReachableLocationsContext(loc, locations, opts),
-      destinations: (opts) => buildDestinationsContext(loc, locations, connections, opts),
-    };
-    const entityScopes: Record<string, (opts: CtxOpts) => string> = {
-      "": (opts) => buildEntityContext(loc, allEntities, opts),
-      sublocations: (opts) => buildSublocationEntitiesContext(loc, locations, entities, { ...opts, excludeIds: presentIds }),
-      reachable: (opts) => buildReachableEntitiesContext(loc, locations, entities, { ...opts, excludeIds: reachableExclude }),
-      // Who has actually taken part lately, minus anyone the dialogue merely kept naming: an authored
-      // entity who lives elsewhere is dropped, while ad-hoc and just-arrived characters stay (visitors
-      // reach `presentIds` through the discovered-entity path).
-      inscene: (opts) => buildSceneEntitiesContext(
-        scenePresentHere(recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS), allEntities, presentIds),
-        allEntities,
-        opts,
-      ),
-    };
-
-    // Render each Stats token from its decoded pieces (Values/Status/Meaning) + format.
-    const statsValues = Object.fromEntries(
-      STATS_TOKENS.map((tok) => {
-        const sel = decodeVariant(STATS_VARIABLE, tokenVariant(tok));
-        return [tok, buildStatContext(
-          view?.activeStats ?? activeStats,
-          { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
-          sel.format === 'markdown' ? 'markdown' : sel.format === 'xml' ? 'xml' : 'simple',
-        )];
-      }),
-    );
-    const values: Record<string, string> = {
-      "<WORLD DESCRIPTION>": worldOverview.systemPrompt || "",
-      ...statsValues,
-      "<TRAITS DESCRIPTION>": generateTraitDescriptions('simple', view),
-      "<TRAITS DESCRIPTION|markdown>": generateTraitDescriptions('markdown', view),
-      "<TRAITS DESCRIPTION|xml>": generateTraitDescriptions('xml', view),
-      ...personaContextValues(persona),
-      "<NOTES>": playerNotes || NONE_PLACEHOLDER,
-      // The story clock as a plain inline value. Off ⇒ the uniform placeholder, so an affixed placement
-      // (the now-line's) simply vanishes and the setting needs no special case anywhere else.
-      // Also withheld until the opening hour is known: on the opening turn the clock would read the
-      // untested 08:00 default, and the opening-time pass is about to ask the model what time it is from
-      // that very narration. Telling it first would make the answer a restatement of the guess.
-      "<TIME>": timeContext && !openingHourPending ? formatAbsolute(gameTime, calendar) : NONE_PLACEHOLDER,
-    };
-
-    // Every scope × content × format variant, enumerated by the shared expander so the editor's preview
-    // covers exactly the same token set.
-    Object.assign(values, expandScopedTokens("<LOCATION>", locationScopes));
-    Object.assign(values, expandScopedTokens("<ENTITIES>", entityScopes));
-
-    // Resolve placeholder chips in every assembled value before it's folded into a prompt.
-    for (const k in values) values[k] = resolve(values[k]);
+    const scene = liveScene(locationOverride, box);
+    const values = chipValues(scene);
+    // Lore activates per turn inside the narration prompt builder, so the scene-level lore blocks are
+    // dropped here and the Preview tab falls through to the pool's samples for them.
+    for (const token of LORE_TOKENS) delete values[token];
     // The placeholder chips this world's own custom prompts place, keyed by token. A preset places none.
-    Object.assign(values, worldPromptChipValues(worldOverview, declinedWorldPrompts, resolve));
-    return values;
-  }, [
-    worldOverview, declinedWorldPrompts, activeStats, generateTraitDescriptions, persona,
-    currentLocation, locations, connections, presentIdsAt, entities, allEntities, playerNotes, resolvePH,
-    fullMessageHistory, timeContext, gameTime, calendar, openingHourPending,
-  ]);
-  buildContextValuesRef.current = buildContextValues;
+    return { ...values, ...worldPromptChipValues(worldOverview, declinedWorldPrompts, scene.resolve) };
+  }, [liveScene, worldOverview, declinedWorldPrompts]);
+  contextValuesRef.current = contextValues;
+
+  // Scene-roster override for the entity chips: choices and re-roll prompts see only who is in the scene.
+  const sceneEntityOverride = useCallback(
+    (sceneLoc: GameLocation | null, sceneEntities: Entity[]): Record<string, string> =>
+      sceneEntityChipValues(liveScene(sceneLoc), entityIdsAt(sceneLoc?.id, sceneEntities)),
+    [liveScene],
+  );
 
   // Live variable values for the Settings prompt-editor Preview tab (full-description variant, like the
   // game-text request). Only meaningful in-game, which is the only place this modal receives them.
@@ -1798,7 +1717,7 @@ const GameViewer = ({
   // (action / narration / speaking character) are assembled fresh per request, so there is nothing live to
   // show between turns — those fall through to the shared pool's samples rather than to a second set of
   // placeholder strings kept here, which is how the two copies used to drift.
-  const promptPreviewValues = useMemo<Record<string, string>>(() => buildContextValues(), [buildContextValues]);
+  const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
 
   /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
   const turnPrompts = (): TurnPrompts => ({
@@ -1854,7 +1773,7 @@ const GameViewer = ({
   }) => ({
     ...discoverEntityPass.buildRequest(standalonePassInput(), {
       ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId: args.turnId ?? "", baseCtx: {}, destinations: [] }),
-      ctx: buildContextValues(),
+      ctx: contextValues(),
       narration: args.firstPassage,
       subject: { name: args.name, laterMaterial: args.laterMaterial },
     }),
@@ -1867,7 +1786,7 @@ const GameViewer = ({
    *  match, attached to the latest turn. */
   const buildMilestoneSelect = (kept: string[], fresh: string[], turnId: string | undefined) => {
     const material = {
-      ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId: turnId ?? "", baseCtx: buildContextValues(), destinations: [] }),
+      ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId: turnId ?? "", baseCtx: contextValues(), destinations: [] }),
       milestone: { kept, fresh },
     };
     return {
@@ -2153,7 +2072,7 @@ const GameViewer = ({
       const assembleNarration = async (): Promise<Partial<TurnMaterial>> => {
         // The shared context base (incl. all three Stats-chip variants), scoped to this turn's location;
         // every system-prompt render below spreads it and adds its own tokens.
-        const ctx = buildContextValues(turnLocation, codeView);
+        const ctx = contextValues(turnLocation, codeView);
         // One action embedding for every semantic consumer this turn (lore activation, band relevance,
         // diary retrieval). Null = all semantic features quietly off for this turn.
         actionVec = await embedActionVec(effectiveAction);
@@ -2422,7 +2341,7 @@ const GameViewer = ({
           turnId: currentTurnIdRef.current,
           // The location the turn began in: what the up-front router routes from, and what the digest and
           // diary passes record against.
-          baseCtx: buildContextValues(null, codeView),
+          baseCtx: contextValues(null, codeView),
           destinations: destinations.map((loc) => loc.name),
         }),
         request,
@@ -3225,7 +3144,7 @@ const GameViewer = ({
     // scene it describes (with Show Silent Requests on) rather than under whatever turn is current.
     const request = sceneTagsPass.buildRequest(standalonePassInput(), {
       ...emptyTurnMaterial({ action: "", effectiveAction: "", turnId, baseCtx: {}, destinations: [] }),
-      ctx: buildContextValues(),
+      ctx: contextValues(),
       narration,
       sceneCast: cast.map((c) => c.name),
     });
@@ -3435,7 +3354,7 @@ const GameViewer = ({
     (async () => {
       try {
         const digest = await makeAIRequestRef.current({
-          systemPrompt: renderPromptTemplate(summaryPrompt, buildContextValues()),
+          systemPrompt: renderPromptTemplate(summaryPrompt, contextValues()),
           messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
           type: "summary",
           maxTokens: DIGEST_MAX_TOKENS,
@@ -3451,7 +3370,7 @@ const GameViewer = ({
         setDigestActive(false);
       }
     })();
-  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setFullMessageHistory]);
+  }, [memoryDigests, isWaitingForAI, diaryActive, discoverActive, fullMessageHistory, summaryPrompt, summaryUserPrompt, contextValues, setFullMessageHistory]);
 
   // Milestone-selection drainer (incremental, T4): once every due digest is written, silently judge
   // only the NEWLY-ARRIVED digests against the already-kept list (see lib/milestoneMemory). Old
@@ -3544,7 +3463,7 @@ const GameViewer = ({
     const playerAction = idx > 0 && fullMessageHistory[idx - 1].role === "user" ? fullMessageHistory[idx - 1].content : "";
     try {
       const digest = await makeAIRequestRef.current({
-        systemPrompt: renderPromptTemplate(summaryPrompt, buildContextValues()),
+        systemPrompt: renderPromptTemplate(summaryPrompt, contextValues()),
         messages: [{ role: "user", content: summaryUserMessage(summaryUserPrompt, playerAction, narrationText) }],
         type: "summary",
         maxTokens: DIGEST_MAX_TOKENS,
@@ -3558,7 +3477,7 @@ const GameViewer = ({
     } catch {
       return false;
     }
-  }, [fullMessageHistory, summaryPrompt, summaryUserPrompt, buildContextValues, setMemoryEdits]);
+  }, [fullMessageHistory, summaryPrompt, summaryUserPrompt, contextValues, setMemoryEdits]);
 
   // Embedding drainer: keep a vector on hand for everything the semantic features score at turn time —
   // turn digests (semanticMemory) and dictionary entries (semanticLore) — so scoring is a sync lookup.
@@ -3653,7 +3572,7 @@ const GameViewer = ({
     (async () => {
       try {
         const entry = await makeAIRequestRef.current({
-          systemPrompt: renderPromptTemplate(diaryPrompt, buildContextValues()),
+          systemPrompt: renderPromptTemplate(diaryPrompt, contextValues()),
           messages: [{ role: "user", content: buildDiaryUserMessage({ name, entity, narration: narrationText }) }],
           type: "diary",
           maxTokens: DIARY_MAX_TOKENS,
@@ -3670,7 +3589,7 @@ const GameViewer = ({
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, buildContextValues, setFullMessageHistory]);
+  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, contextValues, setFullMessageHistory]);
 
   // Runtime characters (Slice 2): promote a narration-confirmed character into a persisted entity.
   // Idle-gated and serialized like the diary drainer; runs before the diary pass so a new character is

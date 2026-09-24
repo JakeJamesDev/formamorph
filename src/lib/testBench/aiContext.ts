@@ -2,34 +2,27 @@
  * The AI Context instrument's data: everything the harness serves the model from one location, as blocks
  * with their rendered text and what each costs.
  *
- * Every value comes out of the game's own context builders — the same functions a live turn calls — fed the
- * authored world instead of a playthrough. Nothing here re-derives a roster, a destination set or a
- * description choice; a second implementation could disagree with play, which would make the whole
- * instrument a liar.
- *
- * Each block names the prompt chip that serves it, and its content/format options are *decoded from that
- * token* rather than passed separately, so a block can never render in a shape no prompt asks for. The
- * tokens are the shipped default prompts' own — prompts are a global setting the editor cannot read, so the
- * defaults are the only honest stand-in.
+ * Every block's value is the Chip Values module's, from a Chip Scene the authored adapter builds for the lens,
+ * read by the chip token that serves the block. Nothing here re-derives a value, and the rosters' summary flags
+ * decode through the expander's own option tables; a second
+ * implementation could disagree with play, which would make the whole instrument a liar. The tokens are the
+ * shipped default prompts' own: prompts are a global setting the editor cannot read, so the defaults are the
+ * only honest stand-in.
  *
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
-import { buildDictionaryContext, flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues, statChipValues } from '@/lib/chipValues/chipValues';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { entityIdsAt } from '@/lib/entityPresence';
 import {
-  buildDestinationsContext, buildEntityContext, buildLocationContext, buildParentLocationContext,
-  buildReachableEntitiesContext, buildReachableLocationsContext, buildSublocationEntitiesContext,
-  buildSublocationsContext, contextDelivery, navigableDestinationEntries, reachableEntityIds,
-  sublocationEntityIds, type ContextDelivery, type ContextOpts,
+  contextDelivery, navigableDestinationEntries, reachableEntityIds, scopedChipOpts, sublocationEntityIds,
+  type ContextDelivery,
 } from '@/lib/locationContext';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { templateChipKeys } from '@/lib/promptTemplate';
-import { decodeVariant, tokenVariant, variableForToken } from '@/lib/promptVariables';
-import { buildStatContext, type StatPieces } from '@/lib/statContext';
+import { variableForToken } from '@/lib/promptVariables';
 import { enabledStats } from '@/lib/traitEffects';
-import { buildTraitContext } from '@/lib/traitTree';
 import type { Entity, GameLocation, PlayerStat } from '@/types';
 import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
 import type { RuleWorld } from './rules';
@@ -111,8 +104,9 @@ export const EMPTY_AI_CONTEXT: AiContextData = {
 
 // The chips the shipped default prompts use for each block. Two are not in any default prompt: `parent` is
 // only ever placed name-only in the now-line, and `destinations` belongs to the location router — both are
-// listed in their family's shape so the panel reads as one set.
-const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string }> = {
+// listed in their family's shape so the panel reads as one set. The Dictionary block joins both lore
+// positions under one row, Background first, so it shows every entry a turn could inject.
+const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string; parts?: string[] }> = {
   world: { label: 'World Description', token: '<WORLD DESCRIPTION>' },
   stats: { label: 'Stats', token: '<STATS DESCRIPTION|descriptions.markdown>' },
   traits: { label: 'Traits', token: '<TRAITS DESCRIPTION|markdown>' },
@@ -124,48 +118,26 @@ const BLOCK_TOKENS: Record<ContextBlockId, { label: string; token: string }> = {
   entities: { label: 'Entities Here', token: '<ENTITIES|markdown>' },
   subEntities: { label: 'Entities in Sub-Locations', token: '<ENTITIES|sublocations.markdown>' },
   reachableEntities: { label: 'Entities Reachable', token: '<ENTITIES|reachable.summary.markdown>' },
-  dictionary: { label: 'Dictionary', token: '<DICTIONARY>' },
+  dictionary: { label: 'Dictionary', token: '<DICTIONARY>', parts: ['<DICTIONARY|before>', '<DICTIONARY>'] },
 };
 
 const STATS_TOKEN = '<STATS DESCRIPTION>';
 
-/** A token's per-axis selection, or an all-default selection for a token with no axes. */
-function selectionOf(token: string): Record<string, string | null> {
-  const variable = variableForToken(token);
-  return variable ? decodeVariant(variable, tokenVariant(token)) : {};
-}
-
-/** The section style a chip's `format` axis names. */
-type ContextFormat = 'simple' | 'markdown' | 'xml';
-
-const formatOf = (selection: Record<string, string | null>): ContextFormat =>
-  selection.format === 'markdown' ? 'markdown' : selection.format === 'xml' ? 'xml' : 'simple';
-
-/** The builder options a scoped chip's token encodes — the axes the chip pop-out offers, read off the token
- *  so a block's shape and its stated token can never drift apart. */
-function scopedOpts(token: string): ContextOpts & { preferSummary: boolean; format: ContextFormat } {
-  const selection = selectionOf(token);
-  return {
-    preferSummary: selection.content === 'summary',
-    nameOnly: selection.content === 'name',
-    format: formatOf(selection),
-  };
-}
-
 /** Whether a scoped chip's token asks for summaries — what decides each roster row's delivery. */
-const prefersSummary = (id: ContextBlockId): boolean => scopedOpts(BLOCK_TOKENS[id].token).preferSummary;
+const prefersSummary = (id: ContextBlockId): boolean => scopedChipOpts(BLOCK_TOKENS[id].token).preferSummary === true;
 
-/** The stat pieces and format the Stats chip's token encodes. */
-function statArgs(token: string): { pieces: StatPieces; format: ContextFormat } {
-  const selection = selectionOf(token);
-  return {
-    pieces: {
-      values: selection.numbers != null,
-      status: selection.descriptions != null,
-      meaning: selection.meaning != null,
-    },
-    format: formatOf(selection),
+/** A block's value from the module's output: its token's value, or its parts' values joined, placeholders
+ *  skipped. A token the module has no value for throws, so the table cannot name a chip no prompt can hold. */
+function blockValue(id: ContextBlockId, values: Record<string, string>): string {
+  const valueOf = (token: string): string => {
+    const value = values[token];
+    if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
+    return value;
   };
+  const { token, parts } = BLOCK_TOKENS[id];
+  if (!parts) return valueOf(token);
+  const served = parts.map(valueOf).filter((value) => value.trim() !== NONE_PLACEHOLDER);
+  return served.length ? served.join('\n') : NONE_PLACEHOLDER;
 }
 
 /** The Stats chip `template` places, as its affix-free token. */
@@ -173,10 +145,12 @@ export function statsChipIn(template: string): string | undefined {
   return [...templateChipKeys(template)].find((key) => variableForToken(key)?.token === STATS_TOKEN);
 }
 
-/** The lens's stats in the shape `token` asks for, before the lens resolves any chips. */
+/** The lens's stats in the shape `token` asks for, before the lens resolves any chips. An unregistered token
+ *  throws, as `blockValue` does. */
 function renderStats(world: AiContextWorld, lens: BenchLens, token: string): string {
-  const { pieces, format } = statArgs(token);
-  return buildStatContext(lensStats(world, lens), pieces, format);
+  const value = statChipValues(lensStats(world, lens))[token];
+  if (value === undefined) throw new Error(`Chip Values has no value for ${token}`);
+  return value;
 }
 
 /** The stats block any Stats chip renders for the lens PC, with the PC's chips resolved. */
@@ -219,47 +193,26 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const location = lens.location;
   const resolve = (text: string) => resolveLensText(text, placeholders, lens.pins);
 
+  const scene = authoredChipScene(world, {
+    location,
+    activeTraitIds: activeTraitIds(world, lens),
+    stats: lensStats(world, lens),
+    resolve,
+  });
+  const values = chipValues(scene);
+
   // Each scope drops whoever a higher-precedence one already listed, exactly as the entity blocks do — a
   // roster that listed someone twice would disagree with the text beside it.
-  const hereIds = entityIdsAt(location?.id, entities);
+  const hereIds = scene.presentIds;
   const here = new Set(hereIds);
   const subIds = sublocationEntityIds(location, locations, entities).filter((id) => !here.has(id));
-  const shownAlready = [...hereIds, ...subIds];
-  const shown = new Set(shownAlready);
+  const shown = new Set([...hereIds, ...subIds]);
   const reachIds = reachableEntityIds(location, locations, entities).filter((id) => !shown.has(id));
 
-  const opts = (id: ContextBlockId) => scopedOpts(BLOCK_TOKENS[id].token);
-  // Every enabled entry, in book order — no turn text has narrowed them.
-  const lore = flattenEnabledBookEntries(world.dictionaries).filter((entry) => entry.enabled !== false);
-
-  const rendered: Record<ContextBlockId, string> = {
-    world: world.worldOverview?.systemPrompt || NONE_PLACEHOLDER,
-    stats: renderStats(world, lens, BLOCK_TOKENS.stats.token),
-    traits: buildTraitContext(
-      activeTraitIds(world, lens),
-      world.traits ?? [],
-      world.traitGroups ?? [],
-      opts('traits').format,
-    ),
-    location: buildLocationContext(location, opts('location')),
-    sublocations: buildSublocationsContext(location, locations, opts('sublocations')),
-    parent: buildParentLocationContext(location, locations, opts('parent')),
-    reachable: buildReachableLocationsContext(location, locations, opts('reachable')),
-    destinations: buildDestinationsContext(location, locations, connections, opts('destinations')),
-    entities: buildEntityContext(location, entities, opts('entities')),
-    subEntities: buildSublocationEntitiesContext(location, locations, entities, {
-      ...opts('subEntities'), excludeIds: hereIds,
-    }),
-    reachableEntities: buildReachableEntitiesContext(location, locations, entities, {
-      ...opts('reachableEntities'), excludeIds: shownAlready,
-    }),
-    dictionary: buildDictionaryContext(lore, false) || NONE_PLACEHOLDER,
-  };
-
-  // Text stays exactly as the builders produced it, trailing newline included — what an author reads here is
-  // byte-for-byte the block the model receives.
+  // Text stays exactly as the module produced it, trailing newline included — what an author reads here is
+  // byte-for-byte what the model receives; the Dictionary block is its two lore chips, one after the other.
   const blocks = (Object.keys(BLOCK_TOKENS) as ContextBlockId[]).map((id): ContextBlock => {
-    const text = resolve(rendered[id]);
+    const text = blockValue(id, values);
     const empty = text.trim() === '' || text.trim() === NONE_PLACEHOLDER;
     return {
       id,
@@ -269,7 +222,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
       tokens: empty ? 0 : estimateTokens(text.length),
       empty,
       note: id === 'dictionary' && !empty
-        ? `Every enabled entry (${lore.length}) — no scene text has fired keywords here.`
+        ? `Every enabled entry (${scene.lore.length}) — no scene text has fired keywords here.`
         : undefined,
     };
   });
