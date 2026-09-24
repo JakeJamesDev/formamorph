@@ -176,6 +176,77 @@ describe('what happens to the entry', () => {
     expect(screen.getByText('Update 1')).toBeInTheDocument();
   });
 
+  describe('written while the upload runs', () => {
+    /** Holds the upload open until the test lets it finish. */
+    const holdUpload = () => {
+      let finish = () => {};
+      vi.spyOn(WorldStorageService, 'publishItem').mockImplementation(
+        () => new Promise((resolve) => { finish = () => resolve({ _id: 'w1' }); }),
+      );
+      return () => finish();
+    };
+
+    const writeEntry = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByRole('button', { name: /describe what changed/i }));
+      await user.type(screen.getByLabelText('Title'), 'Update 1');
+      await user.type(screen.getByLabelText('What changed'), 'The ferry runs again.');
+    };
+
+    it('attaches an entry saved before the upload finishes', async () => {
+      const finishUpload = holdUpload();
+      view();
+      const user = await chooseUpdate();
+
+      await user.click(screen.getByRole('button', { name: 'Publish' }));
+      await writeEntry(user);
+      await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
+      finishUpload();
+
+      await waitFor(() => expect(WorldStorageService.createChangelogEntry).toHaveBeenCalledWith(
+        'w1', expect.objectContaining({ title: 'Update 1' }),
+      ));
+    });
+
+    it('waits for an entry still being written when the upload finishes', async () => {
+      const finishUpload = holdUpload();
+      const onOpenChange = vi.fn();
+      render(<PublishModal open onOpenChange={onOpenChange} isAuthenticated payload={payload} events={[]} />);
+      const user = await chooseUpdate();
+
+      await user.click(screen.getByRole('button', { name: 'Publish' }));
+      await writeEntry(user);
+      finishUpload();
+
+      // The upload is done, but the entry is still open: nothing is sent and the modal stays up.
+      await waitFor(() => expect(WorldStorageService.publishItem).toHaveBeenCalled());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(onOpenChange).not.toHaveBeenCalledWith(false);
+      expect(WorldStorageService.createChangelogEntry).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: 'Attach to Update' }));
+
+      await waitFor(() => expect(WorldStorageService.createChangelogEntry).toHaveBeenCalledWith(
+        'w1', expect.objectContaining({ title: 'Update 1', body: 'The ferry runs again.' }),
+      ));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it('finishes without an entry when the author cancels it after the upload', async () => {
+      const finishUpload = holdUpload();
+      const onOpenChange = vi.fn();
+      render(<PublishModal open onOpenChange={onOpenChange} isAuthenticated payload={payload} events={[]} />);
+      const user = await chooseUpdate();
+
+      await user.click(screen.getByRole('button', { name: 'Publish' }));
+      await writeEntry(user);
+      finishUpload();
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+      expect(WorldStorageService.createChangelogEntry).not.toHaveBeenCalled();
+    });
+  });
+
   it('lets the author take the draft back off', async () => {
     view();
     const user = await chooseUpdate();

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
 import {
   Dialog,
@@ -82,6 +82,11 @@ export function PublishModal({
   const [changelogDraft, setChangelogDraft] = useState<ChangelogDraft | null>(null);
   const [changelogSupported, setChangelogSupported] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
+  // Mirrors of the two above for a publish already in flight, which the author can still write into.
+  const changelogDraftRef = useRef<ChangelogDraft | null>(null);
+  const changelogOpenRef = useRef(false);
+  /** Set while a finished upload waits on an entry still being written. */
+  const entrySettledRef = useRef<(() => void) | null>(null);
   const changelogReqRef = useRef(0);
   // The request id still matches after an unmount, so it alone cannot stop a late answer.
   const mountedRef = useMountedRef();
@@ -173,6 +178,21 @@ export function PublishModal({
   // built from: the switch arms itself again in place, with no reopen and no reload.
   const withdrawal = useContestWithdrawal(() => { void fetchUserWorlds(); });
 
+  const setDraft = useCallback((draft: ChangelogDraft | null) => {
+    changelogDraftRef.current = draft;
+    setChangelogDraft(draft);
+  }, []);
+
+  // The dialog submits before it closes, so a waiting publish reads the saved draft, or the old one on Cancel.
+  const setEntryOpen = useCallback((next: boolean) => {
+    changelogOpenRef.current = next;
+    setChangelogOpen(next);
+    if (!next) {
+      entrySettledRef.current?.();
+      entrySettledRef.current = null;
+    }
+  }, []);
+
   /** Publish as a new listing, or replace `targetId` when given one. */
   const publish = async (targetId: string | null) => {
     if (!payload) return;
@@ -217,9 +237,14 @@ export function PublishModal({
       // a lie in the listing's own history, so a refused publish must leave the draft where it is. Its own
       // failure is answered on its own rather than reaching the catch below — the update did go out, and
       // reading that as a refused upload would be the same lie the other way round.
-      if (targetId && changelogDraft) {
+      // Read through refs: the author can write or change the entry while the upload runs.
+      if (targetId && changelogOpenRef.current) {
+        await new Promise<void>((resolve) => { entrySettledRef.current = resolve; });
+      }
+      const draft = changelogDraftRef.current;
+      if (targetId && draft) {
         try {
-          await WorldStorageService.createChangelogEntry(targetId, changelogDraft);
+          await WorldStorageService.createChangelogEntry(targetId, draft);
         } catch (error) {
           toast.error(
             `${KIND_LABELS[kind].one} updated, but the changelog entry did not save. Add it from the listing's Changelog.`,
@@ -325,7 +350,7 @@ export function PublishModal({
   // changelog, and no more.
   useEffect(() => {
     // A note written about one listing must not ride along on a publish to another.
-    setChangelogDraft(null);
+    setDraft(null);
     setListing(null);
     if (!overwriteTarget) {
       setChangelogSupported(false);
@@ -349,7 +374,7 @@ export function PublishModal({
       setListing(details);
       setListingPending(false);
     });
-  }, [overwriteTarget, declaresRelationships, mountedRef]);
+  }, [overwriteTarget, declaresRelationships, mountedRef, setDraft]);
 
   // Load the user's listings when the publish modal is opened, or when the kind changes under it.
   useEffect(() => {
@@ -482,15 +507,15 @@ export function PublishModal({
                 {changelogDraft ? (
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="min-w-0 truncate text-label">{changelogDraft.title}</span>
-                    <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setChangelogOpen(true)}>
+                    <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setEntryOpen(true)}>
                       Edit
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setChangelogDraft(null)}>
+                    <Button size="sm" variant="ghost" onClick={() => setDraft(null)}>
                       Remove
                     </Button>
                   </div>
                 ) : (
-                  <Button size="sm" variant="outline" onClick={() => setChangelogOpen(true)}>
+                  <Button size="sm" variant="outline" onClick={() => setEntryOpen(true)}>
                     Describe What Changed
                   </Button>
                 )}
@@ -622,11 +647,11 @@ export function PublishModal({
           starts. Here it only hands the draft back — nothing is sent until the update is up. */}
       <ChangelogEntryDialog
         open={changelogOpen}
-        onOpenChange={setChangelogOpen}
+        onOpenChange={setEntryOpen}
         entry={changelogDraft}
         submitLabel="Attach to Update"
         description="Optional. This is added to the listing's changelog once the update is published."
-        onSubmit={setChangelogDraft}
+        onSubmit={setDraft}
       />
 
       {withdrawal.dialog}
