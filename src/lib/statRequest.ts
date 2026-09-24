@@ -1,12 +1,9 @@
 import type { PlayerStat, Trait } from '@/types';
 import { stripMarkdown } from './stripMarkdown';
-import { buildStatContext } from './statContext';
-import { decodeVariant, tokenVariant, variableForToken, variableVariantIds, withVariant } from './promptVariables';
+import { statChipValues } from './chipValues/chipValues';
 import { applyAiMaxChanges, applyAiStatChanges, parseStatUpdates } from './statChanges';
 import { randomUUID } from './uuid';
 
-const variable = variableForToken('<STATS DESCRIPTION>')!;
-const tokens = ['<STATS DESCRIPTION>', ...variableVariantIds(variable).map((id) => withVariant('<STATS DESCRIPTION>', id))];
 const nameKey = (name: string) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const symbolKey = (name: string) => nameKey(name).replace(/\p{Variation_Selector}|[^\p{L}\p{N}\p{M}]/gu, '');
 
@@ -38,15 +35,7 @@ export interface StatResponse {
 export function createStatRequest(stats: readonly PlayerStat[]): StatRequestSnapshot {
   const targets = stats.map(({ id, name }) => ({ id, name, plainName: stripMarkdown(name).trim() }));
   const plainStats = stats.map((stat, i) => ({ ...stat, name: targets[i].plainName }));
-  const context = Object.fromEntries(tokens.map((token) => {
-    const selection = decodeVariant(variable, tokenVariant(token));
-    return [token, buildStatContext(plainStats, {
-      values: selection.numbers != null,
-      status: selection.descriptions != null,
-      meaning: selection.meaning != null,
-    }, selection.format === 'markdown' ? 'markdown' : selection.format === 'xml' ? 'xml' : 'simple')];
-  }));
-  return { id: randomUUID(), targets, context };
+  return { id: randomUUID(), targets, context: statChipValues(plainStats) };
 }
 
 /** Match replies against the request's names before later pins can rename their stats. */

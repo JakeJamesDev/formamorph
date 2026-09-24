@@ -5,7 +5,7 @@
  *
  * Everything is computed by the game's own machinery: stats settle through `traitRuntime` (the same seeding,
  * clamping and bound derivation a new game runs), chips resolve through `resolvePlaceholders` with the
- * active traits' pins, and the first prompt is `buildNarrationPrompt` over `authoredPreviewValues` — the
+ * active traits' pins, and the first prompt is `buildNarrationPrompt` over the authored scene's chip values — the
  * assembly a real opening turn performs. A second implementation of any of these could disagree with play,
  * which would make the instrument a liar.
  *
@@ -17,7 +17,8 @@
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
-import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
@@ -25,7 +26,6 @@ import {
   type PlaceholderPick,
 } from '@/lib/placeholders';
 import { DEFAULT_OPENING, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
-import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
@@ -366,19 +366,15 @@ export function buildOpening(
     }];
   });
 
-  // The turn-one assembly, through the game's own builders: the preview values scoped to this opening, the
+  // The turn-one assembly, through the game's own builders: the chip values of this opening's scene, the
   // narration prompt over them with the real lore scan, and the cue framed as the opening user turn.
-  // <NOTES> and <TIME> are turn-state a fresh game does not have yet, so both read as the uniform "none".
-  const ctx = {
-    ...authoredPreviewValues(world, {
-      location,
-      activeTraitIds: active.map((t) => t.id),
-      stats: liveStats,
-      resolve,
-    }),
-    '<NOTES>': NONE_PLACEHOLDER,
-    '<TIME>': NONE_PLACEHOLDER,
-  };
+  // The scene has no notes and no clock yet, so both chips read as the uniform "none".
+  const ctx = chipValues(authoredChipScene(world, {
+    location,
+    activeTraitIds: active.map((t) => t.id),
+    stats: liveStats,
+    resolve,
+  }));
   // The opening pool at this start, as Enter World reads it. Picked library entities are a player choice.
   const entityName = new Map((world.entities ?? []).map((e) => [e.id, e.name]));
   const entries = openingPool({
