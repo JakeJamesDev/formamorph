@@ -1,7 +1,7 @@
 # 08: Traits Steps
 
 Status: ready-for-human
-Status note: Built in 21341944, with the review folded in. Open question: the Test Bench readers read the authored stat value, not the settled start. A world with a default trait that changes a stat would show the difference.
+Status note: Built in 21341944, with the review folded in. The stat-value question is resolved (user, 2026-09-23): the tour stays as built, and the Test Bench fix ships on `main` from `docs-internal/specs/bench-settled-stats/`.
 Base: a3685c8b
 Blocked by: 07
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
