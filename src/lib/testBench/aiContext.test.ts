@@ -115,6 +115,18 @@ describe('context blocks', () => {
     expect(block(data, 'dictionary').note).toContain('(1)');
   });
 
+  it('serves Background lore ahead of Foreground lore in the one Dictionary block', () => {
+    const split = [{
+      ...dictionaries[0],
+      entries: [
+        { id: 'de-fg', name: 'The Silt', key: ['silt'], value: 'The river carries silt every spring.' },
+        { id: 'de-bg', name: 'The Founding', key: ['founding'], value: 'Eel-trappers built the first pier.', position: 'before' },
+      ],
+    } as unknown as Dictionary];
+    const text = block(context(at('loc-harbor'), { dictionaries: split }), 'dictionary').text;
+    expect(text).toBe('The Founding: Eel-trappers built the first pier.\nThe Silt: The river carries silt every spring.');
+  });
+
   it('marks a block the location has nothing for as empty, costing nothing', () => {
     const data = context(at('loc-landing'));
     // Sedge Landing is top-level, so there is no containing location to serve.

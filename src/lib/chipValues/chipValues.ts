@@ -12,6 +12,7 @@ import {
 } from '../promptVariables';
 import { buildStatContext } from '../statContext';
 import { buildTraitContext } from '../traitTree';
+import type { PlayerStat } from '@/types';
 import type { ChipScene } from './chipScene';
 
 const WORLD = variableForToken('<WORLD DESCRIPTION>')!;
@@ -33,6 +34,19 @@ function familyValues(
   return Object.fromEntries(
     familyTokens(variable).map((token) => [token, build(decodeVariant(variable, tokenVariant(token)))]),
   );
+}
+
+/**
+ * Every Stats chip token rendered from `stats`: the Stats family on its own. This is the module's one narrow
+ * export, for a caller that holds stats but no scene; `chipValues` renders its Stats family through it.
+ * Placeholder chips are left as they are.
+ */
+export function statChipValues(stats: PlayerStat[]): Record<string, string> {
+  return familyValues(STATS, (sel) => buildStatContext(
+    stats,
+    { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
+    chipFormat(sel.format),
+  ));
 }
 
 /**
@@ -63,11 +77,7 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   const traitIds = scene.traits.map((trait) => trait.id);
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
-    ...familyValues(STATS, (sel) => buildStatContext(
-      scene.stats,
-      { values: sel.numbers != null, status: sel.descriptions != null, meaning: sel.meaning != null },
-      chipFormat(sel.format),
-    )),
+    ...statChipValues(scene.stats),
     ...familyValues(TRAITS, (sel) => (
       traitIds.length
         ? buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format))

@@ -2,7 +2,9 @@ import type { Connection, Entity, GameLocation } from "@/types";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
-import { encodeVariant, variableAxes, variableForToken, withVariant } from "./promptVariables";
+import {
+  decodeVariant, encodeVariant, tokenVariant, variableAxes, variableForToken, withVariant,
+} from "./promptVariables";
 import { xmlEscape } from "./utils";
 
 /** The location a builder is scoped to, or none at all (no world, or nowhere resolved yet). */
@@ -436,6 +438,14 @@ function chipContent(optionId: string | null): ContextOpts {
   const opts = CONTENT_OPTS[optionId];
   if (!opts) throw new Error(`No builder option for the content option "${optionId}"`);
   return opts;
+}
+
+/** The builder options one concrete scoped chip token encodes, read through the same tables as the expander. */
+export function scopedChipOpts(token: string): ContextOpts {
+  const variable = variableForToken(token);
+  if (!variable) throw new Error(`No chip is registered for ${token}`);
+  const selection = decodeVariant(variable, tokenVariant(token));
+  return { ...chipContent(selection.content), format: chipFormat(selection.format) };
 }
 
 /**
