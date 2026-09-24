@@ -1,5 +1,6 @@
 import { User } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
 import type { PersonaRef } from '@/types';
 
@@ -8,6 +9,8 @@ export interface PersonaOption {
   id: string;
   name: string;
   image?: string;
+  /** The player-facing description, placeholders resolved. */
+  description?: string;
 }
 
 const keyOf = (ref: PersonaRef) => (ref.source === 'none' ? 'none' : `${ref.source}:${ref.entityId}`);
@@ -26,10 +29,10 @@ const rowClass = (selected: boolean) => cn(
 
 function Portrait({ option }: { option: PersonaOption }) {
   return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
+    <span className={cn('flex w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted', THUMB_FRAME.portrait)}>
       {option.image
-        ? <img src={option.image} alt="" className="h-full w-full object-cover" />
-        : <User aria-hidden className="h-5 w-5 text-muted-foreground" />}
+        ? <img src={option.image} alt="" {...THUMB_INTRINSIC.portrait} className={cn('h-full w-full', thumbFit('portrait'))} />
+        : <User aria-hidden className="h-6 w-6 text-muted-foreground" />}
     </span>
   );
 }
@@ -52,7 +55,7 @@ export function PersonaPicker({ world = [], library, none = true, value, onChang
   const row = (key: string, label: string, body: React.ReactNode) => (
     <div key={key} className={rowClass(current === key)}>
       <RadioGroupItem id={`persona-${key}`} value={key} aria-label={label} className="shrink-0" />
-      <label htmlFor={`persona-${key}`} className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+      <label htmlFor={`persona-${key}`} className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
         {body}
       </label>
     </div>
@@ -61,7 +64,12 @@ export function PersonaPicker({ world = [], library, none = true, value, onChang
     row(`${source}:${option.id}`, option.name, (
       <>
         <Portrait option={option} />
-        <strong className="min-w-0 break-words text-label font-semibold">{option.name}</strong>
+        <span className="min-w-0">
+          <strong className="block break-words text-label font-semibold">{option.name}</strong>
+          {option.description && (
+            <span className="mt-1 line-clamp-3 text-helper text-muted-foreground">{option.description}</span>
+          )}
+        </span>
       </>
     ));
   return (

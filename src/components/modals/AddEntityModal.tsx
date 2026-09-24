@@ -1,6 +1,8 @@
 import { randomUUID } from '@/lib/uuid';
 import { User } from 'lucide-react';
 import { linkToSource, unlink, type LibrarySource } from '@/lib/linkedContent';
+import { thumbFit } from '@/lib/thumbAspect';
+import { cn } from '@/lib/utils';
 import type { Entity } from '@/types';
 import AddFromLibraryModal from './AddFromLibraryModal';
 
@@ -29,7 +31,7 @@ const AddEntityModal = ({ open, resume, onOpenChange, onAdd }: {
     renderRow={(item) => (
       <div className="h-8 w-8 shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
         {item.image ? (
-          <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+          <img src={item.image} alt={item.name} className={cn('h-full w-full', thumbFit('portrait'))} />
         ) : (
           <User className="h-4 w-4 text-muted-foreground" />
         )}

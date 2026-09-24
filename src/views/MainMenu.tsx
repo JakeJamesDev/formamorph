@@ -1347,14 +1347,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   /** The library personas this entry offers: marked entities the world holds no copy of. */
   const personaOptions = useMemo(
-    () => additionEntities.filter((entity) => entity.persona === true).map(({ id, name, image }) => ({ id, name, image })),
+    () => additionEntities.filter((entity) => entity.persona === true).map(({ id, name, image, description }) => ({ id, name, image, description })),
     [additionEntities],
   );
   /** The world's entities the author marked as playable. */
   const worldPersonaOptions = useMemo(
     () => resolvedWorldEntities.filter((entity) => entity.persona === true)
-      .map(personaOption),
-    [resolvedWorldEntities],
+      .map(personaOption(resolvePH)),
+    [resolvedWorldEntities, resolvePH],
   );
   const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
   /** What the step's Persona category lists under the world's player setting. */

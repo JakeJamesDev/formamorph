@@ -126,6 +126,14 @@ describe('world personas in the Change picker', () => {
     expect(order).toEqual(['None', 'From This World', 'Harbor Warden', 'Your Personas', 'Ash']);
   });
 
+  it("shows each persona's player description under its name", async () => {
+    await store({ ...ash, playerDescription: 'A courier who never sleeps.' });
+    renderInGame(<PersonaRow />, { world: { entities: [{ ...warden, playerDescription: 'Keeps the harbor ledger.' }, clerk] } });
+    const dialog = await openPicker();
+    await within(dialog).findByText('A courier who never sleeps.');
+    expect(within(dialog).getByText('Keeps the harbor ledger.')).toBeTruthy();
+  });
+
   it("lists only the world's personas, with no None, in a Cast world", async () => {
     await store(ash);
     const overview = worldFixture().worldOverview;

@@ -50,6 +50,9 @@ export interface PersonaPick {
   libraryEntity?: Entity;
 }
 
-/** A world entity as a persona picker option. */
-export const personaOption = (entity: Entity): { id: string; name: string; image?: string } =>
-  ({ id: entity.id, name: entity.name, image: primaryImage(entity) });
+/** A world entity as a persona picker option, its player description resolved through `resolve`. */
+export const personaOption = (resolve: (text: string) => string) =>
+  (entity: Entity): { id: string; name: string; image?: string; description?: string } => {
+    const description = entity.playerDescription?.trim();
+    return { id: entity.id, name: entity.name, image: primaryImage(entity), description: description ? resolve(description) : undefined };
+  };
