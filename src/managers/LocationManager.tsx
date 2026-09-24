@@ -171,6 +171,7 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
       <TabsContent value="media" className="space-y-4">
         <ImageTagsField
           label="Background Image"
+          tourAnchor="location-image"
           images={editingLocation.backgroundImage ? [editingLocation.backgroundImage] : []}
           onImagesChange={(list) => handleChange('backgroundImage', list[0] ?? '')}
           imageId={`location-image-${editingLocation.id}`}

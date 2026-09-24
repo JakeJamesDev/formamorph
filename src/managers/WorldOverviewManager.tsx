@@ -187,7 +187,7 @@ const WorldOverviewManager = () => {
           placeholder="Add tags"
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour-anchor="world-thumbnail">
         <Label htmlFor="image-upload-thumbnail">Thumbnail</Label>
         {/* The frame and its Generate button share one box, so the button is as wide as the picture it
             makes rather than centered under it. */}

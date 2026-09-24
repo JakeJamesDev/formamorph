@@ -12,6 +12,10 @@ import type { World } from '@/types';
  * Default book, and In Play's test line, which fires the entry through the Activation Tester's scan.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),

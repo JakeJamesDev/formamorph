@@ -323,8 +323,10 @@ A cold-coast fishing village whose tide-fed spring slowly reshapes the people wh
 | Step | Example value |
 |---|---|
 | World Name | Brinewell |
+| World Thumbnail | `src/lib/authoringTour/assets/brinewell.webp` (added 2026-09-24; the tour's pictures ship as bundled WebP files and Use Example stores them as data URLs) |
 | World AI-Facing Description | Brinewell is a quiet fishing village on a cold northern coast. At its heart lies the Tidewell, a stone spring that fills with seawater at high tide. Anyone who bathes in it slowly takes on traits of the sea: webbed fingers, gill lines, a scatter of scales. The villagers treat the change as ordinary and a little sacred. Outsiders find it unsettling. Keep the tone warm and curious, never horror. |
 | Location 1 Name | The Tidewell |
+| Location 1 Background Image | `assets/tidewell.webp`; Location 2 gets `assets/salt-lantern.webp` from the add step's example |
 | Location 1 Player-Facing | A ring of worn stone around a pool that rises and falls with the sea. |
 | Location 1 AI-Facing | A round stone basin in the village square. Seawater floods in through a carved channel at high tide and drains away at low tide. Bathers feel a tingling warmth that lingers for hours. Shells and sea glass line the rim as offerings. |
 | Location 1 | Starting Location |
@@ -333,6 +335,7 @@ A cold-coast fishing village whose tide-fed spring slowly reshapes the people wh
 | Location 2 AI-Facing | A two-story inn on the harbor. The common room has a peat fire, long scarred tables, and a window that looks out on the Tidewell. Fishers gather here at dusk to trade gossip and tall tales. |
 | Connection | The Tidewell ↔ The Salt Lantern, Travel Hint: down the lane past the net sheds |
 | Entity Name | Maren |
+| Entity Image | `assets/maren.webp` |
 | Entity Pronouns | she/her |
 | Entity Player-Facing | The keeper of the Tidewell, with a warm laugh and faint silver scales along her jaw. |
 | Entity AI-Facing | Maren tends the Tidewell and has bathed in it every week for twenty years. Silver scales now trace her jaw and forearms, and her fingers are lightly webbed. She is kind, nosy and fiercely protective of newcomers. She secretly fears the spring's pull on her is growing stronger. |

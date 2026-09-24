@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Hint } from '@/components/ui/typography';
 import { WorldCardFace } from '@/components/WorldCardFace';
 import { LocationTabBody } from '@/components/game/LocationTabBody';
+import { LocationBackdrop } from '@/components/game/LocationBackdrop';
 import { EntityListRow } from '@/components/game/EntityListRow';
 import { EntityCardBody, EntityDescription } from '@/components/game/EntityCard';
 import { StatRow } from '@/components/game/StatRow';
@@ -77,7 +78,8 @@ function EntitySurface({ surface }: { surface: Extract<PlayerSurface, { entity: 
         </div>
       )}
       {card && (
-        <div className="flex flex-col rounded-md border">
+        // The card has no fixed height here, so the picture is capped rather than filling three quarters of one.
+        <div className="flex flex-col rounded-md border [&_img]:max-h-72">
           <h4 className="border-b px-4 py-2 text-heading font-semibold">{entity.name}</h4>
           <EntityCardBody entity={entity}>
             <EntityDescription text={entity.playerDescription ?? ''} />
@@ -132,7 +134,9 @@ function Surface({ surface }: { surface: Exclude<PlayerSurface, { kind: 'none' }
       return <div className="w-56 max-w-full"><WorldCardFace world={surface.world} layout="grid" /></div>;
     case 'locationTab':
       return (
-        <div className="rounded-md border">
+        // The location's picture sits behind the tab the way it sits behind the story, under the same fade.
+        <div className="relative isolate overflow-hidden rounded-md border">
+          <LocationBackdrop image={surface.location?.backgroundImage} overlay={0.7} overlayHidden={false} />
           <LocationTabBody location={surface.location} locations={surface.locations} connections={surface.connections} />
         </div>
       );

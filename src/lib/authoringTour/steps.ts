@@ -18,11 +18,13 @@ import {
 } from '@/lib/blankWorld';
 import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
+import { entityImages } from '@/lib/entityImages';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, withHint } from '@/lib/connectionEditing';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
 import type { InPlaySpec, ReaderSpec } from './inPlay';
+import { loadTourImage } from './tourImages';
 
 /** The world as the editor holds it while the tour reads it. */
 export type TourWorld = Omit<World, 'id' | 'version'>;
@@ -91,8 +93,8 @@ export interface TourStep {
    * completes once a new item exists, and the tour's dev route replays it.
    */
   add?: (api: TourEditApi, world: TourWorld) => string;
-  /** Fills the field with the example world's text through its panel's own setter. */
-  useExample?: (api: TourEditApi, world: TourWorld, items: TourItems) => void;
+  /** Fills the field with the example world's value through its panel's own setter. Async for a bundled picture. */
+  useExample?: (api: TourEditApi, world: TourWorld, items: TourItems) => void | Promise<void>;
   /** Runs each time the step becomes current. */
   onReach?: () => void;
   /** What In Play shows for this step. */
@@ -314,6 +316,17 @@ const OVERVIEW_STEPS: readonly TourStep[] = [
       }],
     },
   },
+  {
+    id: 'world-thumbnail',
+    tab: 'overview',
+    anchor: 'world-thumbnail',
+    item: null,
+    title: 'Thumbnail',
+    body: 'Add a picture for the library card. Players see it beside the name, and the AI never reads it.',
+    isComplete: (world) => !!world.worldOverview.thumbnail,
+    useExample: async (api) => api.updateWorldOverview({ thumbnail: await loadTourImage('brinewell') }),
+    inPlay: { sees: 'libraryCard', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+  },
 ];
 
 const LOCATION_STEPS: readonly TourStep[] = [
@@ -375,6 +388,20 @@ const LOCATION_STEPS: readonly TourStep[] = [
     },
   },
   {
+    id: 'location-image',
+    tab: 'locations',
+    anchor: 'location-image',
+    item: 'location',
+    panelTab: 'media',
+    title: 'Background Image',
+    body: 'Add a picture of the place. Players see it behind the story while they’re here, and the AI never reads it.',
+    isComplete: (world, items) => !!tourLocation(world, items, 'location')?.backgroundImage,
+    useExample: async (api, world, items) => patchLocation(api, world, items, 'location', {
+      backgroundImage: await loadTourImage('tidewell'),
+    }),
+    inPlay: { sees: 'locationTab', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
+  },
+  {
     id: 'location-starting',
     tab: 'locations',
     anchor: 'location-starting',
@@ -392,8 +419,9 @@ const LOCATION_STEPS: readonly TourStep[] = [
     title: 'Add a Second Location',
     body: 'Press the + button again to add a place to travel to',
     add: addLocationItem,
-    useExample: (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
+    useExample: async (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
       playerDescription: SALT_LANTERN.playerDescription, aiDescription: SALT_LANTERN.aiDescription,
+      backgroundImage: await loadTourImage('saltLantern'),
     }),
   }),
   {
@@ -486,6 +514,18 @@ const ENTITY_STEPS: readonly TourStep[] = [
         authorText: (world, items) => tourEntity(world, items)?.pronouns ?? '',
       }],
     },
+  },
+  {
+    id: 'entity-image',
+    tab: 'entities',
+    anchor: 'entity-image',
+    item: 'entity',
+    panelTab: 'profile',
+    title: 'Image',
+    body: 'Add a picture of the entity. Players see it on the entity’s card, and the AI never reads it.',
+    isComplete: (world, items) => entityImages(tourEntity(world, items)).length > 0,
+    useExample: async (api, world, items) => patchEntity(api, world, items, { images: [await loadTourImage('maren')] }),
+    inPlay: { sees: 'entityCard', scene: 'entity', readers: [{ prompt: 'Narration Prompt', reads: 'never' }] },
   },
   {
     id: 'entity-player-description',
@@ -752,7 +792,7 @@ export function addStepIndex(item: TourItem): number {
  * The world and tour items an author leaves who took every step before `index` with its Add and its Use
  * Example. The tour's dev route opens a mid-tour step this way.
  */
-export function replayTourSteps(world: TourWorld, index: number): { world: TourWorld; items: TourItems } {
+export async function replayTourSteps(world: TourWorld, index: number): Promise<{ world: TourWorld; items: TourItems }> {
   let draft = world;
   const items: TourItems = {};
   const replace = <T extends { id: string }>(list: T[] | undefined, next: T) =>
@@ -778,7 +818,8 @@ export function replayTourSteps(world: TourWorld, index: number): { world: TourW
   };
   for (const step of TOUR_STEPS.slice(0, index)) {
     if (step.add && step.item) items[step.item] = step.add(api, draft);
-    step.useExample?.(api, draft, items);
+    // A picture that fails to load leaves its field empty; the route still opens at the step.
+    try { await step.useExample?.(api, draft, items); } catch { /* replayed without that example */ }
   }
   return { world: draft, items };
 }

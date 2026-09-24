@@ -16,6 +16,10 @@ import type { World } from '@/types';
  * then the step note, the tour bar and the editor around them.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),

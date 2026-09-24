@@ -13,6 +13,10 @@ import type { World } from '@/types';
  * In Play slice, and the roster before and after the entity has a location.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),
@@ -94,7 +98,11 @@ const walkTo = async (id: string) => {
   while (TOUR_STEPS[stepNumber() - 1].id !== id) {
     if (TOUR_STEPS[stepNumber() - 1].add) fireEvent.click(addButton());
     const example = await waitFor(() => noteButton('Use Example') ?? noteButton('Next')!);
-    if (example.textContent === 'Use Example') fireEvent.click(example);
+    if (example.textContent === 'Use Example') {
+      fireEvent.click(example);
+      // A picture example loads its file first.
+      await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    }
     await next();
   }
 };
@@ -127,9 +135,9 @@ describe('Authoring Tour — Entities steps', () => {
     const saved = storeWorld.mock.calls.length;
 
     await walkTo(TOUR_STEPS[indexOf('entity-locations') + 1].id);
-    expect(storeWorld.mock.calls.length - saved).toBe(6);
+    expect(storeWorld.mock.calls.length - saved).toBe(7);
     expect(TOUR_STEPS.slice(indexOf('add-entity'), indexOf('entity-locations') + 1).map((s) => s.id)).toEqual([
-      'add-entity', 'entity-name', 'entity-pronouns', 'entity-player-description', 'entity-ai-description',
+      'add-entity', 'entity-name', 'entity-pronouns', 'entity-image', 'entity-player-description', 'entity-ai-description',
       'entity-locations',
     ]);
 
@@ -212,6 +220,19 @@ describe('Authoring Tour — Entities steps', () => {
 });
 
 describe('In Play — Entities', () => {
+  it('Image: the picture lands on the entity card', async () => {
+    const { ctx } = await openTour();
+    await walkTo('entity-image');
+    expect(noteButton('Next')).toBeDisabled();
+    expect(within(playerSees()).queryByRole('img', { name: 'Maren' })).toBeNull();
+
+    fireEvent.click(noteButton('Use Example')!);
+    await waitFor(() => expect(noteButton('Next')).toBeEnabled());
+    expect(ctx().entities.at(-1)?.images).toEqual(['data:image/webp;base64,maren']);
+    expect(within(playerSees()).getByRole('img', { name: 'Maren' })).toHaveAttribute('src', 'data:image/webp;base64,maren');
+    expect(within(inPlay()).getByText('The AI never reads this field')).toBeInTheDocument();
+  });
+
   it('Name: shows the list row and the card, and the AI does not read the entity yet', async () => {
     await openTour();
     await walkTo('entity-name');

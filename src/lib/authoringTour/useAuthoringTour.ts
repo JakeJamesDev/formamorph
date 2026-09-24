@@ -6,6 +6,7 @@
  * first one.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
@@ -156,8 +157,11 @@ export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }
 
   const prev = useCallback(() => { if (index > 0) goTo(index - 1); }, [index, goTo]);
 
+  // A picture example loads its file first; a load that fails leaves the field for the author to fill.
   const applyExample = useCallback(() => {
-    if (canUseExample) step?.useExample?.(api, world, items ?? {});
+    if (!canUseExample) return;
+    Promise.resolve(step?.useExample?.(api, world, items ?? {}))
+      .catch((error: unknown) => toast.error((error as Error).message));
   }, [canUseExample, step, api, world, items]);
 
   return {

@@ -154,10 +154,11 @@ export const DEV_MODAL_TABS = {
   // The World Editor's Authoring Tour: `tour=…` opens the editor on a new blank world with the tour at that
   // step, every earlier step already taken with its example (`#dev?modal=worldEditor&tour=location-name`).
   worldEditorTour: [
-    'world-name', 'world-ai-description',
-    'add-location', 'location-name', 'location-player-description', 'location-ai-description', 'location-starting',
+    'world-name', 'world-ai-description', 'world-thumbnail',
+    'add-location', 'location-name', 'location-player-description', 'location-ai-description', 'location-image',
+    'location-starting',
     'add-second-location', 'second-location-name', 'location-connection',
-    'add-entity', 'entity-name', 'entity-pronouns', 'entity-player-description', 'entity-ai-description',
+    'add-entity', 'entity-name', 'entity-pronouns', 'entity-image', 'entity-player-description', 'entity-ai-description',
     'entity-locations',
     'add-stat', 'stat-name', 'stat-description',
     'add-trait', 'trait-name', 'trait-ai-description', 'trait-stat-change',

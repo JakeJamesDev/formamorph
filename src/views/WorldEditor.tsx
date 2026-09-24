@@ -617,9 +617,10 @@ const WorldEditorInner = ({
     if (appliedDevTour.current === key) return;
     appliedDevTour.current = key;
     if (touring) return;
-    const replay = replayTourSteps(getWorldData(), tourStepIndex(devTour));
-    loadWorldData({ ...replay.world, id: worldId, version: APP_VERSION }, true);
-    setDevStart({ step: devTour, items: replay.items });
+    void replayTourSteps(getWorldData(), tourStepIndex(devTour)).then((replay) => {
+      loadWorldData({ ...replay.world, id: worldId, version: APP_VERSION }, true);
+      setDevStart({ step: devTour, items: replay.items });
+    });
   }, [devTour, worldId, touring, getWorldData, loadWorldData]);
   // Starts a render after the replayed world lands, so no tour item reads as deleted.
   useEffect(() => {

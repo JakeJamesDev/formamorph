@@ -14,6 +14,10 @@ import type { Stat, World } from '@/types';
  * field steps, and In Play's two readers of one stat.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),
@@ -89,7 +93,7 @@ const onlyStat = (ctx: () => { stats: Stat[] }) => ctx().stats[0];
  * Example taken, and the tour record pointing at `stepId`.
  */
 const resumeAt = async (stepId: string) => {
-  const { world, items } = replayTourSteps(WORLD, indexOf(stepId));
+  const { world, items } = await replayTourSteps(WORLD, indexOf(stepId));
   writeTourRecord(WORLD.id, { step: stepId, items });
   const view = renderWorldEditorBench({ ...WORLD, ...world }, 'simple');
   await screen.findByRole('dialog', { name: TOUR_STEPS[indexOf(stepId)].title });
@@ -214,7 +218,7 @@ describe('Authoring Tour — Stats steps', () => {
   });
 
   it('replays the stat step the way the Add button makes the stat', async () => {
-    const replayed = replayTourSteps(WORLD, indexOf('stat-description')).world.stats[0];
+    const replayed = (await replayTourSteps(WORLD, indexOf('stat-description'))).world.stats[0];
     const { ctx } = await resumeAt('add-stat');
     fireEvent.click(addButton());
     await waitFor(() => expect(ctx().stats).toHaveLength(1));

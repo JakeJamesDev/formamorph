@@ -13,6 +13,10 @@ import type { Stat, Trait, World } from '@/types';
  * three field steps, and In Play's setup screen, traits block and settled stat row.
  */
 
+vi.mock('@/lib/authoringTour/tourImages', () => ({
+  loadTourImage: async (name: string) => `data:image/webp;base64,${name}`,
+}));
+
 vi.mock('../services/WorldStorageService', () => ({
   default: {
     initialize: vi.fn(),
@@ -81,7 +85,7 @@ const onlyTrait = (ctx: Ctx) => ctx().traits[0];
  * Example taken, and the tour record pointing at `stepId`.
  */
 const resumeAt = async (stepId: string) => {
-  const { world, items } = replayTourSteps(WORLD, indexOf(stepId));
+  const { world, items } = await replayTourSteps(WORLD, indexOf(stepId));
   writeTourRecord(WORLD.id, { step: stepId, items });
   const view = renderWorldEditorBench({ ...WORLD, ...world }, 'simple');
   await screen.findByRole('dialog', { name: TOUR_STEPS[indexOf(stepId)].title });
@@ -203,7 +207,7 @@ describe('Authoring Tour — Traits steps', () => {
   });
 
   it('replays the trait step the way the Add button makes the trait', async () => {
-    const replayed = replayTourSteps(WORLD, indexOf('trait-name')).world.traits[0];
+    const replayed = (await replayTourSteps(WORLD, indexOf('trait-name'))).world.traits[0];
     const { ctx } = await resumeAt('add-trait');
     fireEvent.click(addButton());
     await waitFor(() => expect(ctx().traits).toHaveLength(1));
