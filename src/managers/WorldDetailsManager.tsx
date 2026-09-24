@@ -9,7 +9,8 @@ import PromptField from "@/components/prompt/PromptField";
 import PlaceholderField from "@/components/prompt/PlaceholderField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { PROMPT_KIND_VARIABLES } from "@/lib/promptVariables";
-import { authoredPreviewValues } from "@/lib/authoredPreviewValues";
+import { authoredChipScene } from "@/lib/chipValues/authoredScene";
+import { chipValues } from "@/lib/chipValues/chipValues";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -82,15 +83,19 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
   // location, not a stand-in's. Tokens only a turn can fill (the action, the narration, who is speaking)
   // fall through to the shared samples, exactly as they do for a live game between turns.
   const previewValues = useMemo(
-    () => composePreviewValues(
-      {
-        paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
-        limitActiveCharacters, activeCharacterLimit, language,
-      },
-      authoredPreviewValues({
+    () => {
+      // A world has no notes or clock, so the pool's sample turn supplies both, as it does the per-turn chips.
+      const { '<NOTES>': _notes, '<TIME>': _time, ...authored } = chipValues(authoredChipScene({
         worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
-      }),
-    ),
+      }));
+      return composePreviewValues(
+        {
+          paragraphLimit, maxTokens, markdownOutput, sectionStyle: activeSectionStyle,
+          limitActiveCharacters, activeCharacterLimit, language,
+        },
+        authored,
+      );
+    },
     [
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
       language,

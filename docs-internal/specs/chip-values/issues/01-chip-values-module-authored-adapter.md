@@ -1,6 +1,7 @@
 # 01: Chip Values module with the authored adapter
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: dc72a01a
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

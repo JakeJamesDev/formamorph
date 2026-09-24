@@ -19,9 +19,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { experimentalSystemPrompt } from '@/components/game/ExperimentalPrompts';
 import { markdownDefinitions } from '@/components/game/GamePrompts';
-import { authoredPreviewValues } from '@/lib/authoredPreviewValues';
+import { authoredChipScene } from '@/lib/chipValues/authoredScene';
+import { chipValues } from '@/lib/chipValues/chipValues';
 import { HIGHLIGHT_COLORS } from '@/lib/markdownToolbar';
-import { NONE_PLACEHOLDER } from '@/lib/promptFallbacks';
 import { parsePromptTemplate, renderPromptTemplate, serializeSegments } from '@/lib/promptTemplate';
 import { baseToken, joinToken, splitToken } from '@/lib/promptVariables';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
@@ -145,15 +145,11 @@ const METRICS: Record<string, (text: string) => number> = {
 
 const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
 if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
-const ctx = {
-  ...authoredPreviewValues(world, {
+const ctx = chipValues(authoredChipScene(world, {
     location,
     activeTraitIds: world.traits.filter((trait) => trait.isDefault).map((trait) => trait.id),
     resolve: (text: string) => text,
-  }),
-  '<NOTES>': NONE_PLACEHOLDER,
-  '<TIME>': NONE_PLACEHOLDER,
-};
+  }));
 const dictionary = (world.dictionaries ?? []).flatMap((book) => book.entries ?? []);
 
 function systemPrompt(arm: string, action: string): string {
