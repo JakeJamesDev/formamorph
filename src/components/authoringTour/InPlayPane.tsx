@@ -14,7 +14,7 @@ import {
   computeInPlay, type InPlayReader, type InPlaySlice, type MarkSpan, type PlayerSurface, type ReaderState,
   type SetupTraitCategory, type StartsAt, usesTestLine,
 } from '@/lib/authoringTour/inPlay';
-import type { PlayerStat } from '@/types';
+import type { PlayerStat, Trait } from '@/types';
 import { useTourRecord } from '@/lib/authoringTour/progress';
 import type { TourStep } from '@/lib/authoringTour/steps';
 import { sampleTestLine } from '@/lib/authoringTour/testLine';
@@ -102,6 +102,7 @@ const StatSurface = ({ stat }: { stat: PlayerStat }) => (
 );
 
 const asWritten = (text: string) => text;
+const traitAsWritten = (_trait: Trait, text: string) => text;
 
 /** The tour trait's category on the setup screen, ticked as the player picks it. Its text arrives resolved. */
 const SetupTraitSurface = ({ category }: { category: SetupTraitCategory }) => (
@@ -114,7 +115,7 @@ const SetupTraitSurface = ({ category }: { category: SetupTraitCategory }) => (
       stats={category.stats}
       selectedTraits={category.selected}
       resolveText={asWritten}
-      resolveTraitText={(_trait, text) => text}
+      resolveTraitText={traitAsWritten}
       onTraitSelect={() => {}}
     />
   </div>

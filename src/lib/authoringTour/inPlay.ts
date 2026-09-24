@@ -59,9 +59,9 @@ export interface SetupTraitCategory {
 /**
  * The game surface a field shows on. The Location tab shows the step's scene location, with its names and
  * description resolved. The entity surfaces show the tour entity's list row, its card, or both, with `at`
- * naming the entity's location, or null while it has none. The stat row shows the tour stat at the value a new
- * game settles it on. The setup surfaces show the tour trait's category on the setup screen, and the second
- * adds the stat row. `never` is a field the player never sees; `none` is a step with no field.
+ * naming the entity's location, or null while it has none. The stat row shows the tour stat at its authored
+ * starting value. The setup surfaces show the tour trait's category on the setup screen, and the second adds
+ * the stat row at the value a new game settles it on. `never` is a field the player never sees; `none` is a step with no field.
  */
 export type PlayerSurface =
   | { kind: 'libraryCard'; world: WorldRecord }
@@ -98,7 +98,10 @@ export interface InPlaySpec {
    * Otherwise the lens stands at the tour's first location.
    */
   scene?: 'entity' | 'connection';
-  /** The lens plays a new game with the tour trait picked on the setup screen. */
+  /**
+   * The lens plays a new game with the tour trait picked on the setup screen: the trait stands in as the lens
+   * character, which applies it the way ticking it there does.
+   */
   picksTrait?: boolean;
   readers: readonly ReaderSpec[];
 }
@@ -181,10 +184,16 @@ function entitySurface(
   };
 }
 
-/** The tour stat as a new game settles it, with its names resolved as a player there reads them. */
-function tourStatRow(world: TourWorld, items: TourItems, lens: BenchLens): PlayerStat | null {
-  const id = tourStat(world, items)?.id;
-  const stat = id ? settledOpeningStats(world, lens).find((s) => s.id === id) : undefined;
+/**
+ * The tour stat with its names resolved as a player there reads them. `settle` starts it where a new game
+ * settles it, with the active traits' changes applied; otherwise it shows the authored start the readers use.
+ */
+function tourStatRow(world: TourWorld, items: TourItems, lens: BenchLens, settle: boolean): PlayerStat | null {
+  const authored = tourStat(world, items);
+  if (!authored) return null;
+  const stat = settle
+    ? settledOpeningStats(world, lens).find((s) => s.id === authored.id)
+    : { ...authored, value: typeof authored.value === 'number' ? authored.value : authored.min };
   if (!stat) return null;
   const resolve = (text: string) => resolveLensText(text, allPlaceholders(world), lens.pins);
   return {
@@ -229,10 +238,10 @@ function playerSurface(
     case 'entityRow':
     case 'entityCard':
     case 'entityRowAndCard': return entitySurface(kind, world, items, lens());
-    case 'statRow': return { kind, stat: tourStatRow(world, items, lens()) };
+    case 'statRow': return { kind, stat: tourStatRow(world, items, lens(), false) };
     case 'setupTraits': return { kind, category: setupCategory(world, items, lens()) };
     case 'setupTraitsAndStat':
-      return { kind, category: setupCategory(world, items, lens()), stat: tourStatRow(world, items, lens()) };
+      return { kind, category: setupCategory(world, items, lens()), stat: tourStatRow(world, items, lens(), true) };
     default: return { kind };
   }
 }
@@ -246,8 +255,6 @@ export function computeInPlay(
   testLine = '',
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts.
-  // On a step that picks the tour trait, the trait stands in as the character, which applies it the way ticking
-  // it on the setup screen does. Otherwise there is no character.
   const sceneId = spec.scene === 'entity' ? entitySceneId(world, items)
     : spec.scene === 'connection' ? connectionSceneId(world, items) : null;
   const outOfScene = spec.scene === 'entity' && !sceneId;

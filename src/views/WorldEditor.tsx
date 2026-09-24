@@ -700,11 +700,9 @@ const WorldEditorInner = ({
   };
 
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
-  const rootSiblingCount = () => traitRootCount({ traits, traitGroups });
-
   const handleAddTrait = () => {
     const id = randomUUID();
-    addTrait(newTrait(id, rootSiblingCount(), searchTerm.trim() || undefined));
+    addTrait(newTrait(id, traitRootCount({ traits, traitGroups }), searchTerm.trim() || undefined));
     setSearchTerm('');
     setSelectedItemId(id);
   };
@@ -717,7 +715,7 @@ const WorldEditorInner = ({
       playerDescription: '',
       aiDescription: '',
       parentId: null,
-      order: rootSiblingCount(),
+      order: traitRootCount({ traits, traitGroups }),
     });
     setSearchTerm('');
     setSelectedItemId(id);
