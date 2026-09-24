@@ -16,7 +16,7 @@ type Align = 'start' | 'center' | 'end';
  * `open` is fully controlled with no `onOpenChange`, so Radix's own dismissals (outside click, Escape) can't
  * close it, and a stray click can't silently retire a note the user never read.
  */
-export function TutorialNote({ open, title, body, points, action, footer, anchor, side = 'bottom', align = 'end', width = 'w-72', children }: {
+export function TutorialNote({ open, title, body, points, action, footer, anchor, within, side = 'bottom', align = 'end', width = 'w-72', children }: {
   open: boolean;
   title: string;
   body?: ReactNode;
@@ -26,6 +26,8 @@ export function TutorialNote({ open, title, body, points, action, footer, anchor
   footer: ReactNode;
   /** An element to point at in place of wrapping `children`. */
   anchor?: HTMLElement | null;
+  /** A pane the note stays inside, shifting along the anchor's edge rather than covering what is beside it. */
+  within?: Element | null;
   side?: Side;
   align?: Align;
   /** A Tailwind width class for the note. */
@@ -58,7 +60,7 @@ export function TutorialNote({ open, title, body, points, action, footer, anchor
           collisionPadding={12}
           // The app's <body> is a zero-height fixed-layout shell, so the default clipping-ancestor
           // boundary reports no room anywhere and flips the popover off the top of the screen.
-          collisionBoundary={typeof document === 'undefined' ? undefined : document.documentElement}
+          collisionBoundary={[...(within ? [within] : []), ...(typeof document === 'undefined' ? [] : [document.documentElement])]}
           role="dialog"
           aria-label={title}
           onOpenAutoFocus={(e) => e.preventDefault()}

@@ -48,7 +48,7 @@ import { collectSearchTargets, type SearchMatch } from '@/lib/worldSearch';
 import {
   revealEditorMatch, revealEditorChip, clearEditorMatch, revealSelectedRow, cancelEditorReveals,
 } from '@/lib/editorFieldFocus';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle, type ImperativePanelGroupHandle } from 'react-resizable-panels';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ListDetail } from "@/components/ui/list-detail";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -534,10 +534,11 @@ const WorldEditorInner = ({
     exportDictionary: (book) => { void exportDictionary(book); },
   });
 
-  const saveWorld = async () => {
+  // `announce` false keeps a good save silent: the tour saves on every Next, and a toast per step is noise.
+  const saveWorldWith = async (announce: boolean) => {
     const ok = await saveWorldCtx();
     if (ok) {
-      toast.success('World saved successfully!');
+      if (announce) toast.success('World saved successfully!');
       // The links made this session are now on disk, so they stop reading as pending.
       linking.clearPendingLinks();
     } else {
@@ -545,6 +546,8 @@ const WorldEditorInner = ({
     }
     return ok;
   };
+  const saveWorld = () => saveWorldWith(true);
+  const saveWorldQuietly = () => saveWorldWith(false);
 
   // ── Authoring Tour ────────────────────────────────────────────────────────
   // A step's field comes on screen the way a search hit does: its tab, a clear list filter, then focus once
@@ -582,8 +585,16 @@ const WorldEditorInner = ({
   const tourWorld = useMemo(() => getWorldData(), [getWorldData]);
   const playWorld = useMemo(() => (onPlay && worldId ? () => onPlay(worldId) : undefined), [onPlay, worldId]);
   const tour = useAuthoringTour({
-    worldId, world: tourWorld, api: tourApi, save: saveWorld, showStep: showTourStep, onPlay: playWorld,
+    worldId, world: tourWorld, api: tourApi, save: saveWorldQuietly, showStep: showTourStep, onPlay: playWorld,
   });
+  // In Play joins the list and detail panels while the tour runs, and the three split the width evenly.
+  const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+  const tourPanelOpen = !!tour.step && !!worldId && !isMobile;
+  useEffect(() => {
+    const group = panelGroupRef.current;
+    // A group that has not measured its panels yet (jsdom, first paint) has nothing to lay out.
+    if (tourPanelOpen && group?.getLayout().length === 3) group.setLayout([100 / 3, 100 / 3, 100 / 3]);
+  }, [tourPanelOpen]);
   // The Dictionary steps' test line once the author edits it, for this world only. It is never saved.
   const [testLineEdit, setTestLineEdit] = useState<{ worldId: string | null; text: string } | null>(null);
   const tourTestLine = {
@@ -1323,7 +1334,7 @@ const WorldEditorInner = ({
             </Card>
           </div>
         ) : (
-          <PanelGroup direction="horizontal">
+          <PanelGroup direction="horizontal" ref={panelGroupRef}>
             {/* The Bench comes and goes, so every panel carries an id+order for the group to track it. */}
             <Panel id="editor-list" order={1} defaultSize={50} minSize={30}>
               <div className="h-full p-3">

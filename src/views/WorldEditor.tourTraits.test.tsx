@@ -48,10 +48,7 @@ const WORLD: World = benchEditorWorld({
     name: 'New World', description: 'A blank world ready for editing', author: '', thumbnail: null, bgm: null,
     systemPrompt: '', use3DModel: false, tags: [],
   },
-  traitGroups: [
-    { id: 'group-world', name: 'World', parentId: null, order: 0 },
-    { id: 'group-player', name: 'Player', parentId: null, order: 1 },
-  ],
+  traitGroups: [],
   // A New World overview carries no readme or openings, which the overview type calls required.
 } as unknown as Partial<World>);
 

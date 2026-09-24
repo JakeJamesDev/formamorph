@@ -392,8 +392,28 @@ const LOCATION_STEPS: readonly TourStep[] = [
     title: 'Add a Second Location',
     body: 'Press the + button again to add a place to travel to',
     add: addLocationItem,
-    useExample: (api, world, items) => patchLocation(api, world, items, 'secondLocation', SALT_LANTERN),
+    useExample: (api, world, items) => patchLocation(api, world, items, 'secondLocation', {
+      playerDescription: SALT_LANTERN.playerDescription, aiDescription: SALT_LANTERN.aiDescription,
+    }),
   }),
+  {
+    id: 'second-location-name',
+    tab: 'locations',
+    anchor: 'location-name',
+    item: 'secondLocation',
+    title: 'Second Location Name',
+    body: 'Name this place too. Players see the name while they’re here, and the AI reads it.',
+    isComplete: (world, items) => isChosenName(tourLocation(world, items, 'secondLocation')?.name, NEW_LOCATION_NAME),
+    useExample: (api, world, items) => patchLocation(api, world, items, 'secondLocation', { name: SALT_LANTERN.name }),
+    inPlay: {
+      sees: 'locationTab',
+      scene: 'secondLocation',
+      readers: [{
+        prompt: 'Narration Prompt', reads: 'location',
+        authorText: (world, items) => tourLocation(world, items, 'secondLocation')?.name ?? '',
+      }],
+    },
+  },
   {
     id: 'location-connection',
     tab: 'locations',

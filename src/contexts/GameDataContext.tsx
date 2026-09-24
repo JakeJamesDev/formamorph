@@ -10,6 +10,7 @@ import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
 import { withDefaultDescriptors } from '@/lib/blankWorld';
+import { followRename } from '@/lib/statDescriptors';
 import { renamedPlaceholderValues, repinRenamedValues } from '@/lib/traitEffects';
 import { directChipTargets } from '@/lib/placeholders';
 import {
@@ -117,10 +118,13 @@ function useProvideGameData() {
     setStats(prevStats => [...prevStats, withDefaultDescriptors(newStat)]);
   }, []);
 
+  // A default descriptor follows the stat's name, so a rename never leaves "New Stat is low" behind.
   const updateStat = useCallback((updatedStat: Stat) => {
-    setStats(prevStats => prevStats.map(stat =>
-      stat.id === updatedStat.id ? updatedStat : stat
-    ));
+    setStats(prevStats => prevStats.map(stat => {
+      if (stat.id !== updatedStat.id) return stat;
+      const descriptors = followRename(stat, updatedStat);
+      return descriptors === updatedStat.descriptors ? updatedStat : { ...updatedStat, descriptors };
+    }));
   }, []);
 
   const removeStat = useCallback((statId: string) => {
