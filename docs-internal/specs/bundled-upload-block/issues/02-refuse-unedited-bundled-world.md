@@ -1,6 +1,8 @@
 # 02: Refuse an unedited bundled world on publish
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Built in e0781b43. The review fixes rode into 2489ca31 through the shared index.
+Base: a14f26a8
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
