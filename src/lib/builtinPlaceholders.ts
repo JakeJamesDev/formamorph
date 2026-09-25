@@ -1,4 +1,5 @@
 import { placeholderAccent } from './highlightUtils';
+import type { PlaceholderOwnerRef } from './placeholderHomes';
 
 /**
  * Built-in Placeholders: chips every world has, that no author creates, and that resolve from the playthrough
@@ -26,6 +27,8 @@ export interface BuiltinRender {
 export interface BuiltinField {
   /** The field offers Built-ins at all: prose fields do; name, keyword and prompt fields do not. */
   offered: boolean;
+  /** The kind of entity or book whose own field this is. Absent for world, location and value fields. */
+  ownerKind?: PlaceholderOwnerRef['kind'];
 }
 
 /** One match of a row's token, with the text a resolver reads around it. */
@@ -93,13 +96,16 @@ export const CHARACTER_NAME: BuiltinPlaceholder = {
   source: String.raw`\{\{\s*[Cc][Hh][Aa][Rr]\s*\}\}`,
   searchTerms: ['char'],
   accent: placeholderAccent(CHAR_TOKEN),
-  // Not offered in the palette yet; a stored or pasted token still resolves.
-  visible: () => false,
+  // A book is an owner too, but its entries have no entity to name.
+  visible: ({ offered, ownerKind }) => offered && ownerKind === 'entity',
   hint: 'Shows the name of the entity this text belongs to.',
   resolve: (_match, { character }) => character?.trim() ?? '',
 };
 
 export const BUILTIN_PLACEHOLDERS: readonly BuiltinPlaceholder[] = [PLAYER_NAME, CHARACTER_NAME];
+
+/** The heading the palette and the typeahead draw over the Built-in rows. */
+export const BUILTIN_HEADING = 'Built-in';
 
 /** Every Built-in token in any spelling, as a pattern with no flags. */
 export const BUILTIN_TOKEN_SOURCE = BUILTIN_PLACEHOLDERS.map((row) => `(?:${row.source})`).join('|');

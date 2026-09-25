@@ -14,6 +14,7 @@ import { useWheelScroll } from '@/lib/useWheelScroll';
 import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import { chipRowMatches, chipSectionOpens, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
 import ChipRowHeading from './ChipRowHeading';
+import BuiltinMark from './BuiltinMark';
 import { $createVariableNode } from './VariableNode';
 
 /**
@@ -305,6 +306,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
               className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1 text-left text-label"
             >
               <span className={cn(CHIP_BASE, 'border')} style={{ backgroundColor: item.color, color: '#000' }}>
+                {item.headingKind === 'builtin' && <BuiltinMark />}
                 {item.label}
               </span>
             </button>

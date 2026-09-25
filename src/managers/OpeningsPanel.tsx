@@ -113,6 +113,7 @@ export function OpeningsPanel({ onOpenEntity }: {
               rows={rows}
               onChange={(patch) => updateEntity({ ...entity, ...patch })}
               placeholders={placeholders}
+              ownerId={entity.id}
               ownerName={name}
               empty={null}
             />
@@ -144,6 +145,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
         rows={ownerOpeningRows(entity)}
         onChange={onChange}
         placeholders={placeholders}
+        ownerId={entity.id}
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
@@ -158,11 +160,13 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
  * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
  * dash: the row is outside the pool the chances describe.
  */
-export function OpeningsList({ owner, rows, onChange, placeholders, empty, ownerName }: {
+export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerName }: {
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
+  /** The entity whose openings these are. Absent for the world's own. */
+  ownerId?: string;
   /** What shows in place of the rows while there are none. */
   empty: ReactNode;
   /** Names the owner in each row's accessible labels, where several owners share one screen. */
@@ -190,6 +194,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, empty, owner
                   weight={weight}
                   chance={chance}
                   placeholders={placeholders}
+                  ownerId={ownerId}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
@@ -215,7 +220,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, empty, owner
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, weight, chance, placeholders, onKind, onText, onWeight, onRemove,
+  opening, label, a11yLabel, weight, chance, placeholders, ownerId, onKind, onText, onWeight, onRemove,
 }: {
   opening: Opening;
   label: string;
@@ -224,6 +229,7 @@ const OpeningCard = ({
   weight: number;
   chance: number | null;
   placeholders: Placeholder[];
+  ownerId?: string;
   onKind: (kind: OpeningKind) => void;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
@@ -293,6 +299,7 @@ const OpeningCard = ({
           value={opening.text}
           onChange={onText}
           placeholders={placeholders}
+          ownerId={ownerId}
           ariaLabel={a11yLabel}
           placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
           resizable

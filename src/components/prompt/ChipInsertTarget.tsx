@@ -51,24 +51,30 @@ interface TargetState {
   /** The placeholder whose own values the claimed field edits, when it is one — what a palette reads to
    *  leave out the chips that would loop back into it. Null for a field outside any placeholder. */
   ownerId: string | null;
+  /** True where the claimed field takes this palette token, so a palette can hold back what it refuses. */
+  accepts: ((paletteToken: string) => boolean) | null;
   /** `root` is the field's editable element, used to tell focus moving *within* the field from focus
    *  leaving it for something that can't take a chip. */
-  claim: (
-    key: symbol, fn: (paletteToken: string) => void, undo: () => void, root: HTMLElement | null, ownerId?: string,
-  ) => void;
+  claim: (key: symbol, field: ClaimedField, root: HTMLElement | null) => void;
   /** Drops the claim only if `key` still holds it, so a field unmounting can't steal focus from its successor. */
   release: (key: symbol) => void;
 }
 
 export interface ChipInsertRegistration {
+  /** Does nothing for a token the field does not accept. */
   insert: (paletteToken: string) => void;
   startDrag: (event: DragEvent<HTMLElement>, paletteToken: string) => void;
   undo: () => void;
   ownerId: string | null;
+  accepts: (paletteToken: string) => boolean;
 }
 
+/** What a field hands the shared target when it claims it. */
+export type ClaimedField = Pick<ChipInsertRegistration, 'insert' | 'undo' | 'ownerId'>
+  & Partial<Pick<ChipInsertRegistration, 'accepts'>>;
+
 const ChipInsertTargetContext = createContext<TargetState>({
-  insert: null, undo: null, ownerId: null, claim: () => {}, release: () => {},
+  insert: null, undo: null, ownerId: null, accepts: null, claim: () => {}, release: () => {},
 });
 
 export function useChipInsertTarget(): TargetState {
@@ -80,16 +86,24 @@ export function useChipInsertRegistration(vocab: ChipVocabulary, ownerId?: strin
   const [editor] = useLexicalComposerContext();
   const vocabRef = useRef(vocab);
   vocabRef.current = vocab;
+  // The same test a drop into the field passes.
+  const accepts = useCallback((token: string) => {
+    const v = vocabRef.current;
+    return v.isKnown(token) && (v.acceptsPaletteToken?.(token) ?? true);
+  }, []);
   const insert = useCallback(
-    (token: string) => insertChipAtCaret(editor, vocabRef.current, token),
-    [editor],
+    (token: string) => { if (accepts(token)) insertChipAtCaret(editor, vocabRef.current, token); },
+    [editor, accepts],
   );
   const undo = useCallback(() => { editor.dispatchCommand(UNDO_COMMAND, undefined); }, [editor]);
   const startDrag = useCallback(
     (event: DragEvent<HTMLElement>, token: string) => startPaletteChipDrag(event, token, editor.getKey()),
     [editor],
   );
-  return useMemo(() => ({ insert, startDrag, undo, ownerId: ownerId ?? null }), [insert, startDrag, undo, ownerId]);
+  return useMemo(
+    () => ({ insert, startDrag, undo, ownerId: ownerId ?? null, accepts }),
+    [insert, startDrag, undo, ownerId, accepts],
+  );
 }
 
 /** Marks a shared palette, whose press keeps the claimed field's target until the click completes. */
@@ -97,18 +111,14 @@ export const CHIP_PALETTE_ATTR = 'data-chip-palette';
 
 /** Wraps a panel so every chip field inside it shares one insert target. */
 export function ChipInsertTargetProvider({ children }: { children: ReactNode }) {
-  const [target, setTarget] = useState<{
-    key: symbol; insert: (t: string) => void; undo: () => void; ownerId: string | null;
-  } | null>(null);
+  const [target, setTarget] = useState<{ key: symbol; field: ClaimedField } | null>(null);
   const holder = useRef<symbol | null>(null);
   const holderRoot = useRef<HTMLElement | null>(null);
 
-  const claim = useCallback((
-    key: symbol, insert: (t: string) => void, undo: () => void, root: HTMLElement | null, ownerId?: string,
-  ) => {
+  const claim = useCallback((key: symbol, field: ClaimedField, root: HTMLElement | null) => {
     holder.current = key;
     holderRoot.current = root;
-    setTarget({ key, insert, undo, ownerId: ownerId ?? null });
+    setTarget({ key, field });
   }, []);
 
   const release = useCallback((key: symbol) => {
@@ -161,7 +171,12 @@ export function ChipInsertTargetProvider({ children }: { children: ReactNode }) 
 
   const value = useMemo<TargetState>(
     () => ({
-      insert: target?.insert ?? null, undo: target?.undo ?? null, ownerId: target?.ownerId ?? null, claim, release,
+      insert: target?.field.insert ?? null,
+      undo: target?.field.undo ?? null,
+      ownerId: target?.field.ownerId ?? null,
+      accepts: target?.field.accepts ?? null,
+      claim,
+      release,
     }),
     [target, claim, release],
   );
@@ -184,13 +199,7 @@ export function ChipInsertTargetPlugin({ vocab, ownerId }: {
   // Identity for this field instance, so a later unmount only clears a claim it still owns.
   const key = useMemo(() => Symbol('chip-field'), []);
   useEffect(() => {
-    const take = () => claim(
-      key,
-      registration.insert,
-      registration.undo,
-      editor.getRootElement(),
-      registration.ownerId ?? undefined,
-    );
+    const take = () => claim(key, registration, editor.getRootElement());
     // A DOM focusin listener on the root rather than Lexical's FOCUS_COMMAND: the command is dispatched by
     // the text plugin's own handler and does not fire for every route into the field (a programmatic focus,
     // or a click that lands on a chip decorator rather than the text). focusin bubbles from all of them.

@@ -23,6 +23,18 @@ describe('the Built-in registry', () => {
     expect(CHARACTER_NAME.label).toBe('Character Name');
     expect(CHARACTER_NAME.searchTerms).toContain('char');
   });
+
+  it('offers Character Name only in an entity’s own fields', () => {
+    expect(CHARACTER_NAME.visible({ offered: true, ownerKind: 'entity' })).toBe(true);
+    expect(CHARACTER_NAME.visible({ offered: true, ownerKind: 'dictionary' })).toBe(false);
+    expect(CHARACTER_NAME.visible({ offered: true })).toBe(false);
+    expect(CHARACTER_NAME.visible({ offered: false, ownerKind: 'entity' })).toBe(false);
+  });
+
+  it('offers Player Name whoever owns the field', () => {
+    expect(PLAYER_NAME.visible({ offered: true, ownerKind: 'dictionary' })).toBe(true);
+    expect(PLAYER_NAME.visible({ offered: true, ownerKind: 'entity' })).toBe(true);
+  });
 });
 
 describe('builtinForToken', () => {

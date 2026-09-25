@@ -234,21 +234,25 @@ function VariableChip({ nodeKey, token }: { nodeKey: NodeKey; token: string }) {
     );
   }
 
+  const chip = (
+    <TokenChip
+      token={token}
+      vocab={vocab}
+      showAffixes
+      startsOnEmptyLine={startsOnEmptyLine}
+      draggable={editable}
+      onDragStart={editable ? handleDragStart : undefined}
+      onDoubleClick={renameable ? startRename : undefined}
+      onRemove={editable ? remove : undefined}
+      grabbable={editable}
+    />
+  );
+  // A Built-in has nothing to set, so its chip opens nothing; its tooltip says what it becomes.
+  if (known && vocab.builtin?.(token)) return chip;
+
   return (
     <Popover modal={header != null} open={open} onOpenChange={(next) => { setOpen(next); if (!next) setRepicking(false); }}>
-      <PopoverTrigger asChild>
-        <TokenChip
-          token={token}
-          vocab={vocab}
-          showAffixes
-          startsOnEmptyLine={startsOnEmptyLine}
-          draggable={editable}
-          onDragStart={editable ? handleDragStart : undefined}
-          onDoubleClick={renameable ? startRename : undefined}
-          onRemove={editable ? remove : undefined}
-          grabbable={editable}
-        />
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{chip}</PopoverTrigger>
       <PopoverContent
         className={cn(width, 'max-w-[calc(100vw-1rem)] flex flex-col max-h-[var(--radix-popover-content-available-height)] overflow-hidden p-0')}
         collisionPadding={8}

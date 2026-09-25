@@ -30,7 +30,7 @@ import {
   topLevelPlaceholders,
 } from './placeholderTree';
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
-import { BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
+import { BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
 import type { PlaceholderGroup } from '@/types';
 
 /** One token a menu or picker offers, named for the reader. */
@@ -41,8 +41,9 @@ export interface ChipRow {
   /** The section this row sits under — a folder's path or an owner's name. Rows sharing a heading sit
    *  together, so a surface draws the heading once, where it changes; absent for a loose row. */
   heading?: string;
-  /** What the heading names, so a surface draws a folder as quiet text and an owner as a chip. */
-  headingKind?: 'folder' | 'owner';
+  /** What the heading names, so a surface draws a folder as quiet text and an owner as a chip. A
+   *  `builtin` row is a Built-in Placeholder, and its chip carries the Built-in mark. */
+  headingKind?: 'folder' | 'owner' | 'builtin';
   /** Which kind of owner heads the section, for the icon that says so. Owner headings only. */
   ownerKind?: PlaceholderOwnerRef['kind'];
   /** The entity or book the section belongs to. Owner headings only. */
@@ -54,16 +55,22 @@ export interface ChipRow {
   /** The placeholder belongs to another one, so a chip cannot be aimed at it from outside its owner. Set
    *  only where a surface offers owned rows at all (see {@link ChipVocabulary.allRows}). */
   owned?: boolean;
+  /** What the typeahead matches besides the label: a Built-in's SillyTavern spelling. */
+  searchTerms?: readonly string[];
 }
 
 /** True where row `i` starts a new section of a sectioned list: the first row, or one whose heading
  *  differs from the row before it. A surface draws a heading (or a rule, for a loose run after a headed
  *  one) exactly there, so a section the filter emptied never shows a heading. */
-export function chipSectionOpens(rows: readonly Pick<ChipRow, 'heading' | 'ownerId'>[], i: number): boolean {
+export function chipSectionOpens(
+  rows: readonly Pick<ChipRow, 'heading' | 'headingKind' | 'ownerId'>[], i: number,
+): boolean {
   if (i === 0) return true;
   // Two owners may share a name, and their rows read bare under it, so the owner itself is what parts
-  // the sections — a shared name would otherwise hide one entity's rows under the other's heading.
-  return rows[i - 1].heading !== rows[i].heading || rows[i - 1].ownerId !== rows[i].ownerId;
+  // the sections — a shared name would otherwise hide one entity's rows under the other's heading. A
+  // folder named like the Built-in heading parts from it the same way.
+  const [a, b] = [rows[i - 1], rows[i]];
+  return a.heading !== b.heading || a.ownerId !== b.ownerId || a.headingKind !== b.headingKind;
 }
 
 /** How a row reads as one path: its owner's heading and its bare name rejoined, so a row that shows as
@@ -74,9 +81,12 @@ export function chipRowPath(row: Pick<ChipRow, 'label' | 'heading' | 'headingKin
 }
 
 /** True where a row answers to a typed query, matching case-insensitively and taking a typed `.`, space,
- *  or `>` for the separator the label spells `›`. */
-export function chipRowMatches(row: Pick<ChipRow, 'label' | 'heading' | 'headingKind'>, query: string): boolean {
-  return foldSeparators(chipRowPath(row).toLowerCase()).includes(foldSeparators(query.toLowerCase()));
+ *  or `>` for the separator the label spells `›`. A row's search terms answer too. */
+export function chipRowMatches(
+  row: Pick<ChipRow, 'label' | 'heading' | 'headingKind' | 'searchTerms'>, query: string,
+): boolean {
+  const q = foldSeparators(query.toLowerCase());
+  return [chipRowPath(row), ...(row.searchTerms ?? [])].some((text) => foldSeparators(text.toLowerCase()).includes(q));
 }
 
 /** A part reached through whichever value the level rolls, rather than by naming one. */
@@ -175,6 +185,8 @@ export interface ChipVocabulary {
   rename?(token: string, next: string): void;
   /** True for a reserved chip, which has nothing to rename or re-aim. */
   fixed?(token: string): boolean;
+  /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no pop-out. */
+  builtin?(token: string): boolean;
 }
 
 const HEADER_FORMAT_AXIS: PromptVariantAxis = {
@@ -278,7 +290,10 @@ const PALETTE_PID = 'palette';
 const MISSING_NAME = '(missing)';
 
 // A Built-in needs no definition, so its row has no values.
-const builtinRow = (row: BuiltinPlaceholder): ChipRow => ({ token: row.token, label: row.label, color: row.accent });
+const builtinRow = (row: BuiltinPlaceholder): ChipRow => ({
+  token: row.token, label: row.label, color: row.accent,
+  heading: BUILTIN_HEADING, headingKind: 'builtin', searchTerms: row.searchTerms,
+});
 
 // What a level holds, by what the level is. A Variable holds one value, so it heads one row.
 const HOLDS_LABEL: Record<PlaceholderKindNoun, string> = {
@@ -316,7 +331,10 @@ export function placeholderVocabulary(
   placeholders: readonly Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS, builtins = false }: {
+  {
+    onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS, builtins = false,
+    ownerKind = scopeOwner?.kind,
+  }: {
     onRename?: (placeholder: Placeholder) => void;
     /** `home` names the list a member made inside an entity's or book's fields lands in. */
     onCreate?: (placeholder: Placeholder, home?: PlaceholderHome) => void;
@@ -338,12 +356,15 @@ export function placeholderVocabulary(
     letters?: PlacementLetters;
     /** Offer the Built-in chips first in the palette. A Built-in already in the text is a chip either way. */
     builtins?: boolean;
+    /** The kind of entity or book whose own fields these are, where no world list says so: a library item
+     *  is its own document. Defaults to `scope`'s kind. */
+    ownerKind?: PlaceholderOwnerRef['kind'];
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   const paletteIds = new Set(topLevelPlaceholders(placeholders).map((p) => p.id));
   const cycleExclusions = ownerId ? placeholderCycleExclusions(placeholders, ownerId) : null;
-  const offered = BUILTIN_PLACEHOLDERS.filter((row) => row.visible({ offered: builtins }));
+  const offered = BUILTIN_PLACEHOLDERS.filter((row) => row.visible({ offered: builtins, ownerKind }));
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
@@ -407,6 +428,7 @@ export function placeholderVocabulary(
     parse: parsePlaceholderText,
     isKnown: (t) => decodePlaceholderToken(t) != null || !!builtinForToken(t),
     fixed: (t) => !!builtinForToken(t),
+    builtin: (t) => !!builtinForToken(t),
     label: vocabLabel,
     // A placement reads as its own name: the author's label, or the placeholder's name with its letter. A
     // chip whose placeholder is gone keeps the label beside the missing mark, since the label is the one
@@ -591,7 +613,7 @@ export function usePlaceholderChipVocabulary(
   /** Whose fields these are — a placeholder's own value list, or an entity's or book's fields — see
    *  `ownerId` on {@link placeholderVocabulary}. */
   ownerId?: string,
-  /** Offer the Built-in chips: prose fields do, name and keyword fields do not. */
+  /** Offer the Built-in chips: prose fields and the palette strip do, name and keyword fields do not. */
   { builtins = false }: { builtins?: boolean } = {},
 ): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
@@ -607,11 +629,14 @@ export function usePlaceholderChipVocabulary(
     [setPlaceholders],
   );
   const scope = useOwnerScope(lists, ownerId);
+  // Off-world, the store says whose item it is; a field naming another owner (a value list) is not its.
+  const bound = store?.owner;
+  const ownerKind = scope?.kind ?? (bound && (!ownerId || ownerId === bound.id) ? bound.kind : undefined);
   return useMemo(
     () => placeholderVocabulary(placeholders, {
-      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins,
+      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind,
     }),
-    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins],
+    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind],
   );
 }
 
@@ -658,6 +683,7 @@ export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipV
     rename: placeholder.rename && ((t, next) => placeholderFamilyOf(t)?.rename?.(t, next)),
     // A prompt variable has nothing to rename or re-aim.
     fixed: (t) => placeholderFamilyOf(t)?.fixed?.(t) ?? !placeholder.isKnown(t),
+    builtin: (t) => placeholderFamilyOf(t)?.builtin?.(t) ?? false,
   };
 }
 
