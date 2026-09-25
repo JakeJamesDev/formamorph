@@ -224,3 +224,6 @@ export const DEFAULT_QUOTE_ITALIC = false;
 // A custom quote color per mode, as `#rrggbb`. Unset (null) follows the theme's `--dialogue` token.
 export const DEFAULT_QUOTE_COLOR_LIGHT: string | null = null;
 export const DEFAULT_QUOTE_COLOR_DARK: string | null = null;
+
+// Calls one Tool may make per request when the Tool sets no limit of its own.
+export const DEFAULT_TOOL_CALL_LIMIT = 4;

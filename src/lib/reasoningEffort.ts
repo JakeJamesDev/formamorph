@@ -288,8 +288,8 @@ export function nativeReasoningSuppressed(mode: ThinkingMode, kind: AIRequestTyp
   return mode === 'inline' && kind === 'narration';
 }
 
-/** Every request kind, for checks that must consider a prompt's shipped default when nothing is stored for it. */
-const ALL_REQUEST_KINDS = [
+/** Every request kind: for checks that consider a shipped default, and for validating an imported kind. */
+export const ALL_REQUEST_KINDS = [
   'thinking', 'director', 'character', 'storyboard', 'narration', 'choices', 'statUpdates', 'locationChange',
   'summary', 'milestoneSelect', 'diary', 'discoverEntity', 'timePassed', 'openingTime', 'sceneTags',
 ] as const satisfies readonly AIRequestType[];

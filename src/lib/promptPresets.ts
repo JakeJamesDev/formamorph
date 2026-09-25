@@ -1,5 +1,7 @@
 import type { Codec } from './usePersistentState';
-import type { AIRequestType, CommunityLink } from '@/types';
+import type { AIRequestType, CommunityLink, Tool, ToolOverride, ToolOverrideMap } from '@/types';
+import { applyToolOverrides, isCatalogToolId } from './tools/toolCatalog';
+import { toolNameProblem } from './tools/toolValidation';
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
 import type { PromptMaxOutputMap } from './promptMaxOutput';
@@ -89,7 +91,14 @@ export interface PromptPreset extends CommunityLink {
   promptEndpoints?: PromptEndpointMap;
   /** Optional; user presets only. */
   overview?: PresetOverview;
+  /** The player's own Tools. */
+  tools?: Tool[];
+  /** This preset's settings for catalog Tools; a missing id keeps the catalog's. */
+  toolOverrides?: ToolOverrideMap;
 }
+
+/** The Tool fields a preset copy carries. */
+export type PresetToolSet = Pick<PromptPreset, 'tools' | 'toolOverrides'>;
 
 /** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
 export interface PromptPresetStore {
@@ -106,6 +115,11 @@ export const BUILTIN_PRESETS: { id: string; name: string; style: SectionStyle }[
 ];
 
 const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));
+
+/** The catalog Tool overrides each built-in preset ships, by preset id; a built-in without an entry has none. */
+export const BUILTIN_TOOL_OVERRIDES: Record<string, ToolOverrideMap> = {
+  experimental: { get_entity: { enabled: true, offeredTo: ['narration'] } },
+};
 
 /** The initial/default built-in id (also the sole preset id before styles existed — kept for back-compat). */
 export const DEFAULT_PRESET_ID = 'default';
@@ -182,9 +196,14 @@ export function setActive(store: PromptPresetStore, id: string): PromptPresetSto
   return { ...store, activeId: id };
 }
 
-/** Add a preset (a copy of `values` in `style`, plus a copy of `overview` when given) and select it. */
-export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle, overview?: PresetOverview): PromptPresetStore {
-  const preset: PromptPreset = { id, name, values: { ...values }, style, ...(overview ? { overview: normalizeOverview(overview) } : {}) };
+/** Add a preset (a copy of `values` in `style`, plus copies of `overview` and `toolSet` when given) and select it. */
+export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle, overview?: PresetOverview, toolSet?: PresetToolSet): PromptPresetStore {
+  const preset: PromptPreset = {
+    id, name, values: { ...values }, style,
+    ...(overview ? { overview: normalizeOverview(overview) } : {}),
+    ...(toolSet?.tools?.length ? { tools: structuredClone(toolSet.tools) } : {}),
+    ...(toolSet?.toolOverrides && Object.keys(toolSet.toolOverrides).length ? { toolOverrides: structuredClone(toolSet.toolOverrides) } : {}),
+  };
   return { activeId: id, presets: [...store.presets, preset] };
 }
 
@@ -313,6 +332,56 @@ export function updateReasoningBudget(store: PromptPresetStore, kind: AIRequestT
 /** Replace the active preset's Max Output map via a transform. No-op under a built-in. */
 export function updateMaxOutput(store: PromptPresetStore, fn: (m: PromptMaxOutputMap) => PromptMaxOutputMap): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, maxOutput: fn(p.maxOutput ?? {}) }));
+}
+
+// --- Tools ---
+// A built-in preset has no user Tools and its overrides are the shipped constants; every Tool setter no-ops there.
+
+/** The active preset's user Tools (empty for a built-in). */
+export function activeUserTools(store: PromptPresetStore): Tool[] {
+  if (isBuiltInActive(store)) return [];
+  return store.presets.find((p) => p.id === store.activeId)?.tools ?? [];
+}
+
+/** The active preset's catalog overrides: a built-in's shipped constants, or what a user preset stores. */
+export function activeToolOverrides(store: PromptPresetStore): ToolOverrideMap {
+  if (isBuiltInActive(store)) return BUILTIN_TOOL_OVERRIDES[store.activeId] ?? {};
+  return store.presets.find((p) => p.id === store.activeId)?.toolOverrides ?? {};
+}
+
+/** The catalog as the active preset sees it. */
+export function activeCatalogTools(store: PromptPresetStore): Tool[] {
+  return applyToolOverrides(activeToolOverrides(store));
+}
+
+/** The active preset's Tool fields for a copy to carry, a built-in's shipped overrides included. */
+export function storedToolSet(store: PromptPresetStore): PresetToolSet {
+  const tools = activeUserTools(store);
+  const toolOverrides = activeToolOverrides(store);
+  return {
+    ...(tools.length ? { tools } : {}),
+    ...(Object.keys(toolOverrides).length ? { toolOverrides } : {}),
+  };
+}
+
+/** Add a user Tool to the active preset, or replace the one with its id. No-op under a built-in or for a name
+ *  `toolNameProblem` rejects. */
+export function saveTool(store: PromptPresetStore, tool: Tool): PromptPresetStore {
+  const tools = activeUserTools(store);
+  if (isBuiltInActive(store) || toolNameProblem(tool.name, tools, tool.id)) return store;
+  const held = tools.some((t) => t.id === tool.id);
+  return patchActivePreset(store, (p) => ({ ...p, tools: held ? tools.map((t) => (t.id === tool.id ? tool : t)) : [...tools, tool] }));
+}
+
+/** Remove a user Tool from the active preset. No-op under a built-in. */
+export function deleteTool(store: PromptPresetStore, id: string): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, tools: (p.tools ?? []).filter((t) => t.id !== id) }));
+}
+
+/** Set the active preset's override for one catalog Tool. No-op under a built-in or for an id outside the catalog. */
+export function setToolOverride(store: PromptPresetStore, id: string, override: ToolOverride): PromptPresetStore {
+  if (!isCatalogToolId(id)) return store;
+  return patchActivePreset(store, (p) => ({ ...p, toolOverrides: { ...(p.toolOverrides ?? {}), [id]: override } }));
 }
 
 /** De-duplicate case-insensitively after trimming, keeping the first spelling; empties drop. */
