@@ -98,6 +98,8 @@ export interface ProbeExperiment {
   requestInfoDescription?: string;
   thinking?: boolean;
   knownEntityNames?: readonly string[];
+  /** Opens the first response's thinking with authored text; `channelOpen` is the model template's thought token. */
+  reasoningPrefill?: { channelOpen: string; text: string };
 }
 
 export interface PreparedProbeCase {
@@ -535,6 +537,8 @@ export async function runNarrationToolCallTrial(input: {
         if (message.tool_call_id) message.tool_call_id = ids.get(message.tool_call_id)!;
       }
     }
+    const prefill = round === 0 ? input.experiment?.reasoningPrefill : undefined;
+    if (prefill) request.messages.push({ role: 'assistant', content: `${prefill.channelOpen}${prefill.text}` });
     if (round === 0) initialRequest.messages = structuredClone(request.messages);
     const requestStarted = performance.now();
     const requestController = new AbortController();
@@ -590,6 +594,11 @@ export async function runNarrationToolCallTrial(input: {
         kind: 'malformed_response',
         message: error instanceof Error ? error.message : String(error),
       });
+    }
+    if (prefill) {
+      // The server returns only the continuation; history carries the whole thought.
+      const continued = assistant as ProbeMessage & { reasoning_content?: unknown };
+      continued.reasoning_content = `${prefill.text}${typeof continued.reasoning_content === 'string' ? continued.reasoning_content : ''}`;
     }
     const calls = assistant.tool_calls ?? [];
     if (calls.length === 0) {

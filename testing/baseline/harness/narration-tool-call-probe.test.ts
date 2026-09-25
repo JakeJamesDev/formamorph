@@ -48,6 +48,22 @@ describe('description experiment controls', () => {
     expect(initial.messages.flatMap((m) => m.tool_calls ?? [])[0].function).toEqual({ name: 'get_entity', arguments: JSON.stringify({ [key]: 'Bram' }) });
   });
 
+  it('prefills only the first request and keeps the whole thought in history', async () => {
+    const transport = scriptedTransport([
+      { choices: [{ message: { content: null, reasoning_content: ' Odette.', tool_calls: [toolCall('lookup', 'get_entity', { name: 'Odette' })] } }] },
+      { choices: [{ finish_reason: 'stop', message: { content: 'You notice her green glass bead.' } }] },
+    ]);
+    const trial = await runNarrationToolCallTrial({ caseId: 'prefill', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
+      promptMode: 'experimental', experiment: { roleOnly: true, outputMode: 'text', requestInfoName: 'get_entity', requestInfoParameter: 'name',
+        reasoningPrefill: { channelOpen: '<|channel>thought\n', text: 'Involved:' } }, transport });
+    expect(trial.status).toBe('succeeded');
+    expect(transport.requests[0].messages.at(-1)).toEqual({ role: 'assistant', content: '<|channel>thought\nInvolved:' });
+    expect(trial.initialRequest.messages.at(-1)).toEqual(transport.requests[0].messages.at(-1));
+    const followUp = transport.requests[1].messages;
+    expect(followUp.filter((m) => m.role === 'assistant')).toHaveLength(1);
+    expect(followUp.find((m) => m.role === 'assistant')).toMatchObject({ reasoning_content: 'Involved: Odette.' });
+  });
+
   it('rejects the old argument key when the schema requires name', async () => {
     const transport = scriptedTransport([{ choices: [{ message: { content: null, tool_calls: [toolCall('lookup', 'get_entity', { term: 'Odette' })] } }] }]);
     const trial = await runNarrationToolCallTrial({ caseId: 'wrong-key', action: MAIN_ACTION, sourceRevision: 'test', world: world(),
