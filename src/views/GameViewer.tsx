@@ -57,7 +57,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Tool } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -88,6 +88,8 @@ import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot } from "../lib/tools/toolSnapshot";
+import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
+import { ToolRoundsView } from "../components/game/ToolRoundsView";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -329,10 +331,10 @@ interface AiCallArgs {
    */
   quiet?: boolean;
   /**
-   * The Tools this prompt offers, and what runs them. Both present routes the call through the tool loop
-   * (lib/aiRequest/toolLoop); the pipeline's runner never sees either — the adapter closure supplies them.
+   * What runs the Tools this prompt offers. The turn's adapter closure supplies one executor for the whole
+   * turn, so every request in it reads one snapshot; absent, the request builds its own. The pipeline's
+   * runner never sees it.
    */
-  tools?: readonly Tool[];
   executeTool?: ToolExecutor;
 }
 
@@ -533,6 +535,8 @@ const GameViewer = ({
     activeSectionStyle,
     locationBackground,
     backgroundOverlay,
+    catalogTools,
+    userTools,
   } = settings;
 
   // The prompts this world actually runs on. Every reference below is a resolved value, so the opening
@@ -1742,6 +1746,10 @@ const GameViewer = ({
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(() => buildToolSnapshot(liveScene(), dictionaries), [liveScene, dictionaries]);
+  // The active preset's Tools, catalog first, as each request picks its own from them.
+  const presetTools = useMemo(() => [...catalogTools, ...userTools], [catalogTools, userTools]);
+  // Requests past their first Tool call and not yet ended: the count behind the "Looking up…" status line.
+  const [toolLookups, setToolLookups] = useState(0);
 
   /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
   const turnPrompts = (): TurnPrompts => ({
@@ -2356,8 +2364,12 @@ const GameViewer = ({
         }
       };
 
+      // One Tool Snapshot for the turn, built at its first Tool call: after the location router, so its scene
+      // is the one the narration is written for.
+      const executeTool = snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries));
+
       /** The pipeline's one seam. Production sends the real AI call; nothing else is injected. */
-      const request: TurnRequestAdapter = (spec, context) => makeAIRequest({ ...spec, signal: context.signal });
+      const request: TurnRequestAdapter = (spec, context) => makeAIRequest({ ...spec, signal: context.signal, executeTool });
 
       const result = await runTurn({
         plan,
@@ -2731,8 +2743,7 @@ const GameViewer = ({
     quiet: quietLabel = false,
     anatomy,
     statRequest,
-    tools,
-    executeTool,
+    executeTool: turnExecutor,
   }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
@@ -2766,7 +2777,12 @@ const GameViewer = ({
       paragraphLimit,
       disableThinking,
     };
-    // Tools ride only with an executor to run them; the spec layer then sends them where the target takes them.
+    // Every request of a prompt that offers Tools carries them; the spec layer sends them where the target
+    // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
+    const tools = toolsOfferedTo(requestType, presetTools);
+    const executeTool = tools.length
+      ? turnExecutor ?? snapshotToolExecutor(() => buildToolSnapshot(liveScene(), dictionaries))
+      : undefined;
     const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }) });
 
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
@@ -2803,6 +2819,19 @@ const GameViewer = ({
       };
       return next;
     });
+
+    // From a round's Tool calls until the request ends, this request is looking up.
+    let lookingUp = false;
+    const startLookup = () => {
+      if (lookingUp) return;
+      lookingUp = true;
+      setToolLookups((n) => n + 1);
+    };
+    const endLookup = () => {
+      if (!lookingUp) return;
+      lookingUp = false;
+      setToolLookups((n) => n - 1);
+    };
 
     try {
       // Surface which request is currently running (silent requests use the digest status indicator instead).
@@ -2943,6 +2972,7 @@ const GameViewer = ({
           continue;
         }
         if (event.type === "toolRound") { toolRounds.push(event.round); continue; }
+        if (event.type === "toolCalls") { startLookup(); continue; }
         if (event.type === "done") {
           // `done` replaces the running values with the stream's own finals.
           content = event.result.content;
@@ -3065,6 +3095,8 @@ const GameViewer = ({
         toast.error("Failed to process AI request");
       }
       throw error;
+    } finally {
+      endLookup();
     }
   };
 
@@ -4008,7 +4040,20 @@ const GameViewer = ({
   // request (Narration / Choices / Stat Updates / Location) so the player knows what's processing.
   const progressBar = (() => {
     // The active turn's request takes the status row; a silent memory digest (which runs between turns)
-    // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled.
+    // shows here too when no turn is in flight, but only when "Show Silent Requests" is enabled. Tool
+    // rounds are silent requests, so their line follows the same setting.
+    if (toolLookups > 0 && showSilentRequests) {
+      return (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-meta text-muted-foreground whitespace-nowrap">
+            Looking up…
+          </span>
+          <div className="flex-grow">
+            <IndeterminateProgress />
+          </div>
+        </div>
+      );
+    }
     if (isWaitingForAI) {
       const labels = {
         thinking: "Plan",
@@ -5002,6 +5047,7 @@ const GameViewer = ({
                           const reqOpen = !collapsedDebug[i];
                           const outOpen = !collapsedDebug[`out-${i}`];
                           const reasoningOpen = !collapsedDebug[`reasoning-${i}`];
+                          const toolsOpen = !collapsedDebug[`tools-${i}`];
                           return (
                             <Collapsible
                               key={i}
@@ -5077,6 +5123,29 @@ const GameViewer = ({
                                     />
                                   </CollapsibleContent>
                                 </Collapsible>
+                                {!!req.toolRounds?.length && (
+                                  <Collapsible
+                                    open={toolsOpen}
+                                    onOpenChange={(o) =>
+                                      setCollapsedDebug((prev) => ({ ...prev, [`tools-${i}`]: !o }))
+                                    }
+                                    className="border border-border rounded-md"
+                                  >
+                                    <CollapsibleTrigger asChild>
+                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                        <span>Tool Rounds</span>
+                                        {toolsOpen ? (
+                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                        )}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="p-2 pt-0">
+                                      <ToolRoundsView rounds={req.toolRounds} />
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
                                 {req.reasoning && (
                                   <Collapsible
                                     open={reasoningOpen}

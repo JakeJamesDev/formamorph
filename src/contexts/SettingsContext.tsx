@@ -830,15 +830,24 @@ function useProvideSettings() {
     [thinkingMode, reasoningEffort, promptReasoning],
   );
 
-  // Resolve the endpoint's capability record once reasoning is actually engaged, and only when the cache
-  // has nothing better: no record at all, one whose answers only the cache vouches for (a record stored
-  // before this session's sources existed), or one with no tools answer. Debounced so editing the URL doesn't
-  // fire per keystroke.
+  // The active preset's Tools (Settings → Tools).
+  const userTools = useMemo(() => activeUserTools(effectiveStore), [effectiveStore]);
+  const catalogTools = useMemo(() => activeCatalogTools(effectiveStore), [effectiveStore]);
+  // A prompt offers a Tool, so play needs the tools answer before it sends any.
+  const toolsOffered = useMemo(
+    () => [...catalogTools, ...userTools].some((tool) => tool.enabled && tool.offeredTo.length > 0),
+    [catalogTools, userTools],
+  );
+
+  // Resolve the endpoint's capability record once reasoning is engaged or a prompt offers a Tool, and only
+  // when the cache has nothing better: no record at all, one whose answers only the cache vouches for (a
+  // record stored before this session's sources existed), or one with no tools answer. Debounced so editing
+  // the URL doesn't fire per keystroke.
   useEffect(() => {
-    if (!reasoningEngaged || !reasoningNeedsResolve(reasoningCapability)) return;
+    if (!(reasoningEngaged || toolsOffered) || !reasoningNeedsResolve(reasoningCapability)) return;
     const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
     return () => clearTimeout(id);
-  }, [reasoningEngaged, reasoningCapability, resolveActiveCapability]);
+  }, [reasoningEngaged, toolsOffered, reasoningCapability, resolveActiveCapability]);
 
   // A reply that settled the reasons question re-runs the chain with that observation in hand, so the Native
   // Reasoning controls follow what the player can see happening without a reload. Once per signature and
@@ -949,9 +958,7 @@ function useProvideSettings() {
     (patch: Partial<PresetOverview>) => editPresetStore((s) => updateOverview(s, patch)),
     [editPresetStore],
   );
-  // Tools (Settings → Tools). Every setter no-ops under a built-in preset.
-  const userTools = useMemo(() => activeUserTools(effectiveStore), [effectiveStore]);
-  const catalogTools = useMemo(() => activeCatalogTools(effectiveStore), [effectiveStore]);
+  // Tool setters (Settings → Tools). Every setter no-ops under a built-in preset.
   const saveTool = useCallback((tool: Tool) => editPresetStore((s) => saveToolOp(s, tool)), [editPresetStore]);
   const deleteTool = useCallback((id: string) => editPresetStore((s) => deleteToolOp(s, id)), [editPresetStore]);
   const setToolOverride = useCallback(

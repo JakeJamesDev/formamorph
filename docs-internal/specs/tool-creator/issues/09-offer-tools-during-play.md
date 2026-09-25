@@ -1,6 +1,7 @@
 # 09: Offer Tools During Play
 
-Status: ready-for-agent
+Status: in-progress
+Base: 1794c589
 Blocked by: 03 — Give the Code Editor a Surface and JSON Highlighting; 06 — Run the Tool Loop in the Request Layer; 08 — Edit and Try a Tool
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

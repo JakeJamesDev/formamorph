@@ -13,6 +13,7 @@ import { toolSchema } from '@/lib/tools/toolSchema';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { listOptions, namedParams, tryItArguments } from '@/lib/tools/toolDraft';
 import { isRecord } from '@/lib/tools/toolValidation';
+import { prettyToolText } from '@/lib/tools/prettyToolText';
 
 /** Where Try It reads the world from, and how it names it. */
 export interface TryItWorld {
@@ -22,15 +23,6 @@ export interface TryItWorld {
 }
 
 const CODE_BOX = 'rounded-md border bg-muted/40 p-2 text-meta';
-
-/** JSON reads indented; anything else reads as the text the AI receives. */
-function pretty(text: string): { code: string; json: boolean } {
-  try {
-    return { code: JSON.stringify(JSON.parse(text), null, 2), json: true };
-  } catch {
-    return { code: text, json: false };
-  }
-}
 
 /** The message an error result carries. */
 function errorMessage(text: string): string {
@@ -93,7 +85,7 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
   };
 
   const outcome = result?.outcome;
-  const shown = outcome && pretty(outcome.text);
+  const shown = outcome && prettyToolText(outcome.text);
 
   return (
     <section aria-label="Try It" className="flex flex-col gap-3 min-w-0">
