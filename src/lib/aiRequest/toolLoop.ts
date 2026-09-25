@@ -51,7 +51,9 @@ export type AiToolLoopEvent =
   | AiStreamEvent
   | { type: 'toolRound'; round: AiToolRound }
   /** A round ended with calls, and they are about to run. */
-  | { type: 'toolCalls'; names: string[] };
+  | { type: 'toolCalls'; names: string[] }
+  /** The round after the calls sent its first token, held or not. */
+  | { type: 'roundStarted' };
 
 export interface AiToolLoopOptions extends AiStreamOptions {
   execute: ToolExecutor;
@@ -99,6 +101,8 @@ export async function* streamAiToolLoop(
   let issuedIds = 0;
   // Cleared by a limit, a malformed call or an unknown Tool: the next round then finishes in prose.
   let offerTools = true;
+  // Set once a round's calls are answered, until the next round's first token.
+  let answeredCalls = false;
 
   const finalResult = (round: AiStreamResult, content: string, finishReason: string | null): AiStreamResult => ({
     content,
@@ -144,6 +148,10 @@ export async function* streamAiToolLoop(
 
     for await (const event of streamAiRequest(roundSpec, options)) {
       if (event.type === 'done') { result = event.result; break; }
+      if (answeredCalls && (event.type === 'delta' || event.type === 'reasoning')) {
+        answeredCalls = false;
+        yield { type: 'roundStarted' };
+      }
       if (event.type === 'delta') {
         if (offering) held.push(event);
         else yield event;
@@ -215,5 +223,6 @@ export async function* streamAiToolLoop(
       };
     }
     reasoningByRound.push(result.reasoningText);
+    answeredCalls = true;
   }
 }

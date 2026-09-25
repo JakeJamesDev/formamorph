@@ -88,9 +88,21 @@ test('a Tool defined in Settings is called during play, and AI Context shows its
   await page.getByRole('button', { name: 'Add Parameter' }).click();
   await page.getByRole('group', { name: 'Parameter 1' }).getByRole('textbox', { name: 'Name' }).fill('who');
   await page.getByRole('tab', { name: 'Handler' }).click();
-  await page.getByRole('radio', { name: 'Template' }).click();
+  // Radios on a wide screen, a dropdown on a narrow one.
+  const templateRadio = page.getByRole('radio', { name: 'Template' });
+  const kindMenu = page.getByRole('combobox', { name: 'Handler' });
+  await expect(templateRadio.or(kindMenu)).toBeVisible();
+  if (await templateRadio.isVisible()) {
+    await templateRadio.click();
+  } else {
+    await kindMenu.click();
+    await page.getByRole('option', { name: 'Template' }).click();
+  }
   await page.getByRole('textbox', { name: 'Template' }).click();
   await page.keyboard.type(LEDGER);
+  // A narrow screen edits the field full screen.
+  const exitFullScreen = page.getByRole('button', { name: 'Exit full screen' });
+  if (await exitFullScreen.isVisible()) await exitFullScreen.click();
   await page.getByRole('button', { name: 'Save Tool' }).click();
   await expect(page.getByRole('heading', { level: 3, name: TOOL_NAME })).toBeVisible();
 

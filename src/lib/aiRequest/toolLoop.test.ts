@@ -461,9 +461,25 @@ describe('streamAiToolLoop: Tools running', () => {
     expect(order).toEqual(['calls get_entity,get_entity', 'run get_entity', 'run get_entity']);
   });
 
+  it('says when the round after a call sends its first token, once per such round', async () => {
+    const transport = scripted([
+      callFrames(['get_entity', { name: 'Bram' }]),
+      [frame({ reasoning: 'Odette too.' }), frame({ content: 'Also. ' }), ...callFrames(['get_entity', { name: 'Odette' }])],
+      proseFrames('Both ', 'greet you.'),
+    ]);
+    const events = await run(transport);
+    const marks = events.flatMap((e) => (e.type === 'toolCalls' || e.type === 'roundStarted' ? [e.type] : []));
+    expect(marks).toEqual(['toolCalls', 'roundStarted', 'toolCalls', 'roundStarted']);
+    const kinds = events.map((e) => e.type);
+    // A round that thinks first starts at its first reasoning token.
+    expect(kinds.indexOf('roundStarted')).toBeLessThan(kinds.indexOf('reasoning'));
+    // The second mark comes at the reply round's first held token, before the reply flushes.
+    expect(kinds.lastIndexOf('roundStarted')).toBeLessThan(kinds.indexOf('delta'));
+  });
+
   it('says nothing for a round that ends in prose', async () => {
     const events = await run(scripted([proseFrames('Hello.')]));
-    expect(events.some((e) => e.type === 'toolCalls')).toBe(false);
+    expect(events.some((e) => e.type === 'toolCalls' || e.type === 'roundStarted')).toBe(false);
   });
 });
 
