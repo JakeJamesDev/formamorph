@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import { chipValues } from './chipValues';
+import { resolveEntityText } from '../placeholders';
+import { buildCharacterUserMessage } from '../stagedPlanning';
+import { buildToolSnapshot } from '../tools/toolSnapshot';
 import type { Entity, GameLocation, PlayerStat, Trait } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
@@ -9,7 +12,10 @@ const warehouse: GameLocation = { id: 'warehouse', name: 'Warehouse', parentId: 
 
 // The authored cast, plus a character the story invented in the Warehouse.
 const harbormaster: Entity = { id: 'harbormaster', name: 'Harbormaster', locations: ['quay'], aiDescription: 'Keeps the ledger.' };
-const porter: Entity = { id: 'porter', name: 'Porter', locations: ['warehouse'], aiDescription: 'Hauls crates.' };
+const porter: Entity = {
+  id: 'porter', name: 'Porter', locations: ['warehouse'], aiDescription: '{{char}} hauls crates.',
+  aiSummary: '{{char}}, a hauler.',
+};
 const stray: Entity = { id: 'stray', name: 'Stray', locations: ['warehouse'], aiDescription: 'Turned up one night.' };
 const entities = [harbormaster, porter];
 
@@ -25,6 +31,7 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   traitGroups: [],
   resolve: (text) => text.replaceAll('{{deck}}', 'a wet deck'),
   resolveTrait: (_trait, text) => text.replaceAll('{{deck}}', 'any deck'),
+  resolveEntity: (entity, text) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
   persona: null,
   location: quay,
   locations: [quay, warehouse],
@@ -68,11 +75,34 @@ describe('the live adapter', () => {
       activeTraits: [],
       resolve: (text) => text.replaceAll('{{deck}}', 'the box deck'),
       resolveTrait: (_trait, text) => text,
+      resolveEntity: (_entity, text) => text.replaceAll('{{char}}', 'the box hauler'),
     });
     expect(scene.stats).toEqual([hardened]);
     expect(scene.traits).toEqual([]);
     expect(scene.location).toBe(quay);
     expect(scene.resolve('{{deck}}')).toBe('the box deck');
+    expect(scene.entities.find((e) => e.id === 'porter')?.aiDescription).toBe('the box hauler hauls crates.');
+  });
+
+  it("resolves each entity's text with that entity as the Character Name", () => {
+    const scene = liveChipScene(sources({ location: warehouse }));
+    expect(chipValues(scene)['<ENTITIES>']).toContain('Porter hauls crates.');
+    expect(buildToolSnapshot(scene, []).world.entities.find((e) => e.id === 'porter'))
+      .toMatchObject({ description: 'Porter hauls crates.', summary: 'Porter, a hauler.' });
+  });
+
+  it('hands the character pass a blurb with no raw chip in it', () => {
+    const scene = liveChipScene(sources({ location: warehouse }));
+    const entity = scene.entities.find((e) => e.id === 'porter');
+    const message = buildCharacterUserMessage({ character: { name: 'Porter', entity }, scene: '', action: 'Wave.' });
+    expect(message).toContain('My background (who I am in general, not this exact moment): Porter, a hauler.');
+    expect(message).not.toContain('{{');
+  });
+
+  it("resolves the persona's own text with the persona as the Character Name", () => {
+    const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: '{{char}} rows the ferry.' };
+    const scene = liveChipScene(sources({ persona: { source: 'world', entity: wren } }));
+    expect(chipValues(scene)['<PERSONA>']).toContain('Wren rows the ferry.');
   });
 
   it('carries no lore, since activation is per turn', () => {

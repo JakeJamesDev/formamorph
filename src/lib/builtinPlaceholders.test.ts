@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  BUILTIN_PLACEHOLDERS, PLAYER_NAME, builtinForToken, builtinLabel, canonicalBuiltins, hasBuiltin, labelBuiltins,
+  BUILTIN_PLACEHOLDERS, CHARACTER_NAME, PLAYER_NAME, builtinForToken, builtinLabel, canonicalBuiltins, hasBuiltin, labelBuiltins,
   renderBuiltins,
 } from './builtinPlaceholders';
 
@@ -16,17 +16,25 @@ describe('the Built-in registry', () => {
     expect(PLAYER_NAME.visible({ offered: true })).toBe(true);
     expect(PLAYER_NAME.visible({ offered: false })).toBe(false);
   });
+
+  it('lists Character Name second, stored in the SillyTavern spelling', () => {
+    expect(BUILTIN_PLACEHOLDERS[1]).toBe(CHARACTER_NAME);
+    expect(CHARACTER_NAME.token).toBe('{{char}}');
+    expect(CHARACTER_NAME.label).toBe('Character Name');
+    expect(CHARACTER_NAME.searchTerms).toContain('char');
+  });
 });
 
 describe('builtinForToken', () => {
   it('is the row for one whole token in any spelling', () => {
     expect(builtinForToken('{{ USER }}')).toBe(PLAYER_NAME);
     expect(builtinForToken('{{user}}')).toBe(PLAYER_NAME);
+    expect(builtinForToken('{{ Char }}')).toBe(CHARACTER_NAME);
   });
 
   it('is nothing for a token with text around it or another macro', () => {
     expect(builtinForToken('{{user}} ')).toBeUndefined();
-    expect(builtinForToken('{{char}}')).toBeUndefined();
+    expect(builtinForToken('{{random}}')).toBeUndefined();
     expect(builtinForToken('{{ph:x:world:p1}}')).toBeUndefined();
   });
 });
@@ -47,7 +55,8 @@ describe('labelBuiltins', () => {
 describe('hasBuiltin', () => {
   it('finds every spelling and nothing else', () => {
     expect(hasBuiltin('Hi {{ User }}.')).toBe(true);
-    expect(hasBuiltin('{{char}} and {{ph:x:world:p1}}')).toBe(false);
+    expect(hasBuiltin('{{random}} and {{ph:x:world:p1}}')).toBe(false);
+    expect(hasBuiltin('Hi {{ CHAR }}.')).toBe(true);
   });
 
   it('answers the same on every call', () => {
@@ -57,8 +66,8 @@ describe('hasBuiltin', () => {
 
 describe('canonicalBuiltins', () => {
   it('writes every spelling as the canonical form and leaves other macros alone', () => {
-    expect(canonicalBuiltins('{{User}} meets {{ user }}, {{USER}} and {{char}}.'))
-      .toBe('{{user}} meets {{user}}, {{user}} and {{char}}.');
+    expect(canonicalBuiltins('{{User}} meets {{ user }}, {{Char}} and {{ CHAR }}, not {{random}}.'))
+      .toBe('{{user}} meets {{user}}, {{char}} and {{char}}, not {{random}}.');
   });
 });
 
@@ -91,7 +100,19 @@ describe('renderBuiltins', () => {
   });
 
   it('leaves text without the marker untouched', () => {
-    expect(renderBuiltins('{{char}} and {{ph:x:world:p1}} stay.')).toBe('{{char}} and {{ph:x:world:p1}} stay.');
+    expect(renderBuiltins('{{random}} and {{ph:x:world:p1}} stay.')).toBe('{{random}} and {{ph:x:world:p1}} stay.');
+  });
+});
+
+describe('renderBuiltins for Character Name', () => {
+  it('renders the character in any spelling, with no capital rule of its own', () => {
+    expect(renderBuiltins("{{char}} waits. She sees {{ Char }}'s boat.", { character: 'vos' }))
+      .toBe("vos waits. She sees vos's boat.");
+  });
+
+  it('renders nothing with no character or a blank one', () => {
+    expect(renderBuiltins('[{{char}}]')).toBe('[]');
+    expect(renderBuiltins('[{{char}}]', { character: '  ' })).toBe('[]');
   });
 });
 

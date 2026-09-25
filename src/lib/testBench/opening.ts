@@ -22,10 +22,10 @@ import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
-  placeholderChances, primeRolls, resolvePlaceholders,
+  placeholderChances, primeRolls, resolveEntityText, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
-import { DEFAULT_OPENING, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
+import { DEFAULT_OPENING, openingOwner, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
@@ -33,7 +33,9 @@ import { activeStatEnabled, enabledStats } from '@/lib/traitEffects';
 import { acquireTrait, seedStatBases, type TraitRuntimeState } from '@/lib/traitRuntime';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { startingLocations } from '@/lib/startingLocation';
-import type { GameLocation, Opening, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait } from '@/types';
+import type {
+  Entity, GameLocation, Opening, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
+} from '@/types';
 import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
 import { chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
@@ -291,6 +293,7 @@ export function buildOpening(
   const { active, settled, seeded, location } = start;
   const pins = openingPins(world, start, rolls);
   const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins });
+  const resolveEntity = (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls, pins });
 
   const seededValue = new Map(seeded.map((stat) => [stat.id, stat.value]));
   const enabled = activeStatEnabled(world.stats ?? [], active);
@@ -374,6 +377,7 @@ export function buildOpening(
     activeTraitIds: active.map((t) => t.id),
     stats: liveStats,
     resolve,
+    resolveEntity,
   }));
   // The opening pool at this start, as Enter World reads it. Picked library entities are a player choice.
   const entityName = new Map((world.entities ?? []).map((e) => [e.id, e.name]));
@@ -382,13 +386,15 @@ export function buildOpening(
   });
   const chances = poolChances(entries);
   // The Bench has no persona, so the Player Name chip reads "you" here as it does in a game without one.
-  const openingText = (text: string) =>
-    resolvePlaceholders(text, { placeholders, rolls, pins, player: { kind: 'opening' } });
+  const openingText = (text: string, owner: Entity | null = null) => {
+    const opts = { placeholders, rolls, pins, player: { kind: 'opening' as const } };
+    return owner ? resolveEntityText(owner, text, opts) : resolvePlaceholders(text, opts);
+  };
   const pool = entries.map((entry, i): OpeningPoolRow => ({
     key: poolKey(entry),
     ownerName: entry.ownerId == null ? null : resolve(entityName.get(entry.ownerId) ?? entry.ownerId),
     kind: entry.opening.kind,
-    text: openingText(entry.opening.text),
+    text: openingText(entry.opening.text, openingOwner(entry.ownerId, world.entities ?? [])),
     chance: chances[i],
   }));
   const chosen = pool.find((row) => row.key === choice.openingKey) ?? pool[0] ?? null;

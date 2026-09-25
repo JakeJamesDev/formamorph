@@ -31,6 +31,21 @@ describe('drawNewGameOpening', () => {
     });
     expect(result.persona?.entity.id).toBe('guide');
     expect(result.draw.opening.id).toBe('keeper-hello');
+    expect(result.owner).toBe(keeper);
+  });
+
+  it('names a picked library entity as the owner of its row', () => {
+    const visitor = entity('visitor', { openings: [action('visitor-hello')] });
+    const result = drawNewGameOpening({
+      pick: { ref: { source: 'none' } },
+      worldEntities: [guide],
+      overview,
+      startingLocationId: 'start',
+      picked: [visitor],
+      random: always,
+    });
+    expect(result.draw.opening.id).toBe('visitor-hello');
+    expect(result.owner).toBe(visitor);
   });
 
   it('hands the library persona read at entry to the page-one render', () => {

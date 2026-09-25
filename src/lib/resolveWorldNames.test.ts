@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import type { DictionaryEntry, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
-import { encodePlaceholderToken, resolvePlaceholders } from './placeholders';
+import { encodePlaceholderToken, resolveEntityText, resolvePlaceholders } from './placeholders';
 import { phValues } from '@/test/placeholderValues';
 import { buildStatContext } from './statContext';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
-  resolveDictionaryEntryNames,
+  resolveDictionaryEntryNames, resolveEntityTexts,
 } from './resolveWorldNames';
 
 // Real defs + tokens rather than a stub replacer, so these also pin the codec the editor writes.
@@ -157,5 +157,26 @@ describe('resolveWorldNames', () => {
       expect(resolveTraitNames(traits, () => resolve)).toBe(traits);
       expect(resolveDictionaryEntryNames(entries, resolve)).toBe(entries);
     });
+  });
+});
+
+describe('resolveEntityTexts', () => {
+  const byOwner = (entity: Entity, text: string) =>
+    resolveEntityText(entity, text, { placeholders: PLACEHOLDERS, rolls: { world: { [TOWN.id]: 'Sedge' } } });
+
+  it("resolves each entity's prose with that entity as the Character Name, and leaves its name alone", () => {
+    const keeper: Entity = {
+      id: 'k', name: tok(KEEPER.id), playerDescription: 'Meet {{char}}.', aiDescription: '{{char}} of ' + tok(TOWN.id) + '.',
+      aiSummary: '{{char}}.',
+    };
+    const [out] = resolveEntityTexts([keeper], byOwner);
+    expect(out).toMatchObject({
+      name: tok(KEEPER.id), playerDescription: 'Meet Vera.', aiDescription: 'Vera of Sedge.', aiSummary: 'Vera.',
+    });
+  });
+
+  it('keeps the array and each entity when no text holds a chip', () => {
+    const plain: Entity[] = [{ id: 'p', name: 'Plain', aiDescription: 'No chips.' }];
+    expect(resolveEntityTexts(plain, byOwner)).toBe(plain);
   });
 });

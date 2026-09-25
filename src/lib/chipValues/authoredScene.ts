@@ -1,7 +1,8 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
-import { resolvePlaceholders } from '../placeholders';
+import { resolveEntityText, resolvePlaceholders } from '../placeholders';
+import { resolveEntityTexts, type ResolveEntityText } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup,
@@ -35,6 +36,9 @@ export interface AuthoredSceneOptions {
   location?: GameLocation | null;
   /** Chip resolution, in place of a fresh unrecorded roll. */
   resolve?: (text: string) => string;
+  /** An entity's own text under the same resolution, with that entity as the Character Name. Absent while
+   *  `resolve` is given, entity text resolves with the rest of its block. */
+  resolveEntity?: ResolveEntityText;
 }
 
 /**
@@ -56,6 +60,10 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   // Chips resolve against a fresh roll, since a world has no playthrough whose rolls could be reused.
   const resolve = options.resolve
     ?? ((text: string) => resolvePlaceholders(text, { placeholders, rolls: {} }));
+  const resolveEntity = options.resolveEntity ?? (options.resolve
+    ? undefined
+    : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
+  const cast = resolveEntity ? resolveEntityTexts(entities, resolveEntity) : entities;
   const presentIds = entityIdsAt(location?.id, entities);
   const activeIds = new Set(options.activeTraitIds ?? traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
 
@@ -70,7 +78,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     location,
     locations,
     connections,
-    entities,
+    entities: cast,
     presentIds,
     // No turns have happened, so nobody is in scene beyond who the author placed here.
     inSceneIds: presentIds,

@@ -1,4 +1,4 @@
-import { drawUnseenOpening, openingPool, type UnseenDraw } from './openings';
+import { drawUnseenOpening, openingOwner, openingPool, type UnseenDraw } from './openings';
 import { resolvePersona, type PersonaPick, type ResolvedPersona } from './persona';
 import type { Entity, WorldOverview } from '@/types';
 
@@ -13,10 +13,13 @@ export interface NewGameOpeningSources {
 }
 
 /** The first draw of a new game. The persona resolves first, so the pool reads its cast and page one can
- *  render its name. */
-export function drawNewGameOpening(sources: NewGameOpeningSources): { persona: ResolvedPersona | null; draw: UnseenDraw } {
+ *  render its name. `owner` is the entity whose row was drawn, which the Character Name chip names. */
+export function drawNewGameOpening(
+  sources: NewGameOpeningSources,
+): { persona: ResolvedPersona | null; draw: UnseenDraw; owner: Entity | null } {
   const { pick, worldEntities, overview, startingLocationId, picked, random } = sources;
   const resolution = resolvePersona(pick.ref, worldEntities, pick.libraryEntity ? [pick.libraryEntity] : []);
   const pool = openingPool({ overview, entities: resolution.cast, startingLocationId, picked });
-  return { persona: resolution.persona, draw: drawUnseenOpening(pool, [], random) };
+  const draw = drawUnseenOpening(pool, [], random);
+  return { persona: resolution.persona, draw, owner: openingOwner(draw.ownerId, [...resolution.cast, ...picked]) };
 }

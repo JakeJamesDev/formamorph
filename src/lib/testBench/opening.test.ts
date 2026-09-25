@@ -354,6 +354,26 @@ describe('the fresh game’s stage', () => {
   });
 });
 
+describe('the Character Name chip on turn one', () => {
+  // Tobin's name holds a chip, which resolves before it fills the Character Name chip.
+  const w = () => world({
+    worldOverview: { name: 'Sedge Landing', description: '', systemPrompt: '' } as WorldOverview,
+    entities: [{
+      id: 'e2', name: `${chip('ph-hair', 'world', 'pl-h1')} Tobin`, locations: ['harbor'],
+      aiDescription: '{{char}} mends nets.',
+      openings: [{ id: 'o-nets', text: '{{char}} nods at {{user}}.', kind: 'action' }],
+    }],
+  });
+
+  it('names the owner of an entity row', () => {
+    expect(openingFor(w()).pool[0].text).toBe('ash Tobin nods at you.');
+  });
+
+  it('names each entity in its own text in the first prompt', () => {
+    expect(openingFor(w()).system).toContain('ash Tobin mends nets.');
+  });
+});
+
 describe('the opening pool', () => {
   const ov = (over: Partial<WorldOverview> = {}) =>
     ({ name: 'Sedge Landing', description: '', systemPrompt: '', ...over }) as WorldOverview;

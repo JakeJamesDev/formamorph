@@ -18,6 +18,8 @@ export interface BuiltinRender {
   /** The persona's name. Absent or blank means no persona. */
   name?: string | null;
   kind?: BuiltinTextKind;
+  /** The resolved name of the entity that owns the text. Absent or blank means no owner. */
+  character?: string | null;
 }
 
 /** The field a chip would go into, for a row's visibility rule. */
@@ -81,7 +83,23 @@ export const PLAYER_NAME: BuiltinPlaceholder = {
   },
 };
 
-export const BUILTIN_PLACEHOLDERS: readonly BuiltinPlaceholder[] = [PLAYER_NAME];
+const CHAR_TOKEN = '{{char}}';
+
+/** The owning entity's name. With no owner it reads as nothing, like a missing placeholder. */
+export const CHARACTER_NAME: BuiltinPlaceholder = {
+  id: 'character-name',
+  label: 'Character Name',
+  token: CHAR_TOKEN,
+  source: String.raw`\{\{\s*[Cc][Hh][Aa][Rr]\s*\}\}`,
+  searchTerms: ['char'],
+  accent: placeholderAccent(CHAR_TOKEN),
+  // Not offered in the palette yet; a stored or pasted token still resolves.
+  visible: () => false,
+  hint: 'Shows the name of the entity this text belongs to.',
+  resolve: (_match, { character }) => character?.trim() ?? '',
+};
+
+export const BUILTIN_PLACEHOLDERS: readonly BuiltinPlaceholder[] = [PLAYER_NAME, CHARACTER_NAME];
 
 /** Every Built-in token in any spelling, as a pattern with no flags. */
 export const BUILTIN_TOKEN_SOURCE = BUILTIN_PLACEHOLDERS.map((row) => `(?:${row.source})`).join('|');

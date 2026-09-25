@@ -4,6 +4,7 @@ import type { PlaceholderFinding, PlaceholderPick, PlaceholderSegment } from './
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   resolvePlaceholders,
+  resolveEntityText,
   encodePlaceholderToken,
   decodePlaceholderToken,
   encodePlaceholderPath,
@@ -116,6 +117,69 @@ describe('the Player Name chip in the placeholder pass', () => {
   it('reads as its label on design-time surfaces', () => {
     expect(describePlaceholders('Hi {{user}}.', [])).toBe('Hi Player Name.');
     expect(buildPlaceholderPreview('Hi {{user}}.', [])).toEqual({ '{{user}}': 'Player Name' });
+  });
+});
+
+describe('the Character Name chip in the placeholder pass', () => {
+  const eyes = P('eyes', ['green']);
+
+  it('renders the character in any spelling of the token, possessive as written', () => {
+    const text = `{{char}} has ${tok('eyes', 'world', 'p1')} eyes. {{ Char }}'s coat and {{CHAR}} smiles.`;
+    expect(resolvePlaceholders(text, { placeholders: [eyes], rolls: {}, character: 'Vos' }))
+      .toBe("Vos has green eyes. Vos's coat and Vos smiles.");
+  });
+
+  it('renders beside Player Name without either taking the other', () => {
+    expect(resolvePlaceholders('{{char}} greets {{user}}.', {
+      placeholders: [], rolls: {}, character: 'Vos', player: { name: 'Wren' },
+    })).toBe('Vos greets Wren.');
+  });
+
+  it('renders nothing with no owner, like a missing placeholder', () => {
+    expect(resolvePlaceholders('{{char}} waits.', { placeholders: [], rolls: {} })).toBe(' waits.');
+  });
+
+  it('renders a chip that a placeholder value carries', () => {
+    const title = P('title', ['{{char}} the Bold']);
+    expect(resolvePlaceholders(`Hail ${tok('title', 'world', 'p1')}.`, {
+      placeholders: [title], rolls: {}, character: 'Vos',
+    })).toBe('Hail Vos the Bold.');
+  });
+
+  it('counts as a chip and reads as its label on design-time surfaces', () => {
+    expect(hasPlaceholders('Hi {{ Char }}.')).toBe(true);
+    expect(describePlaceholders('Hi {{char}}.', [])).toBe('Hi Character Name.');
+    expect(buildPlaceholderPreview('Hi {{char}}.', [])).toEqual({ '{{char}}': 'Character Name' });
+  });
+});
+
+describe('resolveEntityText', () => {
+  const rank = P('rank', ['Captain']);
+  const vos = { name: `${tok('rank', 'world', 'p1')} Vos` };
+
+  it('fills Character Name with the owner name, resolved first', () => {
+    expect(resolveEntityText(vos, '{{char}} keeps the dock.', { placeholders: [rank], rolls: {} }))
+      .toBe('Captain Vos keeps the dock.');
+  });
+
+  it('reads the owner name as it stands now, so a rename shows at once', () => {
+    const opts = { placeholders: [rank], rolls: {} };
+    expect(resolveEntityText({ name: 'Mara' }, 'Ask {{char}}.', opts)).toBe('Ask Mara.');
+    expect(resolveEntityText({ name: 'Marisol' }, 'Ask {{char}}.', opts)).toBe('Ask Marisol.');
+  });
+
+  it('renders a chip inside the owner name as nothing, whatever character the caller set', () => {
+    expect(resolveEntityText({ name: 'Vos {{char}}' }, 'I am {{char}}.', {
+      placeholders: [], rolls: {}, character: 'Wren',
+    })).toBe('I am Vos.');
+  });
+
+  it('keeps Player Name rendering from the caller options', () => {
+    expect(resolveEntityText({ name: 'Vos' }, '{{char}} owes {{user}}.', {
+      placeholders: [], rolls: {}, player: { name: 'Wren' },
+    })).toBe('Vos owes Wren.');
+    expect(resolveEntityText({ name: 'Vos' }, '{{user}} owes {{char}}.', { placeholders: [], rolls: {} }))
+      .toBe('The player owes Vos.');
   });
 });
 

@@ -2,10 +2,11 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
-import { resolvePlaceholders } from '@/lib/placeholders';
+import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
+import type { Entity } from '@/types';
 
 /**
  * A gameplay-bound placeholder resolver: replaces `{{ph…}}` chips in authored text with their frozen
@@ -18,6 +19,17 @@ import { usePersonaName } from '@/lib/useResolvedWorld';
  * underlying roll is untouched — leaving the source's condition brings it back.
  */
 export function usePlaceholderResolver(): (text: string) => string {
+  const opts = useViewResolveOptions();
+  return useCallback((text: string) => resolvePlaceholders(text, opts), [opts]);
+}
+
+/** {@link usePlaceholderResolver} for an entity's own text, with that entity as the Character Name. */
+export function useEntityTextResolver(): (entity: Entity, text: string) => string {
+  const opts = useViewResolveOptions();
+  return useCallback((entity: Entity, text: string) => resolveEntityText(entity, text, opts), [opts]);
+}
+
+function useViewResolveOptions(): ResolveOptions {
   const { traits, traitGroups, locations } = useGameData();
   const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
@@ -36,8 +48,8 @@ export function usePlaceholderResolver(): (text: string) => string {
     placeholderRolls, viewCodePins,
   ]);
   const name = usePersonaName(placeholderRolls, pins);
-  return useCallback(
-    (text: string) => resolvePlaceholders(text, { placeholders, rolls: placeholderRolls, pins, player: { name } }),
+  return useMemo(
+    () => ({ placeholders, rolls: placeholderRolls, pins, player: { name } }),
     [placeholders, placeholderRolls, pins, name],
   );
 }

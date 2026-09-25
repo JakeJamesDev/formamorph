@@ -10,7 +10,7 @@ vi.mock('../game/EntityVisual', () => ({
   hasEntityVisual: () => false,
 }));
 vi.mock('../game/AudioPlayer', () => ({ default: () => null }));
-vi.mock('@/lib/usePlaceholderResolver', () => ({ usePlaceholderResolver: () => (t: string) => t }));
+vi.mock('@/lib/usePlaceholderResolver', () => ({ useEntityTextResolver: () => (_entity: unknown, t: string) => t }));
 vi.mock('@/lib/useEntityVisualPreference', () => ({
   useEntityVisualPreference: () => ({ preference: 'image', onPreferenceChange: () => {} }),
 }));

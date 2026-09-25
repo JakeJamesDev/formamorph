@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
-import { resolvePlaceholders } from '@/lib/placeholders';
+import { resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
 import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
 import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
@@ -75,6 +75,10 @@ export interface ResolvedWorld {
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
   /** Resolve opening text, where the Player Name chip reads "you" with no persona. */
   resolveOpening: (text: string, over?: OpeningOverrides) => string;
+  /** Resolve an entity's own text (descriptions, summary) with that entity as the Character Name. */
+  resolveEntityText: (entity: Entity, text: string) => string;
+  /** `resolveEntityText` against a pin map of the caller's own. */
+  resolveEntityFor: (pins: Record<string, string>, entity: Entity, text: string) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
    *  pinning trait reads its own value whatever else is ticked. Trait names in `traits` already use this. */
   resolveTraitText: (trait: Trait, text: string) => string;
@@ -87,6 +91,8 @@ export interface OpeningOverrides {
   persona?: ResolvedPersona | null;
   /** The rolls drawn for that persona, which state does not hold yet. */
   rolls?: PlaceholderRolls;
+  /** The entity whose opening this is, which the Character Name chip names. Absent or null for the world's. */
+  owner?: Entity | null;
 }
 
 /** The pin-carrying state `pinsFor` reads, where the caller has a copy newer than the one in state. */
@@ -144,8 +150,18 @@ export function useResolvedAuthoredWorld(
     const name = over.persona === undefined
       ? personaName
       : over.persona && resolvePlaceholders(over.persona.entity.name, { placeholders: set, rolls: withRolls, pins: withPins });
-    return resolvePlaceholders(text, { placeholders: set, rolls: withRolls, pins: withPins, player: { name, kind: 'opening' } });
+    const opts = { placeholders: set, rolls: withRolls, pins: withPins, player: { name, kind: 'opening' as const } };
+    return over.owner ? resolveEntityCore(over.owner, text, opts) : resolvePlaceholders(text, opts);
   }, [placeholders, rolls, pins, personaName]);
+  const resolveEntityFor = useCallback(
+    (withPins: Record<string, string>, entity: Entity, text: string) =>
+      resolveEntityCore(entity, text, { placeholders, rolls, pins: withPins, player }),
+    [placeholders, rolls, player],
+  );
+  const resolveEntityText = useCallback(
+    (entity: Entity, text: string) => resolveEntityFor(pins, entity, text),
+    [resolveEntityFor, pins],
+  );
   const resolveTraitFor = useCallback(
     (withPins: Record<string, string>, trait: Trait, text: string) =>
       resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders), player }),
@@ -170,6 +186,7 @@ export function useResolvedAuthoredWorld(
   return {
     entities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
+    resolveEntityText, resolveEntityFor,
   };
 }
 
@@ -215,6 +232,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     entities: worldEntities, locations, connections, stats, traits, traitGroups,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
+    resolveEntityText, resolveEntityFor,
   } = useResolvedAuthoredWorld(pins, personaName);
   // Resolved like the world's entities, so the side panel and the planner read its name, not its chips.
   const libraryEntities = useMemo(
@@ -247,5 +265,6 @@ export function useResolvedWorld(): ResolvedWorld {
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, pins, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
+    resolveEntityText, resolveEntityFor,
   };
 }
