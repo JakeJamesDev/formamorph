@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { CodeLanguage, CodeToken } from '@/lib/codeHighlight';
+import type { CodeLanguage, highlightCode } from '@/lib/codeHighlight';
 
-type Highlighter = (code: string, options?: { slots?: boolean; language?: CodeLanguage }) => CodeToken[];
+type Highlighter = typeof highlightCode;
 
 /**
- * Read-only code, coloured the same way the editor colours it. No editor is mounted: the parser runs over
+ * Read-only code, colored the same way the editor colors it. No editor is mounted: the parser runs over
  * the string and the spans are dropped straight into the markup.
  *
  * The highlighter rides the same on-demand chunk as the editor, so a preview costs nothing until something

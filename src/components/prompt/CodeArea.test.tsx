@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
 import type { CodeSurface } from '@/lib/codeSurface';
 import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
+import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
@@ -529,17 +530,6 @@ describe('CodeArea', () => {
   });
 
   describe('on a surface other than stat code', () => {
-    const SCRIPT: CodeSurface = {
-      label: 'this script',
-      globals: [{ name: 'args', detail: '{ name }', info: 'The arguments the model sent.' }],
-      hiddenGlobals: [],
-      builtins: [],
-      members: new Map(),
-      languageNames: [],
-      snippets: [{ label: 'An argument', text: 'args.name', select: 'name' }],
-      missingReturn: null,
-    };
-
     it('offers that surface’s inserts in the Variable menu, and none of stat code’s', async () => {
       const user = userEvent.setup();
       render(<Harness surface={SCRIPT} />);

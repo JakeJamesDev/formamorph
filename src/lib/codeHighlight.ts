@@ -1,8 +1,8 @@
 /**
- * Syntax colouring for code and JSON, shared by the editor and the read-only previews.
+ * Syntax coloring for code and JSON, shared by the editor and the read-only previews.
  *
- * The style hands out class names rather than colours, so the palette lives in CSS next to the app's own
- * tokens and both themes come for free. `highlightCode` is the preview half: a string in, coloured spans
+ * The style hands out class names rather than colors, so the palette lives in CSS next to the app's own
+ * tokens and both themes come for free. `highlightCode` is the preview half: a string in, colored spans
  * out, with no editor mounted.
  */
 

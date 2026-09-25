@@ -231,7 +231,7 @@ function CodeAreaBody({
 }
 
 /**
- * A JavaScript editor with the affordances a bare textarea has none of: syntax colouring, bracket
+ * A JavaScript editor with the affordances a bare textarea has none of: syntax coloring, bracket
  * matching, undo and redo that survive the programmatic writes a template insert makes, a full-screen
  * toggle, and menus that name the variables and slot forms the sandbox understands — none of which the
  * field itself could hint at.
