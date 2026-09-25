@@ -140,8 +140,7 @@ describe('the tools-only probe', () => {
     const url = 'https://api.anthropic.com/v1/chat/completions';
     const { doFetch, calls } = backend({ [url]: completionsAccepting({ reasoning: true, tools: true }) });
     const record = await resolveReasoningCapability({ url, token: 't', model: 'claude-opus-5' }, doFetch);
-    expect(calls.filter((c) => c.url === url).map((c) => 'tools' in c.body && !('reasoning_effort' in c.body)))
-      .toEqual([true]);
+    expect(probeKinds(calls, url)).toEqual(['tools']);
     expect(record?.sources.reasons).toBe('identity');
     expect(record?.tools).toBe(true);
   });
@@ -208,6 +207,15 @@ describe('the probe memo', () => {
     const record = await resolveReasoningCapability(TARGET, again.doFetch, { observation: sawReasoning });
     expect(probeCount(again.calls)).toBe(0);
     expect(record).toMatchObject({ reasons: true, levels: null, tools: true });
+  });
+
+  // A new session loses the memo but keeps the cache, and a reply's re-resolve must not re-ask what it holds.
+  it('sends no tools probe when the stored record already answered tools', async () => {
+    const stored = { ...UNKNOWN_REASONING_CAPABILITY, tools: false, sources: { tools: 'probe' as const } };
+    const { doFetch, calls } = backend({ [COMPLETIONS]: completionsAccepting({ reasoning: true, tools: false }) });
+    const record = await resolveReasoningCapability(TARGET, doFetch, { observation: sawReasoning, stored });
+    expect(probeCount(calls)).toBe(0);
+    expect(record?.reasons).toBe(true);
   });
 
   it('asks again for a different model on the same endpoint', async () => {

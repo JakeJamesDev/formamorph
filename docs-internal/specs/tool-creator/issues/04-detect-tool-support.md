@@ -1,6 +1,8 @@
 # 04: Detect Tool Support per Endpoint and Model
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in b94f624e plus review follow-up; LM Studio reads `trained_for_tool_use` (v1 name); the reasoning-engaged resolve gate stays for 06/09 to widen
+Base: 5f80e245
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

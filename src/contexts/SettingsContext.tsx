@@ -696,13 +696,13 @@ function useProvideSettings() {
     const record = await resolveReasoningCapability(
       { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
       fetch,
-      { observation: reasoningObservationsRef.current[sig], signal: unmountRef.current?.signal },
+      { observation: reasoningObservationsRef.current[sig], stored: reasoningCapability, signal: unmountRef.current?.signal },
     );
     // A resolve that answered nothing is not an answer. Release the signature so a server that was down
     // during the debounce is asked again, rather than staying unresolved for the rest of the session.
     if (!record) { resolvedSignatures.current.delete(sig); return; }
     cacheReasoningCapability(sig, record);
-  }, [activeEndpointUrl, activeApiToken, activeModelName, cacheReasoningCapability]);
+  }, [activeEndpointUrl, activeApiToken, activeModelName, reasoningCapability, cacheReasoningCapability]);
 
 
   const [thinkingMode, setThinkingMode] = usePersistentState<ThinkingMode>(`${APP_ID}_thinkingMode`, 'off', {
@@ -830,8 +830,9 @@ function useProvideSettings() {
   );
 
   // Resolve the endpoint's capability record once reasoning is actually engaged, and only when the cache
-  // has nothing better: no record at all, or one whose answers only the cache vouches for (a record stored
-  // before this session's sources existed). Debounced so editing the URL doesn't fire per keystroke.
+  // has nothing better: no record at all, one whose answers only the cache vouches for (a record stored
+  // before this session's sources existed), or one with no tools answer. Debounced so editing the URL doesn't
+  // fire per keystroke.
   useEffect(() => {
     if (!reasoningEngaged || !reasoningNeedsResolve(reasoningCapability)) return;
     const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
@@ -860,7 +861,7 @@ function useProvideSettings() {
     void resolveReasoningCapability(
       { url: activeEndpointUrl, token: activeApiToken, model: activeModelName },
       fetch,
-      { observation, signal: controller.signal },
+      { observation, stored: reasoningCapability, signal: controller.signal },
     ).then((record) => {
       if (record && !controller.signal.aborted) cacheReasoningCapability(sig, record);
     }).catch(() => { /* an unreachable endpoint surfaces as a request failure, not here */ });
@@ -1220,7 +1221,10 @@ function useProvideSettings() {
         void resolveReasoningCapability(
           { url, token: resolved.apiToken, model: resolved.model },
           fetch,
-          { observation: reasoningObservationsRef.current[sig], signal: unmountRef.current?.signal },
+          {
+            observation: reasoningObservationsRef.current[sig], stored: reasoningCapabilityCache[sig],
+            signal: unmountRef.current?.signal,
+          },
         ).then((record) => {
           if (!record) { resolvedSignatures.current.delete(sig); return; }
           cacheReasoningCapability(sig, record);
