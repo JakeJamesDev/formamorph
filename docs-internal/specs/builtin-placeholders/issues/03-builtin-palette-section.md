@@ -1,6 +1,6 @@
 # 03: Built-in Section in the Palette and Typeahead
 
-Status: in-progress
+Status: ready-for-human
 Base: 1794c589
 Blocked by: 02 — Character Name Resolves Live
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -20,15 +20,26 @@ Built-ins stay out of the Placeholders tab tree.
 
 Workload: contained UI and vocabulary work on existing components, with the rules already fixed by the spec.
 
-- [ ] Palette returns Built-in rows first under a Built-in heading, drawn once
-- [ ] A Built-in chip renders with a distinct accent or icon and opens no World/Unique pop-out
-- [ ] Each Built-in chip's hint comes from the registry
-- [ ] Character Name appears in an entity's fields, in the World Editor and in the library entity editor, and not in world, location or dictionary fields
-- [ ] Prompt fields show no Built-in rows
-- [ ] The typeahead row filter matches `Player`, `user`, `Character` and `char`
-- [ ] Preview shows the label for both Built-ins
-- [ ] The Placeholders tab tree lists no Built-in row
-- [ ] Vocabulary tests cover the section, the visibility rule and the filter terms, mutation-proven
-- [ ] Verified in the preview at a realistic viewport, both themes, with static evidence
-- [ ] Copy follows the help-copy pattern; changelog In-Progress entry appended (🛠️)
-- [ ] Four gates green; `graphify update .` run
+- [x] Palette returns Built-in rows first under a Built-in heading, drawn once
+- [x] A Built-in chip renders with a distinct accent or icon and opens no World/Unique pop-out
+- [x] Each Built-in chip's hint comes from the registry
+- [x] Character Name appears in an entity's fields, in the World Editor and in the library entity editor, and not in world, location or dictionary fields
+- [x] Prompt fields show no Built-in rows
+- [x] The typeahead row filter matches `Player`, `user`, `Character` and `char`
+- [x] Preview shows the label for both Built-ins
+- [x] The Placeholders tab tree lists no Built-in row
+- [x] Vocabulary tests cover the section, the visibility rule and the filter terms, mutation-proven
+- [x] Verified in the preview at a realistic viewport, both themes, with static evidence
+- [x] Copy follows the help-copy pattern; changelog In-Progress entry appended (🛠️)
+- [x] Four gates green; `graphify update .` run
+
+## Comments
+
+**2026-09-25, implementation (b8291aba, review folded in):**
+
+- The palette strip had no Built-ins before, so it now always shows Player Name. The strip serves a whole panel, so the claimed field says what it takes: a refused chip dims in place, and the field's own insert refuses it too.
+- The Built-in mark is a leading `Sparkles` icon, approved in chat, and recorded in `docs/Design-System.md`.
+- The library entity editor's store names its entity (`owner`), so its fields offer Character Name with no world lists.
+- Entity openings now pass the entity as owner. Side effect: a placeholder made inline from an entity opening joins the entity's list, like its other fields. It is noted in the changelog.
+- The changelog entry went in 👤 under a **Built-in Placeholders** group with ticket 02's entry, not 🛠️: the change is user-facing.
+- Open: World Details → Openings lists every entity's openings under one strip with no entity scope. Those fields offer Character Name in their `{` menu, but the strip above them does not.
