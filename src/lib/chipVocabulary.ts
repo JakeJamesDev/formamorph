@@ -13,7 +13,7 @@ import type { Placeholder } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import { parsePromptTemplate, parseTemplateWithPlaceholders } from './promptTemplate';
 import { promptHeader } from './promptHeader';
-import { HIGHLIGHT_PALETTE } from './highlightUtils';
+import { placeholderAccent } from './highlightUtils';
 import {
   labelForToken, colorForToken, variableForToken, baseToken, tokenVariant, splitToken, joinToken,
   variantLabelForToken, variableAxes, decodeVariant, encodeVariant,
@@ -30,7 +30,7 @@ import {
   topLevelPlaceholders,
 } from './placeholderTree';
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
-import { USER_MACRO, USER_MACRO_LABEL, isUserMacroToken } from './userMacro';
+import { BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
 import type { PlaceholderGroup } from '@/types';
 
 /** One token a menu or picker offers, named for the reader. */
@@ -271,13 +271,7 @@ const PLACEHOLDER_MODE_AXIS_FIXED: PromptVariantAxis = {
   readOnlyHelp: 'Draws the same value everywhere, so Unique would change nothing. Unlocks once the placeholder can roll.',
 };
 
-/** Stable accent per placeholder id, so a chip keeps its color across the world — and every surface that
- *  draws one by id draws the same one. */
-export function placeholderAccent(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return HIGHLIGHT_PALETTE[h % HIGHLIGHT_PALETTE.length];
-}
+export { placeholderAccent };
 
 // Palette tokens carry a sentinel placement id; freshInsertToken re-mints a real one on insertion.
 const PALETTE_PID = 'palette';
@@ -285,9 +279,8 @@ const PALETTE_PID = 'palette';
 // What a chip reads as when the placeholder it names is gone. Displays only — resolution says `''`.
 const MISSING_NAME = '(missing)';
 
-// The reserved chip every chip-capable world field offers. It needs no definition, so it has no values.
-const PLAYER_NAME_ROW: ChipRow = { token: USER_MACRO, label: USER_MACRO_LABEL, color: placeholderAccent(USER_MACRO) };
-const PLAYER_NAME_HINT = 'Shows your persona’s name in play. With no persona, it reads “you” in an opening and “the player” elsewhere.';
+// A Built-in needs no definition, so its row has no values.
+const builtinRow = (row: BuiltinPlaceholder): ChipRow => ({ token: row.token, label: row.label, color: row.accent });
 
 // What a level holds, by what the level is. A Variable holds one value, so it heads one row.
 const HOLDS_LABEL: Record<PlaceholderKindNoun, string> = {
@@ -325,7 +318,7 @@ export function placeholderVocabulary(
   placeholders: readonly Placeholder[],
   /** What the vocabulary may write back, and where its fields sit. Omit where placeholders are only being
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
-  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS, playerName }: {
+  { onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS, builtins = false }: {
     onRename?: (placeholder: Placeholder) => void;
     /** `home` names the list a member made inside an entity's or book's fields lands in. */
     onCreate?: (placeholder: Placeholder, home?: PlaceholderHome) => void;
@@ -345,13 +338,14 @@ export function placeholderVocabulary(
     groups?: readonly PlaceholderGroup[];
     /** The document's placement letters, so a Unique chip reads `Name (A)`. Absent, it reads `Name (Unique)`. */
     letters?: PlacementLetters;
-    /** Offer the Player Name chip first in the palette. A marker already in the text is a chip either way. */
-    playerName?: boolean;
+    /** Offer the Built-in chips first in the palette. A Built-in already in the text is a chip either way. */
+    builtins?: boolean;
   } = {},
 ): ChipVocabulary {
   const byId = new Map(placeholders.map((p) => [p.id, p]));
   const paletteIds = new Set(topLevelPlaceholders(placeholders).map((p) => p.id));
   const cycleExclusions = ownerId ? placeholderCycleExclusions(placeholders, ownerId) : null;
+  const offered = BUILTIN_PLACEHOLDERS.filter((row) => row.visible({ offered: builtins }));
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
   const segLabel = (seg: PlaceholderSegment) =>
     (seg.kind === 'slot' ? seg.name : byId.get(seg.ref)?.name ?? MISSING_NAME);
@@ -363,7 +357,8 @@ export function placeholderVocabulary(
   // which Hair. Inside its owner's own panel the chain is already given, and drops away. A scoped one
   // carries its entity's or book's name the same way, and drops it inside that owner's fields.
   const vocabLabel = (t: string) => {
-    if (isUserMacroToken(t)) return USER_MACRO_LABEL;
+    const builtin = builtinForToken(t);
+    if (builtin) return builtin.label;
     const d = decodePlaceholderToken(t);
     if (!d) return t;
     return chipPathName(d, placeholders, { relativeTo: ownerId, missing: MISSING_NAME, owners, letters }) ?? MISSING_NAME;
@@ -412,8 +407,8 @@ export function placeholderVocabulary(
       if (ph && name && name !== ph.name) onRename({ ...ph, name });
     }),
     parse: parsePlaceholderText,
-    isKnown: (t) => decodePlaceholderToken(t) != null || isUserMacroToken(t),
-    fixed: isUserMacroToken,
+    isKnown: (t) => decodePlaceholderToken(t) != null || !!builtinForToken(t),
+    fixed: (t) => !!builtinForToken(t),
     label: vocabLabel,
     // A placement reads as its own name: the author's label, or the placeholder's name with its letter. A
     // chip whose placeholder is gone keeps the label beside the missing mark, since the label is the one
@@ -427,7 +422,8 @@ export function placeholderVocabulary(
     // A chip in a field names its placement; the placeholder's mode and what it will become go in the
     // tooltip, so the chip stays one short word wide however many values there are.
     hint: (t) => {
-      if (isUserMacroToken(t)) return PLAYER_NAME_HINT;
+      const builtin = builtinForToken(t);
+      if (builtin) return builtin.hint;
       const d = decodePlaceholderToken(t);
       const ph = d && byId.get(d.id);
       if (!ph) return undefined;
@@ -439,7 +435,8 @@ export function placeholderVocabulary(
     },
     variantLabel: (t) => (decodePlaceholderToken(t)?.mode === 'unique' ? 'Unique' : null),
     color: (t) => {
-      if (isUserMacroToken(t)) return PLAYER_NAME_ROW.color;
+      const builtin = builtinForToken(t);
+      if (builtin) return builtin.accent;
       const d = decodePlaceholderToken(t);
       return d && byId.has(d.id) ? placeholderAccent(d.id) : undefined;
     },
@@ -478,7 +475,7 @@ export function placeholderVocabulary(
     // Under its owner's heading a row reads bare: the heading already says whose it is, so a section of
     // ten does not repeat the owner's name ten times.
     palette: () => [
-      ...(playerName ? [PLAYER_NAME_ROW] : []),
+      ...offered.map(builtinRow),
       ...sectionedRows(
         topLevelPlaceholders(placeholders),
         (p, underOwner) => (underOwner ? p.name : `${prefixFor(p.id)}${p.name}`),
@@ -499,7 +496,8 @@ export function placeholderVocabulary(
       return d ? encodePlaceholderToken({ ...d, placementId: randomUUID() }) : t;
     },
     acceptsPaletteToken: (t) => {
-      if (isUserMacroToken(t)) return !!playerName;
+      const builtin = builtinForToken(t);
+      if (builtin) return offered.includes(builtin);
       const id = decodePlaceholderToken(t)?.id;
       return !!id && paletteIds.has(id) && !cycleExclusions?.has(id);
     },
@@ -595,8 +593,8 @@ export function usePlaceholderChipVocabulary(
   /** Whose fields these are — a placeholder's own value list, or an entity's or book's fields — see
    *  `ownerId` on {@link placeholderVocabulary}. */
   ownerId?: string,
-  /** Offer the Player Name chip: prose fields do, name and keyword fields do not. */
-  { playerName = false }: { playerName?: boolean } = {},
+  /** Offer the Built-in chips: prose fields do, name and keyword fields do not. */
+  { builtins = false }: { builtins?: boolean } = {},
 ): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
   const letters = usePlacementLetters();
@@ -613,9 +611,9 @@ export function usePlaceholderChipVocabulary(
   const scope = useOwnerScope(lists, ownerId);
   return useMemo(
     () => placeholderVocabulary(placeholders, {
-      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, playerName,
+      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins,
     }),
-    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, playerName],
+    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins],
   );
 }
 

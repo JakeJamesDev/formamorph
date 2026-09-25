@@ -37,7 +37,7 @@ import { personaContextValues } from '@/lib/personaContext';
 import { collectPins } from '@/lib/placeholderPins';
 import { resolvePlaceholders } from '@/lib/placeholders';
 import { drawOpening, openingPool } from '@/lib/openings';
-import { renderUserMacro } from '@/lib/userMacro';
+import { renderBuiltins } from '@/lib/builtinPlaceholders';
 import { resolveWorldPrompt, worldPromptChipValues } from '@/lib/worldPrompt';
 import { HIDDEN_SETTING_DEFAULTS } from '@/lib/settingsAdvancedData';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
@@ -85,7 +85,7 @@ const cards = JSON.parse(await readFile(path.join(HARNESS_DIR, '../open-chat-car
   .map((card) => readTavernJson(JSON.stringify(card)).entity);
 const [lead, second] = cards;
 // Persona None: the Player Name marker reads as "you", the way play renders it.
-const greeting = renderUserMacro(lead.openings[0].text, { kind: 'opening' });
+const greeting = renderBuiltins(lead.openings[0].text, { kind: 'opening' });
 
 // Each turn is a beat label and the player's own line, as the app sends it. `start` is the world's own
 // opening, drawn per arm since the Style trait pins it.

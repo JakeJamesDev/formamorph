@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { convertLorebook } from './lorebookImport';
-import { USER_MACRO } from './userMacro';
+import { PLAYER_NAME } from './builtinPlaceholders';
+const USER_MACRO = PLAYER_NAME.token;
 import type { DictionaryEntry } from '@/types';
 
 // Grab a converted entry by its joined keywords, since ids are randomized.

@@ -1,6 +1,6 @@
 import { openingFieldKey, setOpeningText } from '@/lib/openings';
 import { decodePlaceholderToken, describePlaceholders, parsePlaceholderText } from '@/lib/placeholders';
-import { USER_MACRO_LABEL, isUserMacroToken } from '@/lib/userMacro';
+import { builtinLabel } from '@/lib/builtinPlaceholders';
 import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { foldSeparators, labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
@@ -340,7 +340,10 @@ function hitsIn(text: string, needle: string, opts: SearchOptions): number[] {
  *  whose placeholder is gone still answers to its label — the one thing left that says what it was for. */
 function chipReadings(token: string, chips: ChipSearch, byId: Map<string, Placeholder>): string[] {
   const decoded = decodePlaceholderToken(token);
-  if (!decoded) return isUserMacroToken(token) ? [USER_MACRO_LABEL] : [];
+  if (!decoded) {
+    const builtin = builtinLabel(token);
+    return builtin ? [builtin] : [];
+  }
   const ph = byId.get(decoded.id);
   if (!ph) return decoded.label ? [decoded.label] : [];
   return [

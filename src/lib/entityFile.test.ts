@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { buildEntityCardData, parseEntityCardData, importCharacterFile, ENTITY_FILE_KIND } from './entityFile';
 import { readLibraryDetails } from './contentAuthor';
 import { embedEntityCard, readEntityCard } from './entityCard';
-import { USER_MACRO } from './userMacro';
+import { PLAYER_NAME } from './builtinPlaceholders';
+const USER_MACRO = PLAYER_NAME.token;
 import type { Entity } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
