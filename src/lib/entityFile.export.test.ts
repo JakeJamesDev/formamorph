@@ -18,12 +18,16 @@ vi.mock('./entityCard', async (importOriginal) => ({
   embedEntityCard: vi.fn((bytes: Uint8Array) => bytes),
 }));
 
+const morphCardImage = vi.fn(async () => 'data:image/webp;base64,ART');
+vi.mock('./morphArtCanvas', () => ({ morphCardImage: (...a: unknown[]) => morphCardImage(...(a as [])) }));
+
 const { exportEntityCard } = await import('./entityFile');
 
 const entity = (images: string[]): Entity => ({ id: 'e1', name: 'Mara', images } as Entity);
 
 beforeEach(() => {
   fetchAsDataUrl.mockReset();
+  morphCardImage.mockClear();
   // exportEntityCard reads the final data URL's bytes back through fetch().
   vi.stubGlobal('fetch', vi.fn(async () => ({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer })));
 });
@@ -51,5 +55,27 @@ describe('exportEntityCard with a linked portrait', () => {
     await exportEntityCard(entity(['data:image/webp;base64,ALREADY']));
 
     expect(fetchAsDataUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('exportEntityCard with no portrait', () => {
+  const seedOf = () => (morphCardImage.mock.calls[0] as unknown[])[0];
+
+  it('seeds the Morph art with the listing id first', async () => {
+    await exportEntityCard(entity([]), [], { source: { sourceId: 'listing-9', libraryId: 'lib-3' } });
+    expect(seedOf()).toBe('listing-9');
+  });
+
+  it('falls back to the library item, then the entity id', async () => {
+    await exportEntityCard(entity([]), [], { source: { libraryId: 'lib-3' } });
+    expect(seedOf()).toBe('lib-3');
+    morphCardImage.mockClear();
+    await exportEntityCard(entity([]));
+    expect(seedOf()).toBe('e1');
+  });
+
+  it('never draws art for an entity that has a portrait', async () => {
+    await exportEntityCard(entity(['data:image/webp;base64,ALREADY']));
+    expect(morphCardImage).not.toHaveBeenCalled();
   });
 });
