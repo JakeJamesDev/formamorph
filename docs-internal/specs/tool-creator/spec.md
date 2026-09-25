@@ -119,7 +119,7 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 
 - The tool loop lives in the request layer, below the Turn Pipeline. ADR-0001's two seams are unchanged: the pipeline's request adapter gains optional Tools and a caller-supplied tool executor, and the runner never sees them.
 - For a request that offers Tools, the layer sends `tools` and `tool_choice: "auto"`. It collects streamed `tool_calls` across chunks, runs each call through the executor, appends the assistant message and the `tool` results, and sends the next round. Only the final round's content becomes the pass's reply. Content streamed in a non-final round is dropped and never reaches the reveal.
-- Between rounds the assistant message carries the model's content and calls. Whether it also carries the model's reasoning is open (see Further Notes). History across turns still sends narration only.
+- Between rounds the assistant message carries the model's content, calls and reasoning. The reasoning goes back verbatim under the field name the server returned (`reasoning_content` or `reasoning`); LM Studio renders either into the prompt and the loop completes (`reasoning-rounds-findings.md`). History across turns still sends narration only.
 - Outgoing call IDs are remapped to nine-character alphanumeric IDs where the template needs them, and each result is matched to its call.
 - Limits: calls per request per Tool, plus a hard cap on rounds per request. Requests in the same turn do not share a counter. On a limit, a malformed call, or an unknown Tool, the layer sends one more round without Tools so the model finishes in prose.
 - Stop aborts the current round and any running script.
@@ -170,7 +170,7 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 ## Further Notes
 
 - Evidence: `docs-internal/specs/narration-tool-call-probe/` — especially `involved-rescore-findings.md` (retrieve-first description, 12/12 involved coverage) and `prefill-order-findings.md` (entity order has no effect on the control).
-- **Open: reasoning kept between rounds.** Sending the model's own reasoning back on the assistant message between rounds is unproven on LM Studio, and `prefill-order-findings.md` shows the thought channel is fragile on MeroMero. A probe ticket runs before the request-layer ticket. If LM Studio accepts the field and the loop still completes, the layer keeps it; if it drops or rejects it, the loop ships without it and the model re-plans after each lookup.
+- **Ruled: reasoning is kept between rounds.** `reasoning-rounds-findings.md` measured both shapes on MeroMero via LM Studio: 12/12 completion and 12/12 involved coverage either way, with 21% less reasoning after the lookup when the model's own reasoning rides the assistant message. LM Studio returns 200 for `reasoning_content` and for `reasoning`, and renders either into the prompt (58 to 226 more prompt tokens than the stripped history). The prefill breakage in `prefill-order-findings.md` is a different operation: text prefilled into an open thought, not the model's closed reasoning echoed back.
 - The cloud default endpoint rejects `tool_choice: "auto"` today. Capability detection keeps Tools off it until its server enables tool calling.
 - Only MeroMero is proven to complete the loop. Cydonia and a non-tool model should be tried once the loop ships, to confirm that "no Tools sent" behaves well.
 - Preset export shape changes (Tools added). World and save export shapes do not.
