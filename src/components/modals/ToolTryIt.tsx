@@ -6,14 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FieldError, Hint, SectionTitle } from '@/components/ui/typography';
-import { HighlightedCode } from '@/components/prompt/HighlightedCode';
+import { ToolText } from '@/components/prompt/ToolText';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { runToolCall, type ToolCallResult } from '@/lib/tools/toolRunner';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { listOptions, namedParams, tryItArguments } from '@/lib/tools/toolDraft';
 import { isRecord } from '@/lib/tools/toolValidation';
-import { prettyToolText } from '@/lib/tools/prettyToolText';
 
 /** Where Try It reads the world from, and how it names it. */
 export interface TryItWorld {
@@ -21,8 +20,6 @@ export interface TryItWorld {
   /** True for the world the player has open, false for the sample world. */
   open: boolean;
 }
-
-const CODE_BOX = 'rounded-md border bg-muted/40 p-2 text-meta';
 
 /** The message an error result carries. */
 function errorMessage(text: string): string {
@@ -85,7 +82,6 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
   };
 
   const outcome = result?.outcome;
-  const shown = outcome && prettyToolText(outcome.text);
 
   return (
     <section aria-label="Try It" className="flex flex-col gap-3 min-w-0">
@@ -105,19 +101,17 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
           <Play className="h-4 w-4 mr-1" />Run
         </Button>
       </div>
-      {outcome && shown && (
+      {outcome && (
         <div className="flex flex-col gap-1 min-w-0" data-testid="try-it-result">
           {outcome.failure && <FieldError role="alert">{errorMessage(outcome.text)}</FieldError>}
           <Hint>{outcome.failure ? 'The AI reads this error' : 'The AI reads this result'}</Hint>
           {result.ranOn !== current && <Hint role="status">From before your last edit. Run again to try the Tool as it is now.</Hint>}
-          {shown.json
-            ? <HighlightedCode code={shown.code} language="json" className={CODE_BOX} />
-            : <pre className={`whitespace-pre-wrap break-words font-mono ${CODE_BOX}`}>{shown.code}</pre>}
+          <ToolText text={outcome.text} />
         </div>
       )}
       <details>
         <summary className="cursor-pointer text-helper text-muted-foreground">What the AI Receives</summary>
-        <HighlightedCode code={JSON.stringify(toolSchema(tool), null, 2)} language="json" className={`mt-2 ${CODE_BOX}`} />
+        <ToolText text={JSON.stringify(toolSchema(tool))} className="mt-2" />
       </details>
     </section>
   );

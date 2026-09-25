@@ -1748,7 +1748,7 @@ const GameViewer = ({
   const toolWorld = useCallback(() => buildToolSnapshot(liveScene(), dictionaries), [liveScene, dictionaries]);
   // The active preset's Tools, catalog first, as each request picks its own from them.
   const presetTools = useMemo(() => [...catalogTools, ...userTools], [catalogTools, userTools]);
-  // Requests past their first Tool call and not yet ended: the count behind the "Looking up…" status line.
+  // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
 
   /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
@@ -2259,6 +2259,11 @@ const GameViewer = ({
        * values) enters the pipeline's material. Never where a request enters — the adapter below is the
        * only seam for those.
        */
+      // One Tool Snapshot for the turn, built at its first Tool call and read by every later one. A move by
+      // the router starts it over, so the narration reads the scene it is written for.
+      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries));
+      let executeTool = turnToolExecutor();
+
       const advance: TurnAdvance = async (event, material) => {
         if (event.at === "written") {
           // Page one as the author wrote it, stored the way a streamed narration's first write stores it,
@@ -2301,7 +2306,10 @@ const GameViewer = ({
           case "locationAuto": {
             const matchedName = first.parsed as string | null;
             const target = matchedName ? destinations.find((loc) => loc.name === matchedName) : undefined;
-            if (target && currentLocation && target.id !== currentLocation.id) turnLocation = target;
+            if (target && currentLocation && target.id !== currentLocation.id) {
+              turnLocation = target;
+              executeTool = turnToolExecutor();
+            }
             return;
           }
           case "thinking": {
@@ -2363,10 +2371,6 @@ const GameViewer = ({
             return;
         }
       };
-
-      // One Tool Snapshot for the turn, built at its first Tool call: after the location router, so its scene
-      // is the one the narration is written for.
-      const executeTool = snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries));
 
       /** The pipeline's one seam. Production sends the real AI call; nothing else is injected. */
       const request: TurnRequestAdapter = (spec, context) => makeAIRequest({ ...spec, signal: context.signal, executeTool });
@@ -2781,7 +2785,7 @@ const GameViewer = ({
     // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
     const tools = toolsOfferedTo(requestType, presetTools);
     const executeTool = tools.length
-      ? turnExecutor ?? snapshotToolExecutor(() => buildToolSnapshot(liveScene(), dictionaries))
+      ? turnExecutor ?? snapshotToolExecutor(toolWorld)
       : undefined;
     const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }) });
 
@@ -2820,7 +2824,7 @@ const GameViewer = ({
       return next;
     });
 
-    // From a round's Tool calls until the request ends, this request is looking up.
+    // From a round's Tool calls until the next round's first token, this request is looking up.
     let lookingUp = false;
     const startLookup = () => {
       if (lookingUp) return;
@@ -2973,6 +2977,7 @@ const GameViewer = ({
         }
         if (event.type === "toolRound") { toolRounds.push(event.round); continue; }
         if (event.type === "toolCalls") { startLookup(); continue; }
+        if (event.type === "roundStarted") { endLookup(); continue; }
         if (event.type === "done") {
           // `done` replaces the running values with the stream's own finals.
           content = event.result.content;

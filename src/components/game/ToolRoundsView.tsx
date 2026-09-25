@@ -1,6 +1,5 @@
 import type { AiToolRound, AiToolRoundFailure } from '@/lib/aiRequest/toolLoop';
-import { prettyToolText } from '@/lib/tools/prettyToolText';
-import { HighlightedCode } from '@/components/prompt/HighlightedCode';
+import { ToolText } from '@/components/prompt/ToolText';
 
 const FAILURE_LABELS: Record<AiToolRoundFailure, string> = {
   arguments: 'Bad Arguments',
@@ -11,16 +10,7 @@ const FAILURE_LABELS: Record<AiToolRoundFailure, string> = {
   limit: 'Limit Reached',
 };
 
-const CODE_BOX = 'rounded-md border border-border bg-muted/40 p-2 text-meta';
 const PART_TITLE = 'text-helper text-muted-foreground';
-
-/** Tool text, highlighted when it is JSON. */
-function ToolText({ text, testId }: { text: string; testId: string }) {
-  const { code, json } = prettyToolText(text);
-  return json
-    ? <div data-testid={testId}><HighlightedCode code={code} language="json" className={CODE_BOX} /></div>
-    : <pre data-testid={testId} className={`whitespace-pre-wrap break-words font-mono ${CODE_BOX}`}>{code}</pre>;
-}
 
 /** The tool rounds one request ran before its reply, as the AI Context viewer shows them. */
 export function ToolRoundsView({ rounds }: { rounds: readonly AiToolRound[] }) {
