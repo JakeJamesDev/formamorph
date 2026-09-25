@@ -2,24 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { codeCompletions, codeDiagnostics, statCodeCompletions, statCodeDiagnostics } from './statCodeAnalysis';
 import type { CodeSurface } from './codeSurface';
 import { STAT_CODE_SURFACE } from './statCodeSurface';
-
-/** A surface shaped like a Tool script's: its own globals, one typed object, no stat-code names at all. */
-const SCRIPT: CodeSurface = {
-  label: 'this script',
-  globals: [
-    { name: 'args', detail: '{ name }', info: 'The arguments the model sent.' },
-    { name: 'world', detail: 'object', info: 'The world, read-only.' },
-  ],
-  hiddenGlobals: [],
-  builtins: [{ name: 'Math', detail: 'object', info: 'min, max and the rest.' }],
-  members: new Map([
-    ['args', [{ name: 'name', detail: 'string', info: 'The name the model asked for.' }]],
-    ['Math', [{ name: 'max', detail: '(...n) => number', info: 'The largest.' }]],
-  ]),
-  languageNames: ['JSON'],
-  snippets: [{ label: 'An argument', text: 'args.name', select: 'name' }],
-  missingReturn: 'This script never returns a result.',
-};
+import { SCRIPT_SURFACE as SCRIPT } from '@/test/scriptSurface';
 
 function labelsAt(doc: string, surface: CodeSurface) {
   const pos = doc.indexOf('|');

@@ -1,6 +1,7 @@
 # 03: Give the Code Editor a Surface and JSON Highlighting
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 5f80e245
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -24,3 +25,10 @@ Model rationale: Sonnet at medium effort suits a mechanical parameterization wit
 - [ ] The read-only highlighter renders JSON with token classes that read correctly in both themes; a test covers a JSON sample in each theme.
 - [ ] The package version is verified live from npm and recorded in the commit body.
 - [ ] Four gates green.
+
+## Comments
+
+- **2026-09-25, implementation.** Built in `e400dc24`, with review fixes in the commit after it. Notes for the next tickets:
+  - `CodeSurface` lives in `src/lib/codeSurface.ts`: globals, hidden globals, built-ins, a `members` map keyed by the exact expression before a dot (use one key per nested path, such as `world.scene`), language names, the Variable-menu snippets, the message `label` and the `missingReturn` warning.
+  - The `stats`, `self`, `placeholders` and `traits` rules still live in the analysis. They apply only when a surface lists that global. A Tool surface must not list those names.
+  - The "what's available" hint does not read the surface yet. Stat code's hint is the editor's placeholder text and did not change. Ticket 08 owns the Tool hint and should build it from `surface.globals`.
