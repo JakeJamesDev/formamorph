@@ -85,7 +85,7 @@ export function OverlayTitle({ name, className }: { name: string; className?: st
 }
 
 interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** The thumbnail image node (an `img`/`CachedThumbnail`); a `Globe` placeholder fills the area when absent. */
+  /** The thumbnail node (an `img`, a `CachedThumbnail` or an entity's Morph art); a `Globe` fills the area when absent. */
   thumbnail?: ReactNode;
   /** Absolutely-positioned overlay over the thumbnail (e.g. a download button / progress bar). */
   thumbnailOverlay?: ReactNode;

@@ -50,6 +50,7 @@ import { useAiReachable } from '@/lib/useAiReachable';
 import { LoadGameDialog } from '../components/modals/LoadGameDialog';
 import WorldEditor from './WorldEditor';
 import { LibraryTileGrid } from '@/components/library/LibraryTileGrid';
+import { EntityPlaceholderArt } from '@/components/EntityPlaceholderArt';
 import { useLibraryTiles } from '@/lib/useLibraryTiles';
 import { useComponentUpdates } from '@/lib/useComponentUpdates';
 import { UpdateAvailableDialog } from '@/components/modals/UpdateAvailableDialog';
@@ -142,6 +143,7 @@ import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, ty
 import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
 import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish, avatarPublishRefusal } from "@/lib/avatarPublish";
+import { buildWorldPublish } from "@/lib/worldPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -668,6 +670,16 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       return;
     }
     openPublish(attempt.payload);
+  };
+
+  /** Publish the selected world, unless it is a bundled world the player never edited. */
+  const publishWorld = (world: WorldRecord) => {
+    const attempt = buildWorldPublish(world as WorldPublishTarget);
+    if (!attempt.allowed) {
+      toast.error(attempt.refusal);
+      return;
+    }
+    openPublish(attempt.payload, world.id);
   };
   const [showBackup, setShowBackup] = useState(false);
 
@@ -2210,6 +2222,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           minMediumWidth={ENTITY_MIN_TILE}
           detailedColumnsClass={DETAILED_SPLIT_GRID_CLASS}
           thumbnailOf={(entity) => entity.image}
+          placeholderOf={(entity) => <EntityPlaceholderArt id={entity.id} sourceId={entity.sourceId} name={entity.name} />}
           filter={entityPredicate}
           toolbar={(
             <ToggleGroup
@@ -2242,6 +2255,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               aspect="portrait"
               fill={fill}
               compact={compact}
+              placeholder={<EntityPlaceholderArt id={entity.id} sourceId={entity.sourceId} name={entity.name} />}
               onSelect={setEditingEntityId}
               badge={entity.id === defaultPersona && entity.persona ? (
                 <span className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Default</span>
@@ -2733,7 +2747,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <WorldActionButton
                       tone="redSoft"
                       disabled={!!sourceBlock}
-                      onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data), selectedWorld.id)}
+                      onClick={() => { if (selectedWorld) publishWorld(selectedWorld); }}
                     >
                       <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
                     </WorldActionButton>

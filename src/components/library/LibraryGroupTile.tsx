@@ -12,8 +12,9 @@ import { cardLayoutFor, thumbFit, type ThumbAspect } from '@/lib/thumbAspect';
 const MOSAIC_CELLS = 4;
 
 /** The 2x2 mini-mosaic that makes a folder card recognizable at a glance. */
-function GroupMosaic({ thumbnails, aspect, className }: {
+function GroupMosaic({ thumbnails, placeholders, aspect, className }: {
   thumbnails: (string | undefined)[];
+  placeholders?: ReactNode[];
   aspect: ThumbAspect;
   className?: string;
 }) {
@@ -23,13 +24,13 @@ function GroupMosaic({ thumbnails, aspect, className }: {
     <div data-folder-mosaic className={cn('grid grid-cols-2 grid-rows-2 gap-px bg-border', className)}>
       {cells.map((thumbnail, index) => (
         <div key={index} className="relative overflow-hidden bg-muted">
-          {thumbnail && (
+          {thumbnail ? (
             <img
               src={thumbnail}
               alt=""
               className={cn('h-full w-full select-none pointer-events-none', thumbFit(aspect))}
             />
-          )}
+          ) : placeholders?.[index]}
         </div>
       ))}
     </div>
@@ -43,14 +44,16 @@ function GroupMosaic({ thumbnails, aspect, className }: {
  * opens the folder view rather than a popup.
  *
  * @param thumbnails - Member thumbnails in member order; the detailed card shows the first four
+ * @param placeholders - The art for members with no thumbnail, in the same order
  * @param face - The top-left region of the folder's own board, which the grid layout draws on the tile
  * @param presetName - The prompt preset this folder applies, when it carries one
  */
 export function LibraryGroupTile({
-  group, thumbnails, face, aspect, layout, fill, compact, presetName, onOpen,
+  group, thumbnails, placeholders, face, aspect, layout, fill, compact, presetName, onOpen,
 }: {
   group: LibraryGroup;
   thumbnails: (string | undefined)[];
+  placeholders?: ReactNode[];
   face?: ReactNode;
   /** The shape of the member art, which is what the mosaic's crops anchor by. */
   aspect: ThumbAspect;
@@ -84,7 +87,7 @@ export function LibraryGroupTile({
         onClick={() => onOpen(group.id)}
         name={group.name}
         description={count}
-        thumbnail={<GroupMosaic thumbnails={thumbnails} aspect={aspect} className="h-full w-full" />}
+        thumbnail={<GroupMosaic thumbnails={thumbnails} placeholders={placeholders} aspect={aspect} className="h-full w-full" />}
       >
         {presetName && (
           <div className="mt-auto flex items-center gap-1 text-meta text-muted-foreground">

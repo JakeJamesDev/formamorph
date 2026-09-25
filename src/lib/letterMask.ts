@@ -45,9 +45,19 @@ export function letterMask(letter: string, font: string, tilt: number, createCan
   return mask;
 }
 
-function fontReady(letter: string, font: string): boolean {
+/** True when `font` can draw `letter` now, so a mask drawn now is the real one. */
+export function fontReady(letter: string, font: string): boolean {
   const fonts = typeof document === 'undefined' ? undefined : document.fonts;
   return !fonts || fonts.check(fontSpec(font), letter);
+}
+
+/** Resolves once `font` has loaded the face for `letter` and `document.fonts.ready` has settled. */
+export async function whenFontReady(letter: string, font: string): Promise<void> {
+  const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+  if (!fonts) return;
+  // A failed load still settles: the mask then draws in whatever face the browser falls back to.
+  await fonts.load(fontSpec(font), letter).catch(() => undefined);
+  await fonts.ready;
 }
 
 function drawMask(letter: string, font: string, tilt: number, createCanvas: MaskCanvasFactory): LetterMask {

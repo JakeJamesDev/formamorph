@@ -13,6 +13,8 @@ export interface WorldCardFaceOwnProps {
   aspect?: ThumbAspect;
   badge?: React.ReactNode;
   note?: React.ReactNode;
+  /** The art shown when the record has no thumbnail. */
+  placeholder?: React.ReactNode;
   /** Fill the tile the grid hands it, instead of taking its height from `aspect`. */
   fill?: boolean;
   /** Trade the name strip for a tooltip, so the smallest tile is thumbnail and nothing else. */
@@ -32,7 +34,7 @@ export type WorldCardFaceProps = WorldCardFaceOwnProps
  *  grid thumbnail's top-left, and `note` is the same thing said as a line in the detailed layout, which has
  *  no thumbnail to overlay. The remaining props go to the frame, which is where a board attaches its drag. */
 export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(function WorldCardFace(
-  { world, onSelect, layout, aspect = 'landscape', badge, note, fill, compact, loading, ...frame },
+  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, fill, compact, loading, ...frame },
   ref,
 ) {
   const select = loading ? undefined : onSelect;
@@ -67,7 +69,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
               className={cn('w-full h-full select-none pointer-events-none', thumbFit(aspect))}
             />
           )
-          : undefined}
+          : placeholder}
       >
         <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
           <CardTags tags={world.tags || []} />
@@ -112,7 +114,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
           className={cn('select-none pointer-events-none', mediaSize, thumbFit(aspect))}
         />
       ) : (
-        <div className={cn(mediaSize, 'bg-muted')} />
+        <div className={cn(mediaSize, 'bg-muted')}>{placeholder}</div>
       )}
       {badge && <div className="absolute top-1 left-1 z-10 max-w-[calc(100%-0.5rem)]">{badge}</div>}
       {!compact && (
