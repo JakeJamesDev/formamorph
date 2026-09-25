@@ -84,8 +84,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                 with its heading, and a rule keeps a heading from claiming the loose chips after it. */}
             {items.map((item, i) => {
               const opens = chipSectionOpens(items, i);
-              // Dimmed rather than dropped where the claimed field refuses it (a name field refuses a
-              // Built-in), so the strip does not reflow as focus moves between fields.
+              // Dimmed, not dropped, where the claimed field refuses it, so the strip never reflows.
               const live = !!insert && (accepts?.(item.token) ?? true);
               return (
               <Fragment key={item.token}>
@@ -126,7 +125,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                   )}
                   style={{ backgroundColor: item.color, color: '#000' }}
                 >
-                  {item.headingKind === 'builtin' && <BuiltinMark />}
+                  {vocab.builtin?.(item.token) && <BuiltinMark />}
                   {item.label}
                 </button>
               </Tip>

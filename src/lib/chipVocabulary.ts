@@ -41,8 +41,7 @@ export interface ChipRow {
   /** The section this row sits under — a folder's path or an owner's name. Rows sharing a heading sit
    *  together, so a surface draws the heading once, where it changes; absent for a loose row. */
   heading?: string;
-  /** What the heading names, so a surface draws a folder as quiet text and an owner as a chip. A
-   *  `builtin` row is a Built-in Placeholder, and its chip carries the Built-in mark. */
+  /** What the heading names, so a surface draws a folder as quiet text and an owner as a chip. */
   headingKind?: 'folder' | 'owner' | 'builtin';
   /** Which kind of owner heads the section, for the icon that says so. Owner headings only. */
   ownerKind?: PlaceholderOwnerRef['kind'];
@@ -67,8 +66,7 @@ export function chipSectionOpens(
 ): boolean {
   if (i === 0) return true;
   // Two owners may share a name, and their rows read bare under it, so the owner itself is what parts
-  // the sections — a shared name would otherwise hide one entity's rows under the other's heading. A
-  // folder named like the Built-in heading parts from it the same way.
+  // the sections — a shared name would otherwise hide one entity's rows under the other's heading.
   const [a, b] = [rows[i - 1], rows[i]];
   return a.heading !== b.heading || a.ownerId !== b.ownerId || a.headingKind !== b.headingKind;
 }
@@ -289,6 +287,8 @@ const PALETTE_PID = 'palette';
 // What a chip reads as when the placeholder it names is gone. Displays only — resolution says `''`.
 const MISSING_NAME = '(missing)';
 
+const isBuiltin = (token: string) => !!builtinForToken(token);
+
 // A Built-in needs no definition, so its row has no values.
 const builtinRow = (row: BuiltinPlaceholder): ChipRow => ({
   token: row.token, label: row.label, color: row.accent,
@@ -427,8 +427,9 @@ export function placeholderVocabulary(
     }),
     parse: parsePlaceholderText,
     isKnown: (t) => decodePlaceholderToken(t) != null || !!builtinForToken(t),
-    fixed: (t) => !!builtinForToken(t),
-    builtin: (t) => !!builtinForToken(t),
+    // A Built-in is the one reserved chip here.
+    fixed: isBuiltin,
+    builtin: isBuiltin,
     label: vocabLabel,
     // A placement reads as its own name: the author's label, or the placeholder's name with its letter. A
     // chip whose placeholder is gone keeps the label beside the missing mark, since the label is the one

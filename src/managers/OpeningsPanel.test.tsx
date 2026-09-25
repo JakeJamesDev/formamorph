@@ -13,9 +13,6 @@ vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="md">{text}</div>,
 }));
 
-/** An entity opening is the entity's own text, so its `{` menu offers Character Name; a world opening has
- *  no entity to name. */
-
 const keeper = { id: 'keeper', name: 'Keeper', openings: [{ id: 'o1', text: '.', kind: 'narration' }] } as Entity;
 const lists = { placeholders: [], placeholderGroups: [], dictionaries: [], entities: [keeper] };
 const store = { ...placeholderStore([], () => {}), lists, owners: placeholderOwners(lists) };
@@ -35,6 +32,8 @@ async function menu(): Promise<string[]> {
   return screen.getAllByTestId('chip-typeahead-row').map((row) => row.textContent?.trim() ?? '');
 }
 
+/** An entity opening is the entity's own text, so its `{` menu offers Character Name; a world opening has
+ *  no entity to name. */
 describe('opening fields', () => {
   it('offer Character Name in an entity’s opening', async () => {
     mount(<EntityOpenings entity={keeper} onChange={() => {}} placeholders={[]} />);

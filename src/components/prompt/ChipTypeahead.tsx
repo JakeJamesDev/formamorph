@@ -306,7 +306,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
               className="flex min-w-0 flex-1 items-center gap-2 px-1.5 py-1 text-left text-label"
             >
               <span className={cn(CHIP_BASE, 'border')} style={{ backgroundColor: item.color, color: '#000' }}>
-                {item.headingKind === 'builtin' && <BuiltinMark />}
+                {vocab.builtin?.(item.token) && <BuiltinMark />}
                 {item.label}
               </span>
             </button>
