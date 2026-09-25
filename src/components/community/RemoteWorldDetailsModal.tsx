@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import IndeterminateProgress from "@/components/ui/indeterminate-progress";
 import { Globe, Columns2, RectangleVertical, Pencil, Trash2, X, Flag, EyeOff, Check, Play } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
-import { THUMB_FRAME, thumbFit } from "@/lib/thumbAspect";
+import { THUMB_FRAME, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { MarkdownRenderer } from "@/components/game/MarkdownRenderer";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -15,7 +15,7 @@ import { plainVocabulary } from "@/lib/chipVocabulary";
 import { canModerate, isStaff } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
-import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
+import { WorldDetailsColumn, DetailTags, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf, kindHasThumbnail, listingAppVersion, listingModels, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
@@ -294,6 +294,9 @@ export function RemoteWorldDetailsModal({
     : (hasArt && !flagged && world?.thumbnail) || '';
   // An entity with no picture at all draws it too, as its card does.
   const showMorphArt = flagged || (world ? kindOf(world) === 'entity' && !thumbUrl : false);
+  // Tall art sits beside the author and counts, as on the split card.
+  const aspect = world ? thumbAspectFor(kindOf(world)) : 'landscape';
+  const portrait = aspect === 'portrait';
   const models = world ? listingModels(world) : [];
   const madeFor = world ? listingAppVersion(world) : null;
   // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
@@ -346,6 +349,132 @@ export function RemoteWorldDetailsModal({
     isOwnComment(comment) || isOwnListing ||
     canModerate(currentUser, { id: comment.author?.id, accountType: comment.author?.role ?? 'normal' });
 
+  // Click opens the pan/zoom viewer on the cached blob src, which CORP does not block. No tip without a
+  // picture: the tip is the whole hint that it opens.
+  const art = world && (
+    <Tip tip={thumbSrc ? "Click to enlarge" : undefined} labelsChild={false}>
+      <div
+        className={cn(
+          "relative w-full rounded-lg overflow-hidden",
+          THUMB_FRAME[aspect],
+          thumbSrc && "cursor-zoom-in",
+        )}
+        onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
+      >
+        {thumbSrc ? (
+          <img
+            src={thumbSrc}
+            alt={world.name}
+            className={cn("absolute top-0 left-0 w-full h-full", thumbFit(aspect))}
+          />
+        ) : !hasArt ? (
+          <KindArt kind={kindOf(world)} className="absolute top-0 left-0" iconClassName="h-16 w-16" />
+        ) : showMorphArt ? (
+          <EntityPlaceholderArt id={String(world._id || world.id)} name={world.name ?? ''} className="absolute inset-0" />
+        ) : (
+          <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+            <Globe className="h-16 w-16" />
+          </div>
+        )}
+      </div>
+    </Tip>
+  );
+
+  const actions = world && (() => {
+    // Mirror the contextual card button (none/refresh/update), icon and all.
+    const dlState = downloadStateForWorld(world);
+    const progress = downloadProgress[world._id || world.id];
+    // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
+    if ((capabilities.localLibrary || capabilities.deviceDownloads) && progress !== undefined) {
+      return progress < 0
+        ? <IndeterminateProgress />
+        : <Progress value={progress * 100} className="h-2" />;
+    }
+    const noun = KIND_LABELS[kindOf(world)].one;
+    const [Icon, label] = dlState === 'update'
+      ? [ActionIcon.cloudUpdate, 'Update Available'] as const
+      : dlState === 'refresh'
+        ? [ActionIcon.cloudRefresh, `Re-download ${noun}`] as const
+        : [ActionIcon.cloudDownload, `Download ${noun}`] as const;
+    // What this press installs beyond the world itself, so the count answers the review
+    // above it rather than making the player add it up.
+    const extras = downloadPlan.count
+      ? ` + ${downloadPlan.count} ${downloadPlan.count === 1 ? 'Item' : 'Items'}`
+      : '';
+    const download = (
+      <WorldActionButton
+        tone="sky"
+        onClick={() => onContextualDownload?.(world, dlState, downloadPlan.plan)}
+      >
+        <Icon className="mr-2 h-4 w-4" /> {label}{extras}
+      </WorldActionButton>
+    );
+    return capabilities.localLibrary && onContextualDownload ? (
+      presetUse ? (
+        <div className="space-y-2">
+          {download}
+          <WorldActionButton tone="amberSoft" disabled={presetUse.active} onClick={presetUse.onUse}>
+            {presetUse.active
+              ? <><Check className="mr-2 h-4 w-4" /> Preset In Use</>
+              : <><Play className="mr-2 h-4 w-4" /> Use This Preset</>}
+          </WorldActionButton>
+        </div>
+      ) : download
+    ) : capabilities.deviceDownloads && onDeviceDownload ? (
+      <WorldActionButton tone="sky" onClick={() => onDeviceDownload(world)}>
+        <ActionIcon.cloudDownload className="mr-2 h-4 w-4" /> Download {noun}
+      </WorldActionButton>
+    ) : null;
+  })();
+
+  const authorCell = world && (
+    <>
+      <h3 className="text-helper font-semibold text-muted-foreground">Author</h3>
+      <p className="flex items-center gap-2 min-w-0">
+        <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
+        <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
+      </p>
+    </>
+  );
+
+  const countCells = world && (
+    <>
+      <div>
+        <h3 className="text-helper font-semibold text-muted-foreground">Downloads</h3>
+        <p>{world.downloads || 0}</p>
+      </div>
+
+      <div>
+        <h3 className="text-helper font-semibold text-muted-foreground">Likes</h3>
+        <LikeButton
+          likes={world.likes || 0}
+          liked={world.liked}
+          size="md"
+          // Static on your own listing, which the server refuses.
+          onToggle={capabilities.likes && onLike && mayPressHeart({
+            signedIn: isAuthenticated, ownListing: isOwnListing,
+            guestLikes, serverTakesLikes, liked: world.liked,
+          })
+            ? (next) => onLike(world, next)
+            : capabilities.likes && !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
+          // Staff read the count as a way into who is behind it; everybody else keeps the
+          // heart, and nothing on screen says a list exists.
+          onOpenLikers={canSeeLikers ? () => setShowLikers(true) : undefined}
+        />
+      </div>
+
+      <div>
+        <h3 className="text-helper font-semibold text-muted-foreground">Created</h3>
+        <p>{world.created_at ? <DateTimeText value={world.created_at} /> : "Unknown"}</p>
+      </div>
+
+      <div>
+        <h3 className="text-helper font-semibold text-muted-foreground">Updated</h3>
+        <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
+      </div>
+    </>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent aria-describedby={undefined} className={cn("h-[85dvh] flex flex-col", collapsed ? "sm:max-w-[600px]" : "sm:max-w-[1200px]")}>
@@ -354,7 +483,7 @@ export function RemoteWorldDetailsModal({
             <DialogTitle className="min-w-0 flex-1">
               {/* `leading-normal` overrides DialogTitle's `leading-none`, whose one-em line box crops
                   descenders under `truncate`'s overflow clip. Fits the row's existing height. */}
-              <span className="truncate leading-normal">{world?.name || 'World Details'}</span>
+              <span className="truncate leading-normal">{world?.name || `${KIND_LABELS[world ? kindOf(world) : 'world'].one} Details`}</span>
             </DialogTitle>
             {detailsAction && <div className="shrink-0">{detailsAction}</div>}
             <Tip tip={collapsed ? "Expand to two columns" : "Collapse to single column"}>
@@ -378,93 +507,20 @@ export function RemoteWorldDetailsModal({
             <div className={splitColumnClasses(collapsed).left}>
               <WorldDetailsColumn
                 description={world.description || ""}
-                tags={world.tags}
-                thumbnail={
-                  /* World Thumbnail — click to open the pan/zoom viewer (uses the cached blob src, so the
-                     zoom isn't CORP-blocked like the raw cross-origin URL would be). */
-                  // No tip without a thumbnail, and none of the machinery either — the tip is the whole
-                  // hint that the picture opens. The image below carries the name, so it stays visual only.
-                  <Tip tip={thumbSrc ? "Click to enlarge" : undefined} labelsChild={false}>
-                    <div
-                      className={cn(
-                        "relative w-full rounded-lg overflow-hidden",
-                        THUMB_FRAME.landscape,
-                        thumbSrc && "cursor-zoom-in",
-                      )}
-                      onClick={() => thumbSrc && openImageViewer(thumbSrc, world.name)}
-                    >
-                      {thumbSrc ? (
-                        <img
-                          src={thumbSrc}
-                          alt={world.name}
-                          className={cn(
-                            "absolute top-0 left-0 w-full h-full",
-                            thumbFit(kindOf(world) === 'entity' ? 'portrait' : 'landscape'),
-                          )}
-                        />
-                      ) : !hasArt ? (
-                        <KindArt kind={kindOf(world)} className="absolute top-0 left-0" iconClassName="h-16 w-16" />
-                      ) : showMorphArt ? (
-                        // Portrait art in a wide frame: shown whole, so the letter is never cropped.
-                        <div className="absolute inset-0 flex justify-center bg-muted">
-                          <div className={cn("h-full", THUMB_FRAME.portrait)}>
-                            <EntityPlaceholderArt id={String(world._id || world.id)} name={world.name ?? ''} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                          <Globe className="h-16 w-16" />
-                        </div>
-                      )}
+                tags={portrait ? undefined : world.tags}
+                thumbnail={portrait ? (
+                  <div className="flex gap-4" data-layout="split">
+                    <div className="w-2/5 shrink-0">{art}</div>
+                    <div className="min-w-0 flex-1 flex flex-col gap-4 [container-type:inline-size]">
+                      <div>{authorCell}</div>
+                      <div className="grid grid-cols-1 gap-4 [@container(min-width:18rem)]:grid-cols-2">{countCells}</div>
+                      {world.tags && <DetailTags tags={world.tags} />}
+                      {/* Pinned to the art's bottom edge, where the card keeps its download. */}
+                      {actions && <div className="mt-auto">{actions}</div>}
                     </div>
-                  </Tip>
-                }
-                actions={(() => {
-                  // Mirror the contextual card button (none/refresh/update), icon and all.
-                  const dlState = downloadStateForWorld(world);
-                  const progress = downloadProgress[world._id || world.id];
-                  // While downloading, swap the button for a status bar (-1 ⇒ size unknown).
-                  if ((capabilities.localLibrary || capabilities.deviceDownloads) && progress !== undefined) {
-                    return progress < 0
-                      ? <IndeterminateProgress />
-                      : <Progress value={progress * 100} className="h-2" />;
-                  }
-                  const noun = KIND_LABELS[kindOf(world)].one;
-                  const [Icon, label] = dlState === 'update'
-                    ? [ActionIcon.cloudUpdate, 'Update Available'] as const
-                    : dlState === 'refresh'
-                      ? [ActionIcon.cloudRefresh, `Re-download ${noun}`] as const
-                      : [ActionIcon.cloudDownload, `Download ${noun}`] as const;
-                  // What this press installs beyond the world itself, so the count answers the review
-                  // above it rather than making the player add it up.
-                  const extras = downloadPlan.count
-                    ? ` + ${downloadPlan.count} ${downloadPlan.count === 1 ? 'Item' : 'Items'}`
-                    : '';
-                  const download = (
-                    <WorldActionButton
-                      tone="sky"
-                      onClick={() => onContextualDownload?.(world, dlState, downloadPlan.plan)}
-                    >
-                      <Icon className="mr-2 h-4 w-4" /> {label}{extras}
-                    </WorldActionButton>
-                  );
-                  return capabilities.localLibrary && onContextualDownload ? (
-                    presetUse ? (
-                      <div className="space-y-2">
-                        {download}
-                        <WorldActionButton tone="amberSoft" disabled={presetUse.active} onClick={presetUse.onUse}>
-                          {presetUse.active
-                            ? <><Check className="mr-2 h-4 w-4" /> Preset In Use</>
-                            : <><Play className="mr-2 h-4 w-4" /> Use This Preset</>}
-                        </WorldActionButton>
-                      </div>
-                    ) : download
-                  ) : capabilities.deviceDownloads && onDeviceDownload ? (
-                    <WorldActionButton tone="sky" onClick={() => onDeviceDownload(world)}>
-                      <ActionIcon.cloudDownload className="mr-2 h-4 w-4" /> Download {noun}
-                    </WorldActionButton>
-                  ) : null;
-                })()}
+                  </div>
+                ) : art}
+                actions={portrait ? null : actions}
                 meta={
                   <div className="grid grid-cols-2 gap-4">
                     {/* Only its author and the staff ever open an unlisted listing, so it says plainly
@@ -483,13 +539,7 @@ export function RemoteWorldDetailsModal({
 
                     {/* Full width so the two counts below pair off on a row of their own — they are the
                         comparison the pair exists to make. */}
-                    <div className="col-span-2">
-                      <h3 className="text-helper font-semibold text-muted-foreground">Author</h3>
-                      <p className="flex items-center gap-2 min-w-0">
-                        <UserAvatar username={world.author?.username} avatarUrl={world.author?.avatarUrl} size="sm" />
-                        <UserName userId={world.author?.id} username={world.author?.username} role={world.author?.role} />
-                      </p>
-                    </div>
+                    {!portrait && <div className="col-span-2">{authorCell}</div>}
 
                     {/* The models a prompt fits and the app version it was made for. */}
                     {(models.length > 0 || madeFor) && (
@@ -526,39 +576,7 @@ export function RemoteWorldDetailsModal({
                       />
                     )}
 
-                    <div>
-                      <h3 className="text-helper font-semibold text-muted-foreground">Downloads</h3>
-                      <p>{world.downloads || 0}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-helper font-semibold text-muted-foreground">Likes</h3>
-                      <LikeButton
-                        likes={world.likes || 0}
-                        liked={world.liked}
-                        size="md"
-                        // Static on your own listing, which the server refuses.
-                        onToggle={capabilities.likes && onLike && mayPressHeart({
-                          signedIn: isAuthenticated, ownListing: isOwnListing,
-                          guestLikes, serverTakesLikes, liked: world.liked,
-                        })
-                          ? (next) => onLike(world, next)
-                          : capabilities.likes && !isAuthenticated && onGuestLike ? async () => { onGuestLike(world); } : undefined}
-                        // Staff read the count as a way into who is behind it; everybody else keeps the
-                        // heart, and nothing on screen says a list exists.
-                        onOpenLikers={canSeeLikers ? () => setShowLikers(true) : undefined}
-                      />
-                    </div>
-
-                    <div>
-                      <h3 className="text-helper font-semibold text-muted-foreground">Created</h3>
-                      <p>{world.created_at ? <DateTimeText value={world.created_at} /> : "Unknown"}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-helper font-semibold text-muted-foreground">Updated</h3>
-                      <p>{world.updated_at ? <DateTimeText value={world.updated_at} /> : "Unknown"}</p>
-                    </div>
+                    {!portrait && countCells}
 
                     {/* What the file itself permits, read from it at publish. A downloader decides here
                         what they may do with an Avatar, before they take it. */}

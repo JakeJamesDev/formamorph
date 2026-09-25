@@ -46,6 +46,29 @@ export function splitColumnClasses(collapsed: boolean) {
   };
 }
 
+/** The labeled tag chips of a details view. */
+export function DetailTags({ tags }: { tags: string[] }) {
+  return (
+    <div>
+      <h3 className="text-helper font-semibold text-muted-foreground">Tags</h3>
+      <div className="flex flex-wrap gap-2 mt-1">
+        {tags.length > 0 ? (
+          tags.map((tag, index) => (
+            <span
+              key={index}
+              className={cn(CHIP_BASE, "bg-primary text-primary-foreground")}
+            >
+              {tag}
+            </span>
+          ))
+        ) : (
+          <span className="text-muted-foreground text-helper">No tags</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** The single-column world-details layout shared by the local-world modal and the community details
  *  modal (where it's the left column). Order: thumbnail → actions → description → meta → tags. */
 export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta, split = false, collapsed = false }: {
@@ -68,25 +91,7 @@ export function WorldDetailsColumn({ thumbnail, actions, description, tags, meta
         </div>
       </div>
       {meta}
-      {tags && (
-        <div>
-          <h3 className="text-helper font-semibold text-muted-foreground">Tags</h3>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {tags.length > 0 ? (
-              tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className={cn(CHIP_BASE, "bg-primary text-primary-foreground")}
-                >
-                  {tag}
-                </span>
-              ))
-            ) : (
-              <span className="text-muted-foreground text-helper">No tags</span>
-            )}
-          </div>
-        </div>
-      )}
+      {tags && <DetailTags tags={tags} />}
     </div>
   );
 
