@@ -30,7 +30,8 @@ import {
 import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
 import { codeHighlightStyle, SLOT_CLASS } from '@/lib/codeHighlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
-import { statCodeCompletions, statCodeDiagnostics, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import { codeCompletions, codeDiagnostics, type CodePlaceholders } from '@/lib/statCodeAnalysis';
+import type { CodeSurface } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 
 /** Marks `{{slot}}` spans in the editor with the same class the read-only previews use. */
@@ -214,6 +215,8 @@ export interface CodeSession {
   canRedo: () => boolean;
   /** Show the margin of lint marks beside the line numbers. Full screen only — it costs a column. */
   setLintGutter: (show: boolean) => void;
+  /** What the code can reach. Re-lints when it changes. */
+  setSurface: (surface: CodeSurface) => void;
   /** The world's stat names, for completions and name checks. Re-lints when the names change. */
   setStatNames: (names: readonly string[] | undefined) => void;
   /** The name of the stat the code belongs to. Re-lints when it changes. */
@@ -232,6 +235,8 @@ export interface CodeSessionOptions {
   placeholder?: string;
   /** Decorate `{{name:type=default}}` spans. Template editing only. */
   slots?: boolean;
+  /** What the code can reach: completions and diagnostics read this. */
+  surface: CodeSurface;
   /** The world's stat names. Absent, stat names are neither offered nor checked. */
   statNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write through `stats` to it counts as its own. */
@@ -256,6 +261,7 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
   let applyingExternal = false;
   // Held rather than captured: the stat list changes while the editor is open, and the editor outlives
   // every render that could rebuild an extension around it.
+  let surface: CodeSurface = options.surface;
   let statNames: readonly string[] | undefined = options.statNames;
   let selfName: string | undefined = options.selfName;
   let placeholders: CodePlaceholders | undefined = options.placeholders;
@@ -263,9 +269,9 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
 
   /** The one completion source. Everything it offers comes from the analysis module; nothing here knows
    *  what the sandbox exposes. */
-  const completeStatCode = (context: CompletionContext): CMCompletionResult | null => {
+  const complete = (context: CompletionContext): CMCompletionResult | null => {
     const doc = context.state.doc.toString();
-    const result = statCodeCompletions(doc, context.pos, { slots: options.slots, statNames, selfName, placeholders, traits });
+    const result = codeCompletions(doc, context.pos, { surface, slots: options.slots, statNames, selfName, placeholders, traits });
     if (!result || result.options.length === 0) return null;
     // Explicit means the author asked for the list; otherwise an empty word is every option at once.
     if (!context.explicit && result.from === result.to && !context.matchBefore(/["'.]|\{\{/)) return null;
@@ -274,8 +280,8 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     return { from: result.from, to: result.to, options: result.options };
   };
 
-  const statCodeLinter = linter(
-    (view): Diagnostic[] => statCodeDiagnostics(view.state.doc.toString(), { slots: options.slots, statNames, selfName, placeholders, traits }),
+  const codeLinter = linter(
+    (view): Diagnostic[] => codeDiagnostics(view.state.doc.toString(), { surface, slots: options.slots, statNames, selfName, placeholders, traits }),
     {
       delay: 400,
       needsRefresh: (update) => update.transactions.some((tr) => tr.effects.some((effect) => effect.is(worldListsChanged))),
@@ -317,13 +323,13 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
         syntaxHighlighting(codeHighlightStyle),
         options.slots ? slotDecorations : [],
         autocompletion({
-          override: [completeStatCode],
+          override: [complete],
           // A tap on the list is the only way to take a completion on a touch keyboard, and the default
           // closes the popup on the blur the tap causes.
           closeOnBlur: false,
           icons: false,
         }),
-        statCodeLinter,
+        codeLinter,
         // A completion list or a diagnostic is taller than the field it belongs to, so it is positioned
         // against the window instead — otherwise the box, the panel it scrolls in, or the dialog around
         // it cuts the popup off wherever the caret happens to be low.
@@ -404,6 +410,11 @@ export function createCodeSession(options: CodeSessionOptions): CodeSession {
     setTraits(next) {
       if (next === traits) return;
       traits = next;
+      relint();
+    },
+    setSurface(next) {
+      if (next === surface) return;
+      surface = next;
       relint();
     },
     setLintGutter(show) {

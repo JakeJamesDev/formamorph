@@ -36,6 +36,7 @@ import {
   type TemplateSlot,
 } from '@/lib/statCodeTemplates';
 import { STAT_CODE_TIMINGS, TIMING_LABEL, type StatCodeTiming } from '@/lib/statCodeTiming';
+import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 import {
   buildTemplatePack,
   deleteUserTemplate,
@@ -415,6 +416,7 @@ export function StatCodeTemplateDialog({
                 onChange={(code) => setDraft({ ...draft, code })}
                 label="Code"
                 ariaLabel="Template code"
+                surface={STAT_CODE_SURFACE}
                 statNames={statNames}
                 slots
                 className="flex-1"

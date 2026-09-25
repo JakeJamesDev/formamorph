@@ -1,7 +1,7 @@
 /**
  * What stat code can actually reach: the names the QuickJS sandbox injects, the fields a marshalled stat
- * carries, and the built-ins the VM already has. One list, so completions, diagnostics and the help text
- * can't drift apart from each other.
+ * carries, and the built-ins the VM already has. `STAT_CODE_SURFACE` gathers them into the one list the
+ * editor, completions, diagnostics and help text read, so none of them can drift apart.
  *
  * This module *describes* the sandbox; it never widens it. Adding a name here does not expose it — the
  * exposure lives in `statCodeExecutor`, and a name added here that the executor doesn't inject would be
@@ -9,16 +9,9 @@
  */
 
 import { CODE_BOUND_FIELDS, DELTA_SOURCES, STAT_CLOCK_VARS, type DeltaSource } from '@/lib/statCodeExecutor';
+import { STAT_CODE_SNIPPETS } from '@/lib/codeSnippets';
+import { nearestName, surfaceKnownNames, type CodeSurface, type SurfaceEntry } from '@/lib/codeSurface';
 import type { PlaceholderKindNoun } from '@/lib/placeholders';
-
-/** One reachable name and what an author needs to know about it. */
-export interface SurfaceEntry {
-  name: string;
-  /** The short right-hand hint — a type or a shape. */
-  detail: string;
-  /** The one-line explanation shown beside the entry. */
-  info: string;
-}
 
 /** What each clock reading means. Keyed off the executor's own list so a rename there shows up as a
  *  missing description rather than a silently stale one. */
@@ -226,59 +219,22 @@ export const LANGUAGE_NAMES: readonly string[] = [
   'ReferenceError', 'Symbol', 'Map', 'Set', 'Promise', 'RegExp', 'Function',
 ];
 
-/** Every name a reference is allowed to resolve to without the author having declared it. */
-export const SANDBOX_KNOWN_NAMES: ReadonlySet<string> = new Set([
-  ...SANDBOX_GLOBALS.map((entry) => entry.name),
-  ...SANDBOX_UNDOCUMENTED_GLOBALS,
-  ...SANDBOX_BUILTINS.map((entry) => entry.name),
-  ...LANGUAGE_NAMES,
-]);
-
-/** How far apart two names may be and still read as the same one mistyped. Scaled to length so short
- *  names don't suggest each other and long ones tolerate a slip. */
-const suggestionDistance = (name: string): number => (name.length <= 4 ? 1 : name.length <= 8 ? 2 : 3);
-
-/** Levenshtein distance with transposition, capped implicitly by the short strings involved. Two letters
- *  swapped counts as one slip rather than two, because that is the typo an author actually makes. */
-function editDistance(a: string, b: string): number {
-  const rows: number[][] = [Array.from({ length: b.length + 1 }, (_, index) => index)];
-  for (let i = 1; i <= a.length; i += 1) {
-    const row = [i];
-    for (let j = 1; j <= b.length; j += 1) {
-      row[j] = Math.min(
-        rows[i - 1][j] + 1,
-        row[j - 1] + 1,
-        rows[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-        row[j] = Math.min(row[j], rows[i - 2][j - 2] + 1);
-      }
-    }
-    rows.push(row);
-  }
-  return rows[a.length][b.length];
-}
+/** Stat code's whole surface, as the editor and its reader take it. */
+export const STAT_CODE_SURFACE: CodeSurface = {
+  label: 'stat code',
+  globals: SANDBOX_GLOBALS,
+  hiddenGlobals: SANDBOX_UNDOCUMENTED_GLOBALS,
+  builtins: SANDBOX_BUILTINS,
+  members: BUILTIN_MEMBERS,
+  languageNames: LANGUAGE_NAMES,
+  snippets: STAT_CODE_SNIPPETS,
+  missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',
+};
 
 /**
- * The surface name an unknown identifier was most likely meant to be, or null when nothing is close
+ * The stat-code name an unknown identifier was most likely meant to be, or null when nothing is close
  * enough to be worth suggesting. Case-insensitive, so `Stats` still points at `stats`.
  */
 export function nearestSurfaceName(name: string, extra: readonly string[] = []): string | null {
-  return nearestName(name, [...SANDBOX_KNOWN_NAMES, ...extra]);
-}
-
-/** The candidate `name` was most likely meant to be, or null when nothing is close enough. */
-export function nearestName(name: string, candidates: readonly string[]): string | null {
-  const limit = suggestionDistance(name);
-  let best: string | null = null;
-  let bestDistance = Infinity;
-  for (const candidate of candidates) {
-    if (candidate === name) return null;
-    const distance = editDistance(name.toLowerCase(), candidate.toLowerCase());
-    if (distance <= limit && distance < bestDistance) {
-      best = candidate;
-      bestDistance = distance;
-    }
-  }
-  return best;
+  return nearestName(name, [...surfaceKnownNames(STAT_CODE_SURFACE), ...extra]);
 }

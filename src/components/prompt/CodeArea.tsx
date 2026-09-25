@@ -10,12 +10,13 @@ import { resolveLayout, usePromptSplitMode, useContainerWidth, MIN_PANE_WIDTH } 
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { FullscreenShell } from '@/components/FullscreenShell';
 import { cn } from '@/lib/utils';
-import { SLOT_SNIPPETS, STAT_CODE_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
+import { SLOT_SNIPPETS, type InsertSnippet } from '@/lib/codeSnippets';
+import type { CodeSurface } from '@/lib/codeSurface';
 import type { CodeSession } from '@/components/prompt/codeSession';
 import type { CodePlaceholders } from '@/lib/statCodeAnalysis';
 
 function InsertMenu({ items, label, Icon, onPick }: {
-  items: InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
+  items: readonly InsertSnippet[]; label: string; Icon: typeof Braces; onPick: (snippet: InsertSnippet) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -58,6 +59,8 @@ interface CodeAreaProps {
   label?: ReactNode;
   /** Offer the `{{slot}}` menu. Template editing only. */
   slots?: boolean;
+  /** What the code can reach: the Variable menu, completions and diagnostics all read it. */
+  surface: CodeSurface;
   /** The world's stat names, completed after `stats` and inside string literals, and checked by name. */
   statNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write to it through `stats` is not flagged. */
@@ -76,7 +79,7 @@ interface CodeAreaProps {
 /** Toolbar + editor. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
-  value, onChange, ariaLabel, placeholder, label, slots, preview, className, rows = 8, fullscreen,
+  value, onChange, ariaLabel, placeholder, label, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
 }: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits'> & {
   fullscreen: boolean;
@@ -160,7 +163,7 @@ function CodeAreaBody({
         <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           {label && <Label className="leading-none">{label}</Label>}
           {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insert} />}
-          <InsertMenu items={STAT_CODE_SNIPPETS} label="Variable" Icon={Variable} onPick={insert} />
+          <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insert} />
         </div>
         <div className="flex flex-shrink-0 items-center gap-1">
           <Tip tip="Undo">
@@ -269,6 +272,7 @@ export function CodeArea(props: CodeAreaProps) {
         ariaLabel,
         placeholder,
         slots,
+        surface: latest.current.surface,
         statNames: latest.current.statNames,
         selfName: latest.current.selfName,
         placeholders: latest.current.placeholders,
@@ -286,6 +290,7 @@ export function CodeArea(props: CodeAreaProps) {
   // A second gutter column is worth its width only where there is width to spare; inline, a problem is
   // read by hovering its squiggle.
   useEffect(() => { session?.setLintGutter(morph.mounted); }, [session, morph.mounted]);
+  useEffect(() => { session?.setSurface(props.surface); }, [session, props.surface]);
   // Stats are renamed and added while a code field is open, so the completions follow the list.
   useEffect(() => { session?.setStatNames(props.statNames); }, [session, props.statNames]);
   useEffect(() => { session?.setSelfName(props.selfName); }, [session, props.selfName]);

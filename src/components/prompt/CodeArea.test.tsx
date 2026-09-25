@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeArea } from './CodeArea';
+import type { CodeSurface } from '@/lib/codeSurface';
+import { STAT_CODE_SURFACE } from '@/lib/statCodeSurface';
 
 /** The field is controlled by its parent everywhere it's used, so the harness owns the value too —
  *  testing it uncontrolled would exercise a wiring nothing ships. */
-function Harness({ slots = false, preview = false, initial = '', statNames }: {
-  slots?: boolean; preview?: boolean; initial?: string; statNames?: string[];
+function Harness({ slots = false, preview = false, initial = '', statNames, surface = STAT_CODE_SURFACE }: {
+  slots?: boolean; preview?: boolean; initial?: string; statNames?: string[]; surface?: CodeSurface;
 }) {
   const [value, setValue] = useState(initial);
   return (
@@ -16,6 +18,7 @@ function Harness({ slots = false, preview = false, initial = '', statNames }: {
         value={value}
         onChange={setValue}
         ariaLabel="Stat code"
+        surface={surface}
         statNames={statNames}
         slots={slots}
         preview={preview ? <p>what this makes</p> : undefined}
@@ -523,6 +526,42 @@ describe('CodeArea', () => {
     await waitFor(() => expect(marks()).toEqual(['Helth']), { timeout: 3000 });
     rerender(<Harness initial="return stats.Helth.value;" statNames={['Health', 'Helth']} />);
     await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
+  });
+
+  describe('on a surface other than stat code', () => {
+    const SCRIPT: CodeSurface = {
+      label: 'this script',
+      globals: [{ name: 'args', detail: '{ name }', info: 'The arguments the model sent.' }],
+      hiddenGlobals: [],
+      builtins: [],
+      members: new Map(),
+      languageNames: [],
+      snippets: [{ label: 'An argument', text: 'args.name', select: 'name' }],
+      missingReturn: null,
+    };
+
+    it('offers that surface’s inserts in the Variable menu, and none of stat code’s', async () => {
+      const user = userEvent.setup();
+      render(<Harness surface={SCRIPT} />);
+      await user.click(await editor());
+
+      await user.click(screen.getByLabelText('Variable'));
+      expect(screen.queryByText('This stat’s value')).toBeNull();
+      await user.click(screen.getByText('An argument'));
+
+      expect(owned()).toBe('args.name');
+    });
+
+    it('reads names against that surface, and re-reads them when the surface changes', async () => {
+      const { rerender } = render(<Harness initial="return args.name + self.value;" surface={SCRIPT} />);
+      const field = await editor();
+      const marks = () => [...field.querySelectorAll('.cm-lintRange-error')].map(mark => mark.textContent);
+      await waitFor(() => expect(marks()).toEqual(['self']), { timeout: 3000 });
+
+      const widened = { ...SCRIPT, globals: [...SCRIPT.globals, { name: 'self', detail: 'object', info: 'Test.' }] };
+      rerender(<Harness initial="return args.name + self.value;" surface={widened} />);
+      await waitFor(() => expect(marks()).toEqual([]), { timeout: 3000 });
+    });
   });
 
   it('puts history and the view control together on the right, after what gets inserted', async () => {

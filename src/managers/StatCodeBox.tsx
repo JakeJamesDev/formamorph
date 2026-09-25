@@ -8,6 +8,7 @@ import { placeholderPathLabel } from "@/lib/statCodePaths";
 import { sandboxTraits } from "@/lib/statCodeTraits";
 import { StatCodeTemplateDialog } from "@/components/modals/StatCodeTemplateDialog";
 import { CodeArea } from "@/components/prompt/CodeArea";
+import { STAT_CODE_SURFACE } from "@/lib/statCodeSurface";
 import { TIMING_LABEL, type StatCodeTiming } from "@/lib/statCodeTiming";
 import type { PlaceholderOwners } from "@/lib/placeholderHomes";
 import type { Placeholder, Stat, Trait } from "@/types";
@@ -149,6 +150,7 @@ export function StatCodeBox({ timing, stat, value, onChange, context }: {
         value={value}
         onChange={write}
         ariaLabel={`Stat Code ${label}`}
+        surface={STAT_CODE_SURFACE}
         statNames={statNames}
         selfName={selfName}
         placeholders={placeholders}
