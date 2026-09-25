@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { fontReady, letterMask, whenFontReady } from '@/lib/letterMask';
 import {
@@ -52,12 +52,18 @@ const ART_CACHE_LIMIT = 256;
 const artCache = new Map<string, MorphArt>();
 
 function artFor(idSeed: string, name: string, letter: string, font: string): MorphArt {
-  const key = `${idSeed}\u0000${name}\u0000${letter}\u0000${font}`;
+  const key = `${idSeed}\u0000${name}\u0000${font}`;
   const known = artCache.get(key);
-  if (known) return known;
+  if (known) {
+    artCache.delete(key);
+    artCache.set(key, known);
+    return known;
+  }
   const art = generateMorphArt({
     idSeed, nameSeed: name, letter, readMask: (char, tilt) => letterMask(char, font, tilt),
   });
+  // Art measured in a fallback face is right for now but wrong once the real font arrives.
+  if (!fontReady(letter, font)) return art;
   artCache.set(key, art);
   if (artCache.size > ART_CACHE_LIMIT) artCache.delete(artCache.keys().next().value as string);
   return art;
@@ -76,7 +82,7 @@ function Shape({ id, goo, gradient, body, edge, children }: {
   gradient: MorphGradient;
   body: string;
   edge: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <>
@@ -120,7 +126,7 @@ export function EntityPlaceholderArt({ id, sourceId, name, className }: {
   }, [ready, letter, font, fontKey]);
 
   const art = useMemo(() => (ready ? artFor(idSeed, name, letter, font) : null), [ready, idSeed, name, letter, font]);
-  const palette = morphPalette(art?.hue ?? morphHue(idSeed), dark);
+  const palette = morphPalette(morphHue(idSeed), dark);
   const { x, y, pivotX, pivotY, fontSize, fontWeight, strokeWidth } = MORPH_LETTER;
 
   return (

@@ -1,6 +1,6 @@
 # 02: Morph Art in the Library
 
-Status: in-progress
+Status: ready-for-human
 Base: 22781db0
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

@@ -225,8 +225,7 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param idOf - The library id of one item, which is what the arrangement is keyed by
  * @param tiles - This tab's arrangement and the actions the grid dispatches against it
  * @param renderCard - The tab's own card for one item, told how to fill and label its tile
- * @param placeholderOf - The art for an item with no thumbnail, drawn in folders and under a carried tile.
- *   A plain box when omitted
+ * @param placeholderOf - The art for an item with no thumbnail, in folders and under a carried tile
  * @param groupSettings - Settings shown in the folder header; omit on tabs that carry none
  * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish

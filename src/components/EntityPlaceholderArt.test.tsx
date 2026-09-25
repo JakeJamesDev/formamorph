@@ -93,6 +93,24 @@ describe('EntityPlaceholderArt', () => {
     expect(container.querySelector('rect[mask]')).not.toBeNull();
   });
 
+  it('does not keep art drawn in a fallback face after a failed font load', async () => {
+    const failed = Promise.reject(new Error('network'));
+    failed.catch(() => undefined);
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: { check: () => false, load: () => failed, ready: Promise.resolve() },
+    });
+    const first = render(<EntityPlaceholderArt id="e6" name="Bramble" />);
+    await act(async () => { await Promise.resolve(); });
+    expect(first.container.querySelector('rect[mask]')).not.toBeNull();
+    first.unmount();
+    letterMask.mockClear();
+
+    render(<EntityPlaceholderArt id="e6" name="Bramble" />);
+    await act(async () => { await Promise.resolve(); });
+    expect(letterMask).toHaveBeenCalled();
+  });
+
   it('redraws when the Font setting changes', async () => {
     const { container } = render(<EntityPlaceholderArt id="e4" name="Bramble" />);
     expect(letterMask).toHaveBeenLastCalledWith('B', 'Test Sans', expect.any(Number));
