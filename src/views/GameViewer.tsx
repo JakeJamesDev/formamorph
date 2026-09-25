@@ -208,6 +208,8 @@ interface DebugRequest {
   type: string;
   messages: ChatMessage[];
   response?: string;
+  /** The native reasoning field as streamed; inline `<think>` stays in `response`. Never sent back in history. */
+  reasoning?: string;
   /** Which endpoint served this request — absent on turns captured before routing existed. */
   endpoint?: DebugEndpointInfo;
   // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
@@ -2993,6 +2995,7 @@ const GameViewer = ({
         turn.requests = turn.requests.map((r) =>
           r.id === captureId ? {
             ...r, response: rawContent,
+            ...(reasoningText.trim() ? { reasoning: reasoningText } : {}),
             statDiagnostics: statRequest ? readStatResponse(finalContent, statRequest).diagnostics : undefined,
           } : r,
         );
@@ -4486,6 +4489,9 @@ const GameViewer = ({
               const chunks = inputs.map(({ blockIndex, text }) => ({
                 key: `${i}:in:${blockIndex}`, group: `group-${i}`, section: i as string | number, request: i, text,
               }));
+              if (req.reasoning) {
+                chunks.push({ key: `${i}:reasoning`, group: `group-${i}`, section: `reasoning-${i}`, request: i, text: req.reasoning });
+              }
               if (typeof req.response === "string") {
                 chunks.push({ key: `${i}:out`, group: `group-${i}`, section: `out-${i}`, request: i, text: req.response });
               }
@@ -4698,11 +4704,12 @@ const GameViewer = ({
                   .find((c) => c?.turnId === currentTurn.turnId)?.summary
               : undefined;
             // Collapse keys: one per request group ("group-<i>"), one per request body, plus one per
-            // captured raw output ("out-<i>"). Collapse/expand all toggles every level.
+            // captured reasoning ("reasoning-<i>") and raw output ("out-<i>"). Collapse/expand all toggles every level.
             const collapseKeys: (string | number)[] = [];
             currentRequests.forEach((req, i) => {
               collapseKeys.push(`group-${i}`);
               collapseKeys.push(i);
+              if (req.reasoning) collapseKeys.push(`reasoning-${i}`);
               if (typeof req.response === "string") collapseKeys.push(`out-${i}`);
             });
             const allCollapsed =
@@ -4956,6 +4963,7 @@ const GameViewer = ({
                           const groupOpen = folded ? !!debugUnfolded[`group-${i}`] : !collapsedDebug[`group-${i}`];
                           const reqOpen = !collapsedDebug[i];
                           const outOpen = !collapsedDebug[`out-${i}`];
+                          const reasoningOpen = !collapsedDebug[`reasoning-${i}`];
                           return (
                             <Collapsible
                               key={i}
@@ -5031,6 +5039,31 @@ const GameViewer = ({
                                     />
                                   </CollapsibleContent>
                                 </Collapsible>
+                                {req.reasoning && (
+                                  <Collapsible
+                                    open={reasoningOpen}
+                                    onOpenChange={(o) =>
+                                      setCollapsedDebug((prev) => ({ ...prev, [`reasoning-${i}`]: !o }))
+                                    }
+                                    className="border border-border rounded-md"
+                                  >
+                                    <CollapsibleTrigger asChild>
+                                      <button className="flex w-full items-center justify-between gap-2 p-2 text-left font-semibold">
+                                        <span>Raw Reasoning</span>
+                                        {reasoningOpen ? (
+                                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                                        ) : (
+                                          <ChevronRight className="h-4 w-4 flex-shrink-0" />
+                                        )}
+                                      </button>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="p-2 pt-0">
+                                      <p className="whitespace-pre-wrap break-words text-label rounded-lg border border-border p-3">
+                                        {renderBlock(req.reasoning, req, true, `${i}:reasoning`)}
+                                      </p>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
                                 {typeof req.response === "string" && (
                                   <Collapsible
                                     open={outOpen}
