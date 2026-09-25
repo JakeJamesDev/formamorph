@@ -1,6 +1,7 @@
 import type { Dictionary } from '@/types';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
+import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
 import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
 
 /** An entity as a Tool reads it. Blank text reads as an empty string. */
@@ -108,3 +109,6 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
     world: deepFreeze(world), scene: deepFreeze(sceneData), chips: Object.freeze(chipValues(scene)), resolve,
   });
 }
+
+/** The Tool Snapshot of the sample world, for trying a Tool with no world open. */
+export const sampleToolSnapshot = (): ToolSnapshot => buildToolSnapshot(sampleChipScene(), sampleDictionaries());

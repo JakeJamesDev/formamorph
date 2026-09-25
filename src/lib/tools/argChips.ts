@@ -1,4 +1,4 @@
-import type { PromptSegment } from '@/lib/promptTemplate';
+import { parseTemplateWithPlaceholders, type PromptSegment } from '@/lib/promptTemplate';
 
 /** One parameter's chip in a Template body. A name holds no braces. */
 const ARG_CHIP_RE = /\{\{arg:([^{}]+)\}\}/g;
@@ -24,3 +24,7 @@ export function splitArgChips(text: string): PromptSegment[] {
   if (last < text.length) segments.push({ type: 'text', value: text.slice(last) });
   return segments;
 }
+
+/** A Template body's segments: scene and placeholder chips, then arg chips out of the literal runs. */
+export const parseToolTemplate = (body: string): PromptSegment[] =>
+  parseTemplateWithPlaceholders(body).flatMap((s) => (s.type === 'text' ? splitArgChips(s.value) : [s]));

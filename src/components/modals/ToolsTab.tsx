@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import { ActionIcon } from '@/lib/actionIcons';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
@@ -15,8 +14,11 @@ import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { isCatalogToolId } from '@/lib/tools/toolCatalog';
 import { buildToolPack, copyTool, parseToolPack, planToolImport } from '@/lib/tools/toolPack';
-import { toolSchema } from '@/lib/tools/toolSchema';
+import { finishDraft } from '@/lib/tools/toolDraft';
+import { sampleToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { toolSummary, type ToolsView } from './toolsView';
+import { ToolEditor } from './ToolEditor';
+import { ToolTryIt, type TryItWorld } from './ToolTryIt';
 
 export interface ToolFileTransfer {
   readImportPack: () => Promise<string | null>;
@@ -37,7 +39,7 @@ const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text
  */
 export function ToolsTab({
   catalogTools, userTools, builtinPreset, toolsSupported, onSaveTool, onDeleteTool, onSetOverride,
-  view, onViewChange, presetSelector, fullscreen, onToggleFullscreen, appVersion, fileTransfer,
+  view, onViewChange, presetSelector, fullscreen, onToggleFullscreen, appVersion, fileTransfer, openWorld,
 }: {
   /** The catalog with the active preset's overrides applied. */
   catalogTools: readonly Tool[];
@@ -55,10 +57,13 @@ export function ToolsTab({
   onToggleFullscreen: () => void;
   appVersion: string;
   fileTransfer?: ToolFileTransfer;
+  /** The Tool Snapshot of the world the player has open. Absent, Try It runs on the sample world. */
+  openWorld?: () => ToolSnapshot;
 }) {
   const [confirmDelete, setConfirmDelete] = useState<Tool | null>(null);
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const world: TryItWorld = { snapshot: openWorld ?? sampleToolSnapshot, open: !!openWorld };
 
   const mine = [...userTools].sort((a, b) => a.name.localeCompare(b.name));
   const all = [...catalogTools, ...mine];
@@ -122,18 +127,23 @@ export function ToolsTab({
   };
 
   if (view.draft) {
-    const editing = userTools.some((t) => t.id === view.draft?.id);
+    const { draft } = view;
     return (
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        <div className="flex items-center justify-between gap-2 flex-shrink-0">
-          <p className="text-label font-medium truncate">{editing ? `Edit ${view.draft.name}` : 'New Tool'}</p>
-          {fullscreenButton}
-        </div>
-        <div className="flex-1 min-h-0" data-testid="tool-edit-body" />
-        <div className="flex justify-end gap-2 border-t pt-3 flex-shrink-0">
-          <Button variant="outline" onClick={() => onViewChange({ ...view, draft: null })}>Cancel</Button>
-        </div>
-      </div>
+      <ToolEditor
+        draft={draft}
+        onDraftChange={(next) => onViewChange({ ...view, draft: next })}
+        editTab={view.editTab}
+        onEditTabChange={(editTab) => onViewChange({ ...view, editTab })}
+        userTools={userTools}
+        editing={userTools.some((t) => t.id === draft.id)}
+        world={world}
+        fullscreenButton={fullscreenButton}
+        onCancel={() => onViewChange({ ...view, draft: null })}
+        onSave={() => {
+          onSaveTool(finishDraft(draft));
+          onViewChange({ ...view, selectedId: draft.id, draft: null });
+        }}
+      />
     );
   }
 
@@ -194,7 +204,7 @@ export function ToolsTab({
             <button
               type="button"
               disabled={builtinPreset}
-              onClick={() => onViewChange({ ...view, draft: blankTool() })}
+              onClick={() => onViewChange({ ...view, draft: blankTool(), editTab: 'definition' })}
               className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
             >
               <Plus className="h-4 w-4" />New Tool
@@ -220,14 +230,7 @@ export function ToolsTab({
                 </label>
               </div>
               <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
-              <details>
-                <summary className="cursor-pointer text-helper text-muted-foreground">What the AI Receives</summary>
-                <HighlightedCode
-                  code={JSON.stringify(toolSchema(selected), null, 2)}
-                  language="json"
-                  className="mt-2 rounded-md border bg-muted/40 p-2 text-meta"
-                />
-              </details>
+              <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>
           )}
         </ScrollArea>
@@ -247,7 +250,7 @@ export function ToolsTab({
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected) })}>
+              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: 'definition' })}>
                 <Pencil className="h-4 w-4 mr-1" />Edit
               </Button>
               <Button variant="outline" onClick={() => setConfirmDelete(selected)}>

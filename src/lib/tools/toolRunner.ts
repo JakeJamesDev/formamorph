@@ -3,9 +3,9 @@
  * React-free. It reads only the Tool Snapshot it is given and never throws into the caller.
  */
 import type { Tool, ToolHandler, ToolParam } from '@/types';
-import { parseTemplateWithPlaceholders, resolvePromptSegments } from '@/lib/promptTemplate';
+import { resolvePromptSegments } from '@/lib/promptTemplate';
 import { splitToken } from '@/lib/promptVariables';
-import { argChipName, splitArgChips } from './argChips';
+import { argChipName, parseToolTemplate } from './argChips';
 import { isRecord } from './toolValidation';
 import { runToolScript } from './toolScript';
 import type { ToolSnapshot } from './toolSnapshot';
@@ -101,8 +101,7 @@ const argText = (value: ToolArgValue | undefined) => (value === undefined ? '' :
 
 /** Render a Template body: scene chips from the snapshot, placeholder chips resolved, parameters bound. */
 function runTemplate(tool: Tool, body: string, args: ToolArgs, snapshot: ToolSnapshot): ToolCallResult {
-  const segments = parseTemplateWithPlaceholders(body)
-    .flatMap((s) => (s.type === 'text' ? splitArgChips(s.value) : [s]));
+  const segments = parseToolTemplate(body);
   const params = new Set(tool.params.map((p) => p.name));
   const values: Record<string, string> = { ...snapshot.chips };
   for (const segment of segments) {

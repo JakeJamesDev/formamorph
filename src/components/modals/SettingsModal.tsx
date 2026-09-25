@@ -9,6 +9,7 @@ import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
+import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
@@ -542,7 +543,7 @@ const QuoteColorField = memo(function QuoteColorField() {
   );
 });
 
-export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
+export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after Restore Default Worlds re-seeds, so a world list on screen can refresh. */
@@ -551,6 +552,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   onStartAuthoringTour?: () => void;
   /** Live variable values for the prompt-editor Preview tab. Supplied only in-game; absent → no Preview. */
   previewValues?: Record<string, string>;
+  /** The open world as a Tool Snapshot, for Try It. Supplied only in-game; absent, Try It uses the sample world. */
+  toolWorld?: () => ToolSnapshot;
   /** DEV dev-router: open on this top-level tab instead of the default (see `devRouter.ts`). */
   initialTab?: SettingsTabId;
   /** Which AI Endpoints sub-tab to open ('text-endpoint' | 'img-endpoint' | 'img-tagprompt'). Used by the
@@ -3154,6 +3157,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               fullscreen={toolsMorph.contentInOverlay}
               onToggleFullscreen={toolsMorph.toggle}
               appVersion={APP_VERSION}
+              openWorld={toolWorld}
               // Selection only: Add and Import open dialogs that live in the Prompts tab.
               presetSelector={(
                 <div className="flex items-center gap-2">
