@@ -51,6 +51,7 @@ import {
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset, storedToolSet,
+  activeUserTools, activeCatalogTools, saveTool as saveToolOp, deleteTool as deleteToolOp, setToolOverride as setToolOverrideOp,
   type PromptPresetStore, type PresetDownloadLink, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -63,7 +64,7 @@ import {
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
-import type { AIRequestType } from '../types';
+import type { AIRequestType, Tool, ToolOverride } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
@@ -948,6 +949,15 @@ function useProvideSettings() {
     (patch: Partial<PresetOverview>) => editPresetStore((s) => updateOverview(s, patch)),
     [editPresetStore],
   );
+  // Tools (Settings → Tools). Every setter no-ops under a built-in preset.
+  const userTools = useMemo(() => activeUserTools(effectiveStore), [effectiveStore]);
+  const catalogTools = useMemo(() => activeCatalogTools(effectiveStore), [effectiveStore]);
+  const saveTool = useCallback((tool: Tool) => editPresetStore((s) => saveToolOp(s, tool)), [editPresetStore]);
+  const deleteTool = useCallback((id: string) => editPresetStore((s) => deleteToolOp(s, id)), [editPresetStore]);
+  const setToolOverride = useCallback(
+    (id: string, override: ToolOverride) => editPresetStore((s) => setToolOverrideOp(s, id, override)),
+    [editPresetStore],
+  );
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
   const resetPreset = (id: string) => editPresetStore((s) => {
     const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';
@@ -1702,6 +1712,11 @@ function useProvideSettings() {
     resetPreset,
     presetOverview,
     setPresetOverview,
+    userTools,
+    catalogTools,
+    saveTool,
+    deleteTool,
+    setToolOverride,
     exportActivePreset,
     linkPresetToListing,
     importPreset,

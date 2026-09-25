@@ -7,6 +7,8 @@ import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
+import { ToolsTab } from '@/components/modals/ToolsTab';
+import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
@@ -15,7 +17,7 @@ import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwit
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
+import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
 import { reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
@@ -492,8 +494,10 @@ function PromptOptionsPanel({ endpoint, maxOutput, verbatim, reasoning, samplers
  * Toggling re-parents the panel into the overlay, so the editor is rebuilt from its value: the text is
  * safe (it is controlled) but the undo stack starts fresh on either side of the toggle.
  */
-function PromptsShell({ morph, sourceRef, children }: {
+function PromptsShell({ morph, sourceRef, title, children }: {
   morph: MorphFullscreen;
+  /** The window's name: the tab it grows out of. */
+  title: string;
   /** The tab panel the rail sits in — what the window grows out of. */
   sourceRef: React.RefObject<HTMLElement | null>;
   children: React.ReactNode;
@@ -507,9 +511,9 @@ function PromptsShell({ morph, sourceRef, children }: {
       {!morph.contentInOverlay && children}
       <FullscreenShell
         morph={morph}
-        title="Prompts"
+        title={title}
         showTitle
-        returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"]')}
+        returnFocus={() => sourceRef.current?.querySelector<HTMLElement>('button[aria-label="Edit full screen"], button[aria-label="View full screen"]')}
       >
         {morph.contentInOverlay ? children : null}
       </FullscreenShell>
@@ -790,6 +794,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
     resetPreset,
     presetOverview,
     setPresetOverview,
+    userTools,
+    catalogTools,
+    saveTool,
+    deleteTool,
+    setToolOverride,
     exportActivePreset,
     importPreset,
     memoryDigests,
@@ -1184,6 +1193,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
   const promptsPanelRef = useRef<HTMLDivElement | null>(null);
   const promptsMorph = useMorphFullscreen(promptsPanelRef);
   const promptsFullscreen = promptsMorph.contentInOverlay;
+  // The Tools tab's own full screen, the same morph. Its view lives here so the remount keeps it.
+  const toolsPanelRef = useRef<HTMLDivElement | null>(null);
+  const toolsMorph = useMorphFullscreen(toolsPanelRef);
+  const [toolsView, setToolsView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
   const selectPromptTab = (t: string) => { setOverviewOpen(false); setPromptTab(t); setPromptView(null); setJumpField(null); };
@@ -1570,7 +1583,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
             </SelectContent>
           </Select>
           <TabsList
-            className={cn('hidden w-full flex-shrink-0 sm:grid', advanced ? 'grid-cols-5' : 'grid-cols-4')}
+            className={cn('hidden w-full flex-shrink-0 sm:grid', advanced ? 'grid-cols-6' : 'grid-cols-4')}
           >
             {visibleTabs.map((t) => (
               <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
@@ -2611,7 +2624,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
 
           {advanced && (
           <TabsContent ref={promptsPanelRef} value="prompts" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col gap-4">
-            <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef}>
+            <PromptsShell morph={promptsMorph} sourceRef={promptsPanelRef} title="Prompts">
             {/* Built-in presets are read-only; selecting one switches the whole prompt set. */}
             <div className="flex items-center gap-2 flex-shrink-0" data-testid="preset-header-row">
               <span className="text-helper text-muted-foreground">Preset</span>
@@ -3120,6 +3133,39 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               currentAppVersion={APP_VERSION}
               existingUserNames={promptPresets}
               onImport={(imported, opts) => { const id = importPreset(imported, opts); selectPreset(id); }}
+            />
+            </PromptsShell>
+          </TabsContent>
+          )}
+
+          {advanced && (
+          <TabsContent ref={toolsPanelRef} value="tools" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <PromptsShell morph={toolsMorph} sourceRef={toolsPanelRef} title="Tools">
+            <ToolsTab
+              catalogTools={catalogTools}
+              userTools={userTools}
+              builtinPreset={activePresetIsBuiltIn}
+              toolsSupported={toolsSupported(reasoningCapability)}
+              onSaveTool={saveTool}
+              onDeleteTool={deleteTool}
+              onSetOverride={setToolOverride}
+              view={toolsView}
+              onViewChange={setToolsView}
+              fullscreen={toolsMorph.contentInOverlay}
+              onToggleFullscreen={toolsMorph.toggle}
+              appVersion={APP_VERSION}
+              presetSelector={(
+                <div className="flex items-center gap-2">
+                  <span className="text-helper text-muted-foreground">Preset</span>
+                  <Select value={activePresetId} onValueChange={selectPreset}>
+                    <SelectTrigger aria-label="Preset" className="flex-1 min-w-0"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {builtinPresets.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      {promptPresets.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             />
             </PromptsShell>
           </TabsContent>

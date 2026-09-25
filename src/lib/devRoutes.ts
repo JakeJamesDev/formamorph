@@ -89,7 +89,7 @@ export type DevModal = (typeof DEV_MODALS)[number];
 export const DEV_MODAL_TABS = {
   // The Context Menu reference exposes both production group dialogs with isolated data.
   designSystemGroupPicker: ['picker', 'create'],
-  settings: ['display', 'output', 'prompts', 'endpoints', 'data'],
+  settings: ['display', 'output', 'prompts', 'tools', 'endpoints', 'data'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the
