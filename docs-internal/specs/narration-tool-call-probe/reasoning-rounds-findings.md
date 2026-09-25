@@ -30,7 +30,22 @@ The kept shape is what the harness has sent since the thinking-on batches, so th
 
 "Involved entities fetched" counts entries (12 across the six cases and two seeds). Every trial finished with `stop`. No lookup missed, matched nothing, or repeated an entity.
 
-Per case, reasoning after the lookup (control → kept): greeting 260 → 152 and 355 → 124, odette 214 → 238 and 244 → 211, ferry 172 → 147 and 109 → 0, healer 258 → 154 and 243 → 297, cobbler 186 → 327 and 361 → 258. The saving is not uniform. Two kept trials reason more than their control; the ferry at seed 424244 wrote its narration with no reasoning at all.
+| Case / seed | Control: completed, involved, later reasoning | Kept: completed, involved, later reasoning |
+|---|---|---|
+| greeting / 424243 | yes, 2/2, 260 | yes, 2/2, 152 |
+| odette / 424243 | yes, 1/1, 214 | yes, 1/1, 238 |
+| ferry / 424243 | yes, 1/1, 172 | yes, 1/1, 147 |
+| environment / 424243 | yes, no lookup, 0 | yes, no lookup, 0 |
+| healer / 424243 | yes, 1/1, 258 | yes, 1/1, 154 |
+| cobbler / 424243 | yes, 1/1, 186 | yes, 1/1, 327 |
+| greeting / 424244 | yes, 2/2, 355 | yes, 2/2, 124 |
+| odette / 424244 | yes, 1/1, 244 | yes, 1/1, 211 |
+| ferry / 424244 | yes, 1/1, 109 | yes, 1/1, 0 |
+| environment / 424244 | yes, no lookup, 0 | yes, no lookup, 0 |
+| healer / 424244 | yes, 1/1, 243 | yes, 1/1, 297 |
+| cobbler / 424244 | yes, 1/1, 361 | yes, 1/1, 258 |
+
+The saving is not uniform. Three kept trials reason more than their control; the ferry at seed 424244 wrote its narration with no reasoning at all.
 
 ## The field on the wire
 
@@ -51,7 +66,7 @@ Each kept continuation was re-sent at one output token in three shapes. Server-r
 
 - All 30 requests returned HTTP 200. No rejection, no warning field in any body.
 - Removing the field drops the prompt by 58 to 226 tokens, in step with the reasoning length. The field is rendered into the prompt, not dropped.
-- Renaming it to `reasoning` gives the same count as `reasoning_content` in all 10 cases. LM Studio reads either name.
+- Renaming it to `reasoning` gives the same count as `reasoning_content` in all 10 cases. LM Studio reads either name on the way in. A server that *returns* `reasoning` was not tested.
 - How the template places the text (as a closed thought channel or as plain text) was not inspected. The token delta shows only that it is present.
 
 ## Seeds pin the decision, not the wording
@@ -66,6 +81,7 @@ All 12 first requests were identical across arms. The tool calls matched in 12 o
 
 ## Evidence
 
-- [Batch transcript](D:/Documents/GitHub/formamorph/testing/baseline/runs/narration-tool-call-probe/reasoning-rounds-batch-2026-09-25T13-43-46-727Z.json) (local, gitignored)
+- [Batch transcript](../../../testing/baseline/runs/narration-tool-call-probe/reasoning-rounds-batch-2026-09-25T13-43-46-727Z.json) (local, gitignored)
+- Source revision `b56b607a`; the harness and fixture are unchanged since.
 - Runner: `testing/baseline/harness/narration-reasoning-rounds.cli.ts`. `--score <batch>` prints the tables above from the transcript.
 - Scoring: `testing/baseline/harness/narration-selection-score.ts`.

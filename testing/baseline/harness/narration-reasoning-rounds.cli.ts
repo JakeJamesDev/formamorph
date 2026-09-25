@@ -38,8 +38,8 @@ function report(batch: Batch): string {
   const { scored, summaries } = score(batch);
   const lines = ['| Arm | Completed | Involved fetched | Unneeded | Unmatched | Duplicates | First-round reasoning | Later reasoning | First response equals pair | Failures |', '|---|---:|---:|---:|---:|---:|---:|---:|---:|---|'];
   for (const arm of ARMS) {
-    const s = summaries[arm];
-    lines.push(`| ${arm} | ${s.completed}/${s.trials} | ${s.involvedFetched}/${s.involvedTotal} | ${s.unneeded} | ${s.unmatched} | ${s.duplicates} | ${s.firstRoundReasoning} | ${s.laterReasoning} | ${s.firstResponseMatchesPair}/${s.trials} | ${Object.entries(s.failures).map(([kind, count]) => `${kind} ${count}`).join(', ') || 'none'} |`);
+    const summary = summaries[arm];
+    lines.push(`| ${arm} | ${summary.completed}/${summary.trials} | ${summary.involvedFetched}/${summary.involvedTotal} | ${summary.unneeded} | ${summary.unmatched} | ${summary.duplicates} | ${summary.firstRoundReasoning} | ${summary.laterReasoning} | ${summary.firstResponseMatchesPair}/${summary.trials} | ${Object.entries(summary.failures).map(([kind, count]) => `${kind} ${count}`).join(', ') || 'none'} |`);
   }
   lines.push('', '| Case / seed | Arm | Completed | Involved | Unneeded | Rounds | First-round reasoning | Later reasoning | Prompt tokens per round | Finish |', '|---|---|---|---:|---:|---:|---:|---:|---|---|');
   for (const item of scored) {
@@ -95,7 +95,7 @@ if (scorePath) {
       const messages = structuredClone(continuation.messages).map((message): ProbeMessage => {
         if (message.role !== 'assistant' || variant === 'as_sent') return message;
         const { reasoning_content: content, ...rest } = message;
-        return variant === 'stripped' ? rest : { ...rest, reasoning: content } as ProbeMessage;
+        return variant === 'stripped' ? rest : { ...rest, reasoning: content };
       });
       const body: Record<string, unknown> = { ...continuation, messages, max_tokens: 1 };
       const response = await fetch(LM_STUDIO_PROBE_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(180_000) });

@@ -1,6 +1,6 @@
 # 05: Probe Reasoning Kept Between Tool Rounds
 
-Status: in-progress
+Status: ready-for-human
 Base: 5f80e245
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
