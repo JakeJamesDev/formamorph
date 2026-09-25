@@ -122,7 +122,7 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 - Between rounds the assistant message carries the model's content, calls and reasoning. The reasoning goes back verbatim under the field name the server returned. LM Studio renders a history's `reasoning_content` into the prompt, counts the same history renamed to `reasoning` identically, and the loop completes (`reasoning-rounds-findings.md`). History across turns still sends narration only.
 - Outgoing call IDs are remapped to nine-character alphanumeric IDs where the template needs them, and each result is matched to its call.
 - Limits: calls per request per Tool, plus a hard cap on rounds per request. Requests in the same turn do not share a counter. On a limit, a malformed call, or an unknown Tool, the layer sends one more round without Tools so the model finishes in prose.
-- Stop aborts the current round and any running script.
+- Stop aborts the current round, and no further round is sent. A Script handler evaluates synchronously on the main thread, so Stop cannot interrupt it mid-run; the sandbox's one-second deadline bounds it, then the loop stops. Interrupting a script mid-run would need the sandbox in a worker, which is out of scope.
 - Tool rounds are silent requests. They are captured in AI Context only with Show Silent Requests on. The status line follows the same setting.
 
 ### Capability detection
