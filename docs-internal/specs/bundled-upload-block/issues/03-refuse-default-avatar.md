@@ -1,6 +1,7 @@
 # 03: Refuse the default Avatar on publish
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: a14f26a8
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

@@ -4,7 +4,7 @@ import { blobHash } from '@/lib/blobHash';
 import { readVrmMeta } from '@/lib/vrmMeta';
 import { optimizeImageDataUrl, IMAGE_CAPS } from '@/lib/imageOptim';
 import { renderVrmThumbnail } from '@/lib/vrmThumbnail';
-import { DEFAULT_AVATAR_ID, LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
+import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL, LEGACY_DEFAULT_AVATAR_ID } from '@/lib/defaultAvatar';
 import { LibraryStore, type StoredRecord } from './LibraryStore';
 import type { ModelMetadata, VrmData, VrmLicense } from '@/types';
 
@@ -269,9 +269,9 @@ class ModelStorageService {
    * Hashes that mark a model as the default Avatar: the seeded library record's, and the running build's
    * bundled file's. They differ when an older build seeded the library, and either can be missing.
    */
-  async defaultAvatarHashes(url: string): Promise<string[]> {
+  async defaultAvatarHashes(): Promise<string[]> {
     await this.ensureMigrated();
-    this.bundledDefaultHash ??= fetch(url)
+    this.bundledDefaultHash ??= fetch(DEFAULT_AVATAR_URL)
       .then((response) => {
         if (!response.ok) throw new Error(`Default Avatar fetch failed: ${response.status}`);
         return response.blob();
