@@ -1,7 +1,7 @@
 # Built-in Placeholders
 
 Status: ready-for-agent
-Spec session: Built-in Placeholders
+Spec session: builtin-placeholders — spec
 
 ## Problem Statement
 
