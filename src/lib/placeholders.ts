@@ -1557,13 +1557,13 @@ export function resolvePlaceholders(text: string, opts: ResolveOptions): string 
 }
 
 /**
- * Resolve an entity's own text with that entity as the Character Name. The name resolves first, with no
- * owner, so a Character Name chip inside the name itself reads as nothing.
+ * Resolve an entity's own text with that entity as the Character Name; with no entity, nothing fills it. The
+ * name resolves first, with no owner, so a Character Name chip inside the name itself reads as nothing.
  */
-export function resolveEntityText(entity: { name: string }, text: string, opts: ResolveOptions): string {
+export function resolveEntityText(entity: { name: string } | null, text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
   const noOwner = { ...opts, character: null };
-  return resolvePlaceholders(text, { ...opts, character: resolvePlaceholders(entity.name, noOwner) });
+  return resolvePlaceholders(text, { ...opts, character: entity && resolvePlaceholders(entity.name, noOwner) });
 }
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */

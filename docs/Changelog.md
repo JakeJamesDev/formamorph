@@ -64,7 +64,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A stat's default descriptors follow its name when you rename it.** A new stat's three descriptors read "New Stat is low", "New Stat is medium" and "New Stat is high". Renaming the stat now rewrites any of them you haven't edited, so narration and the stat row never show "New Stat" after a rename. A descriptor you wrote yourself stays as written. Stats already saved with the old text don't change.
   - **A changelog entry you write while an update uploads now reaches the listing.** Before, the publish attached only an entry written before you pressed **Publish**, and it dropped a later one without a message. It now attaches the entry as it is when the upload finishes. If the entry popup is still open at that point, the publish waits: **Attach to Update** adds your entry, and **Cancel** finishes without one.
   - **The Entities chip with Name content lists only who is in the scene in the Choices and re-roll prompts.** That variant read the whole location roster, past the presence filter the other variants respect. Every variant of the chip now comes from one enumerated set, so a new variant cannot miss the filter.
-  - **With Staged thinking, each character's own planning request reads that character's description with its placeholders filled in.** It sent the raw placeholder tokens before. Scene pictures built from a character's description fill them in too.
+  - **Each character's planning and diary requests read that character's description with its placeholders filled in.** They sent the raw placeholder tokens before. The planning request runs with Staged thinking. Scene pictures built from a character's description fill them in too.
 
 ---
 

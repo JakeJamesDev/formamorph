@@ -36,8 +36,7 @@ export interface AuthoredSceneOptions {
   location?: GameLocation | null;
   /** Chip resolution, in place of a fresh unrecorded roll. */
   resolve?: (text: string) => string;
-  /** An entity's own text under the same resolution, with that entity as the Character Name. Absent while
-   *  `resolve` is given, entity text resolves with the rest of its block. */
+  /** An entity's own text under `resolve`'s rolls and pins. Absent with `resolve` given, `resolve` alone reads it. */
   resolveEntity?: ResolveEntityText;
 }
 

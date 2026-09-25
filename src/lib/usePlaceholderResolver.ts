@@ -6,7 +6,7 @@ import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/l
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
-import type { Entity } from '@/types';
+import type { ResolveEntityText } from '@/lib/resolveWorldNames';
 
 /**
  * A gameplay-bound placeholder resolver: replaces `{{ph…}}` chips in authored text with their frozen
@@ -24,9 +24,9 @@ export function usePlaceholderResolver(): (text: string) => string {
 }
 
 /** {@link usePlaceholderResolver} for an entity's own text, with that entity as the Character Name. */
-export function useEntityTextResolver(): (entity: Entity, text: string) => string {
+export function useEntityTextResolver(): ResolveEntityText {
   const opts = useViewResolveOptions();
-  return useCallback((entity: Entity, text: string) => resolveEntityText(entity, text, opts), [opts]);
+  return useCallback<ResolveEntityText>((entity, text) => resolveEntityText(entity, text, opts), [opts]);
 }
 
 function useViewResolveOptions(): ResolveOptions {

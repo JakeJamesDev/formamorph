@@ -57,7 +57,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Opening, Tool } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Tool } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -243,19 +243,17 @@ interface PendingTurn {
 
 /** What one playthrough remembers about its openings. Session state only, so a save never carries it. */
 interface OpeningSession {
-  /** The opening drawn last, unresolved. */
-  drawn: Opening | null;
+  /** The row drawn last, its text unresolved. */
+  drawn: DrawnOpening | null;
   /** Shown-list keys, newest last, so a page-one regenerate draws an opening not yet seen. */
   shown: string[];
-  /** Who owns `drawn`: an entity id, or null for the world's own row. */
-  drawnOwnerId: string | null;
   /** The Opening Action the legacy "START GAME" sentinel stands for when the draw was a narration. */
   cue: DrawnOpening | null;
   /** Where a new game started. Null on a loaded save, which reads it off the stored page one. */
   startLocationId: string | null;
 }
 const newOpeningSession = (): OpeningSession => ({
-  drawn: null, drawnOwnerId: null, shown: [], cue: null, startLocationId: null,
+  drawn: null, shown: [], cue: null, startLocationId: null,
 });
 
 /** Page one as stored. */
@@ -1149,7 +1147,7 @@ const GameViewer = ({
   // an action row here.
   const openingCue = (): DrawnOpening => {
     const session = openingSessionRef.current;
-    if (session.drawn?.kind === "action") return { opening: session.drawn, ownerId: session.drawnOwnerId };
+    if (session.drawn?.opening.kind === "action") return session.drawn;
     return (session.cue ??= drawPoolEntry(sessionPool().filter((row) => row.opening.kind === "action"), Math.random));
   };
   /** A drawn row's text, with its owning entity as the Character Name. */
@@ -1226,7 +1224,9 @@ const GameViewer = ({
     // the game again on its own; an Opening Action fills the box for the player to edit and submit.
     if (redraw) {
       const priorOpening = session.drawn;
-      openingSessionRef.current = { ...session, drawn: redraw.opening, drawnOwnerId: redraw.ownerId, shown: redraw.shown };
+      openingSessionRef.current = {
+        ...session, drawn: { opening: redraw.opening, ownerId: redraw.ownerId }, shown: redraw.shown,
+      };
       setIsGameStarted(false);
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: redrawText };
@@ -1235,7 +1235,7 @@ const GameViewer = ({
       }
       // History holds the "START GAME" proxy, so the player's own edit of this same opening comes back from
       // the ref. A save from before the proxy kept the real text in history, and its first redraw keeps it.
-      const sameRow = priorOpening === redraw.opening;
+      const sameRow = priorOpening?.opening === redraw.opening;
       setPlayerInput(
         priorOpening === null && action !== "START GAME" ? action : (sameRow && openingActionRef.current) || redrawText,
       );
@@ -2275,7 +2275,8 @@ const GameViewer = ({
             if (plan.concurrency === "parallel") setAiRequestType("choices");
             // With no choices pass there is nothing to wait on, so the input unblocks right away.
             if (!planHasPass(plan, "choices")) setChoicesReady(true);
-            const fanOut = splitParticipants(turnParticipants, allEntities, suppressedCharacterNames);
+            // The scene's cast, whose text resolved with each owner: the diary pass sends it as is.
+            const fanOut = splitParticipants(turnParticipants, liveScene(null, codeView).entities, suppressedCharacterNames);
             return {
               subjects: { ...material.subjects, ...fanOut },
               statRequest: createStatRequest(enabledStats(playerStatsRef.current, statEnabledRef.current)),
@@ -3136,10 +3137,11 @@ const GameViewer = ({
   /** The cast in frame: this turn's participants, resolved to entities, capped at what a booru model can
    *  hold apart. Order is the narration's, so the two the turn actually turned on are the two drawn. */
   const resolveSceneCast = async (participants: string[], signal: AbortSignal, scrub?: (line: string) => string, fresh = false): Promise<SceneCharacter[]> => {
-    const named = resolveEntityTexts(participants
+    const found = participants
       .map((name) => allEntities.find((e) => sameCharacterName(e.name, name)))
       .filter((e): e is NonNullable<typeof e> => !!e)
-      .slice(0, MAX_SCENE_CHARACTERS), resolveEntityText);
+      .slice(0, MAX_SCENE_CHARACTERS);
+    const named = resolveEntityTexts(found, resolveEntityText);
     const cast: SceneCharacter[] = [];
     for (const entity of named) {
       cast.push({
@@ -3598,7 +3600,9 @@ const GameViewer = ({
     const narrationText = dueTurn?.narration ?? "";
     const name = pendingDiaryNames(fullMessageHistory, turnId)[0];
     if (!narrationText.trim() || !name) return;
-    const entity = allEntities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    const found = allEntities.find((e) => e.name.trim().toLowerCase() === name.trim().toLowerCase());
+    // The diary request sends the entity's text as it stands, so it resolves here with its owner.
+    const entity = found && resolveEntityTexts([found], resolveEntityText)[0];
 
     diaryDrainingRef.current = true;
     setDiaryActive(true);
@@ -3622,7 +3626,7 @@ const GameViewer = ({
         setDiaryActive(false);
       }
     })();
-  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, diaryPrompt, contextValues, setFullMessageHistory]);
+  }, [characterDiaries, thinkingMode, isWaitingForAI, digestActive, discoverActive, fullMessageHistory, allEntities, resolveEntityText, diaryPrompt, contextValues, setFullMessageHistory]);
 
   // Runtime characters (Slice 2): promote a narration-confirmed character into a persisted entity.
   // Idle-gated and serialized like the diary drainer; runs before the diary pass so a new character is
@@ -3912,7 +3916,7 @@ const GameViewer = ({
         picked, random: Math.random,
       });
       openingSessionRef.current = {
-        ...newOpeningSession(), drawn: drawn.opening, drawnOwnerId: drawn.ownerId, shown: drawn.shown,
+        ...newOpeningSession(), drawn: { opening: drawn.opening, ownerId: drawn.ownerId }, shown: drawn.shown,
         startLocationId: location?.id ?? null,
       };
       const openingText = resolveOpening(drawn.opening.text, {

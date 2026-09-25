@@ -51,8 +51,7 @@ export function liveChipScene(
   location?: GameLocation | null,
   box?: SceneWrites | null,
 ): ChipScene {
-  // Each entity's text resolves with that entity as its owner, the way trait text resolves under its own
-  // pins; the scene's resolve then finds no chip left in it.
+  // Each entity's text resolves with that entity as its owner, as trait text resolves under its own pins.
   const resolveEntity = box?.resolveEntity ?? sources.resolveEntity;
   const allEntities = resolveEntityTexts(sources.allEntities, resolveEntity);
   const persona = sources.persona && {

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import { chipValues } from './chipValues';
 import { resolveEntityText } from '../placeholders';
-import { buildCharacterUserMessage } from '../stagedPlanning';
+import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
 import type { Entity, GameLocation, PlayerStat, Trait } from '@/types';
 
@@ -97,6 +97,9 @@ describe('the live adapter', () => {
     const message = buildCharacterUserMessage({ character: { name: 'Porter', entity }, scene: '', action: 'Wave.' });
     expect(message).toContain('My background (who I am in general, not this exact moment): Porter, a hauler.');
     expect(message).not.toContain('{{');
+    const diary = buildDiaryUserMessage({ name: 'Porter', entity, narration: 'Porter waved.' });
+    expect(diary).toContain('Porter, a hauler.');
+    expect(diary).not.toContain('{{');
   });
 
   it("resolves the persona's own text with the persona as the Character Name", () => {

@@ -1,6 +1,6 @@
 # 02: Character Name Resolves Live
 
-Status: in-progress
+Status: ready-for-human
 Base: c0bd007a
 Blocked by: 01 — Built-in Registry Replaces the User-Macro Special Cases
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

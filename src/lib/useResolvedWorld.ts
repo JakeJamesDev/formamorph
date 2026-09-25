@@ -9,7 +9,7 @@ import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
   resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
-  resolveDictionaryEntryNames,
+  resolveDictionaryEntryNames, type ResolveEntityText,
 } from '@/lib/resolveWorldNames';
 import type {
   CodePins, Connection, DictionaryEntry, Entity, GameLocation, PlaceholderRolls, PlayerStat, Stat, Trait, TraitGroup,
@@ -76,7 +76,7 @@ export interface ResolvedWorld {
   /** Resolve opening text, where the Player Name chip reads "you" with no persona. */
   resolveOpening: (text: string, over?: OpeningOverrides) => string;
   /** Resolve an entity's own text (descriptions, summary) with that entity as the Character Name. */
-  resolveEntityText: (entity: Entity, text: string) => string;
+  resolveEntityText: ResolveEntityText;
   /** `resolveEntityText` against a pin map of the caller's own. */
   resolveEntityFor: (pins: Record<string, string>, entity: Entity, text: string) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
@@ -151,7 +151,7 @@ export function useResolvedAuthoredWorld(
       ? personaName
       : over.persona && resolvePlaceholders(over.persona.entity.name, { placeholders: set, rolls: withRolls, pins: withPins });
     const opts = { placeholders: set, rolls: withRolls, pins: withPins, player: { name, kind: 'opening' as const } };
-    return over.owner ? resolveEntityCore(over.owner, text, opts) : resolvePlaceholders(text, opts);
+    return resolveEntityCore(over.owner ?? null, text, opts);
   }, [placeholders, rolls, pins, personaName]);
   const resolveEntityFor = useCallback(
     (withPins: Record<string, string>, entity: Entity, text: string) =>

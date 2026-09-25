@@ -93,7 +93,7 @@ export function poolChances(pool: readonly PoolEntry[]): number[] {
   return pool.map((e) => (total > 0 ? (e.weight / total) * 100 : 0));
 }
 
-/** A drawn row: the opening and the id of the entity that owns it, or null for the world's own. */
+/** A drawn row, without the weight that drew it. */
 export type DrawnOpening = Pick<PoolEntry, 'ownerId' | 'opening'>;
 
 /** One row by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
