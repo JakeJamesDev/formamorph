@@ -1,6 +1,7 @@
 # Spec: Bundled upload block (client)
 
 Status: ready-for-agent
+Spec session: Spec: Bundled upload block (client)
 
 Server side: the FormamorphServer repo, `docs-internal/specs/bundled-upload-block/spec.md`.
 
