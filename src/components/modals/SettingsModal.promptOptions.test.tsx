@@ -26,7 +26,7 @@ vi.mock('@/lib/embeddingWorkerClient', () => ({
 
 /** A reasoning model on LM Studio, so the switch and the budget slider both render. */
 const takesBudget: ReasoningCapability = {
-  reasons: true, levels: ['none', 'low', 'medium', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null,
+  reasons: true, levels: ['none', 'low', 'medium', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, tools: null,
   sources: { reasons: 'native', levels: 'probe', budget: 'native' },
 };
 

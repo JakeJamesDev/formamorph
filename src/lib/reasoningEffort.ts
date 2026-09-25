@@ -1,6 +1,8 @@
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { AIRequestType } from '@/types';
-import { probeKnownAbsent, recordProbeStatus } from '@/lib/probeMemo';
+import {
+  probeKnownAbsent, recordProbeStatus, completionProbeAnswers, recordCompletionProbe, type CompletionProbeAnswers,
+} from '@/lib/probeMemo';
 import { observationAnswer, type ReasoningObservation } from '@/lib/reasoningObservation';
 import { deriveModelsUrls } from '@/lib/contextLength';
 import { loadReasoningCatalog, catalogSaysReasons, type ReasoningCatalogLoader } from '@/lib/reasoningCatalog';
@@ -31,10 +33,10 @@ const CAPABILITY_SOURCES: readonly ReasoningCapabilitySource[] = [
   'identity', 'native', 'catalog', 'observed', 'probe', 'engine', 'cache',
 ];
 
-/** The five questions a capability record answers. */
-export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed';
+/** The six questions a capability record answers. */
+export type ReasoningQuestion = 'reasons' | 'levels' | 'budget' | 'dialect' | 'offAllowed' | 'tools';
 
-const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect', 'offAllowed'];
+const CAPABILITY_QUESTIONS: readonly ReasoningQuestion[] = ['reasons', 'levels', 'budget', 'dialect', 'offAllowed', 'tools'];
 
 /**
  * What the app knows about one endpoint-and-model pair's native reasoning. Every reader asks this record:
@@ -54,19 +56,26 @@ export interface ReasoningCapability {
   /** Whether this model accepts a switched-off request. `false` locks the switch on. Where no source has
    *  answered, the dialect's own row decides. */
   readonly offAllowed: boolean | null;
+  /** Whether the endpoint and model take Tools. Only `true` sends them; see `toolsSupported`. */
+  readonly tools: boolean | null;
   /** Where each answer came from. */
   readonly sources: Partial<Record<ReasoningQuestion, ReasoningCapabilitySource>>;
 }
 
 /** The record for a target nothing has answered for yet. */
 export const UNKNOWN_REASONING_CAPABILITY: ReasoningCapability = {
-  reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: {},
+  reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {},
 };
+
+/** True only where a source said the endpoint and model take Tools. Unknown sends none. */
+export function toolsSupported(capability: ReasoningCapability | null | undefined): boolean {
+  return capability?.tools === true;
+}
 
 /** The record for a model one source rules out: it reasons not at all, so it accepts no effort literal. */
 export function nonReasoningCapability(source: ReasoningCapabilitySource): ReasoningCapability {
   return {
-    reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null,
+    reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
     sources: { reasons: source, levels: source },
   };
 }
@@ -87,7 +96,9 @@ export function reasoningCapabilityFromLevels(
   source: ReasoningCapabilitySource,
 ): ReasoningCapability {
   if (levels.length === 0) return nonReasoningCapability(source);
-  return { reasons: null, levels, budget: null, dialect: 'unknown', offAllowed: null, sources: { levels: source } };
+  return {
+    reasons: null, levels, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { levels: source },
+  };
 }
 
 /**
@@ -145,12 +156,12 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
     return raw.every(isLevel)
       ? {
           reasons: null, levels: raw as ReasoningEffortField[], budget: null, dialect: 'unknown',
-          offAllowed: null, sources: { levels: 'cache' },
+          offAllowed: null, tools: null, sources: { levels: 'cache' },
         }
       : null;
   }
   if (!raw || typeof raw !== 'object') return null;
-  const { reasons, levels, budget, dialect, offAllowed, sources } = raw as Record<string, unknown>;
+  const { reasons, levels, budget, dialect, offAllowed, tools, sources } = raw as Record<string, unknown>;
   const isTriState = (v: unknown) => v === null || typeof v === 'boolean';
   if (!isTriState(reasons) || !isTriState(budget)) return null;
   if (levels !== null && !(Array.isArray(levels) && levels.every(isLevel))) return null;
@@ -161,6 +172,7 @@ export function parseReasoningCapability(raw: unknown): ReasoningCapability | nu
     dialect: isReasoningDialect(dialect) ? dialect : 'unknown',
     // A record stored before this answer existed carries none, and the dialect's row decides for it.
     offAllowed: typeof offAllowed === 'boolean' ? offAllowed : null,
+    tools: typeof tools === 'boolean' ? tools : null,
     sources: parseCapabilitySources(sources),
   };
 }
@@ -533,12 +545,16 @@ const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
   const entry = models.find((m) => (m as { key?: unknown }).key === target.model) ?? models.find(loaded);
   if (!entry || typeof entry !== 'object') return null; // model not listed → inconclusive
   const caps = (entry as { capabilities?: unknown }).capabilities;
-  const reasoning = caps && typeof caps === 'object' ? (caps as Record<string, unknown>).reasoning : undefined;
+  const listed = caps && typeof caps === 'object' ? caps as Record<string, unknown> : {};
+  const reasoning = listed.reasoning;
+  // LM Studio sends Tools to a model not trained for them, which skips or garbles them, so only a yes counts.
+  const tools = listed.trained_for_tool_use === true;
   // A model listed without the object does not reason. The budget stays unanswered there: nothing has
   // tested whether the endpoint takes the field for such a model. The dialect is named either way — only
   // LM Studio serves this list, so reaching it identifies the server whatever the model turns out to be.
   if (!reasoning || typeof reasoning !== 'object') {
-    return withDialect(nonReasoningCapability('native'), 'lmstudio', 'native');
+    const ruledOut = nonReasoningCapability('native');
+    return withDialect({ ...ruledOut, tools, sources: { ...ruledOut.sources, tools: 'native' } }, 'lmstudio', 'native');
   }
   const allowed = (reasoning as { allowed_options?: unknown }).allowed_options;
   const levels = Array.isArray(allowed)
@@ -549,14 +565,18 @@ const lmStudioSource: NativeSource = async (target, doFetch, signal) => {
     levels,
     budget: true,
     offAllowed: null,
-    sources: { reasons: 'native', budget: 'native', ...(levels ? { levels: 'native' as const } : {}) },
+    tools,
+    sources: {
+      reasons: 'native', budget: 'native', tools: 'native', ...(levels ? { levels: 'native' as const } : {}),
+    },
   }, 'lmstudio', 'native');
 };
 
 /**
  * Ollama's show endpoint (`POST {origin}/api/show`). Its `capabilities` array names `thinking` for a model
- * that reasons. The array is omitted rather than emptied when the server has nothing to say, so a body
- * without it is inconclusive and never a no. Ollama advertises no strengths and no budget.
+ * that reasons and `tools` for one that takes Tools. The array is omitted rather than emptied when the
+ * server has nothing to say, so a body without it is inconclusive and never a no. Ollama advertises no
+ * strengths and no budget.
  */
 const ollamaSource: NativeSource = async (target, doFetch, signal) => {
   const origin = originOf(target.url);
@@ -568,8 +588,11 @@ const ollamaSource: NativeSource = async (target, doFetch, signal) => {
   }, signal);
   const capabilities = body?.capabilities;
   if (!Array.isArray(capabilities)) return null;
-  if (!capabilities.includes('thinking')) return nonReasoningCapability('native');
-  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'native' } };
+  const tools = capabilities.includes('tools');
+  const reasoning: ReasoningCapability = capabilities.includes('thinking')
+    ? { ...UNKNOWN_REASONING_CAPABILITY, reasons: true, sources: { reasons: 'native' } }
+    : nonReasoningCapability('native');
+  return { ...reasoning, tools, sources: { ...reasoning.sources, tools: 'native' } };
 };
 
 /**
@@ -593,6 +616,7 @@ const llamaCppSource: NativeSource = async (target, doFetch, signal) => {
     budget: null,
     dialect: 'unknown',
     offAllowed: null,
+    tools: null,
     sources: { levels: 'native' },
   };
 };
@@ -626,6 +650,7 @@ function openRouterCapability(reasoning: Record<string, unknown>): ReasoningCapa
     budget: budget === true,
     dialect: 'openrouter',
     offAllowed,
+    tools: null,
     sources: {
       reasons: 'native', budget: 'native', dialect: 'native', offAllowed: 'native',
       ...(levels ? { levels: 'native' as const } : {}),
@@ -658,7 +683,7 @@ const modelListSource: NativeSource = async (target, doFetch, signal) => {
   const params = (entry as { supported_parameters?: unknown }).supported_parameters;
   if (Array.isArray(params)) {
     return params.some((p) => GATEWAY_REASONING_PARAMS.includes(String(p)))
-      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'native' } }
+      ? { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'native' } }
       : nonReasoningCapability('native');
   }
 
@@ -683,6 +708,7 @@ const identitySource: NativeSource = async (target) => {
     budget: answer.budget,
     dialect: answer.dialect,
     offAllowed: answer.offAllowed ?? null,
+    tools: null,
     sources: {
       reasons: from, budget: from, dialect: from,
       ...(answer.levels === null ? {} : { levels: from }),
@@ -696,16 +722,27 @@ const NATIVE_SOURCES: readonly NativeSource[] = [
   identitySource, lmStudioSource, ollamaSource, llamaCppSource, modelListSource,
 ];
 
-/**
- * The one completion a resolve may send, and only when nothing advertised. It asks for the `none` literal:
- * a rejection proves the endpoint exposes no reasoning field at all, so the model does not reason.
- * Acceptance proves only that the field parses, so the reasons question stays open on the safe levels.
- */
-async function probeNoneLiteral(
+/** Which fields one probe completion carries, and so which questions it asks. */
+interface ProbeFields {
+  /** The `none` effort literal: a rejection proves the endpoint exposes no reasoning field at all. */
+  readonly reasoning: boolean;
+  /** One Tool with `tool_choice: "auto"`, the pair play sends, so refusing either reads as no Tools. */
+  readonly tools: boolean;
+}
+
+/** The Tool a probe carries. It does nothing and takes nothing. */
+const PROBE_TOOL = {
+  type: 'function',
+  function: { name: 'noop', description: 'Does nothing.', parameters: { type: 'object', properties: {} } },
+} as const;
+
+/** Sends one probe completion: `true` for a 200, `false` for a 400, `null` for anything that proves nothing. */
+async function sendProbe(
   target: ReasoningTarget,
   doFetch: ResolverFetch,
+  fields: ProbeFields,
   signal?: AbortSignal,
-): Promise<ReasoningCapability | null> {
+): Promise<boolean | null> {
   try {
     const res = await doFetch(target.url, {
       method: 'POST',
@@ -715,23 +752,67 @@ async function probeNoneLiteral(
         messages: [{ role: 'user', content: '.' }],
         max_tokens: 1,
         stream: false,
-        reasoning_effort: 'none',
+        ...(fields.reasoning ? { reasoning_effort: 'none' } : {}),
+        ...(fields.tools ? { tools: [PROBE_TOOL], tool_choice: 'auto' } : {}),
       }),
       signal,
     });
     // Drain the tiny body so the connection frees promptly.
     await res.text().catch(() => undefined);
-    if (res.status === 400) return nonReasoningCapability('probe');
-    if (res.status === 200) {
-      return {
-        reasons: null, levels: [...SAFE_REASONING_EFFORTS], budget: null, dialect: 'unknown',
-        offAllowed: null, sources: { levels: 'probe' },
-      };
-    }
+    if (res.status === 200) return true;
+    if (res.status === 400) return false;
     return null; // auth/5xx/other → inconclusive
   } catch {
     return null; // network/abort → inconclusive
   }
+}
+
+/**
+ * Asks the questions no source answered, in as few completions as it can. With both open, one bundled probe
+ * asks both: a 200 answers both, and a 400 splits into one probe per field to find the one refused. With
+ * one open, that field goes alone. Every conclusive answer is memoized per endpoint and model, so a later
+ * resolve this session sends only what it still does not know.
+ */
+async function probeCompletions(
+  target: ReasoningTarget,
+  doFetch: ResolverFetch,
+  wanted: ProbeFields,
+  signal?: AbortSignal,
+): Promise<CompletionProbeAnswers> {
+  const known = completionProbeAnswers(target.url, target.model);
+  const open: ProbeFields = {
+    reasoning: wanted.reasoning && known.reasoning === undefined,
+    tools: wanted.tools && known.tools === undefined,
+  };
+  if (open.reasoning && open.tools && known.bundle === undefined) {
+    const both = await sendProbe(target, doFetch, open, signal);
+    if (both === null) return known; // an inconclusive answer attributes nothing, so it is not split
+    recordCompletionProbe(target.url, target.model, both ? { reasoning: true, tools: true } : { bundle: false });
+    if (both) return completionProbeAnswers(target.url, target.model);
+  }
+  for (const field of ['reasoning', 'tools'] as const) {
+    if (!open[field]) continue;
+    const accepted = await sendProbe(target, doFetch, { reasoning: field === 'reasoning', tools: field === 'tools' }, signal);
+    if (accepted !== null) recordCompletionProbe(target.url, target.model, { [field]: accepted });
+  }
+  return completionProbeAnswers(target.url, target.model);
+}
+
+/**
+ * The record the probe answers prove, for the wanted questions only, or `null` when they prove nothing.
+ * An accepted `none` literal proves only that the field parses, so the reasons question stays open on the
+ * safe levels.
+ */
+function probedCapability(answers: CompletionProbeAnswers, wanted: ProbeFields): ReasoningCapability | null {
+  const reasoning = wanted.reasoning ? answers.reasoning : undefined;
+  const tools = wanted.tools ? answers.tools : undefined;
+  if (reasoning === undefined && tools === undefined) return null;
+  const base: ReasoningCapability = reasoning === undefined
+    ? UNKNOWN_REASONING_CAPABILITY
+    : reasoning
+      ? { ...UNKNOWN_REASONING_CAPABILITY, levels: [...SAFE_REASONING_EFFORTS], sources: { levels: 'probe' } }
+      : nonReasoningCapability('probe');
+  return tools === undefined ? base : { ...base, tools, sources: { ...base.sources, tools: 'probe' } };
 }
 
 /**
@@ -779,18 +860,36 @@ function withProvenSeparation(
 }
 
 /**
- * The source chain itself. It walks the advertisement sources in order and returns the first that answers,
- * so a backend that publishes its own capabilities is never sent a test completion. Next it matches the
- * model id against the public catalog, then reads what the replies already showed. Only when none of those
- * answers does it send the single probe.
+ * Runs the source chain, then probes for whatever it left open: the reasons question when no source
+ * answered it, and the tools question when no source answered that. An advertisement outranks the probe,
+ * which only learns whether a field parses.
  */
 async function gatherReasoningCapability(
   target: ReasoningTarget,
   doFetch: ResolverFetch,
   context: ReasoningResolveContext,
 ): Promise<ReasoningCapability | null> {
-  const { observation, loadCatalog = loadReasoningCatalog, signal } = context;
   if (!originOf(target.url)) return null; // a half-typed endpoint gets no request at all
+  const { record, reasonsOpen } = await gatherAdvertised(target, doFetch, context);
+  const wanted: ProbeFields = { reasoning: reasonsOpen, tools: record?.tools == null };
+  if (!wanted.reasoning && !wanted.tools) return record;
+  const probed = probedCapability(await probeCompletions(target, doFetch, wanted, context.signal), wanted);
+  if (!probed) return record;
+  return record ? mergeReasoningCapability(probed, record) : probed;
+}
+
+/**
+ * The source chain itself. It walks the advertisement sources in order and returns the first that answers
+ * the reasons question, so a backend that publishes its own capabilities is never sent a test completion.
+ * Next it matches the model id against the public catalog, then reads what the replies already showed.
+ * `reasonsOpen` is true only when none of those answered, which is when the reasoning probe fires.
+ */
+async function gatherAdvertised(
+  target: ReasoningTarget,
+  doFetch: ResolverFetch,
+  context: ReasoningResolveContext,
+): Promise<{ record: ReasoningCapability | null; reasonsOpen: boolean }> {
+  const { observation, loadCatalog = loadReasoningCatalog, signal } = context;
   let gathered: ReasoningCapability | null = null;
   for (const source of NATIVE_SOURCES) {
     const answer = await source(target, doFetch, signal);
@@ -799,7 +898,7 @@ async function gatherReasoningCapability(
     gathered = gathered ? mergeReasoningCapability(answer, gathered) : answer;
     // Only the reasons question ends the chain. A source that names the strengths but not whether the
     // model thinks (llama.cpp) leaves the question open, so the next source still gets to answer it.
-    if (gathered.reasons !== null) return gathered;
+    if (gathered.reasons !== null) return { record: gathered, reasonsOpen: false };
   }
   // A well-known model id, so a catalog-listed model is known to reason before the first turn. The catalog
   // answers the reasons question alone; the levels and budget stay as the advertisements left them. Its
@@ -807,18 +906,15 @@ async function gatherReasoningCapability(
   // sources below. A failed load says nothing and costs the chain nothing.
   if (gathered?.reasons == null && catalogSaysReasons(await loadCatalog(doFetch), target.model)) {
     const listed: ReasoningCapability = {
-      reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'catalog' },
+      reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'catalog' },
     };
-    return gathered ? mergeReasoningCapability(listed, gathered) : listed;
+    return { record: gathered ? mergeReasoningCapability(listed, gathered) : listed, reasonsOpen: false };
   }
   // What the replies already showed, which costs no request at all. It is asked only once no advertisement
   // named an answer, so a native yes or no is never overridden by what one reply happened to look like.
   const observed = observedCapability(observation);
-  if (observed) return gathered ? mergeReasoningCapability(observed, gathered) : observed;
-  const probed = await probeNoneLiteral(target, doFetch, signal);
-  if (!probed) return gathered;
-  // An advertisement outranks the probe, which only learns whether the field parses.
-  return gathered ? mergeReasoningCapability(probed, gathered) : probed;
+  if (observed) return { record: gathered ? mergeReasoningCapability(observed, gathered) : observed, reasonsOpen: false };
+  return { record: gathered, reasonsOpen: true };
 }
 
 /**
@@ -831,16 +927,17 @@ function observedCapability(observation: ReasoningObservation | null | undefined
   const answer = observationAnswer(observation);
   if (answer === null) return null;
   if (!answer) return nonReasoningCapability('observed');
-  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'observed' } };
+  return { reasons: true, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'observed' } };
 }
 
 /**
- * Whether a stored record still wants resolving: nothing stored at all, or an answer only the cache
- * vouches for. A record written before this session's advertisement sources existed carries `cache` as its
- * source, and whatever levels were stored with it, so it is asked again and a live source replaces them.
+ * Whether a stored record still wants resolving: nothing stored at all, an answer only the cache vouches
+ * for, or no tools answer. A record written before this session's advertisement sources existed carries
+ * `cache` as its source, and whatever levels were stored with it, so it is asked again and a live source
+ * replaces them. A record stored before the tools question existed is asked once for that answer.
  */
 export function reasoningNeedsResolve(capability: ReasoningCapability | null | undefined): boolean {
-  if (!capability) return true;
+  if (!capability || capability.tools === null) return true;
   return Object.values(capability.sources).some((source) => source === 'cache');
 }
 
@@ -854,13 +951,14 @@ export function mergeReasoningCapability(
   fresh: ReasoningCapability,
 ): ReasoningCapability {
   if (!stored) return fresh;
-  const pick = <K extends 'reasons' | 'levels' | 'budget' | 'offAllowed'>(question: K): ReasoningCapability[K] =>
+  const pick = <K extends 'reasons' | 'levels' | 'budget' | 'offAllowed' | 'tools'>(question: K): ReasoningCapability[K] =>
     (fresh[question] !== null ? fresh[question] : stored[question]);
   return {
     reasons: pick('reasons'),
     levels: pick('levels'),
     budget: pick('budget'),
     offAllowed: pick('offAllowed'),
+    tools: pick('tools'),
     // `unknown` is the dialect's unanswered form, so it keeps whatever the stored record named.
     dialect: fresh.dialect !== 'unknown' ? fresh.dialect : stored.dialect,
     sources: { ...stored.sources, ...fresh.sources },

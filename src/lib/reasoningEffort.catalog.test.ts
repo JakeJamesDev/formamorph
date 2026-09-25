@@ -3,7 +3,7 @@ import { resolveReasoningCapability, SAFE_REASONING_EFFORTS } from './reasoningE
 import { parseReasoningCatalog, resetReasoningCatalog, REASONING_CATALOG_URL, REASONING_CATALOG_STORAGE_KEY } from './reasoningCatalog';
 import { resetProbeMemo } from './probeMemo';
 import {
-  reasoningBackend as backend, probeCount, REASONING_TARGET,
+  reasoningBackend as backend, probeCount, probeKinds, REASONING_TARGET,
   OLLAMA_URL, PROPS_URL, COMPLETIONS_URL,
 } from '@/test/reasoningBackend';
 
@@ -34,10 +34,10 @@ describe('the catalog answers before the probe', () => {
     expect(record?.sources.reasons).toBe('catalog');
   });
 
-  it('sends no completion once the catalog has answered', async () => {
+  it('sends no reasoning probe once the catalog has answered', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS_URL]: { status: 200, body: {} } });
     await resolveReasoningCapability(TARGET, doFetch, { loadCatalog: loader(CATALOG).loadCatalog });
-    expect(probeCount(calls)).toBe(0);
+    expect(probeKinds(calls)).toEqual(['tools']);
   });
 
   it('leaves the probe to run when the catalog does not list the model', async () => {
@@ -53,7 +53,7 @@ describe('the catalog answers before the probe', () => {
   it('leaves the probe to run when the catalog fails to load', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS_URL]: { status: 400, body: {} } });
     const record = await resolveReasoningCapability(TARGET, doFetch, { loadCatalog: loader(null).loadCatalog });
-    expect(probeCount(calls)).toBe(1);
+    expect(probeKinds(calls)).toEqual(['bundle', 'reasoning', 'tools']);
     expect(record?.sources.reasons).toBe('probe');
   });
 

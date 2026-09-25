@@ -1,6 +1,8 @@
 /**
- * Session-scoped memory of which optional probe URLs an endpoint has already 404'd. The LM Studio
- * native lists (`/api/v0/models`, `/api/v1/models`) are probed by several features, and the browser
+ * Session-scoped probe memory: which optional probe URLs an endpoint has already 404'd, and what each
+ * endpoint-and-model pair's completion probes proved.
+ *
+ * The LM Studio native lists (`/api/v0/models`, `/api/v1/models`) are probed by several features, and the browser
  * logs every 404 to the console — on a non-LM-Studio endpoint that reads as a stream of errors. A
  * 404 is a stable fact about an origin, so each URL is asked once per session and skipped after.
  *
@@ -35,7 +37,34 @@ function carriesError(body: unknown): boolean {
   return !!body && typeof body === 'object' && 'error' in body;
 }
 
+/**
+ * What one endpoint-and-model pair's completion probes proved this session: `true` for a 200, `false` for a
+ * 400. `bundle` is the probe that asks both fields at once; only its 400 is kept, since its 200 answers the
+ * other two. An inconclusive answer is never recorded, so the pair is asked again.
+ */
+export interface CompletionProbeAnswers {
+  readonly reasoning?: boolean;
+  readonly tools?: boolean;
+  readonly bundle?: false;
+}
+
+const completionAnswers = new Map<string, CompletionProbeAnswers>();
+
+const completionKey = (url: string, model: string) => `${url}|${model}`;
+
+/** What earlier completion probes proved for this endpoint and model. */
+export function completionProbeAnswers(url: string, model: string): CompletionProbeAnswers {
+  return completionAnswers.get(completionKey(url, model)) ?? {};
+}
+
+/** Records conclusive completion-probe answers for this endpoint and model. */
+export function recordCompletionProbe(url: string, model: string, answers: CompletionProbeAnswers): void {
+  const key = completionKey(url, model);
+  completionAnswers.set(key, { ...completionAnswers.get(key), ...answers });
+}
+
 /** Test-only: forget everything. */
 export function resetProbeMemo(): void {
   absent.clear();
+  completionAnswers.clear();
 }
