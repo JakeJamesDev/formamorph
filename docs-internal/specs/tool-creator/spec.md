@@ -103,8 +103,8 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 
 - **Built-in Tools are a global catalog**, a code constant, visible in every preset. A preset stores an override per built-in id: `{ enabled: boolean; offeredTo: AIRequestType[] }`. Definition, parameters and handler are never editable; Duplicate copies the Tool into the active user preset as a user Tool. The catalog ships `get_entity` with `enabled: false, offeredTo: ['narration']`. The Experimental built-in preset ships an override with `enabled: true`. A built-in preset's overrides are constants, so its controls are read-only.
 - The name follows the function-name rule: letters, digits, `_` and `-`, 1–64 characters. A user Tool's name must be unique in its preset and must not match a catalog name.
-- A global call-limit default lives in the settings defaults. A Tool's own limit overrides it. Limits count per request.
-- The catalog `get_entity` description is the retrieve-first wording from `involved-rescore-findings.md`.
+- A global call-limit default lives in the settings defaults, set to 4 calls per Tool per request. A Tool's own limit overrides it. Limits count per request.
+- The catalog `get_entity` ships the probed retrieve-first arm verbatim: the description from arm B in `selection-retrieve-first-prompt.md`, including the background-appearances clause and "when provided by the author". Its `name` parameter carries no description, as probed; the Input line in the description already names it. Its empty result is `{"matches": []}`. The prototype's shortened wording was never probed and is not used.
 
 ### Tool Runner (new module, React-free)
 
