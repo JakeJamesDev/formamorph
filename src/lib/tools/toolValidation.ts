@@ -2,8 +2,11 @@ import type { AIRequestType, Tool, ToolHandler, ToolOverrideMap, ToolParam, Tool
 import { ALL_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG, isCatalogToolId } from './toolCatalog';
 
+/** The longest Tool name endpoints accept. */
+export const TOOL_NAME_MAX = 64;
+
 /** The function-name rule endpoints enforce. */
-export const TOOL_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+export const TOOL_NAME_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${TOOL_NAME_MAX}}$`);
 
 /** Why a Tool name can't be saved: bad characters or length, used by another Tool in the preset, or a catalog name. */
 export type ToolNameProblem = 'format' | 'taken' | 'builtin';
