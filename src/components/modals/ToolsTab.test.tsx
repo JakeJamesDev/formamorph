@@ -167,7 +167,7 @@ describe('Delete', () => {
 });
 
 describe('edit mode', () => {
-  it('opens an empty edit shell from Edit and New Tool, and Cancel returns to the read view', async () => {
+  it('opens the editor from Edit and New Tool, and Cancel returns to the read view', async () => {
     const user = userEvent.setup();
     render(<Harness initial={userStore([tool()])} />);
     await user.click(list().getByRole('button', { name: 'get_weather' }));

@@ -101,6 +101,9 @@ const SAMPLE_WORLD: AuthoredWorld = {
   }],
 };
 
+/** The sample world's lore books, for a reader that takes the dictionary beside the scene. */
+export const sampleDictionaries = () => SAMPLE_WORLD.dictionaries ?? [];
+
 /** The player the sample plays: a library persona, so no known-person line. */
 const persona: ResolvedPersona = {
   source: 'library',
