@@ -1,9 +1,9 @@
 /**
- * Reading stat code without running it: what a caret can be completed with, and what looks wrong.
+ * Reading sandboxed code without running it: what a caret can be completed with, and what looks wrong.
  *
  * Both halves are plain functions over a code string — the editor's autocomplete source and linter are
- * thin adapters over these, so the behavior is testable without an editor mounted. Everything they know
- * about the sandbox comes from `statCodeSurface`; nothing here widens what QuickJS exposes.
+ * thin adapters over these, so the behavior is testable without an editor mounted. What the code can
+ * reach comes from the surface it is read against; nothing here widens what QuickJS exposes.
  */
 
 import { javascriptLanguage } from '@codemirror/lang-javascript';
@@ -13,10 +13,11 @@ import { placeholderKindNoun } from '@/lib/placeholders';
 import { findSlotRanges, parseTemplateSlots } from '@/lib/statCodeTemplates';
 import type { Placeholder } from '@/types';
 import {
-  BUILTIN_MEMBERS, DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SANDBOX_BUILTINS, SANDBOX_GLOBALS, SANDBOX_KNOWN_NAMES,
-  SELF_WRITABLE_FIELDS, STAT_FIELDS, TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, nearestName, nearestSurfaceName,
-  placeholderEntryFields,
-  type SurfaceEntry,
+  nearestName, surfaceHasGlobal, surfaceKnownNames, type CodeSurface, type SurfaceEntry,
+} from '@/lib/codeSurface';
+import {
+  DELTA_FIELDS, DELTA_MEMBERS, PREVIOUS_FIELDS, SELF_WRITABLE_FIELDS, STAT_CODE_SURFACE, STAT_FIELDS,
+  TRAIT_ENTRY_FIELDS, TRAIT_WRITABLE_FIELD, placeholderEntryFields,
 } from '@/lib/statCodeSurface';
 import {
   isPlaceholderEntryMember, placeholderKeyWinner, placeholderPathDots, placeholderPathLabel, placeholderPathMap,
@@ -68,6 +69,22 @@ export interface AnalysisOptions {
   statNames?: readonly string[];
   /** The name of the stat the code belongs to, so a write through `stats` to that name counts as its own. */
   selfName?: string;
+}
+
+/** The options a reader takes for any surface. */
+export interface SurfaceAnalysisOptions extends AnalysisOptions {
+  /** What the code can reach. */
+  surface: CodeSurface;
+}
+
+/** Which of the stat-code maps the surface injects, and so which of their rules apply. */
+function statRulesOf(surface: CodeSurface) {
+  return {
+    stats: surfaceHasGlobal(surface, 'stats'),
+    self: surfaceHasGlobal(surface, 'self'),
+    placeholders: surfaceHasGlobal(surface, 'placeholders'),
+    traits: surfaceHasGlobal(surface, 'traits'),
+  };
 }
 
 const parse = (code: string): Tree => javascriptLanguage.parser.parse(code);
@@ -328,17 +345,23 @@ function placeholderMembersAt(
  * editor asserting the sandbox holds something it never has.
  */
 function membersAfterDot(
-  code: string, tree: Tree, dotPos: number, options: AnalysisOptions,
+  code: string, tree: Tree, dotPos: number, options: SurfaceAnalysisOptions,
 ): readonly SurfaceEntry[] | null {
   const expression = expressionBeforeDot(code, dotPos);
   if (expression === null) return null;
-  if (expression === 'stats') return options.statNames ? mapNameEntries(options.statNames, 'stat', true) : null;
-  const segments = placeholderPathSegments(expression);
+  const rules = statRulesOf(options.surface);
+  if (rules.stats && expression === 'stats') {
+    return options.statNames ? mapNameEntries(options.statNames, 'stat', true) : null;
+  }
+  const segments = rules.placeholders ? placeholderPathSegments(expression) : null;
   if (segments !== null) {
     return options.placeholders ? placeholderMembersAt(options.placeholders, segments) : null;
   }
-  if (expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
-  if (TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
+  if (rules.traits && expression === 'traits') return options.traits ? mapNameEntries(options.traits, 'trait', true) : null;
+  if (rules.traits && TRAIT_ENTRY_EXPRESSION.test(expression)) return TRAIT_ENTRY_FIELDS;
+  const listed = options.surface.members.get(expression);
+  if (listed) return listed;
+  if (!rules.stats && !rules.self) return null;
   const turnInput = /^(.+)\.(previous|delta)$/.exec(expression);
   if (turnInput) {
     if (!looksLikeStat(code, tree, turnInput[1])) return null;
@@ -348,8 +371,7 @@ function membersAfterDot(
   if (deltaMember && DELTA_MEMBERS.some((member) => member.name === deltaMember[2])) {
     return looksLikeStat(code, tree, deltaMember[1]) ? DELTA_FIELDS : null;
   }
-  return BUILTIN_MEMBERS.get(expression)
-    ?? (looksLikeStat(code, tree, expression) ? STAT_FIELDS : null);
+  return looksLikeStat(code, tree, expression) ? STAT_FIELDS : null;
 }
 
 /** The member expression an assignment, `++` or `--` writes to, or null when it writes something else. */
@@ -605,15 +627,18 @@ const KEYWORDS = ['return', 'const', 'let', 'if', 'else', 'for', 'of', 'function
  * What the caret at `pos` can be completed with, or null where nothing sensible applies. Synchronous and
  * pure: doc and cursor in, options out, with no editor and no network involved.
  */
-export function statCodeCompletions(
+export function codeCompletions(
   code: string,
   pos: number,
-  options: AnalysisOptions = {},
+  options: SurfaceAnalysisOptions,
 ): CompletionResult | null {
+  const { surface } = options;
+  const known = surfaceKnownNames(surface);
   const tree = parse(code);
   const node = tree.resolveInner(pos, -1);
   const from = wordStart(code, pos);
   const ranges = slotRanges(code, options);
+  const rules = statRulesOf(surface);
 
   // Inside a string literal the useful list is the world's own stat names — the one place a typo fails
   // silently rather than throwing.
@@ -623,17 +648,18 @@ export function statCodeCompletions(
     const innerTo = code[node.to - 1] === quote && node.to - 1 > node.from ? node.to - 1 : node.to;
     if (pos < innerFrom) return null;
     // Inside `placeholders[…]` at any depth: the keys that bracket can reach, quoted names included.
-    const bracket = options.placeholders && /\[\s*$/.test(code.slice(0, node.from))
+    const bracket = rules.placeholders && options.placeholders && /\[\s*$/.test(code.slice(0, node.from))
       ? placeholderKeysInBrackets(code, node.from, options.placeholders) : null;
     if (bracket) {
       return { from: innerFrom, to: innerTo, options: bracket.map((entry) => asCompletion(entry, 'text')) };
     }
-    if (/\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
+    if (rules.traits && /\btraits\s*(\?\.)?\[\s*$/.test(code.slice(0, node.from))) {
       const names = mapNameEntries(options.traits ?? [], 'trait', false);
       return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
     }
     // Inside `stats["…"]` and any other string alike. The whole literal is replaced, not the part before
     // the caret — a name half-typed in the middle of an old one would otherwise leave its tail behind.
+    if (!rules.stats) return null;
     const names = mapNameEntries(options.statNames ?? [], 'stat', false);
     return { from: innerFrom, to: innerTo, options: names.map((entry) => asCompletion(entry, 'text')) };
   }
@@ -670,7 +696,7 @@ export function statCodeCompletions(
   // The word being typed is itself a definition while it's being typed; offering it back is noise.
   const typed = code.slice(from, pos);
   // Right after `stats[` a quoted name leads the list; `self.name` or a variable of the author's can go there too.
-  const quotedStats = /\bstats\s*(\?\.)?\[\s*$/.test(beforeWord)
+  const quotedStats = rules.stats && /\bstats\s*(\?\.)?\[\s*$/.test(beforeWord)
     ? mapNameEntries(options.statNames ?? [], 'stat', false).map((entry) => ({ ...asCompletion(entry, 'text', 2), label: JSON.stringify(entry.name) }))
     : [];
   return {
@@ -678,15 +704,19 @@ export function statCodeCompletions(
     to: pos,
     options: [
       ...quotedStats,
-      ...SANDBOX_GLOBALS.map((entry) => asCompletion(entry, 'variable', 1)),
+      ...surface.globals.map((entry) => asCompletion(entry, 'variable', 1)),
       ...[...declared]
-        .filter((name) => name !== typed && !SANDBOX_KNOWN_NAMES.has(name))
+        .filter((name) => name !== typed && !known.has(name))
         .map((name) => ({ label: name, type: 'variable' as const, detail: 'yours', info: 'Declared in this code.' })),
-      ...SANDBOX_BUILTINS.map((entry) => asCompletion(entry, 'variable')),
+      ...surface.builtins.map((entry) => asCompletion(entry, 'variable')),
       ...KEYWORDS.map((keyword) => ({ label: keyword, type: 'keyword' as const })),
     ],
   };
 }
+
+/** `codeCompletions` against the stat-code surface. */
+export const statCodeCompletions = (code: string, pos: number, options: AnalysisOptions = {}) =>
+  codeCompletions(code, pos, { ...options, surface: STAT_CODE_SURFACE });
 
 /**
  * What the reader found, as one line. Running the code reports what it returned, which says nothing
@@ -704,13 +734,16 @@ export function summarizeProblems(diagnostics: readonly CodeDiagnostic[]): strin
 }
 
 /**
- * What looks wrong with a piece of stat code: syntax the grammar can't read, references to names the
- * sandbox never provides, and code that can never hand a number back. Advisory — the Test button remains
- * the ground truth, and nothing here blocks saving.
+ * What looks wrong with a piece of code: syntax the grammar can't read, references to names the surface
+ * never provides, and code that can never hand a result back. Advisory — the Test button remains the
+ * ground truth, and nothing here blocks saving.
  */
-export function statCodeDiagnostics(code: string, options: AnalysisOptions = {}): CodeDiagnostic[] {
+export function codeDiagnostics(code: string, options: SurfaceAnalysisOptions): CodeDiagnostic[] {
   if (!code.trim()) return [];
 
+  const { surface } = options;
+  const known = surfaceKnownNames(surface);
+  const rules = statRulesOf(surface);
   const tree = parse(code);
   const ranges = slotRanges(code, options);
   const diagnostics: CodeDiagnostic[] = [];
@@ -720,9 +753,10 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
   let sawOwnWrite = false;
   let sawPlaceholderWrite = false;
   let sawTraitWrite = false;
-  const placeholdersInScope = !declared.has('placeholders');
-  const traitsInScope = !declared.has('traits');
-  const statsInScope = !declared.has('stats');
+  const placeholdersInScope = rules.placeholders && !declared.has('placeholders');
+  const traitsInScope = rules.traits && !declared.has('traits');
+  const statsInScope = rules.stats && !declared.has('stats');
+  const statWrites = rules.stats || rules.self;
 
   const cursor = tree.cursor();
   do {
@@ -743,9 +777,11 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     if (cursor.type.name === 'ReturnStatement') { sawReturn = true; continue; }
     const target = writeTarget(cursor.node, code);
     if (target && !overlapsAny(target.from, target.to, ranges)) {
-      const { own, problem } = checkWrite(target, code, tree, declared, options.selfName);
-      if (own) sawOwnWrite = true;
-      if (problem) diagnostics.push(problem);
+      if (statWrites) {
+        const { own, problem } = checkWrite(target, code, tree, declared, options.selfName);
+        if (own) sawOwnWrite = true;
+        if (problem) diagnostics.push(problem);
+      }
       if (placeholdersInScope && memberRoot(target, code) === 'placeholders') {
         sawPlaceholderWrite = true;
         const problem = cursor.type.name === 'AssignmentExpression'
@@ -781,28 +817,28 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     if (cursor.type.name !== 'VariableName') continue;
 
     const name = code.slice(from, to);
-    if (declared.has(name) || SANDBOX_KNOWN_NAMES.has(name)) continue;
+    if (declared.has(name) || known.has(name)) continue;
     if (overlapsAny(from, to, ranges)) continue;
-    const suggestion = nearestSurfaceName(name, [...declared]);
+    const suggestion = nearestName(name, [...known, ...declared]);
     diagnostics.push({
       from,
       to,
       severity: 'error',
       message: suggestion
-        ? `“${name}” isn’t available in stat code. Did you mean “${suggestion}”?`
-        : `“${name}” isn’t available in stat code.`,
+        ? `“${name}” isn’t available in ${surface.label}. Did you mean “${suggestion}”?`
+        : `“${name}” isn’t available in ${surface.label}.`,
     });
   } while (cursor.next());
 
   // Code with no return can still set the value through self, pin a placeholder, or switch a trait. Code that
   // does none of these changes nothing. A missing return on code the parser couldn't finish reading is a
   // guess about half-typed code.
-  if (!sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawTraitWrite && !sawSyntaxError) {
+  if (surface.missingReturn && !sawReturn && !sawOwnWrite && !sawPlaceholderWrite && !sawTraitWrite && !sawSyntaxError) {
     diagnostics.push({
       from: 0,
       to: Math.min(code.length, code.indexOf('\n') === -1 ? code.length : code.indexOf('\n')),
       severity: 'warning',
-      message: 'This code never returns a number or writes self.value, so the stat keeps its value.',
+      message: surface.missingReturn,
     });
   }
 
@@ -817,3 +853,7 @@ export function statCodeDiagnostics(code: string, options: AnalysisOptions = {})
     })
     .sort((a, b) => a.from - b.from);
 }
+
+/** `codeDiagnostics` against the stat-code surface. */
+export const statCodeDiagnostics = (code: string, options: AnalysisOptions = {}) =>
+  codeDiagnostics(code, { ...options, surface: STAT_CODE_SURFACE });

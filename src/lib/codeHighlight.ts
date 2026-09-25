@@ -1,5 +1,5 @@
 /**
- * JavaScript syntax colouring for stat code, shared by the editor and the read-only previews.
+ * Syntax colouring for code and JSON, shared by the editor and the read-only previews.
  *
  * The style hands out class names rather than colours, so the palette lives in CSS next to the app's own
  * tokens and both themes come for free. `highlightCode` is the preview half: a string in, coloured spans
@@ -8,6 +8,7 @@
 
 import { HighlightStyle } from '@codemirror/language';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
+import { jsonLanguage } from '@codemirror/lang-json';
 import { highlightTree, tags as t } from '@lezer/highlight';
 import { findSlotRanges } from '@/lib/statCodeTemplates';
 
@@ -29,6 +30,11 @@ export const codeHighlightStyle = HighlightStyle.define([
   { tag: t.invalid, class: 'tok-invalid' },
 ]);
 
+/** The grammars the read-only highlighter reads. */
+export type CodeLanguage = 'javascript' | 'json';
+
+const PARSERS = { javascript: javascriptLanguage.parser, json: jsonLanguage.parser } as const;
+
 /** One run of code carrying a single style. `className` is empty for text the grammar had nothing to say
  *  about, which still has to be rendered — the joined tokens are the code, exactly. */
 export interface CodeToken {
@@ -40,13 +46,16 @@ export interface CodeToken {
  * Split code into styled runs. Slot syntax, when the surface has slots, wins over whatever the JavaScript
  * grammar made of it — `{{name:number=1}}` is a fill-in point, not an object literal.
  */
-export function highlightCode(code: string, options?: { slots?: boolean }): CodeToken[] {
+export function highlightCode(
+  code: string,
+  options?: { slots?: boolean; language?: CodeLanguage },
+): CodeToken[] {
   if (!code) return [];
 
   // One class per character, then coalesced: slots overlap grammar tokens arbitrarily, and overwriting is
   // simpler to keep correct than trimming ranges around each other.
   const classes = new Array<string>(code.length).fill('');
-  highlightTree(javascriptLanguage.parser.parse(code), codeHighlightStyle, (from, to, className) => {
+  highlightTree(PARSERS[options?.language ?? 'javascript'].parse(code), codeHighlightStyle, (from, to, className) => {
     for (let i = from; i < to; i += 1) classes[i] = className;
   });
 
