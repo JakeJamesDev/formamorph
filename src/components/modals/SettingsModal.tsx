@@ -8,7 +8,9 @@ import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
 import { ToolsTab } from '@/components/modals/ToolsTab';
-import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
+import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
+import { blankTool } from '@/lib/tools/toolDraft';
+import { randomUUID } from '@/lib/uuid';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
@@ -1200,6 +1202,11 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const toolsPanelRef = useRef<HTMLDivElement | null>(null);
   const toolsMorph = useMorphFullscreen(toolsPanelRef);
   const [toolsView, setToolsView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
+  // DEV dev-router: `tab=tools&subtab=<edit tab>` opens a New Tool draft on that tab.
+  useEffect(() => {
+    const editTab = TOOL_EDIT_TABS.find((t) => t.value === initialPromptTab)?.value;
+    if (initialTab === 'tools' && editTab) setToolsView({ selectedId: null, draft: blankTool(randomUUID()), editTab });
+  }, [initialTab, initialPromptTab]);
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.
   const selectPromptTab = (t: string) => { setOverviewOpen(false); setPromptTab(t); setPromptView(null); setJumpField(null); };

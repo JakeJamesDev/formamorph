@@ -1,11 +1,12 @@
 import type { ToolParam } from '@/types';
-import type { ChipRow, ChipVocabulary } from '@/lib/chipVocabulary';
-import { promptVocabulary } from '@/lib/chipVocabulary';
+import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import { plainVocabulary, promptVocabulary } from '@/lib/chipVocabulary';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { sampleChipScene } from '@/lib/chipValues/sampleScene';
 import { HIGHLIGHT_PALETTE } from '@/lib/highlightUtils';
 import { ALL_PROMPT_VARIABLES } from '@/lib/promptVariables';
 import { argChipName, argChipToken, parseToolTemplate } from './argChips';
+import { namedParams } from './toolDraft';
 
 /** The prompt chips a Template can place: the scene chips a Tool Snapshot carries values for. */
 export const TEMPLATE_SCENE_VARIABLES = (() => {
@@ -13,40 +14,54 @@ export const TEMPLATE_SCENE_VARIABLES = (() => {
   return ALL_PROMPT_VARIABLES.filter((v) => sceneTokens.has(v.token));
 })();
 
+// The one palette entry no prompt chip wears, so a parameter never reads as a scene chip.
 const ARG_COLOR = HIGHLIGHT_PALETTE[16];
 
-/**
- * The chip family of a Template body: one chip per named parameter, beside the scene chips. An arg chip
- * whose parameter is gone reads as text, as it renders.
- */
-export function toolTemplateVocabulary(params: readonly ToolParam[]): ChipVocabulary {
-  const scene = promptVocabulary(TEMPLATE_SCENE_VARIABLES);
-  const byName = new Map(params.filter((p) => p.name.trim()).map((p) => [p.name, p]));
+/** One chip per named parameter: a plain chip with no axes, affixes or header. */
+function argVocabulary(params: readonly ToolParam[]): ChipVocabulary {
+  const byName = new Map(namedParams(params).map((p) => [p.name, p]));
   const argOf = (token: string) => {
     const name = argChipName(token);
     return name === null ? undefined : byName.get(name);
   };
-  const argRows: ChipRow[] = [...byName.keys()].map((name) => ({ token: argChipToken(name), label: name, color: ARG_COLOR }));
   return {
-    ...scene,
-    parse: parseToolTemplate,
-    isKnown: (t) => !!argOf(t) || scene.isKnown(t),
-    label: (t) => argOf(t)?.name ?? scene.label(t),
+    ...plainVocabulary(),
+    isKnown: (t) => !!argOf(t),
+    label: (t) => argOf(t)?.name ?? t,
     hint: (t) => {
       const param = argOf(t);
       return param ? param.description.trim() || 'What the AI passed' : undefined;
     },
-    variantLabel: (t) => (argOf(t) ? null : scene.variantLabel(t)),
-    color: (t) => (argOf(t) ? ARG_COLOR : scene.color(t)),
-    axes: (t) => (argOf(t) ? [] : scene.axes(t)),
-    selection: (t) => (argOf(t) ? {} : scene.selection(t)),
-    setAxis: (t, axisId, optionId) => (argOf(t) ? t : scene.setAxis(t, axisId, optionId)),
-    affixes: (t) => (argOf(t) ? null : scene.affixes(t)),
-    setAffixes: (t, pre, post) => (argOf(t) ? t : scene.setAffixes(t, pre, post)),
-    header: (t) => (argOf(t) ? null : scene.header?.(t) ?? null),
-    setHeader: (t, header) => (argOf(t) ? t : scene.setHeader?.(t, header) ?? t),
-    headerBoundaries: (t) => (argOf(t) ? null : scene.headerBoundaries?.(t) ?? null),
-    palette: () => [...argRows, ...scene.palette()],
-    acceptsPaletteToken: (t) => !!argOf(t) || (scene.acceptsPaletteToken?.(t) ?? false),
+    color: () => ARG_COLOR,
+    palette: () => [...byName.keys()].map((name) => ({ token: argChipToken(name), label: name, color: ARG_COLOR })),
+  };
+}
+
+/**
+ * The chip family of a Template body: the parameters, then the scene chips. Each token goes to the family
+ * that knows it, and an arg chip whose parameter is gone reads as text, as it renders.
+ */
+export function toolTemplateVocabulary(params: readonly ToolParam[]): ChipVocabulary {
+  const scene = promptVocabulary(TEMPLATE_SCENE_VARIABLES);
+  const args = argVocabulary(params);
+  const familyOf = (token: string) => (args.isKnown(token) ? args : scene);
+  return {
+    parse: parseToolTemplate,
+    isKnown: (t) => familyOf(t).isKnown(t),
+    label: (t) => familyOf(t).label(t),
+    hint: (t) => familyOf(t).hint?.(t),
+    variantLabel: (t) => familyOf(t).variantLabel(t),
+    color: (t) => familyOf(t).color(t),
+    axes: (t) => familyOf(t).axes(t),
+    selection: (t) => familyOf(t).selection(t),
+    setAxis: (t, axisId, optionId) => familyOf(t).setAxis(t, axisId, optionId),
+    affixes: (t) => familyOf(t).affixes(t),
+    setAffixes: (t, pre, post) => familyOf(t).setAffixes(t, pre, post),
+    header: (t) => familyOf(t).header?.(t) ?? null,
+    setHeader: (t, header) => familyOf(t).setHeader?.(t, header) ?? t,
+    headerBoundaries: (t) => familyOf(t).headerBoundaries?.(t) ?? null,
+    palette: () => [...args.palette(), ...scene.palette()],
+    freshInsertToken: (t) => t,
+    acceptsPaletteToken: (t) => args.isKnown(t) || (scene.acceptsPaletteToken?.(t) ?? false),
   };
 }

@@ -14,7 +14,7 @@ import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { isCatalogToolId } from '@/lib/tools/toolCatalog';
 import { buildToolPack, copyTool, parseToolPack, planToolImport } from '@/lib/tools/toolPack';
-import { finishDraft } from '@/lib/tools/toolDraft';
+import { blankTool, finishDraft } from '@/lib/tools/toolDraft';
 import { sampleToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { toolSummary, type ToolsView } from './toolsView';
 import { ToolEditor } from './ToolEditor';
@@ -24,12 +24,6 @@ export interface ToolFileTransfer {
   readImportPack: () => Promise<string | null>;
   writeExportPack: (contents: string, filename: string) => void;
 }
-
-const blankTool = (): Tool => ({
-  id: randomUUID(), name: '', description: '', params: [],
-  handler: { kind: 'lookup', source: 'entities', param: '', returns: 'full' },
-  emptyResult: '{"matches": []}', offeredTo: ['narration'], enabled: true,
-});
 
 const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40';
 
@@ -204,7 +198,7 @@ export function ToolsTab({
             <button
               type="button"
               disabled={builtinPreset}
-              onClick={() => onViewChange({ ...view, draft: blankTool(), editTab: 'definition' })}
+              onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID()), editTab: 'definition' })}
               className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
             >
               <Plus className="h-4 w-4" />New Tool

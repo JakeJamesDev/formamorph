@@ -11,7 +11,7 @@ import { useMountedRef } from '@/lib/useMountedRef';
 import { runToolCall, type ToolCallResult } from '@/lib/tools/toolRunner';
 import { toolSchema } from '@/lib/tools/toolSchema';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
-import { tryItArguments } from '@/lib/tools/toolDraft';
+import { listOptions, namedParams, tryItArguments } from '@/lib/tools/toolDraft';
 import { isRecord } from '@/lib/tools/toolValidation';
 
 /** Where Try It reads the world from, and how it names it. */
@@ -48,7 +48,7 @@ function ArgInput({ param, value, onChange }: { param: ToolParam; value: string;
   const label = `${param.name}${param.required ? '' : ' (optional)'}`;
   const choices = param.type === 'boolean'
     ? [{ value: 'true', label: 'Yes' }, { value: 'false', label: 'No' }]
-    : param.type === 'enum' ? param.options.map((o) => o.trim()).filter(Boolean).map((o) => ({ value: o, label: o })) : null;
+    : param.type === 'enum' ? listOptions(param).map((o) => ({ value: o, label: o })) : null;
   return (
     <div className="flex flex-col gap-1 min-w-0">
       <Label htmlFor={id} className="font-mono">{label}</Label>
@@ -75,22 +75,25 @@ function ArgInput({ param, value, onChange }: { param: ToolParam; value: string;
  */
 export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<ToolCallResult | null>(null);
+  /** The last run's result, and the Tool as it stood for that run. */
+  const [result, setResult] = useState<{ outcome: ToolCallResult; ranOn: string } | null>(null);
   const [running, setRunning] = useState(false);
   const mounted = useMountedRef();
-  const params = tool.params.filter((p) => p.name.trim());
+  const params = namedParams(tool.params);
+  const current = JSON.stringify(tool);
 
   const run = async () => {
     setRunning(true);
     try {
       const outcome = await runToolCall(tool, tryItArguments(params, inputs), world.snapshot());
-      if (mounted.current) setResult(outcome);
+      if (mounted.current) setResult({ outcome, ranOn: current });
     } finally {
       if (mounted.current) setRunning(false);
     }
   };
 
-  const shown = result && pretty(result.text);
+  const outcome = result?.outcome;
+  const shown = outcome && pretty(outcome.text);
 
   return (
     <section aria-label="Try It" className="flex flex-col gap-3 min-w-0">
@@ -110,10 +113,11 @@ export function ToolTryIt({ tool, world }: { tool: Tool; world: TryItWorld }) {
           <Play className="h-4 w-4 mr-1" />Run
         </Button>
       </div>
-      {result && shown && (
+      {outcome && shown && (
         <div className="flex flex-col gap-1 min-w-0" data-testid="try-it-result">
-          {result.failure && <FieldError role="alert">{errorMessage(result.text)}</FieldError>}
-          <Hint>{result.failure ? 'The AI reads this error' : 'The AI reads this result'}</Hint>
+          {outcome.failure && <FieldError role="alert">{errorMessage(outcome.text)}</FieldError>}
+          <Hint>{outcome.failure ? 'The AI reads this error' : 'The AI reads this result'}</Hint>
+          {result.ranOn !== current && <Hint role="status">From before your last edit. Run again to try the Tool as it is now.</Hint>}
           {shown.json
             ? <HighlightedCode code={shown.code} language="json" className={CODE_BOX} />
             : <pre className={`whitespace-pre-wrap break-words font-mono ${CODE_BOX}`}>{shown.code}</pre>}

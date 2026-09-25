@@ -41,16 +41,13 @@ describe('draftProblems', () => {
     const problems = draftProblems(draft({
       params: [param(), param({ name: '' }), param(), param({ name: 'mood', type: 'enum', options: [' ', ''] })],
     }), []);
-    expect(problems.params).toEqual([
-      'Another parameter uses this name', 'Name the parameter', 'Another parameter uses this name',
-      'Add at least one option',
-    ]);
+    expect(problems.params).toEqual(['repeated', 'unnamed', 'repeated', 'noOptions']);
     expect(hasDraftProblems(problems)).toBe(true);
   });
 
   it('flags a lookup that searches by a parameter the Tool doesn’t have', () => {
     const problems = draftProblems(draft({ handler: { kind: 'lookup', source: 'entities', param: 'who', returns: 'full' } }), []);
-    expect(problems.handler).toBe('Choose the parameter to search by');
+    expect(problems.handler).toBe('lookupParam');
     expect(hasDraftProblems(problems)).toBe(true);
   });
 

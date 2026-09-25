@@ -168,6 +168,7 @@ describe('editing a Tool', () => {
     await user.click(screen.getByRole('radio', { name: 'Script' }));
     const readable = screen.getByLabelText('What the script can read');
     expect(within(readable).getAllByRole('term').map((t) => t.textContent)).toEqual(['args', 'world', 'scene', 'console']);
+    expect(within(readable).getAllByRole('definition')[0]).toHaveTextContent('{ place }');
     expect(screen.getByRole('textbox', { name: 'Script' })).toBeInTheDocument();
     await user.click(saveButton());
     expect(saved()[0].handler).toEqual({ kind: 'script', code: '' });
@@ -259,6 +260,20 @@ describe('Try It', () => {
     // The saved Tool would answer "Missing required parameter"; the draft has no parameter to miss.
     expect(await result()).toHaveTextContent('Sunny in {{arg:place}}.');
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('marks a result from before the last edit until the next run', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.type(tryIt().getByRole('textbox', { name: 'place' }), 'Sedge');
+    await user.click(tryIt().getByRole('button', { name: 'Run' }));
+    expect(await result()).toHaveTextContent('Sunny in Sedge.');
+    expect(within(await result()).queryByRole('status')).toBeNull();
+
+    await user.type(nameInput(), '_x');
+    expect(within(await result()).getByRole('status')).toHaveTextContent('From before your last edit');
+    await user.click(tryIt().getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(within(screen.getByTestId('try-it-result')).queryByRole('status')).toBeNull());
   });
 
   it('shows a missing argument as a readable message', async () => {

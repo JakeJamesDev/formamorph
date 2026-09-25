@@ -4,6 +4,7 @@ import { DEV_PUBLISH_SAMPLES } from './devPublishSample';
 import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
 import { SETTINGS_TABS } from '@/components/modals/settingsTabs';
+import { TOOL_EDIT_TABS } from '@/components/modals/toolsView';
 import { PROMPT_SURFACE_ROUTES, PRESET_ROUTES } from './promptGroups';
 import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { BUILT_BENCH_TABS } from '@/lib/testBench/benchTabs';
@@ -148,6 +149,10 @@ describe('dev-router coverage guard', () => {
 
   it('ledger lists exactly the tabs the location panel switches between', () => {
     expect([...DEV_MODAL_TABS.worldEditorLocation]).toEqual(LOCATION_PANEL_TABS.map((t) => t.value));
+  });
+
+  it('ledger lists exactly the tabs a Tool’s edit mode switches between', () => {
+    expect([...DEV_MODAL_TABS.settingsToolEdit]).toEqual(TOOL_EDIT_TABS.map((t) => t.value));
   });
 
   it('ledger lists exactly the tabs the stat panel switches between', () => {
