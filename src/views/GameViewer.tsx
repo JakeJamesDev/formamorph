@@ -57,7 +57,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Opening } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, Opening, Tool } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -79,7 +79,8 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
@@ -210,6 +211,8 @@ interface DebugRequest {
   response?: string;
   /** The native reasoning field as streamed; inline `<think>` stays in `response`. Never sent back in history. */
   reasoning?: string;
+  /** The tool rounds this request ran before its reply. Captured only with Show Silent Requests on. */
+  toolRounds?: AiToolRound[];
   /** Which endpoint served this request — absent on turns captured before routing existed. */
   endpoint?: DebugEndpointInfo;
   // Correlates a captured request to its own response, so concurrent same-type calls (the staged character
@@ -322,6 +325,12 @@ interface AiCallArgs {
    * otherwise stomp the shared label, so the batch sets one stable label itself instead.
    */
   quiet?: boolean;
+  /**
+   * The Tools this prompt offers, and what runs them. Both present routes the call through the tool loop
+   * (lib/aiRequest/toolLoop); the pipeline's runner never sees either — the adapter closure supplies them.
+   */
+  tools?: readonly Tool[];
+  executeTool?: ToolExecutor;
 }
 
 // A stable empty array for turns with no scene image, so the panel's prop identity doesn't churn.
@@ -2707,6 +2716,8 @@ const GameViewer = ({
     quiet: quietLabel = false,
     anatomy,
     statRequest,
+    tools,
+    executeTool,
   }: AiCallArgs) => {
     // The parity recording observes the seam itself: exactly the arguments this call received, in
     // dispatch order, before anything downstream shapes them. Inert unless the harness armed it.
@@ -2740,7 +2751,8 @@ const GameViewer = ({
       paragraphLimit,
       disableThinking,
     };
-    const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride });
+    // Tools ride only with an executor to run them; the spec layer then sends them where the target takes them.
+    const spec = buildAiRequestSpec(snapshot, { systemPrompt, messages, requestType, maxTokensOverride, ...(executeTool && { tools }) });
 
     // Silent requests are only captured into the AI-context viewer when the inspection toggle is on.
     const captureSilent = silent && showSilentRequests && attachTurnId !== undefined;
@@ -2902,7 +2914,11 @@ const GameViewer = ({
         }
       };
 
-      for await (const event of streamAiRequest(spec, { signal })) {
+      // Tool rounds are silent requests: kept for the AI-context viewer only when the inspection toggle is on.
+      const toolRounds: AiToolRound[] = [];
+      // Without Tools on the wire the loop is the plain stream; the executor is a no-op it never reaches.
+      const execute: ToolExecutor = executeTool ?? (() => Promise.resolve({ text: "" }));
+      for await (const event of streamAiToolLoop(spec, { signal, execute, captureRounds: showSilentRequests })) {
         if (event.type === "debug") {
           // The endpoint answered: commit to this turn's reveal. The `request` debug is already captured
           // above, and a malformed frame is logged rather than failing the turn.
@@ -2910,6 +2926,7 @@ const GameViewer = ({
           if (event.debug.kind === "parse") console.error("Error parsing streaming response:", event.debug.error);
           continue;
         }
+        if (event.type === "toolRound") { toolRounds.push(event.round); continue; }
         if (event.type === "done") {
           // `done` replaces the running values with the stream's own finals.
           content = event.result.content;
@@ -2996,6 +3013,7 @@ const GameViewer = ({
           r.id === captureId ? {
             ...r, response: rawContent,
             ...(reasoningText.trim() ? { reasoning: reasoningText } : {}),
+            ...(toolRounds.length ? { toolRounds } : {}),
             statDiagnostics: statRequest ? readStatResponse(finalContent, statRequest).diagnostics : undefined,
           } : r,
         );

@@ -1,8 +1,9 @@
-import type { AIRequestType, ChatMessage } from '@/types';
+import type { AIRequestType, ChatMessage, Tool, WireMessage } from '@/types';
+import { toolSchema, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  reasoningBudgetTokens, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning,
+  reasoningBudgetTokens, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, type ReasoningBodyFields, type ReasoningWrite } from '@/lib/reasoningDialect';
@@ -59,13 +60,16 @@ export interface AiCall {
   requestType: AIRequestType;
   /** Overrides the target's own output cap (also drives the reasoning budget). */
   maxTokensOverride?: number | null;
+  /** The Tools this prompt offers. Sent only where the target's record says it takes them. */
+  tools?: readonly Tool[];
 }
 
 /** The chat-completions body this layer builds. Optional fields are absent, never undefined-valued. The
- *  reasoning fields come from the target dialect's row, so they arrive as a group. */
-export interface AiRequestBody extends ReasoningBodyFields {
+ *  reasoning fields come from the target dialect's row, so they arrive as a group. The caller's request holds
+ *  plain chat messages; a tool round's follow-up widens them to the wire's other roles. */
+export interface AiRequestBody<TMessage extends WireMessage = ChatMessage> extends ReasoningBodyFields {
   model: string;
-  messages: ChatMessage[];
+  messages: TMessage[];
   max_tokens?: number;
   stream: true;
   top_p?: number;
@@ -75,15 +79,19 @@ export interface AiRequestBody extends ReasoningBodyFields {
   repetition_penalty?: number;
   repeat_penalty?: number;
   stop?: string[];
+  tools?: ToolFunctionSchema[];
+  tool_choice?: 'auto';
 }
 
 /** A complete request, ready for one fetch. */
-export interface AiRequestSpec {
+export interface AiRequestSpec<TMessage extends WireMessage = ChatMessage> {
   url: string;
   headers: Record<string, string>;
-  body: AiRequestBody;
+  body: AiRequestBody<TMessage>;
   target: AiEndpointTarget;
   requestType: AIRequestType;
+  /** The Tools the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
+  tools?: readonly Tool[];
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
    *  carried none. Read by the observation, which asks what was in force rather than which key held it. */
   reasoningLevel?: ReasoningEffortField;
@@ -195,6 +203,7 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
   const maxTokens = capFor(snapshot, call, target);
   const { temperature, repetitionPenalty } = resolveSamplers(snapshot, requestType, target);
   const externalOverrides = target.samplerOverrides;
+  const tools = offeredTools(call, target);
 
   return {
     model: target.model,
@@ -215,7 +224,13 @@ function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEnd
     ...reasoningDialectBody(target.reasoning.dialect, resolveReasoningWrite(snapshot, call, target)),
     // Single-paragraph stop, but not in inline-thinking mode — the <think> block needs newlines.
     ...(requestType === 'narration' && snapshot.paragraphLimit === 'single' && snapshot.thinkingMode !== 'inline' && { stop: ['\n'] }),
+    ...(tools && { tools: tools.map(toolSchema), tool_choice: 'auto' }),
   };
+}
+
+/** The Tools the call offers where the target is known to take them; null sends none (ADR-0008). */
+function offeredTools(call: AiCall, target: AiEndpointTarget): readonly Tool[] | null {
+  return call.tools?.length && toolsSupported(target.reasoning) ? call.tools : null;
 }
 
 /** The wire message list: the resolved system message first, then the caller's. */
@@ -237,6 +252,7 @@ export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): 
     body: bodyForTarget(snapshot, call, target),
     target,
     requestType: call.requestType,
+    ...(offeredTools(call, target) && { tools: call.tools }),
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
     ...(internalCapFor(snapshot, call) !== null
       ? { maxTokensSource: 'internal' as const }

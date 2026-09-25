@@ -1,3 +1,4 @@
+import type { WireMessage } from '@/types';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
@@ -64,16 +65,30 @@ export interface AiStreamTimings {
   endedAt: number;
 }
 
+/** One function call the model made, reassembled from its streamed pieces. `arguments` is the raw JSON text. */
+export interface AiToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** The field a native reasoning model streams its scratchpad in. A reply echoes it back under the same name. */
+export type AiReasoningField = 'reasoning' | 'reasoning_content';
+
 export interface AiStreamResult {
   content: string;
   reasoningText: string;
+  /** Which field carried the reasoning; null where none arrived. */
+  reasoningField: AiReasoningField | null;
   /** The endpoint's own `finish_reason`, or `aborted` when the caller stopped the turn. */
   finishReason: string | null;
+  /** The calls the model made this response, in index order. Empty for a plain reply. */
+  toolCalls: AiToolCall[];
   timings: AiStreamTimings;
 }
 
 export type AiStreamDebug =
-  | { kind: 'request'; url: string; body: AiRequestBody; startedAt: number }
+  | { kind: 'request'; url: string; body: AiRequestBody<WireMessage>; startedAt: number }
   /** The endpoint accepted the request and has a body to stream — the first point a consumer can commit
    *  to this turn, since everything before it can still throw. */
   | { kind: 'response'; status: number; openedAt: number }
@@ -93,10 +108,21 @@ export interface AiStreamOptions {
   reasoningThrottleMs?: number;
 }
 
+/** One streamed piece of a tool call. The first piece names the call; later pieces extend its arguments. */
+interface ToolCallPiece {
+  /** The call's position in the response. Absent on servers that stream calls one after another. */
+  index: number | null;
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 /** One decoded stream frame, as much of it as this layer reads. */
 interface FrameDelta {
   content: string;
   reasoning: string;
+  reasoningField: AiReasoningField | null;
+  toolCalls: ToolCallPiece[];
   finishReason: string | null;
 }
 
@@ -115,13 +141,45 @@ function parseFrame(line: string): FrameDelta | null {
   if (data === '[DONE]') return null;
   const parsed = JSON.parse(data);
   const choice = parsed.choices?.[0];
+  const delta = recordOf(choice?.delta);
+  // A native reasoning model streams its scratchpad in a separate field; some backends name it
+  // `reasoning_content`. Inline <think> stays in `content` and is the consumer's to strip.
+  const reasoningField: AiReasoningField | null = typeof delta?.reasoning === 'string' && delta.reasoning
+    ? 'reasoning'
+    : typeof delta?.reasoning_content === 'string' && delta.reasoning_content ? 'reasoning_content' : null;
+  const rawCalls = Array.isArray(delta?.tool_calls) ? delta.tool_calls : [];
   return {
-    content: choice?.delta?.content || '',
-    // A native reasoning model streams its scratchpad in a separate field; some backends name it
-    // `reasoning_content`. Inline <think> stays in `content` and is the consumer's to strip.
-    reasoning: choice?.delta?.reasoning ?? choice?.delta?.reasoning_content ?? '',
+    content: typeof delta?.content === 'string' ? delta.content : '',
+    reasoning: reasoningField ? String(delta?.[reasoningField]) : '',
+    reasoningField,
+    toolCalls: rawCalls.flatMap((raw): ToolCallPiece[] => {
+      const piece = recordOf(raw);
+      if (!piece) return [];
+      const fn = recordOf(piece.function);
+      return [{
+        index: typeof piece.index === 'number' ? piece.index : null,
+        id: typeof piece.id === 'string' ? piece.id : '',
+        name: typeof fn?.name === 'string' ? fn.name : '',
+        arguments: typeof fn?.arguments === 'string' ? fn.arguments : '',
+      }];
+    }),
     finishReason: choice?.finish_reason ?? null,
   };
+}
+
+/** Fold one streamed piece into the calls so far. A piece with an index extends the call at that index; one
+ *  without extends the last call unless it names a function, which starts a new call. */
+function foldToolCall(calls: AiToolCall[], byIndex: Map<number, AiToolCall>, piece: ToolCallPiece): void {
+  const existing = piece.index !== null ? byIndex.get(piece.index) : piece.name ? undefined : calls.at(-1);
+  if (existing) {
+    if (piece.id) existing.id ||= piece.id;
+    if (piece.name) existing.name ||= piece.name;
+    existing.arguments += piece.arguments;
+    return;
+  }
+  const call: AiToolCall = { id: piece.id, name: piece.name, arguments: piece.arguments };
+  calls.push(call);
+  if (piece.index !== null) byIndex.set(piece.index, call);
 }
 
 /**
@@ -132,7 +190,10 @@ function parseFrame(line: string): FrameDelta | null {
  * the `done` event still carries everything received before the stop, with `aborted` as the finish reason.
  * HTTP failures and a missing body throw `AiStreamError`.
  */
-export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOptions = {}): AsyncGenerator<AiStreamEvent, void, void> {
+/** Any round's request: the caller's plain messages, or a tool round's follow-up with its wider roles. */
+export type AiStreamSpec = AiRequestSpec<WireMessage>;
+
+export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOptions = {}): AsyncGenerator<AiStreamEvent, void, void> {
   const doFetch = options.fetchImpl ?? fetch;
   const now = options.now ?? (() => performance.now());
   const throttleMs = options.reasoningThrottleMs ?? DEFAULT_REASONING_THROTTLE_MS;
@@ -141,7 +202,10 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
   const startedAt = now();
   let content = '';
   let reasoningText = '';
+  let reasoningField: AiReasoningField | null = null;
   let finishReason: string | null = null;
+  const toolCalls: AiToolCall[] = [];
+  const callsByIndex = new Map<number, AiToolCall>();
   let firstTokenAt: number | null = null;
   let firstContentAt: number | null = null;
   let lastReasoningTick = -Infinity;
@@ -149,7 +213,9 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
   const result = (): AiStreamResult => ({
     content,
     reasoningText,
+    reasoningField,
     finishReason,
+    toolCalls,
     timings: { startedAt, firstTokenAt, firstContentAt, endedAt: now() },
   });
 
@@ -205,9 +271,11 @@ export async function* streamAiRequest(spec: AiRequestSpec, options: AiStreamOpt
     if (!frame) return;
 
     if (frame.reasoning) reasoningText += frame.reasoning;
+    reasoningField ??= frame.reasoningField;
     if (frame.content) content += frame.content;
+    for (const piece of frame.toolCalls) foldToolCall(toolCalls, callsByIndex, piece);
     const tick = now();
-    if (firstTokenAt === null && (frame.content || frame.reasoning)) firstTokenAt = tick;
+    if (firstTokenAt === null && (frame.content || frame.reasoning || frame.toolCalls.length)) firstTokenAt = tick;
     // Visible content, not merely a content frame: models routinely lead with a newline or a space, and
     // treating that as the start would both mis-time the think duration and cut live reasoning off early.
     if (firstContentAt === null && content.trim()) firstContentAt = tick;

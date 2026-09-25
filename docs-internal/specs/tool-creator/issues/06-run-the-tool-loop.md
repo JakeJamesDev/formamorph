@@ -1,6 +1,7 @@
 # 06: Run the Tool Loop in the Request Layer
 
-Status: ready-for-agent
+Status: in-progress
+Base: d22793e4
 Blocked by: 01 — Store Tools in Presets and the Catalog; 02 — Run a Tool Call in the Tool Runner; 04 — Detect Tool Support per Endpoint and Model; 05 — Probe Reasoning Kept Between Tool Rounds
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -23,12 +24,22 @@ Model rationale: Fable at high effort for streaming state across chunks, correla
 
 ## Acceptance criteria
 
-- [ ] The adapter type takes optional Tools and an executor; the runner's tests pass without either.
-- [ ] Calls split across chunks are reassembled; two calls in one response produce two results and one next round.
-- [ ] Non-final content never appears in the reply; the final round's content does.
-- [ ] Per-request limits and the round cap each trigger the finish-in-prose round; malformed and unknown calls do too, with a readable tool result.
-- [ ] Stop aborts mid-round; no further round is sent.
-- [ ] Unknown or unsupported capability sends no `tools` field and unchanged prompt text.
-- [ ] Silent capture records each round only with Show Silent Requests on.
-- [ ] Tests drive a scripted transport with real Tool Handlers and the Sedge Landing fixture; each guard proven by reinstating its bug.
-- [ ] Four gates green.
+- [x] The adapter type takes optional Tools and an executor; the runner's tests pass without either.
+- [x] Calls split across chunks are reassembled; two calls in one response produce two results and one next round.
+- [x] Non-final content never appears in the reply; the final round's content does.
+- [x] Per-request limits and the round cap each trigger the finish-in-prose round; malformed and unknown calls do too, with a readable tool result.
+- [x] Stop aborts mid-round; no further round is sent.
+- [x] Unknown or unsupported capability sends no `tools` field and unchanged prompt text.
+- [x] Silent capture records each round only with Show Silent Requests on.
+- [x] Tests drive a scripted transport with real Tool Handlers and the Sedge Landing fixture; each guard proven by reinstating its bug.
+- [x] Four gates green.
+
+## Comments
+
+- **2026-09-25, implementation.** Rulings from the spec session: the caller-side adapter arguments (the game view's `AiCallArgs`) gain optional `tools` and `executeTool`; `TurnRequestAdapter`, `TurnRequestContext` and the runner stay untouched. Hold-and-flush is confirmed: a round that offers Tools holds its content deltas and flushes them when it ends without calls; the finish-in-prose round streams live. Notes for ticket 09:
+  - The loop is `streamAiToolLoop(spec, options)` in `src/lib/aiRequest/toolLoop.ts`. It takes `execute`, `callLimit` (default `DEFAULT_TOOL_CALL_LIMIT`), `roundCap` (default `DEFAULT_TOOL_ROUND_CAP`, 6) and `captureRounds`. Without Tools on the wire it is the plain stream.
+  - `buildAiRequestSpec` takes `call.tools`; it writes `tools` and `tool_choice` and sets `spec.tools` only where `toolsSupported(target.reasoning)`. Unknown or false sends none.
+  - `makeAIRequest` routes through the loop when `executeTool` is present and records each captured round on the debug request as `toolRounds` (messages, content, reasoning, calls with id, arguments, result and failure). Rendering them in AI Context is 09's.
+  - The stream's `done` result now carries `toolCalls` and `reasoningField`. The loop's `done` carries every round's reasoning joined; each round's own reasoning is in its capture.
+  - Stop: the loop checks the signal after each stream and after each call and sends no further round. A Script handler runs synchronously on the main thread, so a Stop press cannot interrupt it mid-evaluation; the sandbox's one-second deadline bounds it, and the loop then stops. Interrupting a script mid-run needs the sandbox in a worker, which is outside this ticket.
+
