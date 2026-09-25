@@ -1,6 +1,8 @@
 # 01: Store Tools in Presets and the Catalog
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in 315a52f6 and e75adf44; reviewed against 5f80e245
+Base: 5f80e245
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
