@@ -129,7 +129,7 @@ describe('the site entry stays out of the game bundle', () => {
     // The list above is a denylist, so it only catches the ways in that somebody has already thought
     // of. This is the backstop: a leaf that starts dragging a subsystem along shows up as a jump here
     // even when nothing it pulls is named. Raise the ceiling deliberately, having looked at what moved.
-    expect(reachableFromSite().size).toBeLessThanOrEqual(40);
+    expect(reachableFromSite().size).toBeLessThanOrEqual(43);
   });
 
   it('really does walk past the first hop', () => {

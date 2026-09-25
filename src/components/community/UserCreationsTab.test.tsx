@@ -15,6 +15,7 @@ const creation = (over: Partial<ProfileCreation> = {}): ProfileCreation => ({
   name: 'Sedge Landing',
   kind: 'world',
   thumbnailFile: null,
+  placeholder: false,
   downloads: 0,
   commentCount: 0,
   likes: 0,
@@ -90,6 +91,28 @@ describe('what somebody has published', () => {
     render(<UserCreationsTab userId="u1" username="wren_hallow" />);
 
     expect(await screen.findByText('User not found')).toBeTruthy();
+  });
+});
+
+describe('a creation’s picture', () => {
+  it('draws Morph art for a flagged entity and requests no thumbnail', async () => {
+    listing([creation({ kind: 'entity', name: 'Wren', thumbnailFile: 'stand-in.png', placeholder: true })]);
+
+    const { container } = render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Wren');
+
+    expect(container.querySelector('[data-morph-art]')).not.toBeNull();
+    expect(screen.queryByRole('img', { name: 'Wren' })).toBeNull();
+  });
+
+  it('shows the stored image of an entity that is not flagged', async () => {
+    listing([creation({ kind: 'entity', name: 'Wren', thumbnailFile: 'wren.png' })]);
+
+    const { container } = render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Wren');
+
+    expect(screen.getByRole('img', { name: 'Wren' })).toBeTruthy();
+    expect(container.querySelector('[data-morph-art]')).toBeNull();
   });
 });
 

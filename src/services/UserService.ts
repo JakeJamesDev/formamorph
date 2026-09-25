@@ -15,6 +15,7 @@ interface RawCreation {
   name: string;
   kind?: string;
   thumbnail_file?: string | null;
+  placeholder?: boolean;
   downloads?: number;
   comment_count?: number;
   likes?: number;
@@ -126,6 +127,7 @@ class UserService {
       name: row.name,
       kind: kindOf(row),
       thumbnailFile: row.thumbnail_file ?? null,
+      placeholder: row.placeholder === true,
       downloads: Number(row.downloads) || 0,
       commentCount: Number(row.comment_count) || 0,
       likes: Number(row.likes) || 0,

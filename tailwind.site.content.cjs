@@ -55,6 +55,7 @@ const COMMUNITY_FILES = [
  * none in it costs nothing, and deciding which those are is the guess that goes wrong.
  */
 const FILES = [
+  'src/components/EntityPlaceholderArt.tsx',
   'src/components/RoleBadge.tsx',
   'src/components/UserAvatar.tsx',
   'src/components/theme-provider.tsx',
@@ -72,7 +73,9 @@ const FILES = [
   'src/lib/avatarCrop.ts',
   'src/lib/catalogKinds.ts',
   'src/lib/deletionCancellation.ts',
+  'src/lib/letterMask.ts',
   'src/lib/numberInputWheel.ts',
+  'src/lib/placeholderArt.ts',
   'src/lib/roles.ts',
   'src/lib/serverAssets.ts',
   'src/lib/serverDate.ts',

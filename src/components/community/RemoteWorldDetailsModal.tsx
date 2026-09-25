@@ -18,8 +18,9 @@ import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf, kindHasThumbnail, listingAppVersion, listingModels, type CatalogKind } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasThumbnail, listingAppVersion, listingModels, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
+import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { CHIP_BASE } from "@/components/Chip";
 import { componentKind } from "@/lib/worldDependencies";
 import { associationGroups } from "@/lib/listingAssociations";
@@ -284,12 +285,14 @@ export function RemoteWorldDetailsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
 
-  // A kind with no cover art never asks for the server's stand-in file.
+  // A kind with no cover art, and an entity drawn as Morph art, never ask for the server's stand-in file.
   const hasArt = world ? kindHasThumbnail(kindOf(world)) : false;
-  const thumbFile = hasArt ? world?.thumbnail_file : undefined;
+  const flagged = world ? showsMorphArt(world) : false;
+  const thumbFile = hasArt && !flagged ? world?.thumbnail_file : undefined;
   const thumbUrl = thumbFile
     ? `${WorldStorageService.API_URL}/thumbnails/${thumbFile}`
-    : (hasArt && world?.thumbnail) || '';
+    : (hasArt && !flagged && world?.thumbnail) || '';
+  const morphArt = flagged || (world ? kindOf(world) === 'entity' && !thumbUrl : false);
   const models = world ? listingModels(world) : [];
   const madeFor = world ? listingAppVersion(world) : null;
   // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
@@ -400,6 +403,13 @@ export function RemoteWorldDetailsModal({
                         />
                       ) : !hasArt ? (
                         <KindArt kind={kindOf(world)} className="absolute top-0 left-0" iconClassName="h-16 w-16" />
+                      ) : morphArt ? (
+                        // Portrait art in a wide frame: shown whole, so the letter is never cropped.
+                        <div className="absolute inset-0 flex justify-center bg-muted">
+                          <div className={cn("h-full", THUMB_FRAME.portrait)}>
+                            <EntityPlaceholderArt id={String(world._id || world.id)} name={world.name ?? ''} />
+                          </div>
+                        </div>
                       ) : (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                           <Globe className="h-16 w-16" />

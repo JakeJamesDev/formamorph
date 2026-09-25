@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CATALOG_KINDS, CARD_TYPE_BY_KIND, KIND_BY_CARD_TYPE, KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf } from './catalogKinds';
+import { CATALOG_KINDS, CARD_TYPE_BY_KIND, KIND_BY_CARD_TYPE, KIND_ICONS, KIND_LABELS, kindHasThumbnail, kindOf, showsMorphArt } from './catalogKinds';
 import { PUBLISH_LIMITS } from './publishLimits';
 import { BROWSE_TABS } from './browseTabs';
 
@@ -23,6 +23,23 @@ describe('kindOf', () => {
     // but visible, which beats a listing that silently belongs to no tab.
     expect(kindOf({ kind: 'spaceship' })).toBe('world');
     expect(kindOf({ kind: 'all' })).toBe('world'); // 'all' is a query, never a row's kind
+  });
+});
+
+describe('showsMorphArt', () => {
+  it('draws Morph art for an entity the server flags', () => {
+    expect(showsMorphArt({ kind: 'entity', placeholder: true })).toBe(true);
+  });
+
+  it('keeps the stored thumbnail when the flag is off or missing', () => {
+    expect(showsMorphArt({ kind: 'entity', placeholder: false })).toBe(false);
+    // A server without the flag omits it; its listings show their thumbnails as before.
+    expect(showsMorphArt({ kind: 'entity' })).toBe(false);
+  });
+
+  it('never replaces an avatar or world thumbnail', () => {
+    expect(showsMorphArt({ kind: 'model', placeholder: true })).toBe(false);
+    expect(showsMorphArt({ kind: 'world', placeholder: true })).toBe(false);
   });
 });
 

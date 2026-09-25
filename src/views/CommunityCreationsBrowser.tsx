@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tip } from "@/components/ui/tooltip";
-import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { BROWSE_TABS, BROWSE_TAB_LABELS, type BrowseTab } from "@/lib/browseTabs";
 import { listingId, listingRef, type ListingRef } from "@/lib/worldDependencies";
 import { contestPhase, placementsBy, entriesOf, orderContestEntries } from "@/lib/contests";
@@ -501,7 +501,7 @@ const CommunityCreationsBrowser = ({
 
   // One read for the whole page's stored thumbnails, so a page of seen cards paints together rather
   // than opening a database read per card.
-  useThumbnailPreload(pagedRemoteWorlds.filter((w) => kindHasThumbnail(kindOf(w))).map((w) => ({
+  useThumbnailPreload(pagedRemoteWorlds.filter((w) => kindHasThumbnail(kindOf(w)) && !showsMorphArt(w)).map((w) => ({
     file: w.thumbnail_file as string | null | undefined,
     updatedAt: w.updated_at as string | null | undefined,
   })));
