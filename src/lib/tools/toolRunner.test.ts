@@ -20,7 +20,7 @@ const ALIASES: Record<string, string[]> = {
 };
 
 function sedge(): AuthoredWorld {
-  const world = migrateWorld(structuredClone(rawWorld)) as unknown as AuthoredWorld;
+  const world: AuthoredWorld = migrateWorld(structuredClone(rawWorld));
   world.entities = world.entities.map((e) => (ALIASES[e.id] ? { ...e, aliases: ALIASES[e.id] } : e));
   return world;
 }
@@ -99,6 +99,11 @@ describe('runToolCall: arguments', () => {
     const result = await runToolCall(GET_ENTITY, raw, s);
     expect(result.failure).toBe('arguments');
     expect(errorOf(result.text)).toMatch(/JSON object/);
+  });
+
+  it('keeps a parameter named __proto__ as a plain argument', async () => {
+    const t = tool({ kind: 'script', code: 'return Object.keys(args).join(",") + ":" + args.__proto__;' }, [param('__proto__')]);
+    expect(await runToolCall(t, '{"__proto__": "kept"}', s)).toEqual({ text: '__proto__:kept' });
   });
 
   it('reads an empty argument string as no arguments', async () => {
@@ -221,6 +226,14 @@ describe('runToolCall: Template', () => {
     expect(await runToolCall(t, JSON.stringify({ name: sent, topic: 'x' }), s)).toEqual({ text: sent });
   });
 
+  it('returns an error result instead of throwing when a handler fails', async () => {
+    const failing: ToolSnapshot = { ...s, resolve: () => { throw new Error('the roll table is gone'); } };
+    const t = tool({ kind: 'template', body: 'Hello, {{user}}.' }, []);
+    const result = await runToolCall(t, '{}', failing);
+    expect(result.failure).toBe('handler');
+    expect(errorOf(result.text)).toContain('the roll table is gone');
+  });
+
   it("returns the Tool's empty result when the body renders blank", async () => {
     const t = tool({ kind: 'template', body: ` ${argChipToken('topic')} ` }, params);
     expect(await runToolCall(t, '{"name": "Bram"}', s)).toEqual({ text: 'NOTHING' });
@@ -246,6 +259,18 @@ describe('runToolCall: Script', () => {
   it("returns the Tool's empty result for nothing", async () => {
     expect(await runToolCall(script('const x = 1;', []), '{}', s)).toEqual({ text: 'NOTHING' });
     expect(await runToolCall(script('return null;', []), '{}', s)).toEqual({ text: 'NOTHING' });
+    expect(await runToolCall(script('return "  ";', []), '{}', s)).toEqual({ text: 'NOTHING' });
+  });
+
+  it('returns JSON even when the script replaces JSON.stringify', async () => {
+    const code = 'JSON.stringify = () => "forged"; return { a: 1 };';
+    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: '{"a":1}' });
+  });
+
+  it('shows the script only its own globals', async () => {
+    const code = `return Object.getOwnPropertyNames(globalThis).filter((n) => n.startsWith('__')).join(',')
+      + '|' + typeof __formamorphFinish;`;
+    expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: '|undefined' });
   });
 
   it('reads the world and the current scene', async () => {
@@ -294,6 +319,11 @@ describe('runToolCall: Script', () => {
     const result = await runToolCall(script('return () => 1;', []), '{}', s);
     expect(result.failure).toBe('script');
     expect(errorOf(result.text)).toMatch(/JSON/);
+  });
+
+  it('reports a thrown "interrupted" error as a script error, not a timeout', async () => {
+    const result = await runToolCall(script('throw new Error("interrupted");', []), '{}', s);
+    expect(result.failure).toBe('script');
   });
 
   it('stops a script that runs too long', async () => {

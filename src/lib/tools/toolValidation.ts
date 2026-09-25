@@ -19,7 +19,7 @@ export function toolNameProblem(name: string, tools: readonly Tool[], selfId?: s
 }
 
 type Raw = Record<string, unknown>;
-const isRecord = (v: unknown): v is Raw => !!v && typeof v === 'object' && !Array.isArray(v);
+export const isRecord = (v: unknown): v is Raw => !!v && typeof v === 'object' && !Array.isArray(v);
 const PARAM_TYPES: readonly ToolParamType[] = ['string', 'number', 'boolean', 'enum'];
 const REQUEST_KINDS: readonly string[] = ALL_REQUEST_KINDS;
 

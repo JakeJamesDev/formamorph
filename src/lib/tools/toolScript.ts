@@ -12,9 +12,12 @@ export type ToolScriptResult =
   | { text: string | null }
   | { error: string; kind: 'script' | 'timeout' };
 
-/** A frozen copy of `data`, parsed from a string so a `__proto__` key stays a plain key. */
-const frozenGlobal = (name: string, data: unknown) =>
-  `const ${name} = __freeze(JSON.parse(${JSON.stringify(JSON.stringify(data))}));`;
+/** `data` as JS source for a string that JSON-parses back to it, so a `__proto__` key stays a plain key. */
+const jsonSource = (data: unknown) => JSON.stringify(JSON.stringify(data));
+
+// The host reads the completion value `[tag, text]`: 0 for nothing, 1 for a string, 2 for JSON text
+// (undefined when the value has no JSON form).
+const FINISH = '__formamorphFinish';
 
 /** Run a Tool script over `args` and the snapshot. A string return is the text; any other value is JSON. */
 export async function runToolScript(
@@ -24,7 +27,9 @@ export async function runToolScript(
 ): Promise<ToolScriptResult> {
   const QuickJS = await getQuickJS();
   const runtime = QuickJS.newRuntime();
-  runtime.setInterruptHandler(shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS));
+  const pastDeadline = shouldInterruptAfterDeadline(Date.now() + EXECUTION_TIMEOUT_MS);
+  let timedOut = false;
+  runtime.setInterruptHandler((rt) => (timedOut ||= !!pastDeadline(rt)));
   runtime.setMemoryLimit(MEMORY_LIMIT_BYTES);
   runtime.setMaxStackSize(MAX_STACK_BYTES);
   const vm = runtime.newContext();
@@ -36,26 +41,26 @@ export async function runToolScript(
     logFn.dispose();
     consoleObj.dispose();
 
-    // The completion value is `[tag, text]`: 0 for nothing, 1 for a string, 2 for JSON text (undefined when
-    // the value has no JSON form). `__stringify` is taken before the script can replace `JSON.stringify`.
+    // The helpers live in a closure, `JSON.stringify` taken before the script can replace it. The script runs
+    // as a function body whose parameter shadows the one global it could otherwise reach.
     const program = [
-      'const __stringify = JSON.stringify;',
-      'const __freeze = (o) => { if (o && typeof o === "object" && !Object.isFrozen(o)) { Object.freeze(o); Object.values(o).forEach(__freeze); } return o; };',
-      frozenGlobal('args', args),
-      frozenGlobal('world', snapshot.world),
-      frozenGlobal('scene', snapshot.scene),
-      'const __value = (function () {',
+      `const [args, world, scene, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
+      '  const freeze = (o) => { if (o && typeof o === "object" && !isFrozen(o)) { freezeOne(o); values(o).forEach(freeze); } return o; };',
+      '  const finish = (v) => (v == null ? [0] : typeof v === "string" ? [1, v] : [2, stringify(v)]);',
+      `  return [freeze(parse(${jsonSource(args)})), freeze(parse(${jsonSource(snapshot.world)})),`,
+      `    freeze(parse(${jsonSource(snapshot.scene)})), finish];`,
+      '})(JSON.parse, JSON.stringify, Object.freeze, Object.isFrozen, Object.values);',
+      `${FINISH}((function (${FINISH}) {`,
       code,
-      '})();',
-      '__value == null ? [0] : typeof __value === "string" ? [1, __value] : [2, __stringify(__value)];',
+      '})());',
     ].join('\n');
 
     const result = vm.evalCode(program);
     if (result.error) {
       const dumped: unknown = vm.dump(result.error);
       result.error.dispose();
+      if (timedOut) return { error: 'The script ran too long and was stopped.', kind: 'timeout' };
       const message = dumped && typeof dumped === 'object' && 'message' in dumped ? String(dumped.message) : String(dumped);
-      if (/interrupted/i.test(message)) return { error: 'The script ran too long and was stopped.', kind: 'timeout' };
       return { error: `The script failed: ${message}`, kind: 'script' };
     }
     const [tag, text] = vm.dump(result.value) as [number, string | null | undefined];

@@ -6,6 +6,7 @@ import type { Tool, ToolHandler, ToolParam } from '@/types';
 import { parseTemplateWithPlaceholders, resolvePromptSegments } from '@/lib/promptTemplate';
 import { splitToken } from '@/lib/promptVariables';
 import { argChipName, splitArgChips } from './argChips';
+import { isRecord } from './toolValidation';
 import { runToolScript } from './toolScript';
 import type { ToolSnapshot } from './toolSnapshot';
 
@@ -18,28 +19,33 @@ export interface ToolCallResult {
   failure?: ToolCallFailure;
 }
 
+type ToolArgValue = string | number | boolean;
+
 /** Validated arguments, by parameter name. An absent optional parameter has no key. */
-export type ToolArgs = Readonly<Record<string, string | number | boolean>>;
+type ToolArgs = Readonly<Record<string, ToolArgValue>>;
 
 const failed = (failure: ToolCallFailure, error: string): ToolCallResult =>
   ({ text: JSON.stringify({ error }), failure });
 
-const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
-
-/** Why `value` doesn't fit `param`, or null when it does. */
-function typeProblem(param: ToolParam, value: unknown): string | null {
-  const name = JSON.stringify(param.name);
+function fitsParam(param: ToolParam, value: unknown): value is ToolArgValue {
   switch (param.type) {
-    case 'string': return typeof value === 'string' ? null : `Parameter ${name} must be text.`;
-    case 'number': return typeof value === 'number' && Number.isFinite(value) ? null : `Parameter ${name} must be a number.`;
-    case 'boolean': return typeof value === 'boolean' ? null : `Parameter ${name} must be true or false.`;
-    case 'enum': return typeof value === 'string' && param.options.includes(value)
-      ? null : `Parameter ${name} must be one of: ${param.options.join(', ')}.`;
+    case 'string': return typeof value === 'string';
+    case 'number': return typeof value === 'number' && Number.isFinite(value);
+    case 'boolean': return typeof value === 'boolean';
+    case 'enum': return typeof value === 'string' && param.options.includes(value);
   }
 }
 
+const TYPE_WORDING: Record<Exclude<ToolParam['type'], 'enum'>, string> =
+  { string: 'text', number: 'a number', boolean: 'true or false' };
+
+function typeProblem(param: ToolParam): string {
+  const wanted = param.type === 'enum' ? `one of: ${param.options.join(', ')}` : TYPE_WORDING[param.type];
+  return `Parameter ${JSON.stringify(param.name)} must be ${wanted}.`;
+}
+
 /** The model's argument string checked against the Tool's parameters. Blank reads as no arguments. */
-export function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: ToolArgs } | { error: string } {
+function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: ToolArgs } | { error: string } {
   let raw: unknown = {};
   if (argsText.trim()) {
     try {
@@ -56,16 +62,16 @@ export function parseToolArgs(params: readonly ToolParam[], argsText: string): {
       return { error: `Unknown parameter ${JSON.stringify(key)}.${known}` };
     }
   }
-  const args: Record<string, string | number | boolean> = {};
+  // No prototype, so a parameter named `__proto__` is a plain key.
+  const args: Record<string, ToolArgValue> = Object.create(null);
   for (const param of params) {
     const value = Object.hasOwn(raw, param.name) ? raw[param.name] : undefined;
     if (value === undefined || value === null) {
       if (param.required) return { error: `Missing required parameter ${JSON.stringify(param.name)}.` };
       continue;
     }
-    const problem = typeProblem(param, value);
-    if (problem) return { error: problem };
-    args[param.name] = value as string | number | boolean;
+    if (!fitsParam(param, value)) return { error: typeProblem(param) };
+    args[param.name] = value;
   }
   return { args };
 }
@@ -91,7 +97,7 @@ function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, { world }: ToolS
   return { text: matches.length ? JSON.stringify({ matches }) : tool.emptyResult };
 }
 
-const argText = (value: string | number | boolean | undefined) => (value === undefined ? '' : String(value));
+const argText = (value: ToolArgValue | undefined) => (value === undefined ? '' : String(value));
 
 /** Render a Template body: scene chips from the snapshot, placeholder chips resolved, parameters bound. */
 function runTemplate(tool: Tool, body: string, args: ToolArgs, snapshot: ToolSnapshot): ToolCallResult {

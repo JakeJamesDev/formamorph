@@ -1,6 +1,8 @@
 # 02: Run a Tool Call in the Tool Runner
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in 25588eaf plus review follow-up; parameter chips are `{{arg:name}}`, scripts see `args`/`world`/`scene`; 38 guards proven red
+Base: b124d330
 Blocked by: 01 — Store Tools in Presets and the Catalog
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
