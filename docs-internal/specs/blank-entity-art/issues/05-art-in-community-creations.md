@@ -1,6 +1,7 @@
 # 05: Morph Art in Community Creations
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3ea0f79d
 Blocked by: 02, FormamorphServer 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

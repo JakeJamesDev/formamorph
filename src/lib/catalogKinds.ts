@@ -63,6 +63,10 @@ export const KIND_ICONS: Record<CatalogKind, LucideIcon> = {
 /** Whether a kind's listings carry cover art. A prompt shows its kind icon instead. */
 export const kindHasThumbnail = (kind: CatalogKind): boolean => kind !== 'prompt';
 
+/** Whether a listing draws Morph art: an entity whose stored thumbnail the server marks as its stand-in. */
+export const showsMorphArt = (record: { kind?: string; placeholder?: unknown }): boolean =>
+  kindOf(record) === 'entity' && record.placeholder === true;
+
 /** A listing's kind, defaulting rows that predate the column (or a server that omits it) to 'world'. */
 export function kindOf(record: { kind?: string }): CatalogKind {
   return (CATALOG_KINDS as readonly string[]).includes(record.kind ?? '')

@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CachedThumbnail } from "@/lib/useCachedThumbnail";
 import { LikeButton } from "@/components/community/LikeButton";
-import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, type CatalogKind } from "@/lib/catalogKinds";
+import { CATALOG_KINDS, KIND_ICONS, KIND_LABELS, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
+import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import UserService from "@/services/UserService";
 import { API_BASE_URL } from "@/lib/apiBase";
 import type { ProfileCreation } from "@/types";
@@ -155,7 +156,9 @@ export function UserCreationsTab({ userId, username, onOpenListing, listingHref,
           {shown.map((item) => (
             <li key={item.id} className="flex items-center gap-2 rounded-md border p-2 min-w-0">
               <div className="h-10 w-10 shrink-0 overflow-hidden rounded bg-muted">
-                {item.thumbnailFile && (
+                {showsMorphArt(item) ? (
+                  <EntityPlaceholderArt id={item.id} name={item.name} />
+                ) : item.thumbnailFile && (
                   <CachedThumbnail
                     file={item.thumbnailFile}
                     url={`${API_BASE_URL}/thumbnails/${item.thumbnailFile}`}

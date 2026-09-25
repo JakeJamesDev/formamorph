@@ -10,7 +10,7 @@ import { CardTags, type WorldRecord } from "@/components/WorldDetails";
 import { LikeButton } from "@/components/community/LikeButton";
 import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf, kindHasThumbnail } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasThumbnail, showsMorphArt } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
 import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
@@ -190,6 +190,8 @@ export function RemoteWorldCard({
       )}
       thumbnail={!kindHasThumbnail(kindOf(world)) ? (
         <KindArt kind={kindOf(world)} />
+      ) : showsMorphArt(world) ? (
+        <EntityPlaceholderArt id={worldId} name={world.name ?? ''} />
       ) : world.thumbnail_file ? (
         <CachedThumbnail
           file={world.thumbnail_file}

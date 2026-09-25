@@ -48,6 +48,8 @@ export interface ProfileCreation {
   kind: CatalogKind;
   /** The stored thumbnail's filename, or null when it has none. Cached by name; see `CachedThumbnail`. */
   thumbnailFile: string | null;
+  /** Whether the thumbnail is the server's stand-in, which Morph art replaces. */
+  placeholder: boolean;
   downloads: number;
   commentCount: number;
   /** How many accounts have liked it. Never a control here — the profile lists work rather than rates it. */
