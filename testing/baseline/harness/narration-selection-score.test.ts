@@ -8,6 +8,7 @@ const exchange = (reasoning: number, prompt: number, message: Record<string, unk
   durationMs: 1,
 });
 const match = (name: string) => ({ id: `ent-${name.toLowerCase()}`, name, description: `${name} entry` });
+const labels = { arm: 'kept', scenario: 'greeting', seed: 424243, firstResponseMatchesPair: true };
 const trial = (overrides: Partial<ProbeTrialEvidence>): ProbeTrialEvidence => ({
   caseId: 'c', action: 'a', sourceRevision: 's', initialRequest: exchange(0, 0).request, status: 'succeeded', narration: 'prose',
   requestCount: 1, lookupCount: 0, requests: [exchange(100, 800)], toolResults: [], usage: null, durationMs: 1, ...overrides,
@@ -22,8 +23,8 @@ it('scores involved coverage from lookup matches, so an alias lookup counts for 
       { callId: '2', term: 'Nessa', result: { matches: [match('Nessa')] } },
       { callId: '3', term: 'the watchman', result: { matches: [] } },
     ],
-  }), ['Bram', 'Odette']);
-  expect(scored).toMatchObject({ completed: true, involvedFetched: 1, involvedTotal: 2, unneeded: 1, unmatched: 1, duplicates: 0,
+  }), ['Bram', 'Odette'], labels);
+  expect(scored).toMatchObject({ ...labels, completed: true, involvedFetched: 1, involvedTotal: 2, unneeded: 1, unmatched: 1, duplicates: 0,
     rounds: 2, firstRoundReasoning: 150, laterReasoning: 40, finishReason: 'stop' });
 });
 
@@ -35,7 +36,7 @@ it('counts a repeated fetch of the same entity as a duplicate, not as extra cove
       { callId: '1', term: 'Mara', result: { matches: [match('Mara')] } },
       { callId: '2', term: 'mara', result: { matches: [match('Mara')] } },
     ],
-  }), ['Mara']);
+  }), ['Mara'], labels);
   expect(scored).toMatchObject({ completed: false, involvedFetched: 1, involvedTotal: 1, unneeded: 0, duplicates: 1, finishReason: 'tool_calls', failure: 'lookup_budget_exhausted' });
 });
 
@@ -49,9 +50,10 @@ it('sums an arm and reports how many paired first responses matched', () => {
 });
 
 it('normalizes a first response so server-issued call ids do not break the pairing check', () => {
-  const a = exchange(1, 1, { content: '', reasoning_content: 'plan', tool_calls: [{ id: 'call_1', type: 'function', function: { name: 'get_entity', arguments: '{"name":"Iven"}' } }] }, 'tool_calls');
-  const b = exchange(1, 1, { content: '', reasoning_content: 'plan', tool_calls: [{ id: 'call_9', type: 'function', function: { name: 'get_entity', arguments: '{"name":"Iven"}' } }] }, 'tool_calls');
+  const call = (id: string) => [{ id, type: 'function', function: { name: 'get_entity', arguments: '{"name":"Iven"}' } }];
+  const a = exchange(1, 1, { content: '', reasoning_content: 'plan', tool_calls: call('call_1') }, 'tool_calls');
+  const b = exchange(1, 1, { content: '', reasoning_content: 'plan', tool_calls: call('call_9') }, 'tool_calls');
   expect(normalizedFirstResponse(trial({ requests: [a] }))).toEqual(normalizedFirstResponse(trial({ requests: [b] })));
-  const c = exchange(1, 1, { content: '', reasoning_content: 'other plan', tool_calls: b.response && (b.response as { choices: Array<{ message: { tool_calls: unknown } }> }).choices[0].message.tool_calls }, 'tool_calls');
+  const c = exchange(1, 1, { content: '', reasoning_content: 'other plan', tool_calls: call('call_9') }, 'tool_calls');
   expect(normalizedFirstResponse(trial({ requests: [c] }))).not.toEqual(normalizedFirstResponse(trial({ requests: [a] })));
 });

@@ -51,7 +51,7 @@ const firstChoice = (exchange: ProbeExchange | undefined): Record<string, unknow
 };
 
 export function scoreSelectionTrial(trial: ProbeTrialEvidence, required: readonly string[],
-  labels: { arm?: string; scenario?: string; seed?: number; firstResponseMatchesPair?: boolean } = {}): ScoredTrial {
+  labels: Pick<ScoredTrial, 'arm' | 'scenario' | 'seed' | 'firstResponseMatchesPair'>): ScoredTrial {
   const fetched = new Set<string>();
   let unneeded = 0;
   let unmatched = 0;
@@ -66,7 +66,7 @@ export function scoreSelectionTrial(trial: ProbeTrialEvidence, required: readonl
   const reasoning = trial.requests.map((exchange) => numberAt(exchange.response, 'usage', 'completion_tokens_details', 'reasoning_tokens'));
   const finish = firstChoice(trial.requests.at(-1))?.finish_reason;
   return {
-    arm: labels.arm ?? '', scenario: labels.scenario ?? trial.caseId, seed: labels.seed ?? 0,
+    ...labels,
     completed: trial.status === 'succeeded',
     ...(trial.failure ? { failure: trial.failure.kind } : {}),
     involvedFetched: required.filter((name) => fetched.has(name)).length,
@@ -77,7 +77,6 @@ export function scoreSelectionTrial(trial: ProbeTrialEvidence, required: readonl
     laterReasoning: reasoning.slice(1).reduce((sum, value) => sum + value, 0),
     promptTokens: trial.requests.map((exchange) => numberAt(exchange.response, 'usage', 'prompt_tokens')),
     finishReason: typeof finish === 'string' ? finish : null,
-    firstResponseMatchesPair: labels.firstResponseMatchesPair ?? false,
   };
 }
 

@@ -50,6 +50,7 @@ export const PROBE_TOOLS = [
 
 export interface ProbeMessage {
   reasoning_content?: string;
+  reasoning?: string;
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | null;
   tool_calls?: ProbeToolCall[];
