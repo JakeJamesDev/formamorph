@@ -6,6 +6,7 @@ import type { ToolParam } from '@/types';
 import type { CodeSurface, SurfaceEntry } from '@/lib/codeSurface';
 import type { InsertSnippet } from '@/lib/codeSnippets';
 import { BUILTIN_MEMBERS, LANGUAGE_NAMES, SANDBOX_BUILTINS } from '@/lib/statCodeSurface';
+import { listOptions, namedParams } from './toolDraft';
 
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
 
@@ -45,7 +46,7 @@ const TYPE_DETAIL: Record<Exclude<ToolParam['type'], 'enum'>, string> = { string
 /** One parameter as a member of `args`. */
 function argEntry(param: ToolParam): SurfaceEntry {
   const detail = param.type === 'enum'
-    ? param.options.map((o) => JSON.stringify(o.trim())).filter((o) => o !== '""').join(' | ') || 'string'
+    ? listOptions(param).map((o) => JSON.stringify(o)).join(' | ') || 'string'
     : TYPE_DETAIL[param.type];
   const described = param.description.trim() || 'What the AI passed.';
   return { name: param.name, detail, info: param.required ? described : `${described} Absent when the AI leaves it out.` };
@@ -68,7 +69,7 @@ const argAccess = (name: string) => (/^[A-Za-z_$][\w$]*$/.test(name) ? `args.${n
 
 /** The surface of a script for a Tool with `params`. */
 export function toolScriptSurface(params: readonly ToolParam[]): CodeSurface {
-  const argEntries = params.filter((p) => p.name.trim()).map(argEntry);
+  const argEntries = namedParams(params).map(argEntry);
   return {
     label: 'a Tool script',
     globals: [

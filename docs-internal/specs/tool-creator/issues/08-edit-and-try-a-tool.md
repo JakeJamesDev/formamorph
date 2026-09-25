@@ -1,6 +1,8 @@
 # 08: Edit and Try a Tool
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in 174ef668 plus review follow-up; a Template chip for a removed parameter goes out as literal `{{arg:name}}`; Empty Result has native undo only
+Base: c0bd007a
 Blocked by: 02 — Run a Tool Call in the Tool Runner; 03 — Give the Code Editor a Surface and JSON Highlighting; 07 — Show the Tools Tab
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

@@ -87,6 +87,7 @@ import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recen
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
+import { buildToolSnapshot } from "../lib/tools/toolSnapshot";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
 import { usePersonaNotice } from "@/lib/usePersonaNotice";
@@ -1739,6 +1740,8 @@ const GameViewer = ({
   // show between turns — those fall through to the shared pool's samples rather than to a second set of
   // placeholder strings kept here, which is how the two copies used to drift.
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
+  // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
+  const toolWorld = useCallback(() => buildToolSnapshot(liveScene(), dictionaries), [liveScene, dictionaries]);
 
   /** The prompt texts this turn's passes render from — the active preset's fields, as authored. */
   const turnPrompts = (): TurnPrompts => ({
@@ -5185,6 +5188,7 @@ const GameViewer = ({
         isOpen={isSettingsOpen}
         onOpenChange={(v) => { setIsSettingsOpen(v); if (!v) { setSettingsTab(undefined); setSettingsEndpointTab(undefined); setSettingsPrompt(undefined); } }}
         previewValues={promptPreviewValues}
+        toolWorld={toolWorld}
         initialTab={settingsTab ?? asSettingsTab(devRoute?.tab)}
         initialEndpointTab={settingsEndpointTab}
         initialPromptTab={settingsPrompt?.tab ?? devRoute?.subtab}

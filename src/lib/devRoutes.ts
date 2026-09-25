@@ -90,6 +90,9 @@ export const DEV_MODAL_TABS = {
   // The Context Menu reference exposes both production group dialogs with isolated data.
   designSystemGroupPicker: ['picker', 'create'],
   settings: ['display', 'output', 'prompts', 'tools', 'endpoints', 'data'],
+  // Settings → Tools opens a New Tool draft on its edit tab with `subtab=…`
+  // (`#dev?modal=settings&tab=tools&subtab=handler`). The Tools tab is Advanced only.
+  settingsToolEdit: ['definition', 'parameters', 'handler', 'availability'],
   worldEditor: ['overview', 'stats', 'entities', 'locations', 'traits', 'dictionary', 'placeholders'],
   // Community Creations browses one kind per tab, plus Contest — a view over the worlds already in the
   // catalog rather than a fourth kind (see lib/browseTabs). `tab=contest` serves canned contests, so the

@@ -59,6 +59,19 @@ describe('Settings → Tools', () => {
     expect(screen.getByRole('note')).toHaveTextContent("Your text endpoint won't receive Tools");
   });
 
+  it('opens a New Tool draft on the edit tab the dev router names', () => {
+    render(
+      <ThemeProvider>
+        <SettingsProvider>
+          <SettingsModal isOpen onOpenChange={() => {}} forcedMode="advanced" initialTab="tools" initialPromptTab="handler" />
+        </SettingsProvider>
+      </ThemeProvider>,
+    );
+    expect(screen.getByText('New Tool')).toBeInTheDocument();
+    const strip = within(screen.getByRole('tablist', { name: 'Tool Fields' }));
+    expect(strip.getByRole('tab', { selected: true })).toHaveAccessibleName('Handler');
+  });
+
   it('keeps the selected Tool across full screen and back', async () => {
     // The morph refuses to grow out of a zero-size rect, and jsdom lays nothing out.
     const rect = { left: 10, top: 10, width: 300, height: 200, right: 310, bottom: 210, x: 10, y: 10, toJSON: () => ({}) } as DOMRect;

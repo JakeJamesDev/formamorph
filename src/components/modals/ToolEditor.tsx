@@ -18,7 +18,8 @@ import { plainVocabulary } from '@/lib/chipVocabulary';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import {
-  draftProblems, finishDraft, hasDraftProblems, renameParam, withHandlerKind, type DraftProblems,
+  draftProblems, finishDraft, hasDraftProblems, namedParams, renameParam, withHandlerKind,
+  type DraftProblems, type HandlerProblem, type ParamProblem,
 } from '@/lib/tools/toolDraft';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
@@ -33,6 +34,15 @@ const NAME_PROBLEM: Record<ToolNameProblem, string> = {
   taken: 'Another Tool in this preset uses this name',
   builtin: 'A built-in Tool uses this name',
 };
+
+/** Shown under a parameter's name. An unnamed one is left to the footer, so a new card isn't born red. */
+const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
+  unnamed: null,
+  repeated: 'Another parameter uses this name',
+  noOptions: 'Add at least one option',
+};
+
+const HANDLER_PROBLEM: Record<HandlerProblem, string> = { lookupParam: 'Pick the parameter to search by' };
 
 const OUTLINE = ['Purpose:', 'Use when:', 'Input:', 'Output:'];
 const DESCRIPTION_VOCABULARY = plainVocabulary();
@@ -50,11 +60,13 @@ const HANDLER_KINDS: readonly { value: ToolHandler['kind']; label: string }[] = 
   { value: 'script', label: 'Script' },
 ];
 
-const LOOKUP_MATCHES = {
-  entities: 'Matches names and aliases, in any case',
-  locations: 'Matches names, in any case',
-  dictionary: 'Matches trigger keywords, in any case',
-} as const;
+type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
+
+const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: string }[] = [
+  { value: 'entities', label: 'Entities', matches: 'Matches names and aliases, in any case' },
+  { value: 'locations', label: 'Locations', matches: 'Matches names, in any case' },
+  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches trigger keywords, in any case' },
+];
 
 /** The prompts a Tool can be offered to, in the Prompts rail's order. */
 const OFFER_KINDS: readonly AIRequestType[] = Object.values(PROMPT_TAB_REQUESTS);
@@ -103,7 +115,7 @@ function DefinitionTab({ draft, onChange, problems }: { draft: Tool; onChange: C
   const nameError = draft.name && problems.name ? NAME_PROBLEM[problems.name] : null;
   return (
     <div className="flex flex-col gap-4">
-      <Field id={`${id}-name`} label="Name" hint="The name the AI calls, such as find_person" error={nameError}>
+      <Field id={`${id}-name`} label="Name" hint="Names the Tool for the AI, such as find_person" error={nameError}>
         <Input
           id={`${id}-name`} value={draft.name} className="font-mono"
           aria-invalid={!!nameError} aria-describedby={nameError ? `${id}-name-error` : undefined}
@@ -123,12 +135,12 @@ function DefinitionTab({ draft, onChange, problems }: { draft: Tool; onChange: C
   );
 }
 
-function ParamCard({ draft, index, problem, onChange }: { draft: Tool; index: number; problem: string | null; onChange: Change }) {
+function ParamCard({ draft, index, problem, onChange }: { draft: Tool; index: number; problem: ParamProblem | null; onChange: Change }) {
   const id = useId();
   const param = draft.params[index];
   const set = (patch: Partial<ToolParam>) =>
     onChange({ ...draft, params: draft.params.map((p, i) => (i === index ? { ...p, ...patch } : p)) });
-  const shownProblem = problem === 'Name the parameter' ? null : problem;
+  const shownProblem = problem && PARAM_PROBLEM[problem];
   return (
     <div role="group" aria-label={`Parameter ${index + 1}`} className="flex flex-col gap-3 rounded-md border p-3">
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,10rem)]">
@@ -193,7 +205,9 @@ function ParametersTab({ draft, onChange, problems }: { draft: Tool; onChange: C
 function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Change; problems: DraftProblems }) {
   const id = useId();
   const { handler, params } = draft;
-  const named = params.filter((p) => p.name.trim());
+  const named = namedParams(params);
+  const source = LOOKUP_SOURCES.find((s) => handler.kind === 'lookup' && s.value === handler.source);
+  const handlerError = problems.handler && HANDLER_PROBLEM[problems.handler];
   const surface = useMemo(() => toolScriptSurface(params), [params]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
@@ -206,20 +220,18 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
       {handler.kind === 'lookup' && (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={`${id}-source`} label="Search">
-            <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as typeof handler.source })}>
+            <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })}>
               <SelectTrigger id={`${id}-source`}><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="entities">Entities</SelectItem>
-                <SelectItem value="locations">Locations</SelectItem>
-                <SelectItem value="dictionary">Dictionary Entries</SelectItem>
+                {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
-          <Field id={`${id}-param`} label="By Parameter" hint={LOOKUP_MATCHES[handler.source]} error={problems.handler}>
+          <Field id={`${id}-param`} label="By Parameter" hint={source?.matches} error={handlerError}>
             <Select value={named.some((p) => p.name === handler.param) ? handler.param : undefined} onValueChange={(v) => setHandler({ ...handler, param: v })}>
               <SelectTrigger
-                id={`${id}-param`} aria-invalid={!!problems.handler}
-                aria-describedby={problems.handler ? `${id}-param-error` : undefined}
+                id={`${id}-param`} aria-invalid={!!handlerError}
+                aria-describedby={handlerError ? `${id}-param-error` : undefined}
               >
                 <SelectValue placeholder="Pick a parameter" />
               </SelectTrigger>
@@ -245,19 +257,21 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
       {handler.kind === 'template' && (
         <PromptField
           label="Template" ariaLabel="Template" vocabulary={vocabulary}
-          hint="Returns this text. Insert a parameter to place what the AI passed"
+          hint="Returns this text. Insert a parameter to place what the AI passed."
           value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
       )}
       {handler.kind === 'script' && (
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
-            <Hint>Reads these without changing them. Returns text, or any other value as JSON</Hint>
+            <Hint>Reads these read-only values. Returns text, or any other value as JSON.</Hint>
             <dl aria-label="What the script can read" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-meta">
               {surface.globals.map((entry) => (
                 <div key={entry.name} className="contents">
                   <dt className="font-mono">{entry.name}</dt>
-                  <dd className="text-muted-foreground">{entry.info}</dd>
+                  <dd className="min-w-0 text-muted-foreground">
+                    <span className="font-mono break-words">{entry.detail}</span> {entry.info}
+                  </dd>
                 </div>
               ))}
             </dl>

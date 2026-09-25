@@ -5,21 +5,38 @@
 import type { Tool, ToolHandler, ToolParam } from '@/types';
 import { toolNameProblem, type ToolNameProblem } from './toolValidation';
 
+/** Why a parameter blocks Save: no name, a name another parameter uses, or a list with no options. */
+export type ParamProblem = 'unnamed' | 'repeated' | 'noOptions';
+
+/** Why the handler blocks Save: a lookup searching by a parameter the Tool doesn't have. */
+export type HandlerProblem = 'lookupParam';
+
 /** What blocks saving a draft: the name's problem, one entry per parameter, and the handler's. */
 export interface DraftProblems {
   name: ToolNameProblem | null;
-  params: (string | null)[];
-  handler: string | null;
+  params: (ParamProblem | null)[];
+  handler: HandlerProblem | null;
 }
 
-const listOptions = (param: ToolParam) => param.options.map((o) => o.trim()).filter(Boolean);
+/** The parameters that have a name. An unnamed one is a draft still being typed. */
+export const namedParams = (params: readonly ToolParam[]): ToolParam[] => params.filter((p) => p.name.trim());
 
-function paramProblem(param: ToolParam, params: readonly ToolParam[]): string | null {
-  if (!param.name.trim()) return 'Name the parameter';
-  if (params.filter((p) => p.name === param.name).length > 1) return 'Another parameter uses this name';
-  if (param.type === 'enum' && listOptions(param).length === 0) return 'Add at least one option';
+/** A list parameter's options, trimmed, without the blank ones. */
+export const listOptions = (param: ToolParam): string[] => param.options.map((o) => o.trim()).filter(Boolean);
+
+function paramProblem(param: ToolParam, params: readonly ToolParam[]): ParamProblem | null {
+  if (!param.name.trim()) return 'unnamed';
+  if (params.filter((p) => p.name === param.name).length > 1) return 'repeated';
+  if (param.type === 'enum' && listOptions(param).length === 0) return 'noOptions';
   return null;
 }
+
+/** A new Tool: a lookup on entities with no parameters yet, offered to narration. */
+export const blankTool = (id: string): Tool => ({
+  id, name: '', description: '', params: [],
+  handler: { kind: 'lookup', source: 'entities', param: '', returns: 'full' },
+  emptyResult: '{"matches": []}', offeredTo: ['narration'], enabled: true,
+});
 
 /** Every problem with `draft` among the preset's own `tools`. */
 export function draftProblems(draft: Tool, tools: readonly Tool[]): DraftProblems {
@@ -27,9 +44,7 @@ export function draftProblems(draft: Tool, tools: readonly Tool[]): DraftProblem
   return {
     name: toolNameProblem(draft.name, tools, draft.id),
     params: params.map((p) => paramProblem(p, params)),
-    handler: handler.kind === 'lookup' && !params.some((p) => p.name === handler.param)
-      ? 'Choose the parameter to search by'
-      : null,
+    handler: handler.kind === 'lookup' && !params.some((p) => p.name === handler.param) ? 'lookupParam' : null,
   };
 }
 
