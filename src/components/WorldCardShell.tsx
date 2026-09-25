@@ -6,11 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tip } from '@/components/ui/tooltip';
 import { THUMB_FRAME, type CardLayout } from '@/lib/thumbAspect';
 
-/** The scrim behind a name laid over tile art: a smooth black fade, the same in both themes. */
-export const TITLE_SCRIM = 'bg-gradient-to-t from-black/80 via-black/40 to-transparent';
+/** The scrim behind a name laid over tile art: an eased black fade, the same in both themes. */
+export const TITLE_SCRIM = 'bg-title-scrim';
 
 /** The same scrim for a name at the top of the art. */
-export const TITLE_SCRIM_TOP = 'bg-gradient-to-b from-black/80 via-black/40 to-transparent';
+export const TITLE_SCRIM_TOP = 'bg-title-scrim-top';
 
 /** How many lines a hovered name may take. Must match the `line-clamp-*` class below. */
 const TITLE_MAX_LINES = 3;
@@ -143,7 +143,8 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
             Split cards put them at the top, where the art's hover actions are not. */}
         <div className={cn(
           'absolute left-0 right-0 p-2',
-          split ? cn('top-0 pb-8', TITLE_SCRIM_TOP) : cn('bottom-0 pt-8', TITLE_SCRIM),
+          // A 64 px fade past the name lets the scrim dissolve into the art rather than end on it.
+          split ? cn('top-0 pb-16', TITLE_SCRIM_TOP) : cn('bottom-0 pt-16', TITLE_SCRIM),
         )}>
           {loading
             ? <Skeleton className="h-6 w-2/5 bg-white/20" />
