@@ -1,6 +1,8 @@
 # 01: Morph Art Generator
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: Ruled 2026-09-25: the strict lump bound stays, and a wide letter (M, W) may show 1 cluster on about 1 card in 10.
+Base: 6dc3c219
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
