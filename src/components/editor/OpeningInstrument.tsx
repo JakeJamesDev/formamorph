@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-import { placeholderAccent } from '@/lib/chipVocabulary';
+import { placeholderAccent } from '@/lib/highlightUtils';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { activeDescriptor, statValueLabel } from '@/lib/statContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

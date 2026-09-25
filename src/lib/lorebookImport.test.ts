@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { convertLorebook } from './lorebookImport';
 import { PLAYER_NAME } from './builtinPlaceholders';
-const USER_MACRO = PLAYER_NAME.token;
 import type { DictionaryEntry } from '@/types';
 
 // Grab a converted entry by its joined keywords, since ids are randomized.
@@ -65,7 +64,7 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
 
   it('stores every user macro spelling in lore as the Player Name chip', () => {
     const d = convertLorebook({ entries: [{ keys: ['oath'], content: 'Sworn to {{ User }} and {{USER}}.' }] });
-    expect(d!.entries[0].value).toBe(`Sworn to ${USER_MACRO} and ${USER_MACRO}.`);
+    expect(d!.entries[0].value).toBe(`Sworn to ${PLAYER_NAME.token} and ${PLAYER_NAME.token}.`);
   });
 
   it('strips leading @@ decorator lines from content', () => {

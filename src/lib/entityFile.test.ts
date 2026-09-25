@@ -3,7 +3,6 @@ import { buildEntityCardData, parseEntityCardData, importCharacterFile, ENTITY_F
 import { readLibraryDetails } from './contentAuthor';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { PLAYER_NAME } from './builtinPlaceholders';
-const USER_MACRO = PLAYER_NAME.token;
 import type { Entity } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
@@ -293,7 +292,7 @@ describe('a character card’s openings', () => {
   });
 
   it('keep the stored user macro through a card round trip', () => {
-    const entity: Entity = { id: 'w', name: 'Wren', openings: [{ id: 'o1', text: `Wren greets ${USER_MACRO}.`, kind: 'narration' }] };
+    const entity: Entity = { id: 'w', name: 'Wren', openings: [{ id: 'o1', text: `Wren greets ${PLAYER_NAME.token}.`, kind: 'narration' }] };
     const bytes = embedEntityCard(fakeWebp(), JSON.stringify(buildEntityCardData(entity)), { w: 4, h: 4 });
     expect(parseEntityCardData(JSON.parse(readEntityCard(bytes) as string)).openings?.[0].text).toBe('Wren greets {{user}}.');
   });

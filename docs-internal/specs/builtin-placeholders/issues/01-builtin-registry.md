@@ -1,6 +1,6 @@
 # 01: Built-in Registry Replaces the User-Macro Special Cases
 
-Status: in-progress
+Status: ready-for-human
 Base: 2d04a713
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -16,12 +16,12 @@ Also check story 8 live: type `{{user}}` by hand in a chip field and see if it b
 
 Workload: about 28 call sites across a dozen modules, with a render rule that must keep every capital-letter and possessive case. A high-effort, high-capability model reduces regressions.
 
-- [ ] A registry module exports the Built-in rows and one helper each for: matching a token, canonicalizing text, the label for a token, and rendering a text with a render context
-- [ ] The user-macro module's exports either move into the registry or delegate to it, with no second copy of the render rule
-- [ ] The chip pattern and the has-placeholders guard are built from the registry
-- [ ] The chip vocabulary has no direct user-macro check left; it reads Built-in rows from the registry
-- [ ] Editor search, placement letters, stat-code names, the world prompt chip walk, and the Preview value map read the label from the registry helper
-- [ ] Every existing user-macro, vocabulary, resolve, search, placement-letter, stat-code and world-prompt test passes with no case removed
-- [ ] The user-macro render tests move with the render rule and keep every case
-- [ ] Story 8 checked live and the result recorded in the spec
-- [ ] Four gates green; `graphify update .` run
+- [x] A registry module exports the Built-in rows and one helper each for: matching a token, canonicalizing text, the label for a token, and rendering a text with a render context
+- [x] The user-macro module's exports either move into the registry or delegate to it, with no second copy of the render rule
+- [x] The chip pattern and the has-placeholders guard are built from the registry
+- [x] The chip vocabulary has no direct user-macro check left; it reads Built-in rows from the registry
+- [x] Editor search, placement letters, stat-code names, the world prompt chip walk, and the Preview value map read the label from the registry helper
+- [x] Every existing user-macro, vocabulary, resolve, search, placement-letter, stat-code and world-prompt test passes with no case removed
+- [x] The user-macro render tests move with the render rule and keep every case
+- [x] Story 8 checked live and the result recorded in the spec
+- [x] Four gates green; `graphify update .` run

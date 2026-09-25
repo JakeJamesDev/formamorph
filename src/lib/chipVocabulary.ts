@@ -271,8 +271,6 @@ const PLACEHOLDER_MODE_AXIS_FIXED: PromptVariantAxis = {
   readOnlyHelp: 'Draws the same value everywhere, so Unique would change nothing. Unlocks once the placeholder can roll.',
 };
 
-export { placeholderAccent };
-
 // Palette tokens carry a sentinel placement id; freshInsertToken re-mints a real one on insertion.
 const PALETTE_PID = 'palette';
 
