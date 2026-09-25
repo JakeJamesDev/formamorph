@@ -90,9 +90,10 @@ export const BUILTIN_TOKEN_SOURCE = BUILTIN_PLACEHOLDERS.map((row) => `(?:${row.
 const ANY_RE = new RegExp(BUILTIN_TOKEN_SOURCE);
 const WHOLE = BUILTIN_PLACEHOLDERS.map((row) => ({ row, re: new RegExp(`^(?:${row.source})$`) }));
 const ROW_RES = BUILTIN_PLACEHOLDERS.map((row) => ({ row, re: new RegExp(row.source, 'g') }));
-// One alternative per row: its token, then its suffix, each a group, so a match says which row it was.
+// One alternative per row, its token and suffix named by row index, so a match says which row it was.
 const RENDER_RE = new RegExp(
-  BUILTIN_PLACEHOLDERS.map((row) => `(${row.source})${row.suffixSource ? `(${row.suffixSource})?` : '()'}`).join('|'),
+  BUILTIN_PLACEHOLDERS.map((row, i) => `(?<t${i}>${row.source})${row.suffixSource ? `(?<s${i}>${row.suffixSource})?` : ''}`)
+    .join('|'),
   'g',
 );
 
@@ -124,9 +125,10 @@ export function labelBuiltins(text: string): string {
 /** Render every Built-in in the text from the playthrough. */
 export function renderBuiltins(text: string, render: BuiltinRender = {}): string {
   return text.replace(RENDER_RE, (...args: unknown[]) => {
-    const offset = args[BUILTIN_PLACEHOLDERS.length * 2 + 1] as number;
-    const at = BUILTIN_PLACEHOLDERS.findIndex((_row, i) => args[i * 2 + 1] !== undefined);
-    const suffix = (args[at * 2 + 2] as string | undefined) || undefined;
-    return BUILTIN_PLACEHOLDERS[at].resolve({ before: text.slice(0, offset), suffix }, render);
+    // With named groups the replacer ends with offset, the whole string, then the groups.
+    const groups = args[args.length - 1] as Record<string, string | undefined>;
+    const offset = args[args.length - 3] as number;
+    const at = BUILTIN_PLACEHOLDERS.findIndex((_row, i) => groups[`t${i}`] !== undefined);
+    return BUILTIN_PLACEHOLDERS[at].resolve({ before: text.slice(0, offset), suffix: groups[`s${at}`] }, render);
   });
 }

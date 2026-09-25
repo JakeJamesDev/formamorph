@@ -3,7 +3,7 @@ import {
   defaultSystemPrompt, defaultChoicesPrompt, defaultStatUpdatesPrompt,
 } from '@/components/game/GamePrompts';
 import { parsePlaceholderText } from '@/lib/placeholders';
-import { builtinLabel } from '@/lib/builtinPlaceholders';
+import { builtinForToken } from '@/lib/builtinPlaceholders';
 import type { WorldOverview, WorldPromptOverrides } from '@/types';
 
 const STORAGE_KEY = 'FORMAMORPH_worldPromptOptOut';
@@ -111,8 +111,8 @@ export function worldPromptChipValues(
   if (optedOut) return values;
   for (const kind of WORLD_PROMPT_KINDS) {
     for (const segment of parsePlaceholderText(worldPrompt(overview, kind) ?? '')) {
-      // Built-ins are left out: a resolver reads the text around its token.
-      if (segment.type === 'variable' && !builtinLabel(segment.token)) {
+      // Built-ins are left out: each one's resolver reads the text around the chip.
+      if (segment.type === 'variable' && !builtinForToken(segment.token)) {
         values[segment.token] ??= resolve(segment.token);
       }
     }

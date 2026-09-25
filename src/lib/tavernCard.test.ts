@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { readTavernCard } from './tavernCard';
 import { openingWeight } from './openings';
 import { PLAYER_NAME } from './builtinPlaceholders';
-const USER_MACRO = PLAYER_NAME.token;
 
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const enc = new TextEncoder();
@@ -61,7 +60,7 @@ describe('readTavernCard', () => {
     expect(result).not.toBeNull();
     const { entity } = result!;
     expect(entity.name).toBe('Aria');
-    expect(entity.aiDescription).toContain(`Aria greets ${USER_MACRO} warmly by the fire.`);
+    expect(entity.aiDescription).toContain(`Aria greets ${PLAYER_NAME.token} warmly by the fire.`);
     expect(entity.aiDescription).toContain('Personality: kind, curious');
     expect(entity.aiDescription).toContain('Scenario: a riverside tavern');
     expect(entity.aiDescription).not.toContain('Hello, traveler!');
@@ -125,25 +124,25 @@ describe('readTavernCard greetings', () => {
 
   it('writes the name into openings and stores every user macro spelling in its one canonical form', () => {
     const [text] = texts({ data: { name: 'Aria', first_mes: '{{char}} smiles at {{user}}. {{ Char }} waves to {{User}} and {{ USER }}.' } });
-    expect(text).toBe(`Aria smiles at ${USER_MACRO}. Aria waves to ${USER_MACRO} and ${USER_MACRO}.`);
+    expect(text).toBe(`Aria smiles at ${PLAYER_NAME.token}. Aria waves to ${PLAYER_NAME.token} and ${PLAYER_NAME.token}.`);
   });
 
   it('stores every user macro spelling in a description as the Player Name chip', () => {
     const entity = read({ data: {
       name: 'Aria', description: '{{char}} likes {{ User }}.', personality: 'fond of {{USER}}', scenario: 'with {{user}}',
     } });
-    expect(entity.aiDescription).toBe(`Aria likes ${USER_MACRO}.
+    expect(entity.aiDescription).toBe(`Aria likes ${PLAYER_NAME.token}.
 
-Personality: fond of ${USER_MACRO}
+Personality: fond of ${PLAYER_NAME.token}
 
-Scenario: with ${USER_MACRO}`);
+Scenario: with ${PLAYER_NAME.token}`);
   });
 
   it('stores the user macro in the embedded lorebook as the Player Name chip', () => {
     const result = readTavernCard(png('chara', b64(JSON.stringify({
       data: { name: 'Aria', character_book: { entries: [{ keys: ['oath'], content: 'Aria swore to {{ User }}.' }] } },
     }))));
-    expect(result?.book?.entries[0].value).toBe(`Aria swore to ${USER_MACRO}.`);
+    expect(result?.book?.entries[0].value).toBe(`Aria swore to ${PLAYER_NAME.token}.`);
   });
 
   it('imports a card with no greetings with no openings', () => {
