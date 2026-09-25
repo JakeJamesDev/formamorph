@@ -82,4 +82,19 @@ describe('the details window’s art', () => {
     expect(screen.getByRole('img', { name: 'Wren Hallow' }).getAttribute('src')).toBe('blob:stand-in.png');
     expect(morphArt()).toBeNull();
   });
+
+  it('draws Morph art for an entity with no picture at all, as its card does', async () => {
+    show({ thumbnail_file: null });
+    await screen.findByText('A ferry keeper.');
+
+    expect(morphArt()).not.toBeNull();
+  });
+
+  it('keeps an avatar’s silhouette even when flagged', async () => {
+    show({ kind: 'model', placeholder: true });
+    await screen.findByText('A ferry keeper.');
+
+    expect(screen.getByRole('img', { name: 'Wren Hallow' }).getAttribute('src')).toBe('blob:stand-in.png');
+    expect(morphArt()).toBeNull();
+  });
 });

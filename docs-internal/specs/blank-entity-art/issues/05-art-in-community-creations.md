@@ -1,6 +1,7 @@
 # 05: Morph Art in Community Creations
 
-Status: in-progress
+Status: ready-for-human
+Status note: The details window shows the portrait art whole, with gray bars at the sides of its wide frame. The website profile reaches three more modules (site boundary ceiling 40 → 43).
 Base: 3ea0f79d
 Blocked by: 02, FormamorphServer 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
