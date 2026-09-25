@@ -4,7 +4,6 @@ import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
 import { DICTIONARY_FILE_KIND } from './dictionaryFile';
-import { describePlaceholders } from './placeholders';
 import type { WorldAssociation } from './compatibleWorlds';
 import { readComponentFileLinks, type ComponentFileLinks, type ComponentFileSource } from './componentFileLinks';
 import { chipTexts } from './linkedContent';
@@ -16,6 +15,7 @@ import { readTavernCard, readTavernJson } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageDataUrl, optimizeToWebpDataUrl } from './imageOptim';
 import { entityImages, primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
+import { morphCardImage } from './morphArtCanvas';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -157,37 +157,19 @@ function cardOpening(raw: unknown): Opening[] {
   }];
 }
 
-/** A simple deterministic initials-on-color portrait, used when an entity has no image so a card can still be made. */
-async function placeholderPortrait(name: string): Promise<string> {
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas unavailable for the placeholder portrait.');
-  let hash = 0;
-  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff;
-  ctx.fillStyle = `hsl(${hash % 360}, 45%, 35%)`;
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = 'rgba(255,255,255,0.9)';
-  ctx.font = `bold ${Math.round(size * 0.4)}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  const initials = name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
-  ctx.fillText(initials, size / 2, size / 2);
-  const url = canvas.toDataURL('image/webp', 0.82);
-  return url.startsWith('data:image/webp') ? url : optimizeImageDataUrl(url, IMAGE_CAPS.entity);
-}
-
 /**
  * Encode an entity as a shareable WebP character card: its portrait carrying the text fields in a metadata chunk.
- * Entities without a portrait get a generated placeholder so export always yields a valid image.
+ * Entities without a portrait get Morph art so export always yields a valid image.
  */
 export async function exportEntityCard(
   entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails,
 ): Promise<Blob> {
-  // The generated portrait draws initials from the name, so a chip left raw is baked into the shipped image.
-  let imageUrl = primaryImage(entity)
-    || (await placeholderPortrait(describePlaceholders(entity.name, available ?? carriedPlaceholders(entity)) || 'Character'));
+  // The art follows the listing, else the library item, so a card matches the tile it came from.
+  let imageUrl = primaryImage(entity) || await morphCardImage(
+    links.source?.sourceId || links.source?.libraryId || entity.id,
+    entity.name,
+    available ?? carriedPlaceholders(entity),
+  );
   // A card is its pixels, so a linked portrait has to be downloaded here. Deliberately not falling back to
   // the generated placeholder: shipping a card with the wrong face is worse than a failure the author can act on.
   if (isRemoteImage(imageUrl)) imageUrl = await fetchAsDataUrl(imageUrl, IMAGE_CAPS.entity);

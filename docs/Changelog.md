@@ -25,6 +25,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Your persona always heads the in-game Entities tab, marked (You).** It shows in every scene and opens like any other entity: its picture in the side view, or its card.
   - **AI Context shows each request's raw reasoning in its own section.** A reasoning model's thinking for a request appears under **Raw Reasoning**, between **Raw Input** and **Raw Output**, on the turn it was generated. Search finds text in it, and the export includes it. The model's thinking is never sent back in later turns' history.
   - **The Test Bench's Triggers tab says when an entry missed only because of Case-Sensitive.** An entry with **Case-Sensitive** on that finds its keyword in another case now reads, for example, “bell” appears only as “Bell”, and case-sensitive matching is on. The entry still doesn't activate.
+  - **A character card exported from an entity with no picture shows Morph art.** The card's picture is the entity's first letter made of goo, with a color picked from the entity. It's 480 × 720 and uses the dark-theme colors in either theme. It replaces the initials on a flat color. Cards you already exported keep their initials.
 
 - **🛠️ Developer tooling**
   - **Chip Values:**
