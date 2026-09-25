@@ -358,4 +358,92 @@ describe('streamAiRequest', () => {
     expect(timings.firstTokenAt).toBeNull();
     expect(timings.firstContentAt).toBeNull();
   });
+
+  it('reassembles a tool call whose arguments arrive across frames', async () => {
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ tool_calls: [{ index: 0, id: 'call_a', type: 'function', function: { name: 'get_entity', arguments: '' } }] }),
+        frame({ tool_calls: [{ index: 0, function: { arguments: '{"name":' } }] }),
+        frame({ tool_calls: [{ index: 0, function: { arguments: '"Bram"}' } }] }, 'tool_calls'),
+      ])),
+    }));
+
+    const { toolCalls, finishReason } = doneOf(events).result;
+    expect(toolCalls).toEqual([{ id: 'call_a', name: 'get_entity', arguments: '{"name":"Bram"}' }]);
+    expect(finishReason).toBe('tool_calls');
+  });
+
+  it('keeps two calls in one response apart by index, whatever order their frames interleave in', async () => {
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ tool_calls: [
+          { index: 0, id: 'a', type: 'function', function: { name: 'get_entity', arguments: '{"name":' } },
+          { index: 1, id: 'b', type: 'function', function: { name: 'get_entity', arguments: '' } },
+        ] }),
+        frame({ tool_calls: [{ index: 1, function: { arguments: '{"name":"Odette"}' } }] }),
+        frame({ tool_calls: [{ index: 0, function: { arguments: '"Bram"}' } }] }),
+      ])),
+    }));
+
+    expect(doneOf(events).result.toolCalls).toEqual([
+      { id: 'a', name: 'get_entity', arguments: '{"name":"Bram"}' },
+      { id: 'b', name: 'get_entity', arguments: '{"name":"Odette"}' },
+    ]);
+  });
+
+  it('starts a new call on a frame without an index when it names a function, else appends to the last', async () => {
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ tool_calls: [{ id: 'a', type: 'function', function: { name: 'one', arguments: '{' } }] }),
+        frame({ tool_calls: [{ function: { arguments: '}' } }] }),
+        frame({ tool_calls: [{ id: 'b', type: 'function', function: { name: 'two', arguments: '{}' } }] }),
+      ])),
+    }));
+
+    expect(doneOf(events).result.toolCalls).toEqual([
+      { id: 'a', name: 'one', arguments: '{}' },
+      { id: 'b', name: 'two', arguments: '{}' },
+    ]);
+  });
+
+  it('counts a tool-call frame as the first token, so think time spans a lookup', async () => {
+    let clock = 1000;
+    const events = await collect(streamAiRequest(spec, {
+      now: () => (clock += 10),
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ tool_calls: [{ index: 0, id: 'a', type: 'function', function: { name: 'one', arguments: '{}' } }] }, 'tool_calls'),
+      ])),
+    }));
+
+    const { timings } = doneOf(events).result;
+    expect(timings.firstTokenAt).not.toBeNull();
+    expect(timings.firstContentAt).toBeNull();
+  });
+
+  it('emits no delta for a tool-call frame and reports an empty call list for a plain reply', async () => {
+    const events = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([
+        frame({ tool_calls: [{ index: 0, id: 'a', type: 'function', function: { name: 'one', arguments: '{}' } }] }),
+      ])),
+    }));
+    expect(events.filter((e) => e.type === 'delta')).toHaveLength(0);
+
+    const plain = await collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([frame({ content: 'x' })])) }));
+    expect(doneOf(plain).result.toolCalls).toEqual([]);
+  });
+
+  it('records which reasoning field the server streamed, so a reply can echo it under the same name', async () => {
+    const named = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([frame({ reasoning_content: 'r' }), frame({ content: 'x' })])),
+    }));
+    expect(doneOf(named).result.reasoningField).toBe('reasoning_content');
+
+    const other = await collect(streamAiRequest(spec, {
+      fetchImpl: fetchOf(streamingResponse([frame({ reasoning: 'r' })])),
+    }));
+    expect(doneOf(other).result.reasoningField).toBe('reasoning');
+
+    const none = await collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([frame({ content: 'x' })])) }));
+    expect(doneOf(none).result.reasoningField).toBeNull();
+  });
 });

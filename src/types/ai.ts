@@ -9,6 +9,33 @@ export interface ChatMessage {
   content: string;
 }
 
+/** One function call the model made, as the wire carries it. `arguments` is the raw JSON text. */
+export interface ToolCallPart {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+/** The assistant message between tool rounds: what the model wrote, called and thought. The reasoning rides
+ *  under the field name the server streamed it in. */
+export interface AssistantToolCallMessage {
+  role: 'assistant';
+  content: string | null;
+  tool_calls: ToolCallPart[];
+  reasoning?: string;
+  reasoning_content?: string;
+}
+
+/** A Tool's result, answering one call by id. */
+export interface ToolResultMessage {
+  role: 'tool';
+  tool_call_id: string;
+  content: string;
+}
+
+/** Any message a chat-completions request may carry. Turn history holds only {@link ChatMessage}. */
+export type WireMessage = ChatMessage | AssistantToolCallMessage | ToolResultMessage;
+
 /** OpenAI-compatible chat-completion request body. */
 export interface ChatCompletionRequest {
   model: string;

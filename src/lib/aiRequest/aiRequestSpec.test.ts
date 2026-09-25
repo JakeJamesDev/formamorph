@@ -11,6 +11,8 @@ import {
 } from '@/lib/reasoningEffort';
 import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
+import { toolSchema } from '@/lib/tools/toolSchema';
+import type { Tool } from '@/types';
 
 /** A capability record answering the levels question only, as a probe leaves it. */
 const accepts = (...levels: ReasoningEffortField[]): ReasoningCapability => reasoningCapabilityFromLevels(levels, 'probe');
@@ -836,5 +838,41 @@ describe('dialects — one spelling per row', () => {
         keptReasoning: { prompts: { narration: { enabled: false, level: 'low' } } },
       })).toEqual({});
     });
+  });
+});
+
+describe('tools — sent only where the record says the target takes them', () => {
+  const peek: Tool = {
+    id: 't', name: 'peek', description: 'Purpose: look.', params: [], handler: { kind: 'template', body: 'x' },
+    emptyResult: '{}', offeredTo: ['narration'], enabled: true,
+  };
+  const takesTools = (over: Partial<AiEndpointTarget> = {}) =>
+    external({ reasoning: { ...accepts(), tools: true, sources: { tools: 'native' } }, ...over });
+
+  it('sends every offered Tool as a function schema with automatic tool choice', () => {
+    const spec = buildAiRequestSpec(snapshot(takesTools()), call({ tools: [peek] }));
+    expect(spec.body.tools).toEqual([toolSchema(peek)]);
+    expect(spec.body.tool_choice).toBe('auto');
+    expect(spec.tools).toEqual([peek]);
+  });
+
+  it.each([
+    ['unknown', null],
+    ['unsupported', false],
+  ])('sends no tools field when support is %s, and leaves the prompt text unchanged', (_name, tools) => {
+    const target = external({ reasoning: { ...accepts(), tools, sources: {} } });
+    const withTools = buildAiRequestSpec(snapshot(target), call({ tools: [peek] }));
+    const without = buildAiRequestSpec(snapshot(target), call());
+    expect(withTools.body).not.toHaveProperty('tools');
+    expect(withTools.body).not.toHaveProperty('tool_choice');
+    expect(withTools).not.toHaveProperty('tools');
+    expect(withTools.body).toEqual(without.body);
+  });
+
+  it('sends no tools field when the call offers none, even on a target that takes them', () => {
+    const spec = buildAiRequestSpec(snapshot(takesTools()), call({ tools: [] }));
+    expect(spec.body).not.toHaveProperty('tools');
+    expect(spec.body).not.toHaveProperty('tool_choice');
+    expect(spec).not.toHaveProperty('tools');
   });
 });
