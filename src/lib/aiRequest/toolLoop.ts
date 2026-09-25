@@ -47,7 +47,11 @@ export interface AiToolRound {
   calls: AiToolRoundCall[];
 }
 
-export type AiToolLoopEvent = AiStreamEvent | { type: 'toolRound'; round: AiToolRound };
+export type AiToolLoopEvent =
+  | AiStreamEvent
+  | { type: 'toolRound'; round: AiToolRound }
+  /** A round ended with calls, and they are about to run. */
+  | { type: 'toolCalls'; names: string[] };
 
 export interface AiToolLoopOptions extends AiStreamOptions {
   execute: ToolExecutor;
@@ -178,6 +182,7 @@ export async function* streamAiToolLoop(
       ...(result.reasoningField && result.reasoningText ? { [result.reasoningField]: result.reasoningText } : {}),
     };
     messages.push(assistant);
+    yield { type: 'toolCalls', names: calls.map((call) => call.function.name) };
 
     const roundCalls: AiToolRoundCall[] = [];
     for (const call of calls) {

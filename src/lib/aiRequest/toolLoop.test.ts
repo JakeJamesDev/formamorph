@@ -444,6 +444,29 @@ describe('streamAiToolLoop: no Tools on the wire', () => {
   });
 });
 
+describe('streamAiToolLoop: Tools running', () => {
+  it('says which Tools a round calls before the first one runs, once per round with calls', async () => {
+    const order: string[] = [];
+    const logged: AiToolLoopOptions['execute'] = (tool, args, signal) => {
+      order.push(`run ${tool.name}`);
+      return execute(tool, args, signal);
+    };
+    const transport = scripted([
+      callFrames(['get_entity', { name: 'Bram' }], ['get_entity', { name: 'Odette' }]),
+      proseFrames('Both greet you.'),
+    ]);
+    for await (const event of streamAiToolLoop(spec(), { execute: logged, fetchImpl: transport.fetchImpl })) {
+      if (event.type === 'toolCalls') order.push(`calls ${event.names.join(',')}`);
+    }
+    expect(order).toEqual(['calls get_entity,get_entity', 'run get_entity', 'run get_entity']);
+  });
+
+  it('says nothing for a round that ends in prose', async () => {
+    const events = await run(scripted([proseFrames('Hello.')]));
+    expect(events.some((e) => e.type === 'toolCalls')).toBe(false);
+  });
+});
+
 describe('streamAiToolLoop: silent capture', () => {
   const twoRounds = () => scripted([
     [frame({ reasoning: 'Need Bram.' }), ...callFrames(['get_entity', { name: 'Bram' }])],
