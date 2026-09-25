@@ -1,8 +1,9 @@
 import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
-import type { AIRequestType } from '@/types';
+import type { AIRequestType, Tool, ToolOverrideMap } from '@/types';
 import { parsePromptReasoningSetting } from './reasoningEffort';
 import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
+import { parseTool, parseToolOverrides, toolNameProblem } from './tools/toolValidation';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
  *  to the shared shape; the source app version is stamped separately for the older/newer import warning. */
@@ -25,6 +26,8 @@ export interface SharedPreset {
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
+  tools?: Tool[];
+  toolOverrides?: ToolOverrideMap;
 }
 
 /** The preset payload an import yields (id is minted when added to the store). */
@@ -38,6 +41,8 @@ export interface ImportedPreset {
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
+  tools?: Tool[];
+  toolOverrides?: ToolOverrideMap;
 }
 
 export interface ParseResult {
@@ -47,12 +52,14 @@ export interface ParseResult {
   /** Human-readable notes (version mismatch, dropped unknown keys, newer format) — shown but non-blocking. */
   warnings: string[];
   error?: string;
+  /** Whether the imported preset holds a Script Tool, so the caller can show a notice. */
+  hasScriptTools?: boolean;
 }
 
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
  *  values/tuning by the caller before export. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview; tools?: Tool[]; toolOverrides?: ToolOverrideMap },
   appVersion: string,
 ): SharedPreset {
   return {
@@ -68,6 +75,8 @@ export function buildSharedPreset(
     ...(input.maxOutput && Object.keys(input.maxOutput).length ? { maxOutput: input.maxOutput } : {}),
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
     ...(input.overview && hasOverviewContent(input.overview) ? { overview: input.overview } : {}),
+    ...(input.tools?.length ? { tools: input.tools } : {}),
+    ...(input.toolOverrides && Object.keys(input.toolOverrides).length ? { toolOverrides: input.toolOverrides } : {}),
   };
 }
 
@@ -148,8 +157,13 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (verbatim) preset.verbatim = verbatim;
   const overview = sanitizeOverview(o.overview);
   if (overview) preset.overview = overview;
+  const tools = sanitizeTools(o.tools, warnings);
+  if (tools) preset.tools = tools;
+  const toolOverrides = parseToolOverrides(o.toolOverrides);
+  if (toolOverrides) preset.toolOverrides = toolOverrides;
 
-  return { ok: true, preset, sourceAppVersion, warnings };
+  const hasScriptTools = !!tools?.some((t) => t.handler.kind === 'script');
+  return { ok: true, preset, sourceAppVersion, warnings, hasScriptTools };
 }
 
 const SAMPLER_KEYS: readonly PromptSampler[] = ['temperature', 'repetitionPenalty'];
@@ -213,6 +227,25 @@ function sanitizeOverview(raw: unknown): PresetOverview | undefined {
   const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
   const overview = normalizeOverview({ author: str(r.author), description: str(r.description), tags: list(r.tags), models: list(r.models) });
   return hasOverviewContent(overview) ? overview : undefined;
+}
+
+/** Keep each well-formed user Tool whose name no earlier one took; each dropped Tool adds a warning. */
+function sanitizeTools(raw: unknown, warnings: string[]): Tool[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    warnings.push("The preset's Tool list is unreadable, so no Tools were imported.");
+    return undefined;
+  }
+  const out: Tool[] = [];
+  raw.forEach((entry, i) => {
+    const label = entry && typeof entry === 'object' && typeof (entry as { name?: unknown }).name === 'string'
+      ? `The Tool "${(entry as { name: string }).name}"` : `Tool ${i + 1}`;
+    const r = parseTool(entry);
+    if ('error' in r) warnings.push(`${label} was skipped: ${r.error}.`);
+    else if (toolNameProblem(r.tool.name, out) === 'taken') warnings.push(`${label} was skipped: an earlier Tool has its name.`);
+    else out.push(r.tool);
+  });
+  return out.length ? out : undefined;
 }
 
 // --- UTF-8-safe base64 (prompt text carries em-dashes, curly quotes, etc.; btoa alone is Latin1-only) ---

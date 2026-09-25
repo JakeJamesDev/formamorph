@@ -48,6 +48,55 @@ export type AIRequestType =
   | 'openingTime'
   | 'sceneTags';
 
+/** The value type of a Tool parameter; `enum` takes one of the parameter's `options`. */
+export type ToolParamType = 'string' | 'number' | 'boolean' | 'enum';
+
+/** One argument the AI passes when it calls a Tool. */
+export interface ToolParam {
+  name: string;
+  type: ToolParamType;
+  description: string;
+  required: boolean;
+  /** The allowed values of an `enum` parameter; empty for the other types. */
+  options: string[];
+}
+
+/** The world data a Lookup handler searches. */
+export type ToolLookupSource = 'entities' | 'locations' | 'dictionary';
+
+/** What runs when the AI calls a Tool. */
+export type ToolHandler =
+  | { kind: 'lookup'; source: ToolLookupSource; param: string; returns: 'full' | 'summary' }
+  | { kind: 'template'; body: string }
+  | { kind: 'script'; code: string };
+
+/** A function the AI can call during a request. User Tools live in a prompt preset; built-in Tools are the catalog. */
+export interface Tool {
+  id: string;
+  /** The function name the AI calls. */
+  name: string;
+  /** What the AI reads to decide when to call the Tool. */
+  description: string;
+  params: ToolParam[];
+  handler: ToolHandler;
+  /** The text the AI receives when the handler finds nothing. */
+  emptyResult: string;
+  /** The prompts that send this Tool. */
+  offeredTo: AIRequestType[];
+  /** Calls allowed per request; absent uses the global default. */
+  callLimit?: number;
+  enabled: boolean;
+}
+
+/** A preset's settings for one built-in Tool. The definition itself is never overridden. */
+export interface ToolOverride {
+  enabled: boolean;
+  offeredTo: AIRequestType[];
+}
+
+/** Built-in Tool overrides, keyed by catalog Tool id. */
+export type ToolOverrideMap = Record<string, ToolOverride>;
+
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
  * `turnId`/`summary` are additive memory-digest fields — absent on pre-digest saves.

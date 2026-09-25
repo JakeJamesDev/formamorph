@@ -50,7 +50,7 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
+  addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset, storedToolSet,
   type PromptPresetStore, type PresetDownloadLink, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -252,6 +252,8 @@ function importedPresetContent(imported: ImportedPreset, name: string, includeTu
     ...(includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
     ...(includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     ...(imported.overview ? { overview: imported.overview } : {}),
+    ...(imported.tools ? { tools: imported.tools } : {}),
+    ...(imported.toolOverrides ? { toolOverrides: imported.toolOverrides } : {}),
   };
 }
 
@@ -928,7 +930,7 @@ function useProvideSettings() {
     // Built from the effective values, so "save as new" while pinned copies what is actually running.
     setRawPresetStore((s) => {
       const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
-      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from));
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from), storedToolSet(from));
       return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
     });
     if (pinnedPresetId) {
@@ -965,7 +967,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore) }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), ...storedToolSet(effectiveStore) }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const content = importedPresetContent(imported, opts.name, opts.includeTuning);
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
