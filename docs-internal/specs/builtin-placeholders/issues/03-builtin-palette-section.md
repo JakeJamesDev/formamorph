@@ -1,7 +1,7 @@
 # 03: Built-in Section in the Palette and Typeahead
 
 Status: ready-for-agent
-Blocked by: 02 (Character Name Resolves Live)
+Blocked by: 02 — Character Name Resolves Live
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
 

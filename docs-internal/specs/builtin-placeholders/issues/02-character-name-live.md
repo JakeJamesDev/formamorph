@@ -1,7 +1,7 @@
 # 02: Character Name Resolves Live
 
 Status: ready-for-agent
-Blocked by: 01 (Built-in Registry Replaces the User-Macro Special Cases)
+Blocked by: 01 — Built-in Registry Replaces the User-Macro Special Cases
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
 
