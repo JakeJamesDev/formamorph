@@ -169,6 +169,18 @@ describe('streamAiToolLoop: one lookup, then prose', () => {
     expect(roundsOf(events)[0].calls.map((c) => c.arguments)).toEqual([JSON.stringify({ name: 'Bram' }), JSON.stringify({ name: 'Odette' })]);
   });
 
+  it('leaves the caller\'s messages untouched, so the tool exchange never reaches the next turn\'s history', async () => {
+    const s = spec();
+    const before = structuredClone(s.body.messages);
+    const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('x')]);
+
+    const events = await run(transport, {}, s);
+
+    expect(s.body.messages).toEqual(before);
+    expect(doneOf(events).toolCalls).toEqual([]);
+    expect(doneOf(events).content).not.toContain(BRAM_FACT);
+  });
+
   it('carries the assistant content between rounds as null when the model wrote nothing', async () => {
     const transport = scripted([callFrames(['get_entity', { name: 'Bram' }]), proseFrames('x')]);
     await run(transport);

@@ -182,6 +182,9 @@ function foldToolCall(calls: AiToolCall[], byIndex: Map<number, AiToolCall>, pie
   if (piece.index !== null) byIndex.set(piece.index, call);
 }
 
+/** Any round's request: the caller's plain messages, or a tool round's follow-up with its wider roles. */
+export type AiStreamSpec = AiRequestSpec<WireMessage>;
+
 /**
  * Performs one streaming chat-completions request and yields its typed events.
  *
@@ -190,9 +193,6 @@ function foldToolCall(calls: AiToolCall[], byIndex: Map<number, AiToolCall>, pie
  * the `done` event still carries everything received before the stop, with `aborted` as the finish reason.
  * HTTP failures and a missing body throw `AiStreamError`.
  */
-/** Any round's request: the caller's plain messages, or a tool round's follow-up with its wider roles. */
-export type AiStreamSpec = AiRequestSpec<WireMessage>;
-
 export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOptions = {}): AsyncGenerator<AiStreamEvent, void, void> {
   const doFetch = options.fetchImpl ?? fetch;
   const now = options.now ?? (() => performance.now());
