@@ -1205,7 +1205,7 @@ const CommunityCreationsBrowser = ({
                 )) : Array(4).fill(0).map((_, index) => (
                   <div key={index} className="relative w-full h-48 rounded-lg overflow-hidden">
                     <Skeleton className="w-full h-full" />
-                    <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-8', TITLE_SCRIM)}>
+                    <div className={cn('absolute bottom-0 left-0 right-0 p-2 pt-16', TITLE_SCRIM)}>
                       <Skeleton className="h-6 w-24" />
                     </div>
                   </div>

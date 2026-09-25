@@ -1,3 +1,9 @@
+/** An eased black fade from 80% opacity to clear, as a "scrim gradient": position and share of the start alpha. */
+const SCRIM_EASE = [[0, 1], [19, 0.738], [34, 0.541], [47, 0.382], [56.5, 0.278], [65, 0.194], [73, 0.126],
+  [80.2, 0.075], [86.1, 0.042], [91, 0.021], [95.2, 0.008], [98.2, 0.002], [100, 0]];
+const titleScrim = (direction) =>
+  `linear-gradient(${direction}, ${SCRIM_EASE.map(([at, share]) => `rgb(0 0 0 / ${(0.8 * share).toFixed(4)}) ${at}%`).join(', ')})`;
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: ["class"],
@@ -27,6 +33,12 @@ module.exports = {
       // `lib/devicePixelGrid`; the fallback keeps the line a whole pixel before it lands.
       spacing: {
         hairline: 'calc(1px / var(--dpr, 1))',
+      },
+      // The shade behind a name laid over art, darkest at the name. Eased rather than linear: a straight
+      // ramp ends in a visible line where it meets the art, and steps into bands over dark art.
+      backgroundImage: {
+        'title-scrim': titleScrim('to top'),
+        'title-scrim-top': titleScrim('to bottom'),
       },
       // The whole app follows the Font setting via --app-font (defined in index.css :root, overridden
       // inline by the setting). Preflight applies fontFamily.sans to <html>, so this themes everything.
