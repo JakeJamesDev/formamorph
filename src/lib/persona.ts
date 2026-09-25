@@ -1,5 +1,6 @@
 import { primaryImage } from './entityImages';
 import type { Entity, PersonaRef } from '@/types';
+import type { ResolveEntityText } from './resolveWorldNames';
 
 /** The entity the player plays, and where it was read from. */
 export interface ResolvedPersona {
@@ -52,7 +53,7 @@ export interface PersonaPick {
 
 /** A world entity as a persona picker option, its player description resolved through `resolve` with the
  *  entity as its owner. */
-export const personaOption = (resolve: (entity: Entity, text: string) => string) =>
+export const personaOption = (resolve: ResolveEntityText) =>
   (entity: Entity): { id: string; name: string; image?: string; description?: string } => {
     const description = entity.playerDescription?.trim();
     return {
