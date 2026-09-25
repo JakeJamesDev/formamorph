@@ -39,13 +39,13 @@ function carriesError(body: unknown): boolean {
 
 /**
  * What one endpoint-and-model pair's completion probes proved this session: `true` for a 200, `false` for a
- * 400. `bundle` is the probe that asks both fields at once; only its 400 is kept, since its 200 answers the
- * other two. An inconclusive answer is never recorded, so the pair is asked again.
+ * 400. An inconclusive answer is never recorded, so the pair is asked again.
  */
 export interface CompletionProbeAnswers {
   readonly reasoning?: boolean;
   readonly tools?: boolean;
-  readonly bundle?: false;
+  /** The probe asking both fields at once got a 400. Its 200 is recorded as the two answers instead. */
+  readonly bundleRejected?: true;
 }
 
 const completionAnswers = new Map<string, CompletionProbeAnswers>();

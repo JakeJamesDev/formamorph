@@ -455,6 +455,8 @@ export interface ReasoningResolveContext {
   readonly observation?: ReasoningObservation | null;
   /** Loads the public model catalog. Injected so a test names its own catalog and reaches no network. */
   readonly loadCatalog?: ReasoningCatalogLoader;
+  /** The record already cached for this target. A tools answer it holds is not probed again. */
+  readonly stored?: ReasoningCapability | null;
   readonly signal?: AbortSignal;
 }
 
@@ -784,10 +786,10 @@ async function probeCompletions(
     reasoning: wanted.reasoning && known.reasoning === undefined,
     tools: wanted.tools && known.tools === undefined,
   };
-  if (open.reasoning && open.tools && known.bundle === undefined) {
+  if (open.reasoning && open.tools && !known.bundleRejected) {
     const both = await sendProbe(target, doFetch, open, signal);
     if (both === null) return known; // an inconclusive answer attributes nothing, so it is not split
-    recordCompletionProbe(target.url, target.model, both ? { reasoning: true, tools: true } : { bundle: false });
+    recordCompletionProbe(target.url, target.model, both ? { reasoning: true, tools: true } : { bundleRejected: true });
     if (both) return completionProbeAnswers(target.url, target.model);
   }
   for (const field of ['reasoning', 'tools'] as const) {
@@ -871,7 +873,7 @@ async function gatherReasoningCapability(
 ): Promise<ReasoningCapability | null> {
   if (!originOf(target.url)) return null; // a half-typed endpoint gets no request at all
   const { record, reasonsOpen } = await gatherAdvertised(target, doFetch, context);
-  const wanted: ProbeFields = { reasoning: reasonsOpen, tools: record?.tools == null };
+  const wanted: ProbeFields = { reasoning: reasonsOpen, tools: record?.tools == null && context.stored?.tools == null };
   if (!wanted.reasoning && !wanted.tools) return record;
   const probed = probedCapability(await probeCompletions(target, doFetch, wanted, context.signal), wanted);
   if (!probed) return record;
