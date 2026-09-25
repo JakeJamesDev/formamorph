@@ -97,11 +97,11 @@ describe('observationAnswer', () => {
 
 describe('observationMayCorrect', () => {
   const answeredBy = (source: ReasoningCapabilitySource): ReasoningCapability =>
-    ({ reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: source } });
+    ({ reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: source } });
 
   it('opens a record nothing has answered', () => {
     expect(observationMayCorrect(null)).toBe(true);
-    expect(observationMayCorrect({ reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: {} })).toBe(true);
+    expect(observationMayCorrect({ reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} })).toBe(true);
   });
 
   it.each(['probe', 'cache', 'observed'] as const)('corrects an answer the %s source gave', (source) => {

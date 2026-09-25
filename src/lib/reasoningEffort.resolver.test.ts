@@ -6,7 +6,7 @@ import {
 } from './reasoningEffort';
 import { resetProbeMemo } from './probeMemo';
 import {
-  reasoningBackend as backend, probeCount, REASONING_TARGET as TARGET,
+  reasoningBackend as backend, probeCount, probeKinds, REASONING_TARGET as TARGET,
   LM_STUDIO_URL as LM_STUDIO, OLLAMA_URL as OLLAMA, PROPS_URL as PROPS, OPENAI_URL as OPENAI,
   COMPLETIONS_URL as COMPLETIONS, type BackendAnswer as Answer,
 } from '@/test/reasoningBackend';
@@ -164,7 +164,7 @@ describe('gateway model list', () => {
     expect(record).toMatchObject({ reasons: true });
     expect(record?.levels).toEqual(['high', 'medium', 'low', 'none']);
     expect(record?.sources.levels).toBe('native');
-    expect(probeCount(calls)).toBe(0);
+    expect(probeKinds(calls)).toEqual(['tools']); // the list answered reasoning; only tools is asked
   });
 
   // A mandatory-reasoning model rejects `none`, so the switch-off state must omit the field instead.
@@ -255,7 +255,7 @@ describe('OpenRouter model list', () => {
   const resolve = async (reasoning: Record<string, unknown>) => {
     const { doFetch, calls } = backend({ [OPENAI]: listing(reasoning) });
     const record = await resolveReasoningCapability(TARGET, doFetch);
-    expect(probeCount(calls)).toBe(0); // the list answered, so nothing is asked of the model
+    expect(probeKinds(calls)).toEqual(['tools']); // the list answered reasoning; only tools is asked
     return record;
   };
 
@@ -376,7 +376,9 @@ describe('source identification', () => {
     const { doFetch, calls } = backend({ [OPENAI]: { status: 200, body: { data: [{ id: 'm', supported_parameters: ['reasoning'] }] } } });
     const record = await resolveReasoningCapability(TARGET, doFetch);
     expect(record?.reasons).toBe(true);
-    expect(calls.map((c) => c.url)).toEqual([LM_STUDIO, OLLAMA, PROPS, OPENAI]);
+    // The list answers reasoning, so the one completion after it asks tools alone.
+    expect(calls.map((c) => c.url)).toEqual([LM_STUDIO, OLLAMA, PROPS, OPENAI, COMPLETIONS]);
+    expect(probeKinds(calls)).toEqual(['tools']);
   });
 });
 
@@ -400,7 +402,7 @@ describe('the chain ends on the reasons question, not on any answer', () => {
     const record = await resolveReasoningCapability(TARGET, doFetch);
     expect(record?.reasons).toBe(false);
     expect(record?.sources.reasons).toBe('probe');
-    expect(probeCount(calls)).toBe(1);
+    expect(probeKinds(calls)).toEqual(['bundle', 'reasoning', 'tools']); // a 400 splits to attribute it
   });
 
   // An advertisement outranks the probe, which only learns whether the field parses.
@@ -510,12 +512,12 @@ describe('what the replies already showed', () => {
   const saw = { sawReasoning: true, sawSeparateReasoning: true, effort: 'high' } as const;
   const bare = { sawReasoning: false, sawSeparateReasoning: false, effort: 'high' } as const;
 
-  it('marks a model whose reply carried reasoning as reasoning, with no completion sent', async () => {
+  it('marks a model whose reply carried reasoning as reasoning, with no reasoning probe sent', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 200, body: {} } });
     const record = await resolveReasoningCapability(TARGET, doFetch, { observation: saw });
     expect(record?.reasons).toBe(true);
     expect(record?.sources.reasons).toBe('observed');
-    expect(probeCount(calls)).toBe(0);
+    expect(probeKinds(calls)).toEqual(['tools']);
   });
 
   // Seeing a scratchpad says the model thinks. It never says which strengths the endpoint takes.
@@ -531,7 +533,7 @@ describe('what the replies already showed', () => {
     const record = await resolveReasoningCapability(TARGET, doFetch, { observation: bare });
     expect(record).toMatchObject({ reasons: false, levels: [] });
     expect(record?.sources.reasons).toBe('observed');
-    expect(probeCount(calls)).toBe(0);
+    expect(probeKinds(calls)).toEqual(['tools']);
   });
 
   it.each([
@@ -569,13 +571,13 @@ describe('what the replies already showed', () => {
   });
 });
 
-describe('the single probe', () => {
+describe('the reasoning probe', () => {
   it('rules a model out when the endpoint rejects the none literal', async () => {
     const { doFetch, calls } = backend({ [COMPLETIONS]: { status: 400, body: {} } });
     const record = await resolveReasoningCapability(TARGET, doFetch);
     expect(record).toMatchObject({ reasons: false, levels: [] });
     expect(record?.sources.reasons).toBe('probe');
-    expect(probeCount(calls)).toBe(1);
+    expect(probeKinds(calls)).toEqual(['bundle', 'reasoning', 'tools']); // a 400 splits to attribute it
   });
 
   it('leaves the reasons question open on the safe levels when the endpoint accepts it', async () => {
@@ -602,16 +604,17 @@ describe('the single probe', () => {
     expect(await resolveReasoningCapability(TARGET, doFetch)).toBeNull();
   });
 
-  // The guard the ticket names. It fails if a second completion is ever added to any path.
+  // Only a 400 splits the bundled probe, since only a 400 names a field to attribute. It fails if a
+  // completion is ever added to any path.
   it.each([
-    ['nothing advertises', {}],
-    ['the probe is rejected', { [COMPLETIONS]: { status: 400, body: {} } }],
-    ['the probe is accepted', { [COMPLETIONS]: { status: 200, body: {} } }],
-    ['the probe errors', { [COMPLETIONS]: { status: 500, body: {} } }],
-  ])('never sends more than one completion when %s', async (_name, answers) => {
+    ['nothing advertises', {}, ['bundle']],
+    ['the probe is rejected', { [COMPLETIONS]: { status: 400, body: {} } }, ['bundle', 'reasoning', 'tools']],
+    ['the probe is accepted', { [COMPLETIONS]: { status: 200, body: {} } }, ['bundle']],
+    ['the probe errors', { [COMPLETIONS]: { status: 500, body: {} } }, ['bundle']],
+  ])('sends only the completions it needs when %s', async (_name, answers, kinds) => {
     const { doFetch, calls } = backend(answers as Record<string, Answer>);
     await resolveReasoningCapability(TARGET, doFetch);
-    expect(probeCount(calls)).toBeLessThanOrEqual(1);
+    expect(probeKinds(calls)).toEqual(kinds);
   });
 
   it('sends no completion at all when a source answered', async () => {
@@ -630,7 +633,7 @@ describe('merging a fresh answer onto a stored record', () => {
     levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
     budget: null,
     dialect: 'unknown',
-    offAllowed: null,
+    offAllowed: null, tools: null,
     sources: { levels: 'cache' },
   };
 
@@ -646,14 +649,14 @@ describe('merging a fresh answer onto a stored record', () => {
   });
 
   it('keeps a stored answer the fresh record does not carry', () => {
-    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
-    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, sources: {} };
+    const stored: ReasoningCapability = { reasons: true, levels: ['none', 'high'], budget: true, dialect: 'lmstudio', offAllowed: null, tools: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const fresh: ReasoningCapability = { reasons: null, levels: null, budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: {} };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(stored);
   });
 
   it('takes every fresh answer over the stored one', () => {
-    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, sources: { reasons: 'probe', levels: 'probe' } };
-    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', offAllowed: true, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
+    const stored: ReasoningCapability = { reasons: false, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { reasons: 'probe', levels: 'probe' } };
+    const fresh: ReasoningCapability = { reasons: true, levels: ['none', 'low'], budget: true, dialect: 'lmstudio', offAllowed: true, tools: null, sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native' } };
     expect(mergeReasoningCapability(stored, fresh)).toEqual(fresh);
   });
 });

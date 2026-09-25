@@ -36,16 +36,16 @@ const seedCapability = (record: ReasoningCapability) =>
 const levels = ['none', 'low', 'medium', 'high'] as const;
 /** A reasoning model on LM Studio: its native list answered the reasons and budget questions. */
 const takesBudget: ReasoningCapability = {
-  reasons: true, levels: [...levels], budget: true, dialect: 'lmstudio', offAllowed: null,
+  reasons: true, levels: [...levels], budget: true, dialect: 'lmstudio', offAllowed: null, tools: null,
   sources: { reasons: 'native', levels: 'probe', budget: 'native' },
 };
 /** A plain OpenAI-compatible endpoint: the probe narrowed the levels and nothing answered the budget. */
 const effortOnly: ReasoningCapability = {
-  reasons: null, levels: [...levels], budget: null, dialect: 'unknown', offAllowed: null, sources: { levels: 'probe' },
+  reasons: null, levels: [...levels], budget: null, dialect: 'unknown', offAllowed: null, tools: null, sources: { levels: 'probe' },
 };
 /** A model whose endpoint refuses to switch reasoning off, such as Kimi k3. */
 const alwaysReasons: ReasoningCapability = {
-  reasons: true, levels: ['low', 'high', 'max'], budget: null, dialect: 'moonshot-k3', offAllowed: null,
+  reasons: true, levels: ['low', 'high', 'max'], budget: null, dialect: 'moonshot-k3', offAllowed: null, tools: null,
   sources: { reasons: 'native', levels: 'native', dialect: 'native' },
 };
 
@@ -136,7 +136,7 @@ describe('an OpenRouter model', () => {
   beforeEach(() => localStorage.clear());
 
   const openRouter = (over: Partial<ReasoningCapability>): ReasoningCapability => ({
-    reasons: true, levels: [...levels], budget: false, dialect: 'openrouter', offAllowed: true,
+    reasons: true, levels: [...levels], budget: false, dialect: 'openrouter', offAllowed: true, tools: null,
     sources: { reasons: 'native', levels: 'native', budget: 'native', dialect: 'native', offAllowed: 'native' },
     ...over,
   });
@@ -206,11 +206,11 @@ describe('a vLLM server before and after a reply proves it separates its reasoni
 
   /** What the model list alone leaves behind: the dialect, and no answer to anything else. */
   const unproven: ReasoningCapability = {
-    reasons: null, levels: null, budget: null, dialect: 'vllm', offAllowed: null, sources: { dialect: 'native' },
+    reasons: null, levels: null, budget: null, dialect: 'vllm', offAllowed: null, tools: null, sources: { dialect: 'native' },
   };
   /** What one reply carrying a reasoning field adds: the budget answered, and the safe levels to pick from. */
   const proven: ReasoningCapability = {
-    reasons: true, levels: [...levels], budget: true, dialect: 'vllm', offAllowed: null,
+    reasons: true, levels: [...levels], budget: true, dialect: 'vllm', offAllowed: null, tools: null,
     sources: { dialect: 'native', reasons: 'observed', levels: 'observed', budget: 'observed' },
   };
 
@@ -241,7 +241,7 @@ describe('an Anthropic or Google model, named from the endpoint host', () => {
 
   /** What `reasoningIdentityAnswer` proves, as `identitySource` stamps it onto the record. */
   const identified = (over: Partial<ReasoningCapability>): ReasoningCapability => ({
-    reasons: true, levels: [], budget: false, dialect: 'anthropic-adaptive', offAllowed: null,
+    reasons: true, levels: [], budget: false, dialect: 'anthropic-adaptive', offAllowed: null, tools: null,
     sources: { reasons: 'identity', budget: 'identity', dialect: 'identity', levels: 'identity' },
     ...over,
   });
@@ -330,7 +330,7 @@ describe('the Native Reasoning controls on a Kimi model', () => {
     const answer = reasoningIdentityAnswer('https://api.moonshot.ai/v1/chat/completions', model)!;
     return {
       ...answer,
-      offAllowed: answer.offAllowed ?? null,
+      offAllowed: answer.offAllowed ?? null, tools: null,
       sources: { reasons: 'identity', budget: 'identity', dialect: 'identity', levels: 'identity' },
       ...over,
     };

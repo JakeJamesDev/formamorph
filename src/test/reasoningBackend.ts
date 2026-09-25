@@ -12,10 +12,15 @@ export interface BackendAnswer {
   body?: unknown;
 }
 
+/** An answer that depends on the request body, for a completions URL that accepts some fields and rejects others. */
+export type BackendResponder = (body: Record<string, unknown>) => BackendAnswer;
+
 /** One request the resolver made. */
 export interface BackendCall {
   url: string;
   method: string;
+  /** The parsed JSON body, or an empty object for a request that sent none. */
+  body: Record<string, unknown>;
 }
 
 /** The endpoint-and-model pair the resolver suites run against, so a case differs only in what answers. */
@@ -29,11 +34,13 @@ export const OPENAI_URL = 'http://host.example/v1/models';
 export const COMPLETIONS_URL = REASONING_TARGET.url;
 
 /** A fetch that answers only the URLs `answers` names; everything else 404s, as a real backend would. */
-export function reasoningBackend(answers: Record<string, BackendAnswer>) {
+export function reasoningBackend(answers: Record<string, BackendAnswer | BackendResponder>) {
   const calls: BackendCall[] = [];
   const doFetch = async (url: string, init?: RequestInit) => {
-    calls.push({ url, method: init?.method ?? 'GET' });
-    const answer = answers[url] ?? { status: 404, body: {} };
+    const body = typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {};
+    calls.push({ url, method: init?.method ?? 'GET', body });
+    const named = answers[url] ?? { status: 404, body: {} };
+    const answer = typeof named === 'function' ? named(body) : named;
     return {
       ok: answer.status >= 200 && answer.status < 300,
       status: answer.status,
@@ -45,6 +52,25 @@ export function reasoningBackend(answers: Record<string, BackendAnswer>) {
   return { doFetch, calls };
 }
 
-/** How many completions a resolve sent — the number the single-probe guard caps at one. */
+/** How many completions a resolve sent. */
 export const probeCount = (calls: readonly BackendCall[]): number =>
   calls.filter((c) => c.url === COMPLETIONS_URL).length;
+
+/** Which questions one completion asked: `bundle` carries both fields, the others one each. */
+export type ProbeKind = 'bundle' | 'reasoning' | 'tools';
+
+/** The kinds of completion a resolve sent to `url`, in order. */
+export function probeKinds(calls: readonly BackendCall[], url: string = COMPLETIONS_URL): ProbeKind[] {
+  return calls.filter((c) => c.url === url).map(({ body }) => {
+    const reasoning = 'reasoning_effort' in body;
+    const tools = 'tools' in body;
+    if (reasoning && tools) return 'bundle';
+    return tools ? 'tools' : 'reasoning';
+  });
+}
+
+/** A completions URL that rejects any request carrying a field it does not take, as a strict server does. */
+export const completionsAccepting = (accepts: { reasoning: boolean; tools: boolean }): BackendResponder => (body) => {
+  const rejected = ('reasoning_effort' in body && !accepts.reasoning) || ('tools' in body && !accepts.tools);
+  return { status: rejected ? 400 : 200, body: {} };
+};

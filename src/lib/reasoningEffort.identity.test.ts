@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveReasoningCapability } from './reasoningEffort';
 import { resetProbeMemo } from './probeMemo';
-import { reasoningBackend as backend } from '@/test/reasoningBackend';
+import { reasoningBackend as backend, probeKinds } from '@/test/reasoningBackend';
 import { buildRequestBody, type AiEndpointTarget, type AiRequestBody } from './aiRequest/aiRequestSpec';
 import { defaultEndpointSamplerOverrides } from '@/lib/endpointSamplers';
 
@@ -24,8 +24,9 @@ describe('the endpoint identity source', () => {
     expect(record).toMatchObject({ dialect: 'anthropic-adaptive', reasons: true, budget: false, levels: [] });
     expect(record?.sources.dialect).toBe('identity');
     expect(record?.sources.reasons).toBe('identity');
-    // The whole point of identity: it beats every source that costs a request, so none is sent.
-    expect(calls).toHaveLength(0);
+    // Identity beats every source that costs a request. Only the tools question, which it leaves open, is asked.
+    expect(probeKinds(calls, ANTHROPIC.url)).toEqual(['tools']);
+    expect(calls).toHaveLength(1);
   });
 
   it('names the budget row for a Claude model that still takes a manual budget', async () => {
@@ -41,7 +42,8 @@ describe('the endpoint identity source', () => {
       dialect: 'google-2.5', reasons: true, budget: true, levels: ['minimal', 'low', 'medium', 'high'],
     });
     expect(record?.sources.levels).toBe('identity');
-    expect(calls).toHaveLength(0);
+    expect(probeKinds(calls, GOOGLE.url)).toEqual(['tools']);
+    expect(calls).toHaveLength(1);
 
     const three = silent();
     const record3 = await resolveReasoningCapability({ ...GOOGLE, model: 'gemini-3-pro-preview' }, three.doFetch);

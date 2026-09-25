@@ -410,7 +410,7 @@ describe('reasoning split — budget where the record says, effort everywhere el
 
   it('omits the effort on a model the record says does not reason, even where levels are listed', () => {
     const nonReasoning: ReasoningCapability = {
-      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null,
+      reasons: false, levels: ['none', 'low', 'high'], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
       sources: { reasons: 'native' },
     };
     const snap = snapshot(external({ reasoning: nonReasoning }), { reasoningEngaged: true, reasoningEffort: 'high' });
@@ -641,7 +641,7 @@ describe('dialects — one spelling per row', () => {
     const proven = speaking('vllm', {
       reasoning: {
         reasons: true, levels: ['none', 'low', 'medium', 'high'], budget: true, dialect: 'vllm',
-        offAllowed: null, sources: { reasons: 'observed', levels: 'observed', budget: 'observed', dialect: 'native' },
+        offAllowed: null, tools: null, sources: { reasons: 'observed', levels: 'observed', budget: 'observed', dialect: 'native' },
       },
     });
     expect(speaks(proven)).toEqual({ thinking_token_budget: 400, reasoning_effort: 'high' });
@@ -650,7 +650,7 @@ describe('dialects — one spelling per row', () => {
   it('stays silent on a model the record rules out, off spelling or not', () => {
     for (const dialect of ['vllm', 'anthropic-budget', 'anthropic-adaptive', 'moonshot-k2', 'unknown'] as const) {
       const ruledOut = speaking(dialect, {
-        reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, sources: { reasons: 'native' } },
+        reasoning: { reasons: false, levels: [], budget: true, dialect, offAllowed: null, tools: null, sources: { reasons: 'native' } },
       });
       expect(speaks(ruledOut, { promptReasoning: { narration: 'none' } })).toEqual({});
     }

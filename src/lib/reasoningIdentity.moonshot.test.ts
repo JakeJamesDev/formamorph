@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { reasoningIdentityAnswer } from './reasoningIdentity';
 import { resolveReasoningCapability } from './reasoningEffort';
 import { resetProbeMemo } from './probeMemo';
-import { reasoningBackend as backend } from '@/test/reasoningBackend';
+import { reasoningBackend as backend, probeKinds } from '@/test/reasoningBackend';
 
 /**
  * Moonshot is the one first-party host whose model id decides both the dialect and whether the model may be
@@ -120,8 +120,9 @@ describe('the resolver reaches the Moonshot answer without a request', () => {
     });
     expect(record?.sources.dialect).toBe('identity');
     expect(record?.sources.levels).toBe('identity');
-    // Identity beats every source that costs a request, so none is sent.
-    expect(calls).toHaveLength(0);
+    // Identity beats every source that costs a request. Only the tools question, which it leaves open, is asked.
+    expect(probeKinds(calls, GLOBAL)).toEqual(['tools']);
+    expect(calls).toHaveLength(1);
   });
 
   it('carries the per-model off answer onto the record, sourced to identity', async () => {

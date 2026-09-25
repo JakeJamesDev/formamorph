@@ -29,7 +29,7 @@ vi.mock('@/lib/usePersistentState', async () => {
 const ENDPOINT = 'http://slow.test/v1';
 const MODEL = 'late-12b';
 const RECORD: ReasoningCapability = {
-  reasons: true, levels: [], budget: null, dialect: 'unknown', offAllowed: null,
+  reasons: true, levels: [], budget: null, dialect: 'unknown', offAllowed: null, tools: null,
   sources: { reasons: 'native', levels: 'native' },
 };
 
