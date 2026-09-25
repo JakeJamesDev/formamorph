@@ -143,7 +143,6 @@ import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, ty
 import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
 import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish, avatarPublishRefusal } from "@/lib/avatarPublish";
-import { buildWorldPublish } from "@/lib/worldPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -670,16 +669,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       return;
     }
     openPublish(attempt.payload);
-  };
-
-  /** Publish the selected world, unless it is a bundled world the player never edited. */
-  const publishWorld = (world: WorldRecord) => {
-    const attempt = buildWorldPublish(world as WorldPublishTarget);
-    if (!attempt.allowed) {
-      toast.error(attempt.refusal);
-      return;
-    }
-    openPublish(attempt.payload, world.id);
   };
   const [showBackup, setShowBackup] = useState(false);
 
@@ -2747,7 +2736,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                     <WorldActionButton
                       tone="redSoft"
                       disabled={!!sourceBlock}
-                      onClick={() => { if (selectedWorld) publishWorld(selectedWorld); }}
+                      onClick={() => selectedWorld && openPublish(worldPublishPayload(selectedWorld.data), selectedWorld.id)}
                     >
                       <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish World
                     </WorldActionButton>
