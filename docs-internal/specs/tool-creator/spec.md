@@ -123,7 +123,7 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 - Outgoing call IDs are remapped to nine-character alphanumeric IDs where the template needs them, and each result is matched to its call.
 - Limits: calls per request per Tool, plus a hard cap on rounds per request. Requests in the same turn do not share a counter. On a limit, a malformed call, or an unknown Tool, the layer sends one more round without Tools so the model finishes in prose.
 - Stop aborts the current round, and no further round is sent. A Script handler evaluates synchronously on the main thread, so Stop cannot interrupt it mid-run; the sandbox's one-second deadline bounds it, then the loop stops. Interrupting a script mid-run would need the sandbox in a worker, which is out of scope.
-- Tool rounds are silent requests. They are captured in AI Context only with Show Silent Requests on. The status line follows the same setting.
+- Tool rounds are silent requests. They are captured in AI Context only with Show Silent Requests on. The status line follows the same setting. "Looking up…" shows from the moment a round ends with calls until the next round's first token arrives, then the prompt's normal line ("Generating Narration…") returns; a later round that ends with calls shows it again. The line reports what the model does now, not the whole request.
 
 ### Capability detection
 
