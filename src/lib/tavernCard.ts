@@ -4,7 +4,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Entity, Dictionary, Opening, LibraryDetails } from '@/types';
 import { readPngTextChunks } from './sdMetadata';
 import { convertLorebook } from './lorebookImport';
-import { canonicalUserMacro } from './userMacro';
+import { canonicalBuiltins } from './builtinPlaceholders';
 
 /** The subset of card fields we read. V2/V3 nest these under `data`; V1 is flat. */
 interface TavernData {
@@ -38,7 +38,7 @@ export const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
 
 /** `{{char}}` → the character's name, `{{user}}` → the Player Name chip; other macros are left untouched. */
 function substituteMacros(text: string, name: string): string {
-  return canonicalUserMacro(text.replace(CHAR_MACRO_RE, name));
+  return canonicalBuiltins(text.replace(CHAR_MACRO_RE, name));
 }
 
 /** The card's field object (unwrapping the V2/V3 `data` envelope), or null if the PNG carries no card. */

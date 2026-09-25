@@ -6,6 +6,7 @@ import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
 import { placementLetters } from './placementLetters';
 import type { PlaceholderOwnerRef } from './placeholderHomes';
+import { PLAYER_NAME } from './builtinPlaceholders';
 
 import { phValues } from '@/test/placeholderValues';
 import { PROMPT_KIND_VARIABLES } from './promptVariables';
@@ -146,7 +147,7 @@ describe('placeholderVocabulary', () => {
 
 describe('placeholderVocabulary — the Player Name chip', () => {
   const placeholders = [P('eye', ['Red', 'Blue'])];
-  const v = placeholderVocabulary(placeholders, { playerName: true });
+  const v = placeholderVocabulary(placeholders, { builtins: true });
 
   it('parses the marker as a known chip that keeps its spelling', () => {
     expect(v.parse('Hi {{ User }}.')).toEqual([
@@ -175,6 +176,17 @@ describe('placeholderVocabulary — the Player Name chip', () => {
     expect(v.palette().map((r) => r.label)).toEqual(['Player Name', 'name-eye']);
     expect(v.palette()[0].token).toBe('{{user}}');
     expect(placeholderVocabulary(placeholders).palette().map((r) => r.label)).toEqual(['name-eye']);
+  });
+
+  it('accepts a palette drop only where the field offers it', () => {
+    expect(v.acceptsPaletteToken?.('{{user}}')).toBe(true);
+    expect(placeholderVocabulary(placeholders).acceptsPaletteToken?.('{{user}}')).toBe(false);
+  });
+
+  it('takes its hint and color from the Built-in registry', () => {
+    expect(v.hint?.('{{ User }}')).toBe(PLAYER_NAME.hint);
+    expect(v.color('{{ User }}')).toBe(PLAYER_NAME.accent);
+    expect(v.palette()[0].color).toBe(PLAYER_NAME.accent);
   });
 });
 

@@ -65,7 +65,7 @@ describe('the game view renders every opening through resolveOpening', () => {
     );
     expect(viewer).toMatch(/resolveOpening\(redraw\.opening\.text\)/);
     expect(viewer).toMatch(/openingCue: resolveOpening\(openingCue\(\)\.text\)/);
-    expect(viewer).not.toMatch(/renderUserMacro|resolve(PH|With|For)\([^)]*(opening\.text|openingCue\(\))/);
+    expect(viewer).not.toMatch(/renderBuiltins|resolve(PH|With|For)\([^)]*(opening\.text|openingCue\(\))/);
   });
 });
 

@@ -4,7 +4,7 @@ import ChipInput from './ChipInput';
 import { promptVocabulary, usePlaceholderChipVocabulary, worldPromptVocabulary } from '@/lib/chipVocabulary';
 import type { PromptVariable } from '@/lib/promptVariables';
 import { decodePlaceholderToken, directChipTargets } from '@/lib/placeholders';
-import { hasUserMacro } from '@/lib/userMacro';
+import { hasBuiltin } from '@/lib/builtinPlaceholders';
 import {
   allPinRows, canCommitPinSource, commitPinSource, pinsTargeting, sameSource, updatePinAt,
   type PinEditorWorld, type PinSourceRef, type PinWriters,
@@ -68,8 +68,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
   /** The Authoring Tour anchor (see `PromptField`). */
   tourAnchor?: string;
 }) => {
-  // A prompt names the player with its Persona variable, so the Player Name chip is not offered there.
-  const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { playerName: !promptChips });
+  // A prompt names the player with its Persona variable, so no Built-in chip is offered there.
+  const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { builtins: !promptChips });
   const variables = promptChips?.variables;
   const vocab = useMemo(
     () => (variables ? worldPromptVocabulary(promptVocabulary(variables), placeholderVocab) : placeholderVocab),
@@ -182,8 +182,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
       value={value}
       onChange={onChange}
       vocabulary={vocab}
-      // The Player Name chip previews as its label, so it needs no placeholder behind it.
-      previewValues={promptChips || hasPlaceholders || hasUserMacro(value) ? previewValues : undefined}
+      // A Built-in chip previews as its label, so it needs no placeholder behind it.
+      previewValues={promptChips || hasPlaceholders || hasBuiltin(value) ? previewValues : undefined}
       sampleData={promptChips?.sampleData}
       openValues={hasPlaceholders ? openValues : undefined}
       onReroll={hasPlaceholders ? reroll : undefined}

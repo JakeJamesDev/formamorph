@@ -33,7 +33,7 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 5. As an author, I want to type `{player` and find Player Name, so that I can insert it by what it means.
 6. As an author coming from SillyTavern, I want to type `{user` and find Player Name, so that my muscle memory works.
 7. As an author coming from SillyTavern, I want to type `{char` and find Character Name, so that my muscle memory works.
-8. As an author, I want to type `{{user}}` by hand and see it become a Player Name chip, so that typed and inserted chips are the same.
+8. ~~As an author, I want to type `{{user}}` by hand and see it become a Player Name chip, so that typed and inserted chips are the same.~~ Dropped: the chip editor does not do this today (see Further Notes).
 9. As an author, I want to paste ST text that contains `{{char}}` into an entity field and see a Character Name chip, so that pasted cards work.
 10. As an author, I want Character Name in an entity's descriptions, summary and openings, so that the text names its own entity.
 11. As an author, I want Character Name absent from world text, location text and dictionary entries, so that I never place a chip that has no entity to name.
@@ -94,7 +94,8 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 
 ## Further Notes
 
-- Unverified: story 8 assumes the chip editor turns a hand-typed `{{user}}` into a chip today. Check live in the first ticket. Drop the story if it does not.
+- Story 8, checked live on 2026-09-25 (ticket 01): a hand-typed `{{user}}` in an entity's AI-Facing Description stays plain text. It stays plain after a Preview/Edit round trip. Preview shows it as "Player Name", so the stored value holds the token. The editor has no text transform that turns typed tokens into chips, so the story is dropped. A stored token still loads as a chip, because the chip parse matches it.
+- Finding for story 9: a pasted `{{user}}` in the same field also stays plain text. `PromptTokenPastePlugin` turns pasted tokens into chips, but `PromptField` mounts it only when the vocabulary has a header, which means prompt fields only. So a pasted `{{char}}` in entity text will not become a chip unless that plugin also mounts on placeholder fields.
 
 - Glossary: "Built-in Placeholder" is a new term for `CONTEXT.md`. It is a Placeholder that every world has, that has no values, and that resolves from the playthrough.
 - Related specs: `open-chat` ticket 07 explains why Player Name is not offered in custom prompts. `persona` defines the Player Name chip as the stored `{{user}}` marker.

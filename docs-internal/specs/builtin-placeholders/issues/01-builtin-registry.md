@@ -1,6 +1,7 @@
 # 01: Built-in Registry Replaces the User-Macro Special Cases
 
-Status: ready-for-agent
+Status: in-progress
+Base: 2d04a713
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

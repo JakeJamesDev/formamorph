@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readTavernCard } from './tavernCard';
 import { openingWeight } from './openings';
-import { USER_MACRO } from './userMacro';
+import { PLAYER_NAME } from './builtinPlaceholders';
+const USER_MACRO = PLAYER_NAME.token;
 
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 const enc = new TextEncoder();

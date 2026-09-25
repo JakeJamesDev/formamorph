@@ -36,7 +36,7 @@ import { ALL_PROMPT_VARIABLES, variableVariantIds, withVariant } from '@/lib/pro
 import { expandScopedTokens, buildLocationContext, renderEntityRoster } from '@/lib/locationContext';
 import { personaContextValues } from '@/lib/personaContext';
 import { resolvePlaceholders } from '@/lib/placeholders';
-import { renderUserMacro } from '@/lib/userMacro';
+import { renderBuiltins } from '@/lib/builtinPlaceholders';
 import { resolveWorldPrompt, worldPromptChipValues, setWorldPromptOverride } from '@/lib/worldPrompt';
 
 const HARNESS_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -77,7 +77,7 @@ const [lead, second] = JSON.parse(await readFile(path.join(HARNESS_DIR, '../open
 
 const CASES = {
   // Page one: the imported greeting, in the card's own shape, is the message the first choices answer.
-  greeting: { entities: [lead], wantsMessage: true, reply: renderUserMacro(lead.openings[0].text, { kind: 'opening' }) },
+  greeting: { entities: [lead], wantsMessage: true, reply: renderBuiltins(lead.openings[0].text, { kind: 'opening' }) },
   question: {
     entities: [lead], wantsMessage: true,
     reply: '*I slide a chipped mug across the counter and wrap both hands around my own.* Go on, then. You\'ve come in every Thursday for a year and I still don\'t know what you do all day. What is it that keeps you out this late?\n\n*I wait, one eyebrow up, while the rain ticks against the window behind you.*',

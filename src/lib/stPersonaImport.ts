@@ -3,7 +3,7 @@
 // `default_persona`. It holds no images, so the player picks the avatar files beside it.
 import { randomUUID } from '@/lib/uuid';
 import type { Entity } from '@/types';
-import { renderUserMacro } from './userMacro';
+import { renderBuiltins } from './builtinPlaceholders';
 import { CHAR_MACRO_RE } from './tavernCard';
 import { IMAGE_CAPS, bytesToDataUrl, optimizeImageDataUrl } from './imageOptim';
 
@@ -60,7 +60,7 @@ export function convertStPersonaBackup(text: string, imageNames: string[]): StPe
     }
     const data = descriptions[key];
     const description = isRecord(data) && typeof data.description === 'string' ? data.description.trim() : '';
-    const aiDescription = renderUserMacro(description.replace(CHAR_MACRO_RE, 'the other character'), { name });
+    const aiDescription = renderBuiltins(description.replace(CHAR_MACRO_RE, 'the other character'), { name });
     personas.push({
       key,
       entity: { id: randomUUID(), name, ...(aiDescription ? { aiDescription } : {}), persona: true },

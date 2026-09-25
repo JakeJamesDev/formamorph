@@ -10,6 +10,14 @@ export const HIGHLIGHT_PALETTE = [
   "#fdba74", "#5eead4", "#f0abfc",
 ];
 
+/** Stable accent per placeholder id, so a chip keeps its color across the world — and every surface that
+ *  draws one by id draws the same one. */
+export function placeholderAccent(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return HIGHLIGHT_PALETTE[h % HIGHLIGHT_PALETTE.length];
+}
+
 export interface HighlightRule {
   term: string;
   color: string;
