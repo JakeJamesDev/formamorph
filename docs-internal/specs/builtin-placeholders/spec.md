@@ -41,7 +41,7 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 13. As an author, I want a Character Name chip to show the resolved name when the entity's name holds a placeholder, so that the text agrees with the name the player sees.
 14. As an author, I want the Built-in chip's hint to say what it becomes with a persona and with none, so that I can predict the output.
 15. As an author, I want no World/Unique pop-out on a Built-in chip, so that I'm not offered a choice that means nothing for it.
-16. As an author, I want the Preview tab to render Built-in chips, so that I can read my text as the AI will.
+16. As an author, I want the Preview tab to show a Built-in chip by its label, so that I can see where the name will go.
 17. As an author, I want Built-ins to stay out of the Placeholders tab tree, so that the tree lists only what I can edit.
 18. As an author, I want Built-ins to stay out of prompt fields, so that I use the Persona variable there until the prompt path can render them correctly.
 19. As an author, I want an entity card I export to keep its Character Name chips, so that the card still names itself after another author renames it.
@@ -62,9 +62,12 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 - **Resolver contract.** A resolver gets the text around the token and a render context: the persona name, the text kind (opening or reference), and the owning entity's resolved name. The text around the token is what the capital rule needs.
 - **Resolve options gain the owning entity.** The placeholder resolve options already carry the player. They gain an optional character, which is the resolved name of the entity that owns the text. With no character, a Character Name chip resolves to an empty string, like a missing placeholder.
 - **Resolve order.** Author placeholders resolve first, then Built-ins. This matches how Player Name renders today. The entity's own name resolves before it fills Character Name.
-- **Callers that pass the character.** Entity descriptions, summary and openings, both in play and in the editor Preview, pass the owning entity. The resolved-world hook is the one place play reads entity text, so it passes the character there.
+- **One entity-text seam.** The resolved-world hook resolves entity names and aliases only. Entity descriptions and summaries resolve at each consumer through a bare text resolver, which knows no owner. The hook gains one helper that takes the entity and its text and resolves with that entity as the character. Every consumer of entity text goes through it: the AI-context build, the entity modal, the game panels, the opening pool at Enter World, and the Test Bench opening path. Opening pool rows already carry the owning entity id.
+- **Edge rules.** A Character Name chip inside an entity's own name has no owner yet, so it resolves to an empty string. A persona entity that carries the chip resolves to the persona's own name.
+- **Editor Preview.** The Preview tab shows the label for both Built-ins, as it does for Player Name today. The editor has no persona, and it resolves no owner. Resolving Character Name in Preview is a follow-up.
 - **Chip vocabulary.** The placeholder chip vocabulary takes Built-in rows from the registry. It replaces every special case for the user macro in label, hint, color, known-token, fixed, and accept-from-palette checks. The palette returns the Built-in rows first, under a **Built-in** section heading, before the loose author placeholders.
-- **Visibility.** Player Name shows in every placeholder field that shows it today, and stays hidden in prompt fields. Character Name shows only when the field has an owning entity. The field already knows its owner for scoped placeholders, and that owner is the same entity.
+- **Visibility.** Player Name shows in every placeholder field that shows it today, and stays hidden in prompt fields. Character Name shows only when the field's owner is an entity. A field's owner can also be a dictionary book, and a book never shows Character Name. The vocabulary reads the owner's kind from the placeholder owners list.
+- **Label surfaces.** Five read-only surfaces name the user macro by hand today: editor search, placement letters, stat-code names, the world prompt chip walk, and the Preview value map. Each reads the label from one registry helper instead, and each gets Character Name with no further change.
 - **Typeahead matching.** A chip row can carry extra search terms. The typeahead matches the query against the label and those terms. Built-ins list their raw spelling (`user`, `char`) as a term.
 - **Stored form.** Tokens are stored in their canonical spelling (`{{user}}`, `{{char}}`). Import and paste canonicalize any other spelling. Nothing that is already stored gets rewritten.
 - **Card import.** Character Name chips are written into entity-owned text: the AI description and the openings. The embedded lorebook keeps the current name replacement, because a dictionary entry has no owning entity. ST persona import keeps "the other character".
@@ -74,7 +77,9 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 ## Testing Decisions
 
 - A good test calls the public function and checks the output text or the rows. It does not check which helper ran. Each new guard must be proven by a mutation: break the rule, see the test fail, then restore it.
-- **Resolve.** Test `resolvePlaceholders` with the owning entity in the options. Cases: Character Name renders the entity's current name; a placeholder inside the entity name resolves before it fills the chip; no owner gives an empty string; Player Name keeps every current render case. Prior art: the placeholder resolve tests and the user-macro render tests.
+- **Resolve.** Test `resolvePlaceholders` with the owning entity in the options. Cases: Character Name renders the entity's current name; a placeholder inside the entity name resolves before it fills the chip; no owner gives an empty string; a chip inside the entity's own name gives an empty string; Player Name keeps every current render case. Prior art: the placeholder resolve tests and the user-macro render tests.
+- **Entity-text seam.** Test the resolved-world hook's entity-text helper: an entity description with Character Name reads the entity's resolved name, and a renamed entity reads its new name. Prior art: the resolved-world player-name hook tests.
+- **Label surfaces.** Each of the five label surfaces gets one Character Name case beside its Player Name case. Prior art: the existing Player Name case in each module's tests.
 - **Vocabulary.** Test the placeholder chip vocabulary. Cases: the palette has the Built-in section first with its heading; Character Name shows only with an owner; prompt fields show no Built-ins; label, hint and color come from the registry; the typeahead row filter matches "Player", `user` and `char`. Prior art: the chip vocabulary tests.
 - **Import.** Test card import. Cases: `{{char}}` in the description and first messages is stored as the Character Name token; the embedded lorebook gets the name; any spelling of either macro is canonicalized. Prior art: the tavern card, character import and lorebook import tests, and the ST persona import tests for "the other character".
 - The existing user-macro tests move with the render rule and keep their cases.
@@ -88,6 +93,8 @@ The palette strip and the `{` typeahead show a **Built-in** section at the top, 
 - Character Name in location, world or dictionary text, including an owner-by-reference rule for dictionaries attached to an entity.
 
 ## Further Notes
+
+- Unverified: story 8 assumes the chip editor turns a hand-typed `{{user}}` into a chip today. Check live in the first ticket. Drop the story if it does not.
 
 - Glossary: "Built-in Placeholder" is a new term for `CONTEXT.md`. It is a Placeholder that every world has, that has no values, and that resolves from the playthrough.
 - Related specs: `open-chat` ticket 07 explains why Player Name is not offered in custom prompts. `persona` defines the Player Name chip as the stored `{{user}}` marker.
