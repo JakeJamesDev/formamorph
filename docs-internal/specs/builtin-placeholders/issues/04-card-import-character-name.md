@@ -1,0 +1,24 @@
+# 04: Card Import Writes Character Name Chips
+
+Status: ready-for-agent
+Blocked by: 02 (Character Name Resolves Live)
+Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
+Reasoning effort: medium
+
+**Parent:** [Built-in Placeholders](../spec.md)
+
+**What to build:** Importing a SillyTavern card stores `{{char}}` as the Character Name token in the entity's AI description and its openings, in place of the name it writes today. Any spelling of either macro is canonicalized. The card's embedded lorebook keeps the current name replacement, because a dictionary entry has no owning entity. ST persona import keeps replacing `{{char}}` with "the other character".
+
+Demo: import a card whose description says `{{char}} smiles`. The entity's description shows a Character Name chip. Rename the entity. In play, the AI context reads the new name.
+
+Export shape: no field is added, but imported entity text now holds `{{char}}` where it held a name. An older app version shows the raw token. Say so in the response for the release version decision.
+
+Workload: a contained change in two import modules with existing tests to extend.
+
+- [ ] Card import stores `{{char}}` in the AI description and openings, canonicalized from any spelling
+- [ ] The embedded lorebook still gets the character's name as plain text
+- [ ] ST persona import still writes "the other character"
+- [ ] Tavern card, character import, lorebook import and persona import tests cover each case, mutation-proven
+- [ ] Response carries the export-shape reminder
+- [ ] Changelog In-Progress entry appended (👤)
+- [ ] Four gates green; `graphify update .` run
