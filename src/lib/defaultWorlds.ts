@@ -4,6 +4,9 @@
 // an absent default is indistinguishable from a never-seeded one and gets re-created. The tombstone below is
 // what tells those two states apart.
 
+import type { World } from '@/types';
+import { migrateWorld } from '@/lib/version';
+
 /** A built-in world to seed on first run; its JSON is imported from `../defaultworlds/<id>.json`. */
 export interface DefaultWorldSeed {
   id: string;
@@ -22,6 +25,30 @@ export const DEFAULT_WORLDS: DefaultWorldSeed[] = [
 ];
 
 export const isDefaultWorldId = (id: string): boolean => DEFAULT_WORLDS.some((w) => w.id === id);
+
+/**
+ * The world data the seeder stores for a bundled file. `migrateWorld` spreads the parsed world, so every
+ * authored section survives. It also folds a legacy flat `dictionary` into books. This function sets only
+ * `id` and a fallback `worldOverview`.
+ *
+ * @param worldData - The parsed bundled JSON
+ * @param seed - The bundled world it seeds
+ */
+export function seedWorldData(worldData: Record<string, unknown>, seed: DefaultWorldSeed): World {
+  return migrateWorld({
+    ...worldData,
+    id: seed.id,
+    worldOverview: worldData.worldOverview || {
+      name: seed.defaultName,
+      description: `Default ${seed.defaultName} world`,
+      author: '',
+      thumbnail: '',
+      bgm: null,
+      systemPrompt: '',
+      use3DModel: true,
+    },
+  });
+}
 
 /** Local-only; never exported with a world or save. */
 const DELETED_DEFAULTS_KEY = 'FORMAMORPH_deletedDefaultWorlds';
