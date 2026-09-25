@@ -142,7 +142,7 @@ import { PublishModal } from "@/components/menu/PublishModal";
 import { worldPublishPayload, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
 import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
 import { readSourceCheck } from "@/lib/sourceCheckStore";
-import { buildAvatarPublish, avatarPublishRefusal } from "@/lib/avatarPublish";
+import { buildAvatarPublish } from "@/lib/avatarPublish";
 import { BackupRestoreDialog } from "@/components/menu/BackupRestoreDialog";
 import { COMMUNITY_ENABLED } from "@/lib/featureFlags";
 import { useAgeGate } from "@/contexts/AgeGateContext";
@@ -665,7 +665,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const publishModel = async (model: { id: string; name: string }) => {
     const attempt = await buildAvatarPublish(model);
     if (!attempt.allowed) {
-      toast.error(avatarPublishRefusal(attempt.failedRequirements));
+      toast.error(attempt.message);
       return;
     }
     openPublish(attempt.payload);

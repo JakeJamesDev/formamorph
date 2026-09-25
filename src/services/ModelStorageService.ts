@@ -87,6 +87,9 @@ class ModelStorageService {
   /** Runs once per session; later calls await the same pass rather than rescanning. */
   private migration: Promise<void> | null = null;
 
+  /** The running build's bundled default file hash, read once per session; a failed read clears it. */
+  private bundledDefaultHash: Promise<string | null> | null = null;
+
   /** Open the IndexedDB connection (idempotent). */
   initialize() {
     return this.store.initialize();
@@ -260,6 +263,26 @@ class ModelStorageService {
     const records = await this.allRecords();
     const match = records.find((record) => record.data?.hash === hash);
     return match ? toMetadata(match) : null;
+  }
+
+  /**
+   * Hashes that mark a model as the default Avatar: the seeded library record's, and the running build's
+   * bundled file's. They differ when an older build seeded the library, and either can be missing.
+   */
+  async defaultAvatarHashes(url: string): Promise<string[]> {
+    await this.ensureMigrated();
+    this.bundledDefaultHash ??= fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Default Avatar fetch failed: ${response.status}`);
+        return response.blob();
+      })
+      .then(blobHash)
+      .catch(() => {
+        this.bundledDefaultHash = null;
+        return null;
+      });
+    const [seeded, bundled] = await Promise.all([this.getRecord(DEFAULT_AVATAR_ID), this.bundledDefaultHash]);
+    return [seeded?.data?.hash, bundled].filter((hash): hash is string => !!hash);
   }
 
   /** List stored models as grid metadata, newest first. */

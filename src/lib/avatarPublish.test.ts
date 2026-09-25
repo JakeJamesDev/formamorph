@@ -1,15 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { VrmLicense } from '@/types';
+import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { avatarPublishRefusal, buildAvatarPublish } from './avatarPublish';
 
 const getModelData = vi.fn();
 const ensureThumbnail = vi.fn();
+const defaultAvatarHashes = vi.fn();
 vi.mock('@/services/ModelStorageService', () => ({
   default: {
     getModelData: (id: string) => getModelData(id),
     ensureThumbnail: (id: string) => ensureThumbnail(id),
+    defaultAvatarHashes: (url: string) => defaultAvatarHashes(url),
   },
 }));
+
+const DEFAULT_REFUSAL = 'This is the default avatar. Upload your own VRM.';
 
 const PASSING: VrmLicense = {
   metaVersion: '1',
@@ -32,6 +37,7 @@ const stored = (over: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   ensureThumbnail.mockResolvedValue(undefined);
+  defaultAvatarHashes.mockResolvedValue(['default-hash']);
   // jsdom's FileReader does not read Blobs in every version; make the data URL deterministic.
   class StubReader {
     result = 'data:model/vnd.vrm;base64,dnJtLWJ5dGVz';
@@ -73,8 +79,11 @@ describe('buildAvatarPublish', () => {
 
     const result = await buildAvatarPublish({ id: 'm1', name: 'Sedge' });
 
-    expect(result.allowed).toBe(false);
-    expect(!result.allowed && result.failedRequirements).toEqual(['allowRedistribution']);
+    expect(result).toMatchObject({
+      allowed: false,
+      failedRequirements: ['allowRedistribution'],
+      message: 'This Avatar can’t be published: its file doesn’t allow redistribution.',
+    });
   });
 
   it('refuses a plain glTF, which grants nothing because it says nothing', async () => {
@@ -82,10 +91,10 @@ describe('buildAvatarPublish', () => {
 
     const result = await buildAvatarPublish({ id: 'm1', name: 'Plain' });
 
-    expect(result.allowed).toBe(false);
-    expect(!result.allowed && result.failedRequirements).toEqual([
-      'metaVersion', 'avatarPermission', 'allowRedistribution', 'modification', 'commercialUsage',
-    ]);
+    expect(result).toMatchObject({
+      allowed: false,
+      failedRequirements: ['metaVersion', 'avatarPermission', 'allowRedistribution', 'modification', 'commercialUsage'],
+    });
   });
 
   it('refuses a model whose bytes cannot be read at all', async () => {
@@ -122,6 +131,51 @@ describe('buildAvatarPublish', () => {
     const result = await buildAvatarPublish({ id: 'm1', name: 'Unrenderable' });
 
     expect(result.allowed).toBe(true);
+  });
+
+  it('refuses the seeded default Avatar', async () => {
+    getModelData.mockResolvedValue(stored({ hash: 'default-hash' }));
+
+    const result = await buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' });
+
+    expect(result).toEqual({ allowed: false, reason: 'defaultAvatar', message: DEFAULT_REFUSAL });
+    expect(defaultAvatarHashes).toHaveBeenCalledWith(DEFAULT_AVATAR_URL);
+  });
+
+  it('refuses the default Avatar’s bytes stored under a new id and name', async () => {
+    getModelData.mockResolvedValue(stored({ hash: 'default-hash' }));
+
+    const result = await buildAvatarPublish({ id: 'm2', name: 'My Original Model' });
+
+    expect(result).toEqual({ allowed: false, reason: 'defaultAvatar', message: DEFAULT_REFUSAL });
+  });
+
+  it('refuses a match against any of the default hashes', async () => {
+    // The seeded copy and the bundled file differ when an older build seeded the library.
+    defaultAvatarHashes.mockResolvedValue(['seeded-hash', 'bundled-hash']);
+    getModelData.mockResolvedValue(stored({ hash: 'bundled-hash' }));
+
+    const result = await buildAvatarPublish({ id: 'm2', name: 'Copy' });
+
+    expect(result).toMatchObject({ allowed: false, reason: 'defaultAvatar' });
+  });
+
+  it('refuses the default Avatar before the license gate reads its file', async () => {
+    getModelData.mockResolvedValue(stored({ hash: 'default-hash', license: { metaVersion: null } }));
+
+    const result = await buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' });
+
+    expect(result).toMatchObject({ allowed: false, message: DEFAULT_REFUSAL });
+  });
+
+  it('still reaches the license gate when the default hashes cannot be read', async () => {
+    // The server makes the same check, so a failed lookup here costs a round trip, not a listing.
+    defaultAvatarHashes.mockRejectedValue(new Error('store closed'));
+    getModelData.mockResolvedValue(stored({ license: { ...PASSING, allowRedistribution: false } }));
+
+    const result = await buildAvatarPublish({ id: 'm1', name: 'Sedge' });
+
+    expect(result).toMatchObject({ allowed: false, reason: 'license' });
   });
 });
 
