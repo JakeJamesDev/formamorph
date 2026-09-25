@@ -141,6 +141,8 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 - Description and Template use the prompt editor (undo and redo on its toolbar). Script uses the stat-code editor.
 - Full screen reuses the Prompts panel's morph and shell, titled "Tools". Tool edits and an open draft survive the remount the toggle causes.
 - A notice line shows when the active text endpoint doesn't support Tools.
+- My Tools' Import and Export move a **Tool pack**, mirroring the stat template pack: `{ formamorphTools: 1, appVersion, tools: Tool[] }` holding the active preset's user Tools only. Catalog overrides travel with the preset export, not the pack. Import parses each Tool, drops a malformed one with a warning, mints a fresh id, skips a Tool whose name already exists in the preset (toast: already in this preset), and shows the Script notice when the pack holds a Script Tool. Import is disabled on a built-in preset.
+- Duplicate on a user preset saves the copy straight into My Tools with a `_copy` suffix and selects it in the read view. It does not open the edit shell.
 
 ### Highlighting and the script editor
 
