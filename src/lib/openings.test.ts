@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import type { Entity, GameLocation, Opening, WorldOverview } from '@/types';
 import {
-  addOpening, DEFAULT_OPENING, drawOpening, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
+  addOpening, DEFAULT_OPENING, drawOpening, drawPoolEntry, openingOwner, isOpeningFieldKey, moveOpening, openingChances, openingFieldKey, openingsEditorView,
   drawUnseenOpening, hasAuthoredOpenings, openingPool, openingsEnabled, poolKey, remintOpenings, openingTexts, removeOpening, resolveOpening, setOpeningKind,
   setOpeningText, setOpeningWeight,
 } from './openings';
@@ -147,7 +147,7 @@ describe('the no-repeat draw', () => {
   it('returns the same opening from a pool of one', () => {
     const rows = pool(['a']);
     const first = drawUnseenOpening(rows, [], seeded(1));
-    expect(first).toEqual({ opening: action('a'), shown: ks('a') });
+    expect(first).toEqual({ ownerId: null, opening: action('a'), shown: ks('a') });
     expect(drawUnseenOpening(rows, first.shown, seeded(2))).toEqual(first);
   });
 
@@ -157,7 +157,7 @@ describe('the no-repeat draw', () => {
   });
 
   it('returns the default for an empty pool and leaves the shown set alone', () => {
-    expect(drawUnseenOpening([], ks('a'), seeded(1))).toEqual({ opening: DEFAULT_OPENING, shown: ks('a') });
+    expect(drawUnseenOpening([], ks('a'), seeded(1))).toEqual({ ownerId: null, opening: DEFAULT_OPENING, shown: ks('a') });
   });
 });
 
@@ -175,6 +175,16 @@ describe('the pool with entities', () => {
     });
     expect(texts(pool)).toEqual(['The world opens.', 'The guide waves.']);
     expect(pool.map((e) => e.ownerId)).toEqual([null, 'guide']);
+  });
+
+  it('says which entity owns the row a draw lands on', () => {
+    const pool = openingPool({ overview: overview(), entities: [guide()], startingLocationId: 'dock' });
+    const drawn = drawUnseenOpening(pool, [], seeded(1));
+    expect(drawn.ownerId).toBe('guide');
+    expect(drawPoolEntry(pool, seeded(1)).ownerId).toBe('guide');
+    expect(openingOwner(drawn.ownerId, [guide()])?.name).toBe('Guide');
+    expect(openingOwner(null, [guide()])).toBeNull();
+    expect(drawPoolEntry([], seeded(1))).toEqual({ ownerId: null, opening: DEFAULT_OPENING });
   });
 
   it('adds nothing for an entity somewhere else', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolvePersona } from './persona';
+import { personaOption, resolvePersona } from './persona';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, buildSublocationEntitiesContext } from './locationContext';
 import type { Entity, GameLocation, PersonaRef } from '@/types';
@@ -105,5 +105,13 @@ describe('the roster without the played entity', () => {
     for (const location of [dock, inn]) {
       expect(buildEntityContext(location, cast, { format: 'markdown' })).toContain('Mira');
     }
+  });
+});
+
+describe('personaOption', () => {
+  it('resolves the player description with the entity as its owner', () => {
+    const wren: Entity = { id: 'wren', name: 'Wren', persona: true, playerDescription: ' {{char}} rows the ferry. ' };
+    const option = personaOption((entity, text) => text.replaceAll('{{char}}', entity.name))(wren);
+    expect(option.description).toBe('Wren rows the ferry.');
   });
 });

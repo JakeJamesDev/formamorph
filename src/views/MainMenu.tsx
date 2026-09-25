@@ -423,6 +423,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [selectedTraits, selectedLocationId, rawTraits, rawTraitGroups, rawStats, rawLocations, placeholders, rolls]);
   const {
     traits, traitGroups, stats, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText,
+    resolveEntityText,
   } = useResolvedAuthoredWorld(draftPins);
 
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -1369,8 +1370,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   /** The world's entities the author marked as playable. */
   const worldPersonaOptions = useMemo(
     () => resolvedWorldEntities.filter((entity) => entity.persona === true)
-      .map(personaOption(resolvePH)),
-    [resolvedWorldEntities, resolvePH],
+      .map(personaOption(resolveEntityText)),
+    [resolvedWorldEntities, resolveEntityText],
   );
   const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
   /** What the step's Persona category lists under the world's player setting. */

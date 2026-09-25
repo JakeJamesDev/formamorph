@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Pencil, RefreshCw, Loader2 } from "lucide-react";
 import { EntityCardBody, EntityDescription } from '../game/EntityCard';
-import { usePlaceholderResolver } from "@/lib/usePlaceholderResolver";
+import { useEntityTextResolver } from "@/lib/usePlaceholderResolver";
 import { useEntityVisualPreference } from "@/lib/useEntityVisualPreference";
 import { useEntityGallery } from "@/lib/useEntityGallery";
 import type { Entity } from "@/types";
@@ -28,7 +28,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
   onOpenChange: (open: boolean) => void;
   editing?: EntityDescriptionEditing;
 }) => {
-  const resolvePH = usePlaceholderResolver();
+  const resolveEntityText = useEntityTextResolver();
   const { preference, onPreferenceChange } = useEntityVisualPreference(entity?.id);
   const { imageIndex, onImageStep } = useEntityGallery(entity);
 
@@ -138,7 +138,7 @@ export const EntityModal = ({ entity, isOpen, onOpenChange, editing }: {
                   </div>
                 </div>
               ) : (
-                <EntityDescription text={description} resolveText={resolvePH}>
+                <EntityDescription text={description} resolveText={(text) => resolveEntityText(entity, text)}>
                   {editing && (
                     <div className="flex gap-2 justify-end items-center">
                       {regenError && (

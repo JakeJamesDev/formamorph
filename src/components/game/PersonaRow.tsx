@@ -25,7 +25,7 @@ const sameRef = (a: PersonaRef, b: PersonaRef) =>
 export function PersonaRow() {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId, worldOverview } = useGameData();
-  const { persona, entities: cast, worldPersonas, resolvePH } = useResolvedWorld();
+  const { persona, entities: cast, worldPersonas, resolveEntityText } = useResolvedWorld();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PersonaOption[]>([]);
   // Null until the player picks in this opening, so the picker starts on the current persona.
@@ -61,7 +61,7 @@ export function PersonaRow() {
     showPicker(false);
   };
 
-  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption(resolvePH)), library: options });
+  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption(resolveEntityText)), library: options });
   const image = primaryImage(persona?.entity);
   return (
     <div className="flex items-center gap-2 pl-2" data-testid="persona-row">

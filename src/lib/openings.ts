@@ -93,9 +93,24 @@ export function poolChances(pool: readonly PoolEntry[]): number[] {
   return pool.map((e) => (total > 0 ? (e.weight / total) * 100 : 0));
 }
 
+/** A drawn row: the opening and the id of the entity that owns it, or null for the world's own. */
+export type DrawnOpening = Pick<PoolEntry, 'ownerId' | 'opening'>;
+
+/** One row by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
+export function drawPoolEntry(pool: readonly PoolEntry[], random: () => number): DrawnOpening {
+  if (poolWeight(pool) <= 0) return { ownerId: null, opening: DEFAULT_OPENING };
+  const { ownerId, opening } = drawEntry(pool, random);
+  return { ownerId, opening };
+}
+
 /** One opening by weight, or the default when the pool is empty. `random` returns a number in [0, 1). */
 export function drawOpening(pool: readonly PoolEntry[], random: () => number): Opening {
-  return poolWeight(pool) <= 0 ? DEFAULT_OPENING : drawEntry(pool, random).opening;
+  return drawPoolEntry(pool, random).opening;
+}
+
+/** The entity among `entities` that owns a drawn row, or null for the world's own row. */
+export function openingOwner(ownerId: string | null, entities: readonly Entity[]): Entity | null {
+  return ownerId == null ? null : entities.find((e) => e.id === ownerId) ?? null;
 }
 
 /** One row by weight from a pool that has weight to draw. */
@@ -114,8 +129,7 @@ const openingKey = (ownerId: string | null, openingId: string) => JSON.stringify
 export const poolKey = (entry: PoolEntry): string => openingKey(entry.ownerId, entry.opening.id);
 
 /** One draw and the shown list after it: row keys in the order the session showed them, newest last. */
-export interface UnseenDraw {
-  opening: Opening;
+export interface UnseenDraw extends DrawnOpening {
   shown: string[];
 }
 
@@ -125,16 +139,16 @@ export interface UnseenDraw {
  * nothing else to give and returns its row again.
  */
 export function drawUnseenOpening(pool: readonly PoolEntry[], shown: readonly string[], random: () => number): UnseenDraw {
-  if (poolWeight(pool) <= 0) return { opening: DEFAULT_OPENING, shown: [...shown] };
+  if (poolWeight(pool) <= 0) return { ownerId: null, opening: DEFAULT_OPENING, shown: [...shown] };
   let seen = shown.filter((key) => pool.some((e) => poolKey(e) === key));
   let unseen = pool.filter((e) => !seen.includes(poolKey(e)));
   if (unseen.length === 0) {
     seen = seen.slice(-1);
     unseen = pool.filter((e) => !seen.includes(poolKey(e)));
-    if (unseen.length === 0) return { opening: pool[0].opening, shown: seen };
+    if (unseen.length === 0) return { ownerId: pool[0].ownerId, opening: pool[0].opening, shown: seen };
   }
   const entry = drawEntry(unseen, random);
-  return { opening: entry.opening, shown: [...seen, poolKey(entry)] };
+  return { ownerId: entry.ownerId, opening: entry.opening, shown: [...seen, poolKey(entry)] };
 }
 
 /** The opening a new playthrough of this world starts on. */

@@ -3,6 +3,7 @@ import type { Connection, Entity, GameLocation, PlayerStat, Trait, TraitGroup } 
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere } from '../locationContext';
 import type { ResolvedPersona } from '../persona';
+import { resolveEntityTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
 
 /** The playthrough as the game view holds it, after placeholder resolution. */
@@ -16,6 +17,8 @@ export interface LiveSceneSources {
   resolve: (text: string) => string;
   /** A trait's own text under its own pins. */
   resolveTrait: (trait: Trait, text: string) => string;
+  /** An entity's own text, with that entity as the Character Name. */
+  resolveEntity: ResolveEntityText;
   persona: ResolvedPersona | null;
   location: GameLocation | null;
   locations: GameLocation[];
@@ -36,6 +39,7 @@ export interface SceneWrites {
   activeTraits: Trait[];
   resolve: (text: string) => string;
   resolveTrait: (trait: Trait, text: string) => string;
+  resolveEntity: ResolveEntityText;
 }
 
 /**
@@ -47,7 +51,13 @@ export function liveChipScene(
   location?: GameLocation | null,
   box?: SceneWrites | null,
 ): ChipScene {
-  const { allEntities } = sources;
+  // Each entity's text resolves with that entity as its owner, the way trait text resolves under its own
+  // pins; the scene's resolve then finds no chip left in it.
+  const resolveEntity = box?.resolveEntity ?? sources.resolveEntity;
+  const allEntities = resolveEntityTexts(sources.allEntities, resolveEntity);
+  const persona = sources.persona && {
+    ...sources.persona, entity: resolveEntityTexts([sources.persona.entity], resolveEntity)[0],
+  };
   const loc = location ?? sources.location;
   const presentIds = entityIdsAt(loc?.id, allEntities);
   // Who has taken part lately, minus anyone the dialogue merely kept naming: an authored entity who lives
@@ -72,7 +82,7 @@ export function liveChipScene(
     stats: box?.activeStats ?? sources.stats,
     traits,
     traitGroups: sources.traitGroups,
-    persona: sources.persona,
+    persona,
     location: loc,
     locations: sources.locations,
     connections: sources.connections,
@@ -84,7 +94,7 @@ export function liveChipScene(
     notes: sources.notes,
     time: sources.time,
     resolve: box?.resolve ?? sources.resolve,
-    outerScopeEntities: sources.entities,
+    outerScopeEntities: resolveEntityTexts(sources.entities, resolveEntity),
     inSceneNames,
   };
 }
@@ -92,17 +102,17 @@ export function liveChipScene(
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, traits, traitGroups, resolve, resolveTrait, persona, location, locations, connections,
-    entities, allEntities, participants, notes, time,
+    overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+    connections, entities, allEntities, participants, notes, time,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, traits, traitGroups, resolve, resolveTrait, persona, location, locations, connections,
-      entities, allEntities, participants, notes, time,
+      overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+      connections, entities, allEntities, participants, notes, time,
     }, at, box),
     [
-      overview, stats, traits, traitGroups, resolve, resolveTrait, persona, location, locations, connections,
-      entities, allEntities, participants, notes, time,
+      overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+      connections, entities, allEntities, participants, notes, time,
     ],
   );
 }

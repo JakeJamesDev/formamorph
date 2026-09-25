@@ -36,7 +36,7 @@ import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
 import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
-import { drawOpening, drawUnseenOpening, openingPool } from "@/lib/openings";
+import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
 import type { PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
@@ -139,7 +139,7 @@ import { MARKDOWN_SAMPLE } from "../lib/markdownSample";
 import { parseSlashCommand } from "../lib/slashCommands";
 import { normalizeStatChanges, appliedStatDeltas, applyRegen } from "../lib/statChanges";
 import { applyStatResponse, createStatRequest, readStatResponse, statResponseChanges, type StatRequestSnapshot, type StatResponse, type StatUpdateDiagnostic } from "../lib/statRequest";
-import { resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
+import { resolveEntityTexts, resolveStatNames, resolveStatText } from "../lib/resolveWorldNames";
 import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints";
 import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
@@ -247,12 +247,16 @@ interface OpeningSession {
   drawn: Opening | null;
   /** Shown-list keys, newest last, so a page-one regenerate draws an opening not yet seen. */
   shown: string[];
+  /** Who owns `drawn`: an entity id, or null for the world's own row. */
+  drawnOwnerId: string | null;
   /** The Opening Action the legacy "START GAME" sentinel stands for when the draw was a narration. */
-  cue: Opening | null;
+  cue: DrawnOpening | null;
   /** Where a new game started. Null on a loaded save, which reads it off the stored page one. */
   startLocationId: string | null;
 }
-const newOpeningSession = (): OpeningSession => ({ drawn: null, shown: [], cue: null, startLocationId: null });
+const newOpeningSession = (): OpeningSession => ({
+  drawn: null, drawnOwnerId: null, shown: [], cue: null, startLocationId: null,
+});
 
 /** Page one as stored. */
 const pageOneTurn = (history: readonly ChatMessage[]): AITurnResult | null => {
@@ -628,7 +632,7 @@ const GameViewer = ({
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
-    resolveTraitFor, playerNames, persona,
+    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona,
   } = useResolvedWorld();
   usePersonaNotice();
   // The session's rolls for the init effect's pins, and its Placeholder Set with the library persona's list.
@@ -1143,11 +1147,15 @@ const GameViewer = ({
   });
   // An Opening Narration is page one, never a directive to the narrator, so a session that drew one reads
   // an action row here.
-  const openingCue = () => {
+  const openingCue = (): DrawnOpening => {
     const session = openingSessionRef.current;
-    if (session.drawn?.kind === "action") return session.drawn;
-    return (session.cue ??= drawOpening(sessionPool().filter((row) => row.opening.kind === "action"), Math.random));
+    if (session.drawn?.kind === "action") return { opening: session.drawn, ownerId: session.drawnOwnerId };
+    return (session.cue ??= drawPoolEntry(sessionPool().filter((row) => row.opening.kind === "action"), Math.random));
   };
+  /** A drawn row's text, with its owning entity as the Character Name. */
+  const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
+    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)]),
+  });
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in
   // sendGameAction on the first turn.
@@ -1200,7 +1208,7 @@ const GameViewer = ({
     // to show, so the page stays as it is. The draw is recorded only once the restore has succeeded.
     const session = openingSessionRef.current;
     const redraw = page === 1 ? drawUnseenOpening(sessionPool(), session.shown, Math.random) : null;
-    const redrawText = redraw ? resolveOpening(redraw.opening.text) : "";
+    const redrawText = redraw ? resolveDrawn(redraw) : "";
     if (redraw?.opening.kind === "narration" && redrawText === pageOneNarration(fullMessageHistory)) return;
     // Restore the prior turn's mechanical state but keep the live narration + notes (see handleRollback),
     // rewinding the flat history to just before the turn being re-rolled. The re-send appends a fresh turn.
@@ -1218,7 +1226,7 @@ const GameViewer = ({
     // the game again on its own; an Opening Action fills the box for the player to edit and submit.
     if (redraw) {
       const priorOpening = session.drawn;
-      openingSessionRef.current = { ...session, drawn: redraw.opening, shown: redraw.shown };
+      openingSessionRef.current = { ...session, drawn: redraw.opening, drawnOwnerId: redraw.ownerId, shown: redraw.shown };
       setIsGameStarted(false);
       if (redraw.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: redrawText };
@@ -1656,8 +1664,9 @@ const GameViewer = ({
       ...activeUnderTraits(resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder),
       resolve,
       resolveTrait: (trait, text) => resolveTraitFor(overPins, trait, text),
+      resolveEntity: (entity, text) => resolveEntityFor(overPins, entity, text),
     };
-  }, [pinsFor, resolveFor, resolveTraitFor, traits, traitOrder]);
+  }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder]);
 
   // The README is authored text shown to the player, so its chips resolve like any other.
   const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
@@ -1689,6 +1698,7 @@ const GameViewer = ({
     traitGroups,
     resolve: resolvePH,
     resolveTrait: resolveTraitText,
+    resolveEntity: resolveEntityText,
     persona,
     location: currentLocation,
     locations,
@@ -1742,7 +1752,7 @@ const GameViewer = ({
     narrationUser: narrationUserPrompt,
     oocDirective: oocDirectivePrompt,
     // This session's opening, resolved: an old save's history holds the sentinel rather than the text.
-    openingCue: resolveOpening(openingCue().text),
+    openingCue: resolveDrawn(openingCue()),
     choices: resolvedChoicesPrompt,
     choicesUser: choicesUserPrompt,
     statUpdates: resolvedStatUpdatesPrompt,
@@ -2297,10 +2307,11 @@ const GameViewer = ({
             if (npcCast.length === 0) {
               return { directorScene: scene, npcCastSize: 0, turnPlan: buildStagedPlan({ scene, stances: flaggedCast, beats: "" }) };
             }
-            const presentIds = presentIdsAt(turnLocation);
+            // The scene's cast, whose text resolved with each owner: the character pass sends it as is.
+            const castScene = liveScene(turnLocation, codeView);
             const { chosen, overflow } = matchCastToEntities(
               npcCast,
-              allEntities.filter((e) => presentIds.includes(e.id)),
+              castScene.entities.filter((e) => castScene.presentIds.includes(e.id)),
               limitActiveCharacters ? activeCharacterLimit : Infinity,
             );
             return {
@@ -3125,10 +3136,10 @@ const GameViewer = ({
   /** The cast in frame: this turn's participants, resolved to entities, capped at what a booru model can
    *  hold apart. Order is the narration's, so the two the turn actually turned on are the two drawn. */
   const resolveSceneCast = async (participants: string[], signal: AbortSignal, scrub?: (line: string) => string, fresh = false): Promise<SceneCharacter[]> => {
-    const named = participants
+    const named = resolveEntityTexts(participants
       .map((name) => allEntities.find((e) => sameCharacterName(e.name, name)))
       .filter((e): e is NonNullable<typeof e> => !!e)
-      .slice(0, MAX_SCENE_CHARACTERS);
+      .slice(0, MAX_SCENE_CHARACTERS), resolveEntityText);
     const cast: SceneCharacter[] = [];
     for (const entity of named) {
       cast.push({
@@ -3896,15 +3907,16 @@ const GameViewer = ({
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // `entities` is the whole world here: the persona set above is not in state until the next render.
-      const { persona: drawnPersona, draw: drawn } = drawNewGameOpening({
+      const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
         pick: personaPick, worldEntities: entities, overview: worldOverview, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {
-        ...newOpeningSession(), drawn: drawn.opening, shown: drawn.shown, startLocationId: location?.id ?? null,
+        ...newOpeningSession(), drawn: drawn.opening, drawnOwnerId: drawn.ownerId, shown: drawn.shown,
+        startLocationId: location?.id ?? null,
       };
       const openingText = resolveOpening(drawn.opening.text, {
-        extraPins: openingPins, persona: drawnPersona, rolls: personaRolls,
+        extraPins: openingPins, persona: drawnPersona, rolls: personaRolls, owner: drawnOwner,
       });
       if (drawn.opening.kind === "narration") {
         pendingTurnRef.current = { action: "START GAME", writtenNarration: openingText };

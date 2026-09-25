@@ -938,7 +938,9 @@ export interface ResolveOptions {
   onFinding?: (finding: PlaceholderFinding) => void;
   /** Who the Player Name chip names and what kind of text this is. Absent, it is reference text with no
    *  persona. */
-  player?: BuiltinRender;
+  player?: Omit<BuiltinRender, 'character'>;
+  /** The resolved name of the entity that owns the text, which the Character Name chip renders. */
+  character?: string | null;
 }
 
 /**
@@ -1549,7 +1551,19 @@ function walkSegs(ph: Placeholder, segs: WalkSegment[], ctx: ResolveCtx): string
  */
 export function resolvePlaceholders(text: string, opts: ResolveOptions): string {
   if (!text || !hasPlaceholders(text)) return text;
-  return renderBuiltins(resolveText(text, createResolveCtx(opts)), { kind: 'reference', ...opts.player });
+  return renderBuiltins(
+    resolveText(text, createResolveCtx(opts)), { kind: 'reference', ...opts.player, character: opts.character },
+  );
+}
+
+/**
+ * Resolve an entity's own text with that entity as the Character Name. The name resolves first, with no
+ * owner, so a Character Name chip inside the name itself reads as nothing.
+ */
+export function resolveEntityText(entity: { name: string }, text: string, opts: ResolveOptions): string {
+  if (!text || !hasPlaceholders(text)) return text;
+  const noOwner = { ...opts, character: null };
+  return resolvePlaceholders(text, { ...opts, character: resolvePlaceholders(entity.name, noOwner) });
 }
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */

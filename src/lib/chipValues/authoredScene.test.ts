@@ -33,6 +33,28 @@ const world = (over: Partial<AuthoredWorld> = {}): AuthoredWorld => ({
   ...over,
 });
 
+describe('authoredChipScene and the Character Name chip', () => {
+  const keeper: Entity = { ...wren, aiDescription: '{{char}} keeps the lamps.' };
+
+  it("resolves each entity's text with that entity as its owner", () => {
+    expect(chipValues(authoredChipScene(world({ entities: [keeper, harrow] })))['<ENTITIES>'])
+      .toContain('Wren keeps the lamps.');
+  });
+
+  it("takes the caller's entity resolution beside its own resolve", () => {
+    const scene = authoredChipScene(world({ entities: [keeper, harrow] }), {
+      resolve: (text) => text,
+      resolveEntity: (entity, text) => text.replaceAll('{{char}}', entity.name.toUpperCase()),
+    });
+    expect(scene.entities[0].aiDescription).toBe('WREN keeps the lamps.');
+  });
+
+  it("leaves entity text to a caller's resolve that brings no entity resolution", () => {
+    const scene = authoredChipScene(world({ entities: [keeper, harrow] }), { resolve: (text) => text });
+    expect(scene.entities[0]).toBe(keeper);
+  });
+});
+
 describe('authoredChipScene', () => {
   it('opens the world at its starting location with the cast the author placed there', () => {
     const scene = authoredChipScene(world());
