@@ -1,6 +1,7 @@
 # 04: Card Import Writes Character Name Chips
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3931bb68
 Blocked by: 02 — Character Name Resolves Live
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -15,10 +16,15 @@ Export shape: no field is added, but imported entity text now holds `{{char}}` w
 
 Workload: a contained change in two import modules with existing tests to extend.
 
-- [ ] Card import stores `{{char}}` in the AI description and openings, canonicalized from any spelling
-- [ ] The embedded lorebook still gets the character's name as plain text
-- [ ] ST persona import still writes "the other character"
-- [ ] Tavern card, character import, lorebook import and persona import tests cover each case, mutation-proven
-- [ ] Response carries the export-shape reminder
-- [ ] Changelog In-Progress entry appended (👤)
-- [ ] Four gates green; `graphify update .` run
+- [x] Card import stores `{{char}}` in the AI description and openings, canonicalized from any spelling
+- [x] The embedded lorebook still gets the character's name as plain text
+- [x] ST persona import still writes "the other character"
+- [x] Tavern card, character import, lorebook import and persona import tests cover each case, mutation-proven
+- [x] Response carries the export-shape reminder
+- [x] Changelog In-Progress entry appended (👤)
+- [x] Four gates green; `graphify update .` run
+
+## Comments
+
+- 2026-09-25, implementer: before this ticket, the embedded lorebook did not write the name. It stored `{{char}}` as a token, which resolves to nothing with no owning entity. So "keeps the current name replacement" described no real behavior. The build follows story 21 and the acceptance line: the book now gets the name as plain text.
+- Open product call: a standalone SillyTavern World Info import still stores `{{char}}`, which reads as nothing in play.
