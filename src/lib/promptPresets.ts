@@ -368,7 +368,7 @@ export function storedToolSet(store: PromptPresetStore): PresetToolSet {
  *  `toolNameProblem` rejects. */
 export function saveTool(store: PromptPresetStore, tool: Tool): PromptPresetStore {
   const tools = activeUserTools(store);
-  if (isBuiltInActive(store) || toolNameProblem(tool.name, tools, tool.id)) return store;
+  if (toolNameProblem(tool.name, tools, tool.id)) return store;
   const held = tools.some((t) => t.id === tool.id);
   return patchActivePreset(store, (p) => ({ ...p, tools: held ? tools.map((t) => (t.id === tool.id ? tool : t)) : [...tools, tool] }));
 }

@@ -1,6 +1,6 @@
-import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
+import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PresetToolSet, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
-import type { AIRequestType, Tool, ToolOverrideMap } from '@/types';
+import type { AIRequestType, Tool } from '@/types';
 import { parsePromptReasoningSetting } from './reasoningEffort';
 import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
 import { parseTool, parseToolOverrides, toolNameProblem } from './tools/toolValidation';
@@ -13,7 +13,7 @@ export const FORMAT_VERSION = 1;
 export const SHARE_CODE_PREFIX = 'FMPRESET1:';
 
 /** The serialized artifact: preset content + stamps. Tuning is optional (a text-only preset omits it). */
-export interface SharedPreset {
+export interface SharedPreset extends PresetToolSet {
   kind: typeof SHARE_KIND;
   formatVersion: number;
   appVersion: string;
@@ -26,12 +26,10 @@ export interface SharedPreset {
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
-  tools?: Tool[];
-  toolOverrides?: ToolOverrideMap;
 }
 
 /** The preset payload an import yields (id is minted when added to the store). */
-export interface ImportedPreset {
+export interface ImportedPreset extends PresetToolSet {
   name: string;
   style: SectionStyle;
   values: PromptValues;
@@ -41,8 +39,6 @@ export interface ImportedPreset {
   maxOutput?: PromptMaxOutputMap;
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
-  tools?: Tool[];
-  toolOverrides?: ToolOverrideMap;
 }
 
 export interface ParseResult {
@@ -59,7 +55,7 @@ export interface ParseResult {
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
  *  values/tuning by the caller before export. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview; tools?: Tool[]; toolOverrides?: ToolOverrideMap },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview } & PresetToolSet,
   appVersion: string,
 ): SharedPreset {
   return {
@@ -229,7 +225,7 @@ function sanitizeOverview(raw: unknown): PresetOverview | undefined {
   return hasOverviewContent(overview) ? overview : undefined;
 }
 
-/** Keep each well-formed user Tool whose name no earlier one took; each dropped Tool adds a warning. */
+/** Keep each well-formed user Tool whose id and name no earlier one took; each dropped Tool adds a warning. */
 function sanitizeTools(raw: unknown, warnings: string[]): Tool[] | undefined {
   if (raw === undefined) return undefined;
   if (!Array.isArray(raw)) {
@@ -242,6 +238,7 @@ function sanitizeTools(raw: unknown, warnings: string[]): Tool[] | undefined {
       ? `The Tool "${(entry as { name: string }).name}"` : `Tool ${i + 1}`;
     const r = parseTool(entry);
     if ('error' in r) warnings.push(`${label} was skipped: ${r.error}.`);
+    else if (out.some((t) => t.id === r.tool.id)) warnings.push(`${label} was skipped: an earlier Tool has its id.`);
     else if (toolNameProblem(r.tool.name, out) === 'taken') warnings.push(`${label} was skipped: an earlier Tool has its name.`);
     else out.push(r.tool);
   });

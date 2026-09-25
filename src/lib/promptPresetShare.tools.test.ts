@@ -51,6 +51,13 @@ describe('sharing Tools with a preset', () => {
     expect(r.warnings).toHaveLength(1);
   });
 
+  it('drops a Tool whose id repeats an earlier one in the file', () => {
+    const raw = { ...buildSharedPreset(base, APP), tools: [tool(), tool({ name: 'get_time' })] };
+    const r = parseSharedJson(JSON.stringify(raw), APP);
+    expect(r.preset!.tools).toEqual([tool()]);
+    expect(r.warnings).toHaveLength(1);
+  });
+
   it('does not report a script from a Tool it dropped', () => {
     const raw = { ...buildSharedPreset(base, APP), tools: [{ ...script, name: 'get_entity' }] };
     const r = parseSharedJson(JSON.stringify(raw), APP);
