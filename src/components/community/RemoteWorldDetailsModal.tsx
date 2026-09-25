@@ -292,7 +292,8 @@ export function RemoteWorldDetailsModal({
   const thumbUrl = thumbFile
     ? `${WorldStorageService.API_URL}/thumbnails/${thumbFile}`
     : (hasArt && !flagged && world?.thumbnail) || '';
-  const morphArt = flagged || (world ? kindOf(world) === 'entity' && !thumbUrl : false);
+  // An entity with no picture at all draws it too, as its card does.
+  const showMorphArt = flagged || (world ? kindOf(world) === 'entity' && !thumbUrl : false);
   const models = world ? listingModels(world) : [];
   const madeFor = world ? listingAppVersion(world) : null;
   // Resolve through the same blob cache the card thumbnails use, so the zoom gets a same-origin object URL
@@ -403,7 +404,7 @@ export function RemoteWorldDetailsModal({
                         />
                       ) : !hasArt ? (
                         <KindArt kind={kindOf(world)} className="absolute top-0 left-0" iconClassName="h-16 w-16" />
-                      ) : morphArt ? (
+                      ) : showMorphArt ? (
                         // Portrait art in a wide frame: shown whole, so the letter is never cropped.
                         <div className="absolute inset-0 flex justify-center bg-muted">
                           <div className={cn("h-full", THUMB_FRAME.portrait)}>
