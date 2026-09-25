@@ -4,11 +4,11 @@ import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
 import { PUBLISH_LIMITS, measurePublishBytes, publishLimitRefusal } from '@/lib/publishLimits';
 import { openDatabase, promisifyRequest } from '@/lib/idb';
-import { migrateCarriedPlaceholders, migrateWorld } from '@/lib/version';
+import { migrateCarriedPlaceholders } from '@/lib/version';
 import { contentHash } from '@/lib/contentHash';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders } from '@/lib/placeholderHomes';
-import { readDeletedDefaultWorlds, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
+import { readDeletedDefaultWorlds, seedWorldData, tombstoneDefaultWorld, type DefaultWorldSeed } from '@/lib/defaultWorlds';
 import { changelogOf, type ChangelogDraft, type ChangelogEntry } from '@/lib/listingChangelog';
 import type { ReviewState, WorldAssociation } from '@/lib/compatibleWorlds';
 import type { ListingVisibility } from '@/lib/publishLinks';
@@ -566,25 +566,8 @@ class WorldStorageService {
             if (existing.dirty || existing.sourceHash === hash) return;
           }
 
-          const worldData = JSON.parse(raw);
-
-          // Preserve every authored section by passing the parsed world through untouched — `migrateWorld`
-          // spreads it (so present and future sections survive) and folds the legacy flat `dictionary` into
-          // books. Only `id` and a default `worldOverview` are stamped. storeWorld read-merges sticky local
-          // fields (createdAt, sourceId) and keeps `dirty` false for an unedited update.
-          const data = migrateWorld({
-            ...worldData,
-            id: world.id,
-            worldOverview: worldData.worldOverview || {
-              name: world.defaultName,
-              description: `Default ${world.defaultName} world`,
-              author: '',
-              thumbnail: '',
-              bgm: null,
-              systemPrompt: '',
-              use3DModel: true,
-            },
-          });
+          // storeWorld keeps sticky local fields (createdAt, sourceId) and a false `dirty` on this update.
+          const data = seedWorldData(JSON.parse(raw), world);
           const fullWorld = {
             id: world.id,
             name: data.worldOverview?.name || world.defaultName,

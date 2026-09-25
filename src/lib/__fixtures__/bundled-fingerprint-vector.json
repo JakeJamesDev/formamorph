@@ -1,0 +1,43 @@
+{
+  "world": {
+    "worldOverview": {
+      "name": "Vector World",
+      "description": "  A small   world\twhose\ndescription spans   several whitespace runs.  ",
+      "tags": ["short"]
+    },
+    "entities": [
+      {
+        "name": "Ada",
+        "aiDescription": "Ada keeps the lighthouse lamp burning through every storm.",
+        "count": 3,
+        "alive": true,
+        "note": null
+      },
+      {
+        "name": "Ada twin",
+        "aiDescription": "Ada keeps the lighthouse   lamp burning through every storm."
+      }
+    ],
+    "stats": [
+      {
+        "name": "Hunger",
+        "code": "return self.value - 1; // this stat code is long enough to count",
+        "description": "Rises every turn and drops when the player eats a meal."
+      }
+    ],
+    "rules": {
+      "code": {
+        "nested": "A nested string under a code key never counts toward it."
+      }
+    },
+    "edges": {
+      "exactly40": "abcdefghijklmnopqrstuvwxyz0123456789ABCD",
+      "only39": "abcdefghijklmnopqrstuvwxyz0123456789ABC",
+      "shrinks": "Short text                                padded out.",
+      "unicode": "Café au lait — served warm at the harbor inn café 🌊",
+      "fortyCodeUnits": "Waves roll in over the old stone pier 🌊",
+      "aKeyThatIsLongerThanFortyCharactersIsNeverCollected": "short"
+    }
+  },
+  "fingerprint": "638b11cfffcf8a8c4df48c09fcaadb54c8389b44c9deb06b9c3ffe9aae63b2b8"
+}
