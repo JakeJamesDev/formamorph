@@ -13,7 +13,7 @@ import type { Entity } from '@/types';
 const card = {
   spec: 'chara_card_v2', spec_version: '2.0', data: {
     name: 'Mara', description: '{{char}} knows {{user}}.', personality: 'Patient', scenario: 'At the dock',
-    first_mes: '*Mara waves.*', alternate_greetings: ['Welcome back.'],
+    first_mes: '*{{ Char }} waves.*', alternate_greetings: ['Welcome back.'],
     creator: ' Rowan ', tags: [' Guide ', '', 'Guide', 3, 'River'],
     avatar: 'https://example.com/mara.png',
     character_book: { entries: [{ keys: ['dock'], content: 'A quiet landing.' }] },
@@ -30,9 +30,9 @@ describe('SillyTavern JSON import', () => {
   it('imports a real file through the shared entry point and keeps library fields separate', async () => {
     const result = await importCharacterFile(file(card));
     expect(result.entity).toMatchObject({ name: 'Mara', images: ['https://example.com/mara.png'] });
-    expect(result.entity.aiDescription).toBe('Mara knows {{user}}.\n\nPersonality: Patient\n\nScenario: At the dock');
+    expect(result.entity.aiDescription).toBe('{{char}} knows {{user}}.\n\nPersonality: Patient\n\nScenario: At the dock');
     expect(result.entity.openings?.map(({ text, kind }) => ({ text, kind }))).toEqual([
-      { text: '*Mara waves.*', kind: 'narration' }, { text: 'Welcome back.', kind: 'narration' },
+      { text: '*{{char}} waves.*', kind: 'narration' }, { text: 'Welcome back.', kind: 'narration' },
     ]);
     expect(result.libraryDetails).toEqual({ author: 'Rowan', tags: ['Guide', 'River'] });
     expect(result.book?.entries[0].value).toBe('A quiet landing.');

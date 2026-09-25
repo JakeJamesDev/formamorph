@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import type { Dictionary, DictionaryEntry } from '@/types';
-import { canonicalBuiltins } from './builtinPlaceholders';
+import { CHARACTER_NAME, canonicalBuiltins } from './builtinPlaceholders';
 
 /**
  * Convert an open-format lorebook into a Formamorph dictionary ("book"), or return `null` if `raw` isn't a
@@ -42,11 +42,15 @@ function firstNumber(...values: unknown[]): number | undefined {
 }
 
 /** Convert one lorebook entry to a `DictionaryEntry`, honoring book-level scan/recursion defaults. */
-function convertEntry(raw: RawEntry, book: { scanDepth?: number; recursive?: boolean }): DictionaryEntry | null {
+function convertEntry(
+  raw: RawEntry, book: { scanDepth?: number; recursive?: boolean }, character?: string,
+): DictionaryEntry | null {
   const keys = asKeywordList(raw.keys ?? raw.key);
-  const value = canonicalBuiltins(
+  const canonical = canonicalBuiltins(
     stripDecorators(typeof raw.content === 'string' ? raw.content : typeof raw.value === 'string' ? raw.value : ''),
   );
+  // split/join, so a `$` in the name is never read as a replacement pattern.
+  const value = character ? canonical.split(CHARACTER_NAME.token).join(character) : canonical;
   const constant = raw.constant === true;
   // Drop pure noise, but keep a keyless "always inject" (constant) entry.
   if (!value && keys.length === 0 && !constant) return null;
@@ -102,7 +106,14 @@ function entryArray(source: Record<string, unknown> | undefined): RawEntry[] | n
   return null;
 }
 
-export function convertLorebook(raw: unknown, fallbackName?: string): Dictionary | null {
+export interface LorebookOptions {
+  /** The book's name when the file gives none. */
+  fallbackName?: string;
+  /** The name of the card that embeds the book, written in place of the char macro. */
+  character?: string;
+}
+
+export function convertLorebook(raw: unknown, { fallbackName, character }: LorebookOptions = {}): Dictionary | null {
   if (!raw || typeof raw !== 'object') return null;
   const obj = raw as Record<string, unknown>;
   const data = (obj.data && typeof obj.data === 'object' ? obj.data : undefined) as Record<string, unknown> | undefined;
@@ -122,7 +133,7 @@ export function convertLorebook(raw: unknown, fallbackName?: string): Dictionary
     scanDepth: firstNumber(book.scan_depth),
     recursive: book.recursive_scanning === true,
   };
-  const entries = list.map((e) => convertEntry(e, bookDefaults)).filter((e): e is DictionaryEntry => e !== null);
+  const entries = list.map((e) => convertEntry(e, bookDefaults, character)).filter((e): e is DictionaryEntry => e !== null);
   if (entries.length === 0) return null;
   // Order by imported insertion order (then priority) so injection order roughly matches the source.
   entries.sort((a, b) => (a.priority ?? Number.MAX_SAFE_INTEGER) - (b.priority ?? Number.MAX_SAFE_INTEGER));

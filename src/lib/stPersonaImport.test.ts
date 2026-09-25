@@ -38,6 +38,13 @@ describe('convertStPersonaBackup', () => {
       .toBe('Aria is a cartographer. the other character trusts Aria\'s maps. {{random:a,b}} stays.');
   });
 
+  it('writes "the other character" for every char macro spelling', () => {
+    const [aria] = convertStPersonaBackup(text({
+      personas: { 'a.png': 'Aria' }, persona_descriptions: { 'a.png': { description: '{{ Char }} and {{CHAR}} wait.' } },
+    }), []).personas;
+    expect(aria.entity.aiDescription).toBe('the other character and the other character wait.');
+  });
+
   it('drops the position, depth, role, title, lorebook, and connections fields', () => {
     const [aria] = convertStPersonaBackup(text(backup), []).personas;
     expect(Object.keys(aria.entity).sort()).toEqual(['aiDescription', 'id', 'name', 'persona']);

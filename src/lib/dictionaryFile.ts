@@ -110,7 +110,7 @@ export function parseDictionaryImport(raw: unknown, fallbackName?: string): Dict
     if (kind === WORLD_FILE_KIND) throw new Error("That's a world file — import it from the Worlds tab.");
     if (kind === SAVE_FILE_KIND) throw new Error("That's a save file, not a dictionary.");
   }
-  const converted = convertLorebook(raw, fallbackName);
+  const converted = convertLorebook(raw, { fallbackName });
   if (converted) return converted;
   throw new Error('Unrecognized file — import a Formamorph dictionary or a SillyTavern / character-card lorebook.');
 }

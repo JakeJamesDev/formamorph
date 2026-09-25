@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { convertLorebook } from './lorebookImport';
-import { PLAYER_NAME } from './builtinPlaceholders';
+import { CHARACTER_NAME, PLAYER_NAME } from './builtinPlaceholders';
 import type { DictionaryEntry } from '@/types';
 
 // Grab a converted entry by its joined keywords, since ids are randomized.
@@ -67,6 +67,18 @@ describe('convertLorebook — Character Card V3 lorebook (array entries)', () =>
     expect(d!.entries[0].value).toBe(`Sworn to ${PLAYER_NAME.token} and ${PLAYER_NAME.token}.`);
   });
 
+  it('stores every char macro spelling in a standalone book as its one canonical form', () => {
+    const d = convertLorebook({ entries: [{ keys: ['oath'], content: '{{ Char }} and {{CHAR}} swore.' }] });
+    expect(d!.entries[0].value).toBe(`${CHARACTER_NAME.token} and ${CHARACTER_NAME.token} swore.`);
+  });
+
+  it('writes the named character in place of every char macro spelling, taken literally', () => {
+    const d = convertLorebook(
+      { entries: [{ keys: ['oath'], content: '{{ Char }} swore to {{user}}. {{CHAR}} kept it.' }] }, { character: 'Cash $& Co' },
+    );
+    expect(d!.entries[0].value).toBe(`Cash $& Co swore to ${PLAYER_NAME.token}. Cash $& Co kept it.`);
+  });
+
   it('strips leading @@ decorator lines from content', () => {
     const d = convertLorebook({ entries: [{ keys: ['a'], content: '@@position after_char\n@@depth 4\nReal content.' }] });
     expect(d!.entries[0].value).toBe('Real content.');
@@ -119,7 +131,7 @@ describe('convertLorebook — wrappers & naming', () => {
   });
 
   it('uses fallbackName when nothing names the book', () => {
-    expect(convertLorebook({ entries: [{ keys: ['a'], content: 'x' }] }, 'My File')?.name).toBe('My File');
+    expect(convertLorebook({ entries: [{ keys: ['a'], content: 'x' }] }, { fallbackName: 'My File' })?.name).toBe('My File');
   });
 });
 

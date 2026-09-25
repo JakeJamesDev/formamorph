@@ -33,14 +33,6 @@ function decodeBase64Utf8(b64: string): string {
   return new TextDecoder('utf-8').decode(bytes);
 }
 
-/** Every spelling of the SillyTavern char macro. */
-export const CHAR_MACRO_RE = /\{\{\s*char\s*\}\}/gi;
-
-/** `{{char}}` → the character's name, `{{user}}` → the Player Name chip; other macros are left untouched. */
-function substituteMacros(text: string, name: string): string {
-  return canonicalBuiltins(text.replace(CHAR_MACRO_RE, name));
-}
-
 /** The card's field object (unwrapping the V2/V3 `data` envelope), or null if the PNG carries no card. */
 function readCardData(bytes: Uint8Array): TavernData | null {
   const chunks = readPngTextChunks(bytes);
@@ -61,26 +53,25 @@ function readCardData(bytes: Uint8Array): TavernData | null {
 const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
 
 /** Build an entity from card fields: name, description + personality + scenario folded into `aiDescription`,
- *  and the greetings as openings. */
+ *  and the greetings as openings. Both macros stay in entity text as chips, so a rename reaches them. */
 function cardToEntity(data: TavernData): Entity {
   const name = str(data.name) || 'Imported Character';
   const parts: string[] = [];
   if (str(data.description)) parts.push(str(data.description));
   if (str(data.personality)) parts.push(`Personality: ${str(data.personality)}`);
   if (str(data.scenario)) parts.push(`Scenario: ${str(data.scenario)}`);
-  const aiDescription = substituteMacros(parts.join('\n\n'), name);
-  const openings = cardOpenings(data, name);
+  const aiDescription = canonicalBuiltins(parts.join('\n\n'));
+  const openings = cardOpenings(data);
   return { id: randomUUID(), name, ...(aiDescription ? { aiDescription } : {}), ...(openings.length ? { openings } : {}) };
 }
 
-/** The first message, then each alternate greeting, as Narration rows at the default weight. The user macro
- *  stays in the text for the draw to render. */
-function cardOpenings(data: TavernData, name: string): Opening[] {
+/** The first message, then each alternate greeting, as Narration rows at the default weight. */
+function cardOpenings(data: TavernData): Opening[] {
   const alternates: unknown[] = Array.isArray(data.alternate_greetings) ? data.alternate_greetings : [];
   return [data.first_mes, ...alternates]
     .map(str)
     .filter(Boolean)
-    .map((text) => ({ id: randomUUID(), text: substituteMacros(text, name), kind: 'narration' }));
+    .map((text) => ({ id: randomUUID(), text: canonicalBuiltins(text), kind: 'narration' }));
 }
 
 /**
@@ -95,7 +86,10 @@ export function readTavernCard(bytes: Uint8Array): TavernImport | null {
 
 function convertCard(data: TavernData): TavernImport {
   const entity = cardToEntity(data);
-  const book = data.character_book ? convertLorebook({ character_book: data.character_book }, entity.name) : null;
+  // A book entry has no owning entity, so it names the character as plain text.
+  const book = data.character_book
+    ? convertLorebook({ character_book: data.character_book }, { fallbackName: entity.name, character: entity.name })
+    : null;
   const author = str(data.creator);
   const tags = Array.isArray(data.tags) ? [...new Set(data.tags.map(str).filter(Boolean))] : [];
   return { entity, book, libraryDetails: { ...(author ? { author } : {}), tags } };
