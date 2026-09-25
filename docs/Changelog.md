@@ -28,6 +28,8 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Your persona always heads the in-game Entities tab, marked (You).** It shows in every scene and opens like any other entity: its picture in the side view, or its card.
   - **AI Context shows each request's raw reasoning in its own section.** A reasoning model's thinking for a request appears under **Raw Reasoning**, between **Raw Input** and **Raw Output**, on the turn it was generated. Search finds text in it, and the export includes it. The model's thinking is never sent back in later turns' history.
   - **The Test Bench's Triggers tab says when an entry missed only because of Case-Sensitive.** An entry with **Case-Sensitive** on that finds its keyword in another case now reads, for example, “bell” appears only as “Bell”, and case-sensitive matching is on. The entry still doesn't activate.
+  - **Community Creations refuses the default Avatar.** When you publish it from the Avatar library, the publish dialog doesn't open, and a message tells you to upload your own VRM. A copy under a new name is refused too, because the check reads the file's bytes. Other Avatars reach the license check as before.
+  - **Publish World refuses a bundled world you haven't edited.** The publish dialog doesn't open, and a message says: "This is a bundled world. Edit it to make it your own, then publish." Save one edit to the world, and it publishes as before. A world you made always publishes.
 
 - **🛠️ Developer tooling**
   - **Chip Values:**

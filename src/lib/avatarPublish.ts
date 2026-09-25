@@ -2,6 +2,7 @@ import ModelStorageService from '@/services/ModelStorageService';
 import { blobToDataUrl } from '@/lib/imageSource';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
 import { modelPublishPayload } from '@/lib/publishPayload';
+import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import type { PublishPayload } from '@/lib/publishPayload';
 
 /**
@@ -41,10 +42,14 @@ export function avatarPublishRefusal(failed: AvatarLicenseRequirement[]): string
   return `This Avatar can’t be published: its file doesn’t allow ${orList(failed.map((id) => DENIALS[id]))}.`;
 }
 
-/** A model that may be published, with the payload ready, or one that may not, with the reasons. */
+/** Why the default Avatar can't be published, whatever its license says. */
+const DEFAULT_AVATAR_REFUSAL = 'This is the default avatar. Upload your own VRM.';
+
+/** A model that may be published, with the payload ready, or one that may not, with the reason to show. */
 export type AvatarPublishAttempt =
   | { allowed: true; payload: PublishPayload }
-  | { allowed: false; failedRequirements: AvatarLicenseRequirement[] };
+  | { allowed: false; reason: 'defaultAvatar'; message: string }
+  | { allowed: false; reason: 'license'; message: string; failedRequirements: AvatarLicenseRequirement[] };
 
 /** Everything the gate needs that only the caller knows. */
 export interface AvatarPublishTarget {
@@ -56,8 +61,18 @@ export interface AvatarPublishTarget {
 /** Absence is failure, exactly as it is everywhere else the license is read. */
 const NOTHING_KNOWN = { metaVersion: null } as const;
 
+const licenseRefusal = (failedRequirements: AvatarLicenseRequirement[]): AvatarPublishAttempt => ({
+  allowed: false,
+  reason: 'license',
+  message: avatarPublishRefusal(failedRequirements),
+  failedRequirements,
+});
+
 /**
  * Judge one library model's file and, when it passes, build the payload that publishes it.
+ *
+ * The default Avatar is refused by its bytes before the license is read: its file grants every right, and a
+ * copy under a new name is still the default.
  *
  * The stored license is refreshed first: a record written before the Permissive License gate's fields
  * existed carries a license missing them, which would fail every requirement for being old rather than
@@ -75,11 +90,17 @@ export async function buildAvatarPublish(target: AvatarPublishTarget): Promise<A
     data = await ModelStorageService.getModelData(target.id);
   } catch {
     // Unreadable bytes are not a license, so they are not permission either.
-    return { allowed: false, failedRequirements: gateAvatarLicense(NOTHING_KNOWN).failedRequirements };
+    return licenseRefusal(gateAvatarLicense(NOTHING_KNOWN).failedRequirements);
+  }
+
+  // The server makes the same check, so a failed lookup here only moves the refusal there.
+  const defaultHashes = await ModelStorageService.defaultAvatarHashes(DEFAULT_AVATAR_URL).catch((): string[] => []);
+  if (data.hash && defaultHashes.includes(data.hash)) {
+    return { allowed: false, reason: 'defaultAvatar', message: DEFAULT_AVATAR_REFUSAL };
   }
 
   const verdict = gateAvatarLicense(data.license ?? NOTHING_KNOWN);
-  if (!verdict.allowed) return { allowed: false, failedRequirements: verdict.failedRequirements };
+  if (!verdict.allowed) return licenseRefusal(verdict.failedRequirements);
 
   return {
     allowed: true,
