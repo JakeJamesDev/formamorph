@@ -53,11 +53,11 @@ describe('settings mode', () => {
     expect(readSettingsMode()).toBe('simple');
   });
 
-  it('drops Prompts from the tab list in Simple only', () => {
+  it('drops Prompts and Tools from the tab list in Simple only', () => {
     expect(settingsTabsFor(false).map((t) => t.value))
       .toEqual(['display', 'output', 'endpoints', 'data']);
     expect(settingsTabsFor(true).map((t) => t.value))
-      .toEqual(['display', 'output', 'prompts', 'endpoints', 'data']);
+      .toEqual(['display', 'output', 'prompts', 'tools', 'endpoints', 'data']);
   });
 
   it('hides the Prompts tab in Simple and shows it in Advanced', () => {

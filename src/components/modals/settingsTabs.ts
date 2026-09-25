@@ -11,6 +11,8 @@ export const SETTINGS_TABS = [
   // Prompts sits next to Output because it is the same subject at a lower level: Output decides which
   // passes run, Prompts is the text each one sends.
   { value: 'prompts', label: 'Prompts', advancedOnly: true },
+  // Tools belong to the same preset as the prompts that offer them.
+  { value: 'tools', label: 'Tools', advancedOnly: true },
   { value: 'endpoints', label: 'Endpoints' },
   { value: 'data', label: 'Data' },
 ] as const;

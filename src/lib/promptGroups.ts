@@ -72,6 +72,11 @@ export const PROMPT_LABELS: Record<PromptTab, string> = {
   storyboard: 'Storyboard',
 };
 
+/** Each request under the name of the prompt that sends it. */
+export const REQUEST_LABELS = Object.fromEntries(
+  (Object.entries(PROMPT_TAB_REQUESTS) as [PromptTab, AIRequestType][]).map(([tab, kind]) => [kind, PROMPT_LABELS[tab]]),
+) as Record<AIRequestType, string>;
+
 /**
  * One line per prompt, saying what job it does in the turn — shown above the editor, where it is read
  * before the prompt rather than after it. Written to the Writing Guide's help-line test: verb-first,
