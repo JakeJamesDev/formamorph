@@ -674,6 +674,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   /** Publish the selected world, unless it is a bundled world the player never edited. */
   const publishWorld = (world: WorldRecord) => {
+    // A selected world always holds its migrated data (handleWorldSelection); WorldRecord is loose.
     const attempt = buildWorldPublish(world as WorldPublishTarget);
     if (!attempt.allowed) {
       toast.error(attempt.message);

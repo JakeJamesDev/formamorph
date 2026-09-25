@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { VrmLicense } from '@/types';
-import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
+import { blobHash } from '@/lib/blobHash';
 import { avatarPublishRefusal, buildAvatarPublish } from './avatarPublish';
 
 const getModelData = vi.fn();
@@ -10,7 +10,7 @@ vi.mock('@/services/ModelStorageService', () => ({
   default: {
     getModelData: (id: string) => getModelData(id),
     ensureThumbnail: (id: string) => ensureThumbnail(id),
-    defaultAvatarHashes: (url: string) => defaultAvatarHashes(url),
+    defaultAvatarHashes: () => defaultAvatarHashes(),
   },
 }));
 
@@ -139,7 +139,6 @@ describe('buildAvatarPublish', () => {
     const result = await buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' });
 
     expect(result).toEqual({ allowed: false, reason: 'defaultAvatar', message: DEFAULT_REFUSAL });
-    expect(defaultAvatarHashes).toHaveBeenCalledWith(DEFAULT_AVATAR_URL);
   });
 
   it('refuses the default Avatar’s bytes stored under a new id and name', async () => {
@@ -166,6 +165,18 @@ describe('buildAvatarPublish', () => {
     const result = await buildAvatarPublish({ id: 'default-avatar', name: 'Default Avatar' });
 
     expect(result).toMatchObject({ allowed: false, message: DEFAULT_REFUSAL });
+  });
+
+  it('hashes the file itself when its record carries no hash', async () => {
+    // jsdom reads Blob bytes through FileReader, and this path refuses before any payload needs the stub.
+    vi.unstubAllGlobals();
+    const bytes = new Blob(['default-bytes']);
+    defaultAvatarHashes.mockResolvedValue([await blobHash(bytes)]);
+    getModelData.mockResolvedValue(stored({ blob: bytes, hash: undefined }));
+
+    const result = await buildAvatarPublish({ id: 'm2', name: 'Unhashed Copy' });
+
+    expect(result).toMatchObject({ allowed: false, reason: 'defaultAvatar' });
   });
 
   it('still reaches the license gate when the default hashes cannot be read', async () => {

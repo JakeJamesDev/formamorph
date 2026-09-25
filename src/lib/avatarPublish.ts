@@ -2,7 +2,7 @@ import ModelStorageService from '@/services/ModelStorageService';
 import { blobToDataUrl } from '@/lib/imageSource';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
 import { modelPublishPayload } from '@/lib/publishPayload';
-import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
+import { blobHash } from '@/lib/blobHash';
 import type { PublishPayload } from '@/lib/publishPayload';
 
 /**
@@ -94,8 +94,8 @@ export async function buildAvatarPublish(target: AvatarPublishTarget): Promise<A
   }
 
   // The server makes the same check, so a failed lookup here only moves the refusal there.
-  const defaultHashes = await ModelStorageService.defaultAvatarHashes(DEFAULT_AVATAR_URL).catch((): string[] => []);
-  if (data.hash && defaultHashes.includes(data.hash)) {
+  const defaultHashes = await ModelStorageService.defaultAvatarHashes().catch((): string[] => []);
+  if (defaultHashes.includes(data.hash || await blobHash(data.blob))) {
     return { allowed: false, reason: 'defaultAvatar', message: DEFAULT_AVATAR_REFUSAL };
   }
 
