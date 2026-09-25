@@ -1,6 +1,8 @@
 # 07: Show the Tools Tab
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in ad12c2da plus review follow-up; Edit and New Tool open an empty shell for 08; the Script notice fires only for a Script Tool the import adds
+Base: 88e57a7e
 Blocked by: 01 — Store Tools in Presets and the Catalog; 04 — Detect Tool Support per Endpoint and Model
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

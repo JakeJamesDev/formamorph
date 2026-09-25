@@ -3154,6 +3154,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, initialTab,
               fullscreen={toolsMorph.contentInOverlay}
               onToggleFullscreen={toolsMorph.toggle}
               appVersion={APP_VERSION}
+              // Selection only: Add and Import open dialogs that live in the Prompts tab.
               presetSelector={(
                 <div className="flex items-center gap-2">
                   <span className="text-helper text-muted-foreground">Preset</span>

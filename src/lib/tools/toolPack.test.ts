@@ -25,6 +25,12 @@ describe('the Tool pack', () => {
     expect(() => parseToolPack('{"formamorphTools":1,"tools":{}}')).toThrow('That file isn’t a Formamorph Tool pack.');
   });
 
+  it('warns on a pack from a newer format and reads what it can', () => {
+    const { tools, warnings } = parseToolPack(JSON.stringify({ formamorphTools: 2, tools: [script] }));
+    expect(tools).toEqual([script]);
+    expect(warnings).toEqual(['This pack was made with a newer format. Anything unrecognized was skipped.']);
+  });
+
   it('drops a malformed Tool with a warning and keeps the rest', () => {
     const broken = { ...tool({ id: 'u-3', name: 'bad name' }) };
     const { tools, warnings } = parseToolPack(JSON.stringify({ formamorphTools: 1, tools: [broken, script] }));

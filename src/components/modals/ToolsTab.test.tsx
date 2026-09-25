@@ -92,7 +92,7 @@ describe('the read view', () => {
     expect(heading()).toBe('get_weather');
     expect(screen.getByText('Returns a template · Offered to Narration, Director · 2 calls per request')).toBeInTheDocument();
     expect(screen.getByText('Purpose: weather.')).toBeInTheDocument();
-    const schema = screen.getByText('What the AI receives').closest('details')!;
+    const schema = screen.getByText('What the AI Receives').closest('details')!;
     expect(schema).not.toHaveAttribute('open');
     expect(JSON.parse(schema.querySelector('pre')!.textContent!)).toMatchObject({ type: 'function', function: { name: 'get_weather' } });
   });
@@ -244,7 +244,7 @@ describe('import and export', () => {
 describe('the endpoint notice', () => {
   it('shows only when the text endpoint won’t receive Tools', () => {
     const { rerender } = render(<Harness initial={userStore()} toolsSupported={false} />);
-    expect(screen.getByRole('note')).toHaveTextContent('won’t receive Tools'.replace('’', "'"));
+    expect(screen.getByRole('note')).toHaveTextContent("won't receive Tools");
     rerender(<Harness initial={userStore()} toolsSupported />);
     expect(screen.queryByRole('note')).toBeNull();
   });

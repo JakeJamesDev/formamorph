@@ -221,7 +221,7 @@ export function ToolsTab({
               </div>
               <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
               <details>
-                <summary className="cursor-pointer text-helper text-muted-foreground">What the AI receives</summary>
+                <summary className="cursor-pointer text-helper text-muted-foreground">What the AI Receives</summary>
                 <HighlightedCode
                   code={JSON.stringify(toolSchema(selected), null, 2)}
                   language="json"

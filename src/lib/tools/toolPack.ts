@@ -1,5 +1,5 @@
 import type { Tool } from '@/types';
-import { isRecord, parseTool, toolNameProblem } from './toolValidation';
+import { TOOL_NAME_MAX, isRecord, parseTool, toolNameProblem } from './toolValidation';
 
 /**
  * The shared Tool file. `formamorphTools` is the file's own shape version, which import checks; `appVersion`
@@ -31,6 +31,7 @@ export function parseToolPack(json: string): { tools: Tool[]; warnings: string[]
   }
   const tools: Tool[] = [];
   const warnings: string[] = [];
+  if (parsed.formamorphTools > TOOL_PACK_VERSION) warnings.push('This pack was made with a newer format. Anything unrecognized was skipped.');
   for (const raw of parsed.tools) {
     const result = parseTool(raw);
     if ('tool' in result) tools.push(result.tool);
@@ -55,13 +56,12 @@ export function planToolImport(held: readonly Tool[], imported: readonly Tool[],
 }
 
 const COPY_SUFFIX = '_copy';
-const NAME_LIMIT = 64;
 
 /** A copy of `tool` as a new user Tool, named `<name>_copy` (numbered when taken) so it saves among `held`. */
 export function copyTool(tool: Tool, held: readonly Tool[], id: string): Tool {
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? COPY_SUFFIX : `${COPY_SUFFIX}_${n}`;
-    const name = tool.name.slice(0, NAME_LIMIT - suffix.length) + suffix;
+    const name = tool.name.slice(0, TOOL_NAME_MAX - suffix.length) + suffix;
     if (!toolNameProblem(name, held)) return { ...structuredClone(tool), id, name };
   }
 }
