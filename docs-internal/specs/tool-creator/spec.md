@@ -113,7 +113,7 @@ A new **Tools** tab in Settings (Advanced only) lets a player create, edit, test
 - **Lookup** matches without regard to case and returns `{"matches": [...]}` with every match. Entities and locations match on name and aliases; dictionary entries match on their keys. With no match it returns the Tool's empty result.
 - **Template** renders the chip text through the existing prompt-template renderer, with parameters bound as chip values.
 - **Script** runs in the QuickJS sandbox with its interrupt timeout. It receives `args` and a read-only snapshot and returns text or a JSON-serializable value. The stat-code sandbox is not widened: tool scripts get their own injected globals.
-- The Tool Snapshot comes from the existing Chip Scene and Chip Values data, so Try It and play read the same values. It is built once per turn and shared by every call in that turn.
+- The Tool Snapshot comes from the existing Chip Scene and Chip Values data, so Try It and play read the same values. Inside a turn it is built lazily at the turn's first Tool call, after the location router has run, so its scene is the location the narration is written for; every later call in the turn reuses it. A request that runs outside the turn pipeline (the idle drainers: milestone select, and summary, diary and discover entity when Concurrent Turn Requests is off, plus the scene-tags re-run) builds its own snapshot when the job starts. Every request of an offered prompt sends its Tools, whichever path it runs on, so the Availability checkbox means the same thing in every mode.
 
 ### Request layer (the runtime seam)
 
