@@ -89,7 +89,7 @@ export function drawMorphCard(art: MorphArt, font: string, palette: MorphPalette
   ctx.fillRect(0, 0, 1, 1);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-  const { x, y, pivotX, pivotY, fontSize, fontWeight, strokeWidth } = MORPH_LETTER;
+  const { x, y, pivotX, pivotY, strokeWidth } = MORPH_LETTER;
   const bodies: Array<{ gradient: MorphGradient; draw: () => void }> = [
     {
       gradient: art.letter.gradient,
@@ -98,7 +98,7 @@ export function drawMorphCard(art: MorphArt, font: string, palette: MorphPalette
         lctx.translate(pivotX, pivotY);
         lctx.rotate((art.letter.tilt * Math.PI) / 180);
         lctx.translate(-pivotX, -pivotY);
-        lctx.font = `${fontWeight} ${fontSize}px ${font}`;
+        lctx.font = fontSpec(font);
         lctx.textAlign = 'center';
         lctx.lineJoin = 'round';
         lctx.lineWidth = strokeWidth;
@@ -120,6 +120,8 @@ export function drawMorphCard(art: MorphArt, font: string, palette: MorphPalette
           lump.points.forEach(([px, py], k) => (k ? lctx.lineTo(px, py) : lctx.moveTo(px, py)));
           lctx.closePath();
           lctx.fill();
+          // The SVG group's white stroke reaches the lumps at its default 1-unit width.
+          lctx.stroke();
         }
       },
     })),
@@ -144,6 +146,8 @@ export function drawMorphCard(art: MorphArt, font: string, palette: MorphPalette
   return canvas;
 }
 
+const fontSpec = (font: string) => `${MORPH_LETTER.fontWeight} ${MORPH_LETTER.fontSize}px ${font}`;
+
 /** The app font stack, as the Font setting last set it. */
 function appFont(): string {
   return getComputedStyle(document.documentElement).getPropertyValue('--app-font').trim() || 'sans-serif';
@@ -156,7 +160,7 @@ function appFont(): string {
 export async function morphCardImage(idSeed: string, name: string, placeholders: readonly Placeholder[]): Promise<string> {
   const letter = morphLetter(name, placeholders);
   const font = appFont();
-  const spec = `${MORPH_LETTER.fontWeight} ${MORPH_LETTER.fontSize}px ${font}`;
+  const spec = fontSpec(font);
   await document.fonts.load(spec, letter);
   if (!document.fonts.check(spec, letter)) throw new Error('Could not load the app font for the card picture.');
   const art = generateMorphArt({

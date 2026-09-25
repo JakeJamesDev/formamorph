@@ -1,6 +1,8 @@
 # 03: Morph Art on Exported Character Cards
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: The id seed also falls back to the library item's id, so a world copy of a library entity gets the same art as the library tile. Awaiting a ruling on that.
+Base: 22781db0
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
