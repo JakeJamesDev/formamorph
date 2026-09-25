@@ -12,6 +12,14 @@ _Avoid_: fetch helper, completion client
 The complete, plain-value description of one AI call — prompt, messages, resolved endpoint, sampler, reasoning preferences — built from a settings snapshot; everything the AI Stream needs, nothing live.
 _Avoid_: request options, config
 
+**Tool**:
+A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined in a prompt preset and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough.
+_Avoid_: function (wire-format word), instrument (a Test Bench part)
+
+**Tool Handler**:
+The part of a Tool that runs when the AI calls it: a Lookup (searches world data), a Template (returns chip text), or a Script (sandboxed code that reads the world and the current scene).
+_Avoid_: resolver, source
+
 **Connection**:
 An authored travel link between two locations — one-way or two-way. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
 _Avoid_: edge (internal only), path, route
