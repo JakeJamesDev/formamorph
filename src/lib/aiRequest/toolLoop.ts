@@ -4,7 +4,7 @@ import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import {
   ABORTED_FINISH_REASON, streamAiRequest,
-  type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec,
+  type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec, type AiToolCall,
 } from './aiStream';
 
 /**
@@ -27,12 +27,9 @@ export type ToolExecutor = (tool: Tool, argumentsText: string, signal?: AbortSig
 /** Why a call in a round produced an error result: the runner's own kinds, or a call the loop refused. */
 export type AiToolRoundFailure = ToolCallFailure | 'unknown' | 'limit';
 
-/** One call in a tool round, with the text the model read back. */
-export interface AiToolRoundCall {
-  /** The outgoing id, as the next round's messages carry it. */
-  id: string;
-  name: string;
-  arguments: string;
+/** One call in a tool round, with the text the model read back. Its id is the outgoing one, as the next
+ *  round's messages carry it. */
+export interface AiToolRoundCall extends AiToolCall {
   result: string;
   failure?: AiToolRoundFailure;
 }

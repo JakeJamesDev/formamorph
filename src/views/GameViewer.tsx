@@ -79,7 +79,7 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { splitSentenceSegments } from "../lib/ttsChunks";
@@ -2916,9 +2916,10 @@ const GameViewer = ({
 
       // Tool rounds are silent requests: kept for the AI-context viewer only when the inspection toggle is on.
       const toolRounds: AiToolRound[] = [];
-      // Without Tools on the wire the loop is the plain stream; the executor is a no-op it never reaches.
-      const execute: ToolExecutor = executeTool ?? (() => Promise.resolve({ text: "" }));
-      for await (const event of streamAiToolLoop(spec, { signal, execute, captureRounds: showSilentRequests })) {
+      const events = executeTool
+        ? streamAiToolLoop(spec, { signal, execute: executeTool, captureRounds: showSilentRequests })
+        : streamAiRequest(spec, { signal });
+      for await (const event of events) {
         if (event.type === "debug") {
           // The endpoint answered: commit to this turn's reveal. The `request` debug is already captured
           // above, and a malformed frame is logged rather than failing the turn.

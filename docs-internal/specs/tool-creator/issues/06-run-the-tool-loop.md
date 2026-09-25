@@ -1,6 +1,7 @@
 # 06: Run the Tool Loop in the Request Layer
 
-Status: in-progress
+Status: ready-for-human
+Status note: built in 0e87bb79 with the closing review folded in; game-view wiring and its tests are 09's
 Base: d22793e4
 Blocked by: 01 — Store Tools in Presets and the Catalog; 02 — Run a Tool Call in the Tool Runner; 04 — Detect Tool Support per Endpoint and Model; 05 — Probe Reasoning Kept Between Tool Rounds
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -42,4 +43,6 @@ Model rationale: Fable at high effort for streaming state across chunks, correla
   - `makeAIRequest` routes through the loop when `executeTool` is present and records each captured round on the debug request as `toolRounds` (messages, content, reasoning, calls with id, arguments, result and failure). Rendering them in AI Context is 09's.
   - The stream's `done` result now carries `toolCalls` and `reasoningField`. The loop's `done` carries every round's reasoning joined; each round's own reasoning is in its capture.
   - Stop: the loop checks the signal after each stream and after each call and sends no further round. A Script handler runs synchronously on the main thread, so a Stop press cannot interrupt it mid-evaluation; the sandbox's one-second deadline bounds it, and the loop then stops. Interrupting a script mid-run needs the sandbox in a worker, which is outside this ticket.
+  - Guards proven red: 22 mutations (hold-and-flush off, each prose trigger dropped, cap off by one, reasoning field not echoed, capture unconditional, limit off by one, ids not remapped, abort after a call ignored, held content never flushed, null content, response debug per round, reasoning not joined, prose-round calls honored, index folding ignored, reasoning field unrecorded, tool frame not a first token, capability gate off, required list empty, blank description sent, caller messages shared). Each failed at least one test and was restored.
+  - Closing review (Base d22793e4): the game-view wiring (`tools` sent only with an executor, `captureRounds` from **Show Silent Requests**, `toolRounds` on the captured request) has no test yet; nothing supplies `tools` or `executeTool` until 09, whose Playwright spec covers the wire end to end.
 
