@@ -126,6 +126,47 @@ describe('ChipTypeahead — folders', () => {
   });
 });
 
+/** A prose field of a library entity: its store names the entity, so it offers both Built-ins. */
+function BuiltinHarness() {
+  const [value, setValue] = useState('.');
+  const store = useMemo(() => ({ ...placeholderStore(world, () => {}), owner: { kind: 'entity' as const, id: 'keeper' } }), []);
+  return (
+    <PlaceholderStoreProvider value={store}>
+      <BuiltinField value={value} onChange={setValue} />
+      <div data-testid="value">{value}</div>
+    </PlaceholderStoreProvider>
+  );
+}
+
+function BuiltinField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const vocabulary = usePlaceholderChipVocabulary(world, undefined, { builtins: true });
+  return <ChipInput value={value} onChange={onChange} vocabulary={vocabulary} ariaLabel="Name" />;
+}
+
+describe('ChipTypeahead — the Built-in section', () => {
+  it('lists the Built-ins first, under their heading', async () => {
+    render(<BuiltinHarness />);
+    await open();
+    expect(offered().slice(0, 3)).toEqual(['Player Name', 'Character Name', 'Molly']);
+    expect(within(menu()!).getByText('Built-in')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['player', 'Player Name'], ['user', 'Player Name'], ['Character', 'Character Name'], ['char', 'Character Name'],
+  ])('finds %s', async (query, label) => {
+    render(<BuiltinHarness />);
+    await open(query);
+    expect(offered()).toEqual([label]);
+  });
+
+  it('inserts the stored token', async () => {
+    render(<BuiltinHarness />);
+    const user = await open('char');
+    await user.keyboard('{Enter}');
+    expect(value()).toBe('{{char}}.');
+  });
+});
+
 describe('ChipTypeahead — drilling into a placeholder’s parts', () => {
   it('offers the world’s placeholders, filtered by what is typed', async () => {
     render(<Harness />);

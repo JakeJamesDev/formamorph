@@ -11,6 +11,7 @@ import type { Placeholder } from '@/types';
 import { CHIP_PALETTE_ATTR, useChipInsertTarget } from './ChipInsertTarget';
 import { startPaletteChipDrag } from './chipDragSource';
 import ChipRowHeading from './ChipRowHeading';
+import BuiltinMark from './BuiltinMark';
 
 /**
  * One palette of the world's placeholders for a whole editor panel, rather than an insert row on every
@@ -28,8 +29,8 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
   className?: string;
 }) => {
   const [collapsed, setCollapsed] = usePaletteCollapsed();
-  const { insert, undo, ownerId } = useChipInsertTarget();
-  const vocab = usePlaceholderChipVocabulary(placeholders, scopeId);
+  const { insert, undo, ownerId, accepts } = useChipInsertTarget();
+  const vocab = usePlaceholderChipVocabulary(placeholders, scopeId, { builtins: true });
   const all = useMemo(() => vocab.palette(), [vocab]);
   // A rename edits the placeholder's own name; the chip may read it under an owner prefix.
   const bareName = (token: string) => placeholders.find((p) => p.id === decodePlaceholderToken(token)?.id)?.name ?? '';
@@ -79,10 +80,13 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
         </Tip>
         {!collapsed && (
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            {/* The rows come sectioned — loose, then each folder, then each owner. A section opens with its
-                heading, and a rule keeps a heading from claiming the loose chips after it. */}
+            {/* The rows come sectioned — Built-in, loose, then each folder, then each owner. A section opens
+                with its heading, and a rule keeps a heading from claiming the loose chips after it. */}
             {items.map((item, i) => {
               const opens = chipSectionOpens(items, i);
+              // Dimmed rather than dropped where the claimed field refuses it (a name field refuses a
+              // Built-in), so the strip does not reflow as focus moves between fields.
+              const live = !!insert && (accepts?.(item.token) ?? true);
               return (
               <Fragment key={item.token}>
               {opens && i > 0 && <span aria-hidden className="mx-0.5 h-4 w-px self-center bg-border" />}
@@ -97,7 +101,9 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
               />
             ) : (
               <Tip
-                tip={insert ? `Insert ${item.label}, or drag it into a field` : `Drag ${item.label} into a field, or click into one first`}
+                tip={live ? `Insert ${item.label}, or drag it into a field`
+                  : insert ? `Click into a field that takes ${item.label}`
+                    : `Drag ${item.label} into a field, or click into one first`}
                 labelsChild={false}
               >
                 <button
@@ -108,18 +114,19 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                   onDragStart={(event) => startPaletteChipDrag(event, item.token)}
                   // Not `disabled`: that would block the drag too. Clicking is what needs a claimed field, so
                   // only clicking goes inert — dimmed to say so, while the chip stays draggable.
-                  aria-disabled={!insert}
+                  aria-disabled={!live}
                   // Insert only after a completed click, so beginning a drag cannot commit the click path.
                   // `detail > 1` is the second click of a double-click: that one starts a rename instead.
-                  onClick={(e) => { if (e.detail < 2) insert?.(item.token); }}
-                  onDoubleClick={vocab.rename ? () => startRename(item.token) : undefined}
+                  onClick={(e) => { if (e.detail < 2 && live) insert?.(item.token); }}
+                  onDoubleClick={vocab.rename && !vocab.fixed?.(item.token) ? () => startRename(item.token) : undefined}
                   className={cn(
                     CHIP_BASE,
                     'border',
-                    insert ? 'cursor-pointer hover:brightness-95' : 'cursor-grab opacity-50',
+                    live ? 'cursor-pointer hover:brightness-95' : 'cursor-grab opacity-50',
                   )}
                   style={{ backgroundColor: item.color, color: '#000' }}
                 >
+                  {item.headingKind === 'builtin' && <BuiltinMark />}
                   {item.label}
                 </button>
               </Tip>

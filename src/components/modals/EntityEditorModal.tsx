@@ -122,6 +122,7 @@ const EntityEditorModal = ({
   // The pool is the entity's own placeholders plus the shared ones it carries from the world it was exported
   // from; a write splits the list back the same way, so a carried shared def stays shared on export.
   const pool = carriedPlaceholders(entity ?? {});
+  const ownId = entity?.id;
   const phStore = useMemo(() => ({
     ...placeholderStore(pool, (action: SetStateAction<Placeholder[]>) =>
       setEntity((prev) => {
@@ -135,7 +136,8 @@ const EntityEditorModal = ({
         e?.name, ...(e?.aliases ?? []), e?.playerDescription, e?.aiDescription, e?.aiSummary, e?.imageTags,
       ].filter((t): t is string => !!t));
     },
-  }), [pool]);
+    ...(ownId && { owner: { kind: 'entity' as const, id: ownId } }),
+  }), [pool, ownId]);
 
   // A library character is its own document: its Unique chips letter from a walk of its fields alone.
   const letters = useMemo(() => (entity ? entityPlacementLetters(entity) : EMPTY_LETTERS), [entity]);

@@ -80,6 +80,11 @@ beforeEach(() => {
  * write — promote, and a delete that says what it is about to take.
  */
 describe('PlaceholderList — the tree', () => {
+  it('lists no Built-in, even where values hold one', () => {
+    render(<Harness initial={[P('greet', 'Greeting', ['Hi {{user}}', 'I am {{char}}'])]} />);
+    expect(rowNames()).toEqual(['Greeting']);
+  });
+
   it('draws every nested row under its holder, indented', () => {
     render(<Harness initial={WORLD} />);
     expect(rowNames()).toEqual(['Molly', 'Northern', 'Hair', 'Southern', 'Hair', 'Hair', 'Town']);

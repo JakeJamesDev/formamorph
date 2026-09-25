@@ -6,7 +6,7 @@ import { encodePlaceholderToken, decodePlaceholderToken } from './placeholders';
 import type { PlaceholderSegment } from './placeholders';
 import { placementLetters } from './placementLetters';
 import type { PlaceholderOwnerRef } from './placeholderHomes';
-import { PLAYER_NAME } from './builtinPlaceholders';
+import { CHARACTER_NAME, PLAYER_NAME } from './builtinPlaceholders';
 
 import { phValues } from '@/test/placeholderValues';
 import { PROMPT_KIND_VARIABLES } from './promptVariables';
@@ -178,6 +178,38 @@ describe('placeholderVocabulary — the Player Name chip', () => {
     expect(placeholderVocabulary(placeholders).palette().map((r) => r.label)).toEqual(['name-eye']);
   });
 
+  it('sits under the Built-in heading, and the loose placeholders open their own section after it', () => {
+    const rows = v.palette();
+    expect(rows[0]).toMatchObject({ heading: 'Built-in', headingKind: 'builtin' });
+    expect(rows[1].heading).toBeUndefined();
+    expect(rows.map((_r, i) => chipSectionOpens(rows, i))).toEqual([true, true]);
+  });
+
+  it('keeps a folder that shares the heading’s name in a section of its own', () => {
+    const folded = placeholderVocabulary([{ ...P('eye', ['Red']), groupId: 'g' }], {
+      builtins: true, groups: [{ id: 'g', name: 'Built-in', parentId: null }],
+    }).palette();
+    expect(folded.map((r) => r.heading)).toEqual(['Built-in', 'Built-in']);
+    expect(chipSectionOpens(folded, 1)).toBe(true);
+  });
+
+  it('marks a Built-in chip and no other', () => {
+    expect(v.builtin?.('{{ User }}')).toBe(true);
+    expect(v.builtin?.('{{char}}')).toBe(true);
+    expect(v.builtin?.(tok('eye', 'world'))).toBe(false);
+  });
+
+  it('stays out of the rows a picker looks a placeholder up in', () => {
+    expect(v.allRows?.().map((r) => r.label)).toEqual(['name-eye']);
+  });
+
+  it('answers the typeahead by its label and by its SillyTavern spelling', () => {
+    const [player] = v.palette();
+    for (const query of ['Player', 'player name', 'user', 'USE']) expect(chipRowMatches(player, query)).toBe(true);
+    expect(chipRowMatches(player, 'char')).toBe(false);
+    expect(chipRowMatches(v.palette()[1], 'user')).toBe(false);
+  });
+
   it('accepts a palette drop only where the field offers it', () => {
     expect(v.acceptsPaletteToken?.('{{user}}')).toBe(true);
     expect(placeholderVocabulary(placeholders).acceptsPaletteToken?.('{{user}}')).toBe(false);
@@ -187,6 +219,55 @@ describe('placeholderVocabulary — the Player Name chip', () => {
     expect(v.hint?.('{{ User }}')).toBe(PLAYER_NAME.hint);
     expect(v.color('{{ User }}')).toBe(PLAYER_NAME.accent);
     expect(v.palette()[0].color).toBe(PLAYER_NAME.accent);
+  });
+});
+
+describe('placeholderVocabulary — the Character Name chip', () => {
+  const eyes: Placeholder = P('eye', ['Red', 'Blue']);
+  const keeper: PlaceholderOwnerRef = { kind: 'entity', id: 'keeper', name: 'Keeper' };
+  const book: PlaceholderOwnerRef = { kind: 'dictionary', id: 'lore', name: 'Lore' };
+  const labels = (vocab: ReturnType<typeof placeholderVocabulary>) =>
+    vocab.palette().filter((r) => r.headingKind === 'builtin').map((r) => r.label);
+
+  it('joins Player Name in an entity’s own fields', () => {
+    const v = placeholderVocabulary([eyes], { builtins: true, ownerId: 'keeper', scope: keeper });
+    expect(labels(v)).toEqual(['Player Name', 'Character Name']);
+    expect(v.acceptsPaletteToken?.('{{char}}')).toBe(true);
+  });
+
+  it('stays out of a book’s fields and fields with no owner', () => {
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'lore', scope: book }))).toEqual(['Player Name']);
+    const loose = placeholderVocabulary([eyes], { builtins: true });
+    expect(labels(loose)).toEqual(['Player Name']);
+    expect(loose.acceptsPaletteToken?.('{{char}}')).toBe(false);
+  });
+
+  it('stays out of the values of a placeholder the entity owns', () => {
+    const owners = new Map([['eye', keeper]]);
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerId: 'eye', owners }))).toEqual(['Player Name']);
+  });
+
+  it('stays out of an entity’s fields that offer no Built-ins', () => {
+    expect(labels(placeholderVocabulary([eyes], { ownerId: 'keeper', scope: keeper }))).toEqual([]);
+  });
+
+  it('joins where the fields name their owner’s kind outright', () => {
+    expect(labels(placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }))).toEqual(['Player Name', 'Character Name']);
+  });
+
+  it('takes its label, hint and color from the Built-in registry', () => {
+    const v = placeholderVocabulary([eyes], { builtins: true, ownerId: 'keeper', scope: keeper });
+    expect(v.label('{{ Char }}')).toBe(CHARACTER_NAME.label);
+    expect(v.hint?.('{{ Char }}')).toBe(CHARACTER_NAME.hint);
+    expect(v.color('{{ Char }}')).toBe(CHARACTER_NAME.accent);
+    expect(v.axes('{{char}}')).toEqual([]);
+    expect(v.fixed?.('{{char}}')).toBe(true);
+  });
+
+  it('answers the typeahead by its label and by its SillyTavern spelling', () => {
+    const row = placeholderVocabulary([eyes], { builtins: true, ownerKind: 'entity' }).palette()[1];
+    for (const query of ['Character', 'char', 'CHAR']) expect(chipRowMatches(row, query)).toBe(true);
+    expect(chipRowMatches(row, 'user')).toBe(false);
   });
 });
 

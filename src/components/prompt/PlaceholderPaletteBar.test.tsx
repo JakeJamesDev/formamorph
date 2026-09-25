@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import PlaceholderPaletteBar from './PlaceholderPaletteBar';
 import { ChipInsertTargetProvider, useChipInsertTarget } from './ChipInsertTarget';
 import { decodePlaceholderToken, encodePlaceholderToken } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
+import { builtinForToken } from '@/lib/builtinPlaceholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Placeholder } from '@/types';
 
@@ -23,15 +24,19 @@ const world: Placeholder[] = [
 /** Stands in for a value field of `ownerId` that holds the caret. */
 const Claimer = ({ ownerId }: { ownerId?: string }) => {
   const { claim } = useChipInsertTarget();
-  useEffect(() => { claim(Symbol('field'), () => {}, () => {}, null, ownerId); }, [claim, ownerId]);
+  useEffect(() => {
+    claim(Symbol('field'), { insert: () => {}, undo: () => {}, ownerId: ownerId ?? null }, null);
+  }, [claim, ownerId]);
   return null;
 };
 
-const FocusClaimer = ({ insert }: { insert: (token: string) => void }) => {
+const FocusClaimer = ({ insert, accepts }: { insert: (token: string) => void; accepts?: (token: string) => boolean }) => {
   const { claim } = useChipInsertTarget();
   const key = useMemo(() => Symbol('field'), []);
   const root = useRef<HTMLButtonElement>(null);
-  useEffect(() => { claim(key, insert, () => {}, root.current); }, [claim, insert, key]);
+  useEffect(() => {
+    claim(key, { insert, undo: () => {}, ownerId: null, accepts }, root.current);
+  }, [claim, insert, accepts, key]);
   return <button ref={root} type="button">Field</button>;
 };
 
@@ -45,7 +50,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
         <PlaceholderPaletteBar placeholders={world} />
       </ChipInsertTargetProvider>,
     );
-    expect(names()).toEqual(['Molly', 'Northern', 'Hair', 'Town']);
+    expect(names()).toEqual(['Player Name', 'Molly', 'Northern', 'Hair', 'Town']);
   });
 
   it('leaves out the value’s own placeholder and everything that reaches it', () => {
@@ -55,7 +60,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
         <PlaceholderPaletteBar placeholders={world} />
       </ChipInsertTargetProvider>,
     );
-    expect(names()).toEqual(['Town']);
+    expect(names()).toEqual(['Player Name', 'Town']);
   });
 
   it('keeps the strip when the filter empties it, so the panel does not reflow', () => {
@@ -67,7 +72,7 @@ describe('PlaceholderPaletteBar cycle filter', () => {
       </ChipInsertTargetProvider>,
     );
     expect(screen.getByRole('button', { name: /Placeholders/ })).toBeInTheDocument();
-    expect(names()).toEqual([]);
+    expect(names()).toEqual(['Player Name']);
   });
 });
 
@@ -107,7 +112,9 @@ describe('PlaceholderPaletteBar sections', () => {
         </ChipInsertTargetProvider>
       </PlaceholderStoreProvider>,
     );
-    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
+    expect(strip()).toEqual([
+      '[Built-in]', 'Player Name', 'Town', '[Body]', 'Hair', '[Body › Face]', 'Skin', '[Gear]', 'Sword', '[Molly]', 'Eyes',
+    ]);
   });
 
   it('hides a heading whose every chip the cycle filter removed', () => {
@@ -119,7 +126,7 @@ describe('PlaceholderPaletteBar sections', () => {
         </ChipInsertTargetProvider>
       </PlaceholderStoreProvider>,
     );
-    expect(strip()).toEqual(['Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
+    expect(strip()).toEqual(['[Built-in]', 'Player Name', 'Town', '[Body]', 'Hair', '[Gear]', 'Sword', '[Molly]', 'Eyes']);
   });
 });
 
@@ -146,7 +153,7 @@ describe('PlaceholderPaletteBar toggle', () => {
   it('reads Placeholders (N) once collapsed', async () => {
     bar();
     await userEvent.click(screen.getByRole('button', { name: 'Placeholders' }));
-    expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveTextContent('Placeholders (4)');
+    expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveTextContent('Placeholders (5)');
     expect(names()).toEqual([]);
   });
 });
@@ -224,7 +231,7 @@ describe('PlaceholderPaletteBar owner headings', () => {
     // The name is what a reader hears; the shape is what an author sees. Both, or a swapped icon passes.
     expect(icon).toHaveClass('lucide-user');
     expect(icon.parentElement).toHaveTextContent('Molly');
-    expect(names()).toEqual(['Town', 'Eyes']);
+    expect(names()).toEqual(['Player Name', 'Town', 'Eyes']);
   });
 
   it('carries the dictionary icon for a book owner', () => {
@@ -269,6 +276,90 @@ describe('PlaceholderPaletteBar owner headings', () => {
       </PlaceholderStoreProvider>,
     );
     expect(screen.queryByRole('img', { name: 'Entity' })).not.toBeInTheDocument();
-    expect(document.querySelector('span.text-muted-foreground')).toHaveTextContent('Body');
+    expect([...document.querySelectorAll('span.text-muted-foreground')].map((el) => el.textContent)).toEqual(['Built-in', 'Body']);
+  });
+});
+
+/**
+ * The Built-in section: every world's Player Name, and Character Name over an entity's panel. A Built-in the
+ * claimed field refuses stays in place, dimmed, so the strip does not reflow as focus moves.
+ */
+describe('PlaceholderPaletteBar Built-in section', () => {
+  const lists = {
+    placeholders: [{ id: 'town', name: 'Town', values: phValues(['Sedge']) }],
+    placeholderGroups: [], dictionaries: [{ id: 'lore', name: 'Lore', entries: [] }],
+    entities: [{ id: 'molly', name: 'Molly' }],
+  };
+  const all = allPlaceholders(lists);
+  const store = { ...placeholderStore(all, () => {}), lists, owners: placeholderOwners(lists) };
+  const mount = (scopeId?: string, field: ReactNode = <Claimer />) => render(
+    <PlaceholderStoreProvider value={store}>
+      <ChipInsertTargetProvider>
+        {field}
+        <PlaceholderPaletteBar placeholders={all} scopeId={scopeId} />
+      </ChipInsertTargetProvider>
+    </PlaceholderStoreProvider>,
+  );
+
+  it('offers Character Name over an entity’s panel', () => {
+    mount('molly');
+    expect(names()).toEqual(['Player Name', 'Character Name', 'Town']);
+  });
+
+  it('leaves Character Name out over a book and over world text', () => {
+    mount('lore');
+    expect(names()).toEqual(['Player Name', 'Town']);
+    cleanup();
+    mount();
+    expect(names()).toEqual(['Player Name', 'Town']);
+  });
+
+  it('offers Character Name over a library entity, whose store names it, but not over its values', () => {
+    const own = { ...placeholderStore(all, () => {}), owner: { kind: 'entity' as const, id: 'keeper' } };
+    const library = (scopeId?: string) => render(
+      <PlaceholderStoreProvider value={own}>
+        <ChipInsertTargetProvider>
+          <Claimer />
+          <PlaceholderPaletteBar placeholders={all} scopeId={scopeId} />
+        </ChipInsertTargetProvider>
+      </PlaceholderStoreProvider>,
+    );
+    library();
+    expect(names()).toEqual(['Player Name', 'Character Name', 'Town']);
+    cleanup();
+    // Scoped to one of its placeholders, the fields are that placeholder's values.
+    library('town');
+    expect(names()).toEqual(['Player Name', 'Town']);
+  });
+
+  it('marks each Built-in chip and no author chip', () => {
+    mount('molly');
+    const marked = [...document.querySelectorAll('[data-builtin-mark]')].map((el) => el.closest('button')?.textContent);
+    expect(marked).toEqual(['Player Name', 'Character Name']);
+    expect(document.querySelector('[data-builtin-mark]')).toHaveClass('lucide-sparkles');
+  });
+
+  it('dims a Built-in the claimed field refuses and inserts nothing on its click', async () => {
+    // Like the real insert, which hands focus back to the field.
+    const insert = vi.fn((_token: string) => screen.getByRole('button', { name: 'Field' }).focus());
+    const accepts = (token: string) => !builtinForToken(token);
+    mount(undefined, <FocusClaimer insert={insert} accepts={accepts} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Field' }));
+
+    const player = screen.getByRole('button', { name: 'Player Name' });
+    expect(player).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', { name: 'Town' })).toHaveAttribute('aria-disabled', 'false');
+    await userEvent.click(screen.getByRole('button', { name: 'Town' }));
+    expect(insert).toHaveBeenCalledTimes(1);
+    await userEvent.click(player);
+    expect(insert).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens no rename on a double-clicked Built-in', async () => {
+    mount();
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Player Name' }));
+    expect(screen.queryByRole('textbox', { name: /Rename/ })).not.toBeInTheDocument();
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Town' }));
+    expect(screen.getByRole('textbox', { name: 'Rename Town' })).toBeInTheDocument();
   });
 });

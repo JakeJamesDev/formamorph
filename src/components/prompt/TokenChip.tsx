@@ -5,6 +5,7 @@ import { CHIP_TOKEN_ATTR } from '@/lib/editorFieldFocus';
 import { tintMarkStyle, TINT_MARK_CLASS } from '@/lib/previewTint';
 import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
+import BuiltinMark from './BuiltinMark';
 
 /**
  * One chip token drawn as its pill: the shared chip shape, the vocabulary's accent, and the
@@ -78,7 +79,9 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       {header && affixText(header.pre, startsOnEmptyLine)}
       {affixes?.pre && affixText(affixes.pre, header ? true : startsOnEmptyLine)}
       <Chip
-        label={vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
+        label={vocab.builtin?.(token)
+          ? <><BuiltinMark />{vocab.display?.(token) ?? name}</>
+          : vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
         removeLabel={name}
         tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}

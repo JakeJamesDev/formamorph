@@ -125,6 +125,16 @@ Persona, Location and Entities use plain text for Name, including in Preview. Di
 
 Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Prompt Chips reference](../src/components/design-system/PromptChipsReference.tsx). Its local sample covers Header, present and absent Persona values, and read-only editing without saving settings or calling a model.
 
+### Built-in Placeholder chips
+
+Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
+
+- The palette and the `{` menu list them first, under a quiet **Built-in** heading.
+- A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.
+- A palette chip that the focused field refuses stays in place, dimmed, so the strip doesn't reflow.
+
+The Prompt Chips reference's placeholder palette shows Player Name.
+
 ### Shared chip insertion and movement
 
 Drag a palette chip into an editable field to create one placement at the drop caret. Drag a placed chip within its field to move it, including its conditional text. Click insertion remains available at the remembered caret. Undo and Redo restore each committed operation.

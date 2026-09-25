@@ -1,5 +1,7 @@
 import { createContext, useContext, type Dispatch, type SetStateAction, type ReactNode } from 'react';
-import type { PlaceholderHome, PlaceholderHomesWorld, PlaceholderOwners, PlaceholderSlices } from '@/lib/placeholderHomes';
+import type {
+  PlaceholderHome, PlaceholderHomesWorld, PlaceholderOwnerRef, PlaceholderOwners, PlaceholderSlices,
+} from '@/lib/placeholderHomes';
 import { releasePlaceholderOwners, removePlaceholderCascade } from '@/lib/placeholderTree';
 import type { Placeholder } from '@/types';
 
@@ -33,6 +35,8 @@ export interface PlaceholderStore {
   /** The one list this store edits when it is bound to an owner's own section rather than the whole tab:
    *  the list draws only that owner's rows and a create lands there. Reads still see every placeholder. */
   scope?: PlaceholderHome;
+  /** The entity or book an off-world store edits, so its fields know whose they are with no world lists. */
+  owner?: Pick<PlaceholderOwnerRef, 'kind' | 'id'>;
 }
 
 /** Build a {@link PlaceholderStore} over any `[value, setValue]` pair — the single source of the CRUD, so both
