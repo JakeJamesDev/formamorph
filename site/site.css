@@ -8,7 +8,6 @@
 @layer base {
   :root {
     color-scheme: light;
-    --app-font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     --fm-weight-semibold: 600;
     --fm-weight-bold: 700;
     --fm-line-height: 1;

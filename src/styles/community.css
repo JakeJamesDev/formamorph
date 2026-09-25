@@ -2,5 +2,8 @@
   :root {
     /* Likes keep the same color across app and website themes. */
     --like: 340 75% 55%;
+    /* The OS sans stack, shared so generated letter art measures the same glyphs on both. The app's
+       Font setting overrides it inline. */
+    --app-font: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 }
