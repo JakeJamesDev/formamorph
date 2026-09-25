@@ -1,6 +1,7 @@
 # 02: Morph Art in the Library
 
-Status: ready-for-agent
+Status: in-progress
+Base: 22781db0
 Blocked by: 01
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high
@@ -13,14 +14,14 @@ Reasoning effort: high
 
 ## Acceptance criteria
 
-- [ ] `EntityPlaceholderArt` renders the generator's output as inline SVG that fills its parent. Filter, mask and gradient ids come from `useId`, so many cards on one page never share an id.
-- [ ] Each shape is drawn in white inside a goo-filtered mask and filled with one gradient.
-- [ ] The art waits for `document.fonts.ready`. It redraws when the **Font** setting changes and when the theme switches between light and dark.
-- [ ] Seeding: the id seed is the record's `sourceId` when it has one, else its local id. So a downloaded entity matches its community card once ticket 05 lands.
-- [ ] Library Entities tab: the grid tile, the detailed card and a folder's mosaic cell show the art for an entity with no image. Worlds, dictionaries and avatars do not change.
-- [ ] The Design System showcase's Community Cards reference gains a blank entity. The guide's card pattern describes the art in one line.
-- [ ] Preview check at 1600 px and on a phone, in both themes. Include a folder that holds a blank entity.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add a 👤 changelog entry in the In Progress section.
+- [x] `EntityPlaceholderArt` renders the generator's output as inline SVG that fills its parent. Filter, mask and gradient ids come from `useId`, so many cards on one page never share an id.
+- [x] Each shape is drawn in white inside a goo-filtered mask and filled with one gradient.
+- [x] The art waits for `document.fonts.ready`. It redraws when the **Font** setting changes and when the theme switches between light and dark.
+- [x] Seeding: the id seed is the record's `sourceId` when it has one, else its local id. So a downloaded entity matches its community card once ticket 05 lands.
+- [x] Library Entities tab: the grid tile, the detailed card and a folder's mosaic cell show the art for an entity with no image. Worlds, dictionaries and avatars do not change.
+- [x] The Design System showcase's Community Cards reference gains a blank entity. The guide's card pattern describes the art in one line.
+- [x] Preview check at 1600 px and on a phone, in both themes. Include a folder that holds a blank entity.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add a 👤 changelog entry in the In Progress section.
 
 ## Scope notes
 

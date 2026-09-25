@@ -135,7 +135,12 @@ function random(raw: number): () => number {
   };
 }
 
-function paletteFor(hue: number, dark: boolean): MorphPalette {
+/** The hue for an id seed. It needs no letter mask, so a renderer can paint the background before the font loads. */
+export function morphHue(idSeed: string): number {
+  return MORPH_HUES[mix(hash(idSeed) ^ 0x9e3779b9) % MORPH_HUES.length];
+}
+
+export function morphPalette(hue: number, dark: boolean): MorphPalette {
   const hue2 = (hue + 22) % 360;
   const l = (darkL: number, lightL: number) => (dark ? darkL : lightL);
   return {
@@ -256,7 +261,7 @@ function clusterAt(kind: MorphClusterKind, cx: number, cy: number, size: number,
 /** Builds the Morph art for one entity. */
 export function generateMorphArt({ idSeed, nameSeed, letter, readMask }: MorphArtInput): MorphArt {
   // The hue follows the id alone, so two entities that share a name still differ.
-  const hue = MORPH_HUES[mix(hash(idSeed) ^ 0x9e3779b9) % MORPH_HUES.length];
+  const hue = morphHue(idSeed);
   const rand = random(hash(nameSeed));
 
   const tilt = Math.round((rand() < 0.5 ? -1 : 1) * (4 + rand() * 5) * 10) / 10;
@@ -313,7 +318,7 @@ export function generateMorphArt({ idSeed, nameSeed, letter, readMask }: MorphAr
 
   return {
     hue,
-    palette: { dark: paletteFor(hue, true), light: paletteFor(hue, false) },
+    palette: { dark: morphPalette(hue, true), light: morphPalette(hue, false) },
     letter: { char: letter, tilt, drops, gradient: letterGradient },
     clusters,
   };

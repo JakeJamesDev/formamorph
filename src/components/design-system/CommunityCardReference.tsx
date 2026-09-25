@@ -65,6 +65,19 @@ const FEATURED_ENTITY: WorldRecord = {
   tags: ['NPC', 'Guide', 'Coastal', 'Merchant'],
 };
 
+const BLANK_ENTITY: WorldRecord = {
+  id: 'showcase-quill-warden',
+  name: 'Quill Warden',
+  description: 'An archive spirit with no portrait yet. The card draws its Morph art instead.',
+  kind: 'entity',
+  author: { id: 'mira-vale', username: 'mira-vale' },
+  downloads: 23,
+  comment_count: 2,
+  likes: 9,
+  liked: false,
+  tags: ['Spirit', 'Archive'],
+};
+
 type PendingLike = {
   complete: () => void;
   next: boolean;
@@ -97,7 +110,7 @@ export function CommunityCardReference() {
       <div className="grid gap-2">
         <h3 id="community-card-reference-title" className="text-heading">Community Creation Cards</h3>
         <Hint>
-          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity card puts its image beside the text instead.
+          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity card puts its image beside the text instead. An entity with no image shows its Morph art.
         </Hint>
       </div>
 
@@ -128,6 +141,18 @@ export function CommunityCardReference() {
         />
         <RemoteWorldCard
           world={FEATURED_ENTITY}
+          downloadState="none"
+          downloadProgress={undefined}
+          isAuthenticated
+          currentUser={COMMUNITY_READER}
+          onView={(world) => {
+            setSelectedName(world.name);
+            setLastAction(`The selected creation is ${world.name}.`);
+          }}
+          onContextualDownload={(world) => setLastAction(`The local download action started for ${world.name}.`)}
+        />
+        <RemoteWorldCard
+          world={BLANK_ENTITY}
           downloadState="none"
           downloadProgress={undefined}
           isAuthenticated

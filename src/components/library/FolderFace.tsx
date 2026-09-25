@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import type { PlacementMap } from '@/lib/libraryOrganization';
 
@@ -19,7 +20,7 @@ const TILE_BORDER = 2;
  * @param tileWidth - The folder tile's own width, in px
  */
 export function FolderFace({
-  members, places, hidden, spanOf, thumbnailOf, columns, boardWidth, regionWidth, rowHeight, gap,
+  members, places, hidden, spanOf, thumbnailOf, placeholderOf, columns, boardWidth, regionWidth, rowHeight, gap,
   tileWidth, fit,
 }: {
   members: string[];
@@ -27,6 +28,8 @@ export function FolderFace({
   hidden: string[];
   spanOf: (id: string) => number;
   thumbnailOf: (id: string) => string | undefined;
+  /** The art for a member with no thumbnail. */
+  placeholderOf?: (id: string) => ReactNode;
   columns: number;
   boardWidth: number;
   regionWidth: number;
@@ -76,7 +79,7 @@ export function FolderFace({
                 gridRow: `${places[id].row + 1} / span ${spanOf(id)}`,
               }}
             >
-              {thumbnail && <img src={thumbnail} alt="" className={cn('h-full w-full select-none', fit)} />}
+              {thumbnail ? <img src={thumbnail} alt="" className={cn('h-full w-full select-none', fit)} /> : placeholderOf?.(id)}
             </div>
           );
         })}

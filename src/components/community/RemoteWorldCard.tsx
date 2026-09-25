@@ -12,6 +12,7 @@ import { WorldCardShell } from "@/components/WorldCardShell";
 import { type DownloadState } from "@/lib/downloadState";
 import { KIND_LABELS, kindOf, kindHasThumbnail } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
+import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { cardLayoutFor, thumbAspectFor, thumbFit } from "@/lib/thumbAspect";
 import { isQuarantined, quarantineDaysLeft, quarantineDeadline } from "@/lib/quarantine";
 import WorldStorageService from "@/services/WorldStorageService";
@@ -204,6 +205,8 @@ export function RemoteWorldCard({
           alt={world.name}
           className={thumbClass}
         />
+      ) : kindOf(world) === 'entity' ? (
+        <EntityPlaceholderArt id={worldId} name={world.name ?? ''} />
       ) : undefined}
       author={(
         <span className="inline-flex items-center gap-1.5 min-w-0">

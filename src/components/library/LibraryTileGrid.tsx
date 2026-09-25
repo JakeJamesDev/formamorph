@@ -225,6 +225,8 @@ function FolderHeader({ name, settings, onBack, onRename }: {
  * @param idOf - The library id of one item, which is what the arrangement is keyed by
  * @param tiles - This tab's arrangement and the actions the grid dispatches against it
  * @param renderCard - The tab's own card for one item, told how to fill and label its tile
+ * @param placeholderOf - The art for an item with no thumbnail, drawn in folders and under a carried tile.
+ *   A plain box when omitted
  * @param groupSettings - Settings shown in the folder header; omit on tabs that carry none
  * @param onCheckUpdates - Checks one item for source updates, offered on the tabs worlds can follow
  * @param onPublish - Publishes one item, offered in the context menu on the tabs that can publish
@@ -244,6 +246,7 @@ export function LibraryTileGrid<T>({
   minMediumWidth,
   detailedColumnsClass,
   thumbnailOf,
+  placeholderOf,
   renderCard,
   groupSettings,
   groupPresetName,
@@ -265,6 +268,7 @@ export function LibraryTileGrid<T>({
   minMediumWidth: number;
   detailedColumnsClass: string;
   thumbnailOf: (item: T) => string | undefined;
+  placeholderOf?: (item: T) => React.ReactNode;
   renderCard: (item: T, options: {
     layout: 'grid' | 'detailed';
     fill: boolean;
@@ -422,6 +426,11 @@ export function LibraryTileGrid<T>({
     return faces;
   }, [layout, openGroup, renderedIds, tiles, faceOf]);
 
+  const memberPlaceholder = (memberId: string) => {
+    const member = byId.get(memberId);
+    return member && placeholderOf ? placeholderOf(member) : undefined;
+  };
+
   /**
    * One folder's face, drawn the same way wherever that folder stands: on the board, and under the
    * pointer while it is carried. Both read one call, so the two pictures cannot drift apart.
@@ -437,6 +446,7 @@ export function LibraryTileGrid<T>({
         const member = byId.get(memberId);
         return member ? thumbnailOf(member) : undefined;
       }}
+      placeholderOf={memberPlaceholder}
       columns={baseCols}
       boardWidth={width}
       rowHeight={rowHeight}
@@ -861,6 +871,7 @@ export function LibraryTileGrid<T>({
                   const member = byId.get(memberId);
                   return member ? thumbnailOf(member) : undefined;
                 })}
+                placeholders={placeholderOf && group.members.map(memberPlaceholder)}
                 face={face && renderFace(face)}
                 layout={layout}
                 fill={layout === 'grid'}
@@ -919,12 +930,12 @@ export function LibraryTileGrid<T>({
               const memberThumb = member ? thumbnailOf(member) : undefined;
               return memberThumb
                 ? <img key={i} src={memberThumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
-                : <div key={i} className="h-full w-full bg-muted" />;
+                : <div key={i} className="h-full w-full bg-muted">{member && placeholderOf?.(member)}</div>;
             })}
           </div>
         ) : thumb
           ? <img src={thumb} alt="" className={cn('h-full w-full', thumbFit(aspect))} />
-          : <div className="h-full w-full bg-muted" />}
+          : <div className="h-full w-full bg-muted">{item && placeholderOf?.(item)}</div>}
       </div>
     );
   };

@@ -151,6 +151,7 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 - Put tags after counts. Show two rows in the resting card and disclose the remainder on hover rather than making every card taller.
 - Keep the contextual download control in the art’s top-right corner. Other secondary actions remain in their established contextual placements.
 - Give entities the split layout. Their art is tall, so it sits at 2:3 on the left and the text sits on the right. The title and author move to the top of the art, and the art’s actions move to its bottom-right corner. A split card is about twice as wide, so the Entity grid shows three per row on wide screens, two on medium screens and one on phones.
+- Give an entity with no image its Morph art (`EntityPlaceholderArt`): its first letter in goo, in a hue picked from its id. Never a gray box or an icon.
 - Use controlled callbacks in the showcase. The reference never opens a listing, publishes, downloads, deletes, or changes a like outside its local state.
 
 ### Production mapping
@@ -160,6 +161,7 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 | Frame, artwork, title scrim, author, and description | `WorldCardShell` in [`WorldCardShell.tsx`](../src/components/WorldCardShell.tsx) |
 | Stacked or split layout per art aspect | `cardLayoutFor` in [`thumbAspect.ts`](../src/lib/thumbAspect.ts) |
 | The same card in the library's detailed view | `WorldCardFace` in [`WorldCardFace.tsx`](../src/components/WorldCardFace.tsx) and `LibraryGroupTile` in [`LibraryGroupTile.tsx`](../src/components/library/LibraryGroupTile.tsx) |
+| Art for an entity with no image | `EntityPlaceholderArt` in [`EntityPlaceholderArt.tsx`](../src/components/EntityPlaceholderArt.tsx) |
 | Community counts, tags, and contextual actions | `RemoteWorldCard` in [`RemoteWorldCard.tsx`](../src/components/community/RemoteWorldCard.tsx) |
 | Favorite selection and pending state | `LikeButton` in [`LikeButton.tsx`](../src/components/community/LikeButton.tsx) |
 | Tag density and overflow | `CardTags` in [`WorldDetails.tsx`](../src/components/WorldDetails.tsx) |
