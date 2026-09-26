@@ -33,7 +33,7 @@ The Tool editor has four helper lines that do not match what the editor does:
 
 **Lookup Tools.** Two new catalog Tools: `get_location` and `get_dictionary_entry`. Each one uses the lookup handler that exists today.
 
-**Recall.** A new catalog Tool, `recall`. The AI passes a few words about a past event. The Tool searches the playthrough's turn digests and diary entries and returns the best matches, oldest first, with their turn numbers. It skips turns the request already carries in full.
+**Recall.** A new catalog Tool, `recall`. The AI passes a few words about a past event. The Tool searches the playthrough's turn digests and diary entries and returns the best matches, oldest first, with their turn numbers. It skips turns the request already carries in full. With semantic memory on, recall also matches by meaning, so a query in different words from the memory still finds it.
 
 **Roll.** A new catalog Tool, `roll`. The AI passes dice notation, such as `2d6+1`. The Tool returns each die, the modifier, and the total. It is a script Tool, so the player can read exactly how it rolls.
 
@@ -87,47 +87,53 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 27. As a player, I want recall to read the playthrough only, so that it never changes my save.
 28. As a player, I want recall to work after I roll back a turn, so that it never finds an event that no longer happened.
 29. As a Tool author, I want Try It on recall with no world open to search sample memories, so that I can see its output shape.
+30. As a player with semantic memory on, I want recall to match by meaning, so that "the promise to her" finds "agreed to escort Mira to the ferry".
+31. As a player with semantic memory on, I want word matches kept, so that an exact name still finds its turn when the meaning score is low.
+32. As a player with semantic memory on, I want a memory that matches both ways ranked first, so that the strongest evidence wins the limit.
+33. As a player, I want recall to fall back to word matching for any memory with no vector yet, so that a new turn is never invisible.
+34. As a player, I want recall to fall back to word matching when the embedding model is not loaded, so that a call never waits on a download.
+35. As a player, I want recall to use the same meaning threshold as Scene Recall, so that a world where everything looks alike does not flood the result.
 
 ### Roll
 
-30. As a player, I want the AI to roll real dice, so that chance outcomes are fair.
-31. As a player, I want standard dice notation, such as `2d6+1` or `d20`, so that the AI can use the form it already knows.
-32. As a player, I want each die in the result, so that the narration can describe the roll.
-33. As a player, I want the total in the result, so that the AI does not add the numbers itself.
-34. As a player, I want a negative modifier to work, such as `1d20-2`, so that penalties are possible.
-35. As a player, I want bad notation to return a clear error, so that the AI can try again.
-36. As a player, I want a limit on dice count and sides, so that one call cannot run away.
-37. As a player, I want to read the roll script in the editor, so that I can trust how it rolls.
+36. As a player, I want the AI to roll real dice, so that chance outcomes are fair.
+37. As a player, I want standard dice notation, such as `2d6+1` or `d20`, so that the AI can use the form it already knows.
+38. As a player, I want each die in the result, so that the narration can describe the roll.
+39. As a player, I want the total in the result, so that the AI does not add the numbers itself.
+40. As a player, I want a negative modifier to work, such as `1d20-2`, so that penalties are possible.
+41. As a player, I want bad notation to return a clear error, so that the AI can try again.
+42. As a player, I want a limit on dice count and sides, so that one call cannot run away.
+43. As a player, I want to read the roll script in the editor, so that I can trust how it rolls.
 
 ### Script placeholders
 
-38. As a Tool author, I want a script to read a world placeholder's resolved value by name, so that the Tool returns what this playthrough rolled.
-39. As a Tool author, I want an entity's own placeholders on that entity's item, so that I read them where I read the entity.
-40. As a Tool author, I want a dictionary book's placeholders on each of its entries, so that I read them where I read the entry.
-41. As a Tool author, I want each value to be the resolved text, so that I do not write a draw of my own.
-42. As a Tool author, I want the same value a prompt shows this turn, so that a Tool never tells the AI something the narration contradicts.
-43. As a Tool author, I want a pinned placeholder to read its pinned value, so that traits, locations, and stats that pin a value also reach scripts.
-44. As a Tool author, I want a placeholder whose value holds other chips to read fully resolved, so that I never see a raw chip token.
-45. As a Tool author, I want a repeated name to give the first placeholder's value, so that a read never fails on a collision.
-46. As a Tool author, I want `placeholders` in autocomplete with its names, so that I do not guess a spelling.
-47. As a Tool author, I want the entity and entry items' `placeholders` members in the surface list, so that I know they exist.
-48. As a Tool author, I want the placeholder values read-only, so that a script cannot change the playthrough.
-49. As a Tool author, I want an empty `placeholders` object in a world with none, so that my script does not fail on a missing global.
-50. As a Tool author, I want Try It with no world open to show sample placeholders, so that I can test a script before I open a world.
-51. As a Tool author, I want Try It in an open world to use that world's resolved values, so that the test matches play.
-52. As a Tool author, I want a snippet that reads one placeholder, so that the first use is one click.
-53. As a player, I want scripts in shared presets to stay sandboxed, so that placeholder access does not widen what an untrusted script can reach.
+44. As a Tool author, I want a script to read a world placeholder's resolved value by name, so that the Tool returns what this playthrough rolled.
+45. As a Tool author, I want an entity's own placeholders on that entity's item, so that I read them where I read the entity.
+46. As a Tool author, I want a dictionary book's placeholders on each of its entries, so that I read them where I read the entry.
+47. As a Tool author, I want each value to be the resolved text, so that I do not write a draw of my own.
+48. As a Tool author, I want the same value a prompt shows this turn, so that a Tool never tells the AI something the narration contradicts.
+49. As a Tool author, I want a pinned placeholder to read its pinned value, so that traits, locations, and stats that pin a value also reach scripts.
+50. As a Tool author, I want a placeholder whose value holds other chips to read fully resolved, so that I never see a raw chip token.
+51. As a Tool author, I want a repeated name to give the first placeholder's value, so that a read never fails on a collision.
+52. As a Tool author, I want `placeholders` in autocomplete with its names, so that I do not guess a spelling.
+53. As a Tool author, I want the entity and entry items' `placeholders` members in the surface list, so that I know they exist.
+54. As a Tool author, I want the placeholder values read-only, so that a script cannot change the playthrough.
+55. As a Tool author, I want an empty `placeholders` object in a world with none, so that my script does not fail on a missing global.
+56. As a Tool author, I want Try It with no world open to show sample placeholders, so that I can test a script before I open a world.
+57. As a Tool author, I want Try It in an open world to use that world's resolved values, so that the test matches play.
+58. As a Tool author, I want a snippet that reads one placeholder, so that the first use is one click.
+59. As a player, I want scripts in shared presets to stay sandboxed, so that placeholder access does not widen what an untrusted script can reach.
 
 ### Editor copy
 
-54. As a Tool author, I want the Description hint to say what the field is for, so that it does not repeat what **Add Outline** writes.
-55. As a Tool author, I want the lookup's match rule under the whole lookup row, so that **Search** and **By Parameter** stay level.
-56. As a Tool author, I want the match rule to name its source, so that I know which records it searches.
-57. As a Tool author, I want the save footer to name each fix, so that I do not open tabs to find the problem.
-58. As a Tool author, I want the footer to name an unnamed parameter by its position, so that I find it in a long list.
-59. As a Tool author, I want the footer to list several fixes in one sentence, so that I see them all at once.
-60. As a Tool author, I want the boolean type to read **True/False**, so that it matches the values my script and Try It use.
-61. As a Tool author, I want my saved boolean parameters unchanged by the rename, so that no Tool breaks.
+60. As a Tool author, I want the Description hint to say what the field is for, so that it does not repeat what **Add Outline** writes.
+61. As a Tool author, I want the lookup's match rule under the whole lookup row, so that **Search** and **By Parameter** stay level.
+62. As a Tool author, I want the match rule to name its source, so that I know which records it searches.
+63. As a Tool author, I want the save footer to name each fix, so that I do not open tabs to find the problem.
+64. As a Tool author, I want the footer to name an unnamed parameter by its position, so that I find it in a long list.
+65. As a Tool author, I want the footer to list several fixes in one sentence, so that I see them all at once.
+66. As a Tool author, I want the boolean type to read **True/False**, so that it matches the values my script and Try It use.
+67. As a Tool author, I want my saved boolean parameters unchanged by the rename, so that no Tool breaks.
 
 ## Implementation Decisions
 
@@ -157,7 +163,15 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - **Snapshot:** the Tool Snapshot gains a frozen, read-only memory list for the turn: turn number, digest, and diary entries per turn, with the carried turns already removed. It is built from the committed history, so a rollback removes the rolled-back turns before the next call.
 - The snapshot's memory list is not given to scripts in this spec. The script surface stays as it is.
 - The sample snapshot carries a few sample memories, so Try It shows the output shape with no world open.
-- Semantic memory ranking is not used. It is off by default, and recall must work without it.
+- **Hybrid mode.** When the semantic memory setting is on, recall ranks by meaning and by words together. When it is off, recall is lexical only, exactly as above.
+  - **Query vector.** Recall embeds the query through the existing embedding worker. Record vectors come from the embedding cache, which the drainer already fills for digests and diary entries. Recall adds no new download and no AI request.
+  - **Meaning match.** A record passes when its cosine similarity to the query clears the Scene Recall rule: at least the surface floor, and at least the median over all vectored candidates plus the Scene Recall margin. Below the Scene Recall minimum candidate count, only the floor applies. Digests use the Scene Recall floor, and diary entries use the Diary Recall floor. Recall reuses these constants and adds none of its own.
+  - **Union.** A record matches when it passes the meaning match, or when its lexical score is above zero.
+  - **Rank for the limit.** First the records that match both ways, then meaning-only matches, then word-only matches. Within a group, a higher score comes first, and ties go to the newer turn. The five survivors are then sorted oldest first, as in lexical mode.
+  - **Fail open.** A record with no cached vector takes part through its lexical score only. If the embedding model is not loaded or the query embed fails, the whole call is lexical. Recall never waits for a model download.
+  - **Output.** The output shape does not change. A match does not say how it matched.
+  - The hybrid ranking is a pure function over the query, the records, their vectors, and the query vector, so tests can pass fixed vectors.
+- Recall is the first user of the roadmap's hybrid scoring step (keyword plus cosine). It covers recall only. The ranked band, Semantic Lore, Scene Recall, and Diary Recall keep their current scoring.
 - The earlier lexical rehydration was disabled because it pulled near-duplicate turns back verbatim. Recall differs in three ways: the AI asks for it, it returns digests and not verbatim turns, and it has a hard limit. The probe must still watch for a repeated-scene freeze.
 
 ### Roll
@@ -208,7 +222,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - A good test drives a public entry point and asserts what a player or the AI receives. It never asserts an internal helper's call.
 - **Tool runs:** the Tool runner's call entry, with a snapshot from the real snapshot builder, is the one seam for every new built-in Tool and for script placeholders. Prior art: the runner's existing lookup and script tests.
   - Each lookup Tool: a hit, a case-insensitive hit, a miss that returns the empty result.
-  - Recall: a digest hit, a diary hit with its character, a carried turn that is skipped, the five-match limit, oldest-first order, a "nothing notable" entry that is skipped, a history with no digests, and a rolled-back turn that no longer matches.
+  - Recall, lexical mode: a digest hit, a diary hit with its character, a carried turn that is skipped, the five-match limit, oldest-first order, a "nothing notable" entry that is skipped, a history with no digests, and a rolled-back turn that no longer matches.
+  - Recall, hybrid mode, with fixed vectors: a meaning-only match that shares no words, a word-only match below the threshold, both-ways matches ranked first for the limit, a record with no vector that still matches by words, a failed query embed that returns the lexical result, and a same-cast world where the median margin keeps the result small. Prior art: the Scene Recall margin tests.
   - Roll: each notation form, a negative modifier, every limit edge, bad notation, and a total that equals the dice plus the modifier. Randomness is checked by range over many runs, never by a fixed value.
   - Scripts: a world placeholder read by name, an entity placeholder and a book placeholder read from their items, a pinned value, a nested chip resolved, a repeated name, an empty map in a world with none, and a write that does not change the value.
   - The script value equals the Template chip value for the same placeholder in the same snapshot. This test guards against two resolvers.
@@ -219,6 +234,7 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - **Editor copy:** the Tools tab edit test and the Settings modal Tools test cover the footer sentences, the moved match hint, the Memories label on the locked recall Tool, and the **True/False** label. These tests already assert the old footer text, so they change with it.
 - **Probes:** each new built-in description needs a narration probe on both model tiers, at least two runs per case, per the prompt-writing guide. The probe numbers go in the ticket.
   - Recall's probe needs a long playthrough with an event that milestone memory dropped and the story later returns to. It measures whether the AI calls recall, whether the narration then uses the fetched fact, and whether a repeated-scene freeze appears.
+  - Recall runs two arms: semantic memory off and on. The on arm must find at least what the off arm finds. It should also find cases where the AI's query uses different words from the digest. The oblique cases from the semantic memory 50-turn A/B are the starting fixture.
   - Roll's probe measures whether the AI calls roll when a chance outcome comes up and whether the narration follows the total.
 
 ## Out of Scope
@@ -226,7 +242,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - Switching a new built-in Tool on by default. That is a product call after the probes.
 - The `memories` source in the **Search** picker for user Tools.
 - Memory in the script surface.
-- Semantic ranking for recall.
+- Hybrid scoring for any surface other than recall.
+- A reranker model. The semantic memory notes tested browser-size rerankers and rejected them.
 - A stat check that rolls against a stat. See the Tool ideas notes.
 - A name Tool. See the Tool ideas notes.
 - A script that reads placeholder definitions: the value list, weights, pins, or kind.
