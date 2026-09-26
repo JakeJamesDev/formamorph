@@ -32,7 +32,7 @@ const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text
  * footer actions. Laid out like the stat Code Templates dialog.
  */
 export function ToolsTab({
-  catalogTools, userTools, builtinPreset, toolsSupported, onSaveTool, onDeleteTool, onSetOverride,
+  catalogTools, userTools, builtinPreset, toolsSupported, toolsEnabled, onSaveTool, onDeleteTool, onSetOverride,
   view, onViewChange, presetSelector, fullscreen, onToggleFullscreen, appVersion, fileTransfer, openWorld,
 }: {
   /** The catalog with the active preset's overrides applied. */
@@ -41,6 +41,8 @@ export function ToolsTab({
   builtinPreset: boolean;
   /** Whether the active text endpoint and model take Tools. */
   toolsSupported: boolean;
+  /** The global Tools switch in Settings → Output. */
+  toolsEnabled: boolean;
   onSaveTool: (tool: Tool) => void;
   onDeleteTool: (id: string) => void;
   onSetOverride: (id: string, override: ToolOverride) => void;
@@ -166,7 +168,11 @@ export function ToolsTab({
         <div className="flex-1 min-w-0">{presetSelector}</div>
         {fullscreenButton}
       </div>
-      {!toolsSupported && (
+      {!toolsEnabled ? (
+        <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">
+          Your prompts won&apos;t receive Tools. Turn on <strong>Tools</strong> in the <strong>Output</strong> tab to send them.
+        </p>
+      ) : !toolsSupported && (
         <p role="note" className="flex-shrink-0 text-helper text-muted-foreground">
           Your text endpoint won&apos;t receive Tools. Its model doesn&apos;t support them, or support isn&apos;t confirmed yet.
         </p>

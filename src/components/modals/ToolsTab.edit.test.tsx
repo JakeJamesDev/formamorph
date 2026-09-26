@@ -45,6 +45,7 @@ function Harness({ initial, openWorld }: { initial: PromptPresetStore; openWorld
       userTools={activeUserTools(s)}
       builtinPreset={isBuiltInActive(s)}
       toolsSupported
+      toolsEnabled
       onSaveTool={(t) => setS((prev) => saveTool(prev, t))}
       onDeleteTool={(id) => setS((prev) => deleteTool(prev, id))}
       onSetOverride={(id, o) => setS((prev) => setToolOverride(prev, id, o))}
