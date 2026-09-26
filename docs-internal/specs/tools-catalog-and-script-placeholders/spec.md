@@ -164,6 +164,9 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - **Match rule:** lexical. The query and each record are split into lowercase words, with common stop words removed. A record scores by how many query words it holds. Records with a score of zero never match. Ties go to the newer turn.
 - **Limit:** at most five matches, then sorted oldest first.
 - **Output shape:** `{"matches": [{"turn": 12, "kind": "digest", "text": "..."}, {"turn": 14, "kind": "diary", "character": "Name", "text": "..."}]}`. The empty result is `{"matches": []}`.
+- **Turn number** is the chronological count of committed turns, every turn counted, not the Memory Manager's digest-only numbering, which shifts when a digest is deleted. Within one turn, the digest sorts before its diary entries.
+- **Digests off:** recall returns the empty result, whatever an old save still holds.
+- **Deleted digest:** the delete hides that turn's digest only. Its diary entries stay searchable, because the Memory Manager deletes one memory row and diaries are not rows there.
 - **Snapshot:** the Tool Snapshot gains a frozen, read-only memory list for the turn: turn number, digest, and diary entries per turn, with the carried turns already removed. It is built from the committed history, so a rollback removes the rolled-back turns before the next call.
 - The snapshot's memory list is not given to scripts in this spec. The script surface stays as it is.
 - The sample snapshot carries a few sample memories, so Try It shows the output shape with no world open.
@@ -187,7 +190,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - Limits: N from 1 to 100, S from 2 to 1000, K from -1000 to 1000.
 - **Output shape:** `{"dice": "2d6+1", "rolls": [4, 2], "modifier": 1, "total": 7}`.
 - Bad notation or an out-of-range value returns text that names the problem and gives one valid example, such as "Use dice notation like 2d6+1".
-- Each die uses the sandbox's `Math.random`, which is reseeded on each run.
+- **Seeded random.** The sandbox's own `Math.random` seeds from the clock at about a millisecond, so two runs in one millisecond roll the same dice. The host draws a fresh seed from `crypto.getRandomValues` per run and bakes it into the sandbox prelude, which replaces `Math.random` with a small seeded generator. No host call, no new global, and the script surface is unchanged. Every Tool script gets the fairer source; the stat-code sandbox keeps its clock seed and is named, not changed.
+- Each die uses that `Math.random`.
 - The script stays short and readable, because the player can open it.
 
 ### Script placeholders
@@ -212,15 +216,16 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - The match hint leaves **By Parameter**. It shows as one hint under the lookup grid, full width. The per-source text stays, and each one now names what it searches:
   - Entities: "Matches entity names and aliases, in any case"
   - Locations: "Matches location names, in any case"
-  - Dictionary: "Matches dictionary names and keywords, in any case"
+  - Dictionary: "Matches dictionary names and trigger keywords, in any case". "Trigger Keywords" is the app's defined term for the field, so the hint never says a bare "keywords".
   - Memories: "Matches words in past turns and diaries, in any case"
+  - **Each hint lands with its behavior.** Name matching landed first, so the editor-copy ticket ships the final "Matches dictionary names and trigger keywords, in any case" and the lookup-Tools ticket makes no editor edit. The recall ticket adds the Memories source and its hint together. A hint never describes a match rule the runner does not have yet.
 - The footer builds its sentence from the draft problems, not from the tab names. Each problem kind maps to one verb phrase, and the phrases join with "and". Examples:
   - An empty name: "Name the Tool".
   - A repeated name: "Rename the Tool".
   - An unnamed parameter: "Name parameter 2".
   - An enum with no options: "Add options to parameter 3".
   - No lookup parameter: "Pick the parameter to search by". This is the Handler tab's inline text today; the footer reuses it, so one problem has one wording.
-- The tab strip's problem marks stay, so the author can still see which tab holds the fix.
+- The tab strip has no problem marks, so the footer keeps a tab hint after each phrase, such as "Name parameter 2 (Parameters) to save". The shared tab strip is not changed.
 - The boolean type label becomes **True/False**. The stored value stays `boolean`.
 
 ## Testing Decisions
