@@ -9,6 +9,9 @@ import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { ToolsHarness as Harness } from '@/test/toolsTab';
 import { current, switchesOf, toolsState } from '@/test/toolsTabState';
+import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
+import { withCatalogOverrides } from '@/lib/tools/catalogOverrides';
+import { toolsOfferedTo } from '@/lib/tools/toolOffer';
 
 vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
@@ -348,5 +351,95 @@ describe('Try It', () => {
     expect(schema).toHaveTextContent('"name": "get_weather"');
     expect(schema).toHaveTextContent('"required": [');
     await waitFor(() => expect(schema.querySelector('.tok-string')).not.toBeNull());
+  });
+});
+
+describe('a built-in Tool', () => {
+  const SHIPPED = structuredClone(TOOL_CATALOG);
+
+  async function openBuiltIn(user: ReturnType<typeof userEvent.setup>) {
+    render(<Harness initial={toolsState([], { get_entity: true })} />);
+    await user.click(list().getByRole('button', { name: 'get_entity' }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+  }
+
+  it('opens on Availability with the definition locked and Offered To editable', async () => {
+    const user = userEvent.setup();
+    await openBuiltIn(user);
+    expect(screen.getByText('Edit get_entity')).toBeInTheDocument();
+    expect(tab('Availability')).toHaveAttribute('aria-selected', 'true');
+    expect(offeredTo()).toBeEnabled();
+    expect(screen.getByRole('textbox', { name: 'Calls per Request' })).toBeEnabled();
+    expect(saveButton()).toBeEnabled();
+
+    await user.click(tab('Definition'));
+    expect(nameInput()).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Description' })).toHaveAttribute('contenteditable', 'false');
+    await user.click(tab('Parameters'));
+    expect(screen.getByRole('button', { name: 'Add Parameter' })).toBeDisabled();
+    expect(within(screen.getByRole('group', { name: 'Parameter 1' })).getByRole('textbox', { name: 'Name' })).toBeDisabled();
+    await user.click(tab('Handler'));
+    expect(screen.getByRole('combobox', { name: 'By Parameter' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'Empty Result' })).toBeDisabled();
+  });
+
+  it('opens none of the locked dropdowns on a press', async () => {
+    const user = userEvent.setup();
+    await openBuiltIn(user);
+    // A press, as Chromium delivers one to a disabled control; Radix opens a Select on pointerdown.
+    const pressed = async (name: string) => {
+      fireEvent.pointerDown(screen.getByRole('combobox', { name }), { button: 0, ctrlKey: false, pointerType: 'mouse' });
+      if (!screen.queryByRole('listbox')) return null;
+      await user.keyboard('{Escape}');
+      return name;
+    };
+    await user.click(tab('Parameters'));
+    const opened = [await pressed('Type')];
+    await user.click(tab('Handler'));
+    for (const name of ['Handler', 'Search', 'By Parameter', 'Returns']) opened.push(await pressed(name));
+    expect(opened.filter(Boolean)).toEqual([]);
+  });
+
+  it('saves Offered To and the call limit as a global override and leaves the catalog as shipped', async () => {
+    const user = userEvent.setup();
+    await openBuiltIn(user);
+    await user.click(offeredTo());
+    await user.click(await screen.findByRole('option', { name: 'Choices, not selected' }));
+    await user.keyboard('{Escape}');
+    await user.type(screen.getByRole('textbox', { name: 'Calls per Request' }), '3');
+    await user.click(saveButton());
+
+    expect(current().catalogOverrides).toEqual({ get_entity: { offeredTo: ['narration', 'choices'], callLimit: 3 } });
+    expect(current().tools).toEqual([]);
+    expect(TOOL_CATALOG).toEqual(SHIPPED);
+    expect(screen.getByText(/Offered to Narration, Choices · 3 calls per request/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(within(offeredTo()).getByText('Choices')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Calls per Request' })).toHaveValue('3');
+  });
+
+  it('offers the Tool to the prompts the override names', async () => {
+    const user = userEvent.setup();
+    await openBuiltIn(user);
+    await user.click(offeredTo());
+    await user.click(await screen.findByRole('option', { name: 'Narration, selected' }));
+    await user.click(await screen.findByRole('option', { name: 'Choices, not selected' }));
+    await user.keyboard('{Escape}');
+    await user.click(saveButton());
+
+    const tools = withCatalogOverrides(TOOL_CATALOG, current().catalogOverrides);
+    const on = switchesOf('mine');
+    expect(toolsOfferedTo('choices', tools, on, true).map((t) => t.id)).toEqual(['get_entity']);
+    expect(toolsOfferedTo('narration', tools, on, true)).toEqual([]);
+  });
+
+  it('keeps its switch when saved from a preset that has it off', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={toolsState()} />);
+    await user.click(list().getByRole('button', { name: 'get_entity' }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(saveButton());
+    expect(switchesOf('mine').get_entity).not.toBe(true);
   });
 });

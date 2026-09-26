@@ -10,7 +10,6 @@ import { settingsTabsFor, type SettingsTabId } from '@/components/modals/setting
 import { ToolsTab } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, TOOL_EDIT_TABS, type ToolsView } from '@/components/modals/toolsView';
 import { blankTool } from '@/lib/tools/toolDraft';
-import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { randomUUID } from '@/lib/uuid';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
@@ -800,6 +799,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     resetPreset,
     presetOverview,
     setPresetOverview,
+    catalogTools,
     userTools,
     enabledTools,
     saveTool,
@@ -3176,7 +3176,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           <TabsContent ref={toolsPanelRef} value="tools" className="pt-4 px-2 pb-4 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <PromptsShell morph={toolsMorph} sourceRef={toolsPanelRef} title="Tools">
             <ToolsTab
-              catalogTools={TOOL_CATALOG}
+              catalogTools={catalogTools}
               userTools={userTools}
               enabledTools={enabledTools}
               toolsSupported={activeToolsSupported}

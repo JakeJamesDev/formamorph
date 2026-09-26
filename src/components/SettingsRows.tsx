@@ -139,11 +139,12 @@ export function RecommendedMark() {
 }
 
 /** A segmented option control that becomes a dropdown below `sm`. */
-export function OptionSwitcher<T extends string>({ value, onChange, options, ariaLabel }: {
+export function OptionSwitcher<T extends string>({ value, onChange, options, ariaLabel, disabled }: {
   value: T;
   onChange: (v: T) => void;
   options: readonly { value: T; label: string; recommended?: true }[];
   ariaLabel?: string;
+  disabled?: boolean;
 }) {
   const choose = (nextValue: string) => {
     const option = options.find(({ value: optionValue }) => optionValue === nextValue);
@@ -152,7 +153,7 @@ export function OptionSwitcher<T extends string>({ value, onChange, options, ari
 
   return (
     <div>
-      <Select value={value} onValueChange={choose}>
+      <Select value={value} onValueChange={choose} disabled={disabled}>
         <SelectTrigger aria-label={ariaLabel} className="w-full sm:hidden"><SelectValue /></SelectTrigger>
         <SelectContent>
           {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -163,6 +164,7 @@ export function OptionSwitcher<T extends string>({ value, onChange, options, ari
           type="single"
           aria-label={ariaLabel}
           value={value}
+          disabled={disabled}
           onValueChange={(nextValue) => { if (nextValue) choose(nextValue); }}
           className="grid w-full"
           style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}

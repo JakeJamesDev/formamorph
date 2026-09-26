@@ -118,6 +118,8 @@ export function ToolsTab({
 
   if (view.draft) {
     const { draft } = view;
+    const builtIn = isCatalogToolId(draft.id);
+    const saved = builtIn || userTools.some((t) => t.id === draft.id);
     return (
       <ToolEditor
         draft={draft}
@@ -125,14 +127,15 @@ export function ToolsTab({
         editTab={view.editTab}
         onEditTabChange={(editTab) => onViewChange({ ...view, editTab })}
         userTools={userTools}
-        editing={userTools.some((t) => t.id === draft.id)}
+        editing={saved}
+        builtIn={builtIn}
         world={world}
         fullscreen={fullscreen}
         fullscreenButton={fullscreenButton}
         onCancel={() => onViewChange({ ...view, draft: null })}
         onSave={() => {
           onSaveTool(finishDraft(draft));
-          if (!userTools.some((t) => t.id === draft.id)) onSetEnabled(draft.id, true);
+          if (!saved) onSetEnabled(draft.id, true);
           onViewChange({ ...view, selectedId: draft.id, draft: null });
         }}
       />
@@ -233,19 +236,21 @@ export function ToolsTab({
       {/* Fixed: the actions keep their place whichever Tool is selected. */}
       {selected && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
+          {/* A built-in Tool opens on Availability, the only tab it can change. */}
+          <Button
+            variant="outline"
+            onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: builtInSelected ? 'availability' : 'definition' })}
+          >
+            <Pencil className="h-4 w-4 mr-1" />Edit
+          </Button>
           {builtInSelected ? (
             <Button variant="outline" onClick={() => duplicate(selected)}>
               <Copy className="h-4 w-4 mr-1" />Duplicate
             </Button>
           ) : (
-            <>
-              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: 'definition' })}>
-                <Pencil className="h-4 w-4 mr-1" />Edit
-              </Button>
-              <Button variant="outline" onClick={() => setConfirmDelete(selected)}>
-                <Trash2 className="h-4 w-4 mr-1" />Delete
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => setConfirmDelete(selected)}>
+              <Trash2 className="h-4 w-4 mr-1" />Delete
+            </Button>
           )}
         </div>
       )}

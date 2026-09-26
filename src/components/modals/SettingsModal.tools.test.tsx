@@ -131,4 +131,15 @@ describe('Settings → Tools', () => {
       spy.mockRestore();
     }
   });
+
+  it('lists a built-in Tool with the player’s Offered To override', () => {
+    const key = 'FORMAMORPH_toolCatalogOverrides';
+    localStorage.setItem(key, JSON.stringify({ get_entity: { offeredTo: ['choices'] } }));
+    try {
+      open('advanced');
+      expect(screen.getByText(/· Offered to Choices ·/)).toBeInTheDocument();
+    } finally {
+      localStorage.removeItem(key);
+    }
+  });
 });

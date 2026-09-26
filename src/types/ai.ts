@@ -117,6 +117,12 @@ export interface Tool {
 /** Which Tools a prompt preset switches on, keyed by Tool id; a missing id is off. */
 export type ToolEnabledMap = Record<string, boolean>;
 
+/** A player's global edit to one catalog Tool: its Availability fields, which replace the shipped ones. */
+export type CatalogToolOverride = Pick<Tool, 'offeredTo' | 'callLimit'>;
+
+/** Catalog Tool overrides keyed by catalog Tool id; a missing id uses the shipped Tool. */
+export type CatalogToolOverrides = Record<string, CatalogToolOverride>;
+
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).
  * `turnId`/`summary` are additive memory-digest fields — absent on pre-digest saves.

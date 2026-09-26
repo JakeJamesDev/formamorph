@@ -108,7 +108,10 @@ function JsonField({ id, value, onChange }: { id: string; value: string; onChang
   );
 }
 
-function DefinitionTab({ draft, onChange, problems }: { draft: Tool; onChange: Change; problems: DraftProblems }) {
+/** A tab body. `locked` shows a built-in Tool's field read-only. */
+interface TabProps { draft: Tool; onChange: Change; problems: DraftProblems; locked: boolean }
+
+function DefinitionTab({ draft, onChange, problems, locked }: TabProps) {
   const id = useId();
   const missing = OUTLINE.filter((heading) => !draft.description.includes(heading));
   const addOutline = () => {
@@ -128,7 +131,7 @@ function DefinitionTab({ draft, onChange, problems }: { draft: Tool; onChange: C
       <PromptField
         label="Description" ariaLabel="Description" vocabulary={DESCRIPTION_VOCABULARY}
         hint="Tells the AI when to call the Tool: Purpose, Use when, Input, Output"
-        placeholder={OUTLINE.join('\n')}
+        placeholder={OUTLINE.join('\n')} readOnly={locked}
         labelAside={(
           <Button size="sm" variant="outline" disabled={missing.length === 0} onClick={addOutline}>Add Outline</Button>
         )}
@@ -138,7 +141,9 @@ function DefinitionTab({ draft, onChange, problems }: { draft: Tool; onChange: C
   );
 }
 
-function ParamCard({ draft, index, problem, onChange }: { draft: Tool; index: number; problem: ParamProblem | null; onChange: Change }) {
+function ParamCard({ draft, index, problem, onChange, locked }: {
+  draft: Tool; index: number; problem: ParamProblem | null; onChange: Change; locked: boolean;
+}) {
   const id = useId();
   const param = draft.params[index];
   const set = (patch: Partial<ToolParam>) =>
@@ -155,7 +160,7 @@ function ParamCard({ draft, index, problem, onChange }: { draft: Tool; index: nu
           />
         </Field>
         <Field id={`${id}-type`} label="Type">
-          <Select value={param.type} onValueChange={(v) => set({ type: v as ToolParamType })}>
+          <Select value={param.type} onValueChange={(v) => set({ type: v as ToolParamType })} disabled={locked}>
             <SelectTrigger id={`${id}-type`}><SelectValue /></SelectTrigger>
             <SelectContent>
               {PARAM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -187,7 +192,7 @@ function ParamCard({ draft, index, problem, onChange }: { draft: Tool; index: nu
   );
 }
 
-function ParametersTab({ draft, onChange, problems }: { draft: Tool; onChange: Change; problems: DraftProblems }) {
+function ParametersTab({ draft, onChange, problems, locked }: TabProps) {
   const add = () => onChange({
     ...draft, params: [...draft.params, { name: '', type: 'string', description: '', required: true, options: [] }],
   });
@@ -196,7 +201,7 @@ function ParametersTab({ draft, onChange, problems }: { draft: Tool; onChange: C
       {draft.params.length === 0 && <Hint>No parameters. The AI calls this Tool with no arguments.</Hint>}
       {draft.params.map((_, i) => (
         // Parameters have no id of their own, and a rename must not remount the field being typed in.
-        <ParamCard key={i} draft={draft} index={i} problem={problems.params[i]} onChange={onChange} />
+        <ParamCard key={i} draft={draft} index={i} problem={problems.params[i]} onChange={onChange} locked={locked} />
       ))}
       <div>
         <Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4 mr-1" />Add Parameter</Button>
@@ -205,7 +210,7 @@ function ParametersTab({ draft, onChange, problems }: { draft: Tool; onChange: C
   );
 }
 
-function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Change; problems: DraftProblems }) {
+function HandlerTab({ draft, onChange, problems, locked }: TabProps) {
   const id = useId();
   const { handler, params } = draft;
   const named = namedParams(params);
@@ -217,13 +222,13 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
   return (
     <div className="flex flex-col gap-4">
       <OptionSwitcher
-        ariaLabel="Handler" value={handler.kind} options={HANDLER_KINDS}
+        ariaLabel="Handler" value={handler.kind} options={HANDLER_KINDS} disabled={locked}
         onChange={(kind) => onChange(withHandlerKind(draft, kind))}
       />
       {handler.kind === 'lookup' && (
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id={`${id}-source`} label="Search">
-            <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })}>
+            <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })} disabled={locked}>
               <SelectTrigger id={`${id}-source`}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
@@ -231,7 +236,10 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
             </Select>
           </Field>
           <Field id={`${id}-param`} label="By Parameter" hint={source?.matches} error={handlerError}>
-            <Select value={named.some((p) => p.name === handler.param) ? handler.param : undefined} onValueChange={(v) => setHandler({ ...handler, param: v })}>
+            <Select
+              value={named.some((p) => p.name === handler.param) ? handler.param : undefined}
+              onValueChange={(v) => setHandler({ ...handler, param: v })} disabled={locked}
+            >
               <SelectTrigger
                 id={`${id}-param`} aria-invalid={!!handlerError}
                 aria-describedby={handlerError ? `${id}-param-error` : undefined}
@@ -246,7 +254,7 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
           </Field>
           {handler.source !== 'dictionary' && (
             <Field id={`${id}-returns`} label="Returns">
-              <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })}>
+              <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })} disabled={locked}>
                 <SelectTrigger id={`${id}-returns`}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="full">Full Description</SelectItem>
@@ -261,7 +269,7 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
         <PromptField
           label="Template" ariaLabel="Template" vocabulary={vocabulary}
           hint="Returns this text. Insert a parameter to place what the AI passed."
-          value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
+          readOnly={locked} value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
       )}
       {handler.kind === 'script' && (
@@ -279,10 +287,17 @@ function HandlerTab({ draft, onChange, problems }: { draft: Tool; onChange: Chan
               ))}
             </dl>
           </div>
-          <CodeArea
-            label="Script" ariaLabel="Script" rows={10} surface={surface}
-            value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
-          />
+          {locked ? (
+            <HighlightedCode
+              code={handler.code} language="javascript"
+              className="rounded-md border px-3 py-2 font-mono text-label whitespace-pre-wrap break-words"
+            />
+          ) : (
+            <CodeArea
+              label="Script" ariaLabel="Script" rows={10} surface={surface}
+              value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
+            />
+          )}
         </div>
       )}
       <Field id={`${id}-empty`} label="Empty Result" hint="Goes to the AI when the handler finds nothing">
@@ -321,6 +336,17 @@ function AvailabilityTab({ draft, onChange }: { draft: Tool; onChange: Change })
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
 
+const NO_PROBLEMS: DraftProblems = { name: null, params: [], handler: null };
+
+/** A definition tab: locked, its fieldset disables every native control inside, and each Radix Select takes `disabled` itself. */
+function DefinitionFieldsTab({ value, locked, children }: { value: ToolEditTab; locked: boolean; children: ReactNode }) {
+  return (
+    <TabsContent value={value} className="mt-0">
+      <fieldset disabled={locked} className="min-w-0">{children}</fieldset>
+    </TabsContent>
+  );
+}
+
 /** Which edit tabs hold a problem, in tab order. */
 function tabsWithProblems(problems: DraftProblems): string[] {
   const flagged: Record<ToolEditTab, boolean> = {
@@ -333,11 +359,11 @@ function tabsWithProblems(problems: DraftProblems): string[] {
 }
 
 /**
- * Edit mode for a user Tool: Definition, Parameters, Handler and Availability on the World Editor's panel
- * tab strip, Try It beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
+ * Edit mode for a Tool: Definition, Parameters, Handler and Availability on the World Editor's panel tab
+ * strip, Try It beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
  */
 export function ToolEditor({
-  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton, onCancel, onSave,
+  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, builtIn, world, fullscreen, fullscreenButton, onCancel, onSave,
 }: {
   draft: Tool;
   onDraftChange: Change;
@@ -347,6 +373,8 @@ export function ToolEditor({
   userTools: readonly Tool[];
   /** True when the draft edits a saved Tool, false for a new one. */
   editing: boolean;
+  /** A catalog Tool: only Availability can change. */
+  builtIn: boolean;
   world: TryItWorld;
   /** Widens Try It to a third of the grid. */
   fullscreen: boolean;
@@ -354,10 +382,11 @@ export function ToolEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
-  const problems = draftProblems(draft, userTools);
+  // A catalog Tool's definition is fixed, and its name is a built-in name.
+  const problems = builtIn ? NO_PROBLEMS : draftProblems(draft, userTools);
   const blocked = hasDraftProblems(problems);
   const flagged = tabsWithProblems(problems);
-  const body = { draft, onChange: onDraftChange, problems };
+  const body = { draft, onChange: onDraftChange, problems, locked: builtIn };
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -365,6 +394,11 @@ export function ToolEditor({
         <p className="text-label font-medium truncate">{editing ? `Edit ${draft.name}` : 'New Tool'}</p>
         {fullscreenButton}
       </div>
+      {builtIn && (
+        <Hint className="flex-shrink-0">
+          Built-in Tools keep their definition. Change their prompts and call limit on the <strong>Availability</strong> tab.
+        </Hint>
+      )}
       <div
         data-testid="tool-editor-grid"
         className={cn(
@@ -379,9 +413,9 @@ export function ToolEditor({
           <PanelTabsList tabs={TOOL_EDIT_TABS} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
           <ScrollArea className="flex-1 min-h-0">
             <div className="pr-3 pb-1">
-              <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
-              <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} /></TabsContent>
+              <DefinitionFieldsTab value="definition" locked={builtIn}><DefinitionTab {...body} /></DefinitionFieldsTab>
+              <DefinitionFieldsTab value="parameters" locked={builtIn}><ParametersTab {...body} /></DefinitionFieldsTab>
+              <DefinitionFieldsTab value="handler" locked={builtIn}><HandlerTab {...body} /></DefinitionFieldsTab>
               <TabsContent value="availability" className="mt-0"><AvailabilityTab draft={draft} onChange={onDraftChange} /></TabsContent>
             </div>
           </ScrollArea>
