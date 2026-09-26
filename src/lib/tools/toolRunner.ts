@@ -82,11 +82,11 @@ type Lookup = Extract<ToolHandler, { kind: 'lookup' }>;
 /** Recall over the snapshot's memories: by meaning and words when the query embeds, else by words. */
 async function runRecall(tool: Tool, query: string, { memories, meaning }: ToolSnapshot): Promise<ToolCallResult> {
   const queryVec = meaning && memories.length ? await meaning.embed(query).catch(() => null) : null;
-  const found = recallMatches(query, memories, meaning && queryVec ? { queryVec, vectors: meaning.vectors, diaries: meaning.diaries } : null);
+  const found = recallMatches(query, memories, meaning && queryVec ? { ...meaning, queryVec } : null);
   return { text: found.length ? JSON.stringify({ matches: found }) : tool.emptyResult };
 }
 
-function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, snapshot: ToolSnapshot): ToolCallResult | Promise<ToolCallResult> {
+async function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, snapshot: ToolSnapshot): Promise<ToolCallResult> {
   if (!tool.params.some((p) => p.name === handler.param)) {
     return failed('handler', `The lookup reads parameter ${JSON.stringify(handler.param)}, which this Tool doesn't define.`);
   }
