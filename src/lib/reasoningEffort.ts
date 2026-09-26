@@ -943,6 +943,21 @@ export function reasoningNeedsResolve(capability: ReasoningCapability | null | u
   return Object.values(capability.sources).some((source) => source === 'cache');
 }
 
+/** True for a record LM Studio's model list answered. A model loaded behind the same name (`default`, or
+ *  any name the list lacks) changes those answers, so the list is read again once per session. */
+export function reasoningRereadsPerSession(capability: ReasoningCapability | null | undefined): boolean {
+  return capability?.dialect === 'lmstudio';
+}
+
+/** The record to store after a resolve. A fresh LM Studio answer replaces an LM Studio record whole, since
+ *  it may describe another model; every other answer folds in. */
+export function storedAfterResolve(
+  stored: ReasoningCapability | null,
+  fresh: ReasoningCapability,
+): ReasoningCapability {
+  return stored?.dialect === 'lmstudio' && fresh.dialect === 'lmstudio' ? fresh : mergeReasoningCapability(stored, fresh);
+}
+
 /**
  * Folds a fresh resolve onto a stored record. Each question takes the fresh answer where the resolve has
  * one and keeps the stored answer otherwise, so a source that just spoke outranks whatever the cache held.
