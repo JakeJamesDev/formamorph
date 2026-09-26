@@ -3165,6 +3165,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               open={importOpen}
               onOpenChange={setImportOpen}
               currentAppVersion={APP_VERSION}
+              userTools={userTools}
               existingUserNames={promptPresets}
               onImport={(imported, opts) => { const id = importPreset(imported, opts); selectPreset(id); }}
             />

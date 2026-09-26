@@ -11,13 +11,17 @@ export const TOOL_NAME_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${TOOL_NAME_MAX}}$
 /** Why a Tool name can't be saved: bad characters or length, used by another user Tool, or a catalog name. */
 export type ToolNameProblem = 'format' | 'taken' | 'builtin';
 
-const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+/** Whether two Tool names clash, ignoring case. */
+export const sameToolName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/** The catalog Tool named `name`, if any. */
+export const catalogToolNamed = (name: string): Tool | undefined => TOOL_CATALOG.find((t) => sameToolName(t.name, name));
 
 /** The problem with naming a user Tool `name` among `tools`, or null. `selfId` is the Tool being renamed. */
 export function toolNameProblem(name: string, tools: readonly Tool[], selfId?: string): ToolNameProblem | null {
   if (!TOOL_NAME_PATTERN.test(name)) return 'format';
-  if (TOOL_CATALOG.some((t) => sameName(t.name, name))) return 'builtin';
-  if (tools.some((t) => t.id !== selfId && sameName(t.name, name))) return 'taken';
+  if (catalogToolNamed(name)) return 'builtin';
+  if (tools.some((t) => t.id !== selfId && sameToolName(t.name, name))) return 'taken';
   return null;
 }
 

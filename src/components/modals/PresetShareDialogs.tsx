@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import {
   serializeSharedJson, serializeSharedCode, parseSharedAny,
   type SharedPreset, type ImportedPreset, type ParseResult,
 } from '@/lib/promptPresetShare';
+import { PRESET_SCRIPT_TOOL_WARNING, planPresetTools } from '@/lib/tools/toolPack';
+import type { Tool } from '@/types';
 
 const safeFile = (name: string) => (name.trim().replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '') || 'preset');
 
@@ -77,11 +79,13 @@ function OverviewRow({ label, children }: { label: string; children: React.React
 }
 
 /** Import dialog: choose a file or paste a code → preview warnings, Overview, and name → pick tuning + collision handling → add. */
-export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, existingUserNames, onImport }: {
+export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, existingUserNames, userTools, onImport }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   currentAppVersion: string;
   existingUserNames: { id: string; name: string }[];
+  /** The player's Tools, which embedded Tools merge into by name. */
+  userTools: readonly Tool[];
   onImport: (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }) => void;
 }) {
   const [parsed, setParsed] = useState<ParseResult | null>(null);
@@ -105,6 +109,11 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
     if (f) ingest(await f.text());
   };
 
+  const warnings = useMemo(() => {
+    if (!parsed?.preset) return [];
+    const addsScript = planPresetTools(userTools, parsed.preset.tools ?? [], () => '').hasScript;
+    return addsScript ? [...parsed.warnings, PRESET_SCRIPT_TOOL_WARNING] : parsed.warnings;
+  }, [parsed, userTools]);
   const hasTuning = !!(parsed?.preset && (parsed.preset.samplers || parsed.preset.reasoning || parsed.preset.maxOutput || parsed.preset.verbatim));
   const collision = parsed?.ok ? existingUserNames.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase()) : undefined;
   const canAdd = !!(parsed?.ok && name.trim());
@@ -133,7 +142,7 @@ export function ImportPresetDialog({ open, onOpenChange, currentAppVersion, exis
 
         {parsed?.ok && (
           <div className="flex flex-col gap-3">
-            {parsed.warnings.map((w, i) => (
+            {warnings.map((w, i) => (
               <p key={i} className="text-meta text-amber-600 dark:text-amber-500">⚠ {w}</p>
             ))}
             {parsed.preset?.overview && <OverviewPreview overview={parsed.preset.overview} />}

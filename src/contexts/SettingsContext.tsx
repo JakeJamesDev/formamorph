@@ -67,6 +67,7 @@ import {
 } from '../lib/promptEndpoints';
 import type { AIRequestType, CatalogToolOverrides, Tool } from '../types';
 import { TOOL_CATALOG, isCatalogToolId } from '../lib/tools/toolCatalog';
+import { planPresetTools } from '../lib/tools/toolPack';
 import { catalogOverridesCodec, saveCatalogOverride, withCatalogOverrides } from '../lib/tools/catalogOverrides';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
@@ -1008,9 +1009,21 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), enabledTools }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), enabledTools, tools: userTools }, appVersion);
+  // Plans against a ref so two imports before a re-render see each other's additions.
+  const latestUserTools = useRef(userTools);
+  latestUserTools.current = userTools;
+  const mergeImportedTools = useCallback((imported: ImportedPreset): { preset: ImportedPreset; scriptToolAdded: boolean } => {
+    const plan = planPresetTools(latestUserTools.current, imported.tools ?? [], randomUUID);
+    if (plan.added.length) {
+      latestUserTools.current = [...latestUserTools.current, ...plan.added];
+      setUserTools((ts) => plan.added.reduce((held, tool) => saveUserTool(held, tool), ts));
+    }
+    const enabled = { ...imported.enabledTools, ...plan.enabled };
+    return { preset: { ...imported, ...(Object.keys(enabled).length ? { enabledTools: enabled } : {}) }, scriptToolAdded: plan.hasScript };
+  }, [setUserTools]);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
-    const content = importedPresetContent(imported, opts.name, opts.includeTuning);
+    const content = importedPresetContent(mergeImportedTools(imported).preset, opts.name, opts.includeTuning);
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
     const id = randomUUID();
     setPresetStore((s) => addFullPreset(s, id, content));
@@ -1019,22 +1032,24 @@ function useProvideSettings() {
   /**
    * Store a community listing's preset under `id`, adding it or replacing the held copy in place so world and
    * folder pins keep resolving. Tuning always comes along, missing prompt keys take the defaults, and a blank
-   * Author credits the uploader. The selection is left alone.
+   * Author credits the uploader. The selection is left alone. Embedded Tools merge as on a file import.
    */
   const storeDownloadedPreset = useCallback(
-    (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string) => {
+    (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string): { scriptToolAdded: boolean } => {
       const overview = imported.overview ?? EMPTY_OVERVIEW;
       const uploader = link.sourceAuthorName?.trim() ?? '';
       const author = overview.author.trim() ? overview.author : uploader;
+      const { preset, scriptToolAdded } = mergeImportedTools(imported);
       const content: Omit<PromptPreset, 'id'> = {
-        ...importedPresetContent(imported, name, true),
+        ...importedPresetContent(preset, name, true),
         ...(imported.overview || author ? { overview: { ...overview, author } } : {}),
         ...link,
       };
       // Raw, not pin-aware: the store op never touches the selection, and a download is not an edit.
       setRawPresetStore((s) => putDownloadedPreset(s, id, content));
+      return { scriptToolAdded };
     },
-    [setRawPresetStore],
+    [mergeImportedTools, setRawPresetStore],
   );
   // Whether each optional per-turn request is sent (replaces the legacy "type DISABLED" body hack).
   const [choicesEnabled, setChoicesEnabled] = usePersistentState<boolean>(`${APP_ID}_choicesEnabled`, true, boolCodec);

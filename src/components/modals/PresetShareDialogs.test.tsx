@@ -3,12 +3,18 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { ImportPresetDialog } from './PresetShareDialogs';
 import { buildSharedPreset, serializeSharedCode } from '@/lib/promptPresetShare';
 import type { PresetOverview, PromptValues } from '@/lib/promptPresets';
+import type { Tool } from '@/types';
+import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 
 const APP = '2.1.0';
 const values = { systemPrompt: 'X' } as unknown as PromptValues;
+const dice: Tool = {
+  id: 'u-dice', name: 'roll_dice', description: 'Purpose: dice.', params: [],
+  handler: { kind: 'script', code: 'return 4;' }, emptyResult: '', offeredTo: ['narration'],
+};
 
 function openWith(overview?: PresetOverview) {
-  render(<ImportPresetDialog open onOpenChange={() => {}} currentAppVersion={APP} existingUserNames={[]} onImport={() => {}} />);
+  render(<ImportPresetDialog open onOpenChange={() => {}} currentAppVersion={APP} existingUserNames={[]} userTools={[]} onImport={() => {}} />);
   const code = serializeSharedCode(buildSharedPreset({ name: 'Gift', style: 'markdown', values, overview }, APP));
   fireEvent.change(screen.getByPlaceholderText('FMPRESET1:…'), { target: { value: code } });
 }
@@ -34,6 +40,25 @@ describe('ImportPresetDialog: Overview preview', () => {
   it('shows no Overview for a payload without one', () => {
     openWith();
     expect(screen.queryAllByRole('term')).toHaveLength(0);
+    expect(screen.getByDisplayValue('Gift')).toBeTruthy();
+  });
+});
+
+describe('ImportPresetDialog: embedded Script Tools', () => {
+  const paste = (userTools: Tool[]) => {
+    render(<ImportPresetDialog open onOpenChange={() => {}} currentAppVersion={APP} existingUserNames={[]} userTools={userTools} onImport={() => {}} />);
+    const code = serializeSharedCode(buildSharedPreset({ name: 'Gift', style: 'markdown', values, enabledTools: { 'u-dice': true }, tools: [dice] }, APP));
+    fireEvent.change(screen.getByPlaceholderText('FMPRESET1:…'), { target: { value: code } });
+  };
+
+  it('warns before import when the preset will add a Script Tool', () => {
+    paste([]);
+    expect(screen.getByText(PRESET_SCRIPT_TOOL_WARNING, { exact: false })).toBeTruthy();
+  });
+
+  it('does not warn when the name matches a local Tool, since nothing is added', () => {
+    paste([{ ...dice, id: 'mine', handler: { kind: 'template', body: '4' } }]);
+    expect(screen.queryByText(PRESET_SCRIPT_TOOL_WARNING, { exact: false })).toBeNull();
     expect(screen.getByDisplayValue('Gift')).toBeTruthy();
   });
 });

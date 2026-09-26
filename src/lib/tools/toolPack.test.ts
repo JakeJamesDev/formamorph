@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool } from '@/types';
 import { TOOL_CATALOG } from './toolCatalog';
-import { buildToolPack, copyTool, parseToolPack, planToolImport } from './toolPack';
+import { buildToolPack, copyTool, parseToolPack, planPresetTools, planToolImport } from './toolPack';
 
 const tool = (patch: Partial<Tool> = {}): Tool => ({
   id: 'u-1', name: 'get_weather', description: 'Purpose: weather.', params: [
@@ -64,6 +64,35 @@ describe('planToolImport', () => {
 
   it('does not flag a Script Tool it skipped', () => {
     expect(planToolImport([script], [script], mint).hasScript).toBe(false);
+  });
+});
+
+describe('planPresetTools', () => {
+  const mint = (() => { let n = 0; return () => `new-${++n}`; })();
+
+  it('adds an unknown name under a fresh id and switches it on', () => {
+    const plan = planPresetTools([], [tool()], mint);
+    expect(plan.added).toEqual([{ ...tool(), id: 'new-1' }]);
+    expect(plan.enabled).toEqual({ 'new-1': true });
+  });
+
+  it('keeps the local Tool on a name match, in any case, and switches the local one on', () => {
+    const local = tool({ id: 'mine', description: 'My own weather.' });
+    const plan = planPresetTools([local], [tool({ id: 'theirs', name: 'GET_WEATHER', description: 'Their weather.' })], mint);
+    expect(plan.added).toEqual([]);
+    expect(plan.enabled).toEqual({ mine: true });
+  });
+
+  it('adds a name repeated inside the preset once', () => {
+    const plan = planPresetTools([], [script, script], () => 'only');
+    expect(plan.added.map((t) => t.id)).toEqual(['only']);
+    expect(plan.enabled).toEqual({ only: true });
+  });
+
+  it('flags a Script Tool only when it adds one', () => {
+    expect(planPresetTools([], [tool(), script], mint).hasScript).toBe(true);
+    expect(planPresetTools([script], [script], mint).hasScript).toBe(false);
+    expect(planPresetTools([], [tool()], mint).hasScript).toBe(false);
   });
 });
 
