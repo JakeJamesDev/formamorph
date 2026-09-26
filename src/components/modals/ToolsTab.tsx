@@ -14,6 +14,7 @@ import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { isCatalogToolId } from '@/lib/tools/toolCatalog';
 import { buildToolPack, copyTool, parseToolPack, planToolImport } from '@/lib/tools/toolPack';
+import { userCanStore } from '@/lib/tools/toolValidation';
 import { blankTool, finishDraft } from '@/lib/tools/toolDraft';
 import { sampleToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { toolSummary, type ToolsView } from './toolsView';
@@ -76,6 +77,7 @@ export function ToolsTab({
 
   const duplicate = (tool: Tool) => {
     const copy = copyTool(tool, userTools, randomUUID());
+    if (!copy) return;
     onSaveTool(copy);
     onSetEnabled(copy.id, true);
     select(copy.id);
@@ -244,7 +246,7 @@ export function ToolsTab({
             <Pencil className="h-4 w-4 mr-1" />Edit
           </Button>
           {builtInSelected ? (
-            <Button variant="outline" onClick={() => duplicate(selected)}>
+            <Button variant="outline" onClick={() => duplicate(selected)} disabled={!userCanStore(selected.handler)}>
               <Copy className="h-4 w-4 mr-1" />Duplicate
             </Button>
           ) : (

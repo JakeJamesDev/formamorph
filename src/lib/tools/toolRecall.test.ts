@@ -148,6 +148,15 @@ describe('recall, lexical', () => {
   });
 });
 
+describe('the Tool Snapshot memory list', () => {
+  it('counts every committed turn, lists turns with a memory outside the floor, and is frozen', () => {
+    const turns: TurnSpec[] = [{}, { summary: 'The storm broke.' }, {}, { summary: 'Wren rowed out.' }];
+    const { memories } = buildToolSnapshot(sampleChipScene(), sampleDictionaries(), source(turns, 1));
+    expect(memories).toEqual([{ turn: 2, digest: 'The storm broke.', diaries: [] }]);
+    expect(Object.isFrozen(memories[0])).toBe(true);
+  });
+});
+
 describe('recall in Try It with no world open', () => {
   it('searches sample memories', async () => {
     const snapshot = sampleToolSnapshot();

@@ -1746,15 +1746,15 @@ const GameViewer = ({
   // placeholder strings kept here, which is how the two copies used to drift.
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
   // Recall searches the committed history as the narration prompt's memory reads it; digests off, no memory.
-  const toolMemory = useCallback(
+  const toolMemorySource = useCallback(
     (): ToolMemorySource | null =>
       (memoryDigests ? { history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns } : null),
     [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns],
   );
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(
-    () => buildToolSnapshot(liveScene(), dictionaries, toolMemory()),
-    [liveScene, dictionaries, toolMemory],
+    () => buildToolSnapshot(liveScene(), dictionaries, toolMemorySource()),
+    [liveScene, dictionaries, toolMemorySource],
   );
   // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
@@ -2269,7 +2269,7 @@ const GameViewer = ({
        */
       // One Tool Snapshot for the turn, built at its first Tool call and read by every later one. A move by
       // the router starts it over, so the narration reads the scene it is written for.
-      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemory()));
+      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemorySource()));
       let executeTool = turnToolExecutor();
 
       const advance: TurnAdvance = async (event, material) => {

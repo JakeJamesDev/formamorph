@@ -96,8 +96,7 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
-/** The memories recall searches: digests through the override layer, diaries that hold a memory, and no
- *  turn the narration prompt carries in full. Hand-written memories ride every request, so they stay out. */
+/** Digests through the override layer and diaries that hold a memory, outside the verbatim floor. No notes. */
 function toolMemories({ history, overrides, verbatimFloor }: ToolMemorySource): ToolMemory[] {
   const turns = applyMemoryOverrides(parseTurns([...history]), overrides);
   return turns.slice(0, Math.max(0, turns.length - verbatimFloor)).flatMap((t, i) => {
