@@ -66,6 +66,8 @@ The Tool editor has four helper lines that do not match what the editor does:
 22. As a Tool author, I want a placeholder whose value holds other chips to read fully resolved, so that I never see a raw chip token.
 23. As a Tool author, I want `placeholders` in autocomplete with its names, so that I do not guess a spelling.
 24. As a Tool author, I want each entity item's `placeholders` member in the surface list, so that I know it exists.
+24a. As a Tool author, I want a dictionary book's placeholders on each of its entries, so that I read them where I read the entry.
+24b. As a Tool author, I want a repeated name to give the first placeholder's value, so that a read never fails on a collision.
 25. As a Tool author, I want the placeholder values read-only, so that a script cannot change the playthrough.
 26. As a Tool author, I want an empty `placeholders` object in a world with none, so that my script does not fail on a missing global.
 27. As a Tool author, I want Try It with no world open to show sample placeholders, so that I can test a script before I open a world.
@@ -101,9 +103,12 @@ The Tool editor has four helper lines that do not match what the editor does:
 
 - The Tool Snapshot gains a frozen, name-keyed map of world-level placeholder values. Each entity in the snapshot's world gains the same map for the placeholders that entity owns.
 - **Resolved only.** Each value is the text the snapshot's resolver produces for that placeholder's chip. The resolver is the one Template chips use today, so pins, rolls, and nested chips come out the same as in a prompt this turn.
-- **Entity owned.** A placeholder scoped to an entity goes on that entity's item, not in the world-level map. A placeholder owned by another placeholder (`ownerId`) is not listed. Its text is already inside its holder's resolved value.
+- **Entity owned.** A placeholder scoped to an entity goes on that entity's item, not in the world-level map.
+- **Book owned.** A placeholder scoped to a dictionary book goes on each of that book's entries in `world.dictionary`, under `placeholders`, in the same form.
+- **First name wins.** When two placeholders in one map share a name, the first in list order keeps the key. The later one is not listed under that name.
+- A placeholder owned by another placeholder (`ownerId`) is not listed. Its text is already inside its holder's resolved value.
 - The sandbox receives the map as one more frozen value, beside `args`, `world`, and `scene`. It gains no function and no host call.
-- The script surface gains a `placeholders` global, with the world's names as members. The entity item shape gains `placeholders`. The surface describes the sandbox and never widens it.
+- The script surface gains a `placeholders` global, with the world's names as members. The entity and dictionary entry item shapes gain `placeholders`. The surface describes the sandbox and never widens it.
 - The surface takes the placeholder names as an input, so autocomplete lists the open world's names. With no world open, it lists the sample world's names.
 - The sample snapshot carries sample placeholders, so Try It with no world open shows them.
 - One new snippet reads one placeholder by name.
@@ -142,13 +147,11 @@ The Tool editor has four helper lines that do not match what the editor does:
 - Switching a new built-in Tool on by default. That is a product call after the probes.
 - A script that reads placeholder definitions: the value list, weights, pins, or kind.
 - A script that changes a placeholder or rerolls one.
-- Placeholders scoped to a dictionary book. See Further Notes.
 - A built-in Tool for traits, stats, or the story clock. The scene already carries them.
 - New lookup sources or new match rules.
 
 ## Further Notes
 
-- **Open question: book-scoped placeholders.** A dictionary book can own placeholders too. The entity rule suggests they go on each of the book's entries in `world.dictionary`, or on a book item. This spec leaves them out until the user decides.
-- **Open question: name collisions.** Chips key placeholders by id, and a search of the placeholder modules found no check that keeps names unique. So two world-level placeholders can probably share a name. The map needs a rule: first wins, or a qualified `Owner.Name` key like the plain-text pickers use.
+- Chips key placeholders by id, and a search of the placeholder modules found no check that keeps names unique. The first-wins rule covers that case.
 - The global-Tools spec (tools-global-and-editor-polish) owns the per-preset switch storage. This spec's built-in Tools depend on it.
 - The boolean label change is copy only. The AI sees `type: "boolean"` in the schema whatever the label says.
