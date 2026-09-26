@@ -1,8 +1,11 @@
-import type { Dictionary } from '@/types';
+import type { ChatMessage, Dictionary } from '@/types';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
 import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { parseTurns } from '@/lib/turnBanding';
+import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
+import { applyMemoryOverrides, type MemoryOverrides } from '@/lib/memoryOverrides';
 
 /** An entity as a Tool reads it. Blank text reads as an empty string. */
 export interface ToolEntity {
@@ -55,6 +58,24 @@ export interface ToolScene {
   readonly time: { readonly elapsed: number } | null;
 }
 
+/** One committed turn's memories as recall searches them. */
+export interface ToolMemory {
+  /** The turn's 1-based place among the committed turns. */
+  readonly turn: number;
+  /** The digest after the player's Memory Manager edits; empty when the turn has none or it was deleted. */
+  readonly digest: string;
+  readonly diaries: readonly { readonly character: string; readonly text: string }[];
+}
+
+/** The playthrough memory a snapshot reads. */
+export interface ToolMemorySource {
+  /** The committed history, so a rolled-back turn is already gone. */
+  readonly history: readonly ChatMessage[];
+  readonly overrides: MemoryOverrides | null;
+  /** How many of the newest turns the narration prompt carries in full. */
+  readonly verbatimFloor: number;
+}
+
 /** What every Tool call in one turn reads. Built once, frozen, and never read back from React or storage. */
 export interface ToolSnapshot {
   readonly world: ToolWorld;
@@ -63,6 +84,8 @@ export interface ToolSnapshot {
   readonly chips: Readonly<Record<string, string>>;
   /** Placeholder resolution for chips a Template body carries. */
   readonly resolve: (text: string) => string;
+  /** The turns older than the verbatim floor that hold a digest or a diary entry, oldest first. */
+  readonly memories: readonly ToolMemory[];
 }
 
 function deepFreeze<T>(value: T): T {
@@ -73,9 +96,22 @@ function deepFreeze<T>(value: T): T {
   return value;
 }
 
+/** The memories recall searches: digests through the override layer, diaries that hold a memory, and no
+ *  turn the narration prompt carries in full. Hand-written memories ride every request, so they stay out. */
+function toolMemories({ history, overrides, verbatimFloor }: ToolMemorySource): ToolMemory[] {
+  const turns = applyMemoryOverrides(parseTurns([...history]), overrides);
+  return turns.slice(0, Math.max(0, turns.length - verbatimFloor)).flatMap((t, i) => {
+    const diaries = Object.entries(parseTurnContent(history[t.index].content)?.diaries ?? {})
+      .flatMap(([character, text]) => (typeof text === 'string' ? [{ character: character.trim(), text: text.trim() }] : []))
+      .filter((d) => d.text && diaryHoldsMemory(d.text));
+    const digest = t.summary?.trim() ?? '';
+    return digest || diaries.length ? [{ turn: i + 1, digest, diaries }] : [];
+  });
+}
+
 /** The Tool Snapshot of `scene`, with the world's enabled dictionary entries. The scene's own lore is the
- *  turn's activated entries, so the whole dictionary comes in beside it. */
-export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dictionary[]): ToolSnapshot {
+ *  turn's activated entries, so the whole dictionary comes in beside it. No `memory` means no memories. */
+export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dictionary[], memory: ToolMemorySource | null = null): ToolSnapshot {
   const { resolve } = scene;
   const text = (value: string | undefined) => (value ? resolve(value) : '');
   const nameOf = new Map(scene.entities.map((e) => [e.id, e.name]));
@@ -107,8 +143,23 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
 
   return Object.freeze({
     world: deepFreeze(world), scene: deepFreeze(sceneData), chips: Object.freeze(chipValues(scene)), resolve,
+    memories: deepFreeze(memory ? toolMemories(memory) : []),
   });
 }
 
+/** The sample world's past turns: each one a digest, some with a diary entry. */
+function sampleHistory(): ChatMessage[] {
+  const turns: { summary: string; diaries?: Record<string, string> }[] = [
+    { summary: 'Wren sold Bell a lantern of salt glass at the Landing.' },
+    { summary: 'Harrow warned Wren that the Long Ebb would strand the boats.', diaries: { Bell: 'Wren asked a fair price for the lantern. I owe Wren a favor.' } },
+    { summary: 'A gull stole bread from the Boathouse.', diaries: { Wren: 'nothing notable' } },
+  ];
+  return turns.flatMap(({ summary, diaries }, i) => [
+    { role: 'user', content: 'Look around.' },
+    { role: 'assistant', content: serializeTurnContent({ narration: '', choices: [], stat_changes: [], turnId: `sample-${i + 1}`, summary, diaries }) },
+  ]);
+}
+
 /** The Tool Snapshot of the sample world, for trying a Tool with no world open. */
-export const sampleToolSnapshot = (): ToolSnapshot => buildToolSnapshot(sampleChipScene(), sampleDictionaries());
+export const sampleToolSnapshot = (): ToolSnapshot =>
+  buildToolSnapshot(sampleChipScene(), sampleDictionaries(), { history: sampleHistory(), overrides: null, verbatimFloor: 0 });

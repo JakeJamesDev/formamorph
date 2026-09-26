@@ -49,8 +49,24 @@ const GET_DICTIONARY_ENTRY: Tool = {
   offeredTo: ['narration'],
 };
 
+/** The memory search. Its source is catalog-only, and its wording awaits its own probe. */
+const RECALL: Tool = {
+  id: 'recall',
+  name: 'recall',
+  description: [
+    'Purpose: Search the memories of earlier turns that this conversation no longer holds in full.',
+    'Use when: The story returns to a past event, promise, gift, or person, and you need details the recent turns do not hold. Skip it when the recent turns already hold the details.',
+    'Input: query — a few words from the event, such as names, places, or objects.',
+    'Output: JSON with a matches array, oldest first. Each match contains turn, kind (digest or diary), text, and, for a diary entry, the character who wrote it. An empty matches array means no memory matched.',
+  ].join('\n'),
+  params: [{ name: 'query', type: 'string', description: '', required: true, options: [] }],
+  handler: { kind: 'lookup', source: 'memories', param: 'query', returns: 'full' },
+  emptyResult: '{"matches": []}',
+  offeredTo: ['narration'],
+};
+
 /** The built-in Tools every preset lists. A preset switches them on or off; the definitions never change. */
-export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY, GET_LOCATION, GET_DICTIONARY_ENTRY, ROLL];
+export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY, GET_LOCATION, GET_DICTIONARY_ENTRY, RECALL, ROLL];
 
 const CATALOG_IDS = new Set(TOOL_CATALOG.map((t) => t.id));
 
