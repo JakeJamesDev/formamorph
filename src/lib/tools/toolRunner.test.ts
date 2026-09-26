@@ -235,7 +235,7 @@ describe('runToolCall: the built-in location and dictionary lookups', () => {
     expect(match.description).toMatch(/^Gloamwater: a stretch of river/);
   });
 
-  it('finds a dictionary entry by name or keyword without regard to case', async () => {
+  it('finds a dictionary entry by a keyword without regard to case', async () => {
     const result = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "TOLLOW"}', s);
     expect(matches(result.text).map((m) => m.id)).toEqual(['dict-tollow']);
   });
@@ -248,10 +248,11 @@ describe('runToolCall: the built-in location and dictionary lookups', () => {
     const sample = sampleToolSnapshot();
     const place = await runToolCall(GET_LOCATION, '{"name": "sample town"}', sample);
     expect(matches(place.text).map((m) => m.name)).toEqual(['Sample Town']);
-    const byName = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "The Long Ebb"}', sample);
+    // "The Long Ebb" is a name only and "ebb" a key only, so each hit proves its own match.
+    const byName = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "the LONG ebb"}', sample);
     expect(matches(byName.text).map((m) => m.id)).toEqual(['long-ebb']);
-    const byKey = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "Salt Glass"}', sample);
-    expect(matches(byKey.text).map((m) => m.id)).toEqual(['salt-glass']);
+    const byKey = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "EBB"}', sample);
+    expect(matches(byKey.text).map((m) => m.id)).toEqual(['long-ebb']);
   });
 });
 
