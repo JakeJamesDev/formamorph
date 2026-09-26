@@ -11,6 +11,8 @@ export interface PersonaOption {
   image?: string;
   /** The player-facing description, placeholders resolved. */
   description?: string;
+  /** The name of the location a world persona names as its start. */
+  startsAt?: string;
 }
 
 const keyOf = (ref: PersonaRef) => (ref.source === 'none' ? 'none' : `${ref.source}:${ref.entityId}`);
@@ -68,6 +70,9 @@ export function PersonaPicker({ world = [], library, none = true, value, onChang
           <strong className="block break-words text-label font-semibold">{option.name}</strong>
           {option.description && (
             <span className="mt-1 line-clamp-3 text-helper text-muted-foreground">{option.description}</span>
+          )}
+          {option.startsAt && (
+            <span className="mt-1 block break-words text-helper text-muted-foreground">Starts at {option.startsAt}</span>
           )}
         </span>
       </>

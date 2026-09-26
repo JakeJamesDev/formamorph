@@ -73,11 +73,13 @@ import {
 } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
-  clearDefaultPersona, hasPersonaChoice, offeredPersonas, preselectPersona, readDefaultPersona, readWorldPersona,
-  rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting, type PersonaPickContext,
+  clearDefaultPersona, hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona,
+  readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting,
+  type PersonaPickContext,
 } from '@/lib/personaPick';
 import { personaOption } from '@/lib/persona';
 import type { PersonaPick } from '@/lib/persona';
+import type { PersonaOption } from '@/components/game/PersonaPicker';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
 import EntityStorageService from '../services/EntityStorageService';
@@ -1391,10 +1393,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     [additionEntities],
   );
   /** The world's entities the author marked as playable. */
-  const worldPersonaOptions = useMemo(
+  const worldPersonaOptions = useMemo<PersonaOption[]>(
     () => resolvedWorldEntities.filter((entity) => entity.persona === true)
-      .map(personaOption(resolveEntityText)),
-    [resolvedWorldEntities, resolveEntityText],
+      .map((entity) => ({ ...personaOption(resolveEntityText)(entity), startsAt: namedStartLocation(entity, locations)?.name })),
+    [resolvedWorldEntities, resolveEntityText, locations],
   );
   const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
   /** What the step's Persona category lists under the world's player setting. */
@@ -1404,7 +1406,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   );
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
-    startingLocationIds: startingLocations(locations).map((location) => location.id),
+    locations,
   };
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
@@ -3121,7 +3123,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           traits={traits}
           traitGroups={traitGroups}
           stats={rawStats}
-          locations={startingLocations(locations)}
+          locations={offeredStartLocations(entryDraft.persona, personaPickContext)}
           resolveText={resolvePH}
           resolveTraitText={resolveTraitText}
           selectedTraits={selectedTraits}

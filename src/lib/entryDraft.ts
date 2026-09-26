@@ -25,7 +25,7 @@ export function withPersonaPick(draft: EntryDraft, ref: PersonaRef, context: Per
     ...draft,
     persona: ref,
     entityIds: withoutPersona(draft.entityIds, ref),
-    locationId: locationForPersonaPick({ ref, current: draft.locationId, locationChosen: draft.locationChosen, ...context }),
+    ...locationForPersonaPick({ ref, current: draft.locationId, locationChosen: draft.locationChosen, ...context }),
   };
 }
 

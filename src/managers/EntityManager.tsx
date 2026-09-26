@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
-import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields } from './EntityFields';
+import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import { EntityOpenings } from './OpeningsPanel';
 import { useEditingDraft } from '@/lib/useEditingDraft';
@@ -69,6 +69,12 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
   if (!editingEntity) return null;
 
   const groupProps = { value: editingEntity, onChange: handleChange, placeholders, ownerId: entity.id };
+  // Read as the tree it is, so a picker presents the hierarchy the way the game's own list does.
+  const locationOptions = locationRows(locations).map(({ location, depth }) => ({
+    label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
+    value: location.id,
+    depth,
+  }));
   const tabs = entityPanelTabsFor(advanced);
 
   return (
@@ -86,17 +92,15 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
             // column comes back only where the pane is wide enough — once in the sheet, again at `xl`.
             columnsClassName="sm:grid-cols-[18rem_minmax(0,1fr)] md:grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]"
             locations={(
-              <EntityLocationsField
-                {...groupProps}
-                // Read as the tree it is, so the picker presents the hierarchy the way the game's own list does.
-                options={locationRows(locations).map(({ location, depth }) => ({
-                  label: labelPlaceholders(location.name, placeholders, { letters: placementLetters, owners: placeholderOwners }),
-                  value: location.id,
-                  depth,
-                }))}
-                selectedIds={selectedLocationIds}
-                onLocationsChange={handleLocationsChange}
-              />
+              <>
+                <EntityLocationsField
+                  {...groupProps}
+                  options={locationOptions}
+                  selectedIds={selectedLocationIds}
+                  onLocationsChange={handleLocationsChange}
+                />
+                <EntityStartingLocationField {...groupProps} options={locationOptions} />
+              </>
             )}
           />
         </TabsContent>

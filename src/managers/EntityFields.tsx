@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { KeywordChips } from "@/components/KeywordChips";
 import { HelpButton } from "@/components/HelpButton";
 import AiGenerateButton from "@/components/AiGenerateButton";
@@ -197,6 +198,32 @@ export const EntityLocationsField = ({ value, options, selectedIds, onLocationsC
     />
   </div>
 );
+
+const AUTOMATIC = 'automatic';
+
+/** Where a world persona begins: Automatic, then every location. Shows only while the Persona mark is on. */
+export const EntityStartingLocationField = ({ value, onChange, options }: EntityFieldGroupProps & {
+  options: MultiSelectOption[];
+}) => {
+  const { advanced } = useEditorMode();
+  if (!advanced || value.persona !== true) return null;
+  const selected = options.some((o) => o.value === value.startingLocationId) ? value.startingLocationId! : AUTOMATIC;
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={`entity-start-${value.id}`}>Starting Location</Label>
+      <Hint>Preselected when the player picks this persona</Hint>
+      <Select value={selected} onValueChange={(v) => onChange('startingLocationId', v === AUTOMATIC ? undefined : v)}>
+        <SelectTrigger id={`entity-start-${value.id}`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={AUTOMATIC}>Automatic</SelectItem>
+          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+};
 
 /**
  * The entity's picture widget with neither piece placed: a host draws `ImageGallery` and `ImageTags` where

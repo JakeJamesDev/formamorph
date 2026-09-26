@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { emptyEntryDraft, withLocationPick, withPersonaPick } from './entryDraft';
 import type { PersonaPickContext } from './personaPick';
-import type { Entity, PersonaRef } from '@/types';
+import type { Entity, GameLocation, PersonaRef } from '@/types';
 
-const entity = (id: string, locations: string[]): Entity => ({
-  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations,
+const entity = (id: string, locations: string[], startingLocationId?: string): Entity => ({
+  id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations, startingLocationId,
 });
+const place = (id: string, isStarting = false): GameLocation => ({ id, name: id, isStarting });
 
 const context: PersonaPickContext = {
-  worldEntities: [entity('keeper', ['inn', 'dock']), entity('drifter', ['road'])],
-  startingLocationIds: ['dock', 'gate'],
+  worldEntities: [entity('keeper', ['inn', 'dock']), entity('drifter', ['road']), entity('hermit', ['dock'], 'cellar')],
+  locations: [place('inn'), place('dock', true), place('road'), place('cellar'), place('gate', true)],
 };
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
 const library = (entityId: string): PersonaRef => ({ source: 'library', entityId });
@@ -38,6 +39,17 @@ describe('withPersonaPick', () => {
     const fromKeeper = withPersonaPick(emptyEntryDraft(), world('keeper'), context);
     expect(withPersonaPick(fromKeeper, library('lib'), context).locationId).toBe('dock');
     expect(withPersonaPick(fromKeeper, { source: 'none' }, context).locationId).toBe('dock');
+  });
+
+  it('preselects the unflagged location a world persona names', () => {
+    expect(withPersonaPick(emptyEntryDraft(), world('hermit'), context).locationId).toBe('cellar');
+  });
+
+  it('drops a hand-picked unflagged location on a switch away, and a later persona pick moves it again', () => {
+    const hermit = withLocationPick(withPersonaPick(emptyEntryDraft(), world('hermit'), context), 'cellar');
+    const drifter = withPersonaPick(hermit, world('drifter'), context);
+    expect(drifter).toMatchObject({ locationId: null, locationChosen: false });
+    expect(withPersonaPick(drifter, world('keeper'), context).locationId).toBe('dock');
   });
 
   it('drops a library persona from the added characters', () => {

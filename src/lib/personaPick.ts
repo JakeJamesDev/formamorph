@@ -1,5 +1,5 @@
 import { createKeyedRecordStore, readStorageJson, writeStorageJson } from './keyedStorage';
-import type { Entity, PersonaRef, WorldOverview, WorldPlayerSetting } from '@/types';
+import type { Entity, GameLocation, PersonaRef, WorldOverview, WorldPlayerSetting } from '@/types';
 
 /** Every player setting, in the order the World Editor shows them. */
 export const PLAYER_SETTINGS: readonly WorldPlayerSetting[] = ['open', 'fixed', 'cast'];
@@ -56,28 +56,53 @@ export function preselectPersona({ playerSetting, remembered, globalDefault, ava
   return NONE;
 }
 
-/** The first of the entity's locations that is a starting location, or null when it has none. */
-export function personaStartLocation(entity: Entity, startingLocationIds: readonly string[]): string | null {
-  return entity.locations?.find((id) => startingLocationIds.includes(id)) ?? null;
+/** The location the persona names for itself, while the world still has it. */
+export function namedStartLocation<L extends GameLocation>(entity: Entity, locations: readonly L[]): L | undefined {
+  return entity.startingLocationId ? locations.find((l) => l.id === entity.startingLocationId) : undefined;
+}
+
+/** Where a world persona begins: the location it names, else the first of its locations that is a starting
+ *  location, else null. */
+export function personaStartLocation(entity: Entity, locations: readonly GameLocation[]): string | null {
+  const named = namedStartLocation(entity, locations);
+  if (named) return named.id;
+  return entity.locations?.find((id) => locations.some((l) => l.id === id && l.isStarting)) ?? null;
 }
 
 /** What a persona pick reads to preselect a starting location. */
 export interface PersonaPickContext {
   worldEntities: readonly Entity[];
-  startingLocationIds: readonly string[];
+  locations: readonly GameLocation[];
 }
 
-/** The starting location after a persona pick. A world persona preselects its own starting location until
- *  the player picks a location by hand; every other pick keeps the current one. */
-export function locationForPersonaPick({ ref, current, locationChosen, worldEntities, startingLocationIds }: {
+const worldPersona = (ref: PersonaRef, worldEntities: readonly Entity[]) =>
+  ref.source === 'world' ? worldEntities.find((e) => e.id === ref.entityId) : undefined;
+
+/** The locations the Starting Location step lists, in world order: the flagged ones, plus the one the picked
+ *  world persona names. */
+export function offeredStartLocations<L extends GameLocation>(
+  ref: PersonaRef, { worldEntities, locations }: { worldEntities: readonly Entity[]; locations: readonly L[] },
+): L[] {
+  const persona = worldPersona(ref, worldEntities);
+  return locations.filter((l) => l.isStarting || l.id === persona?.startingLocationId);
+}
+
+/** The starting location after a persona pick. A location the step no longer lists drops to the new persona's
+ *  own pick, else Random. Otherwise a world persona preselects its own starting location until the player
+ *  picks a location by hand, and every other pick keeps the current one. */
+export function locationForPersonaPick({ ref, current, locationChosen, ...context }: {
   ref: PersonaRef;
   current: string | null;
   /** The player picked the location by hand in this step. */
   locationChosen: boolean;
-} & PersonaPickContext): string | null {
-  if (locationChosen || ref.source !== 'world') return current;
-  const entity = worldEntities.find((e) => e.id === ref.entityId);
-  return (entity && personaStartLocation(entity, startingLocationIds)) ?? current;
+} & PersonaPickContext): { locationId: string | null; locationChosen: boolean } {
+  const persona = worldPersona(ref, context.worldEntities);
+  const own = persona ? personaStartLocation(persona, context.locations) : null;
+  if (current !== null && !offeredStartLocations(ref, context).some((l) => l.id === current)) {
+    return { locationId: own, locationChosen: false };
+  }
+  if (locationChosen) return { locationId: current, locationChosen };
+  return { locationId: own ?? current, locationChosen };
 }
 
 /** The added characters without the library persona: one entity fills one role per playthrough. */

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
 import { emptyEntryDraft, withLocationPick, withPersonaPick } from '@/lib/entryDraft';
-import { withoutPersona } from '@/lib/personaPick';
+import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
 
 const identity = (text: string) => text;
@@ -831,25 +831,28 @@ describe('the Persona category', () => {
 
 const worldEntities: Entity[] = [
   { id: 'warden', name: 'Harbor Warden', aiDescription: '', persona: true, locations: ['inn', 'dock'] },
-  { id: 'drifter', name: 'Road Drifter', aiDescription: '', persona: true, locations: ['road'] },
+  { id: 'drifter', name: 'Road Drifter', aiDescription: '', persona: true, locations: ['road'], startingLocationId: 'road' },
 ];
-const worldPersonas = worldEntities.map(({ id, name }) => ({ id, name }));
-const startLocations: GameLocation[] = [
+const worldLocations: GameLocation[] = [
   { id: 'gate', name: 'Town Gate', description: '', isStarting: true },
+  { id: 'road', name: 'Old Road', description: '' },
   { id: 'dock', name: 'Harbor Dock', description: '', isStarting: true },
 ];
+const worldPersonas = worldEntities.map((entity) => (
+  { id: entity.id, name: entity.name, startsAt: namedStartLocation(entity, worldLocations)?.name }
+));
 
 // The host's side of the pick rules, through the same draft functions the main menu uses.
 function WorldPersonaHarness(props: Partial<ComponentProps<typeof EnterWorldWorkspace>>) {
   const [draft, setDraft] = useState(emptyEntryDraft);
-  const context = { worldEntities, startingLocationIds: startLocations.map((l) => l.id) };
+  const context = { worldEntities, locations: worldLocations };
   return (
     <Harness
       worldPersonas={worldPersonas}
       personas={personas}
       persona={draft.persona}
       onPersonaChange={(ref) => setDraft((current) => withPersonaPick(current, ref, context))}
-      locations={startLocations}
+      locations={offeredStartLocations(draft.persona, context)}
       selectedLocationId={draft.locationId}
       onLocationChange={(id) => setDraft((current) => withLocationPick(current, id))}
       {...props}
@@ -890,5 +893,29 @@ describe('world personas in the Persona category', () => {
     await user.click(screen.getByRole('radio', { name: 'Harbor Warden' }));
     await user.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.getByRole('radio', { name: 'Town Gate' })).toBeChecked();
+  });
+
+  it('says where a persona that names its start begins', () => {
+    render(<WorldPersonaHarness />);
+    const drifter = screen.getByRole('radio', { name: 'Road Drifter' }).closest('div')!;
+    expect(within(drifter).getByText('Starts at Old Road')).toBeInTheDocument();
+    const warden = screen.getByRole('radio', { name: 'Harbor Warden' }).closest('div')!;
+    expect(within(warden).queryByText(/Starts at/)).not.toBeInTheDocument();
+  });
+
+  it('lists an unflagged start only while its persona is picked, and a switch away drops it', async () => {
+    const user = userEvent.setup();
+    render(<WorldPersonaHarness />);
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.queryByRole('radio', { name: 'Old Road' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Road Drifter' }));
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.getByRole('radio', { name: 'Old Road' })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'None' }));
+    await user.click(screen.getByRole('button', { name: 'Starting Location' }));
+    expect(screen.queryByRole('radio', { name: 'Old Road' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Random' })).toBeChecked();
   });
 });
