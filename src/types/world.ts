@@ -151,6 +151,9 @@ export interface Entity {
   /** Marks the entity as a Persona. In the library it is one of the player's personas; in a world the
    *  player can play as it. */
   persona?: boolean;
+  /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
+   *  its locations that is a starting location. Read only for a world entity with the Persona mark. */
+  startingLocationId?: string;
   type?: string;
   /** Shown to the player in-game. */
   playerDescription?: string;
