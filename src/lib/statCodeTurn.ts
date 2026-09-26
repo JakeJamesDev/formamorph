@@ -19,6 +19,7 @@ export interface StatCodeTraitResult {
   acquired: Trait[];
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
+  cascadeOffTraitIds: Record<string, string[]>;
   log: string[];
 }
 
@@ -174,6 +175,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     traits: [...turn.traits.acquired],
     disabledTraitIds: [...turn.traits.disabledTraitIds],
     appliedValues: turn.traits.appliedValues,
+    cascadeOffTraitIds: turn.traits.cascadeOffTraitIds,
   };
   const switched = applyCodeTraitSwitches(
     before,
@@ -184,6 +186,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     acquired: switched.state.traits,
     disabledTraitIds: switched.state.disabledTraitIds,
     appliedValues: switched.state.appliedValues,
+    cascadeOffTraitIds: switched.state.cascadeOffTraitIds ?? {},
     log: switched.log,
   };
   const active = activeTraits(switched.state.traits, switched.state.disabledTraitIds);

@@ -10,9 +10,10 @@
 //   switching it off must give back nothing. Each switch stores what actually moved and the next switch of
 //   that trait reverses it, rather than the authored number.
 
-import type { CodeBounds, PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
+import type { CodeBounds, PersonaRef, PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
 import { clamp } from './utils';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
+import { gateStates, settle, worldGateInput, type GateEntity, type GateInput, type GateTraitRef } from './traitGates';
 
 /** What a trait's last switch actually moved: trait id → stat id → value delta. */
 export type AppliedTraitValues = Record<string, Record<string, number>>;
@@ -24,12 +25,17 @@ export interface TraitRuntimeState {
   traits: Trait[];
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
+  /** Owner id → the traits a cascade turned off, which return once their gate holds. Absent ⇒ none. */
+  cascadeOffTraitIds?: Record<string, string[]>;
 }
 
-/** The authored world, for exclusive-group lookups. */
+/** The authored world, for exclusive-group lookups and gates. Absent `entities` or `persona`, no "playing
+ *  as" requirement holds. */
 export interface TraitWorld {
   traits: Trait[];
   groups: TraitGroup[];
+  entities?: readonly GateEntity[];
+  persona?: PersonaRef;
 }
 
 /** The traits currently in force: everything in the player's list that isn't switched off. */
@@ -315,10 +321,107 @@ export interface CodeTraitSwitch {
   by: string;
 }
 
+/** The player's world traits as the gate module reads them. */
+const gateInput = (state: TraitRuntimeState, world: TraitWorld): GateInput => worldGateInput(
+  { traits: world.traits, groups: world.groups, entities: world.entities ?? [] },
+  world.persona ?? { source: 'none' },
+  activeTraits(state.traits, state.disabledTraitIds).map((t) => t.id),
+);
+
+const isLocked = (state: TraitRuntimeState, world: TraitWorld, traitId: string): boolean =>
+  gateStates(gateInput(state, world)).get(traitId)?.unlocked === false;
+
+/** The lists with every empty one dropped, so an empty list and an absent one read the same. */
+function compactCascadeOff(lists: Readonly<Record<string, readonly string[]>> = {}): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(lists).filter(([, ids]) => ids.length).map(([owner, ids]) => [owner, [...ids]]));
+}
+
+function sameCascadeOff(a: Record<string, string[]>, b: Record<string, string[]>): boolean {
+  const owners = Object.keys(a);
+  return owners.length === Object.keys(b).length
+    && owners.every((owner) => a[owner].length === b[owner]?.length && a[owner].every((id, i) => b[owner][i] === id));
+}
+
+/** `state` with `traitId` off its cascade-off list, so it never returns; the same state when it was not listed. */
+function withoutCascadeOff(state: TraitRuntimeState, traitId: string): TraitRuntimeState {
+  const lists = state.cascadeOffTraitIds ?? {};
+  if (!Object.values(lists).some((ids) => ids.includes(traitId))) return state;
+  const next = Object.fromEntries(Object.entries(lists).map(([owner, ids]) => [owner, ids.filter((id) => id !== traitId)]));
+  return { ...state, cascadeOffTraitIds: compactCascadeOff(next) };
+}
+
+/** What a settle or a gated switch did. `cascade` names the traits a cascade turned off, for the banner. */
+export interface GatedTraitResult {
+  state: TraitRuntimeState;
+  log: string[];
+  cascade: Trait[];
+}
+
 /**
- * Apply stat code's trait switches in order, each through the player's own switch. Code ignores Player Can
- * Toggle In-Game, so a switch-on of a trait the player lacks acquires it. A switch to the state a trait
- * already holds does nothing: switching an off trait off again would reverse its record a second time.
+ * Settle the player's traits against every gate: traits whose gate stopped holding switch off, dependents
+ * first, each reversed through its record; traits a cascade turned off switch back on once their gate holds
+ * again. The same state comes back when nothing moves.
+ */
+export function settleTraits(
+  state: TraitRuntimeState,
+  world: TraitWorld,
+  nameOf: (trait: Trait) => string = (trait) => trait.name,
+  by?: string,
+): GatedTraitResult {
+  const result = settle(gateInput(state, world), state.cascadeOffTraitIds ?? {});
+  const held = (refs: GateTraitRef[]) =>
+    refs.flatMap(({ traitId }) => state.traits.filter((t) => t.id === traitId));
+  const off = held(result.turnedOff);
+  const back = held(result.returned);
+  const cascadeOff = compactCascadeOff({ ...state.cascadeOffTraitIds, ...result.cascadeOff });
+  if (!off.length && !back.length && sameCascadeOff(cascadeOff, compactCascadeOff(state.cascadeOffTraitIds))) {
+    return { state, log: [], cascade: [] };
+  }
+  let next = state;
+  for (const trait of off) next = switchTrait(next, trait, false);
+  for (const trait of back) next = switchTrait(next, trait, true);
+  return {
+    state: { ...next, cascadeOffTraitIds: cascadeOff },
+    log: [
+      ...off.flatMap((trait) => traitSwitchLog(nameOf(trait), 'off', [], by)),
+      ...back.flatMap((trait) => traitSwitchLog(nameOf(trait), 'on', [], by)),
+    ],
+    cascade: off,
+  };
+}
+
+/**
+ * The player's own switch, then a settle. A switch-on of a trait the player lacks acquires it, and only a
+ * trait marked Player Can Toggle can be acquired this way. Null when the switch does nothing: the trait
+ * already holds that state, is locked, or cannot be acquired.
+ */
+export function switchPlayerTrait(
+  state: TraitRuntimeState,
+  traitId: string,
+  enabled: boolean,
+  world: TraitWorld,
+  nameOf: (trait: Trait) => string = (trait) => trait.name,
+): GatedTraitResult | null {
+  const acquired = state.traits.find((t) => t.id === traitId);
+  const trait = acquired ?? world.traits.find((t) => t.id === traitId);
+  if (!trait || (!!acquired && !state.disabledTraitIds.includes(traitId)) === enabled) return null;
+  if (enabled && (isLocked(state, world, traitId) || (!acquired && !trait.playerToggle))) return null;
+  const switched = acquired ? setTraitEnabled(state, traitId, enabled, world) : acquireTrait(state, trait, world);
+  const kind: TraitSwitchKind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
+  const settled = settleTraits(switched.state, world, nameOf);
+  return {
+    state: settled.state,
+    log: [...traitSwitchLog(nameOf(trait), kind, switched.retired.map(nameOf)), ...settled.log],
+    cascade: settled.cascade,
+  };
+}
+
+/**
+ * Apply stat code's trait switches in order, each through the player's own switch and a settle. Code ignores
+ * Player Can Toggle In-Game, so a switch-on of a trait the player lacks acquires it. Code does not ignore
+ * gates: a switch-on of a locked trait retires no sibling, and the settle turns it off again. A switch to the
+ * state a trait already holds does nothing: switching an off trait off again would reverse its record a
+ * second time. It does take a cascade-off trait off its list, so the trait stays off.
  */
 export function applyCodeTraitSwitches(
   state: TraitRuntimeState,
@@ -331,11 +434,19 @@ export function applyCodeTraitSwitches(
   for (const { traitId, enabled, by } of switches) {
     const acquired = next.traits.find((t) => t.id === traitId);
     const trait = acquired ?? world.traits.find((t) => t.id === traitId);
-    if (!trait || (!!acquired && !next.disabledTraitIds.includes(traitId)) === enabled) continue;
-    const result = acquired ? setTraitEnabled(next, traitId, enabled, world) : acquireTrait(next, trait, world);
-    next = result.state;
+    if (!trait) continue;
+    if ((!!acquired && !next.disabledTraitIds.includes(traitId)) === enabled) {
+      if (!enabled) next = withoutCascadeOff(next, traitId);
+      continue;
+    }
+    const result = enabled && isLocked(next, world, traitId)
+      ? { state: switchTrait(acquired ? next : { ...next, traits: [...next.traits, trait] }, trait, true), retired: [] }
+      : acquired ? setTraitEnabled(next, traitId, enabled, world) : acquireTrait(next, trait, world);
     const kind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
     log.push(...traitSwitchLog(nameOf(trait), kind, result.retired.map(nameOf), by));
+    const settled = settleTraits(result.state, world, nameOf, by);
+    next = settled.state;
+    log.push(...settled.log);
   }
   return { state: next, log };
 }

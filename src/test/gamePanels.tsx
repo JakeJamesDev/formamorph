@@ -345,6 +345,9 @@ export function renderRightPanel(
   const defaults: RightPanelProps = {
     onLocationClick: vi.fn(),
     onToggleTrait: vi.fn(),
+    onPersonaChange: vi.fn(),
+    traitCascade: null,
+    onDismissTraitCascade: vi.fn(),
     onRegenerateStats: vi.fn(),
     sceneImageJob: null,
     language: '',

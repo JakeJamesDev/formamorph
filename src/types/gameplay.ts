@@ -164,6 +164,9 @@ export interface GameState {
    *  clamp is undone as fully as it was applied. Absent on saves written before it, which reverse by negating
    *  the authored change as they always did. */
   appliedTraitValues?: Record<string, Record<string, number>>;
+  /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. The
+   *  player's world traits sit under `world`. Absent ⇒ none. */
+  cascadeOffTraitIds?: Record<string, string[]>;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy

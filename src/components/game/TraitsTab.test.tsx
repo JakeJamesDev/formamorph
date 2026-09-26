@@ -284,6 +284,51 @@ describe('the traits tab keeps how the player left it', () => {
   });
 });
 
+describe('a gated trait in play', () => {
+  const TRAITS = [
+    T('t-paladin', 'Paladin'),
+    T('t-plate', 'Plate Armor', { requires: [{ kind: 'trait', id: 't-paladin' }] }),
+    T('t-crown', 'Royal Crown', { requires: [{ kind: 'playingAs', id: 'e-aldric' }] }),
+  ];
+  const aldric = { id: 'e-aldric', name: 'Sir Aldric', persona: true };
+
+  it('stays in place, locked, saying what it requires', () => {
+    renderTraits(TRAITS, [], []);
+    openDisabled('Traits');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeDisabled();
+    expect(screen.getByText('Requires Paladin')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
+  });
+
+  it('opens once its requirement is held, saying what unlocked it', () => {
+    renderTraits(TRAITS, [], ['t-paladin']);
+    openDisabled('Traits');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Plate Armor' })).toBeEnabled();
+    expect(screen.getByText('Unlocked by Paladin')).toBeTruthy();
+  });
+
+  it('opens a playing-as trait while the player plays that world persona', () => {
+    renderTraits(TRAITS, [], [], {
+      world: { entities: [aldric] },
+      seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-aldric' }),
+    });
+    openDisabled('Traits');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Royal Crown' })).toBeEnabled();
+    expect(screen.getByText('Unlocked by playing as Sir Aldric')).toBeTruthy();
+  });
+
+  it('shows the cascade banner until the player dismisses it', async () => {
+    const onDismissTraitCascade = vi.fn();
+    renderRightPanel({ traitCascade: { off: ['Plate Armor'], because: 'Paladin' }, onDismissTraitCascade }, {
+      turns: TURNS, stats: STATS, world: { traits: TRAITS, traitGroups: [] },
+      seed: (gameplay) => gameplay.setActiveTab('traits'),
+    });
+    expect(screen.getByRole('status').textContent).toBe('Turned off Plate Armor, because of Paladin.Dismiss');
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(onDismissTraitCascade).toHaveBeenCalledOnce();
+  });
+});
+
 describe('an exclusive trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { exclusive: true })];
   const TRAITS = [

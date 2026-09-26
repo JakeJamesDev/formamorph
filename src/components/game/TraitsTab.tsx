@@ -10,11 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, Search } from 'lucide-react';
+import { ChevronDown, Lock, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
+import type { GateState } from '@/lib/traitGates';
 import type { Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { gateLine } from '@/lib/traitGateLine';
+import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
@@ -34,6 +37,10 @@ export interface TraitsTabProps {
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
+  /** Each trait's gate; absent shows every trait open. */
+  gates?: ReadonlyMap<string, GateState>;
+  cascade?: TraitCascade | null;
+  onDismissCascade?: () => void;
 }
 
 /** The same set with `key` added if it was absent, removed if it was there. */
@@ -50,7 +57,7 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string) => boolean): Rea
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id)))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  traits, groups, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView, gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
   const sections = React.useMemo(() => buildTraitSections(traits, groups), [traits, groups]);
   const sectionKeys = sections.map((s) => s.key).join('|');
@@ -100,6 +107,17 @@ export const TraitsTab = ({
     const isExpanded = view.expanded.has(trait.id);
     const description = describe(trait).trim();
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
+    const gate = gates?.get(trait.id);
+    const locked = gate?.unlocked === false;
+    const line = gateLine(gate);
+    // A locked trait can still switch off; only switching it on waits for its gate.
+    const disabled = readOnly || (locked && off);
+    const name = (
+      <span className="inline-flex items-center gap-1.5 font-medium">
+        {trait.name}
+        {locked && <Lock className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />}
+      </span>
+    );
     return (
       <div
         key={trait.id}
@@ -111,7 +129,7 @@ export const TraitsTab = ({
             role="radio"
             aria-checked={!off}
             aria-label={toggleLabel}
-            disabled={readOnly}
+            disabled={disabled}
             onClick={() => onToggleTrait(trait.id, off)}
             className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -121,7 +139,7 @@ export const TraitsTab = ({
           <Checkbox
             className="mt-1"
             checked={!off}
-            disabled={readOnly}
+            disabled={disabled}
             aria-label={toggleLabel}
             onCheckedChange={(checked) => onToggleTrait(trait.id, checked === true)}
           />
@@ -137,7 +155,7 @@ export const TraitsTab = ({
               onClick={() => flipExpanded(trait.id)}
             >
               <span className="min-w-0 flex-1">
-                <span className="font-medium">{trait.name}</span>
+                {name}
                 {description && <span className="block text-label text-muted-foreground">{description}</span>}
               </span>
               {/* The row's only sign that it has stat changes to show, and the only feedback that it is open. */}
@@ -148,10 +166,11 @@ export const TraitsTab = ({
             </button>
           ) : (
             <>
-              <span className="font-medium">{trait.name}</span>
+              {name}
               {description && <p className="text-label text-muted-foreground">{description}</p>}
             </>
           )}
+          {line && <p className={cn('text-meta', locked ? 'text-foreground' : 'text-muted-foreground')}>{line}</p>}
           {isExpanded && changes.length > 0 && (
             <ul className="mt-1 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, i) => (
@@ -194,6 +213,7 @@ export const TraitsTab = ({
           className="h-8 pl-7 text-label"
         />
       </div>
+      {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-2 pb-2">
           {active.length > 0 && (

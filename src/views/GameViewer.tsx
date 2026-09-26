@@ -38,7 +38,7 @@ import ReadmeModal from "../components/game/ReadmeModal";
 import { useReadmeVisibility } from "@/lib/useReadmeVisibility";
 import { drawPoolEntry, drawUnseenOpening, openingOwner, openingPool, type DrawnOpening } from "@/lib/openings";
 import { drawNewGameOpening } from "@/lib/newGameOpening";
-import type { PersonaPick } from "@/lib/persona";
+import { worldEntitiesOf, type PersonaPick } from "@/lib/persona";
 import { resolveWorldPrompt, worldPromptChipValues, useWorldPromptOptOut } from "@/lib/worldPrompt";
 import { useWorldPromptPresets, resolveEffectivePreset } from "@/lib/worldPromptPreset";
 import { groupPromptPreset, loadTabOrganization } from "@/lib/libraryOrganization";
@@ -57,7 +57,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -160,8 +160,10 @@ import {
 import { collectPins } from "../lib/placeholderPins";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, setTraitEnabled, traitSwitchLog, type TraitRuntimeState,
+  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, settleTraits, switchPlayerTrait,
+  type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
+import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
 import { highlightSegments, HIGHLIGHT_PALETTE, type HighlightRule, type HighlightSegment } from "../lib/highlightUtils";
@@ -269,7 +271,7 @@ const pageOneLocationId = (history: readonly ChatMessage[]) => pageOneTurn(histo
 const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(history)?.narration;
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
-type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues'>;
+type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds'>;
 
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
@@ -561,6 +563,8 @@ const GameViewer = ({
     setDisabledTraitIds,
     appliedTraitValues,
     setAppliedTraitValues,
+    cascadeOffTraitIds,
+    setCascadeOffTraitIds,
     codePins,
     setCodePins,
     recentStatChanges,
@@ -616,6 +620,7 @@ const GameViewer = ({
     setMemoryPins,
     setEntityVisualPreference,
     setEntityImageIndex,
+    personaRef,
     setPersonaRef,
     milestoneSelection,
     setMilestoneSelection,
@@ -1343,6 +1348,7 @@ const GameViewer = ({
         setPlayerTraits(preTurn.playerTraits);
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
         setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
+        setCascadeOffTraitIds(preTurn.cascadeOffTraitIds ?? {});
       };
       toPreTurn();
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
@@ -2106,7 +2112,7 @@ const GameViewer = ({
       // `codeView`, which React has not re-rendered for.
       beforeBoxDeltasRef.current = {};
       const preBox: TurnCodeState = {
-        playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues,
+        playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
       };
       const beforeBox = await runStatCode(
         rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
@@ -2503,8 +2509,15 @@ const GameViewer = ({
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
-  const liveCodeStateRef = useRef({ codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, activeTraits });
-  liveCodeStateRef.current = { codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, activeTraits };
+  /** The authored world the player's trait gates read: the traits, the groups, and who the player is. */
+  const gatedWorld = useCallback(
+    (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
+      traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
+    }),
+    [authoredTraits, traitGroups, entities, persona, personaRef],
+  );
+  const liveCodeStateRef = useRef({ codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits });
+  liveCodeStateRef.current = { codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits };
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
   // puts back exactly what the box moved. The last snapshot holds the same five fields — nothing else
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
@@ -2563,13 +2576,16 @@ const GameViewer = ({
         // The same slice the player's checkbox switches, so a code switch is that switch.
         const live = liveCodeStateRef.current;
         const held = preTurn ? savedTraits(preTurn, traits)
-          : { acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues };
+          : {
+            acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues,
+            cascadeOffTraitIds: live.cascadeOffTraitIds,
+          };
         const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : live.activeTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const result = await runStatCodeTurn({
           timing,
           stats, enabled, previous: before, asks, regenApplied: regen.applied, clock,
-          traits: { ...held, world: { traits: authoredTraits, groups: traitGroups } },
+          traits: { ...held, world: gatedWorld() },
           placeholders: {
             // The world's list only: stat code is authored with the world and never reads a persona's.
             placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
@@ -2586,6 +2602,7 @@ const GameViewer = ({
           setPlayerTraits(result.traits.acquired);
           setDisabledTraitIds(result.traits.disabledTraitIds);
           setAppliedTraitValues(result.traits.appliedValues);
+          setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
           for (const line of result.traits.log) addLogEntry(line);
         }
         /** What this run left, in the shapes state holds. */
@@ -2597,6 +2614,7 @@ const GameViewer = ({
           playerTraits: [...(result.traits?.acquired ?? held.acquired)],
           disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
           appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
+          cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
           return nextPins === basePins ? null : stateAfterRun();
@@ -2619,8 +2637,8 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
-      traits, authoredTraits, authoredStats, traitGroups, resolveTraitText,
-      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, addLogEntry],
+      traits, authoredStats, resolveTraitText, gatedWorld,
+      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, addLogEntry],
   );
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
@@ -2680,6 +2698,7 @@ const GameViewer = ({
       setPlayerTraits(undo.playerTraits ?? []);
       setDisabledTraitIds(undo.disabledTraitIds ?? []);
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
+      setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
       setRecentStatChanges({});
       setHeldStatChanges({});
     }
@@ -3818,8 +3837,8 @@ const GameViewer = ({
 
   /** The gameplay slice the trait runtime reads and rewrites, and the setters that put a result back. */
   const traitState = useMemo<TraitRuntimeState>(
-    () => ({ stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues }),
-    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues],
+    () => ({ stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds }),
+    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds],
   );
   const commitTraitState = useCallback(
     (next: TraitRuntimeState) => {
@@ -3828,38 +3847,45 @@ const GameViewer = ({
       setPlayerTraits(next.traits);
       setDisabledTraitIds(next.disabledTraitIds);
       setAppliedTraitValues(next.appliedValues);
+      setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
     },
-    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues],
+    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds],
+  );
+
+  // The banner naming what the player's last switch or persona change turned off. Session-only.
+  const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
+  const traitName = useCallback((trait: Trait) => resolveTraitText(trait, trait.name), [resolveTraitText]);
+  const commitGatedTraits = useCallback(
+    (result: GatedTraitResult, because: string) => {
+      if (result.state !== traitState) commitTraitState(result.state);
+      for (const line of result.log) addLogEntry(line);
+      setTraitCascade(result.cascade.length ? { off: result.cascade.map(traitName), because } : null);
+    },
+    [traitState, commitTraitState, addLogEntry, traitName],
   );
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
    * author marked switchable is available at any time; everything the trait does beyond its stat changes (AI
-   * text, stat availability, placeholder pins) is derived from the active set and simply follows.
+   * text, stat availability, placeholder pins) is derived from the active set and simply follows. An acquired
+   * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */
   const toggleTrait = useCallback(
     (traitId: string, enabled: boolean) => {
-      const world = { traits: authoredTraits, groups: traitGroups };
-      const acquiredTrait = chosenTraits.find((t) => t.id === traitId);
-      if (acquiredTrait) {
-        const { state: next, retired } = setTraitEnabled(traitState, traitId, enabled, world);
-        commitTraitState(next);
-        const siblings = retired.map((t) => t.name);
-        for (const line of traitSwitchLog(acquiredTrait.name, enabled ? 'on' : 'off', siblings)) addLogEntry(line);
-        return;
-      }
-      // Not acquired yet: only a switch-on of a trait the author marked switchable acquires one. It freezes the
-      // world's stat changes as they stand right now, exactly as a trait chosen at creation freezes them at
-      // game start. Authored, chips intact, for the same reason seeding uses them: a resolved name written
-      // into state stops being resolvable.
-      const authored = authoredTraits.find((t) => t.id === traitId);
-      if (!enabled || !authored?.playerToggle) return;
-      const { state: next, retired } = acquireTrait(traitState, authored, world);
-      commitTraitState(next);
-      const siblings = retired.map((t) => t.name);
-      for (const line of traitSwitchLog(resolveTraitText(authored, authored.name), 'acquired', siblings)) addLogEntry(line);
+      const result = switchPlayerTrait(traitState, traitId, enabled, gatedWorld(), traitName);
+      if (!result) return;
+      const trait = chosenTraits.find((t) => t.id === traitId) ?? authoredTraits.find((t) => t.id === traitId);
+      commitGatedTraits(result, trait ? traitName(trait) : traitId);
     },
-    [chosenTraits, authoredTraits, traitGroups, traitState, commitTraitState, addLogEntry, resolveTraitText],
+    [traitState, gatedWorld, traitName, chosenTraits, authoredTraits, commitGatedTraits],
+  );
+
+  /** Settle the traits under a new persona, which can open or close "playing as" gates. */
+  const settlePersonaTraits = useCallback(
+    (ref: PersonaRef, name: string | null) => {
+      commitGatedTraits(settleTraits(traitState, gatedWorld(ref), traitName), name ?? 'the persona change');
+    },
+    [traitState, gatedWorld, traitName, commitGatedTraits],
   );
 
   const changeLocation = useCallback(
@@ -4336,6 +4362,9 @@ const GameViewer = ({
     <RightPanel
       onLocationClick={() => setIsLocationModalOpen(true)}
       onToggleTrait={toggleTrait}
+      onPersonaChange={settlePersonaTraits}
+      traitCascade={traitCascade}
+      onDismissTraitCascade={() => setTraitCascade(null)}
       onRegenerateStats={handleRegenerateStats}
       sceneImageJob={sceneImageJob}
       language={language}

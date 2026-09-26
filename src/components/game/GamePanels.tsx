@@ -53,7 +53,10 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
-import type { Entity, SceneEntity } from '@/types';
+import type { Entity, PersonaRef, SceneEntity } from '@/types';
+import { gateStates, worldGateInput } from '@/lib/traitGates';
+import { worldEntitiesOf } from '@/lib/persona';
+import type { TraitCascade } from './SetupTraitList';
 import { formatAbsolute, formatClock } from '@/lib/gameClock';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
@@ -1072,10 +1075,18 @@ export const MiddlePanel = ({
   );
 };
 
-export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, sceneImageJob, language, setLanguage }: {
+export const RightPanel = ({
+  onLocationClick, onToggleTrait, onPersonaChange, traitCascade, onDismissTraitCascade, onRegenerateStats, sceneImageJob,
+  language, setLanguage,
+}: {
   onLocationClick: () => void;
   /** Switch a chosen trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
   onToggleTrait: (traitId: string, enabled: boolean) => void;
+  /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
+  onPersonaChange: (ref: PersonaRef, name: string | null) => void;
+  /** What the player's last trait switch or persona change turned off. */
+  traitCascade: TraitCascade | null;
+  onDismissTraitCascade: () => void;
   onRegenerateStats: (page: number) => void;
   sceneImageJob: 'tags' | 'image' | null;
   language: string;
@@ -1104,9 +1115,13 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
     viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
-    drainingStatChanges
+    drainingStatChanges,
+    personaRef,
   } = useGameplay();
-  const { locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText } = useResolvedWorld();
+  const {
+    locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText,
+    entities: cast, persona,
+  } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
   const resolvePH = usePlaceholderResolver();
@@ -1134,6 +1149,12 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
     () => activeStatEnabled(playerStats, activeTraits),
     [playerStats, activeTraits],
   );
+  // The played world entity is out of the cast, and a "playing as" gate has to find it.
+  const traitGates = React.useMemo(() => gateStates(worldGateInput(
+    { traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona) },
+    personaRef ?? { source: 'none' },
+    activeTraits.map((t) => t.id),
+  )), [traits, traitGroups, cast, persona, personaRef, activeTraits]);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
@@ -1172,7 +1193,7 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
         {/* The story's position, not an hour count: elapsed hours read as a stopwatch, and the daypart is
             what the prose is actually written around. Same wording the memory stamps use. */}
         <p className="text-center">{formatAbsolute(gameTime, calendar)}</p>
-        <PersonaRow />
+        <PersonaRow onChange={onPersonaChange} />
       </div>
 
       <Tabs value={shownTab} onValueChange={setActiveTab} className="w-full flex-grow flex flex-col overflow-hidden">
@@ -1254,6 +1275,9 @@ export const RightPanel = ({ onLocationClick, onToggleTrait, onRegenerateStats, 
             resolveTraitText={resolveTraitText}
             view={traitsView}
             setView={setTraitsView}
+            gates={traitGates}
+            cascade={traitCascade}
+            onDismissCascade={onDismissTraitCascade}
           />
         </TabsContent>
         <TabsContent value="location" className="flex-grow overflow-hidden">
