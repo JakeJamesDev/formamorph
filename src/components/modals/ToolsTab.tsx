@@ -1,11 +1,17 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type ReactNode } from 'react';
 import { Copy, Maximize2, Minimize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import type { Tool, ToolEnabledMap } from '@/types';
+import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
+import { Hint } from '@/components/ui/typography';
+import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
+import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ActionIcon } from '@/lib/actionIcons';
 import { downloadBlob } from '@/lib/downloadBlob';
@@ -27,6 +33,41 @@ export interface ToolFileTransfer {
 }
 
 const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40';
+
+/** The prompts a Tool can be offered to, in the Prompts rail's order. */
+const OFFER_OPTIONS: MultiSelectOption[] = Object.values(PROMPT_TAB_REQUESTS)
+  .map((kind) => ({ value: kind, label: REQUEST_LABELS[kind] }));
+
+/** Offered To and Max Calls per Request, written on each change. */
+function AvailabilityFields({ tool, onChange }: { tool: Tool; onChange: (tool: Tool) => void }) {
+  const id = useId();
+  const setLimit = (text: string) => {
+    const limit = Number.parseInt(text.replace(/\D/g, ''), 10);
+    const { callLimit: _, ...rest } = tool;
+    onChange(limit >= 1 ? { ...rest, callLimit: limit } : rest);
+  };
+  return (
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="flex flex-col gap-1 min-w-0">
+        <Label id={`${id}-offered`}>Offered To</Label>
+        <Hint>Sends the Tool with these prompts</Hint>
+        <MultiSelect
+          aria-labelledby={`${id}-offered`} options={OFFER_OPTIONS} placeholder="No Prompts" allSelectedLabel="All Prompts"
+          defaultValue={tool.offeredTo} onValueChange={(kinds) => onChange({ ...tool, offeredTo: kinds as AIRequestType[] })}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <Label htmlFor={`${id}-limit`}>Max Calls per Request</Label>
+        <Hint id={`${id}-limit-hint`}>Leave blank for the default of {DEFAULT_TOOL_CALL_LIMIT}</Hint>
+        <Input
+          id={`${id}-limit`} className="w-24" inputMode="numeric" placeholder={String(DEFAULT_TOOL_CALL_LIMIT)}
+          aria-describedby={`${id}-limit-hint`}
+          value={tool.callLimit?.toString() ?? ''} onChange={(e) => setLimit(e.target.value)}
+        />
+      </div>
+    </div>
+  );
+}
 
 /**
  * Settings → Tools: the catalog and the player's own Tools with the active preset's switches, a read view of
@@ -120,8 +161,7 @@ export function ToolsTab({
 
   if (view.draft) {
     const { draft } = view;
-    const builtIn = isCatalogToolId(draft.id);
-    const saved = builtIn || userTools.some((t) => t.id === draft.id);
+    const saved = userTools.some((t) => t.id === draft.id);
     return (
       <ToolEditor
         draft={draft}
@@ -130,7 +170,6 @@ export function ToolsTab({
         onEditTabChange={(editTab) => onViewChange({ ...view, editTab })}
         userTools={userTools}
         editing={saved}
-        builtIn={builtIn}
         world={world}
         fullscreen={fullscreen}
         fullscreenButton={fullscreenButton}
@@ -228,6 +267,7 @@ export function ToolsTab({
                   Enabled
                 </label>
               </div>
+              <AvailabilityFields tool={selected} onChange={onSaveTool} />
               <p className="text-helper text-muted-foreground whitespace-pre-wrap">{selected.description}</p>
               <ToolTryIt key={selected.id} tool={selected} world={world} />
             </div>
@@ -238,21 +278,19 @@ export function ToolsTab({
       {/* Fixed: the actions keep their place whichever Tool is selected. */}
       {selected && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
-          {/* A built-in Tool opens on Availability, the only tab it can change. */}
-          <Button
-            variant="outline"
-            onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: builtInSelected ? 'availability' : 'definition' })}
-          >
-            <Pencil className="h-4 w-4 mr-1" />Edit
-          </Button>
           {builtInSelected ? (
             <Button variant="outline" onClick={() => duplicate(selected)} disabled={!userCanStore(selected.handler)}>
               <Copy className="h-4 w-4 mr-1" />Duplicate
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => setConfirmDelete(selected)}>
-              <Trash2 className="h-4 w-4 mr-1" />Delete
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: 'definition' })}>
+                <Pencil className="h-4 w-4 mr-1" />Edit
+              </Button>
+              <Button variant="outline" onClick={() => setConfirmDelete(selected)}>
+                <Trash2 className="h-4 w-4 mr-1" />Delete
+              </Button>
+            </>
           )}
         </div>
       )}

@@ -7,7 +7,7 @@ describe('toolSummary', () => {
   it('reads the recall Tool as a search that returns a few matches, not a full description', () => {
     const recall = TOOL_CATALOG.find((t) => t.id === 'recall')!;
     expect(toolSummary(recall)).toBe(
-      `Searches past turns and diaries by query and returns up to 5 matches · Offered to Narration · ${DEFAULT_TOOL_CALL_LIMIT} calls per request`,
+      `Searches past turns and diaries by query and returns up to 5 matches · max ${DEFAULT_TOOL_CALL_LIMIT} calls per request`,
     );
   });
 });

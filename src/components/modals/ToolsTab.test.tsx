@@ -6,6 +6,9 @@ import { ToolsHarness as Harness } from '@/test/toolsTab';
 import { choosePreset, current, switchesOf, toolsState } from '@/test/toolsTabState';
 import type { ToolFileTransfer } from './ToolsTab';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
+import { withCatalogOverrides } from '@/lib/tools/catalogOverrides';
+import { toolsOfferedTo } from '@/lib/tools/toolOffer';
+import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 
 const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
@@ -72,11 +75,11 @@ describe('the read view', () => {
     const user = userEvent.setup();
     render(<Harness initial={userState([tool({ callLimit: 2, offeredTo: ['narration', 'director'] })])} />);
     expect(heading()).toBe('get_entity');
-    expect(screen.getByText(/Looks up entities by name and returns the full description · Offered to Narration · 4 calls per request/)).toBeInTheDocument();
+    expect(screen.getByText('Looks up entities by name and returns the full description · max 4 calls per request')).toBeInTheDocument();
 
     await user.click(list().getByRole('button', { name: 'get_weather' }));
     expect(heading()).toBe('get_weather');
-    expect(screen.getByText('Returns a template · Offered to Narration, Director · 2 calls per request')).toBeInTheDocument();
+    expect(screen.getByText('Returns a template · max 2 calls per request')).toBeInTheDocument();
     expect(screen.getByText('Purpose: weather.')).toBeInTheDocument();
     const schema = screen.getByText('What the AI Receives').closest('details')!;
     expect(schema).not.toHaveAttribute('open');
@@ -126,6 +129,116 @@ describe('Enabled', () => {
     expect(switchesOf('default')).toEqual({});
     expect(switchesOf('mine')).toEqual({});
     expect(current().store).toEqual(builtinState([tool()]).store);
+  });
+});
+
+describe('Offered To', () => {
+  const SHIPPED = structuredClone(TOOL_CATALOG);
+  const offeredTo = () => screen.getByRole('combobox', { name: 'Offered To' });
+  const pick = async (user: ReturnType<typeof userEvent.setup>, ...options: (string | RegExp)[]) => {
+    await user.click(offeredTo());
+    for (const name of options) await user.click(await screen.findByRole('option', { name }));
+    await user.keyboard('{Escape}');
+  };
+
+  it('writes a user Tool’s definition live, with no Save step', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={toolsState([tool()], { 'u-weather': true })} />);
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    await pick(user, 'Choices, not selected');
+    expect(current().tools).toEqual([tool({ offeredTo: ['narration', 'choices'] })]);
+    expect(current().catalogOverrides).toEqual({});
+    expect(screen.queryByRole('button', { name: 'Save Tool' })).toBeNull();
+    expect(switchesOf('mine')).toEqual({ 'u-weather': true });
+  });
+
+  it('writes a catalog Tool’s global override live, leaves the catalog as shipped and its switch alone', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={toolsState([], { get_entity: true })} />);
+    expect(heading()).toBe('get_entity');
+    await pick(user, 'Narration, selected', 'Choices, not selected');
+    expect(current().catalogOverrides).toEqual({ get_entity: { offeredTo: ['choices'] } });
+    expect(current().tools).toEqual([]);
+    expect(TOOL_CATALOG).toEqual(SHIPPED);
+    expect(switchesOf('mine')).toEqual({ get_entity: true });
+    const tools = withCatalogOverrides(TOOL_CATALOG, current().catalogOverrides);
+    expect(toolsOfferedTo('choices', tools, switchesOf('mine'), true).map((t) => t.id)).toEqual(['get_entity']);
+    expect(toolsOfferedTo('narration', tools, switchesOf('mine'), true)).toEqual([]);
+  });
+
+  it('shows the selected Tool’s own prompts after switching Tools', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState([tool({ offeredTo: ['director'] })])} />);
+    await pick(user, 'Choices, not selected');
+    expect(within(offeredTo()).getByText('Choices')).toBeInTheDocument();
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    expect(within(offeredTo()).getByText('Director')).toBeInTheDocument();
+    expect(within(offeredTo()).queryByText('Choices')).toBeNull();
+  });
+
+  it('lists the prompts in the Prompts rail order', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState()} />);
+    await user.click(offeredTo());
+    const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    expect(options).toEqual(['(Select All)', ...Object.values(PROMPT_TAB_REQUESTS).map((k) => REQUEST_LABELS[k]), 'Clear', 'Close']);
+  });
+
+  it('checks every prompt with Select All and shows one All Prompts chip, then clears them all', async () => {
+    const user = userEvent.setup();
+    const every = Object.values(PROMPT_TAB_REQUESTS);
+    render(<Harness initial={userState([tool()])} />);
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    await pick(user, /^Select all \d+ options$/);
+    expect(within(offeredTo()).getByText('All Prompts')).toBeInTheDocument();
+    expect(within(offeredTo()).queryByText('Narration')).toBeNull();
+    expect([...current().tools[0].offeredTo].sort()).toEqual([...every].sort());
+
+    await pick(user, /^Select all \d+ options$/);
+    expect(within(offeredTo()).getByText('No Prompts')).toBeInTheDocument();
+    expect(current().tools[0].offeredTo).toEqual([]);
+  });
+});
+
+describe('Max Calls per Request', () => {
+  const limit = () => screen.getByRole('textbox', { name: 'Max Calls per Request' });
+
+  it('writes a user Tool’s limit live, and a blank falls back to the default', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState([tool()])} />);
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    expect(limit()).toHaveAccessibleDescription('Leave blank for the default of 4');
+    await user.type(limit(), '7');
+    expect(current().tools[0].callLimit).toBe(7);
+    expect(screen.getByText('Returns a template · max 7 calls per request')).toBeInTheDocument();
+
+    await user.clear(limit());
+    expect(current().tools[0]).not.toHaveProperty('callLimit');
+    expect(screen.getByText('Returns a template · max 4 calls per request')).toBeInTheDocument();
+  });
+
+  it('writes a catalog Tool’s limit to the global override', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState()} />);
+    await user.type(limit(), '3');
+    expect(current().catalogOverrides).toEqual({ get_entity: { offeredTo: ['narration'], callLimit: 3 } });
+    expect(current().tools).toEqual([]);
+    expect(limit()).toHaveValue('3');
+  });
+});
+
+describe('the footer actions', () => {
+  it('offers Duplicate and no Edit for a built-in Tool, and Edit and Delete for a user Tool', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState([tool()])} />);
+    expect(heading()).toBe('get_entity');
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeEnabled();
+
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Duplicate' })).toBeNull();
   });
 });
 
