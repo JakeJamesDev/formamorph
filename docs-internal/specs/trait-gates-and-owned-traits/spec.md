@@ -128,11 +128,12 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
     | { kind: 'playingAs'; id: string };
   ```
 
-  Off-world (entity file, library, character card), each trait or group requirement also stores the target's name. Import rebinds by name. A requirement with no id and no match is unresolved.
+  Off-world (entity file, library, character card), a requirement that points into the same entity keeps its id and travels with the entity. A requirement that points out of the entity, at a world trait or group, also stores the target's name. Import rebinds it by name only when exactly one trait or group in the new world carries that name. No match, or more than one, leaves it unresolved.
 - **Owned traits.** An entity gains optional owned traits and owned trait groups. They reuse the trait and group shapes. Owned traits carry no stat changes and no stat toggles. They keep requirements and placeholder pins.
-- **Tree placement.** An entity gains an optional placement in the world trait tree: a parent world group and a sibling order. Absent means top level.
+- **Tree placement.** An entity gains an optional placement in the world trait tree: a parent world group and a sibling order. Absent means top level. A placement whose group no longer exists reads as top level. The parent is always a world group, never another entity's node or owned group.
 - **Persona start.** An entity gains an optional starting location id. It applies only to a world entity with the Persona mark.
-- **Save.** Owned trait state is stored per owner: for each entity id, the chosen owned trait ids and the ones switched off in play. The player's world traits keep their current save fields. Owned traits need no applied-value records, because they carry no stat effects.
+- **Save.** Owned trait state is stored per owner: for each entity id, the chosen owned trait ids and the ones switched off in play. The player's world traits keep their current save fields. Owned traits need no applied-value records, because they carry no stat effects. Every owner, the player included, also stores the ids a cascade turned off, so that a return can tell them from a hand switch-off. Load drops the state of an entity id the world no longer holds.
+- **Playing-as off-world.** An exported requirement of kind `playingAs` stores the entity's name and rebinds by the same unique-name rule against the new world's personas.
 - **Export shape.** Every item above is an additive change to the exported world, entity, and save shapes. Each ticket that adds one states it in its response.
 
 ### The gate module (new, pure)
@@ -140,16 +141,19 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - One module owns all gate logic. No UI and no context read it any other way.
 - Input: the combined traits (world and every owner), the groups, the active set for each owner, and the persona ref.
 - Output: for each trait, whether it is unlocked, and for a locked one the reason text parts ("Paladin", "Ash's Tamed", "any Class", "playing as Sir Aldric", or the stored name of an unresolved target).
-- `settle`: takes proposed active sets and returns the settled sets plus the list of traits that turned off. It turns off every active trait whose gate fails, and repeats until nothing changes.
+- `settle`: takes proposed active sets and returns the settled sets plus the list of traits that turned off, in cascade order. It builds the settled set from the ground up: a proposed trait with no requirements is kept; a proposed trait whose gate holds against the kept set joins it; repeat until nothing joins. Every proposed trait left outside turned off. Two traits that require only each other therefore never hold each other up, and a gated default whose chain has no open root starts unselected.
+- The turned-off list orders dependents before their prerequisites, so that a caller reversing stats does so in one deterministic order.
 - A trait requirement holds when that trait is active on its owner. A group requirement holds when any trait below the group in the tree is active, including traits of entity nodes placed inside it. "Playing as" holds when the persona is that world entity.
 - An unresolved requirement never holds.
 - Exclusive groups keep their rule. Picking a sibling retires the others first, then `settle` runs.
-- Cycle detection lives here too, for the Test Bench.
+- **Return.** `settle` also switches an acquired trait back on when its gate holds again, but only a trait a cascade turned off. A trait the player switched off by hand stays off. A return never retires an exclusive sibling: when the player has picked one since, the trait stays off and leaves the cascade-off list.
+- **Never-unlockable sets** are what the Test Bench reports, not plain loops. A trait is unlockable when some requirement of it can hold through a chain that reaches a trait with no requirements, a persona, or a group with such a trait. "A requires B or C, B requires A" passes, because C opens A. A set with no such path is the error, and the finding lists its members.
 
 ### Callers of the gate module
 
 - **Enter-world:** each selection change and each persona change goes through `settle`. Default traits collapse through it at open, so a gated default whose requirement is off starts unselected.
 - **In play:** trait switches in the trait runtime, persona changes, and stat-code trait switches go through `settle`. World traits it turns off reverse their stats through the existing honest reversal. The story log notes a cascade with the existing switch-log wording.
+- **Stat code meets gates.** Code ignores Player Can Toggle but not gates. A code switch-on of a locked trait acquires it and `settle` turns it off in the same pass, with a switch-off log line. The sandbox's `traits` entries do not change.
 - The cascade banner reads the turned-off list from `settle`.
 
 ### One tree
@@ -162,22 +166,27 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 ### Editor (prototype variant A)
 
 - Tree rows: an entity node shows a user icon in the folder icon's slot, with "Entity" or "Playable" as meta. A gated trait row shows a lock and the requirement count, and the full rule as a tooltip. An unresolved requirement tints it red.
-- Trait panel, Details tab: a **Requires** field. Its hint reads "Available when the player has any one of these". Chips join with "or", and each has a remove button. **Add Requirement** opens a searchable picker in three sections: Traits, Any Trait in a Group, Playing As. Each row shows where its target lives.
+- Trait panel, Details tab: a **Requires** field. Its hint reads "Available when any one of these holds". Chips join with "or", and each has a remove button. **Add Requirement** opens a searchable picker in three sections: Traits, Any Trait in a Group, Playing As. Each row shows where its target lives.
 - An owned trait shows its owner at the top of Details and has no Stats tab.
 - The entity editor gains a Traits section that lists the entity's owned traits and adds new ones. A world persona gains a Starting Location select, with Automatic first and then every location.
 
 ### Enter-world and in play (prototype variant A)
 
-- Nav rows for entity nodes show the user icon. An entity's page opens with its portrait in the Persona picker's 2:3 frame, beside the name and player description. The played entity is marked "You".
+- Nav rows for entity nodes show the user icon. An entity's page opens with its portrait in the Persona picker's 2:3 frame, beside the name and player description. The played entity is marked "You". Owned defaults preselect per entity, so a player can leave the cast as authored and move on.
 - Locked traits stay in place, disabled, with a lock icon and a "Requires … or …" line. An unlocked gated trait shows "Unlocked by …".
 - A cascade shows one dismissible banner: "Turned off Plate Armor, because of Rogue."
-- The persona picker shows "Starts at …" under a persona with a starting location. Picking it preselects that location through the existing persona location pick, which now prefers the explicit field. The Starting Location step lists that location even when it is not flagged.
+- The persona picker shows "Starts at …" under a persona with a starting location. Picking it preselects that location through the existing persona location pick, which now prefers the explicit field. The Starting Location step lists that location even when it is not flagged, but only while that persona is picked. A switch to a persona that does not name it drops the selection back to the automatic pick.
 
 ### AI context
 
 - An NPC's active owned traits join its entity context. The full context gets each trait's AI description under the trait's name. The summary gets one "Traits: …" line of names.
 - The played entity's active owned traits join the player's trait context, beside the world traits.
 - Both are prompt-text changes and follow the prompt-writing guide, including probes.
+
+### Placeholder pins
+
+- Every active owned trait lays its pins, on any owner. The pin collector lays owned traits first, in tree order per owner, then the player's world traits and the played entity's owned traits. The later pin wins, so the player's picks beat the cast's.
+- The Test Bench lens and the pin-conflict rule read every owner's active traits.
 
 ### Delivery order
 
@@ -186,14 +195,15 @@ Gates on world traits come first and ship on their own. Owned traits, the one tr
 ## Testing Decisions
 
 - A good test drives a public seam with a small world and asserts what the player or author would see: which traits are unlocked, what turned off, what the AI reads, what a round-trip keeps. It does not assert internal order or private helpers.
-- **Gate module (main seam).** Unit tests cover any-of, trait, group, and playing-as requirements, requirements across owners, chained cascades, exclusive-group retirement followed by a cascade, persona switches, unresolved requirements, cycle detection, and default collapse. Each guard is proven to fail when its rule is removed (see the test-bar skill).
+- **Gate module (main seam).** Unit tests cover any-of, trait, group, and playing-as requirements, requirements across owners, chained cascades and their off-order, exclusive-group retirement followed by a cascade, persona switches, unresolved requirements, mutual-requirement defaults that collapse, a code switch-on of a locked trait, a return after the gate holds again, a hand switch-off that never returns, a return blocked by a picked sibling, never-unlockable sets against a loop that opens through a third trait, and default collapse. Each guard is proven to fail when its rule is removed (see the test-bar skill).
 - **Trait tree.** Extend the existing trait tree tests: entity nodes placed in world groups, library nodes last, nodes hidden when their entity owns nothing, and cross-owner drops that keep ids or are refused for stat effects.
-- **Import and export.** Extend the entity file and adoption tests: requirements keep names off-world, rebind by name on import, and stay locked with no match.
-- **Save.** Extend the trait save round-trip test with per-owner owned state, and with picks kept across a persona switch.
+- **Import and export.** Extend the entity file and adoption tests: self-owned requirements keep ids, outward ones keep names, rebind on a unique name match, and stay locked with no match or two matches.
+- **Save.** Extend the trait save round-trip test with per-owner owned state, the cascade-off list, picks kept across a persona switch, and state dropped for a removed entity.
 - **Trait runtime.** Extend its tests so that a cascade in play reverses stats honestly and toggling stays neutral.
 - **UI wiring only.** Component tests on the trait panel (prior art: `TraitManager.test.tsx`) for the Requires field, and on the setup trait list for disabled rows and the banner. Logic stays in the gate module's tests.
 - **Test Bench.** New rules for requirement cycle, unresolved requirement, and gated default. The prior art is the existing pin rules.
-- **Persona start.** Extend the persona pick tests: the explicit field wins, Automatic falls back, and an unflagged location is still offered.
+- **Persona start.** Extend the persona pick tests: the explicit field wins, Automatic falls back, an unflagged location is offered while its persona is picked, and a switch away drops it.
+- **Pins.** Extend the pin collector and Test Bench lens tests: an NPC's owned trait pins, and a player trait wins the same placeholder.
 
 ## Out of Scope
 
@@ -210,4 +220,4 @@ Gates on world traits come first and ship on their own. Owned traits, the one tr
 - **Verdict:** variant A won (inline requirements; locked rows in place; a cascade banner). Round avatars were rejected, because entity pictures are portrait-shaped. Tree rows use a glyph, and entity pages use the 2:3 frame.
 - **Question the prototype settled:** what gates, entity nodes, and locked traits look like in the editor and at enter-world. Variant B (unlock branches, Gates tab) and C (gates overview, locked shelf) remain on the branch for reference.
 - **Decided while writing:** a group requirement counts traits of entity nodes placed inside the group. This follows "anything in the tree". Raise it if it reads wrong.
-- **Grilling record:** the design was grilled on 2026-09-26 (Q1–Q33). The decisions above carry its answers.
+- **Grilling record:** the design was grilled on 2026-09-26 (Q1–Q33), and again after review the same day (Q34–Q41: never-unlockable sets, return after cascade, playing-as by name, dropped state, pins on every owner, cascade-off list, sibling wins, player pins last). The decisions above carry the answers.
