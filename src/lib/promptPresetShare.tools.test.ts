@@ -23,6 +23,17 @@ describe('sharing Tool switches with a preset', () => {
     }
   });
 
+  it('carries the location and dictionary lookups as switches only, and restores them on import', () => {
+    const enabledTools = { get_location: true, get_dictionary_entry: false };
+    const shared = buildSharedPreset({ ...base, enabledTools, tools: [weather] }, APP);
+    expect(shared.enabledTools).toEqual(enabledTools);
+    expect('tools' in shared).toBe(false);
+    for (const r of [parseSharedJson(serializeSharedJson(shared), APP), parseSharedCode(serializeSharedCode(shared), APP)]) {
+      expect(r.preset!.enabledTools).toEqual(enabledTools);
+      expect(r.warnings).toEqual([]);
+    }
+  });
+
   it('leaves user Tool ids out of the switches, since they name nothing on another machine', () => {
     const shared = buildSharedPreset({ ...base, enabledTools: { get_entity: false, 'u-weather': true } }, APP);
     expect(shared.enabledTools).toEqual({ get_entity: false });

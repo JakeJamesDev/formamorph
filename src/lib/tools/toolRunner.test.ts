@@ -7,7 +7,7 @@ import rawWorld from '../../../testing/baseline/sedge-landing.json';
 import { migrateWorld } from '@/lib/version';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
 import { TOOL_CATALOG } from './toolCatalog';
-import { buildToolSnapshot, type ToolSnapshot } from './toolSnapshot';
+import { buildToolSnapshot, sampleToolSnapshot, type ToolSnapshot } from './toolSnapshot';
 import { runToolCall } from './toolRunner';
 import { argChipToken } from './argChips';
 import type { Tool, ToolHandler, ToolParam } from '@/types';
@@ -191,6 +191,67 @@ describe('runToolCall: Lookup', () => {
     const result = await runToolCall(broken, '{"name": "Bram"}', s);
     expect(result.failure).toBe('handler');
     expect(errorOf(result.text)).toContain('"who"');
+  });
+
+  it('finds a dictionary entry by its name without regard to case', async () => {
+    const world = sedge();
+    world.dictionaries = world.dictionaries!.map((book) => ({
+      ...book, entries: book.entries.map((e) => (e.id === 'dict-gloamwater' ? { ...e, name: 'The Silent Reach' } : e)),
+    }));
+    const lore = tool({ kind: 'lookup', source: 'dictionary', param: 'term', returns: 'full' }, [param('term')]);
+    const result = await runToolCall(lore, '{"term": "the silent REACH"}', snapshot(world));
+    expect(matches(result.text).map((m) => m.id)).toEqual(['dict-gloamwater']);
+  });
+});
+
+describe('runToolCall: the built-in location and dictionary lookups', () => {
+  const GET_LOCATION = TOOL_CATALOG.find((t) => t.id === 'get_location')!;
+  const GET_DICTIONARY_ENTRY = TOOL_CATALOG.find((t) => t.id === 'get_dictionary_entry')!;
+  const s = snapshot();
+  const location = (id: string) => sedge().locations.find((l) => l.id === id)!;
+
+  it('finds a location by name, with its full description', async () => {
+    const result = await runToolCall(GET_LOCATION, '{"name": "Far Bank"}', s);
+    expect(result.failure).toBeUndefined();
+    expect(matches(result.text)).toEqual([
+      { id: 'loc-farbank', name: 'Far Bank', description: location('loc-farbank').aiDescription },
+    ]);
+  });
+
+  it('finds a location without regard to case', async () => {
+    const result = await runToolCall(GET_LOCATION, '{"name": "the eelHOUSE"}', s);
+    expect(matches(result.text).map((m) => m.id)).toEqual(['loc-eelhouse']);
+  });
+
+  it('returns an empty matches list for an unknown location', async () => {
+    expect(await runToolCall(GET_LOCATION, '{"name": "The Mill"}', s)).toEqual({ text: '{"matches": []}' });
+  });
+
+  it('finds a dictionary entry by a trigger keyword, with its text', async () => {
+    const result = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "gloam"}', s);
+    expect(result.failure).toBeUndefined();
+    const [match] = matches(result.text);
+    expect(match).toMatchObject({ id: 'dict-gloamwater', name: 'gloamwater' });
+    expect(match.description).toMatch(/^Gloamwater: a stretch of river/);
+  });
+
+  it('finds a dictionary entry by name or keyword without regard to case', async () => {
+    const result = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "TOLLOW"}', s);
+    expect(matches(result.text).map((m) => m.id)).toEqual(['dict-tollow']);
+  });
+
+  it('returns an empty matches list for an unknown term', async () => {
+    expect(await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "mill wheel"}', s)).toEqual({ text: '{"matches": []}' });
+  });
+
+  it('runs against the sample world when no world is open', async () => {
+    const sample = sampleToolSnapshot();
+    const place = await runToolCall(GET_LOCATION, '{"name": "sample town"}', sample);
+    expect(matches(place.text).map((m) => m.name)).toEqual(['Sample Town']);
+    const byName = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "The Long Ebb"}', sample);
+    expect(matches(byName.text).map((m) => m.id)).toEqual(['long-ebb']);
+    const byKey = await runToolCall(GET_DICTIONARY_ENTRY, '{"keyword": "Salt Glass"}', sample);
+    expect(matches(byKey.text).map((m) => m.id)).toEqual(['salt-glass']);
   });
 });
 

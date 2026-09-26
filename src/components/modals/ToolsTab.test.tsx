@@ -5,6 +5,7 @@ import type { Tool } from '@/types';
 import { ToolsHarness as Harness } from '@/test/toolsTab';
 import { choosePreset, current, switchesOf, toolsState } from '@/test/toolsTabState';
 import type { ToolFileTransfer } from './ToolsTab';
+import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 
 const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
@@ -22,6 +23,9 @@ const tool = (patch: Partial<Tool> = {}): Tool => ({
 });
 const script = tool({ id: 'u-dice', name: 'roll_dice', handler: { kind: 'script', code: 'return 4;' } });
 
+/** The Built-In rows, in catalog order. */
+const BUILT_IN = TOOL_CATALOG.map((t) => t.name);
+
 const userState = (tools: Tool[] = []) => toolsState(tools);
 const builtinState = (tools: Tool[] = []) => toolsState(tools, {}, 'experimental');
 
@@ -36,15 +40,15 @@ beforeEach(() => { Object.values(toast).forEach((f) => f.mockClear()); });
 describe('the list', () => {
   it('shows the catalog under Built-In and the player’s Tools under My Tools, sorted', () => {
     render(<Harness initial={userState([script, tool()])} />);
-    expect(listed()).toEqual(['get_entity', 'get_weather', 'roll_dice', 'New Tool']);
+    expect(listed()).toEqual([...BUILT_IN, 'get_weather', 'roll_dice', 'New Tool']);
   });
 
   it('lists every Tool under whichever preset the selector shows', () => {
     render(<Harness initial={userState([script, tool()])} />);
     choosePreset('other');
-    expect(listed()).toEqual(['get_entity', 'get_weather', 'roll_dice', 'New Tool']);
+    expect(listed()).toEqual([...BUILT_IN, 'get_weather', 'roll_dice', 'New Tool']);
     choosePreset('experimental');
-    expect(listed()).toEqual(['get_entity', 'get_weather', 'roll_dice', 'New Tool']);
+    expect(listed()).toEqual([...BUILT_IN, 'get_weather', 'roll_dice', 'New Tool']);
   });
 
   it('offers New Tool and Import on a built-in preset, and an import arrives switched off', async () => {
@@ -167,7 +171,7 @@ describe('Delete', () => {
     expect(switchesOf('mine')).toEqual({ 'u-weather': true });
     expect(switchesOf('other')).toEqual({});
     choosePreset('other');
-    expect(listed()).toEqual(['get_entity', 'get_weather', 'New Tool']);
+    expect(listed()).toEqual([...BUILT_IN, 'get_weather', 'New Tool']);
   });
 
   it('edits and deletes a user Tool while a built-in preset is selected', async () => {
