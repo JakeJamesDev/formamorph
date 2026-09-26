@@ -16,7 +16,7 @@ const GET_ENTITY: Tool = {
   offeredTo: ['narration'],
 };
 
-/** The location lookup. Its wording follows the entity lookup and awaits its own probe. */
+/** The location lookup. Its wording follows the entity lookup's outline. */
 const GET_LOCATION: Tool = {
   id: 'get_location',
   name: 'get_location',
@@ -32,7 +32,7 @@ const GET_LOCATION: Tool = {
   offeredTo: ['narration'],
 };
 
-/** The dictionary lookup. It matches an entry's name or any trigger keyword. */
+/** The dictionary lookup. "Lore" matches the headers the narration prompt gives the dictionary. */
 const GET_DICTIONARY_ENTRY: Tool = {
   id: 'get_dictionary_entry',
   name: 'get_dictionary_entry',
