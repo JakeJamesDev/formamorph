@@ -1,6 +1,7 @@
 # 05: Preview Shows the Owner's Name for Character Name
 
-Status: ready-for-agent
+Status: in-progress
+Base: 081778f5
 Blocked by: 03 — Built-in Section in the Palette and Typeahead
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -20,5 +21,5 @@ Workload: one prop through two entity editors and one branch in the Preview valu
 - [ ] Player Name still previews as the label
 - [ ] Preview value tests cover the name, the chip-bearing name, and the empty name, mutation-proven
 - [ ] Verified in the preview at a realistic viewport with static evidence
-- [ ] Changelog In-Progress entry appended (🛠️)
+- [ ] Changelog In-Progress line added to the 👤 Built-in group beside ticket 03's entry
 - [ ] Four gates green; `graphify update .` run
