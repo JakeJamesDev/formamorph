@@ -8,6 +8,7 @@ import { splitToken } from '@/lib/promptVariables';
 import { argChipName, parseToolTemplate } from './argChips';
 import { isRecord } from './toolValidation';
 import { runToolScript } from './toolScript';
+import { recallMatches } from './toolRecall';
 import type { ToolSnapshot } from './toolSnapshot';
 
 /** Why a call returned an error result. `arguments` is the model's mistake; the others are the Tool's. */
@@ -78,9 +79,13 @@ function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: 
 
 type Lookup = Extract<ToolHandler, { kind: 'lookup' }>;
 
-function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, { world }: ToolSnapshot): ToolCallResult {
+function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, { world, memories }: ToolSnapshot): ToolCallResult {
   if (!tool.params.some((p) => p.name === handler.param)) {
     return failed('handler', `The lookup reads parameter ${JSON.stringify(handler.param)}, which this Tool doesn't define.`);
+  }
+  if (handler.source === 'memories') {
+    const found = recallMatches(String(args[handler.param] ?? ''), memories);
+    return { text: found.length ? JSON.stringify({ matches: found }) : tool.emptyResult };
   }
   const needle = String(args[handler.param] ?? '').trim().toLowerCase();
   const same = (text: string) => !!needle && text.trim().toLowerCase() === needle;

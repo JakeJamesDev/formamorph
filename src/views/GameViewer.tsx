@@ -87,7 +87,7 @@ import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recen
 import { navigableDestinations } from "../lib/locationContext";
 import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues";
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
-import { buildToolSnapshot } from "../lib/tools/toolSnapshot";
+import { buildToolSnapshot, type ToolMemorySource } from "../lib/tools/toolSnapshot";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
 import { ToolRoundsView } from "../components/game/ToolRoundsView";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
@@ -1745,8 +1745,17 @@ const GameViewer = ({
   // show between turns — those fall through to the shared pool's samples rather than to a second set of
   // placeholder strings kept here, which is how the two copies used to drift.
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
+  // Recall searches the committed history as the narration prompt's memory reads it; digests off, no memory.
+  const toolMemory = useCallback(
+    (): ToolMemorySource | null =>
+      (memoryDigests ? { history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns } : null),
+    [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns],
+  );
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
-  const toolWorld = useCallback(() => buildToolSnapshot(liveScene(), dictionaries), [liveScene, dictionaries]);
+  const toolWorld = useCallback(
+    () => buildToolSnapshot(liveScene(), dictionaries, toolMemory()),
+    [liveScene, dictionaries, toolMemory],
+  );
   // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
 
@@ -2260,7 +2269,7 @@ const GameViewer = ({
        */
       // One Tool Snapshot for the turn, built at its first Tool call and read by every later one. A move by
       // the router starts it over, so the narration reads the scene it is written for.
-      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries));
+      const turnToolExecutor = () => snapshotToolExecutor(() => buildToolSnapshot(liveScene(turnLocation, codeView), dictionaries, toolMemory()));
       let executeTool = turnToolExecutor();
 
       const advance: TurnAdvance = async (event, material) => {

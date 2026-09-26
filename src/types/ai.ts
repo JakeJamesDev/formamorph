@@ -88,8 +88,8 @@ export interface ToolParam {
   options: string[];
 }
 
-/** The world data a Lookup handler searches. */
-export type ToolLookupSource = 'entities' | 'locations' | 'dictionary';
+/** The world data a Lookup handler searches. `memories` is catalog-only: a user Tool can't store it. */
+export type ToolLookupSource = 'entities' | 'locations' | 'dictionary' | 'memories';
 
 /** What runs when the AI calls a Tool. */
 export type ToolHandler =

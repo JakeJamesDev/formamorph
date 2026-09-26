@@ -181,6 +181,9 @@ export function pendingDiaryNames(history: ChatMessage[], turnId: string): strin
   return [];
 }
 
+/** Whether a trimmed diary entry carries a memory: a `nothing notable` entry does not. */
+export const diaryHoldsMemory = (text: string) => text.toLowerCase() !== 'nothing notable';
+
 /**
  * A character's own diary entries across the history, chronological (oldest first), capped to the last
  * `max`. Key match is case-insensitive (a director cast name may differ in case from the entity name).
@@ -195,7 +198,7 @@ export function collectCharacterDiary(history: ChatMessage[], name: string, max:
     if (!parsed?.diaries) continue;
     const match = Object.entries(parsed.diaries).find(([k]) => k.trim().toLowerCase() === key);
     const text = match?.[1]?.trim();
-    if (text && text.toLowerCase() !== 'nothing notable') entries.push(text);
+    if (text && diaryHoldsMemory(text)) entries.push(text);
   }
   // `slice(-0)` is `slice(0)` — it would return the whole array — so guard max === 0 explicitly.
   return max > 0 ? entries.slice(-max) : max < 0 ? entries : [];

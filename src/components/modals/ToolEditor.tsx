@@ -75,7 +75,11 @@ const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: st
   { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
   { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
   { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and trigger keywords, in any case' },
+  { value: 'memories', label: 'Memories', matches: 'Matches words in past turns and diaries, in any case' },
 ];
+
+/** The Search choices for `current`: `memories` is catalog-only, so it shows only on the Tool that has it. */
+const searchChoices = (current: LookupSource) => LOOKUP_SOURCES.filter((s) => s.value !== 'memories' || current === 'memories');
 
 /** The prompts a Tool can be offered to, in the Prompts rail's order. */
 const OFFER_OPTIONS: MultiSelectOption[] = Object.values(PROMPT_TAB_REQUESTS)
@@ -239,7 +243,7 @@ function HandlerTab({ draft, onChange, problems, locked }: TabProps) {
               <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })} disabled={locked}>
                 <SelectTrigger id={`${id}-source`} aria-describedby={`${id}-matches`}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  {searchChoices(handler.source).map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
@@ -260,7 +264,7 @@ function HandlerTab({ draft, onChange, problems, locked }: TabProps) {
                 </SelectContent>
               </Select>
             </Field>
-            {handler.source !== 'dictionary' && (
+            {handler.source !== 'dictionary' && handler.source !== 'memories' && (
               <Field id={`${id}-returns`} label="Returns">
                 <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })} disabled={locked}>
                   <SelectTrigger id={`${id}-returns`}><SelectValue /></SelectTrigger>

@@ -1,8 +1,9 @@
 import { Braces, Cog, FileText, Radio } from 'lucide-react';
-import type { Tool } from '@/types';
+import type { Tool, ToolHandler } from '@/types';
 import type { PanelTab } from '@/components/ui/panel-tabs';
 import { REQUEST_LABELS } from '@/lib/promptGroups';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
+import { RECALL_LIMIT } from '@/lib/tools/toolRecall';
 
 /** Edit mode's tabs, in order. */
 export const TOOL_EDIT_TABS = [
@@ -26,12 +27,16 @@ export const EMPTY_TOOLS_VIEW: ToolsView = { selectedId: null, draft: null, edit
 
 const SOURCE_LABEL = { entities: 'entities', locations: 'locations', dictionary: 'dictionary entries' } as const;
 
+function lookupSummary(h: Extract<ToolHandler, { kind: 'lookup' }>): string {
+  const by = h.param || '(no parameter)';
+  if (h.source === 'memories') return `Searches past turns and diaries by ${by} and returns up to ${RECALL_LIMIT} matches`;
+  return `Looks up ${SOURCE_LABEL[h.source]} by ${by} and returns the ${h.returns === 'full' ? 'full description' : 'summary'}`;
+}
+
 /** What the Tool does, in one line. */
 export function toolSummary(tool: Tool): string {
   const h = tool.handler;
-  const does = h.kind === 'lookup'
-    ? `Looks up ${SOURCE_LABEL[h.source]} by ${h.param || '(no parameter)'} and returns the ${h.returns === 'full' ? 'full description' : 'summary'}`
-    : h.kind === 'template' ? 'Returns a template' : 'Runs a script';
+  const does = h.kind === 'lookup' ? lookupSummary(h) : h.kind === 'template' ? 'Returns a template' : 'Runs a script';
   const offered = tool.offeredTo.map((k) => REQUEST_LABELS[k]).join(', ') || 'no prompts';
   const limit = tool.callLimit ?? DEFAULT_TOOL_CALL_LIMIT;
   return `${does} · Offered to ${offered} · ${limit} call${limit === 1 ? '' : 's'} per request`;
