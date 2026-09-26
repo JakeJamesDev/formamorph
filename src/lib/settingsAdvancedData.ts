@@ -14,6 +14,7 @@
  */
 import {
   DEFAULT_MAX_TOKENS,
+  DEFAULT_TOOLS_ENABLED,
   DEFAULT_IMAGE_PORTRAIT_WIDTH, DEFAULT_IMAGE_PORTRAIT_HEIGHT,
   DEFAULT_IMAGE_LANDSCAPE_WIDTH, DEFAULT_IMAGE_LANDSCAPE_HEIGHT,
 } from '@/contexts/settingsDefaults';
@@ -27,6 +28,8 @@ export interface SettingsAdvancedInput {
   reasoningEffort: ReasoningEffort;
   limitActiveCharacters: boolean;
   activeCharacterLimit: number;
+  // Output → Tools
+  toolsEnabled: boolean;
   // Output → Memory
   memoryDigests: boolean;
   semanticMemory: boolean;
@@ -68,6 +71,7 @@ export const HIDDEN_SETTING_DEFAULTS = {
   reasoningEffort: 'auto',
   limitActiveCharacters: true,
   activeCharacterLimit: 5,
+  toolsEnabled: DEFAULT_TOOLS_ENABLED,
   memoryDigests: true,
   semanticMemory: false,
   semanticBandCap: 12,

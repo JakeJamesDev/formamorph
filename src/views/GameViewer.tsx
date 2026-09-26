@@ -499,6 +499,7 @@ const GameViewer = ({
     openingTimeUserPrompt,
     timePassedUserPrompt,
     concurrentTurnRequests,
+    toolsEnabled,
     autosaveEnabled,
     limitActiveCharacters,
     activeCharacterLimit,
@@ -2783,7 +2784,7 @@ const GameViewer = ({
     };
     // Every request of a prompt that offers Tools carries them; the spec layer sends them where the target
     // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
-    const tools = toolsOfferedTo(requestType, presetTools);
+    const tools = toolsOfferedTo(requestType, presetTools, toolsEnabled);
     const executeTool = tools.length
       ? turnExecutor ?? snapshotToolExecutor(toolWorld)
       : undefined;

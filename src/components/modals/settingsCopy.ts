@@ -181,6 +181,17 @@ Useful for world authoring and debugging.`,
     info: 'Some models think privately before they answer. Uncheck to stop that. The dropdown sets how much effort they spend, and **Model Default** sends no hint. Every prompt set to **Global** follows this row. Models without native reasoning ignore it.',
   },
 
+  // ── Output · Tools ──────────────────────────────────────────────────────────
+  tools: {
+    label: 'Tools',
+    description: 'Lets the AI call Tools to get information it lacks',
+    experimental: true,
+    info: `Sends each prompt the Tools it's offered in the **Tools** tab. Uncheck to send no Tools to any prompt.
+
+- Only endpoints that support Tools receive them
+- Each round of calls adds a request, so turns take longer`,
+  },
+
   // ── Output · Memory ─────────────────────────────────────────────────────────
   memorySummaries: {
     label: 'Memory Summaries',
@@ -192,7 +203,6 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   semanticMemory: {
     label: 'Semantic Memory',
     description: 'Keeps the memories most relevant to your action',
-    experimental: true,
     info: `When memories no longer all fit, keeps the ones most **relevant to your current action** instead of just dropping the oldest.
 
 - Runs a small model **on your device**
@@ -211,7 +221,6 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   sceneRecall: {
     label: 'Scene Recall',
     description: 'Recalls a full past scene when your action returns to it',
-    experimental: true,
     info: `Go back to someone you made a promise to, and the AI rereads the original scene word for word, marked as the past.
 
 - At most **two scenes** per turn
@@ -241,7 +250,6 @@ Runs one extra request per turn. Edit its prompt under **Prompts → Summaries**
   semanticLore: {
     label: 'Semantic Lore',
     description: 'Activates dictionary entries by meaning, not just keywords',
-    experimental: true,
     info: `Write *"the ruined tower"* and an *Old Beacon* entry can activate with none of its keywords present.
 
 - Keyword activation is unchanged; this only **adds** entries
@@ -266,7 +274,6 @@ Runs one extra request per participant. Edit its prompt under **Prompts → Diar
   diaryRecall: {
     label: 'Diary Recall',
     description: 'Recalls older diary entries relevant to the moment',
-    experimental: true,
     info: `Characters recall the older entries most relevant to the moment, not only their newest ones. She remembers the last time you drew a blade.
 
 - Same total entry count, so it costs **nothing extra**
@@ -702,6 +709,10 @@ export const SETTINGS_OPTIONS = {
 export const REASONING_NOTES = {
   never: 'This model doesn’t support reasoning, so there’s nothing to configure',
   always: 'This model always reasons, so it can’t be switched off',
+} as const;
+
+export const TOOLS_NOTES = {
+  unsupported: 'Your text endpoint doesn’t support Tools, or support isn’t confirmed yet',
 } as const;
 
 /**

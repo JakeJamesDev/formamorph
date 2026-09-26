@@ -17,7 +17,7 @@ import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
 import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
 import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
@@ -824,6 +824,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setSemanticBandCap,
     concurrentTurnRequests,
     setConcurrentTurnRequests,
+    toolsEnabled,
+    setToolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
     characterDiaries,
@@ -1483,6 +1485,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // The Output row reads the ACTIVE endpoint's record, which is a different target from the one a pinned
   // prompt resolves to.
   const activeReasoningAlwaysOn = reasoningOffRefused(reasoningCapability);
+  const activeToolsSupported = toolsSupported(reasoningCapability);
   // A dialect that publishes nothing about its own reasoning, such as a vLLM server, has no per-prompt
   // control worth drawing until one reply proves it separates its reasoning: no budget to send, and no
   // literal the wire guard would pass. The Output row is not gated on this. It is the endpoint-wide
@@ -1522,6 +1525,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     memoryDigests, semanticMemory, semanticBandCap, semanticRehydration, timeContext, aiClock,
     semanticLore, describeCharacters, characterDiaries, semanticDiaries,
     concurrentTurnRequests, showReasoning, showSilentRequests, maxTokens,
+    ...(activeToolsSupported ? { toolsEnabled } : {}),
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight,
     imageWorkflowCustom: imageWorkflow !== DEFAULT_COMFY_WORKFLOW,
     imageInvokeBoard, imageInvokeEncoder, imageInvokeVae,
@@ -1974,6 +1978,25 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
                 </SubGroup>
               )}
               </Section>
+
+              {/* Reads the active endpoint's record, like the Native Reasoning row; the wire gate checks each
+                  prompt's own target. */}
+              {advanced && (
+              <Section title="Tools" hint="What the AI can look up while it works.">
+              {activeToolsSupported ? (
+                <CheckRow
+                  htmlFor="toolsEnabled"
+                  checked={toolsEnabled}
+                  onChange={setToolsEnabled}
+                  {...rowCopy('tools')}
+                />
+              ) : (
+                <Row muted label={SETTINGS_COPY.tools.label} experimental={SETTINGS_COPY.tools.experimental}>
+                  <p className="pt-2 text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
+                </Row>
+              )}
+              </Section>
+              )}
 
               {advanced && (<>
               <Section title="Memory" hint="What the AI carries forward from earlier turns.">
@@ -3155,7 +3178,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               catalogTools={catalogTools}
               userTools={userTools}
               builtinPreset={activePresetIsBuiltIn}
-              toolsSupported={toolsSupported(reasoningCapability)}
+              toolsSupported={activeToolsSupported}
               onSaveTool={saveTool}
               onDeleteTool={deleteTool}
               onSetOverride={setToolOverride}

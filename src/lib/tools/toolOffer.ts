@@ -3,8 +3,10 @@ import type { ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { runToolCall } from './toolRunner';
 import type { ToolSnapshot } from './toolSnapshot';
 
-/** The enabled Tools `kind` offers, in list order. `tools` is the preset's catalog view, then its own Tools. */
-export function toolsOfferedTo(kind: AIRequestType, tools: readonly Tool[]): Tool[] {
+/** The enabled Tools `kind` offers, in list order. `tools` is the preset's catalog view, then its own Tools.
+ *  `toolsEnabled` is the global Tools switch; off offers none. */
+export function toolsOfferedTo(kind: AIRequestType, tools: readonly Tool[], toolsEnabled: boolean): Tool[] {
+  if (!toolsEnabled) return [];
   return tools.filter((tool) => tool.enabled && tool.offeredTo.includes(kind));
 }
 
