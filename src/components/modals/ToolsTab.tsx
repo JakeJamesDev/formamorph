@@ -133,6 +133,7 @@ export function ToolsTab({
         userTools={userTools}
         editing={userTools.some((t) => t.id === draft.id)}
         world={world}
+        fullscreen={fullscreen}
         fullscreenButton={fullscreenButton}
         onCancel={() => onViewChange({ ...view, draft: null })}
         onSave={() => {
