@@ -24,5 +24,5 @@ A player finds `get_location` and `get_dictionary_entry` in every preset's Tool 
 
 ## Notes
 
-- Commits: b981d70a, ac0e0669. The dictionary hint "Matches dictionary names and keywords, in any case" ships with ticket 01, by agreement between the two sessions.
+- Commits: b981d70a, ac0e0669, 7ebd0e06. The dictionary hint "Matches dictionary names and trigger keywords, in any case" ships with ticket 01, by agreement between the two sessions.
 - Probe numbers for both descriptions belong to ticket 07. Both Tools stay off by default.
