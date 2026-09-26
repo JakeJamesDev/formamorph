@@ -35,7 +35,7 @@ describe('the Template chip family', () => {
     const tool: Tool = {
       id: 't', name: 'greet', description: '', params,
       handler: { kind: 'template', body: vocab.palette().map((row) => row.token).join('\n') },
-      emptyResult: '', offeredTo: ['narration'], enabled: true,
+      emptyResult: '', offeredTo: ['narration'],
     };
     const { text, failure } = await runToolCall(tool, '{"name": "Wren", "loud": true}', sampleToolSnapshot());
     expect(failure).toBeUndefined();

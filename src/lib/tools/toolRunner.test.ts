@@ -33,7 +33,7 @@ const param = (name: string, over: Partial<ToolParam> = {}): ToolParam =>
   ({ name, type: 'string', description: '', required: true, options: [], ...over });
 
 const tool = (handler: ToolHandler, params: ToolParam[] = [param('name')], emptyResult = 'NOTHING'): Tool => ({
-  id: 't', name: 't', description: '', params, handler, emptyResult, offeredTo: ['narration'], enabled: true,
+  id: 't', name: 't', description: '', params, handler, emptyResult, offeredTo: ['narration'],
 });
 
 const GET_ENTITY = TOOL_CATALOG.find((t) => t.id === 'get_entity')!;

@@ -97,7 +97,7 @@ export type ToolHandler =
   | { kind: 'template'; body: string }
   | { kind: 'script'; code: string };
 
-/** A function the AI can call during a request. User Tools live in a prompt preset; built-in Tools are the catalog. */
+/** A function the AI can call during a request. User Tools live in one global list; built-in Tools are the catalog. */
 export interface Tool {
   id: string;
   /** The function name the AI calls. */
@@ -112,17 +112,10 @@ export interface Tool {
   offeredTo: AIRequestType[];
   /** Calls allowed per request; absent uses the global default. */
   callLimit?: number;
-  enabled: boolean;
 }
 
-/** A preset's settings for one built-in Tool. The definition itself is never overridden. */
-export interface ToolOverride {
-  enabled: boolean;
-  offeredTo: AIRequestType[];
-}
-
-/** Built-in Tool overrides, keyed by catalog Tool id. */
-export type ToolOverrideMap = Record<string, ToolOverride>;
+/** Which Tools a prompt preset switches on, keyed by Tool id; a missing id is off. */
+export type ToolEnabledMap = Record<string, boolean>;
 
 /**
  * Structured payload the game stores per turn (mirrors the JSON the app round-trips).

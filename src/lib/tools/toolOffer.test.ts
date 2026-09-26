@@ -14,7 +14,7 @@ const GET_ENTITY = TOOL_CATALOG.find((t) => t.id === 'get_entity')!;
 
 const userTool = (over: Partial<Tool>): Tool => ({
   id: 'u', name: 'u', description: '', params: [], handler: { kind: 'template', body: 'hi' },
-  emptyResult: '', offeredTo: ['narration'], enabled: true, ...over,
+  emptyResult: '', offeredTo: ['narration'], ...over,
 });
 
 function sedgeSnapshot() {
@@ -23,26 +23,27 @@ function sedgeSnapshot() {
 }
 
 describe('toolsOfferedTo', () => {
-  const catalogOn = { ...GET_ENTITY, enabled: true };
+  const allOn = { get_entity: true, u: true, c: true, a: true, b: true };
 
   it('offers an enabled Tool to the prompts it names and to no other', () => {
-    const tools = [catalogOn, userTool({ id: 'c', name: 'choices_only', offeredTo: ['choices'] })];
-    expect(toolsOfferedTo('narration', tools, true).map((t) => t.name)).toEqual(['get_entity']);
-    expect(toolsOfferedTo('choices', tools, true).map((t) => t.name)).toEqual(['choices_only']);
-    expect(toolsOfferedTo('summary', tools, true)).toEqual([]);
+    const tools = [GET_ENTITY, userTool({ id: 'c', name: 'choices_only', offeredTo: ['choices'] })];
+    expect(toolsOfferedTo('narration', tools, allOn, true).map((t) => t.name)).toEqual(['get_entity']);
+    expect(toolsOfferedTo('choices', tools, allOn, true).map((t) => t.name)).toEqual(['choices_only']);
+    expect(toolsOfferedTo('summary', tools, allOn, true)).toEqual([]);
   });
 
-  it('leaves a disabled Tool out', () => {
-    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({ enabled: false })], true)).toEqual([]);
+  it('leaves out a Tool the preset switches off or never names', () => {
+    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({})], { u: false }, true)).toEqual([]);
+    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({})], { get_entity: true }, true)).toEqual([GET_ENTITY]);
   });
 
   it('offers nothing with the global Tools switch off', () => {
-    expect(toolsOfferedTo('narration', [catalogOn, userTool({})], false)).toEqual([]);
+    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({})], allOn, false)).toEqual([]);
   });
 
   it('keeps catalog Tools ahead of user Tools, in list order', () => {
-    const tools = [catalogOn, userTool({ id: 'a', name: 'a' }), userTool({ id: 'b', name: 'b' })];
-    expect(toolsOfferedTo('narration', tools, true).map((t) => t.name)).toEqual(['get_entity', 'a', 'b']);
+    const tools = [GET_ENTITY, userTool({ id: 'a', name: 'a' }), userTool({ id: 'b', name: 'b' })];
+    expect(toolsOfferedTo('narration', tools, allOn, true).map((t) => t.name)).toEqual(['get_entity', 'a', 'b']);
   });
 });
 

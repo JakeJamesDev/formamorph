@@ -89,6 +89,7 @@ import { chipValues, sceneEntityChipValues } from "../lib/chipValues/chipValues"
 import { useLiveChipScene, type SceneWrites } from "../lib/chipValues/liveScene";
 import { buildToolSnapshot } from "../lib/tools/toolSnapshot";
 import { snapshotToolExecutor, toolsOfferedTo } from "../lib/tools/toolOffer";
+import { TOOL_CATALOG } from "../lib/tools/toolCatalog";
 import { ToolRoundsView } from "../components/game/ToolRoundsView";
 import type { ChipSceneTime } from "../lib/chipValues/chipScene";
 import { useResolvedWorld } from "@/lib/useResolvedWorld";
@@ -536,8 +537,8 @@ const GameViewer = ({
     activeSectionStyle,
     locationBackground,
     backgroundOverlay,
-    catalogTools,
     userTools,
+    enabledTools,
   } = settings;
 
   // The prompts this world actually runs on. Every reference below is a resolved value, so the opening
@@ -1747,8 +1748,8 @@ const GameViewer = ({
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(() => buildToolSnapshot(liveScene(), dictionaries), [liveScene, dictionaries]);
-  // The active preset's Tools, catalog first, as each request picks its own from them.
-  const presetTools = useMemo(() => [...catalogTools, ...userTools], [catalogTools, userTools]);
+  // Every Tool, catalog first; each request picks the ones the active preset switches on.
+  const allTools = useMemo(() => [...TOOL_CATALOG, ...userTools], [userTools]);
   // Requests between a round's Tool calls and the next round's first token: the count behind "Looking up…".
   const [toolLookups, setToolLookups] = useState(0);
 
@@ -2784,7 +2785,7 @@ const GameViewer = ({
     };
     // Every request of a prompt that offers Tools carries them; the spec layer sends them where the target
     // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
-    const tools = toolsOfferedTo(requestType, presetTools, toolsEnabled);
+    const tools = toolsOfferedTo(requestType, allTools, enabledTools, toolsEnabled);
     const executeTool = tools.length
       ? turnExecutor ?? snapshotToolExecutor(toolWorld)
       : undefined;

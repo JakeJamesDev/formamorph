@@ -1,7 +1,6 @@
 import type { Codec } from './usePersistentState';
-import type { AIRequestType, CommunityLink, Tool, ToolOverride, ToolOverrideMap } from '@/types';
-import { applyToolOverrides, isCatalogToolId } from './tools/toolCatalog';
-import { toolNameProblem } from './tools/toolValidation';
+import type { AIRequestType, CommunityLink, Tool, ToolEnabledMap } from '@/types';
+import { parseTool, parseToolEnabledMap, toolNameProblem } from './tools/toolValidation';
 import type { PromptSamplerMap } from './promptSamplers';
 import type { PromptEndpointMap } from './promptEndpoints';
 import type { PromptMaxOutputMap } from './promptMaxOutput';
@@ -91,14 +90,9 @@ export interface PromptPreset extends CommunityLink {
   promptEndpoints?: PromptEndpointMap;
   /** Optional; user presets only. */
   overview?: PresetOverview;
-  /** The player's own Tools. */
-  tools?: Tool[];
-  /** This preset's settings for catalog Tools; a missing id keeps the catalog's. */
-  toolOverrides?: ToolOverrideMap;
+  /** The catalog and user Tools this preset switches on. */
+  enabledTools?: ToolEnabledMap;
 }
-
-/** The Tool fields a preset copy carries. */
-export type PresetToolSet = Pick<PromptPreset, 'tools' | 'toolOverrides'>;
 
 /** The persisted preset state: the currently selected preset plus every user-saved one (built-ins are virtual). */
 export interface PromptPresetStore {
@@ -116,9 +110,9 @@ export const BUILTIN_PRESETS: { id: string; name: string; style: SectionStyle }[
 
 const BUILTIN_IDS = new Set(BUILTIN_PRESETS.map((b) => b.id));
 
-/** The catalog Tool overrides each built-in preset ships, by preset id; a built-in without an entry has none. */
-export const BUILTIN_TOOL_OVERRIDES: Record<string, ToolOverrideMap> = {
-  experimental: { get_entity: { enabled: true, offeredTo: ['narration'] } },
+/** The Tools each built-in preset ships switched on, by preset id; a built-in without an entry has none on. */
+export const BUILTIN_ENABLED_TOOLS: Record<string, ToolEnabledMap> = {
+  experimental: { get_entity: true },
 };
 
 /** The initial/default built-in id (also the sole preset id before styles existed — kept for back-compat). */
@@ -133,13 +127,21 @@ export const presetStoreCodec: Codec<PromptPresetStore> = {
     try {
       const parsed = JSON.parse(raw) as Partial<PromptPresetStore>;
       if (!parsed || typeof parsed.activeId !== 'string' || !Array.isArray(parsed.presets)) return emptyStore;
-      return { activeId: parsed.activeId, presets: (parsed.presets as PromptPreset[]).map(migratePresetReasoning) };
+      return { activeId: parsed.activeId, presets: (parsed.presets as PromptPreset[]).map((p) => sanitizeEnabledTools(migratePresetReasoning(p))) };
     } catch {
       return emptyStore;
     }
   },
   serialize: (v) => JSON.stringify(v),
 };
+
+/** Keeps a stored preset's well-formed enabled map, and drops the field when nothing readable is left. */
+function sanitizeEnabledTools(preset: PromptPreset): PromptPreset {
+  if (preset.enabledTools === undefined) return preset;
+  const { enabledTools: raw, ...rest } = preset;
+  const enabledTools = parseToolEnabledMap(raw);
+  return enabledTools ? { ...rest, enabledTools } : rest;
+}
 
 /**
  * Brings a stored preset's reasoning tuning to the switch-plus-level shape. Older presets hold a plain string
@@ -196,13 +198,12 @@ export function setActive(store: PromptPresetStore, id: string): PromptPresetSto
   return { ...store, activeId: id };
 }
 
-/** Add a preset (a copy of `values` in `style`, plus copies of `overview` and `toolSet` when given) and select it. */
-export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle, overview?: PresetOverview, toolSet?: PresetToolSet): PromptPresetStore {
+/** Add a preset (a copy of `values` in `style`, plus copies of `overview` and `enabledTools` when given) and select it. */
+export function addPreset(store: PromptPresetStore, id: string, name: string, values: PromptValues, style: SectionStyle, overview?: PresetOverview, enabledTools?: ToolEnabledMap): PromptPresetStore {
   const preset: PromptPreset = {
     id, name, values: { ...values }, style,
     ...(overview ? { overview: normalizeOverview(overview) } : {}),
-    ...(toolSet?.tools?.length ? { tools: structuredClone(toolSet.tools) } : {}),
-    ...(toolSet?.toolOverrides && Object.keys(toolSet.toolOverrides).length ? { toolOverrides: structuredClone(toolSet.toolOverrides) } : {}),
+    ...(enabledTools && Object.keys(enabledTools).length ? { enabledTools: { ...enabledTools } } : {}),
   };
   return { activeId: id, presets: [...store.presets, preset] };
 }
@@ -335,53 +336,60 @@ export function updateMaxOutput(store: PromptPresetStore, fn: (m: PromptMaxOutpu
 }
 
 // --- Tools ---
-// A built-in preset has no user Tools and its overrides are the shipped constants; every Tool setter no-ops there.
+// User Tools are one global list stored beside this store; a preset holds only which Tools it switches on.
 
-/** The active preset's user Tools (empty for a built-in). */
-export function activeUserTools(store: PromptPresetStore): Tool[] {
-  if (isBuiltInActive(store)) return [];
-  return store.presets.find((p) => p.id === store.activeId)?.tools ?? [];
-}
+/** localStorage codec for the global user Tool list; a malformed Tool, or an id or name an earlier one took, drops. */
+export const userToolsCodec: Codec<Tool[]> = {
+  parse: (raw) => {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const tools: Tool[] = [];
+      for (const entry of parsed) {
+        const r = parseTool(entry);
+        if ('tool' in r && !tools.some((t) => t.id === r.tool.id) && !toolNameProblem(r.tool.name, tools)) tools.push(r.tool);
+      }
+      return tools;
+    } catch {
+      return [];
+    }
+  },
+  serialize: (v) => JSON.stringify(v),
+};
 
-/** The active preset's catalog overrides: a built-in's shipped constants, or what a user preset stores. */
-export function activeToolOverrides(store: PromptPresetStore): ToolOverrideMap {
-  if (isBuiltInActive(store)) return BUILTIN_TOOL_OVERRIDES[store.activeId] ?? {};
-  return store.presets.find((p) => p.id === store.activeId)?.toolOverrides ?? {};
-}
-
-/** The catalog as the active preset sees it. */
-export function activeCatalogTools(store: PromptPresetStore): Tool[] {
-  return applyToolOverrides(activeToolOverrides(store));
-}
-
-/** The active preset's Tool fields for a copy to carry, a built-in's shipped overrides included. */
-export function storedToolSet(store: PromptPresetStore): PresetToolSet {
-  const tools = activeUserTools(store);
-  const toolOverrides = activeToolOverrides(store);
-  return {
-    ...(tools.length ? { tools } : {}),
-    ...(Object.keys(toolOverrides).length ? { toolOverrides } : {}),
-  };
-}
-
-/** Add a user Tool to the active preset, or replace the one with its id. No-op under a built-in or for a name
- *  `toolNameProblem` rejects. */
-export function saveTool(store: PromptPresetStore, tool: Tool): PromptPresetStore {
-  const tools = activeUserTools(store);
-  if (toolNameProblem(tool.name, tools, tool.id)) return store;
+/** Add `tool` to the user Tools, or replace the one with its id. Unchanged for a name `toolNameProblem` rejects. */
+export function saveUserTool(tools: Tool[], tool: Tool): Tool[] {
+  if (toolNameProblem(tool.name, tools, tool.id)) return tools;
   const held = tools.some((t) => t.id === tool.id);
-  return patchActivePreset(store, (p) => ({ ...p, tools: held ? tools.map((t) => (t.id === tool.id ? tool : t)) : [...tools, tool] }));
+  return held ? tools.map((t) => (t.id === tool.id ? tool : t)) : [...tools, tool];
 }
 
-/** Remove a user Tool from the active preset. No-op under a built-in. */
-export function deleteTool(store: PromptPresetStore, id: string): PromptPresetStore {
-  return patchActivePreset(store, (p) => ({ ...p, tools: (p.tools ?? []).filter((t) => t.id !== id) }));
+/** Remove a user Tool from the list. */
+export function deleteUserTool(tools: Tool[], id: string): Tool[] {
+  return tools.filter((t) => t.id !== id);
 }
 
-/** Set the active preset's override for one catalog Tool. No-op under a built-in or for an id outside the catalog. */
-export function setToolOverride(store: PromptPresetStore, id: string, override: ToolOverride): PromptPresetStore {
-  if (!isCatalogToolId(id)) return store;
-  return patchActivePreset(store, (p) => ({ ...p, toolOverrides: { ...(p.toolOverrides ?? {}), [id]: override } }));
+/** The Tools the active preset switches on: a built-in's shipped map, or what a user preset stores. */
+export function activeEnabledTools(store: PromptPresetStore): ToolEnabledMap {
+  if (isBuiltInActive(store)) return BUILTIN_ENABLED_TOOLS[store.activeId] ?? {};
+  return store.presets.find((p) => p.id === store.activeId)?.enabledTools ?? {};
+}
+
+/** Switch one Tool on or off for the active preset. No-op under a built-in. */
+export function setToolEnabled(store: PromptPresetStore, id: string, on: boolean): PromptPresetStore {
+  return patchActivePreset(store, (p) => ({ ...p, enabledTools: { ...(p.enabledTools ?? {}), [id]: on } }));
+}
+
+/** Remove a deleted Tool's switch from every preset. */
+export function dropToolEverywhere(store: PromptPresetStore, id: string): PromptPresetStore {
+  return {
+    ...store,
+    presets: store.presets.map((p) => {
+      if (!p.enabledTools || !(id in p.enabledTools)) return p;
+      const { [id]: _dropped, ...enabledTools } = p.enabledTools;
+      return { ...p, enabledTools };
+    }),
+  };
 }
 
 /** De-duplicate case-insensitively after trimming, keeping the first spelling; empties drop. */

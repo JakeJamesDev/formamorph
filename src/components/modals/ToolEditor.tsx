@@ -33,7 +33,7 @@ type Change = (next: Tool) => void;
 
 const NAME_PROBLEM: Record<ToolNameProblem, string> = {
   format: 'Use only letters, digits, _ and -, from 1 to 64 characters',
-  taken: 'Another Tool in this preset uses this name',
+  taken: 'Another of your Tools uses this name',
   builtin: 'A built-in Tool uses this name',
 };
 
@@ -343,7 +343,7 @@ export function ToolEditor({
   onDraftChange: Change;
   editTab: ToolEditTab;
   onEditTabChange: (tab: ToolEditTab) => void;
-  /** The preset's own Tools, for the name check. */
+  /** The user Tools, for the name check. */
   userTools: readonly Tool[];
   /** True when the draft edits a saved Tool, false for a new one. */
   editing: boolean;

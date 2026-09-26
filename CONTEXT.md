@@ -13,7 +13,7 @@ The complete, plain-value description of one AI call — prompt, messages, resol
 _Avoid_: request options, config
 
 **Tool**:
-A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined in a prompt preset and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough.
+A function the AI may call during a request to get information it does not have, such as an entity's full entry. Defined once in settings, enabled per prompt preset, and offered only to the prompts it names, and only on endpoints known to support tools. Read-only: a Tool never changes the world or the playthrough.
 _Avoid_: function (wire-format word), instrument (a Test Bench part)
 
 **Tool Handler**:

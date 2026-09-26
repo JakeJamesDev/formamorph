@@ -25,7 +25,7 @@ function seedPreset(getEntityOn: boolean) {
       values: { systemPrompt: 'A' } as never,
       style: 'markdown',
       reasoning: Object.fromEntries(ALL_REQUEST_KINDS.map((kind) => [kind, { enabled: false, level: 'global' }])),
-      toolOverrides: { get_entity: { enabled: getEntityOn, offeredTo: ['narration'] } },
+      enabledTools: { get_entity: getEntityOn },
     }],
   };
   localStorage.setItem('FORMAMORPH_promptPresets', presetStoreCodec.serialize(store));

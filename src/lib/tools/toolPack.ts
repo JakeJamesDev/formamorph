@@ -40,7 +40,7 @@ export function parseToolPack(json: string): { tools: Tool[]; warnings: string[]
   return { tools, warnings };
 }
 
-/** Which imported Tools join a preset, each under a fresh id, and which names it already holds. */
+/** Which imported Tools join the user Tools, each under a fresh id, and which names the list already holds. */
 export function planToolImport(held: readonly Tool[], imported: readonly Tool[], mintId: () => string): {
   added: Tool[];
   skipped: string[];

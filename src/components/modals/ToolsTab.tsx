@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy, Maximize2, Minimize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import type { Tool, ToolOverride } from '@/types';
+import type { Tool, ToolEnabledMap } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,16 +28,17 @@ export interface ToolFileTransfer {
 const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40';
 
 /**
- * Settings → Tools: the catalog and the active preset's own Tools, a read view of the selected one, and the
- * footer actions. Laid out like the stat Code Templates dialog.
+ * Settings → Tools: the catalog and the player's own Tools with the active preset's switches, a read view of
+ * the selected one, and the footer actions. Laid out like the stat Code Templates dialog.
  */
 export function ToolsTab({
-  catalogTools, userTools, builtinPreset, toolsSupported, toolsEnabled, onSaveTool, onDeleteTool, onSetOverride,
+  catalogTools, userTools, enabledTools, builtinPreset, toolsSupported, toolsEnabled, onSaveTool, onDeleteTool, onSetEnabled,
   view, onViewChange, presetSelector, fullscreen, onToggleFullscreen, appVersion, fileTransfer, openWorld,
 }: {
-  /** The catalog with the active preset's overrides applied. */
   catalogTools: readonly Tool[];
   userTools: readonly Tool[];
+  /** The active preset's switches. */
+  enabledTools: ToolEnabledMap;
   builtinPreset: boolean;
   /** Whether the active text endpoint and model take Tools. */
   toolsSupported: boolean;
@@ -45,7 +46,7 @@ export function ToolsTab({
   toolsEnabled: boolean;
   onSaveTool: (tool: Tool) => void;
   onDeleteTool: (id: string) => void;
-  onSetOverride: (id: string, override: ToolOverride) => void;
+  onSetEnabled: (id: string, on: boolean) => void;
   view: ToolsView;
   onViewChange: (view: ToolsView) => void;
   presetSelector: ReactNode;
@@ -75,15 +76,11 @@ export function ToolsTab({
     </Tip>
   );
 
-  const setEnabled = (tool: Tool, enabled: boolean) => {
-    if (isCatalogToolId(tool.id)) onSetOverride(tool.id, { enabled, offeredTo: tool.offeredTo });
-    else onSaveTool({ ...tool, enabled });
-  };
-
   const duplicate = (tool: Tool) => {
     if (builtinPreset) { setDuplicateBlocked(true); return; }
     const copy = copyTool(tool, userTools, randomUUID());
     onSaveTool(copy);
+    onSetEnabled(copy.id, true);
     select(copy.id);
   };
 
@@ -102,7 +99,7 @@ export function ToolsTab({
       const plan = planToolImport(userTools, tools, randomUUID);
       plan.added.forEach(onSaveTool);
       for (const warning of warnings) toast.warn(warning);
-      if (plan.skipped.length) toast.info(`Already in this preset: ${plan.skipped.join(', ')}`);
+      if (plan.skipped.length) toast.info(`Already in My Tools: ${plan.skipped.join(', ')}`);
       if (plan.added.length) toast.success(`Imported ${plan.added.length} Tool${plan.added.length === 1 ? '' : 's'}`);
       if (plan.hasScript) toast.warn('This pack holds a Script Tool. A script runs code when the AI calls it, so read it before you turn it on.');
     } catch (error) {
@@ -138,6 +135,7 @@ export function ToolsTab({
         onCancel={() => onViewChange({ ...view, draft: null })}
         onSave={() => {
           onSaveTool(finishDraft(draft));
+          if (!userTools.some((t) => t.id === draft.id)) onSetEnabled(draft.id, true);
           onViewChange({ ...view, selectedId: draft.id, draft: null });
         }}
       />
@@ -155,7 +153,7 @@ export function ToolsTab({
         tool.id === selected?.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted',
       )}
     >
-      <span aria-hidden className={cn('h-2 w-2 flex-shrink-0 rounded-full', tool.enabled ? 'bg-primary' : 'bg-muted-foreground/40')} />
+      <span aria-hidden className={cn('h-2 w-2 flex-shrink-0 rounded-full', enabledTools[tool.id] === true ? 'bg-primary' : 'bg-muted-foreground/40')} />
       <span className="font-mono truncate">{tool.name}</span>
     </button>
   );
@@ -223,9 +221,9 @@ export function ToolsTab({
                 </div>
                 <label className="flex items-center gap-2 text-label flex-shrink-0">
                   <Checkbox
-                    checked={selected.enabled}
+                    checked={enabledTools[selected.id] === true}
                     disabled={builtinPreset}
-                    onCheckedChange={(c) => setEnabled(selected, c === true)}
+                    onCheckedChange={(c) => onSetEnabled(selected.id, c === true)}
                   />
                   Enabled
                 </label>
@@ -266,7 +264,7 @@ export function ToolsTab({
         open={!!confirmDelete}
         onOpenChange={(o) => !o && setConfirmDelete(null)}
         title="Delete Tool"
-        description={`Delete “${confirmDelete?.name}” from this preset? This can't be undone.`}
+        description={`Delete “${confirmDelete?.name}” from every preset? This can't be undone.`}
         onConfirm={() => {
           if (!confirmDelete) return;
           onDeleteTool(confirmDelete.id);

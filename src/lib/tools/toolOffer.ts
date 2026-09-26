@@ -1,13 +1,13 @@
-import type { AIRequestType, Tool } from '@/types';
+import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
 import type { ToolExecutor } from '@/lib/aiRequest/toolLoop';
 import { runToolCall } from './toolRunner';
 import type { ToolSnapshot } from './toolSnapshot';
 
-/** The enabled Tools `kind` offers, in list order. `tools` is the preset's catalog view, then its own Tools.
- *  `toolsEnabled` is the global Tools switch; off offers none. */
-export function toolsOfferedTo(kind: AIRequestType, tools: readonly Tool[], toolsEnabled: boolean): Tool[] {
+/** The Tools `kind` offers, in list order: those `enabled` (the active preset's map) switches on. `tools` is
+ *  the catalog, then the user Tools. `toolsEnabled` is the global Tools switch; off offers none. */
+export function toolsOfferedTo(kind: AIRequestType, tools: readonly Tool[], enabled: ToolEnabledMap, toolsEnabled: boolean): Tool[] {
   if (!toolsEnabled) return [];
-  return tools.filter((tool) => tool.enabled && tool.offeredTo.includes(kind));
+  return tools.filter((tool) => enabled[tool.id] === true && tool.offeredTo.includes(kind));
 }
 
 /** An executor that builds its Tool Snapshot at the first call and reads that one snapshot for every later

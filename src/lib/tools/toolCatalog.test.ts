@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool } from '@/types';
-import { TOOL_CATALOG, applyToolOverrides, isCatalogToolId } from './toolCatalog';
-import { toolNameProblem, parseTool, parseToolOverrides } from './toolValidation';
+import { TOOL_CATALOG, isCatalogToolId } from './toolCatalog';
+import { toolNameProblem, parseTool, parseToolEnabledMap } from './toolValidation';
 
 const RETRIEVE_FIRST = 'Purpose: Retrieve the full authored information needed to narrate an entity. Summaries help you choose which entities to include.\nUse when: Once you identify an entity to include, retrieve its full entry before planning its portrayal, unless already loaded for this response. This applies to direct and indirect references, including background appearances. Leave unrelated entities unfetched.\nInput: name — the entity\'s name from the entity list.\nOutput: JSON with a matches array. Each match contains id, name, and the full authored description when provided by the author. An empty matches array means no matching entity was found.';
 
@@ -9,29 +9,21 @@ const userTool = (patch: Partial<Tool> = {}): Tool => ({
   id: 'u-1', name: 'get_weather', description: 'Purpose: weather.', params: [
     { name: 'place', type: 'string', description: 'Where.', required: true, options: [] },
   ],
-  handler: { kind: 'template', body: 'Sunny in {{place}}.' }, emptyResult: 'Nothing.', offeredTo: ['narration'], enabled: true, ...patch,
+  handler: { kind: 'template', body: 'Sunny in {{place}}.' }, emptyResult: 'Nothing.', offeredTo: ['narration'], ...patch,
 });
 
 describe('the built-in catalog', () => {
-  it('ships get_entity with the probed retrieve-first wording, off and offered to narration only', () => {
+  it('ships get_entity with the probed retrieve-first wording, offered to narration only', () => {
     const tool = TOOL_CATALOG.find((t) => t.name === 'get_entity');
     expect(tool).toEqual({
       id: 'get_entity', name: 'get_entity', description: RETRIEVE_FIRST,
       params: [{ name: 'name', type: 'string', description: '', required: true, options: [] }],
       handler: { kind: 'lookup', source: 'entities', param: 'name', returns: 'full' },
-      emptyResult: '{"matches": []}', offeredTo: ['narration'], enabled: false,
+      emptyResult: '{"matches": []}', offeredTo: ['narration'],
     });
   });
 
-  it('applies an override to enabled and offeredTo only', () => {
-    const [tool] = applyToolOverrides({ get_entity: { enabled: true, offeredTo: ['narration', 'director'] } });
-    expect(tool.enabled).toBe(true);
-    expect(tool.offeredTo).toEqual(['narration', 'director']);
-    expect(tool.description).toBe(RETRIEVE_FIRST);
-  });
-
-  it('keeps the shipped settings without an override', () => {
-    expect(applyToolOverrides({})).toEqual(TOOL_CATALOG);
+  it('knows its own ids', () => {
     expect(isCatalogToolId('get_entity')).toBe(true);
     expect(isCatalogToolId('u-1')).toBe(false);
   });
@@ -97,7 +89,6 @@ describe('parseTool', () => {
     ['a zero call limit', userTool({ callLimit: 0 })],
     ['a fractional call limit', userTool({ callLimit: 1.5 })],
     ['a text call limit', { ...userTool(), callLimit: '3' }],
-    ['no enabled flag', { ...userTool(), enabled: 'yes' }],
   ];
   it.each(malformed)('rejects a Tool with %s', (_label, raw) => {
     const r = parseTool(raw);
@@ -105,20 +96,15 @@ describe('parseTool', () => {
   });
 });
 
-describe('parseToolOverrides', () => {
-  it('keeps well-formed overrides of catalog Tools', () => {
-    expect(parseToolOverrides({ get_entity: { enabled: true, offeredTo: ['narration', 'choices'] } }))
-      .toEqual({ get_entity: { enabled: true, offeredTo: ['narration', 'choices'] } });
+describe('parseToolEnabledMap', () => {
+  it('keeps boolean entries, off ones included', () => {
+    expect(parseToolEnabledMap({ get_entity: true, 'u-1': false })).toEqual({ get_entity: true, 'u-1': false });
   });
 
-  it('drops unknown ids, malformed entries and unknown prompt kinds', () => {
-    expect(parseToolOverrides({
-      get_entity: { enabled: true, offeredTo: ['narration', 'futurePrompt'] },
-      get_future: { enabled: true, offeredTo: ['narration'] },
-    })).toEqual({ get_entity: { enabled: true, offeredTo: ['narration'] } });
-    expect(parseToolOverrides({ get_entity: { enabled: 'on', offeredTo: [] } })).toBeUndefined();
-    expect(parseToolOverrides({ get_entity: { enabled: true } })).toBeUndefined();
-    expect(parseToolOverrides([])).toBeUndefined();
-    expect(parseToolOverrides('x')).toBeUndefined();
+  it('drops non-boolean entries and ids the filter refuses', () => {
+    expect(parseToolEnabledMap({ get_entity: 'on', 'u-1': true }, isCatalogToolId)).toBeUndefined();
+    expect(parseToolEnabledMap({ get_entity: true, 'u-1': true }, isCatalogToolId)).toEqual({ get_entity: true });
+    expect(parseToolEnabledMap([])).toBeUndefined();
+    expect(parseToolEnabledMap('x')).toBeUndefined();
   });
 });

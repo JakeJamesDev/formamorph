@@ -8,7 +8,7 @@ const param = (patch: Partial<ToolParam> = {}): ToolParam =>
 const draft = (patch: Partial<Tool> = {}): Tool => ({
   id: 'd', name: 'find_person', description: '', params: [param()],
   handler: { kind: 'lookup', source: 'entities', param: 'name', returns: 'full' },
-  emptyResult: '{"matches": []}', offeredTo: ['narration'], enabled: true, ...patch,
+  emptyResult: '{"matches": []}', offeredTo: ['narration'], ...patch,
 });
 
 const mine = draft({ id: 'other', name: 'get_weather' });
