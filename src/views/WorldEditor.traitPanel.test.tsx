@@ -51,7 +51,7 @@ const WORLD: World = benchEditorWorld({
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 
 const FIELD_LABELS =
-  /^(Name|Player-Facing Description|AI-Facing Description|Stat Changes|Stat Availability|Placeholder Pins)$/;
+  /^(Name|Player-Facing Description|AI-Facing Description|Requires|Stat Changes|Stat Availability|Placeholder Pins)$/;
 
 /** Every field label the panel shows, in document order. The panel's own strip carries a Stats tab and a
  *  Details tab, so the match is taken from the panel body rather than the whole editor. */
@@ -96,7 +96,7 @@ describe('the World Editor trait panel tabs', () => {
   it('puts what the trait is and its own switches on Details, and nothing else', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
+    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description', 'Requires']);
     expect(panelSwitches()).toEqual(['Enabled by Default', 'Player Can Toggle In-Game']);
   });
 
@@ -148,7 +148,7 @@ describe('the World Editor trait panel tabs', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
     expect(panelTabNames()).toEqual(['Details', 'Stats']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
+    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description', 'Requires']);
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
     fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));

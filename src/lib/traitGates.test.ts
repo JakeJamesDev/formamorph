@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
-import { WORLD_OWNER, gateStates, neverUnlockable, settle, settleDefaults, switchTrait, type GateInput, type GateOwner } from './traitGates';
+import {
+  WORLD_OWNER, gateStates, neverUnlockable, requirementOptions, settle, settleDefaults, switchTrait, type GateInput, type GateOwner,
+} from './traitGates';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({ id, name: id, parentId: null, ...extra });
@@ -380,5 +382,57 @@ describe('never-unlockable sets', () => {
     expect(sets(royal, [], { entities: [{ id: 'aldric', name: 'Sir Aldric', persona: true }] })).toEqual([]);
     expect(sets(royal, [], { entities: [{ id: 'aldric', name: 'Sir Aldric' }] })).toEqual([['Royal Plate']]);
     expect(sets(royal)).toEqual([['Royal Plate']]);
+  });
+});
+
+describe('requirement options', () => {
+  const groups = [G('Class', { exclusive: true }), G('Gear'), G('Heavy', { parentId: 'Gear' })];
+  const traits = [
+    T('Paladin', { groupId: 'Class' }),
+    T('Knight', { groupId: 'Class' }),
+    T('Plate Armor', { groupId: 'Heavy' }),
+    T('Loose'),
+  ];
+  const wolf: GateOwner = { id: 'wolf', name: 'Ash', groups: [G('Bond')], traits: [T('Tamed', { groupId: 'Bond' })] };
+  const input = {
+    owners: [{ id: WORLD_OWNER, name: '', traits, groups }, wolf],
+    entities: [{ id: 'aldric', name: 'Sir Aldric', persona: true }, { id: 'odd', name: 'Odd Wick' }],
+  };
+  const rows = (list: { label: string; where: string }[]) => list.map((o) => `${o.label} @ ${o.where}`);
+
+  it('lists every trait in tree order with where it lives, leaving out the trait itself', () => {
+    expect(rows(requirementOptions(input, 'Plate Armor').traits)).toEqual([
+      'Paladin @ Class', 'Knight @ Class', 'Loose @ World', "Ash's Tamed @ Ash › Bond",
+    ]);
+  });
+
+  it('leaves out an exclusive sibling, which can never hold the trait up', () => {
+    expect(rows(requirementOptions(input, 'Paladin').traits)).toEqual([
+      'Plate Armor @ Gear › Heavy', 'Loose @ World', "Ash's Tamed @ Ash › Bond",
+    ]);
+  });
+
+  it('names an owned trait without its owner from inside the same owner', () => {
+    const pack = { ...wolf, traits: [...wolf.traits, T('Pack Leader')] };
+    const options = requirementOptions({ ...input, owners: [input.owners[0], pack] }, 'Pack Leader');
+    expect(rows(options.traits)).toContain('Tamed @ Ash › Bond');
+  });
+
+  it('lists every group as "any" with its parent path', () => {
+    expect(rows(requirementOptions(input, 'Loose').groups)).toEqual([
+      'any Class @ World', 'any Gear @ World', 'any Heavy @ Gear', 'any Bond @ Ash',
+    ]);
+  });
+
+  it('lists only the world personas under playing as', () => {
+    expect(requirementOptions(input, 'Loose').personas).toEqual([
+      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', where: 'Persona' },
+    ]);
+  });
+
+  it('carries the requirement each row adds', () => {
+    const options = requirementOptions(input, 'Loose');
+    expect(options.traits[0].requirement).toEqual({ kind: 'trait', id: 'Paladin' });
+    expect(options.groups[0].requirement).toEqual({ kind: 'group', id: 'Class' });
   });
 });

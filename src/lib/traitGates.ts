@@ -3,6 +3,7 @@
 
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { collapseExclusiveDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
+import { buildTraitTree, flattenTraitTree } from './traitTree';
 
 /** The owner id of the world's own traits. */
 export const WORLD_OWNER = 'world';
@@ -316,6 +317,54 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): string[][] {
     sets.set(key, [...(sets.get(key) ?? []), t.item.id]);
   }
   return [...sets.values()];
+}
+
+/** One row of the requirement picker: what it adds, how the chip reads, and where the target lives. */
+export interface RequirementOption {
+  requirement: TraitRequirement;
+  label: string;
+  /** "Ash › Bond": the owner, when not the world, then the group path. "World" for a top-level world item. */
+  where: string;
+}
+
+export interface RequirementOptions {
+  traits: RequirementOption[];
+  groups: RequirementOption[];
+  personas: RequirementOption[];
+}
+
+/**
+ * Every requirement an author can give `traitId`, in tree order per owner. The trait itself and its
+ * exclusive siblings are left out, because none of them can ever hold it up.
+ */
+export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): RequirementOptions {
+  const idx = index({ ...input, active: {}, persona: { source: 'none' } });
+  const from = idx.traits.get(traitId)?.owner ?? input.owners[0];
+  const skip = new Set([traitId, ...(idx.rivals.get(traitId) ?? [])]);
+  const where = (owner: GateOwner, groupId: string | null | undefined) => {
+    const path: string[] = [];
+    for (let id = groupId ?? null, seen = 0; id && seen < owner.groups.length; seen++) {
+      const group = owner.groups.find((g) => g.id === id);
+      if (!group) break;
+      path.unshift(group.name);
+      id = group.parentId;
+    }
+    if (owner.id !== WORLD_OWNER) path.unshift(owner.name);
+    return path.join(' › ') || 'World';
+  };
+  const option = (requirement: TraitRequirement, whereText: string): RequirementOption =>
+    ({ requirement, label: requirementText(requirement, from, idx).text, where: whereText });
+
+  const traits: RequirementOption[] = [];
+  const groups: RequirementOption[] = [];
+  for (const owner of input.owners) {
+    for (const node of flattenTraitTree(buildTraitTree(owner.groups, owner.traits))) {
+      if (node.leaf && !skip.has(node.leaf.id)) traits.push(option({ kind: 'trait', id: node.leaf.id }, where(owner, node.leaf.groupId)));
+      if (node.group) groups.push(option({ kind: 'group', id: node.group.id }, where(owner, node.group.parentId)));
+    }
+  }
+  const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, 'Persona'));
+  return { traits, groups, personas };
 }
 
 /** The gate input for a world with only its own traits, as the enter-world step uses it. */
