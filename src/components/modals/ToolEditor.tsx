@@ -305,7 +305,7 @@ function AvailabilityTab({ draft, onChange }: { draft: Tool; onChange: Change })
         <Label id={`${id}-offered`}>Offered To</Label>
         <Hint>Sends the Tool with these prompts</Hint>
         <MultiSelect
-          aria-labelledby={`${id}-offered`} options={OFFER_OPTIONS} placeholder="No prompts" allSelectedLabel="All prompts"
+          aria-labelledby={`${id}-offered`} options={OFFER_OPTIONS} placeholder="No Prompts" allSelectedLabel="All Prompts"
           defaultValue={draft.offeredTo} onValueChange={(kinds) => onChange({ ...draft, offeredTo: kinds as AIRequestType[] })}
         />
       </div>

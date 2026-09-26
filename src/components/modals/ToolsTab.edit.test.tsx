@@ -197,7 +197,7 @@ describe('editing a Tool', () => {
 });
 
 describe('Offered To', () => {
-  it('checks every prompt with Select All and shows one All prompts chip', async () => {
+  it('checks every prompt with Select All and shows one All Prompts chip', async () => {
     const user = userEvent.setup();
     await openEditor(user);
     await user.click(tab('Availability'));
@@ -205,7 +205,7 @@ describe('Offered To', () => {
     await user.click(offeredTo());
     await user.click(await screen.findByRole('option', { name: /^Select all \d+ options$/ }));
     await user.keyboard('{Escape}');
-    expect(within(offeredTo()).getByText('All prompts')).toBeInTheDocument();
+    expect(within(offeredTo()).getByText('All Prompts')).toBeInTheDocument();
     expect(within(offeredTo()).queryByText('Narration')).toBeNull();
     await user.click(saveButton());
     expect(saved()[0].offeredTo).toEqual(expect.arrayContaining(Object.values(PROMPT_TAB_REQUESTS)));
@@ -226,11 +226,11 @@ describe('Offered To', () => {
     const user = userEvent.setup();
     await openEditor(user, [weather({ offeredTo: Object.values(PROMPT_TAB_REQUESTS) })]);
     await user.click(tab('Availability'));
-    expect(within(offeredTo()).getByText('All prompts')).toBeInTheDocument();
+    expect(within(offeredTo()).getByText('All Prompts')).toBeInTheDocument();
     await user.click(offeredTo());
     await user.click(await screen.findByRole('option', { name: /^Select all \d+ options$/ }));
     await user.keyboard('{Escape}');
-    expect(within(offeredTo()).queryByText('All prompts')).toBeNull();
+    expect(within(offeredTo()).queryByText('All Prompts')).toBeNull();
     await user.click(saveButton());
     expect(saved()[0].offeredTo).toEqual([]);
   });
