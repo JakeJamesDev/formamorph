@@ -146,6 +146,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - A trait requirement holds when that trait is active on its owner. A group requirement holds when any trait below the group in the tree is active, including traits of entity nodes placed inside it. "Playing as" holds when the persona is that world entity.
 - An unresolved requirement never holds.
 - Exclusive groups keep their rule. Picking a sibling retires the others first, then `settle` runs.
+- An exclusive sibling never holds a trait up. A requirement on a sibling in the trait's own exclusive group can never hold once the trait is picked, so it counts as unsatisfiable: the trait reads locked, and a trait with no other way open is never unlockable. (Found in ticket 01 review.)
 - **Return.** `settle` also switches an acquired trait back on when its gate holds again, but only a trait a cascade turned off. A trait the player switched off by hand stays off. A return never retires an exclusive sibling: when the player has picked one since, the trait stays off and leaves the cascade-off list.
 - **Never-unlockable sets** are what the Test Bench reports, not plain loops. A trait is unlockable when some requirement of it can hold through a chain that reaches a trait with no requirements, a persona, or a group with such a trait. "A requires B or C, B requires A" passes, because C opens A. A set with no such path is the error, and the finding lists its members.
 
