@@ -40,8 +40,10 @@ import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
+import { gateStates, neverUnlockable, settleDefaults, worldGateInput, type GateState } from '@/lib/traitGates';
 import type {
-  DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor, Trait, World,
+  DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
+  Trait, TraitRequirement, World,
 } from '@/types';
 
 /**
@@ -1669,6 +1671,114 @@ const traitGroupTooSmall: Rule = {
   },
 };
 
+// ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
+
+interface GateReport {
+  /** Each trait's gate with no persona and nothing active, for its requirement texts. */
+  states: Map<string, GateState>;
+  /** Trait id → its requirements whose target this world no longer has. */
+  unresolved: Map<string, TraitRequirement[]>;
+  /** Never-unlockable sets, with a trait behind a deleted target counted as openable. */
+  stuck: string[][];
+  /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
+  offDefaults: string[];
+}
+
+/**
+ * The gate findings, worked out once per world object. A trait with a deleted target counts as openable for
+ * the other two rules, so each root cause raises one finding: its dependents show once the author re-points it.
+ */
+const gateReportsByWorld = new WeakMap<RuleWorld, GateReport>();
+const gateReportOf = (world: RuleWorld): GateReport => {
+  let report = gateReportsByWorld.get(world);
+  if (report) return report;
+  const traits = world.traits ?? [];
+  const groups = world.traitGroups ?? [];
+  const entities = (world.entities ?? []).map((e) => ({ id: e.id, name: e.name ?? '', persona: e.persona }));
+  const states = gateStates(worldGateInput({ traits, groups, entities }, { source: 'none' }));
+  const unresolved = new Map<string, TraitRequirement[]>();
+  for (const t of traits) {
+    const dead = (t.requires ?? []).filter((_, i) => states.get(t.id)?.requirements[i]?.unresolved);
+    if (dead.length) unresolved.set(t.id, dead);
+  }
+
+  const openable = traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t));
+  const input = worldGateInput({ traits: openable, groups, entities }, { source: 'none' });
+  const stuck = neverUnlockable(input);
+  const stuckIds = new Set(stuck.flat());
+  const choices: PersonaRef[] = [
+    { source: 'none' },
+    ...entities.filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
+  ];
+  const offUnder = choices.map((persona) => new Set(settleDefaults({ ...input, persona }).turnedOff.map((r) => r.traitId)));
+  const offDefaults = traits
+    .filter((t) => !stuckIds.has(t.id) && offUnder.every((off) => off.has(t.id)))
+    .map((t) => t.id);
+
+  report = { states, unresolved, stuck, offDefaults };
+  gateReportsByWorld.set(world, report);
+  return report;
+};
+
+const traitItem = (id: string, world: RuleWorld): FindingItem =>
+  namedItem(id, (world.traits ?? []).find((t) => t.id === id)?.name, world);
+
+/** A deleted target as the finding names it: the stored name when there is one, else its kind. */
+const deadTargetText = (req: TraitRequirement): string => {
+  if (req.kind === 'trait') return req.name ? quote(req.name) : 'a trait';
+  if (req.kind === 'group') return req.name ? `any trait in ${quote(req.name)}` : 'a trait group';
+  return req.name ? `playing as ${quote(req.name)}` : 'a persona';
+};
+
+const traitRequirementNeverUnlockable: Rule = {
+  id: 'trait-requirement-never-unlockable',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} sets of traits can never unlock`,
+  check: (world) => gateReportOf(world).stuck.map((set) => {
+    const items = set.map((id) => traitItem(id, world));
+    return finding(
+      traitRequirementNeverUnlockable,
+      `${listNames(items.map((i) => quote(i.name)))} can never unlock — no chain of requirements reaches a trait or persona that opens them`,
+      items,
+    );
+  }),
+};
+
+const traitRequirementUnresolved: Rule = {
+  id: 'trait-requirement-unresolved',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} traits require something this world no longer has`,
+  check: (world) => [...gateReportOf(world).unresolved].map(([id, dead]) => {
+    const item = traitItem(id, world);
+    return finding(
+      traitRequirementUnresolved,
+      `${quote(item.name)} requires ${listNames(dead.map(deadTargetText))}, which this world no longer has`,
+      [item],
+    );
+  }),
+};
+
+const traitDefaultGated: Rule = {
+  id: 'trait-default-gated',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} default traits start unselected because their requirements aren’t met`,
+  check: (world) => {
+    const { offDefaults, states } = gateReportOf(world);
+    return offDefaults.map((id) => {
+      const item = traitItem(id, world);
+      const needs = (states.get(id)?.requirements ?? []).map((r) => quote(r.text)).join(' or ');
+      return finding(
+        traitDefaultGated,
+        `${quote(item.name)} is marked default but starts unselected — it requires ${needs}, and no default that starts selected meets that`,
+        [item],
+      );
+    });
+  },
+};
+
 // ── Placeholder pools ─────────────────────────────────────────────────────────────────────────────────────
 
 /** The values a roll can actually land on. Every value benched falls back to a uniform draw
@@ -2300,6 +2410,7 @@ export const RULES: readonly Rule[] = [
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
+  traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,

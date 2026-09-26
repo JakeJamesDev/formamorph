@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type {
-  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, WorldOverview,
+  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitRequirement, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -1503,6 +1503,133 @@ describe('trait group rules', () => {
   });
 });
 
+describe('trait gate rules', () => {
+  const needs = (id: string, ...requires: TraitRequirement[]): TraitRequirement[] => [{ kind: 'trait', id }, ...requires];
+  const gated = (id: string, requires: TraitRequirement[], over: Partial<Trait> = {}): Trait =>
+    trait({ id, name: id.toUpperCase(), requires, ...over });
+  const ash: Entity = { ...resident, id: 'ash', name: 'Ash', persona: true };
+  const gates = (traits: Trait[], over: Partial<RuleWorld> = {}) => base({ traits, ...over });
+  const ids = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
+
+  describe('never-unlockable sets', () => {
+    const rule = 'trait-requirement-never-unlockable';
+
+    it('flags two traits that only require each other, naming both', () => {
+      const found = only(gates([gated('a', needs('b')), gated('b', needs('a'))]), rule);
+      expect(ids(found)).toEqual([['a', 'b']]);
+      expect(found[0].severity).toBe('error');
+      expect(found[0].message).toContain('“A” and “B”');
+    });
+
+    it('passes a loop that opens through a third trait', () => {
+      const w = gates([gated('a', needs('b', { kind: 'trait', id: 'c' })), gated('b', needs('a')), trait({ id: 'c', name: 'C' })]);
+      expect(runRules(w)).toEqual([]);
+    });
+
+    it('flags a loop that closes through a group', () => {
+      const w = gates(
+        [gated('a', [{ kind: 'group', id: 'g' }]), gated('b', needs('a'), { groupId: 'g' })],
+        { traitGroups: [{ id: 'g', name: 'Bond', parentId: null }] },
+      );
+      expect(ids(only(w, rule)).map((set) => [...set].sort())).toEqual([['a', 'b']]);
+    });
+
+    it('opens a chain rooted in a persona, and not in an entity that is not one', () => {
+      const chain = [gated('a', [{ kind: 'playingAs', id: 'ash' }]), gated('b', needs('a'))];
+      expect(runRules(gates(chain, { entities: [resident, ash] }))).toEqual([]);
+      expect(ids(only(gates(chain, { entities: [resident, { ...ash, persona: false }] }), rule))).toEqual([['a', 'b']]);
+    });
+
+    it('leaves a trait stuck only behind a deleted target to the unresolved rule, dependents included', () => {
+      const w = gates([gated('t', needs('gone')), gated('u', needs('t'))]);
+      expect(runRules(w).map((f) => [f.ruleId, f.items.map((i) => i.id)]))
+        .toEqual([['trait-requirement-unresolved', ['t']]]);
+    });
+
+    it('shows a loop hidden behind a deleted target once the author removes the dead requirement', () => {
+      const loop = (a: TraitRequirement[]) => gates([gated('a', a), gated('b', needs('a'))]);
+      expect(only(loop(needs('gone', { kind: 'trait', id: 'b' })), rule)).toEqual([]);
+      expect(ids(only(loop(needs('b')), rule))).toEqual([['a', 'b']]);
+    });
+  });
+
+  describe('unresolved requirements', () => {
+    const rule = 'trait-requirement-unresolved';
+
+    it('names each deleted trait, group, and entity by its stored name', () => {
+      const w = gates([gated('a', [
+        { kind: 'trait', id: 'x', name: 'Tamed' },
+        { kind: 'group', id: 'y', name: 'Bond' },
+        { kind: 'playingAs', id: 'z', name: 'Ash' },
+      ])]);
+      const found = only(w, rule);
+      expect(ids(found)).toEqual([['a']]);
+      expect(found[0].severity).toBe('error');
+      expect(found[0].message).toBe('“A” requires “Tamed”, any trait in “Bond” and playing as “Ash”, which this world no longer has');
+    });
+
+    it('reads a requirement with no stored name by its kind', () => {
+      const w = gates([gated('a', [{ kind: 'trait', id: 'x' }]), gated('b', [{ kind: 'group', id: 'y' }]), gated('c', [{ kind: 'playingAs', id: 'z' }])]);
+      expect(only(w, rule).map((f) => f.message)).toEqual([
+        '“A” requires a trait, which this world no longer has',
+        '“B” requires a trait group, which this world no longer has',
+        '“C” requires a persona, which this world no longer has',
+      ]);
+    });
+
+    it('lists only the dead requirements of a trait that has live ones too', () => {
+      const found = only(gates([gated('a', needs('b', { kind: 'trait', id: 'x', name: 'Tamed' })), trait({ id: 'b', name: 'B' })]), rule);
+      expect(found[0].message).toBe('“A” requires “Tamed”, which this world no longer has');
+    });
+
+    it('resolves a target by id, whatever name it was stored under', () => {
+      const w = gates([gated('a', [{ kind: 'trait', id: 'b', name: 'Old Name' }]), trait({ id: 'b', name: 'B' })]);
+      expect(runRules(w)).toEqual([]);
+    });
+  });
+
+  describe('gated defaults', () => {
+    const rule = 'trait-default-gated';
+    const def = { isDefault: true };
+
+    it('flags a default whose requirement no default meets, and says what it requires', () => {
+      const w = gates([gated('a', needs('b'), def), trait({ id: 'b', name: 'B' })]);
+      const found = only(w, rule);
+      expect(ids(found)).toEqual([['a']]);
+      expect(found[0].severity).toBe('warning');
+      expect(found[0].message).toBe('“A” is marked default but starts unselected — it requires “B”, and no default that starts selected meets that');
+      expect(only(gates([gated('a', needs('b'), def), trait({ id: 'b', name: 'B', ...def })]), rule)).toEqual([]);
+    });
+
+    it('flags each default down a chain that has no open root', () => {
+      const w = gates([gated('a', needs('b'), def), gated('b', needs('c'), def), trait({ id: 'c', name: 'C' })]);
+      expect(ids(only(w, rule))).toEqual([['a'], ['b']]);
+    });
+
+    it('passes a default that some persona choice opens', () => {
+      const w = (entities: Entity[]) => gates([gated('a', needs('b', { kind: 'playingAs', id: 'ash' }), def), trait({ id: 'b', name: 'B' })], { entities });
+      expect(runRules(w([resident, ash]))).toEqual([]);
+      expect(ids(only(w([resident, { ...ash, persona: false }]), rule))).toEqual([['a']]);
+    });
+
+    it('leaves a default in a never-unlockable set to the error rule', () => {
+      const w = gates([gated('a', needs('b'), def), gated('b', needs('a'), def)]);
+      expect(runRules(w).map((f) => f.ruleId)).toEqual(['trait-requirement-never-unlockable']);
+    });
+
+    it('leaves a default behind a deleted target to the unresolved rule', () => {
+      const w = gates([gated('a', needs('gone'), def)]);
+      expect(runRules(w).map((f) => f.ruleId)).toEqual(['trait-requirement-unresolved']);
+    });
+
+    it('opens a default whose prerequisite is only stuck behind a deleted target', () => {
+      // Fixing the dead target opens the prerequisite, and it is a default, so the dependent starts selected.
+      const w = gates([gated('t', needs('gone'), def), gated('u', needs('t'), def)]);
+      expect(only(w, rule)).toEqual([]);
+    });
+  });
+});
+
 describe('placeholder pin rules', () => {
   const hue: Placeholder = { id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) };
   // Hue is placed, so the unplaced rules stay quiet and the pin rules are the only ones speaking about it.
@@ -2896,6 +3023,9 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-update-unknown-stat': 'simple',
   'trait-group-multiple-defaults': 'simple',
   'trait-group-too-small': 'simple',
+  'trait-default-gated': 'simple',
+  'trait-requirement-never-unlockable': 'simple',
+  'trait-requirement-unresolved': 'simple',
   'world-empty-system-prompt': 'simple',
   'world-no-readme': 'simple',
   'world-oversized-images': 'simple',
