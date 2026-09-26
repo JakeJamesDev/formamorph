@@ -1,6 +1,8 @@
 # 01: Gate module and enter-world gates
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in 29ebddd7 and 0931c994; notes for later tickets under Comments.
+Base: 3be54b7a
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -36,3 +38,13 @@ A trait can list requirements, any one of which unlocks it. At enter-world, a lo
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**Hand-over (2026-09-26).** The gate module is `src/lib/traitGates.ts`. Notes for later tickets:
+
+- **Ticket 03 (in play):** `switchTrait` returns null for a locked trait. A stat-code switch-on of a locked trait must call `settle` directly, so that `settle` turns the trait off in the same pass.
+- **Ticket 03:** `settle` takes the cascade-off list and returns `returned` and the next `cascadeOff`. It leaves ids alone that no owner holds, so a save keeps a deleted trait.
+- **Test Bench ticket:** `neverUnlockable` includes a trait whose only requirement is unresolved. Remove the duplicate against the unresolved-requirement rule.
+- **Rule added in review:** an exclusive sibling never holds a trait up, because picking the trait retires the sibling. Such a trait reads locked and counts as never unlockable.
+- **Not wired:** the In Play tour pane shows every trait open. The Test Bench lens and the authored-scene preview still read raw `isDefault`, not `settleDefaults`.
