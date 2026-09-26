@@ -12,6 +12,7 @@ import { PanelTabsList } from "@/components/ui/panel-tabs";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { TraitRequiresField } from '@/components/editor/TraitRequiresField';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -20,7 +21,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
-import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitStatToggle } from '@/types';
+import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitRequirement, TraitStatToggle } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -59,10 +60,13 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the other three panels take.
+ *
+ * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  */
-const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
+const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
   trait: Trait;
   onOpenTrait: (id: string) => void;
+  onOpenEntity?: (id: string) => void;
   tab: TraitPanelTab;
   onTabChange: (tab: TraitPanelTab) => void;
   focusField?: FocusFieldHint | null;
@@ -106,6 +110,12 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
 
   const pins = editingTrait.placeholderPins ?? [];
   const setPins = (next: PlaceholderPin[]) => apply({ placeholderPins: next.length ? next : undefined });
+
+  const setRequires = (next: TraitRequirement[]) => apply({ requires: next.length ? next : undefined });
+  const openRequirement = (r: TraitRequirement) => {
+    if (r.kind === 'playingAs') onOpenEntity?.(r.id);
+    else onOpenTrait(r.id);
+  };
 
   const { advanced } = useEditorMode();
 
@@ -165,6 +175,7 @@ const TraitManager = ({ trait, onOpenTrait, tab, onTabChange, focusField }: {
         <span>Player Can Toggle In-Game</span>
         <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
       </label>
+      <TraitRequiresField trait={editingTrait} onChange={setRequires} onOpen={openRequirement} />
     </>
   );
 

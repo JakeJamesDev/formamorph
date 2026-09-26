@@ -980,6 +980,7 @@ const WorldEditorInner = ({
           trait={selectedTrait}
           // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
+          onOpenEntity={(id) => navigateToBenchItem('entities', id)}
           tab={shownTraitTab}
           onTabChange={setTraitTab}
           focusField={focusFieldForItem(findField, selectedTrait.id)}
