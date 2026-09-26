@@ -142,7 +142,7 @@ describe('editing a Tool', () => {
     await user.click(tab('Handler'));
     await user.click(screen.getByRole('radio', { name: 'Script' }));
     const readable = screen.getByLabelText('What the script can read');
-    expect(within(readable).getAllByRole('term').map((t) => t.textContent)).toEqual(['args', 'world', 'scene', 'console']);
+    expect(within(readable).getAllByRole('term').map((t) => t.textContent)).toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
     expect(within(readable).getAllByRole('definition')[0]).toHaveTextContent('{ place }');
     expect(screen.getByRole('textbox', { name: 'Script' })).toBeInTheDocument();
     await user.click(saveButton());

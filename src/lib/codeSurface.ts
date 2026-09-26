@@ -20,8 +20,8 @@ export interface SurfaceEntry {
 /**
  * The names one kind of code can reach, their members, and how its reader talks about it.
  *
- * The rules for the `stats`, `self`, `placeholders` and `traits` maps apply only where a surface lists
- * that name among its globals.
+ * The rules for the `stats`, `self`, `placeholders` and `traits` maps apply only where a surface sets
+ * `statMaps` and lists that name among its globals.
  */
 export interface CodeSurface {
   /** What a message calls the code, as in “x” isn’t available in stat code. */
@@ -41,6 +41,8 @@ export interface CodeSurface {
   snippets: readonly InsertSnippet[];
   /** The warning for code that neither returns nor writes anything, or null when that is fine. */
   missingReturn: string | null;
+  /** True when `stats`, `self`, `placeholders` and `traits` are stat code's maps, with their rules. */
+  statMaps: boolean;
 }
 
 const knownNames = new WeakMap<CodeSurface, ReadonlySet<string>>();

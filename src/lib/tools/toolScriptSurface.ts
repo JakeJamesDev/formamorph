@@ -1,6 +1,7 @@
 /**
  * What a Tool script can reach, as the code editor reads it: `args` typed from the Tool's parameters, the
- * world, the current scene and `console.log`. It describes the sandbox in `toolScript`; it never widens it.
+ * world, the current scene, the resolved placeholders and `console.log`. It describes the sandbox in
+ * `toolScript`; it never widens it.
  */
 import type { ToolParam } from '@/types';
 import type { CodeSurface, SurfaceEntry } from '@/lib/codeSurface';
@@ -11,13 +12,13 @@ import { listOptions, namedParams } from './toolDraft';
 const shapeOf = (entries: readonly SurfaceEntry[]) => `{ ${entries.map((entry) => entry.name).join(', ')} }`;
 
 /** The fields of one `world.entities` item. */
-const ENTITY_SHAPE = '{ id, name, aliases, type, pronouns, description, summary }';
+const ENTITY_SHAPE = '{ id, name, aliases, type, pronouns, description, summary, placeholders }';
 
 /** The members of `world`. */
 export const WORLD_MEMBERS: readonly SurfaceEntry[] = [
-  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity. In play, this includes the characters the playthrough discovered.' },
+  { name: 'entities', detail: `${ENTITY_SHAPE}[]`, info: 'Every entity. In play, this includes the characters the playthrough discovered. Each one’s placeholders maps its own placeholder names to their values.' },
   { name: 'locations', detail: '{ id, name, description, summary }[]', info: 'Every location.' },
-  { name: 'dictionary', detail: '{ id, name, keys, value }[]', info: 'Every enabled dictionary entry.' },
+  { name: 'dictionary', detail: '{ id, name, keys, value, placeholders }[]', info: 'Every enabled dictionary entry. Each one’s placeholders maps its book’s placeholder names to their values.' },
 ];
 
 const LOCATION_MEMBERS: readonly SurfaceEntry[] = [
@@ -62,31 +63,35 @@ const STATIC_SNIPPETS: readonly InsertSnippet[] = [
   { label: 'Find an entity by name', text: 'world.entities.find((entity) => entity.name === "Name")', select: 'Name' },
   { label: 'The current location', text: 'scene.location?.name' },
   { label: 'A stat’s value', text: 'scene.stats["Health"]', select: 'Health' },
+  { label: 'A placeholder’s value', text: 'placeholders["Name"]', select: 'Name' },
 ];
 
 /** How a script reads one argument. A name that isn't an identifier, such as `place-name`, needs brackets. */
 const argAccess = (name: string) => (/^[A-Za-z_$][\w$]*$/.test(name) ? `args.${name}` : `args[${JSON.stringify(name)}]`);
 
-/** The surface of a script for a Tool with `params`. */
-export function toolScriptSurface(params: readonly ToolParam[]): CodeSurface {
+/** The surface of a script for a Tool with `params`, in a world whose shared placeholders are `placeholderNames`. */
+export function toolScriptSurface(params: readonly ToolParam[], placeholderNames: readonly string[] = []): CodeSurface {
   const argEntries = namedParams(params).map(argEntry);
+  const placeholderEntries = placeholderNames.map((name) => ({ name, detail: 'string', info: 'The value this playthrough resolved.' }));
   return {
     label: 'a Tool script',
     globals: [
       { name: 'args', detail: shapeOf(argEntries), info: 'The arguments the AI sent, checked against the parameters. Read-only.' },
       { name: 'world', detail: shapeOf(WORLD_MEMBERS), info: 'The world’s entities, locations and dictionary. Read-only.' },
       { name: 'scene', detail: shapeOf(SCENE_MEMBERS), info: 'The current scene. Read-only.' },
+      { name: 'placeholders', detail: 'object', info: 'Each shared placeholder’s value by name. Use placeholders["Two Words"] for a name with a space. Read-only.' },
       { name: 'console', detail: 'object', info: 'Only console.log. Output shows in the browser console.' },
     ],
     hiddenGlobals: [],
     builtins: BUILTINS,
     members: new Map([
       ...BUILTIN_MEMBERS, ['Date', DATE_MEMBERS],
-      ['args', argEntries], ['world', WORLD_MEMBERS], ['scene', SCENE_MEMBERS],
+      ['args', argEntries], ['world', WORLD_MEMBERS], ['scene', SCENE_MEMBERS], ['placeholders', placeholderEntries],
       ['scene.location', LOCATION_MEMBERS], ['scene.time', TIME_MEMBERS],
     ]),
     languageNames: LANGUAGE_NAMES,
     snippets: [...argEntries.map((entry) => ({ label: `Argument: ${entry.name}`, text: argAccess(entry.name) })), ...STATIC_SNIPPETS],
     missingReturn: 'This script never returns, so the Tool sends its empty result.',
+    statMaps: false,
   };
 }

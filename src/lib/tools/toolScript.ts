@@ -2,7 +2,7 @@ import { getQuickJS, shouldInterruptAfterDeadline } from 'quickjs-emscripten';
 import type { ToolSnapshot } from './toolSnapshot';
 
 // Tool scripts ship in shared presets, so they are untrusted. They run in their own QuickJS runtime with the
-// stat-code limits and see only `args`, `world`, `scene` and `console.log`.
+// stat-code limits and see only `args`, `world`, `scene`, `placeholders` and `console.log`.
 const EXECUTION_TIMEOUT_MS = 1000;
 const MEMORY_LIMIT_BYTES = 16 * 1024 * 1024;
 const MAX_STACK_BYTES = 512 * 1024;
@@ -49,11 +49,11 @@ export async function runToolScript(
       `((m, a, b, c, d) => { m.random = () => { const t = (a + b + d) | 0; d = (d + 1) | 0; a = b ^ (b >>> 9);`,
       '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 2 ** 32; };',
       `  for (let i = 0; i < 15; i++) m.random(); })(Math, ${seed});`,
-      `const [args, world, scene, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
+      `const [args, world, scene, placeholders, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
       '  const freeze = (o) => { if (o && typeof o === "object" && !isFrozen(o)) { freezeOne(o); values(o).forEach(freeze); } return o; };',
       '  const finish = (v) => (v == null ? [0] : typeof v === "string" ? [1, v] : [2, stringify(v)]);',
       `  return [freeze(parse(${jsonSource(args)})), freeze(parse(${jsonSource(snapshot.world)})),`,
-      `    freeze(parse(${jsonSource(snapshot.scene)})), finish];`,
+      `    freeze(parse(${jsonSource(snapshot.scene)})), freeze(parse(${jsonSource(snapshot.placeholders)})), finish];`,
       '})(JSON.parse, JSON.stringify, Object.freeze, Object.isFrozen, Object.values);',
       `${FINISH}((function (${FINISH}) {`,
       code,

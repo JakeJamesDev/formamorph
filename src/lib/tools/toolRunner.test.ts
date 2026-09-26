@@ -366,8 +366,8 @@ describe('runToolCall: Script', () => {
     expect(s.scene.stats.Vigor).toBe(23);
   });
 
-  it('reaches no stat-code globals', async () => {
-    const code = 'return [typeof stats, typeof self, typeof placeholders, typeof traits].join(",");';
+  it('reaches no stat-code globals, and its placeholders are plain text with no pin', async () => {
+    const code = 'return [typeof stats, typeof self, typeof traits, typeof placeholders.pin].join(",");';
     expect(await runToolCall(script(code, []), '{}', s)).toEqual({ text: 'undefined,undefined,undefined,undefined' });
   });
 

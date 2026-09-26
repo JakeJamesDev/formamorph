@@ -10,7 +10,7 @@ const params: ToolParam[] = [
   { name: 'mood', type: 'enum', description: '', required: false, options: ['calm', 'angry'] },
   { name: 'place-name', type: 'number', description: '', required: true, options: [] },
 ];
-const surface = toolScriptSurface(params);
+const surface = toolScriptSurface(params, ['Weather', 'Hair Color']);
 
 function labelsAt(doc: string) {
   const pos = doc.indexOf('|');
@@ -24,7 +24,7 @@ describe('the Tool script surface matches the sandbox', () => {
 
   it('lists every global the script can reach, and each is really there', async () => {
     const globals = surface.globals.map((g) => g.name);
-    expect(globals).toEqual(['args', 'world', 'scene', 'console']);
+    expect(globals).toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
     const probe = `return [${globals.map((g) => `typeof ${g}`).join(', ')}];`;
     const result = await runToolScript(probe, { name: 'Wren' }, snapshot);
     expect(JSON.parse((result as { text: string }).text)).not.toContain('undefined');
@@ -43,6 +43,27 @@ describe('the Tool script surface matches the sandbox', () => {
     expect(shape('entities')).toEqual(Object.keys(snapshot.world.entities[0]).sort());
     expect(shape('locations')).toEqual(Object.keys(snapshot.world.locations[0]).sort());
     expect(shape('dictionary')).toEqual(Object.keys(snapshot.world.dictionary[0]).sort());
+  });
+});
+
+describe('placeholders', () => {
+  it('offers the world’s placeholder names after a dot, each as resolved text', () => {
+    expect(labelsAt('return placeholders.|')).toEqual(['Weather', 'Hair Color']);
+    expect(surface.members.get('placeholders')!.every((m) => m.detail === 'string')).toBe(true);
+  });
+
+  it('follows the names it is given, and offers none without any', () => {
+    expect(toolScriptSurface(params).members.get('placeholders')).toEqual([]);
+    expect(toolScriptSurface(params, ['Tide']).members.get('placeholders')!.map((m) => m.name)).toEqual(['Tide']);
+  });
+
+  it('reads the map as plain text, not stat code’s placeholder tree', () => {
+    expect(messages('return placeholders.Weather + placeholders["Hair Color"];')).toEqual([]);
+    expect(messages('placeholders.Weather = "sun";')).toEqual(['This script never returns, so the Tool sends its empty result.']);
+  });
+
+  it('offers a snippet that reads one placeholder by name', () => {
+    expect(surface.snippets.map((s) => s.text)).toContain('placeholders["Name"]');
   });
 });
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Connection, Entity, GameLocation, PlayerStat, Trait, TraitGroup } from '@/types';
+import type { Connection, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere } from '../locationContext';
 import type { ResolvedPersona } from '../persona';
@@ -31,6 +31,8 @@ export interface LiveSceneSources {
   participants: string[];
   notes: string;
   time: ChipSceneTime | null;
+  /** The world's shared placeholders. */
+  placeholders: readonly Placeholder[];
 }
 
 /** The world under a stat-code before box's writes, which React has not rendered yet. */
@@ -93,6 +95,8 @@ export function liveChipScene(
     notes: sources.notes,
     time: sources.time,
     resolve: box?.resolve ?? sources.resolve,
+    resolveEntity,
+    placeholders: sources.placeholders,
     outerScopeEntities: resolveEntityTexts(sources.entities, resolveEntity),
     inSceneNames,
   };
@@ -102,16 +106,16 @@ export function liveChipScene(
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
     overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
-    connections, entities, allEntities, participants, notes, time,
+    connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
       overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
-      connections, entities, allEntities, participants, notes, time,
+      connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
       overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
-      connections, entities, allEntities, participants, notes, time,
+      connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );
 }

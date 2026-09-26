@@ -79,12 +79,8 @@ export interface SurfaceAnalysisOptions extends AnalysisOptions {
 
 /** Which of the stat-code maps the surface injects, and so which of their rules apply. */
 function statRulesOf(surface: CodeSurface) {
-  return {
-    stats: surfaceHasGlobal(surface, 'stats'),
-    self: surfaceHasGlobal(surface, 'self'),
-    placeholders: surfaceHasGlobal(surface, 'placeholders'),
-    traits: surfaceHasGlobal(surface, 'traits'),
-  };
+  const has = (name: string) => surface.statMaps && surfaceHasGlobal(surface, name);
+  return { stats: has('stats'), self: has('self'), placeholders: has('placeholders'), traits: has('traits') };
 }
 
 const parse = (code: string): Tree => javascriptLanguage.parser.parse(code);

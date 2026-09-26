@@ -221,13 +221,13 @@ function ParametersTab({ draft, onChange, problems, locked }: TabProps) {
   );
 }
 
-function HandlerTab({ draft, onChange, problems, locked }: TabProps) {
+function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: TabProps & { placeholderNames: readonly string[] }) {
   const id = useId();
   const { handler, params } = draft;
   const named = namedParams(params);
   const source = LOOKUP_SOURCES.find((s) => handler.kind === 'lookup' && s.value === handler.source);
   const handlerError = problems.handler && HANDLER_PROBLEM[problems.handler];
-  const surface = useMemo(() => toolScriptSurface(params), [params]);
+  const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
   return (
@@ -410,6 +410,9 @@ export function ToolEditor({
   const blocked = hasDraftProblems(problems);
   const fixes = fixesToSave(draft, problems);
   const body = { draft, onChange: onDraftChange, problems, locked: builtIn };
+  // Autocomplete lists the shared placeholders of the world Try It runs on.
+  const { snapshot } = world;
+  const placeholderNames = useMemo(() => Object.keys(snapshot().placeholders), [snapshot]);
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-3">
@@ -438,7 +441,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <DefinitionFieldsTab value="definition" locked={builtIn}><DefinitionTab {...body} /></DefinitionFieldsTab>
               <DefinitionFieldsTab value="parameters" locked={builtIn}><ParametersTab {...body} /></DefinitionFieldsTab>
-              <DefinitionFieldsTab value="handler" locked={builtIn}><HandlerTab {...body} /></DefinitionFieldsTab>
+              <DefinitionFieldsTab value="handler" locked={builtIn}><HandlerTab {...body} placeholderNames={placeholderNames} /></DefinitionFieldsTab>
               <TabsContent value="availability" className="mt-0"><AvailabilityTab draft={draft} onChange={onDraftChange} /></TabsContent>
             </div>
           </ScrollArea>
