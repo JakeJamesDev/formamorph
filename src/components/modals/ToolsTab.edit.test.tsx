@@ -50,7 +50,7 @@ describe('creating a Tool', () => {
     await user.click(list().getByRole('button', { name: 'New Tool' }));
     expect(screen.getByRole('tablist', { name: 'Tool Fields' })).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Check Definition and Handler to save');
+    expect(screen.getByRole('status')).toHaveTextContent('Name the Tool (Definition) and pick the parameter to search by (Handler) to save');
 
     await user.type(nameInput(), 'find_person');
     await user.click(screen.getByRole('button', { name: 'Add Outline' }));
@@ -204,6 +204,79 @@ describe('Offered To', () => {
   });
 });
 
+describe('editor copy', () => {
+  const status = () => screen.getByRole('status');
+  const param = (name: string, patch: Partial<Tool['params'][number]> = {}): Tool['params'][number] =>
+    ({ name, type: 'string', description: '', required: true, options: [], ...patch });
+
+  it('says what the Description is for', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    expect(screen.getByText('Tells the AI what the Tool does and when to call it')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['Entities', 'Matches entity names and aliases, in any case'],
+    ['Locations', 'Matches location names, in any case'],
+    ['Dictionary Entries', 'Matches dictionary names and keywords, in any case'],
+  ])('shows one match hint for %s under the whole lookup row', async (label, hint) => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({ handler: { kind: 'lookup', source: 'entities', param: 'place', returns: 'full' } })]);
+    await user.click(tab('Handler'));
+    await user.click(screen.getByRole('combobox', { name: 'Search' }));
+    await user.click(await screen.findByRole('option', { name: label }));
+    expect(screen.getAllByText(hint)).toHaveLength(1);
+    expect(screen.getByRole('combobox', { name: 'Search' })).toHaveAccessibleDescription(hint);
+    // Under the grid, not inside a column: By Parameter carries no hint, so its label stays level with Search's.
+    const byParameter = screen.getByRole('combobox', { name: 'By Parameter' });
+    expect(screen.getByText(hint).closest('.grid')).not.toBe(byParameter.closest('.grid'));
+    expect(byParameter).not.toHaveAccessibleDescription(hint);
+  });
+
+  it('names an unnamed parameter by its position', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.click(tab('Parameters'));
+    await user.click(screen.getByRole('button', { name: 'Add Parameter' }));
+    expect(status()).toHaveTextContent(/^Name parameter 2 \(Parameters\) to save$/);
+  });
+
+  it('joins one phrase per problem, in tab order', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({
+      name: 'bad name',
+      params: [param('where'), param('where'), param('mood', { type: 'enum' })],
+      handler: { kind: 'lookup', source: 'entities', param: 'who', returns: 'full' },
+    })]);
+    expect(status()).toHaveTextContent(
+      /^Rename the Tool \(Definition\), rename parameter 1 \(Parameters\), rename parameter 2 \(Parameters\), add options to parameter 3 \(Parameters\), and pick the parameter to search by \(Handler\) to save$/,
+    );
+  });
+
+  it('uses the Handler tab’s inline text for the lookup phrase', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({ handler: { kind: 'lookup', source: 'entities', param: 'who', returns: 'full' } })]);
+    await user.click(tab('Handler'));
+    const inline = screen.getByRole('combobox', { name: 'By Parameter' });
+    expect(inline).toHaveAccessibleDescription('Pick the parameter to search by');
+    expect(status()).toHaveTextContent(/^Pick the parameter to search by \(Handler\) to save$/);
+  });
+
+  it('labels the boolean type True/False and keeps a saved boolean parameter unchanged', async () => {
+    const user = userEvent.setup();
+    const flag = param('loud', { type: 'boolean', required: false });
+    await openEditor(user, [weather({ params: [flag], handler: { kind: 'template', body: 'Loud.' } })]);
+    await user.click(tab('Parameters'));
+    const type = within(screen.getByRole('group', { name: 'Parameter 1' })).getByRole('combobox', { name: 'Type' });
+    expect(type).toHaveTextContent('True/False');
+    await user.click(type);
+    expect(await screen.findByRole('option', { name: 'True/False' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(saveButton());
+    expect(saved()[0].params).toEqual([flag]);
+  });
+});
+
 describe('the enabled bit', () => {
   it('has no Enabled checkbox in the editor, and saving an edit leaves the preset’s switch off', async () => {
     const user = userEvent.setup();
@@ -253,7 +326,7 @@ describe('name validation', () => {
     expect(nameInput()).toHaveAccessibleDescription(message);
     expect(nameInput()).toHaveAttribute('aria-invalid', 'true');
     expect(saveButton()).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Check Definition to save');
+    expect(screen.getByRole('status')).toHaveTextContent('Rename the Tool (Definition) to save');
   });
 
   it('takes a 64-character name', async () => {
