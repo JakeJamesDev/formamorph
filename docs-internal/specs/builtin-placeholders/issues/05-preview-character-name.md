@@ -14,12 +14,12 @@ Demo: open an entity named "YoRHa 2B", place a Character Name chip in its player
 
 Workload: one prop through two entity editors and one branch in the Preview value map, with an existing preview test file to extend.
 
-- [ ] The Preview value map takes an optional owner name and maps the Character Name token to it, resolved through the same draw as the text
-- [ ] An empty or absent owner name previews as the label
-- [ ] Both entity editors pass the owner's authored name to each entity field that offers Character Name
-- [ ] A Character Name chip in a dictionary entry or world text still previews as the label
-- [ ] Player Name still previews as the label
-- [ ] Preview value tests cover the name, the chip-bearing name, and the empty name, mutation-proven
-- [ ] Verified in the preview at a realistic viewport with static evidence
-- [ ] Changelog In-Progress line added to the 👤 Built-in group beside ticket 03's entry
-- [ ] Four gates green; `graphify update .` run
+- [x] The Preview value map takes an optional owner name and maps the Character Name token to it, resolved through the same draw as the text
+- [x] An empty or absent owner name previews as the label
+- [x] Both entity editors pass the owner's authored name to each entity field that offers Character Name
+- [x] A Character Name chip in a dictionary entry or world text still previews as the label
+- [x] Player Name still previews as the label
+- [x] Preview value tests cover the name, the chip-bearing name, and the empty name, mutation-proven
+- [x] Verified in the preview at a realistic viewport with static evidence
+- [x] Changelog In-Progress line added to the 👤 Built-in group beside ticket 03's entry
+- [x] Four gates green; `graphify update .` run

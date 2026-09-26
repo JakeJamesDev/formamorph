@@ -115,6 +115,7 @@ export function OpeningsPanel({ onOpenEntity }: {
               placeholders={placeholders}
               ownerId={entity.id}
               ownerName={name}
+              characterName={entity.name}
               empty={null}
             />
           </section>
@@ -146,6 +147,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
         onChange={onChange}
         placeholders={placeholders}
         ownerId={entity.id}
+        characterName={entity.name}
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
@@ -160,7 +162,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
  * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
  * dash: the row is outside the pool the chances describe.
  */
-export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerName }: {
+export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerName, characterName }: {
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
@@ -171,6 +173,8 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
   empty: ReactNode;
   /** Names the owner in each row's accessible labels, where several owners share one screen. */
   ownerName?: string;
+  /** The entity's authored name, which a Character Name chip previews as. */
+  characterName?: string;
 }) {
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
@@ -195,6 +199,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
                   chance={chance}
                   placeholders={placeholders}
                   ownerId={ownerId}
+                  characterName={characterName}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
@@ -220,7 +225,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, weight, chance, placeholders, ownerId, onKind, onText, onWeight, onRemove,
+  opening, label, a11yLabel, weight, chance, placeholders, ownerId, characterName, onKind, onText, onWeight, onRemove,
 }: {
   opening: Opening;
   label: string;
@@ -230,6 +235,7 @@ const OpeningCard = ({
   chance: number | null;
   placeholders: Placeholder[];
   ownerId?: string;
+  characterName?: string;
   onKind: (kind: OpeningKind) => void;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
@@ -300,6 +306,7 @@ const OpeningCard = ({
           onChange={onText}
           placeholders={placeholders}
           ownerId={ownerId}
+          ownerName={characterName}
           ariaLabel={a11yLabel}
           placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
           resizable

@@ -151,6 +151,26 @@ describe('the Character Name chip in the placeholder pass', () => {
     expect(describePlaceholders('Hi {{char}}.', [])).toBe('Hi Character Name.');
     expect(buildPlaceholderPreview('Hi {{char}}.', [])).toEqual({ '{{char}}': 'Character Name' });
   });
+
+  it('previews as the owner name an entity editor passes', () => {
+    expect(buildPlaceholderPreview('Hi {{char}} and {{ Char }}.', [], first, undefined, 'YoRHa 2B'))
+      .toEqual({ '{{char}}': 'YoRHa 2B', '{{ Char }}': 'YoRHa 2B' });
+  });
+
+  it('previews a chip in the owner name as the same draw the text reads', () => {
+    const hair = P('hair', ['Red', 'Blue']);
+    const chip = tok('hair', 'world', 'p1');
+    const picks = ['Blue', 'Red'];
+    let i = 0;
+    const out = buildPlaceholderPreview(`${chip} hair. {{char}} waits.`, [hair], () => picks[i++], undefined, `${tok('hair', 'world', 'p2')} Vos`);
+    expect(out).toEqual({ [chip]: 'Blue', '{{char}}': 'Blue Vos' });
+  });
+
+  it('previews as its label with an empty owner name, and leaves Player Name as its label', () => {
+    expect(buildPlaceholderPreview('{{char}} greets {{user}}.', [], first, undefined, ' '))
+      .toEqual({ '{{char}}': 'Character Name', '{{user}}': 'Player Name' });
+    expect(buildPlaceholderPreview('{{user}} waits.', [], first, undefined, 'Vos')).toEqual({ '{{user}}': 'Player Name' });
+  });
 });
 
 describe('resolveEntityText', () => {

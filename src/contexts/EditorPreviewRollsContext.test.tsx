@@ -42,6 +42,10 @@ function mount(inside?: (children: React.ReactNode) => React.ReactElement) {
       if (!store) throw new Error('probe never rendered');
       return store.open(text, world);
     },
+    readOwned: (text: string, ownerName: string) => {
+      if (!store) throw new Error('probe never rendered');
+      return store.preview(text, world, undefined, ownerName);
+    },
     readWith: (text: string, placeholders: Placeholder[]) => {
       if (!store) throw new Error('probe never rendered');
       return store.preview(text, placeholders);
@@ -97,6 +101,13 @@ describe('EditorPreviewRollsProvider', () => {
     const u = tok('hair', 'u1', 'unique');
     const before = h.read(u)[u];
     expect(drawsDiffer(() => { h.reroll(['hair']); return h.read(u)[u]; }, before)).toBe(true);
+  });
+
+  it('keeps the roll of a Unique chip in the owner name, so Character Name reads one value', () => {
+    const h = mount();
+    const name = `${tok('hair', 'u1', 'unique')} Vos`;
+    const before = h.readOwned('{{char}} waits.', name)['{{char}}'];
+    expect(drawsDiffer(() => h.readOwned('{{char}} waits.', name)['{{char}}'], before)).toBe(false);
   });
 
   it('drops a roll the author has edited out of the pool, so a Preview never shows text that is gone', () => {

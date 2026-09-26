@@ -131,6 +131,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         onChange={(v) => onChange('playerDescription', v)}
         placeholders={placeholders}
         ownerId={ownerId}
+        ownerName={value.name}
         resizable
         tourAnchor="entity-player-description"
       />
@@ -148,6 +149,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
         onChange={(v) => onChange('aiDescription', v)}
         placeholders={placeholders}
         ownerId={ownerId}
+        ownerName={value.name}
         resizable
         tourAnchor="entity-ai-description"
       />
@@ -166,6 +168,7 @@ export const EntityDescriptionFields = ({ value, onChange, placeholders = [], ow
           onChange={(v) => onChange('aiSummary', v)}
           placeholders={placeholders}
           ownerId={ownerId}
+          ownerName={value.name}
           resizable
         />
       )}

@@ -36,7 +36,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -45,6 +45,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
    *  For an entity's or book's field: its scoped placeholders read bare and come first, and one created
    *  from here lands in its list. */
   ownerId?: string;
+  /** The owning entity's authored name, which a Character Name chip previews as. */
+  ownerName?: string;
   /** Makes this a world custom prompt: the field also holds prompt variables, offered from its own toolbar
    *  and previewed from `previewValues`. `sampleData` badges that preview (see `PromptField`). */
   promptChips?: { variables: PromptVariable[]; previewValues: Record<string, string>; sampleData?: boolean | string };
@@ -84,7 +86,10 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, promptChips,
     [game?.traits, game?.locations, game?.stats, placeholders],
   );
   // Re-read on every reroll: the store's identity carries its version.
-  const chipValues = useMemo(() => rolls.preview(value, placeholders, pinRows), [rolls, value, placeholders, pinRows]);
+  const chipValues = useMemo(
+    () => rolls.preview(value, placeholders, pinRows, ownerName),
+    [rolls, value, placeholders, pinRows, ownerName],
+  );
   const promptValues = promptChips?.previewValues;
   const previewValues = useMemo(() => (promptValues ? { ...promptValues, ...chipValues } : chipValues), [promptValues, chipValues]);
   // A value edit goes through the same store a chip rename does, and a pin edit through the writer its source
