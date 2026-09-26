@@ -1348,13 +1348,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return names.length ? { off: names, because } : null;
   };
 
-  // Toggle a trait in the starting selection. Picking one from an exclusive group retires its siblings,
-  // which is what makes that group read (and behave) as a set of radio buttons.
+  // Toggle a trait in the starting selection; a cascade shows in the banner.
   const handleTraitSelection = (traitId: string) => {
     const result = switchTrait(gateInput(selectedTraits, entryDraft.persona), WORLD_OWNER, traitId);
     if (!result) return;
     updateDraft('traitIds', result.active[WORLD_OWNER]);
-    setTraitCascade(cascadeFrom(result, traits.find((t) => t.id === traitId)?.name ?? ''));
+    setTraitCascade(cascadeFrom(result, traits.find((t) => t.id === traitId)?.name ?? traitId));
   };
 
   // A persona pick can open or close "playing as" gates, so the traits settle against the new persona.
@@ -2710,8 +2709,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         const currentWorldData = selectedWorld!.data;
                         // Skip the setup steps but honor the author's default trait choices.
                         const persona = personaPreselect(selectedWorld!.id);
-                        const defaults = settleDefaults(worldGateInput(
-                          { traits, groups: traitGroups, entities: resolvedWorldEntities }, persona)).active[WORLD_OWNER];
+                        const defaults = settleDefaults(gateInput([], persona)).active[WORLD_OWNER];
                         // A world persona starts at its own starting location; any other start stays random.
                         const draft = withPersonaPick({
                           ...emptyEntryDraft(), traitIds: defaults,
