@@ -126,7 +126,7 @@ describe('Settings → Tools', () => {
       expect(screen.getByRole('tab', { name: 'Definition', hidden: true })).toHaveAttribute('aria-selected', 'true');
       expect(screen.getByRole('textbox', { name: 'Name', hidden: true })).toHaveValue('get_forecast');
       // The unnamed parameter came back with the draft, so Save still waits on it.
-      expect(screen.getByRole('status', { hidden: true })).toHaveTextContent('Check Parameters to save');
+      expect(screen.getByRole('status', { hidden: true })).toHaveTextContent('Name parameter 1 (Parameters) to save');
     } finally {
       spy.mockRestore();
     }

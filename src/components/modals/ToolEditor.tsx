@@ -46,13 +46,20 @@ const PARAM_PROBLEM: Record<ParamProblem, string | null> = {
 
 const HANDLER_PROBLEM: Record<HandlerProblem, string> = { lookupParam: 'Pick the parameter to search by' };
 
+/** The footer's fix for each parameter problem, by the parameter's 1-based position. */
+const PARAM_FIX: Record<ParamProblem, (position: number) => string> = {
+  unnamed: (n) => `Name parameter ${n}`,
+  repeated: (n) => `Rename parameter ${n}`,
+  noOptions: (n) => `Add options to parameter ${n}`,
+};
+
 const OUTLINE = ['Purpose:', 'Use when:', 'Input:', 'Output:'];
 const DESCRIPTION_VOCABULARY = plainVocabulary();
 
 const PARAM_TYPES: readonly { value: ToolParamType; label: string }[] = [
   { value: 'string', label: 'Text' },
   { value: 'number', label: 'Number' },
-  { value: 'boolean', label: 'Yes/No' },
+  { value: 'boolean', label: 'True/False' },
   { value: 'enum', label: 'One of a List' },
 ];
 
@@ -65,9 +72,9 @@ const HANDLER_KINDS: readonly { value: ToolHandler['kind']; label: string }[] = 
 type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
 
 const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: string }[] = [
-  { value: 'entities', label: 'Entities', matches: 'Matches names and aliases, in any case' },
-  { value: 'locations', label: 'Locations', matches: 'Matches names, in any case' },
-  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches trigger keywords, in any case' },
+  { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
+  { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
+  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and keywords, in any case' },
 ];
 
 /** The prompts a Tool can be offered to, in the Prompts rail's order. */
@@ -130,7 +137,7 @@ function DefinitionTab({ draft, onChange, problems, locked }: TabProps) {
       </Field>
       <PromptField
         label="Description" ariaLabel="Description" vocabulary={DESCRIPTION_VOCABULARY}
-        hint="Tells the AI when to call the Tool: Purpose, Use when, Input, Output"
+        hint="Tells the AI what the Tool does and when to call it"
         placeholder={OUTLINE.join('\n')} readOnly={locked}
         labelAside={(
           <Button size="sm" variant="outline" disabled={missing.length === 0} onClick={addOutline}>Add Outline</Button>
@@ -226,43 +233,47 @@ function HandlerTab({ draft, onChange, problems, locked }: TabProps) {
         onChange={(kind) => onChange(withHandlerKind(draft, kind))}
       />
       {handler.kind === 'lookup' && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field id={`${id}-source`} label="Search">
-            <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })} disabled={locked}>
-              <SelectTrigger id={`${id}-source`}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field id={`${id}-param`} label="By Parameter" hint={source?.matches} error={handlerError}>
-            <Select
-              value={named.some((p) => p.name === handler.param) ? handler.param : undefined}
-              onValueChange={(v) => setHandler({ ...handler, param: v })} disabled={locked}
-            >
-              <SelectTrigger
-                id={`${id}-param`} aria-invalid={!!handlerError}
-                aria-describedby={handlerError ? `${id}-param-error` : undefined}
-              >
-                <SelectValue placeholder="Pick a parameter" />
-              </SelectTrigger>
-              <SelectContent>
-                {named.length === 0 && <div className="px-2 py-1.5 text-meta text-muted-foreground">Add a parameter first</div>}
-                {named.map((p) => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
-          {handler.source !== 'dictionary' && (
-            <Field id={`${id}-returns`} label="Returns">
-              <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })} disabled={locked}>
-                <SelectTrigger id={`${id}-returns`}><SelectValue /></SelectTrigger>
+        <div className="flex flex-col gap-1">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id={`${id}-source`} label="Search">
+              <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })} disabled={locked}>
+                <SelectTrigger id={`${id}-source`} aria-describedby={`${id}-matches`}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full">Full Description</SelectItem>
-                  <SelectItem value="summary">Summary</SelectItem>
+                  {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
-          )}
+            <Field id={`${id}-param`} label="By Parameter" error={handlerError}>
+              <Select
+                value={named.some((p) => p.name === handler.param) ? handler.param : undefined}
+                onValueChange={(v) => setHandler({ ...handler, param: v })} disabled={locked}
+              >
+                <SelectTrigger
+                  id={`${id}-param`} aria-invalid={!!handlerError}
+                  aria-describedby={handlerError ? `${id}-param-error` : undefined}
+                >
+                  <SelectValue placeholder="Pick a parameter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {named.length === 0 && <div className="px-2 py-1.5 text-meta text-muted-foreground">Add a parameter first</div>}
+                  {named.map((p) => <SelectItem key={p.name} value={p.name}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
+            {handler.source !== 'dictionary' && (
+              <Field id={`${id}-returns`} label="Returns">
+                <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })} disabled={locked}>
+                  <SelectTrigger id={`${id}-returns`}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full">Full Description</SelectItem>
+                    <SelectItem value="summary">Summary</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            )}
+          </div>
+          {/* Under the whole row, so Search and By Parameter stay level. */}
+          <Hint id={`${id}-matches`}>{source?.matches}</Hint>
         </div>
       )}
       {handler.kind === 'template' && (
@@ -347,15 +358,23 @@ function DefinitionFieldsTab({ value, locked, children }: { value: ToolEditTab; 
   );
 }
 
-/** Which edit tabs hold a problem, in tab order. */
-function tabsWithProblems(problems: DraftProblems): string[] {
-  const flagged: Record<ToolEditTab, boolean> = {
-    definition: problems.name !== null,
-    parameters: problems.params.some((p) => p !== null),
-    handler: problems.handler !== null,
-    availability: false,
-  };
-  return TOOL_EDIT_TABS.filter((t) => flagged[t.value]).map((t) => t.label);
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+
+const TAB_LABEL = Object.fromEntries(TOOL_EDIT_TABS.map((t) => [t.value, t.label])) as Record<ToolEditTab, string>;
+
+/** A fix with the tab that holds it, since the tab strip carries no problem marks. */
+const fixOn = (tab: ToolEditTab, phrase: string) => `${phrase} (${TAB_LABEL[tab]})`;
+
+/** The footer's sentence: one fix per problem, in tab order, or null when nothing blocks Save. */
+function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
+  const fixes = [
+    ...(problems.name ? [fixOn('definition', draft.name ? 'Rename the Tool' : 'Name the Tool')] : []),
+    ...problems.params.flatMap((p, i) => (p ? [fixOn('parameters', PARAM_FIX[p](i + 1))] : [])),
+    ...(problems.handler ? [fixOn('handler', HANDLER_PROBLEM[problems.handler])] : []),
+  ];
+  if (fixes.length === 0) return null;
+  const [first, ...rest] = fixes;
+  return `${LIST.format([first, ...rest.map(lowerFirst)])} to save`;
 }
 
 /**
@@ -385,7 +404,7 @@ export function ToolEditor({
   // A catalog Tool's definition is fixed, and its name is a built-in name.
   const problems = builtIn ? NO_PROBLEMS : draftProblems(draft, userTools);
   const blocked = hasDraftProblems(problems);
-  const flagged = tabsWithProblems(problems);
+  const fixes = fixesToSave(draft, problems);
   const body = { draft, onChange: onDraftChange, problems, locked: builtIn };
 
   return (
@@ -428,9 +447,7 @@ export function ToolEditor({
         </ScrollArea>
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
-        {flagged.length > 0 && (
-          <p role="status" className="mr-auto text-helper text-muted-foreground">Check {LIST.format(flagged)} to save</p>
-        )}
+        {fixes && <p role="status" className="mr-auto text-helper text-muted-foreground">{fixes}</p>}
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button disabled={blocked} onClick={onSave}>Save Tool</Button>
       </div>
