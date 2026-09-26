@@ -35,6 +35,16 @@ export const REHYDRATE_MARGIN = 0.15;
  *  candidate's own neighborhood — too noisy a baseline — so early game keeps the floor-only rule. */
 export const REHYDRATE_MARGIN_MIN_BAND = 5;
 
+/** The relative bar beside the floor: the median of `sims` plus REHYDRATE_MARGIN, or no bar below
+ *  REHYDRATE_MARGIN_MIN_BAND candidates, where the median is too noisy. */
+export function marginBar(sims: readonly number[]): number {
+  if (sims.length < REHYDRATE_MARGIN_MIN_BAND) return -Infinity;
+  const sorted = [...sims].sort((a, b) => a - b);
+  const mid = sorted.length / 2;
+  const median = sorted.length % 2 ? sorted[Math.floor(mid)] : (sorted[mid - 1] + sorted[mid]) / 2;
+  return median + REHYDRATE_MARGIN;
+}
+
 /** Turns a scene sits out after riding: fired on turn X, it can't fire again before turn X + N.
  *  Kills same-scene stickiness (T1: 9/27 real-session firings were identical to the previous
  *  turn's; one scene rode three consecutive turns while the context froze). */
@@ -82,14 +92,8 @@ export function selectSemanticRehydrations(
     .filter((c): c is { t: BandTurn; vec: Float32Array } => !!c.vec && !!c.t.turnId)
     .map((c) => ({ ...c, sim: cosineSimilarity(queryVec, c.vec) }));
   // The margin bar: median over ALL candidates (blocked ones still describe the band's baseline),
-  // floor kept as the sanity bound. Below MIN_BAND the median is too noisy — floor-only.
-  const sims = candidates.map((c) => c.sim).sort((a, b) => a - b);
-  const median = sims.length % 2
-    ? sims[(sims.length - 1) / 2]
-    : (sims[sims.length / 2 - 1] + sims[sims.length / 2]) / 2;
-  const minSim = candidates.length >= REHYDRATE_MARGIN_MIN_BAND
-    ? Math.max(REHYDRATE_SIM_THRESHOLD, median + REHYDRATE_MARGIN)
-    : REHYDRATE_SIM_THRESHOLD;
+  // floor kept as the sanity bound.
+  const minSim = Math.max(REHYDRATE_SIM_THRESHOLD, marginBar(candidates.map((c) => c.sim)));
   const scored = candidates
     .filter((c) => !blocked?.has(c.t.turnId!))
     .filter((c) => c.sim >= minSim)

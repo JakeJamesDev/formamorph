@@ -5,8 +5,12 @@ import { serializeTurnContent } from '@/lib/turnDigest';
 import type { MemoryOverrides } from '@/lib/memoryOverrides';
 import { BUILTIN_ENABLED_TOOLS } from '@/lib/promptPresets';
 import { TOOL_CATALOG } from './toolCatalog';
-import { buildToolSnapshot, sampleToolSnapshot, type ToolMemorySource } from './toolSnapshot';
+import { vectorKey } from '@/lib/memoryRelevance';
+import { REHYDRATE_MARGIN_MIN_BAND, REHYDRATE_SIM_THRESHOLD } from '@/lib/semanticRehydration';
+import { DIARY_SIM_THRESHOLD } from '@/lib/semanticDiary';
+import { buildToolSnapshot, sampleToolSnapshot, type ToolMeaning, type ToolMemory, type ToolMemorySource } from './toolSnapshot';
 import { runToolCall } from './toolRunner';
+import { recallMatches } from './toolRecall';
 import { parseTool } from './toolValidation';
 
 const RECALL = TOOL_CATALOG.find((t) => t.id === 'recall')!;
@@ -145,6 +149,134 @@ describe('recall, lexical', () => {
     const played = history(turns);
     expect(await recall('boat', { history: played, overrides: null, verbatimFloor: 0 })).toHaveLength(1);
     expect(await recall('boat', { history: played.slice(0, -2), overrides: null, verbatimFloor: 0 })).toEqual([]);
+  });
+});
+
+/** A unit vector whose cosine to QUERY_VEC is `sim`. */
+const vec = (sim: number) => new Float32Array([sim, Math.sqrt(1 - sim * sim), 0]);
+const QUERY_VEC = new Float32Array([1, 0, 0]);
+
+/** One memory per turn: a digest or a diary entry, with the query similarity its cached vector holds. */
+interface Rec { text: string; sim?: number; diary?: string }
+
+function hybrid(recs: Rec[], diaries = true) {
+  const memories: ToolMemory[] = recs.map(({ text, diary }, i) => ({
+    turn: i + 1, digest: diary ? '' : text, diaries: diary ? [{ character: diary, text }] : [],
+  }));
+  const vectors = new Map(recs.flatMap(({ text, sim }) => (sim === undefined ? [] : [[vectorKey(text), vec(sim)] as const])));
+  return (query: string) => recallMatches(query, memories, { queryVec: QUERY_VEC, vectors, diaries }).map((m) => m.text);
+}
+
+/** Records that share no query word and sit far from it: the world's baseline for the median. */
+const filler = (n: number): Rec[] => Array.from({ length: n }, (_, i) => ({ text: `Quiet moment ${i}.`, sim: 0 }));
+
+describe('recall, hybrid', () => {
+  it('matches by meaning a memory that shares no word with the query', () => {
+    const find = hybrid([{ text: 'Agreed to escort Mira to the ferry.', sim: 0.8 }, { text: 'A gull stole bread.', sim: 0.1 }]);
+    expect(find('the promise to her')).toEqual(['Agreed to escort Mira to the ferry.']);
+  });
+
+  it('keeps a word match whose meaning score is below the floor', () => {
+    const find = hybrid([{ text: 'Harrow mended the net.', sim: 0.1 }, { text: 'A gull stole bread.', sim: 0.1 }]);
+    expect(find('Harrow')).toEqual(['Harrow mended the net.']);
+  });
+
+  it('ranks both-ways matches first for the limit, then meaning-only by cosine, then word-only', () => {
+    const find = hybrid([
+      { text: 'The lantern glowed.', sim: 0.5 },
+      { text: 'Wren lit a lantern.', sim: 0.45 },
+      { text: 'She kept her word about the light.', sim: 0.95 },
+      { text: 'A light burned in the tower.', sim: 0.92 },
+      { text: 'The beacon was relit.', sim: 0.9 },
+      { text: 'Embers in the dark.', sim: 0.88 },
+      ...filler(8),
+      { text: 'A lantern hung by the door.', sim: 0.1 },
+      { text: 'Bell sold a lantern.', sim: 0.05 },
+    ]);
+    expect(find('lantern')).toEqual([
+      'The lantern glowed.', 'Wren lit a lantern.', 'She kept her word about the light.', 'A light burned in the tower.', 'The beacon was relit.',
+    ]);
+  });
+
+  it('orders the both-ways group by cosine, word count on a cosine tie, then the newer turn', () => {
+    const find = hybrid([
+      { text: 'Bell rang.', sim: 0.8 },
+      { text: 'Bell rang at the ferry.', sim: 0.5 },
+      { text: 'The ferry bell tolled.', sim: 0.6 },
+      { text: 'Bell rang again.', sim: 0.6 },
+      { text: 'Bell rang once more.', sim: 0.6 },
+      { text: 'Bell rang twice.', sim: 0.7 },
+      { text: 'Bell rang for Mira.', sim: 0.9 },
+      ...filler(8),
+    ]);
+    // 0.9, 0.8, 0.7, then the 0.6 with two words, then the newer of the two 0.6 ties with one. The 0.5 with
+    // two words drops out.
+    expect(find('bell ferry')).toEqual(['Bell rang.', 'The ferry bell tolled.', 'Bell rang once more.', 'Bell rang twice.', 'Bell rang for Mira.']);
+  });
+
+  it('matches a memory with no cached vector by its words', () => {
+    const find = hybrid([{ text: 'Harrow mended the net.' }, { text: 'The net tore.' }, { text: 'A gull stole bread.', sim: 0.1 }]);
+    expect(find('Harrow')).toEqual(['Harrow mended the net.']);
+  });
+
+  it('keeps the result small in a same-cast world where every memory clears the floor', () => {
+    const sims = [0.4, 0.42, 0.44, 0.46, 0.48, 0.5, 0.52, 0.7];
+    const find = hybrid(sims.map((sim, i) => ({ text: `Mira and Wren talked in the house ${i}.`, sim })));
+    // Median 0.47 plus the margin: only the standout clears it.
+    expect(find('the argument')).toEqual(['Mira and Wren talked in the house 7.']);
+  });
+
+  it('keeps the floor-only rule below the minimum candidate count', () => {
+    const find = hybrid([0.34, 0.4, 0.42, 0.44].map((sim, i) => ({ text: `Mira and Wren talked ${i}.`, sim })));
+    expect(find('the argument')).toHaveLength(3);
+    expect(REHYDRATE_MARGIN_MIN_BAND).toBe(5);
+  });
+
+  it('holds a digest to the Scene Recall floor and a diary entry to the Diary Recall floor', () => {
+    const sim = (REHYDRATE_SIM_THRESHOLD + DIARY_SIM_THRESHOLD) / 2;
+    const find = hybrid([{ text: 'Wren kept the oath.', sim }, { text: 'I kept my oath to Wren.', sim, diary: 'Bell' }]);
+    expect(find('the promise')).toEqual(['I kept my oath to Wren.']);
+  });
+
+  it('matches a diary entry by its words only when Diary Recall is off', () => {
+    const recs: Rec[] = [{ text: 'I kept my oath to Wren.', sim: 0.9, diary: 'Bell' }, { text: 'I lost the oar.', sim: 0.1, diary: 'Wren' }];
+    expect(hybrid(recs, true)('the promise')).toEqual(['I kept my oath to Wren.']);
+    expect(hybrid(recs, false)('the promise')).toEqual([]);
+    expect(hybrid(recs, false)('oar')).toEqual(['I lost the oar.']);
+  });
+});
+
+describe('recall, hybrid through the runner', () => {
+  const turns: TurnSpec[] = [{ summary: 'Agreed to escort Mira to the ferry.' }, { summary: 'Mira paid the ferryman.' }];
+  const vectors = new Map([[vectorKey(turns[0].summary!), vec(0.9)], [vectorKey(turns[1].summary!), vec(0.1)]]);
+  const withMeaning = (embed: ToolMeaning['embed']): ToolMemorySource => ({ ...source(turns), meaning: { embed, vectors, diaries: false } });
+
+  it('matches by meaning when the query embeds', async () => {
+    expect((await recall('promise Mira', withMeaning(async () => QUERY_VEC))).map((m) => m.turn)).toEqual([1, 2]);
+    expect((await recall('the promise', withMeaning(async () => QUERY_VEC))).map((m) => m.turn)).toEqual([1]);
+  });
+
+  it('returns the lexical result when the query embed fails or the model is not loaded', async () => {
+    const lexical = await recall('the promise ferryman', source(turns));
+    expect(lexical.map((m) => m.turn)).toEqual([2]);
+    expect(await recall('the promise ferryman', withMeaning(async () => null))).toEqual(lexical);
+    expect(await recall('the promise ferryman', withMeaning(() => Promise.reject(new Error('worker died'))))).toEqual(lexical);
+  });
+
+  it('with Semantic Memory off, has no meaning match and returns the lexical result', async () => {
+    expect(buildToolSnapshot(sampleChipScene(), sampleDictionaries(), source(turns)).meaning).toBeNull();
+    expect((await recall('the promise ferryman', withMeaning(async () => QUERY_VEC))).map((m) => m.turn)).toEqual([1, 2]);
+    expect((await recall('the promise ferryman', source(turns))).map((m) => m.turn)).toEqual([2]);
+  });
+
+  it('freezes only the vectors of the memory list into the snapshot', () => {
+    const live = new Map([...vectors, [vectorKey('A lore entry.'), vec(0.5)]]);
+    const { meaning } = buildToolSnapshot(sampleChipScene(), sampleDictionaries(), {
+      ...source(turns, 1), meaning: { embed: async () => QUERY_VEC, vectors: live, diaries: false },
+    });
+    expect([...meaning!.vectors.keys()]).toEqual([vectorKey(turns[0].summary!)]);
+    live.clear();
+    expect(meaning!.vectors.size).toBe(1);
   });
 });
 

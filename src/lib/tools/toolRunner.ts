@@ -79,14 +79,19 @@ function parseToolArgs(params: readonly ToolParam[], argsText: string): { args: 
 
 type Lookup = Extract<ToolHandler, { kind: 'lookup' }>;
 
-function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, { world, memories }: ToolSnapshot): ToolCallResult {
+/** Recall over the snapshot's memories: by meaning and words when the query embeds, else by words. */
+async function runRecall(tool: Tool, query: string, { memories, meaning }: ToolSnapshot): Promise<ToolCallResult> {
+  const queryVec = meaning && memories.length ? await meaning.embed(query).catch(() => null) : null;
+  const found = recallMatches(query, memories, meaning && queryVec ? { queryVec, vectors: meaning.vectors, diaries: meaning.diaries } : null);
+  return { text: found.length ? JSON.stringify({ matches: found }) : tool.emptyResult };
+}
+
+function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, snapshot: ToolSnapshot): ToolCallResult | Promise<ToolCallResult> {
   if (!tool.params.some((p) => p.name === handler.param)) {
     return failed('handler', `The lookup reads parameter ${JSON.stringify(handler.param)}, which this Tool doesn't define.`);
   }
-  if (handler.source === 'memories') {
-    const found = recallMatches(String(args[handler.param] ?? ''), memories);
-    return { text: found.length ? JSON.stringify({ matches: found }) : tool.emptyResult };
-  }
+  if (handler.source === 'memories') return runRecall(tool, String(args[handler.param] ?? ''), snapshot);
+  const { world } = snapshot;
   const needle = String(args[handler.param] ?? '').trim().toLowerCase();
   const same = (text: string) => !!needle && text.trim().toLowerCase() === needle;
   const match = (id: string, name: string, description: string) =>

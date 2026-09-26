@@ -1746,10 +1746,15 @@ const GameViewer = ({
   // placeholder strings kept here, which is how the two copies used to drift.
   const promptPreviewValues = useMemo<Record<string, string>>(() => contextValues(), [contextValues]);
   // Recall searches the committed history as the narration prompt's memory reads it; digests off, no memory.
+  // Its meaning match reads the drainer's vectors under the drainer's own gates.
   const toolMemorySource = useCallback(
-    (): ToolMemorySource | null =>
-      (memoryDigests ? { history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns } : null),
-    [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns],
+    (): ToolMemorySource | null => (memoryDigests ? {
+      history: fullMessageHistory, overrides: memoryOverrides, verbatimFloor: narrationVerbatimTurns,
+      meaning: semanticMemory
+        ? { embed: embedActionVec, vectors: embedVectorsRef.current, diaries: semanticDiaries && characterDiaries }
+        : null,
+    } : null),
+    [memoryDigests, fullMessageHistory, memoryOverrides, narrationVerbatimTurns, semanticMemory, embedActionVec, semanticDiaries, characterDiaries],
   );
   // Settings → Tools runs Try It on the playthrough, read as a Tool call in play reads it.
   const toolWorld = useCallback(
