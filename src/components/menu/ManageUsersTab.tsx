@@ -8,7 +8,6 @@ import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { UserAvatar } from "@/components/UserAvatar";
-import { RoleBadge } from "@/components/RoleBadge";
 import { StatusPill } from "@/components/StatusPill";
 import { ASSIGNABLE_ROLES, ROLE_LABELS, canModerate, isAdmin, isStaff, roleOf, type Role } from "@/lib/roles";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,24 +37,28 @@ const AVATAR_REMOVAL_TEMPLATE = {
   body: 'Your profile image has been removed from Formamorph. You can upload a new one from your profile at any time.\n\n**Reason:** ',
 } as const;
 
-/** How each answer to the upload gate reads in the table. */
-const TERMS_LABELS = {
+/** How each answer to a policy reads in the table. */
+const ANSWER_LABELS = {
   unanswered: { label: 'Not Seen', className: 'text-muted-foreground' },
   declined: { label: 'Declined', className: 'text-destructive' },
   accepted: { label: 'Accepted', className: 'text-success' },
 } as const;
 
-type TermsResponse = keyof typeof TERMS_LABELS;
+type PolicyAnswer = keyof typeof ANSWER_LABELS;
 
-/** A row's answer, defaulting anything unrecognized to unanswered rather than showing nothing. */
-const termsResponseOf = (user: WorldRecord): TermsResponse =>
-  user.termsResponse in TERMS_LABELS ? (user.termsResponse as TermsResponse) : 'unanswered';
+/** A policy answer, defaulting anything unrecognized to unanswered rather than showing nothing. */
+const answerOf = (value: unknown): PolicyAnswer =>
+  typeof value === 'string' && value in ANSWER_LABELS ? (value as PolicyAnswer) : 'unanswered';
+
+const termsResponseOf = (user: WorldRecord) => answerOf(user.termsResponse);
+const privacyResponseOf = (user: WorldRecord) => answerOf(user.privacyResponse);
 
 /** Sortable columns, in table order. Actions holds controls rather than data, so it isn't one. */
 const SORT_COLUMNS = [
-  { key: 'username', label: 'Username' },
+  { key: 'username', label: 'Account' },
   { key: 'type', label: 'Type' },
   { key: 'status', label: 'Status' },
+  { key: 'privacy', label: 'Privacy' },
   { key: 'terms', label: 'Terms' },
 ] as const;
 
@@ -455,7 +458,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
             <table className="w-full divide-y divide-border">
               <thead className="bg-muted">
                 <tr>
-                  <th scope="col" className="px-4 py-3 w-10">
+                  <th scope="col" className="px-3 py-3 w-10">
                     <Checkbox
                       checked={allOnPageSelected}
                       onCheckedChange={togglePage}
@@ -466,7 +469,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                     <th
                       key={column.key}
                       scope="col"
-                      className="px-6 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider"
+                      className="px-3 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider"
                       // Tells a screen reader which way the table is ordered, and by which column.
                       aria-sort={sort === column.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
                     >
@@ -482,7 +485,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                       </button>
                     </th>
                   ))}
-                  <th scope="col" className="px-6 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="px-3 py-3 text-left text-meta font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -500,29 +503,32 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                 {isFirstLoad ? (
                   Array(5).fill(0).map((_, index) => (
                     <tr key={index}>
-                      <td className="px-4 py-4">
+                      <td className="px-3 py-3">
                         <Skeleton className="h-4 w-4" />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Skeleton className="h-4 w-24" />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Skeleton className="h-4 w-16" />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Skeleton className="h-4 w-20" />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Skeleton className="h-4 w-20" />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <Skeleton className="h-4 w-20" />
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Skeleton className="h-8 w-20" />
                       </td>
                     </tr>
                   ))
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-muted-foreground">
+                    <td colSpan={7} className="px-6 py-4 text-center text-muted-foreground">
                       No users found.
                     </td>
                   </tr>
@@ -539,33 +545,40 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                     return (
                       <Fragment key={userId}>
                         <tr>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3">
                           <Checkbox
                             checked={selected.has(userId)}
                             onCheckedChange={() => toggleSelected(user)}
                             aria-label={`Select ${user.username}`}
                           />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2 text-label font-medium text-foreground">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
                             <UserAvatar
                               username={user.username as string | undefined}
                               avatarUrl={user.avatarUrl as string | null | undefined}
                               size="sm"
                             />
-                            {/* The name opens the profile: moderating an account without being able to
-                                see it is guesswork, and the image is half of what gets reported. */}
-                            <button
-                              type="button"
-                              className="truncate hover:underline"
-                              onClick={() => openProfile(userId, usernameOf(user))}
-                            >
-                              {user.username}
-                            </button>
-                            <RoleBadge role={user.accountType as string | null | undefined} />
+                            <div className="min-w-0">
+                              {/* The name opens the profile: moderating an account without being able to
+                                  see it is guesswork, and the image is half of what gets reported. */}
+                              <button
+                                type="button"
+                                className="block max-w-[14rem] truncate text-label font-medium text-foreground hover:underline"
+                                onClick={() => openProfile(userId, usernameOf(user))}
+                              >
+                                {user.username}
+                              </button>
+                              {/* The server sends the address to administrators only. */}
+                              {viewerIsAdmin && (
+                                <div className="max-w-[14rem] truncate select-all text-helper text-muted-foreground">
+                                  {typeof user.email === 'string' && user.email ? user.email : 'No email'}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-3 whitespace-nowrap">
                           {viewerIsAdmin && roleOf(user) !== 'admin' ? (
                             <Select
                               value={roleOf(user)}
@@ -588,16 +601,21 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-3 whitespace-nowrap">
                           <StatusPill status={user.status as string | null | undefined} />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          <span className={`text-label ${ANSWER_LABELS[privacyResponseOf(user)].className}`}>
+                            {ANSWER_LABELS[privacyResponseOf(user)].label}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
                           {/* Only an answer given against the current wording counts, so someone whose
                               acceptance a change invalidated reads as Not Seen — which is what the gate
                               will treat them as. Nothing to reset unless they answered. */}
                           <div className="flex items-center gap-1">
-                            <span className={`text-label ${TERMS_LABELS[termsResponseOf(user)].className}`}>
-                              {TERMS_LABELS[termsResponseOf(user)].label}
+                            <span className={`text-label ${ANSWER_LABELS[termsResponseOf(user)].className}`}>
+                              {ANSWER_LABELS[termsResponseOf(user)].label}
                             </span>
                             <Tip tip="Reset terms" labelsChild={false}>
                               <Button
@@ -613,7 +631,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
                             </Tip>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-label font-medium">
+                        <td className="px-3 py-3 whitespace-nowrap text-label font-medium">
                           <div className="flex flex-wrap gap-2">
                             {/* Split button, as the in-game Re-generate one: the common action on the
                                 left, the rarer one behind the caret, for one button's worth of row width. */}
@@ -724,7 +742,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
 
                         {expanded && (
                           <tr>
-                            <td colSpan={6} className="bg-muted/40 px-6 py-4">
+                            <td colSpan={7} className="bg-muted/40 px-6 py-4">
                               <LinkedAccountsPanel
                                 accounts={linked}
                                 loading={expanded.loading}

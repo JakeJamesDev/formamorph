@@ -70,6 +70,13 @@ const stubFetch = (rows: Record<string, unknown>[]) =>
     } as unknown as Response;
   }));
 
+/** The text of every body cell under one column, so two columns sharing labels stay apart. */
+const columnText = (header: string) => {
+  const headers = [...document.querySelectorAll('thead th')];
+  const index = headers.findIndex((th) => th.textContent?.trim() === header);
+  return [...document.querySelectorAll('tbody tr')].map((row) => row.children[index]?.textContent?.trim());
+};
+
 /** The query string of the most recent user fetch. */
 const lastQuery = () => new URLSearchParams(userQueries[userQueries.length - 1].split('?')[1]);
 
@@ -165,9 +172,7 @@ describe('the terms column', () => {
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    expect(screen.getByText('Accepted')).toBeTruthy();
-    expect(screen.getByText('Declined')).toBeTruthy();
-    expect(screen.getByText('Not Seen')).toBeTruthy();
+    expect(columnText('Terms')).toEqual(['Accepted', 'Declined', 'Not Seen']);
   });
 
   it('offers the reset only to someone who has answered', async () => {
@@ -192,7 +197,8 @@ describe('the terms column', () => {
 
     render(<ManageUsersTab active />);
 
-    expect(await screen.findByText('Not Seen')).toBeTruthy();
+    await screen.findByText('alice');
+    expect(columnText('Terms')).toEqual(['Not Seen']);
     expect(screen.getByRole('button', { name: 'Reset terms for alice' }).hasAttribute('disabled')).toBe(true);
   });
 
@@ -206,7 +212,7 @@ describe('the terms column', () => {
     // Nothing left to reset, so the button must stop offering it.
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Reset terms for alice' }).hasAttribute('disabled')).toBe(true));
-    expect(screen.getByText('Not Seen')).toBeTruthy();
+    expect(columnText('Terms')).toEqual(['Not Seen']);
   });
 });
 
@@ -313,7 +319,7 @@ describe('reloading the table', () => {
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(body().getAttribute('aria-busy')).toBe('true'));
     expect(rows()).toHaveLength(2);
@@ -328,7 +334,7 @@ describe('reloading the table', () => {
 
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(body().className).toContain('opacity-50'));
     // Acting on a row that is about to be replaced would act on the wrong person.
@@ -348,7 +354,7 @@ describe('reloading the table', () => {
     await screen.findByText('user0');
     const pager = screen.getByText(/Page 1 of/);
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(body().getAttribute('aria-busy')).toBe('true'));
     // The same node, not a replacement mounted after the fact.
@@ -366,7 +372,7 @@ describe('reloading the table', () => {
 
     render(<ManageUsersTab active />);
     await screen.findByText('user0');
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     const pager = () => screen.getByText(/Page 1 of/).parentElement!;
     await waitFor(() => expect(pager().className).toContain('opacity-50'));
@@ -403,7 +409,7 @@ describe('sorting', () => {
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(lastQuery().get('sort')).toBe('username'));
     expect(lastQuery().get('order')).toBe('asc');
@@ -415,9 +421,9 @@ describe('sorting', () => {
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
     await waitFor(() => expect(lastQuery().get('order')).toBe('asc'));
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(lastQuery().get('order')).toBe('desc'));
   });
@@ -428,8 +434,8 @@ describe('sorting', () => {
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
     await waitFor(() => expect(lastQuery().get('order')).toBe('desc'));
 
     fireEvent.click(screen.getByRole('button', { name: /Status/ }));
@@ -448,7 +454,7 @@ describe('sorting', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(lastQuery().get('page')).toBe('2'));
 
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() => expect(lastQuery().get('page')).toBe('1'));
   });
@@ -468,10 +474,10 @@ describe('sorting', () => {
 
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
-    fireEvent.click(screen.getByRole('button', { name: /Username/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Account/ }));
 
     await waitFor(() =>
-      expect(screen.getByRole('columnheader', { name: /Username/ }).getAttribute('aria-sort')).toBe('ascending'));
+      expect(screen.getByRole('columnheader', { name: /Account/ }).getAttribute('aria-sort')).toBe('ascending'));
     expect(screen.getByRole('columnheader', { name: /Status/ }).getAttribute('aria-sort')).toBe('none');
   });
 
@@ -485,15 +491,66 @@ describe('sorting', () => {
     expect(actions.querySelector('button')).toBeNull();
   });
 
-  it('shows no email column', async () => {
-    // Nothing in the app collects an address, so the column was always "N/A" taking up room.
+  it('sorts by the privacy answer on the server', async () => {
+    stubFetch([userRow({ username: 'alice' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+    fireEvent.click(screen.getByRole('button', { name: /Privacy/ }));
+
+    await waitFor(() => expect(lastQuery().get('sort')).toBe('privacy'));
+  });
+});
+
+describe('the email line', () => {
+  it('shows an administrator the address under the name', async () => {
     stubFetch([userRow({ username: 'alice', email: 'alice@example.com' })]);
+
+    render(<ManageUsersTab active />);
+
+    expect(await screen.findByText('alice@example.com')).toBeTruthy();
+  });
+
+  it('says so when an account has no address', async () => {
+    stubFetch([userRow({ username: 'alice', email: null })]);
+
+    render(<ManageUsersTab active />);
+
+    expect(await screen.findByText('No email')).toBeTruthy();
+  });
+
+  it('shows nothing to staff who are not administrators', async () => {
+    // The server leaves the field out for them; the line must not claim the account has no address.
+    viewer.current = { id: 'm1', username: 'a-mod', accountType: 'mod' };
+    stubFetch([userRow({ username: 'alice' })]);
 
     render(<ManageUsersTab active />);
     await screen.findByText('alice');
 
-    expect(screen.queryByRole('columnheader', { name: /Email/ })).toBeNull();
-    expect(screen.queryByText('alice@example.com')).toBeNull();
+    expect(screen.queryByText('No email')).toBeNull();
+  });
+});
+
+describe('the privacy column', () => {
+  it('reports each of the three answers from the server field', async () => {
+    stubFetch([
+      userRow({ id: 'u1', username: 'alice', privacyResponse: 'accepted' }),
+      userRow({ id: 'u2', username: 'bob', privacyResponse: 'declined' }),
+    ]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+
+    expect(columnText('Privacy')).toEqual(['Accepted', 'Declined']);
+  });
+
+  it('reads a row with no privacy field as not seen', async () => {
+    stubFetch([userRow({ username: 'alice', termsResponse: 'accepted' })]);
+
+    render(<ManageUsersTab active />);
+    await screen.findByText('alice');
+
+    expect(columnText('Privacy')).toEqual(['Not Seen']);
   });
 });
 
@@ -558,14 +615,14 @@ describe('editing a sent message', () => {
 });
 
 describe('the role column', () => {
-  it('badges a staff account beside their name', async () => {
-    // Two matches by design: the badge in the name cell, and the role dropdown's own displayed value.
+  it('names the role once, in the Type column', async () => {
+    // The name cell carries no badge: the Type column already says it.
     stubFetch([userRow({ accountType: 'mod' })]);
 
     render(<ManageUsersTab active />);
     await screen.findByText('someone');
 
-    expect(screen.getAllByText('Mod').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mod')).toHaveLength(1);
   });
 
   it('offers an administrator the roles they may set', async () => {
