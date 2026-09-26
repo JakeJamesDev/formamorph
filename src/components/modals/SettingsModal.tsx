@@ -3179,7 +3179,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               catalogTools={TOOL_CATALOG}
               userTools={userTools}
               enabledTools={enabledTools}
-              builtinPreset={activePresetIsBuiltIn}
               toolsSupported={activeToolsSupported}
               toolsEnabled={toolsEnabled}
               onSaveTool={saveTool}

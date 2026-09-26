@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool } from '@/types';
 import {
-  activeEnabledTools, setToolEnabled, dropToolEverywhere, saveUserTool, deleteUserTool, userToolsCodec,
-  addPreset, presetStoreCodec, type PromptPresetStore, type PromptValues,
+  activeEnabledTools as activeWith, setToolEnabled, dropToolEverywhere, saveUserTool, deleteUserTool, userToolsCodec,
+  addPreset, presetStoreCodec, activeBuiltinId, setBuiltinToolEnabled, dropToolFromBuiltins, builtinToolSwitchesCodec,
+  type BuiltinToolSwitches, type PromptPresetStore, type PromptValues,
 } from './promptPresets';
 
 const values = {} as PromptValues;
@@ -14,6 +15,8 @@ const twoPresets = (patch: Partial<PromptPresetStore['presets'][number]> = {}): 
   activeId: 'u1',
   presets: [{ id: 'u1', name: 'Mine', values, ...patch }, { id: 'u2', name: 'Other', values }],
 });
+/** The active preset's switches when no built-in switch was ever flipped. */
+const activeEnabledTools = (s: PromptPresetStore) => activeWith(s, {});
 const onAt = (s: PromptPresetStore, presetId: string) => activeEnabledTools({ ...s, activeId: presetId });
 
 describe('the global user Tool list', () => {
@@ -70,19 +73,64 @@ describe('enabled maps', () => {
 
 describe('a built-in preset', () => {
   const builtIn: PromptPresetStore = { activeId: 'experimental', presets: [{ id: 'u1', name: 'Mine', values }] };
+  /** Flip one switch on the built-in `store` shows, the way the settings context does. */
+  const flip = (switches: BuiltinToolSwitches, store: PromptPresetStore, id: string, on: boolean) =>
+    setBuiltinToolEnabled(switches, activeBuiltinId(store)!, id, on);
 
-  it('Experimental ships get_entity on, and the others ship nothing on', () => {
-    expect(activeEnabledTools(builtIn)).toEqual({ get_entity: true });
-    expect(activeEnabledTools({ activeId: 'default', presets: [] })).toEqual({});
+  it('defaults to its shipped map: Experimental has get_entity on, the others have nothing on', () => {
+    expect(activeWith(builtIn, {})).toEqual({ get_entity: true });
+    expect(activeWith({ activeId: 'default', presets: [] }, {})).toEqual({});
   });
 
-  it('refuses a switch change', () => {
+  it('keeps a flipped switch, over its shipped defaults, on that built-in only', () => {
+    let switches = flip({}, builtIn, 't1', true);
+    expect(activeWith(builtIn, switches)).toEqual({ get_entity: true, t1: true });
+    switches = flip(switches, builtIn, 'get_entity', false);
+    expect(activeWith(builtIn, switches)).toEqual({ get_entity: false, t1: true });
+    expect(activeWith({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
+    expect(activeWith({ ...builtIn, activeId: 'u1' }, switches)).toEqual({});
+  });
+
+  it('reads a ghost id as Default, switches included', () => {
+    const ghost: PromptPresetStore = { activeId: 'gone', presets: [] };
+    expect(activeBuiltinId(ghost)).toBe('default');
+    expect(activeWith(ghost, flip({}, ghost, 't1', true))).toEqual({ t1: true });
+  });
+
+  it('is not a built-in when a user preset is active', () => {
+    expect(activeBuiltinId({ ...builtIn, activeId: 'u1' })).toBeNull();
+  });
+
+  it('leaves the preset store alone, so its prompt text stays read-only', () => {
     expect(setToolEnabled(builtIn, 'get_entity', false)).toBe(builtIn);
   });
 
-  it('hands its shipped map to a copy, so a duplicate of Experimental keeps get_entity on', () => {
-    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeEnabledTools(builtIn));
+  it('drops a deleted Tool from every built-in and keeps the other switches', () => {
+    let switches = flip({}, builtIn, 't1', true);
+    switches = flip(switches, { ...builtIn, activeId: 'default' }, 't1', true);
+    switches = dropToolFromBuiltins(switches, 't1');
+    expect(activeWith(builtIn, switches)).toEqual({ get_entity: true });
+    expect(activeWith({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
+  });
+
+  it('persists its switches through their codec, dropping unknown presets and malformed maps', () => {
+    const switches = flip(flip({}, builtIn, 'get_entity', false), { ...builtIn, activeId: 'default' }, 't1', true);
+    expect(builtinToolSwitchesCodec.parse(builtinToolSwitchesCodec.serialize(switches))).toEqual(switches);
+    const stored = JSON.stringify({ experimental: { get_entity: false, t1: 'yes' }, u1: { t1: true }, simple: [] });
+    expect(builtinToolSwitchesCodec.parse(stored)).toEqual({ experimental: { get_entity: false } });
+    expect(builtinToolSwitchesCodec.parse('{nope')).toEqual({});
+    expect(builtinToolSwitchesCodec.parse('[]')).toEqual({});
+  });
+
+  it('hands a copy its shipped map, so a duplicate of Experimental keeps get_entity on', () => {
+    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeWith(builtIn, {}));
     expect(activeEnabledTools(copy)).toEqual({ get_entity: true });
+  });
+
+  it('hands a copy its current switches, flipped and default alike', () => {
+    const switches = flip({}, builtIn, 't1', true);
+    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeWith(builtIn, switches));
+    expect(activeEnabledTools(copy)).toEqual({ get_entity: true, t1: true });
   });
 });
 

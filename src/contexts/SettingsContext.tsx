@@ -52,6 +52,7 @@ import {
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
   addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
   userToolsCodec, saveUserTool, deleteUserTool, activeEnabledTools, setToolEnabled as setToolEnabledOp, dropToolEverywhere,
+  builtinToolSwitchesCodec, activeBuiltinId, setBuiltinToolEnabled, dropToolFromBuiltins, type BuiltinToolSwitches,
   type PromptPresetStore, type PresetDownloadLink, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -729,6 +730,8 @@ function useProvideSettings() {
   const [presetStore, setRawPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
   // The player's own Tools, one list for every preset; each preset stores only which Tools it switches on.
   const [userTools, setUserTools] = usePersistentState<Tool[]>(`${APP_ID}_tools`, [], userToolsCodec);
+  // The player's switches on built-in presets, whose prompt text stays read-only.
+  const [builtinToolSwitches, setBuiltinToolSwitches] = usePersistentState<BuiltinToolSwitches>(`${APP_ID}_builtinPresetTools`, {}, builtinToolSwitchesCodec);
 
   // A world can be pinned to a preset for the duration of play (see lib/worldPromptPreset). GameViewer sets
   // this on load and clears it on unmount; it is session state, never persisted — the player's global
@@ -835,7 +838,7 @@ function useProvideSettings() {
   );
 
   // The Tools the active preset switches on (Settings → Tools).
-  const enabledTools = useMemo(() => activeEnabledTools(effectiveStore), [effectiveStore]);
+  const enabledTools = useMemo(() => activeEnabledTools(effectiveStore, builtinToolSwitches), [effectiveStore, builtinToolSwitches]);
   // A prompt offers a Tool, so play needs the tools answer before it sends any.
   const toolsOffered = useMemo(
     () => [...TOOL_CATALOG, ...userTools].some((tool) => enabledTools[tool.id] === true && tool.offeredTo.length > 0),
@@ -946,7 +949,7 @@ function useProvideSettings() {
     // Built from the effective values, so "save as new" while pinned copies what is actually running.
     setRawPresetStore((s) => {
       const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
-      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from), activeEnabledTools(from));
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from), activeEnabledTools(from, builtinToolSwitches));
       return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
     });
     if (pinnedPresetId) {
@@ -963,16 +966,18 @@ function useProvideSettings() {
     (patch: Partial<PresetOverview>) => editPresetStore((s) => updateOverview(s, patch)),
     [editPresetStore],
   );
-  // Tool setters (Settings → Tools). The switch no-ops under a built-in preset; a deleted Tool leaves every preset.
+  // Tool setters (Settings → Tools). A built-in preset's switch lands in its own store; a deleted Tool leaves every preset.
   const saveTool = useCallback((tool: Tool) => setUserTools((ts) => saveUserTool(ts, tool)), [setUserTools]);
   const deleteTool = useCallback((id: string) => {
     setUserTools((ts) => deleteUserTool(ts, id));
     setRawPresetStore((s) => dropToolEverywhere(s, id));
-  }, [setUserTools, setRawPresetStore]);
-  const setToolEnabled = useCallback(
-    (id: string, on: boolean) => editPresetStore((s) => setToolEnabledOp(s, id, on)),
-    [editPresetStore],
-  );
+    setBuiltinToolSwitches((m) => dropToolFromBuiltins(m, id));
+  }, [setUserTools, setRawPresetStore, setBuiltinToolSwitches]);
+  const activeBuiltin = activeBuiltinId(effectiveStore);
+  const setToolEnabled = useCallback((id: string, on: boolean) => {
+    if (activeBuiltin) setBuiltinToolSwitches((m) => setBuiltinToolEnabled(m, activeBuiltin, id, on));
+    else editPresetStore((s) => setToolEnabledOp(s, id, on));
+  }, [activeBuiltin, setBuiltinToolSwitches, editPresetStore]);
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
   const resetPreset = (id: string) => editPresetStore((s) => {
     const style = s.presets.find((p) => p.id === id)?.style ?? 'markdown';

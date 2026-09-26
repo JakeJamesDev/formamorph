@@ -36,6 +36,7 @@ function seed(activeId: string) {
   localStorage.setItem(TOOLS_KEY, userToolsCodec.serialize([TOOL]));
 }
 
+const BUILTIN_KEY = 'FORMAMORPH_builtinPresetTools';
 const stored = (id: string) => presetStoreCodec.parse(localStorage.getItem(PROMPTS_KEY)!).presets.find((p) => p.id === id);
 const storedTools = () => userToolsCodec.parse(localStorage.getItem(TOOLS_KEY) ?? '[]');
 
@@ -112,5 +113,55 @@ describe('SettingsContext: Tool switches in export, import and copy', () => {
     act(() => { result.current.selectPreset('experimental'); });
     act(() => { id = result.current.addPreset('Experimental Copy'); });
     expect(stored(id)?.enabledTools).toEqual({ get_entity: true });
+  });
+});
+
+describe('SettingsContext: Tool switches on a built-in preset', () => {
+  it('switches a Tool on a built-in, keeps its shipped defaults, and persists across reload', () => {
+    seed('experimental');
+    const presetsBefore = localStorage.getItem(PROMPTS_KEY);
+    const first = renderHook(() => useSettings(), { wrapper });
+    act(() => { first.result.current.setToolEnabled('t1', true); });
+    expect(first.result.current.enabledTools).toEqual({ get_entity: true, t1: true });
+    expect(localStorage.getItem(PROMPTS_KEY)).toBe(presetsBefore);
+    first.unmount();
+
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    expect(result.current.enabledTools).toEqual({ get_entity: true, t1: true });
+    act(() => { result.current.selectPreset('default'); });
+    expect(result.current.enabledTools).toEqual({});
+    act(() => { result.current.selectPreset('mine'); });
+    expect(result.current.enabledTools).toEqual(SWITCHES);
+  });
+
+  it('leaves the user presets’ switches alone', () => {
+    seed('experimental');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.setToolEnabled('get_entity', false); });
+    expect(stored('mine')?.enabledTools).toEqual(SWITCHES);
+    expect(stored('other')?.enabledTools).toEqual({ t1: true });
+    expect(JSON.parse(localStorage.getItem(BUILTIN_KEY)!)).toEqual({ experimental: { get_entity: false } });
+  });
+
+  it('copies and exports a built-in with its current switches', () => {
+    seed('experimental');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.setToolEnabled('t1', true); });
+    let id = '';
+    act(() => { id = result.current.addPreset('Experimental Copy'); });
+    expect(stored(id)?.enabledTools).toEqual({ get_entity: true, t1: true });
+
+    act(() => { result.current.selectPreset('experimental'); });
+    act(() => { result.current.setToolEnabled('get_entity', false); });
+    expect(result.current.exportActivePreset('2.9.2').enabledTools).toEqual({ get_entity: false });
+  });
+
+  it('drops a deleted Tool from a built-in’s switches', () => {
+    seed('experimental');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.setToolEnabled('t1', true); });
+    act(() => { result.current.deleteTool('t1'); });
+    expect(result.current.enabledTools).toEqual({ get_entity: true });
+    expect(JSON.parse(localStorage.getItem(BUILTIN_KEY)!)).toEqual({ experimental: { get_entity: true } });
   });
 });

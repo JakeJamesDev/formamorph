@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
-  activeEnabledTools, deleteUserTool, dropToolEverywhere, isBuiltInActive, saveUserTool, setActive, setToolEnabled,
+  activeBuiltinId, activeEnabledTools, deleteUserTool, dropToolEverywhere, dropToolFromBuiltins, saveUserTool, setActive,
+  setBuiltinToolEnabled, setToolEnabled,
 } from '@/lib/promptPresets';
 import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
@@ -11,7 +12,7 @@ import { recordState, type ToolsState } from './toolsTabState';
 /**
  * Render helper for Settings → Tools. The tab runs against the real store operations the settings context
  * composes: the global user Tool list, plus a preset store with two user presets ("mine", "other") and the
- * built-ins. The preset selector is a native select, so a test can switch whose switches it edits. Build the
+ * built-ins, whose switches live beside it. The preset selector is a native select, so a test can switch whose switches it edits. Build the
  * state and read it back with `./toolsTabState`.
  */
 export function ToolsHarness({ initial, toolsSupported = true, toolsEnabled = true, fileTransfer, openWorld, fullscreen = false }: {
@@ -25,13 +26,19 @@ export function ToolsHarness({ initial, toolsSupported = true, toolsEnabled = tr
     <ToolsTab
       catalogTools={TOOL_CATALOG}
       userTools={s.tools}
-      enabledTools={activeEnabledTools(s.store)}
-      builtinPreset={isBuiltInActive(s.store)}
+      enabledTools={activeEnabledTools(s.store, s.builtinSwitches)}
       toolsSupported={toolsSupported}
       toolsEnabled={toolsEnabled}
       onSaveTool={(t) => setS((p) => ({ ...p, tools: saveUserTool(p.tools, t) }))}
-      onDeleteTool={(id) => setS((p) => ({ tools: deleteUserTool(p.tools, id), store: dropToolEverywhere(p.store, id) }))}
-      onSetEnabled={(id, on) => setS((p) => ({ ...p, store: setToolEnabled(p.store, id, on) }))}
+      onDeleteTool={(id) => setS((p) => ({
+        tools: deleteUserTool(p.tools, id), store: dropToolEverywhere(p.store, id), builtinSwitches: dropToolFromBuiltins(p.builtinSwitches, id),
+      }))}
+      onSetEnabled={(id, on) => setS((p) => {
+        const builtinId = activeBuiltinId(p.store);
+        return builtinId
+          ? { ...p, builtinSwitches: setBuiltinToolEnabled(p.builtinSwitches, builtinId, id, on) }
+          : { ...p, store: setToolEnabled(p.store, id, on) };
+      })}
       view={view}
       onViewChange={setView}
       presetSelector={(

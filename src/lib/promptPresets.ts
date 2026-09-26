@@ -369,15 +369,61 @@ export function deleteUserTool(tools: Tool[], id: string): Tool[] {
   return tools.filter((t) => t.id !== id);
 }
 
-/** The Tools the active preset switches on: a built-in's shipped map, or what a user preset stores. */
-export function activeEnabledTools(store: PromptPresetStore): ToolEnabledMap {
-  if (isBuiltInActive(store)) return BUILTIN_ENABLED_TOOLS[store.activeId] ?? {};
+/** The player's Tool switches on built-in presets, by built-in preset id; a built-in without an entry uses its shipped map. */
+export type BuiltinToolSwitches = Record<string, ToolEnabledMap>;
+
+/** localStorage codec for built-in switches; an unknown preset id or a malformed map drops. */
+export const builtinToolSwitchesCodec: Codec<BuiltinToolSwitches> = {
+  parse: (raw) => {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      const out: BuiltinToolSwitches = {};
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return out;
+      for (const [presetId, map] of Object.entries(parsed)) {
+        const switches = BUILTIN_IDS.has(presetId) ? parseToolEnabledMap(map) : undefined;
+        if (switches) out[presetId] = switches;
+      }
+      return out;
+    } catch {
+      return {};
+    }
+  },
+  serialize: (v) => JSON.stringify(v),
+};
+
+/** The built-in the active preset resolves to (Default for a ghost id), or null when a user preset is active. */
+export function activeBuiltinId(store: PromptPresetStore): string | null {
+  if (!isBuiltInActive(store)) return null;
+  return BUILTIN_IDS.has(store.activeId) ? store.activeId : DEFAULT_PRESET_ID;
+}
+
+function builtinEnabledTools(switches: BuiltinToolSwitches, presetId: string): ToolEnabledMap {
+  return switches[presetId] ?? BUILTIN_ENABLED_TOOLS[presetId] ?? {};
+}
+
+/** The Tools the active preset switches on: a built-in's player switches (or shipped map), or what a user preset stores. */
+export function activeEnabledTools(store: PromptPresetStore, builtinSwitches: BuiltinToolSwitches): ToolEnabledMap {
+  const builtinId = activeBuiltinId(store);
+  if (builtinId) return builtinEnabledTools(builtinSwitches, builtinId);
   return store.presets.find((p) => p.id === store.activeId)?.enabledTools ?? {};
 }
 
-/** Switch one Tool on or off for the active preset. No-op under a built-in. */
+/** Switch one Tool on or off for the active user preset. No-op under a built-in; see `setBuiltinToolEnabled`. */
 export function setToolEnabled(store: PromptPresetStore, id: string, on: boolean): PromptPresetStore {
   return patchActivePreset(store, (p) => ({ ...p, enabledTools: { ...(p.enabledTools ?? {}), [id]: on } }));
+}
+
+/** Switch one Tool on or off for built-in `presetId`, starting from its shipped map the first time. */
+export function setBuiltinToolEnabled(switches: BuiltinToolSwitches, presetId: string, id: string, on: boolean): BuiltinToolSwitches {
+  return { ...switches, [presetId]: { ...builtinEnabledTools(switches, presetId), [id]: on } };
+}
+
+/** Remove a deleted Tool's switch from every built-in. */
+export function dropToolFromBuiltins(switches: BuiltinToolSwitches, id: string): BuiltinToolSwitches {
+  return Object.fromEntries(Object.entries(switches).map(([presetId, map]) => {
+    const { [id]: _dropped, ...rest } = map;
+    return [presetId, rest];
+  }));
 }
 
 /** Remove a deleted Tool's switch from every preset. */
