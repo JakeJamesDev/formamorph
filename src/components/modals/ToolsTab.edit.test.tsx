@@ -218,7 +218,7 @@ describe('editor copy', () => {
   it.each([
     ['Entities', 'Matches entity names and aliases, in any case'],
     ['Locations', 'Matches location names, in any case'],
-    ['Dictionary Entries', 'Matches dictionary names and keywords, in any case'],
+    ['Dictionary Entries', 'Matches dictionary names and trigger keywords, in any case'],
   ])('shows one match hint for %s under the whole lookup row', async (label, hint) => {
     const user = userEvent.setup();
     await openEditor(user, [weather({ handler: { kind: 'lookup', source: 'entities', param: 'place', returns: 'full' } })]);
