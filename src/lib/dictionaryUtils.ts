@@ -10,8 +10,12 @@ const MAX_RECURSION_PASSES = 3;
  * `getActivatedDictionary` still applies it.
  */
 export function flattenEnabledBookEntries(dictionaries: Dictionary[] | undefined): DictionaryEntry[] {
-  if (!dictionaries) return [];
-  return dictionaries.flatMap((book) => (book.enabled === false ? [] : book.entries ?? []));
+  return enabledBooks(dictionaries).flatMap((book) => book.entries ?? []);
+}
+
+/** The books that are not switched off, in book order. */
+export function enabledBooks<T extends Dictionary>(dictionaries: readonly T[] | undefined): T[] {
+  return (dictionaries ?? []).filter((book) => book.enabled !== false);
 }
 
 /** An entry's primary trigger keywords (empties dropped). */

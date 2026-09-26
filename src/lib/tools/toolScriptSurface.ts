@@ -72,7 +72,7 @@ const argAccess = (name: string) => (/^[A-Za-z_$][\w$]*$/.test(name) ? `args.${n
 /** The surface of a script for a Tool with `params`, in a world whose shared placeholders are `placeholderNames`. */
 export function toolScriptSurface(params: readonly ToolParam[], placeholderNames: readonly string[] = []): CodeSurface {
   const argEntries = namedParams(params).map(argEntry);
-  const placeholderEntries = placeholderNames.map((name) => ({ name, detail: 'string', info: 'The value this playthrough resolved.' }));
+  const placeholderEntries = placeholderNames.map((name) => ({ name, detail: 'string', info: 'The resolved text' }));
   return {
     label: 'a Tool script',
     globals: [

@@ -2,6 +2,7 @@ import type { ChatMessage, Dictionary, Entity, Placeholder } from '@/types';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
+import { enabledBooks } from '@/lib/dictionaryUtils';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { parseTurns } from '@/lib/turnBanding';
 import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
@@ -172,7 +173,7 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
     locations: scene.locations.map((l) => ({
       id: l.id, name: l.name, description: text(l.aiDescription), summary: text(l.aiSummary),
     })),
-    dictionary: dictionaries.filter((book) => book.enabled !== false).flatMap((book) => {
+    dictionary: enabledBooks(dictionaries).flatMap((book) => {
       const own = placeholderValues(book.placeholders, resolve);
       return (book.entries ?? []).filter((entry) => entry.enabled !== false).map((entry) => ({
         id: entry.id, name: entry.name, keys: [...(entry.key ?? [])], value: text(entry.value), placeholders: own,
