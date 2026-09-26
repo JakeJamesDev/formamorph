@@ -1,7 +1,8 @@
 # More Built-in Tools, Script Placeholders, and Tool Editor Copy
 
-Status: needs-info
-Status note: Draft. The user will keep iterating on it before tickets, then the status moves to ready-for-agent.
+Status: ready-for-agent
+Spec session: tools-catalog-and-script-placeholders — spec
+Status note: Ticketed 2026-09-26, seven tickets in `issues/`.
 
 Four parts. Each part can ship alone.
 
