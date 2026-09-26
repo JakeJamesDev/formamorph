@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Tool } from '@/types';
 import {
-  activeEnabledTools as activeWith, setToolEnabled, dropToolEverywhere, saveUserTool, deleteUserTool, userToolsCodec,
+  activeEnabledTools, setToolEnabled, dropToolEverywhere, saveUserTool, deleteUserTool, userToolsCodec,
   addPreset, presetStoreCodec, activeBuiltinId, setBuiltinToolEnabled, dropToolFromBuiltins, builtinToolSwitchesCodec,
   type BuiltinToolSwitches, type PromptPresetStore, type PromptValues,
 } from './promptPresets';
@@ -16,8 +16,8 @@ const twoPresets = (patch: Partial<PromptPresetStore['presets'][number]> = {}): 
   presets: [{ id: 'u1', name: 'Mine', values, ...patch }, { id: 'u2', name: 'Other', values }],
 });
 /** The active preset's switches when no built-in switch was ever flipped. */
-const activeEnabledTools = (s: PromptPresetStore) => activeWith(s, {});
-const onAt = (s: PromptPresetStore, presetId: string) => activeEnabledTools({ ...s, activeId: presetId });
+const unflipped = (s: PromptPresetStore) => activeEnabledTools(s, {});
+const onAt = (s: PromptPresetStore, presetId: string) => unflipped({ ...s, activeId: presetId });
 
 describe('the global user Tool list', () => {
   it('saves a new Tool, replaces it by id, and deletes it', () => {
@@ -47,7 +47,7 @@ describe('the global user Tool list', () => {
 
 describe('enabled maps', () => {
   it('a user preset without a map switches nothing on', () => {
-    expect(activeEnabledTools(twoPresets())).toEqual({});
+    expect(unflipped(twoPresets())).toEqual({});
   });
 
   it('switches a Tool on for the active preset only', () => {
@@ -67,7 +67,7 @@ describe('enabled maps', () => {
 
   it('persists through the store codec', () => {
     const s = setToolEnabled(twoPresets(), 't1', true);
-    expect(activeEnabledTools(presetStoreCodec.parse(presetStoreCodec.serialize(s)))).toEqual({ t1: true });
+    expect(unflipped(presetStoreCodec.parse(presetStoreCodec.serialize(s)))).toEqual({ t1: true });
   });
 });
 
@@ -78,23 +78,28 @@ describe('a built-in preset', () => {
     setBuiltinToolEnabled(switches, activeBuiltinId(store)!, id, on);
 
   it('defaults to its shipped map: Experimental has get_entity on, the others have nothing on', () => {
-    expect(activeWith(builtIn, {})).toEqual({ get_entity: true });
-    expect(activeWith({ activeId: 'default', presets: [] }, {})).toEqual({});
+    expect(activeEnabledTools(builtIn, {})).toEqual({ get_entity: true });
+    expect(activeEnabledTools({ activeId: 'default', presets: [] }, {})).toEqual({});
   });
 
   it('keeps a flipped switch, over its shipped defaults, on that built-in only', () => {
     let switches = flip({}, builtIn, 't1', true);
-    expect(activeWith(builtIn, switches)).toEqual({ get_entity: true, t1: true });
+    expect(activeEnabledTools(builtIn, switches)).toEqual({ get_entity: true, t1: true });
     switches = flip(switches, builtIn, 'get_entity', false);
-    expect(activeWith(builtIn, switches)).toEqual({ get_entity: false, t1: true });
-    expect(activeWith({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
-    expect(activeWith({ ...builtIn, activeId: 'u1' }, switches)).toEqual({});
+    expect(activeEnabledTools(builtIn, switches)).toEqual({ get_entity: false, t1: true });
+    expect(activeEnabledTools({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
+    expect(activeEnabledTools({ ...builtIn, activeId: 'u1' }, switches)).toEqual({});
+  });
+
+  it('keeps a later shipped default live under the switches a player flipped before it shipped', () => {
+    const switches = builtinToolSwitchesCodec.parse(JSON.stringify({ experimental: { t1: true } }));
+    expect(activeEnabledTools(builtIn, switches)).toEqual({ get_entity: true, t1: true });
   });
 
   it('reads a ghost id as Default, switches included', () => {
     const ghost: PromptPresetStore = { activeId: 'gone', presets: [] };
     expect(activeBuiltinId(ghost)).toBe('default');
-    expect(activeWith(ghost, flip({}, ghost, 't1', true))).toEqual({ t1: true });
+    expect(activeEnabledTools(ghost, flip({}, ghost, 't1', true))).toEqual({ t1: true });
   });
 
   it('is not a built-in when a user preset is active', () => {
@@ -109,8 +114,8 @@ describe('a built-in preset', () => {
     let switches = flip({}, builtIn, 't1', true);
     switches = flip(switches, { ...builtIn, activeId: 'default' }, 't1', true);
     switches = dropToolFromBuiltins(switches, 't1');
-    expect(activeWith(builtIn, switches)).toEqual({ get_entity: true });
-    expect(activeWith({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
+    expect(activeEnabledTools(builtIn, switches)).toEqual({ get_entity: true });
+    expect(activeEnabledTools({ ...builtIn, activeId: 'default' }, switches)).toEqual({});
   });
 
   it('persists its switches through their codec, dropping unknown presets and malformed maps', () => {
@@ -123,27 +128,27 @@ describe('a built-in preset', () => {
   });
 
   it('hands a copy its shipped map, so a duplicate of Experimental keeps get_entity on', () => {
-    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeWith(builtIn, {}));
-    expect(activeEnabledTools(copy)).toEqual({ get_entity: true });
+    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeEnabledTools(builtIn, {}));
+    expect(unflipped(copy)).toEqual({ get_entity: true });
   });
 
   it('hands a copy its current switches, flipped and default alike', () => {
     const switches = flip({}, builtIn, 't1', true);
-    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeWith(builtIn, switches));
-    expect(activeEnabledTools(copy)).toEqual({ get_entity: true, t1: true });
+    const copy = addPreset(builtIn, 'c1', 'Copy', values, 'markdown', undefined, activeEnabledTools(builtIn, switches));
+    expect(unflipped(copy)).toEqual({ get_entity: true, t1: true });
   });
 });
 
 describe('copying a user preset', () => {
   it('carries its enabled map as its own copy', () => {
     const s = setToolEnabled(twoPresets(), 't1', true);
-    const copy = addPreset(s, 'c1', 'Copy', values, 'markdown', undefined, activeEnabledTools(s));
-    expect(activeEnabledTools(copy)).toEqual({ t1: true });
+    const copy = addPreset(s, 'c1', 'Copy', values, 'markdown', undefined, unflipped(s));
+    expect(unflipped(copy)).toEqual({ t1: true });
     expect(onAt(setToolEnabled(copy, 't1', false), 'u1')).toEqual({ t1: true });
   });
 
   it('adds no map when the source switches nothing on', () => {
-    const copy = addPreset(twoPresets(), 'c1', 'Copy', values, 'markdown', undefined, activeEnabledTools(twoPresets()));
+    const copy = addPreset(twoPresets(), 'c1', 'Copy', values, 'markdown', undefined, unflipped(twoPresets()));
     expect(copy.presets[2]).toEqual({ id: 'c1', name: 'Copy', values, style: 'markdown' });
   });
 });
