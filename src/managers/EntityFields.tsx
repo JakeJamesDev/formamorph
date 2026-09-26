@@ -211,7 +211,7 @@ export const EntityStartingLocationField = ({ value, onChange, options }: Entity
   return (
     <div className="space-y-2">
       <Label htmlFor={`entity-start-${value.id}`}>Starting Location</Label>
-      <Hint>Preselected when the player picks this persona</Hint>
+      <Hint>Selects where the player starts as this persona</Hint>
       <Select value={selected} onValueChange={(v) => onChange('startingLocationId', v === AUTOMATIC ? undefined : v)}>
         <SelectTrigger id={`entity-start-${value.id}`}>
           <SelectValue />
