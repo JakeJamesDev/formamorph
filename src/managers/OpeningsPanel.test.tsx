@@ -2,12 +2,19 @@ import type { ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { EntityOpenings, OpeningsList } from './OpeningsPanel';
+import { EntityOpenings, OpeningsList, OpeningsPanel } from './OpeningsPanel';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { ownerOpeningRows } from '@/lib/openings';
 import { placeholderOwners } from '@/lib/placeholderHomes';
 import type { Entity } from '@/types';
+
+// The World tab's panel reads the world from here; the other fields take props.
+const game = { current: null as unknown };
+vi.mock('@/contexts/GameDataContext', async (original) => ({
+  ...(await original<typeof import('@/contexts/GameDataContext')>()),
+  useGameData: () => game.current,
+}));
 
 vi.mock('@/components/game/MarkdownRenderer', () => ({
   MarkdownRenderer: ({ text }: { text: string }) => <div data-testid="md">{text}</div>,
@@ -51,6 +58,16 @@ describe('an entity opening’s Preview', () => {
 
   it('reads Character Name as the entity’s name and Player Name as its label', async () => {
     mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
+  });
+
+  it('reads the entity’s name on the World tab’s Openings panel too', async () => {
+    game.current = {
+      worldOverview: {}, updateWorldOverview: () => {}, entities: [greeting], updateEntity: () => {}, locations: [],
+      placeholders: [],
+    };
+    mount(<OpeningsPanel />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
   });
