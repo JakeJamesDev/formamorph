@@ -1,5 +1,5 @@
-import type { Tool } from '@/types';
-import { TOOL_NAME_MAX, isRecord, parseTool, toolNameProblem } from './toolValidation';
+import type { Tool, ToolEnabledMap } from '@/types';
+import { TOOL_NAME_MAX, isRecord, parseTool, sameToolName, toolNameProblem } from './toolValidation';
 
 /**
  * The shared Tool file. `formamorphTools` is the file's own shape version, which import checks; `appVersion`
@@ -29,10 +29,16 @@ export function parseToolPack(json: string): { tools: Tool[]; warnings: string[]
   if (!isRecord(parsed) || typeof parsed.formamorphTools !== 'number' || !Array.isArray(parsed.tools)) {
     throw new Error('That file isn’t a Formamorph Tool pack.');
   }
+  const { tools, warnings } = parseToolList(parsed.tools);
+  if (parsed.formamorphTools > TOOL_PACK_VERSION) warnings.unshift('This pack was made with a newer format. Anything unrecognized was skipped.');
+  return { tools, warnings };
+}
+
+/** Read a list of untrusted Tools. A malformed Tool drops with a warning. */
+export function parseToolList(list: readonly unknown[]): { tools: Tool[]; warnings: string[] } {
   const tools: Tool[] = [];
   const warnings: string[] = [];
-  if (parsed.formamorphTools > TOOL_PACK_VERSION) warnings.push('This pack was made with a newer format. Anything unrecognized was skipped.');
-  for (const raw of parsed.tools) {
+  for (const raw of list) {
     const result = parseTool(raw);
     if ('tool' in result) tools.push(result.tool);
     else warnings.push(`Skipped ${isRecord(raw) && typeof raw.name === 'string' ? `"${raw.name}"` : 'a Tool'}: ${result.error}.`);
@@ -53,6 +59,29 @@ export function planToolImport(held: readonly Tool[], imported: readonly Tool[],
     else added.push({ ...tool, id: mintId() });
   }
   return { added, skipped, hasScript: added.some((t) => t.handler.kind === 'script') };
+}
+
+/** Shown when a preset import adds a Script Tool. */
+export const PRESET_SCRIPT_TOOL_WARNING = 'This preset adds a Script Tool and turns it on. A script runs code when the AI calls it, so read it in the Tools tab.';
+
+/**
+ * How a shared preset's embedded Tools join `held`. An unknown name is added under a fresh id; a known name keeps the
+ * local Tool. `enabled` switches on whichever Tool each name resolves to.
+ */
+export function planPresetTools(held: readonly Tool[], embedded: readonly Tool[], mintId: () => string): {
+  added: Tool[];
+  enabled: ToolEnabledMap;
+  hasScript: boolean;
+} {
+  const added: Tool[] = [];
+  const enabled: ToolEnabledMap = {};
+  for (const tool of embedded) {
+    const local = [...held, ...added].find((t) => sameToolName(t.name, tool.name));
+    const target = local ?? { ...tool, id: mintId() };
+    if (!local) added.push(target);
+    enabled[target.id] = true;
+  }
+  return { added, enabled, hasScript: added.some((t) => t.handler.kind === 'script') };
 }
 
 const COPY_SUFFIX = '_copy';

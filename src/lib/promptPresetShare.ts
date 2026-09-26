@@ -1,10 +1,11 @@
 import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
-import type { AIRequestType, ToolEnabledMap } from '@/types';
+import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
 import { parsePromptReasoningSetting } from './reasoningEffort';
 import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
 import { isCatalogToolId } from './tools/toolCatalog';
-import { parseToolEnabledMap } from './tools/toolValidation';
+import { catalogToolNamed, isRecord, parseToolEnabledMap } from './tools/toolValidation';
+import { parseToolList } from './tools/toolPack';
 
 /** Wire identity + schema version for a shared prompt preset. `FORMAT_VERSION` bumps only on a breaking change
  *  to the shared shape; the source app version is stamped separately for the older/newer import warning. */
@@ -29,6 +30,8 @@ export interface SharedPreset {
   overview?: PresetOverview;
   /** Catalog Tool switches only. */
   enabledTools?: ToolEnabledMap;
+  /** Copies of the user Tools the preset switches on. */
+  tools?: Tool[];
 }
 
 /** The preset payload an import yields (id is minted when added to the store). */
@@ -43,6 +46,8 @@ export interface ImportedPreset {
   verbatim?: VerbatimMap;
   overview?: PresetOverview;
   enabledTools?: ToolEnabledMap;
+  /** Embedded user Tools, each still under its sender's id. */
+  tools?: Tool[];
 }
 
 export interface ParseResult {
@@ -55,12 +60,14 @@ export interface ParseResult {
 }
 
 /** Build the shareable artifact from a (resolved) preset. Built-ins should be materialized to concrete
- *  values/tuning by the caller before export. User Tool switches stay behind: their ids are local. */
+ *  values/tuning by the caller before export. `tools` is the player's user Tool list; the switched-on ones
+ *  travel as copies, since their ids are local. */
 export function buildSharedPreset(
-  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview; enabledTools?: ToolEnabledMap },
+  input: { name: string; style: SectionStyle; values: PromptValues; samplers?: PromptSamplerMap; reasoning?: ReasoningMap; reasoningBudget?: ReasoningBudgetMap; maxOutput?: PromptMaxOutputMap; verbatim?: VerbatimMap; overview?: PresetOverview; enabledTools?: ToolEnabledMap; tools?: readonly Tool[] },
   appVersion: string,
 ): SharedPreset {
   const enabledTools = parseToolEnabledMap(input.enabledTools, isCatalogToolId);
+  const tools = (input.tools ?? []).filter((t) => input.enabledTools?.[t.id] === true);
   return {
     kind: SHARE_KIND,
     formatVersion: FORMAT_VERSION,
@@ -75,6 +82,7 @@ export function buildSharedPreset(
     ...(input.verbatim && Object.keys(input.verbatim).length ? { verbatim: input.verbatim } : {}),
     ...(input.overview && hasOverviewContent(input.overview) ? { overview: input.overview } : {}),
     ...(enabledTools ? { enabledTools } : {}),
+    ...(tools.length ? { tools: structuredClone(tools) } : {}),
   };
 }
 
@@ -155,8 +163,18 @@ function sanitize(obj: unknown, currentAppVersion: string): ParseResult {
   if (verbatim) preset.verbatim = verbatim;
   const overview = sanitizeOverview(o.overview);
   if (overview) preset.overview = overview;
-  const enabledTools = parseToolEnabledMap(o.enabledTools, isCatalogToolId);
-  if (enabledTools) preset.enabledTools = enabledTools;
+  const enabledTools = parseToolEnabledMap(o.enabledTools, isCatalogToolId) ?? {};
+  // An embedded Tool that shares a built-in Tool's name resolves to the built-in one.
+  const embeddedRaw = Array.isArray(o.tools) ? o.tools : [];
+  const userRaw = embeddedRaw.filter((raw) => {
+    const catalog = isRecord(raw) && typeof raw.name === 'string' ? catalogToolNamed(raw.name) : undefined;
+    if (catalog) enabledTools[catalog.id] = true;
+    return !catalog;
+  });
+  if (Object.keys(enabledTools).length) preset.enabledTools = enabledTools;
+  const embedded = parseToolList(userRaw);
+  if (embedded.tools.length) preset.tools = embedded.tools;
+  warnings.push(...embedded.warnings);
 
   return { ok: true, preset, sourceAppVersion, warnings };
 }

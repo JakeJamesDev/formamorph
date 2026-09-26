@@ -3,6 +3,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { toast } from 'react-toastify';
 import { useLibraryDownload, type LibraryRecord } from './useLibraryDownload';
 import { promptLibraryTarget } from './promptDownload';
+import { PRESET_SCRIPT_TOOL_WARNING } from './tools/toolPack';
 import * as fetchModule from './fetchCatalogContent';
 
 const SERVER_STAMP = '2026-09-10T00:00:00.000Z';
@@ -15,8 +16,8 @@ const artifact = (appVersion = '2.0.3') =>
 const copy = (patch: Partial<LibraryRecord> = {}): LibraryRecord =>
   ({ id: 'preset-1', name: 'Listed', sourceId: 'P1', sourceUpdatedAt: SERVER_STAMP, ...patch });
 
-function setup(presets: LibraryRecord[] = []) {
-  const store = vi.fn();
+function setup(presets: LibraryRecord[] = [], scriptToolAdded = false) {
+  const store = vi.fn().mockReturnValue({ scriptToolAdded });
   const hook = renderHook(() => useLibraryDownload(promptLibraryTarget({ presets, store }, '2.0.3')));
   return { hook, store };
 }
@@ -82,6 +83,16 @@ describe('prompt listing download', () => {
     await waitFor(() => expect(store).toHaveBeenCalled());
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('This preset was made for Formamorph 1.9.0 (you have 2.0.3)'));
+  });
+
+  it('warns when the download added a Script Tool, and only then', async () => {
+    const warn = vi.spyOn(toast, 'warning');
+    for (const added of [false, true]) {
+      const { hook, store } = setup([], added);
+      await act(async () => { hook.result.current.startDownload(listing()); });
+      await waitFor(() => expect(store).toHaveBeenCalled());
+      expect(warn.mock.calls.flat().includes(PRESET_SCRIPT_TOOL_WARNING)).toBe(added);
+    }
   });
 
   it('stores nothing when the content is not a preset', async () => {

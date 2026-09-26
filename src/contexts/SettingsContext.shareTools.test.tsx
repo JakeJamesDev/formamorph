@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import type { Tool } from '@/types';
 import { SettingsProvider, useSettings } from './SettingsContext';
 import { presetStoreCodec, userToolsCodec, type PromptPresetStore } from '@/lib/promptPresets';
+import type { ImportedPreset } from '@/lib/promptPresetShare';
 
 // Keep the provider's endpoint probes off the network.
 vi.mock('@/lib/reasoningEffort', async () => {
@@ -24,6 +25,7 @@ const TOOL: Tool = {
   handler: { kind: 'template', body: 'Sunny.' }, emptyResult: '', offeredTo: ['narration'],
 };
 const SWITCHES = { get_entity: true, t1: true };
+const gift: ImportedPreset = { name: 'Gift', style: 'markdown', values: { systemPrompt: 'X' } as never, enabledTools: { get_entity: true } };
 
 function seed(activeId: string) {
   const store: PromptPresetStore = {
@@ -79,12 +81,73 @@ describe('SettingsContext: the global Tool list', () => {
 });
 
 describe('SettingsContext: Tool switches in export, import and copy', () => {
-  it('exports a user preset’s catalog switches and none of its user Tools', () => {
+  it('exports a user preset’s catalog switches and a copy of each user Tool it switches on', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
     const shared = result.current.exportActivePreset('2.9.2');
     expect(shared.enabledTools).toEqual({ get_entity: true });
-    expect(JSON.stringify(shared)).not.toContain('get_weather');
+    expect(shared.tools).toEqual([TOOL]);
+    act(() => { result.current.setToolEnabled('t1', false); });
+    expect('tools' in result.current.exportActivePreset('2.9.2')).toBe(false);
+  });
+
+  it('adds an embedded Tool with an unknown name and switches it on for the imported preset only', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    const forecast: Tool = { ...TOOL, id: 't1', name: 'get_forecast' };
+    let id = '';
+    act(() => { id = result.current.importPreset({ ...gift, tools: [forecast] }, { includeTuning: false, name: 'Gift' }); });
+    const [, added] = storedTools();
+    expect(storedTools()).toEqual([TOOL, { ...forecast, id: added.id }]);
+    expect(added.id).not.toBe('t1');
+    expect(stored(id)?.enabledTools).toEqual({ get_entity: true, [added.id]: true });
+    expect(stored('mine')?.enabledTools).toEqual(SWITCHES);
+    expect(stored('other')?.enabledTools).toEqual({ t1: true });
+  });
+
+  it('keeps the local Tool on a name match and switches the local one on, overwrite included', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    const theirs: Tool = { ...TOOL, id: 'far-away', name: 'Get_Weather', description: 'Their weather.' };
+    let id = '';
+    act(() => { id = result.current.importPreset({ ...gift, tools: [theirs] }, { includeTuning: false, name: 'Gift' }); });
+    expect(storedTools()).toEqual([TOOL]);
+    expect(stored(id)?.enabledTools).toEqual({ get_entity: true, t1: true });
+    act(() => { result.current.importPreset({ ...gift, enabledTools: undefined, tools: [theirs] }, { includeTuning: false, name: 'Other', overwriteId: 'other' }); });
+    expect(storedTools()).toEqual([TOOL]);
+    expect(stored('other')?.enabledTools).toEqual({ t1: true });
+  });
+
+  it('merges a community download’s Tools by name and reports an added Script Tool', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    const dice: Tool = { ...TOOL, id: 'far-away', name: 'roll_dice', handler: { kind: 'script', code: 'return 4;' } };
+    let report = { scriptToolAdded: false };
+    act(() => { report = result.current.storeDownloadedPreset('dl-1', { ...gift, tools: [TOOL, dice] }, { sourceId: 'listing-1' }, 'Listed'); });
+    expect(report).toEqual({ scriptToolAdded: true });
+    const [, added] = storedTools();
+    expect(storedTools()).toEqual([TOOL, { ...dice, id: added.id }]);
+    expect(stored('dl-1')?.enabledTools).toEqual({ get_entity: true, t1: true, [added.id]: true });
+    act(() => { report = result.current.storeDownloadedPreset('dl-1', { ...gift, tools: [TOOL, dice] }, { sourceId: 'listing-1' }, 'Listed'); });
+    expect(report).toEqual({ scriptToolAdded: false });
+    expect(storedTools()).toHaveLength(2);
+  });
+
+  it('adds a name once when two downloads carrying it land before a re-render', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    const dice: Tool = { ...TOOL, id: 'far-away', name: 'roll_dice', handler: { kind: 'script', code: 'return 4;' } };
+    const reports: { scriptToolAdded: boolean }[] = [];
+    act(() => {
+      const { storeDownloadedPreset } = result.current;
+      reports.push(storeDownloadedPreset('dl-1', { ...gift, tools: [dice] }, { sourceId: 'listing-1' }, 'One'));
+      reports.push(storeDownloadedPreset('dl-2', { ...gift, tools: [dice] }, { sourceId: 'listing-2' }, 'Two'));
+    });
+    const [, added] = storedTools();
+    expect(storedTools()).toHaveLength(2);
+    expect(stored('dl-1')?.enabledTools).toEqual({ get_entity: true, [added.id]: true });
+    expect(stored('dl-2')?.enabledTools).toEqual({ get_entity: true, [added.id]: true });
+    expect(reports).toEqual([{ scriptToolAdded: true }, { scriptToolAdded: false }]);
   });
 
   it('exports Experimental with get_entity on and Default with no switches', () => {
@@ -98,7 +161,6 @@ describe('SettingsContext: Tool switches in export, import and copy', () => {
   it('stores imported switches with or without tuning', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
-    const gift = { name: 'Gift', style: 'markdown' as const, values: { systemPrompt: 'X' } as never, enabledTools: { get_entity: true } };
     let id = '';
     act(() => { id = result.current.importPreset(gift, { includeTuning: false, name: 'Gift' }); });
     expect(stored(id)?.enabledTools).toEqual({ get_entity: true });

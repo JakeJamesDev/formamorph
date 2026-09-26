@@ -3,11 +3,12 @@ import { APP_VERSION } from '@/lib/version';
 import { parseSharedContent, type ImportedPreset } from '@/lib/promptPresetShare';
 import type { LibraryRecord, LibraryTarget } from '@/lib/useLibraryDownload';
 import type { PresetDownloadLink } from '@/lib/promptPresets';
+import { PRESET_SCRIPT_TOOL_WARNING } from '@/lib/tools/toolPack';
 
 /** The preset store as the settings context offers it: every user preset, and a way to store a download. */
 export interface PresetStoreAccess {
   presets: LibraryRecord[];
-  store: (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string) => void;
+  store: (id: string, imported: ImportedPreset, link: PresetDownloadLink, name: string) => { scriptToolAdded: boolean };
 }
 
 /** A prompt listing's content: the shared preset artifact, read through the share sanitizer on arrival. */
@@ -35,8 +36,9 @@ export function promptLibraryTarget(
     store: async (id, content, link, listingName) => {
       const parsed = parseSharedContent(content, appVersion);
       if (!parsed.ok || !parsed.preset) throw new Error(parsed.error ?? 'This listing is not a prompt preset.');
-      library.store(id, parsed.preset, link, listingName);
+      const { scriptToolAdded } = library.store(id, parsed.preset, link, listingName);
       for (const warning of parsed.warnings) toast.warning(warning);
+      if (scriptToolAdded) toast.warning(PRESET_SCRIPT_TOOL_WARNING);
     },
     // The store is React state, so the browser re-renders on its own.
     refresh: () => {},
