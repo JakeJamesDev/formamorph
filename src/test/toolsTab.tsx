@@ -3,7 +3,8 @@ import {
   activeBuiltinId, activeEnabledTools, deleteUserTool, dropToolEverywhere, dropToolFromBuiltins, saveUserTool, setActive,
   setBuiltinToolEnabled, setToolEnabled,
 } from '@/lib/promptPresets';
-import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
+import { TOOL_CATALOG, isCatalogToolId } from '@/lib/tools/toolCatalog';
+import { saveCatalogOverride, withCatalogOverrides } from '@/lib/tools/catalogOverrides';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { ToolsTab, type ToolFileTransfer } from '@/components/modals/ToolsTab';
 import { EMPTY_TOOLS_VIEW, type ToolsView } from '@/components/modals/toolsView';
@@ -24,14 +25,16 @@ export function ToolsHarness({ initial, toolsSupported = true, toolsEnabled = tr
   recordState(s);
   return (
     <ToolsTab
-      catalogTools={TOOL_CATALOG}
+      catalogTools={withCatalogOverrides(TOOL_CATALOG, s.catalogOverrides)}
       userTools={s.tools}
       enabledTools={activeEnabledTools(s.store, s.builtinSwitches)}
       toolsSupported={toolsSupported}
       toolsEnabled={toolsEnabled}
-      onSaveTool={(t) => setS((p) => ({ ...p, tools: saveUserTool(p.tools, t) }))}
+      onSaveTool={(t) => setS((p) => (isCatalogToolId(t.id)
+        ? { ...p, catalogOverrides: saveCatalogOverride(p.catalogOverrides, t) }
+        : { ...p, tools: saveUserTool(p.tools, t) }))}
       onDeleteTool={(id) => setS((p) => ({
-        tools: deleteUserTool(p.tools, id), store: dropToolEverywhere(p.store, id), builtinSwitches: dropToolFromBuiltins(p.builtinSwitches, id),
+        ...p, tools: deleteUserTool(p.tools, id), store: dropToolEverywhere(p.store, id), builtinSwitches: dropToolFromBuiltins(p.builtinSwitches, id),
       }))}
       onSetEnabled={(id, on) => setS((p) => {
         const builtinId = activeBuiltinId(p.store);

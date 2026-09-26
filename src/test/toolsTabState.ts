@@ -1,12 +1,13 @@
 import { fireEvent, screen } from '@testing-library/react';
-import type { Tool, ToolEnabledMap } from '@/types';
+import type { CatalogToolOverrides, Tool, ToolEnabledMap } from '@/types';
 import { activeEnabledTools, type BuiltinToolSwitches, type PromptPresetStore, type PromptValues } from '@/lib/promptPresets';
 
-/** What the Tools harness holds: the global user Tool list, the preset store, and the built-in switches. */
+/** What the Tools harness holds: the global user Tool list, the preset store, the built-in switches, and the catalog overrides. */
 export interface ToolsState {
   tools: Tool[];
   store: PromptPresetStore;
   builtinSwitches: BuiltinToolSwitches;
+  catalogOverrides: CatalogToolOverrides;
 }
 
 const values = {} as PromptValues;
@@ -19,6 +20,7 @@ export const toolsState = (tools: Tool[] = [], enabled: ToolEnabledMap = {}, act
     presets: [{ id: 'mine', name: 'Mine', values, enabledTools: enabled }, { id: 'other', name: 'Other', values }],
   },
   builtinSwitches: {},
+  catalogOverrides: {},
 });
 
 let latest: ToolsState;

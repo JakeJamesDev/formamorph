@@ -27,10 +27,13 @@ const PARAM_TYPES: readonly ToolParamType[] = ['string', 'number', 'boolean', 'e
 const REQUEST_KINDS: readonly string[] = ALL_REQUEST_KINDS;
 
 /** Known prompt kinds only; a kind from a newer version drops. Null when `raw` isn't a list. */
-function parseOfferedTo(raw: unknown): AIRequestType[] | null {
+export function parseOfferedTo(raw: unknown): AIRequestType[] | null {
   if (!Array.isArray(raw)) return null;
   return raw.filter((k): k is AIRequestType => typeof k === 'string' && REQUEST_KINDS.includes(k));
 }
+
+/** Whether `raw` is a call limit: a whole number of 1 or more. */
+export const isCallLimit = (raw: unknown): raw is number => typeof raw === 'number' && Number.isInteger(raw) && raw >= 1;
 
 function parseParam(raw: unknown): ToolParam | null {
   if (!isRecord(raw)) return null;
@@ -81,7 +84,7 @@ export function parseTool(raw: unknown): { tool: Tool } | { error: string } {
   if (typeof emptyResult !== 'string') return { error: 'it has no empty result' };
   const offeredTo = parseOfferedTo(raw.offeredTo);
   if (!offeredTo) return { error: 'its prompt list is unreadable' };
-  if (callLimit !== undefined && !(typeof callLimit === 'number' && Number.isInteger(callLimit) && callLimit >= 1)) {
+  if (callLimit !== undefined && !isCallLimit(callLimit)) {
     return { error: 'its call limit is not a whole number of 1 or more' };
   }
   return {

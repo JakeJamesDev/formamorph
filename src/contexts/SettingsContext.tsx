@@ -65,8 +65,9 @@ import {
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
-import type { AIRequestType, Tool } from '../types';
-import { TOOL_CATALOG } from '../lib/tools/toolCatalog';
+import type { AIRequestType, CatalogToolOverrides, Tool } from '../types';
+import { TOOL_CATALOG, isCatalogToolId } from '../lib/tools/toolCatalog';
+import { catalogOverridesCodec, saveCatalogOverride, withCatalogOverrides } from '../lib/tools/catalogOverrides';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, storedAfterResolve, reasoningRereadsPerSession, isReasoningEngaged, parseReasoningSetting,
@@ -732,6 +733,11 @@ function useProvideSettings() {
   const [userTools, setUserTools] = usePersistentState<Tool[]>(`${APP_ID}_tools`, [], userToolsCodec);
   // The player's switches on built-in presets, whose prompt text stays read-only.
   const [builtinToolSwitches, setBuiltinToolSwitches] = usePersistentState<BuiltinToolSwitches>(`${APP_ID}_builtinPresetTools`, {}, builtinToolSwitchesCodec);
+  // The player's Availability edits to catalog Tools, for every preset; the shipped definitions never change.
+  const [catalogOverrides, setCatalogOverrides] = usePersistentState<CatalogToolOverrides>(`${APP_ID}_toolCatalogOverrides`, {}, catalogOverridesCodec);
+  const catalogTools = useMemo(() => withCatalogOverrides(TOOL_CATALOG, catalogOverrides), [catalogOverrides]);
+  // Every Tool a request can be offered, in list order: the catalog, then the player's own.
+  const allTools = useMemo(() => [...catalogTools, ...userTools], [catalogTools, userTools]);
 
   // A world can be pinned to a preset for the duration of play (see lib/worldPromptPreset). GameViewer sets
   // this on load and clears it on unmount; it is session state, never persisted — the player's global
@@ -841,8 +847,8 @@ function useProvideSettings() {
   const enabledTools = useMemo(() => activeEnabledTools(effectiveStore, builtinToolSwitches), [effectiveStore, builtinToolSwitches]);
   // A prompt offers a Tool, so play needs the tools answer before it sends any.
   const toolsOffered = useMemo(
-    () => [...TOOL_CATALOG, ...userTools].some((tool) => enabledTools[tool.id] === true && tool.offeredTo.length > 0),
-    [userTools, enabledTools],
+    () => allTools.some((tool) => enabledTools[tool.id] === true && tool.offeredTo.length > 0),
+    [allTools, enabledTools],
   );
 
   // Resolve the endpoint's capability record once reasoning is engaged or a prompt offers a Tool, and only
@@ -967,7 +973,11 @@ function useProvideSettings() {
     [editPresetStore],
   );
   // Tool setters (Settings → Tools). A built-in preset's switch lands in its own store; a deleted Tool leaves every preset.
-  const saveTool = useCallback((tool: Tool) => setUserTools((ts) => saveUserTool(ts, tool)), [setUserTools]);
+  // A catalog Tool saves only its Availability, as a global override.
+  const saveTool = useCallback((tool: Tool) => {
+    if (isCatalogToolId(tool.id)) setCatalogOverrides((o) => saveCatalogOverride(o, tool));
+    else setUserTools((ts) => saveUserTool(ts, tool));
+  }, [setCatalogOverrides, setUserTools]);
   const deleteTool = useCallback((id: string) => {
     setUserTools((ts) => deleteUserTool(ts, id));
     setRawPresetStore((s) => dropToolEverywhere(s, id));
@@ -1735,7 +1745,9 @@ function useProvideSettings() {
     resetPreset,
     presetOverview,
     setPresetOverview,
+    catalogTools,
     userTools,
+    allTools,
     enabledTools,
     saveTool,
     deleteTool,
