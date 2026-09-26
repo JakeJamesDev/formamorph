@@ -74,7 +74,7 @@ type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
 const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: string }[] = [
   { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
   { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
-  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and keywords, in any case' },
+  { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and trigger keywords, in any case' },
 ];
 
 /** The prompts a Tool can be offered to, in the Prompts rail's order. */
