@@ -67,7 +67,7 @@ import {
 import type { AIRequestType, Tool, ToolOverride } from '../types';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
-  resolveReasoningCapability, mergeReasoningCapability, isReasoningEngaged, parseReasoningSetting,
+  resolveReasoningCapability, storedAfterResolve, reasoningRereadsPerSession, isReasoningEngaged, parseReasoningSetting,
   parsePromptReasoningSetting, resolveReasoningSetting, resolvePromptReasoningSetting, DEFAULT_REASONING_SETTING,
   parseReasoningCapability, reasoningNeedsResolve, reasoningAwaitingProof, UNKNOWN_REASONING_CAPABILITY,
   type PromptReasoning, type ReasoningSetting, type PromptReasoningSetting, type ReasoningCapability,
@@ -654,7 +654,7 @@ function useProvideSettings() {
   /** Folds a fresh record onto whatever the cache held, so a source that just answered outranks it. */
   const cacheReasoningCapability = useCallback((sig: string, record: ReasoningCapability) => {
     if (unmountRef.current?.signal.aborted) return;
-    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, mergeReasoningCapability(prev[sig] ?? null, record)));
+    setReasoningCapabilityCache((prev) => storeCapability(prev, sig, storedAfterResolve(prev[sig] ?? null, record)));
   }, [setReasoningCapabilityCache, storeCapability]);
 
   // Which endpoint-and-model pairs this session has already resolved. A resolve that answers nothing, or
@@ -843,10 +843,12 @@ function useProvideSettings() {
 
   // Resolve the endpoint's capability record once reasoning is engaged or a prompt offers a Tool, and only
   // when the cache has nothing better: no record at all, one whose answers only the cache vouches for (a
-  // record stored before this session's sources existed), or one with no tools answer. Debounced so editing
+  // record stored before this session's sources existed), or one with no tools answer. An LM Studio record
+  // is read again once per session, since another loaded model may answer for the same name. Debounced so editing
   // the URL doesn't fire per keystroke.
   useEffect(() => {
-    if (!(reasoningEngaged || toolsOffered) || !reasoningNeedsResolve(reasoningCapability)) return;
+    if (!(reasoningEngaged || toolsOffered)) return;
+    if (!reasoningNeedsResolve(reasoningCapability) && !reasoningRereadsPerSession(reasoningCapability)) return;
     const id = setTimeout(() => { void resolveActiveCapability(); }, 1200);
     return () => clearTimeout(id);
   }, [reasoningEngaged, toolsOffered, reasoningCapability, resolveActiveCapability]);
@@ -1235,7 +1237,8 @@ function useProvideSettings() {
           });
         }).catch(() => { /* an unreachable routed endpoint surfaces as a request failure, not here */ });
       }
-      if (reasoningNeedsResolve(reasoningCapabilityCache[sig]) && !resolvedSignatures.current.has(sig)) {
+      const routedStored = reasoningCapabilityCache[sig];
+      if ((reasoningNeedsResolve(routedStored) || reasoningRereadsPerSession(routedStored)) && !resolvedSignatures.current.has(sig)) {
         resolvedSignatures.current.add(sig);
         void resolveReasoningCapability(
           { url, token: resolved.apiToken, model: resolved.model },
