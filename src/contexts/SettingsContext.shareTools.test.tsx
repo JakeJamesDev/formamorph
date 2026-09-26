@@ -17,6 +17,7 @@ vi.mock('@/lib/contextLength', async () => {
 
 const PROMPTS_KEY = 'FORMAMORPH_promptPresets';
 const TOOLS_KEY = 'FORMAMORPH_tools';
+const BUILTIN_KEY = 'FORMAMORPH_builtinPresetTools';
 const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>;
 const TOOL: Tool = {
   id: 't1', name: 'get_weather', description: 'Purpose: weather.', params: [],
@@ -36,7 +37,6 @@ function seed(activeId: string) {
   localStorage.setItem(TOOLS_KEY, userToolsCodec.serialize([TOOL]));
 }
 
-const BUILTIN_KEY = 'FORMAMORPH_builtinPresetTools';
 const stored = (id: string) => presetStoreCodec.parse(localStorage.getItem(PROMPTS_KEY)!).presets.find((p) => p.id === id);
 const storedTools = () => userToolsCodec.parse(localStorage.getItem(TOOLS_KEY) ?? '[]');
 
@@ -162,6 +162,17 @@ describe('SettingsContext: Tool switches on a built-in preset', () => {
     act(() => { result.current.setToolEnabled('t1', true); });
     act(() => { result.current.deleteTool('t1'); });
     expect(result.current.enabledTools).toEqual({ get_entity: true });
-    expect(JSON.parse(localStorage.getItem(BUILTIN_KEY)!)).toEqual({ experimental: { get_entity: true } });
+    expect(JSON.parse(localStorage.getItem(BUILTIN_KEY)!)).toEqual({ experimental: {} });
+  });
+
+  it('switches the built-in a world pins, not the global preset', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.beginSessionPreset('experimental'); });
+    expect(result.current.enabledTools).toEqual({ get_entity: true });
+    act(() => { result.current.setToolEnabled('t1', true); });
+    expect(result.current.enabledTools).toEqual({ get_entity: true, t1: true });
+    expect(stored('mine')?.enabledTools).toEqual(SWITCHES);
+    expect(JSON.parse(localStorage.getItem(BUILTIN_KEY)!)).toEqual({ experimental: { t1: true } });
   });
 });

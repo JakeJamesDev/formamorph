@@ -369,7 +369,7 @@ export function deleteUserTool(tools: Tool[], id: string): Tool[] {
   return tools.filter((t) => t.id !== id);
 }
 
-/** The player's Tool switches on built-in presets, by built-in preset id; a built-in without an entry uses its shipped map. */
+/** The player's Tool switches on built-in presets, by built-in preset id, laid over each one's shipped map. */
 export type BuiltinToolSwitches = Record<string, ToolEnabledMap>;
 
 /** localStorage codec for built-in switches; an unknown preset id or a malformed map drops. */
@@ -398,10 +398,10 @@ export function activeBuiltinId(store: PromptPresetStore): string | null {
 }
 
 function builtinEnabledTools(switches: BuiltinToolSwitches, presetId: string): ToolEnabledMap {
-  return switches[presetId] ?? BUILTIN_ENABLED_TOOLS[presetId] ?? {};
+  return { ...BUILTIN_ENABLED_TOOLS[presetId], ...switches[presetId] };
 }
 
-/** The Tools the active preset switches on: a built-in's player switches (or shipped map), or what a user preset stores. */
+/** The Tools the active preset switches on: a built-in's player switches over its shipped map, or what a user preset stores. */
 export function activeEnabledTools(store: PromptPresetStore, builtinSwitches: BuiltinToolSwitches): ToolEnabledMap {
   const builtinId = activeBuiltinId(store);
   if (builtinId) return builtinEnabledTools(builtinSwitches, builtinId);
@@ -413,9 +413,9 @@ export function setToolEnabled(store: PromptPresetStore, id: string, on: boolean
   return patchActivePreset(store, (p) => ({ ...p, enabledTools: { ...(p.enabledTools ?? {}), [id]: on } }));
 }
 
-/** Switch one Tool on or off for built-in `presetId`, starting from its shipped map the first time. */
+/** Switch one Tool on or off for built-in `presetId`. */
 export function setBuiltinToolEnabled(switches: BuiltinToolSwitches, presetId: string, id: string, on: boolean): BuiltinToolSwitches {
-  return { ...switches, [presetId]: { ...builtinEnabledTools(switches, presetId), [id]: on } };
+  return { ...switches, [presetId]: { ...switches[presetId], [id]: on } };
 }
 
 /** Remove a deleted Tool's switch from every built-in. */

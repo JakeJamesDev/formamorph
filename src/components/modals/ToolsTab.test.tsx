@@ -59,7 +59,7 @@ describe('the list', () => {
     expect(switchesOf('experimental')).toEqual({ get_entity: true });
 
     await user.click(list().getByRole('button', { name: 'New Tool' }));
-    expect(screen.getByText('New Tool')).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: 'Tool Fields' })).toBeInTheDocument();
   });
 });
 
