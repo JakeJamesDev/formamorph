@@ -1,6 +1,7 @@
 # 05: Recall Tool, Hybrid Matching
 
-Status: ready-for-agent
+Status: in-progress
+Base: e1d604d5
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

@@ -6,6 +6,7 @@ import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
 import { parseTurns } from '@/lib/turnBanding';
 import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import { applyMemoryOverrides, type MemoryOverrides } from '@/lib/memoryOverrides';
+import { vectorKey } from '@/lib/memoryRelevance';
 
 /** An entity as a Tool reads it. Blank text reads as an empty string. */
 export interface ToolEntity {
@@ -67,6 +68,16 @@ export interface ToolMemory {
   readonly diaries: readonly { readonly character: string; readonly text: string }[];
 }
 
+/** Recall's meaning match, while Semantic Memory is on. */
+export interface ToolMeaning {
+  /** The query's vector; null when the model is not loaded or the embed fails. */
+  readonly embed: (text: string) => Promise<Float32Array | null>;
+  /** Cached vectors by `vectorKey`. */
+  readonly vectors: ReadonlyMap<string, Float32Array>;
+  /** Whether diary entries match by meaning: Diary Recall is on. */
+  readonly diaries: boolean;
+}
+
 /** The playthrough memory a snapshot reads. */
 export interface ToolMemorySource {
   /** The committed history, so a rolled-back turn is already gone. */
@@ -74,6 +85,8 @@ export interface ToolMemorySource {
   readonly overrides: MemoryOverrides | null;
   /** How many of the newest turns the narration prompt carries in full. */
   readonly verbatimFloor: number;
+  /** No meaning match means recall matches by words only. */
+  readonly meaning?: ToolMeaning | null;
 }
 
 /** What every Tool call in one turn reads. Built once, frozen, and never read back from React or storage. */
@@ -86,6 +99,8 @@ export interface ToolSnapshot {
   readonly resolve: (text: string) => string;
   /** The turns older than the verbatim floor that hold a digest or a diary entry, oldest first. */
   readonly memories: readonly ToolMemory[];
+  /** Recall's meaning match, holding only the memory list's cached vectors. */
+  readonly meaning: ToolMeaning | null;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -108,11 +123,22 @@ function toolMemories({ history, overrides, verbatimFloor }: ToolMemorySource): 
   });
 }
 
+/** `meaning` with the cached vectors of `memories`' texts copied out, so later cache writes miss the turn. */
+function toolMeaning(meaning: ToolMeaning, memories: readonly ToolMemory[]): ToolMeaning {
+  const keys = memories.flatMap(({ digest, diaries }) => [digest, ...diaries.map((d) => d.text)]).filter(Boolean).map(vectorKey);
+  const vectors = new Map(keys.flatMap((key) => {
+    const vec = meaning.vectors.get(key);
+    return vec ? [[key, vec] as const] : [];
+  }));
+  return Object.freeze({ ...meaning, vectors });
+}
+
 /** The Tool Snapshot of `scene`, with the world's enabled dictionary entries. The scene's own lore is the
  *  turn's activated entries, so the whole dictionary comes in beside it. No `memory` means no memories. */
 export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dictionary[], memory: ToolMemorySource | null = null): ToolSnapshot {
   const { resolve } = scene;
   const text = (value: string | undefined) => (value ? resolve(value) : '');
+  const memories = memory ? toolMemories(memory) : [];
   const nameOf = new Map(scene.entities.map((e) => [e.id, e.name]));
   const names = (ids: readonly string[]) => ids.flatMap((id) => nameOf.get(id) ?? []);
 
@@ -142,7 +168,8 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
 
   return Object.freeze({
     world: deepFreeze(world), scene: deepFreeze(sceneData), chips: Object.freeze(chipValues(scene)), resolve,
-    memories: deepFreeze(memory ? toolMemories(memory) : []),
+    memories: deepFreeze(memories),
+    meaning: memory?.meaning ? toolMeaning(memory.meaning, memories) : null,
   });
 }
 
