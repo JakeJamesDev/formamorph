@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import {
-  BUILTIN_TOKEN_SOURCE, builtinForToken, builtinLabel, hasBuiltin, labelBuiltins, renderBuiltins, type BuiltinRender,
+  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, hasBuiltin, labelBuiltins, renderBuiltins, type BuiltinRender,
 } from './builtinPlaceholders';
 
 /**
@@ -612,15 +612,23 @@ export function buildPlaceholderPreview(
   /** Rolls to read and report into, for a preview shared across fields. Absent, the draws are thrown away
    *  with the pass — a preview never writes a save. */
   store?: AuthorDrawStore,
+  /** The owning entity's authored name, which Character Name previews as. Absent or blank, it shows its label. */
+  ownerName?: string,
 ): Record<string, string> {
   if (!text || !hasPlaceholders(text)) return {};
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
   return drawWithValuePins(authorDraw(placeholders, pick, store), (ctx) => {
+    // The name draws in the same context, so a chip it shares with the text reads one value.
+    let character: string | undefined;
+    const characterName = () => (character ??= ownerName ? labelBuiltins(resolveText(ownerName, ctx)).trim() : '');
     const out: Record<string, string> = {};
     for (const [chip] of text.matchAll(CHIP_RE)) {
       if (chip in out) continue;
-      out[chip] = builtinLabel(chip) ?? labelBuiltins(resolveText(chip, ctx));
+      const builtin = builtinForToken(chip);
+      out[chip] = builtin
+        ? (builtin === CHARACTER_NAME && characterName()) || builtin.label
+        : labelBuiltins(resolveText(chip, ctx));
     }
     return out;
   });

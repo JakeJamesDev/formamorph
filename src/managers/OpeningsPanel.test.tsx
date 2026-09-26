@@ -45,3 +45,13 @@ describe('opening fields', () => {
     expect(await menu()).toEqual(['Player Name']);
   });
 });
+
+describe('an entity opening’s Preview', () => {
+  const greeting = { ...keeper, openings: [{ id: 'o1', text: '{{char}} nods to {{user}}.', kind: 'narration' }] } as Entity;
+
+  it('reads Character Name as the entity’s name and Player Name as its label', async () => {
+    mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
+    expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
+  });
+});
