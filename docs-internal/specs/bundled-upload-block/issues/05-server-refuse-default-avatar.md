@@ -1,6 +1,8 @@
 # 05: Server: refuse the default Avatar
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built as FormamorphServer 3a7c7b7, on server base d61db3a.
+Base: 3be54b7a
 Blocked by: 04
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
