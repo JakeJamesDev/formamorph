@@ -1,6 +1,7 @@
 # 05: Persona starting location
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 1f88d078
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
