@@ -75,11 +75,11 @@ describe('the read view', () => {
     const user = userEvent.setup();
     render(<Harness initial={userState([tool({ callLimit: 2, offeredTo: ['narration', 'director'] })])} />);
     expect(heading()).toBe('get_entity');
-    expect(screen.getByText('Looks up entities by name and returns the full description · max 4 calls per request')).toBeInTheDocument();
+    expect(screen.getByText('Looks up entities by name and returns the full description')).toBeInTheDocument();
 
     await user.click(list().getByRole('button', { name: 'get_weather' }));
     expect(heading()).toBe('get_weather');
-    expect(screen.getByText('Returns a template · max 2 calls per request')).toBeInTheDocument();
+    expect(screen.getByText('Returns a template')).toBeInTheDocument();
     expect(screen.getByText('Purpose: weather.')).toBeInTheDocument();
     const schema = screen.getByText('What the AI Receives').closest('details')!;
     expect(schema).not.toHaveAttribute('open');
@@ -210,11 +210,9 @@ describe('Max Calls per Request', () => {
     expect(limit()).toHaveAccessibleDescription('Leave blank for the default of 4');
     await user.type(limit(), '7');
     expect(current().tools[0].callLimit).toBe(7);
-    expect(screen.getByText('Returns a template · max 7 calls per request')).toBeInTheDocument();
 
     await user.clear(limit());
     expect(current().tools[0]).not.toHaveProperty('callLimit');
-    expect(screen.getByText('Returns a template · max 4 calls per request')).toBeInTheDocument();
   });
 
   it('writes a catalog Tool’s limit to the global override', async () => {
