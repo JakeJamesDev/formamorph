@@ -2,7 +2,8 @@ import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import {
-  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, hasBuiltin, labelBuiltins, renderBuiltins, type BuiltinRender,
+  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, hasBuiltin, labelBuiltins, renderBuiltins,
+  type BuiltinPlaceholder, type BuiltinRender,
 } from './builtinPlaceholders';
 
 /**
@@ -619,16 +620,18 @@ export function buildPlaceholderPreview(
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
   return drawWithValuePins(authorDraw(placeholders, pick, store), (ctx) => {
-    // The name draws in the same context, so a chip it shares with the text reads one value.
+    // Drawn once, in the same context, so a chip the name shares with the text reads one value.
     let character: string | undefined;
-    const characterName = () => (character ??= ownerName ? labelBuiltins(resolveText(ownerName, ctx)).trim() : '');
+    const previewBuiltin = (builtin: BuiltinPlaceholder): string => {
+      if (builtin !== CHARACTER_NAME || !ownerName) return builtin.label;
+      character ??= labelBuiltins(resolveText(ownerName, ctx)).trim();
+      return character || builtin.label;
+    };
     const out: Record<string, string> = {};
     for (const [chip] of text.matchAll(CHIP_RE)) {
       if (chip in out) continue;
       const builtin = builtinForToken(chip);
-      out[chip] = builtin
-        ? (builtin === CHARACTER_NAME && characterName()) || builtin.label
-        : labelBuiltins(resolveText(chip, ctx));
+      out[chip] = builtin ? previewBuiltin(builtin) : labelBuiltins(resolveText(chip, ctx));
     }
     return out;
   });

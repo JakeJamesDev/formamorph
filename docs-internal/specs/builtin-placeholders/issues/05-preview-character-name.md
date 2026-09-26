@@ -1,6 +1,6 @@
 # 05: Preview Shows the Owner's Name for Character Name
 
-Status: in-progress
+Status: ready-for-human
 Base: 081778f5
 Blocked by: 03 — Built-in Section in the Palette and Typeahead
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)

@@ -114,8 +114,8 @@ export function OpeningsPanel({ onOpenEntity }: {
               onChange={(patch) => updateEntity({ ...entity, ...patch })}
               placeholders={placeholders}
               ownerId={entity.id}
-              ownerName={name}
-              characterName={entity.name}
+              ownerLabel={name}
+              ownerName={entity.name}
               empty={null}
             />
           </section>
@@ -147,7 +147,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
         onChange={onChange}
         placeholders={placeholders}
         ownerId={entity.id}
-        characterName={entity.name}
+        ownerName={entity.name}
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
@@ -162,7 +162,7 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
  * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
  * dash: the row is outside the pool the chances describe.
  */
-export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerName, characterName }: {
+export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName }: {
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
@@ -172,9 +172,9 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
   /** What shows in place of the rows while there are none. */
   empty: ReactNode;
   /** Names the owner in each row's accessible labels, where several owners share one screen. */
-  ownerName?: string;
+  ownerLabel?: string;
   /** The entity's authored name, which a Character Name chip previews as. */
-  characterName?: string;
+  ownerName?: string;
 }) {
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
@@ -194,12 +194,12 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
                   key={opening.id}
                   opening={opening}
                   label={`Opening ${i + 1}`}
-                  a11yLabel={ownerName ? `${ownerName} Opening ${i + 1}` : `Opening ${i + 1}`}
+                  a11yLabel={ownerLabel ? `${ownerLabel} Opening ${i + 1}` : `Opening ${i + 1}`}
                   weight={weight}
                   chance={chance}
                   placeholders={placeholders}
                   ownerId={ownerId}
-                  characterName={characterName}
+                  ownerName={ownerName}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
@@ -215,7 +215,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
         variant="outline"
         size="sm"
         className="w-full"
-        aria-label={ownerName ? `Add Opening to ${ownerName}` : undefined}
+        aria-label={ownerLabel ? `Add Opening to ${ownerLabel}` : undefined}
         onClick={() => onChange(addOpening(owner))}
       >
         <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
@@ -225,7 +225,7 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, weight, chance, placeholders, ownerId, characterName, onKind, onText, onWeight, onRemove,
+  opening, label, a11yLabel, weight, chance, placeholders, ownerId, ownerName, onKind, onText, onWeight, onRemove,
 }: {
   opening: Opening;
   label: string;
@@ -235,7 +235,7 @@ const OpeningCard = ({
   chance: number | null;
   placeholders: Placeholder[];
   ownerId?: string;
-  characterName?: string;
+  ownerName?: string;
   onKind: (kind: OpeningKind) => void;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
@@ -306,7 +306,7 @@ const OpeningCard = ({
           onChange={onText}
           placeholders={placeholders}
           ownerId={ownerId}
-          ownerName={characterName}
+          ownerName={ownerName}
           ariaLabel={a11yLabel}
           placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
           resizable
