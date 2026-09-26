@@ -85,5 +85,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     notes: '',
     time: null,
     resolve,
+    resolveEntity,
+    placeholders: world.placeholders ?? [],
   };
 }

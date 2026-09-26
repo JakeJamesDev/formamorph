@@ -1695,6 +1695,11 @@ const GameViewer = ({
     () => recentParticipants(fullMessageHistory, CHOICES_PRESENCE_TURNS),
     [fullMessageHistory],
   );
+  // The world's shared placeholders: the combined list minus the ones an entity or a book owns.
+  const sharedPlaceholders = useMemo(
+    () => worldPlaceholders.filter((p) => !placeholderOwners.has(p.id)),
+    [worldPlaceholders, placeholderOwners],
+  );
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
@@ -1714,6 +1719,7 @@ const GameViewer = ({
     participants,
     notes: playerNotes,
     time: chipTime,
+    placeholders: sharedPlaceholders,
   });
 
   const contextValues = useCallback((

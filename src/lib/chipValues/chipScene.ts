@@ -1,7 +1,8 @@
 import type {
-  Connection, DictionaryEntry, Entity, GameLocation, PlayerStat, Trait, TraitGroup,
+  Connection, DictionaryEntry, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import type { ResolvedPersona } from '../persona';
+import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
 
 /** The story clock as the Time chip reads it: the hours elapsed since the opening, on the world's calendar. */
@@ -42,6 +43,10 @@ export interface ChipScene {
   time: ChipSceneTime | null;
   /** Placeholder resolution, applied to every value before it reaches a prompt. */
   resolve: (text: string) => string;
+  /** An entity's own text with that entity as the Character Name; `resolve` reads it when absent. */
+  resolveEntity?: ResolveEntityText;
+  /** The world's shared placeholders, which a Tool script reads by name. None when absent. */
+  placeholders?: readonly Placeholder[];
   /** The roster the Sub-locations and Reachable scopes list; `entities` when absent. Play passes the
    *  authored cast, since a runtime character belongs where it was invented and the outer scopes never
    *  list one. */

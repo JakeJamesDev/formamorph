@@ -1,8 +1,8 @@
-import type { ChatMessage, Dictionary } from '@/types';
+import type { ChatMessage, Dictionary, Entity, Placeholder } from '@/types';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import type { ChipScene } from '@/lib/chipValues/chipScene';
 import { sampleChipScene, sampleDictionaries } from '@/lib/chipValues/sampleScene';
-import { flattenEnabledBookEntries } from '@/lib/dictionaryUtils';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import { parseTurns } from '@/lib/turnBanding';
 import { diaryHoldsMemory, parseTurnContent, serializeTurnContent } from '@/lib/turnDigest';
 import { applyMemoryOverrides, type MemoryOverrides } from '@/lib/memoryOverrides';
@@ -18,7 +18,12 @@ export interface ToolEntity {
   /** The full AI description. */
   readonly description: string;
   readonly summary: string;
+  /** The entity's own placeholders, name to resolved text. */
+  readonly placeholders: PlaceholderValues;
 }
+
+/** Placeholder name to the text this playthrough resolved for it. */
+export type PlaceholderValues = Readonly<Record<string, string>>;
 
 /** A location as a Tool reads it. */
 export interface ToolLocation {
@@ -34,6 +39,8 @@ export interface ToolDictionaryEntry {
   readonly name: string;
   readonly keys: readonly string[];
   readonly value: string;
+  /** The book's own placeholders, name to resolved text. */
+  readonly placeholders: PlaceholderValues;
 }
 
 /** The world a Tool searches. In play, entities include the runtime characters the playthrough discovered. */
@@ -97,6 +104,8 @@ export interface ToolSnapshot {
   readonly chips: Readonly<Record<string, string>>;
   /** Placeholder resolution for chips a Template body carries. */
   readonly resolve: (text: string) => string;
+  /** The world's shared placeholders, name to resolved text. */
+  readonly placeholders: PlaceholderValues;
   /** The turns older than the verbatim floor that hold a digest or a diary entry, oldest first. */
   readonly memories: readonly ToolMemory[];
   /** Recall's meaning match, holding only the memory list's cached vectors. */
@@ -109,6 +118,17 @@ function deepFreeze<T>(value: T): T {
     for (const child of Object.values(value)) deepFreeze(child);
   }
   return value;
+}
+
+/** Each top-level placeholder's chip as `read` renders it, by name. The first of a repeated name keeps it. */
+function placeholderValues(list: readonly Placeholder[] | undefined, read: (chip: string) => string): Record<string, string> {
+  const out = new Map<string, string>();
+  for (const ph of list ?? []) {
+    if (ph.ownerId || !ph.name.trim() || out.has(ph.name)) continue;
+    out.set(ph.name, read(encodePlaceholderToken({ id: ph.id, mode: 'world', placementId: ph.id })));
+  }
+  // fromEntries keeps a `__proto__` name as a plain key.
+  return Object.fromEntries(out);
 }
 
 /** Digests through the override layer and diaries that hold a memory, outside the verbatim floor. No notes. */
@@ -137,6 +157,7 @@ function toolMeaning(meaning: ToolMeaning, memories: readonly ToolMemory[]): Too
  *  turn's activated entries, so the whole dictionary comes in beside it. No `memory` means no memories. */
 export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dictionary[], memory: ToolMemorySource | null = null): ToolSnapshot {
   const { resolve } = scene;
+  const resolveEntity = scene.resolveEntity ?? ((_entity: Entity, value: string) => resolve(value));
   const text = (value: string | undefined) => (value ? resolve(value) : '');
   const memories = memory ? toolMemories(memory) : [];
   const nameOf = new Map(scene.entities.map((e) => [e.id, e.name]));
@@ -146,13 +167,17 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
     entities: scene.entities.map((e) => ({
       id: e.id, name: e.name, aliases: [...(e.aliases ?? [])], type: e.type ?? '', pronouns: e.pronouns ?? '',
       description: text(e.aiDescription), summary: text(e.aiSummary),
+      placeholders: placeholderValues(e.placeholders, (chip) => resolveEntity(e, chip)),
     })),
     locations: scene.locations.map((l) => ({
       id: l.id, name: l.name, description: text(l.aiDescription), summary: text(l.aiSummary),
     })),
-    dictionary: flattenEnabledBookEntries([...dictionaries])
-      .filter((entry) => entry.enabled !== false)
-      .map((entry) => ({ id: entry.id, name: entry.name, keys: [...(entry.key ?? [])], value: text(entry.value) })),
+    dictionary: dictionaries.filter((book) => book.enabled !== false).flatMap((book) => {
+      const own = placeholderValues(book.placeholders, resolve);
+      return (book.entries ?? []).filter((entry) => entry.enabled !== false).map((entry) => ({
+        id: entry.id, name: entry.name, keys: [...(entry.key ?? [])], value: text(entry.value), placeholders: own,
+      }));
+    }),
   };
 
   const sceneData: ToolScene = {
@@ -168,6 +193,7 @@ export function buildToolSnapshot(scene: ChipScene, dictionaries: readonly Dicti
 
   return Object.freeze({
     world: deepFreeze(world), scene: deepFreeze(sceneData), chips: Object.freeze(chipValues(scene)), resolve,
+    placeholders: Object.freeze(placeholderValues(scene.placeholders, resolve)),
     memories: deepFreeze(memories),
     meaning: memory?.meaning ? toolMeaning(memory.meaning, memories) : null,
   });

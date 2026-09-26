@@ -1,4 +1,4 @@
-import type { Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 import type { ResolvedPersona } from '../persona';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import type { ChipScene } from './chipScene';
@@ -43,8 +43,11 @@ const sampleTown: GameLocation = {
   aiSummary: 'A small terraced settlement above the water.',
 };
 
+/** A one-value placeholder, which reads the same on every draw. */
+const fixed = (id: string, name: string, text: string): Placeholder => ({ id, name, values: [{ id: `${id}-1`, text }] });
+
 const wren: Entity = {
-  id: 'wren', name: 'Wren', locations: ['landing'],
+  id: 'wren', name: 'Wren', locations: ['landing'], placeholders: [fixed('wren-pole', 'Pole', 'a hooked ash pole')],
   aiDescription: 'The lamp-keeper, gray-haired and unhurried, who has watched this shore longer than anyone will admit. Carries a hooked pole she uses for everything but its purpose.',
   aiSummary: 'The unhurried lamp-keeper.',
 };
@@ -88,7 +91,7 @@ const SAMPLE_WORLD: AuthoredWorld = {
     trait('salvagers-eye', "Salvager's Eye", 'Spots the worth in a heap of junk, and rarely says so out loud.'),
   ],
   dictionaries: [{
-    id: 'sample-lore', name: 'Sample Lore', entries: [
+    id: 'sample-lore', name: 'Sample Lore', placeholders: [fixed('glass-color', 'Glass Color', 'sea green')], entries: [
       {
         id: 'salt-glass', name: 'Salt Glass', key: ['salt glass'],
         value: 'The green-tinted glass the tide grinds smooth. Locals string it over doorways; nobody agrees on what it wards off.',
@@ -99,6 +102,7 @@ const SAMPLE_WORLD: AuthoredWorld = {
       },
     ],
   }],
+  placeholders: [fixed('weather', 'Weather', 'a thin gray drizzle'), fixed('tide', 'Tide', 'far out and turning')],
 };
 
 /** The sample world's dictionaries, for a reader that takes them beside the scene. */

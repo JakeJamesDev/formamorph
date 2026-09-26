@@ -229,6 +229,7 @@ export const STAT_CODE_SURFACE: CodeSurface = {
   languageNames: LANGUAGE_NAMES,
   snippets: STAT_CODE_SNIPPETS,
   missingReturn: 'This code never returns a number or writes self.value, so the stat keeps its value.',
+  statMaps: true,
 };
 
 /**

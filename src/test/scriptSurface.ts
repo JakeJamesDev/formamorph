@@ -16,4 +16,5 @@ export const SCRIPT_SURFACE: CodeSurface = {
   languageNames: ['JSON'],
   snippets: [{ label: 'An argument', text: 'args.name', select: 'name' }],
   missingReturn: 'This script never returns a result.',
+  statMaps: false,
 };
