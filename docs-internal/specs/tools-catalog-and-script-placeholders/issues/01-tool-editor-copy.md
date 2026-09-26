@@ -1,6 +1,8 @@
 # 01: Tool Editor Copy
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: landed as 3b2b0e08 + 4cd2353b; the footer carries a tab hint per the spec's ruling, and the in-browser look is covered by jsdom tests, not checked in the preview.
+Base: bdb99575
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
