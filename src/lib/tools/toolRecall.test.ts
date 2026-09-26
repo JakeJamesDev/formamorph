@@ -227,12 +227,14 @@ describe('recall, hybrid', () => {
   });
 
   it('keeps the floor-only rule below the minimum candidate count', () => {
-    const find = hybrid([0.34, 0.4, 0.42, 0.44].map((sim, i) => ({ text: `Mira and Wren talked ${i}.`, sim })));
-    expect(find('the argument')).toHaveLength(3);
-    expect(REHYDRATE_MARGIN_MIN_BAND).toBe(5);
+    // Flat and above the floor: the margin would drop all but the top one, the floor alone keeps them all.
+    const sims = Array.from({ length: REHYDRATE_MARGIN_MIN_BAND - 1 }, (_, i) => REHYDRATE_SIM_THRESHOLD + 0.01 * (i + 1));
+    const find = hybrid([...sims.map((sim, i) => ({ text: `Mira and Wren talked ${i}.`, sim })), { text: 'A gull stole bread.' }]);
+    expect(find('the argument')).toHaveLength(sims.length);
   });
 
   it('holds a digest to the Scene Recall floor and a diary entry to the Diary Recall floor', () => {
+    expect(DIARY_SIM_THRESHOLD).toBeLessThan(REHYDRATE_SIM_THRESHOLD);
     const sim = (REHYDRATE_SIM_THRESHOLD + DIARY_SIM_THRESHOLD) / 2;
     const find = hybrid([{ text: 'Wren kept the oath.', sim }, { text: 'I kept my oath to Wren.', sim, diary: 'Bell' }]);
     expect(find('the promise')).toEqual(['I kept my oath to Wren.']);
@@ -263,10 +265,17 @@ describe('recall, hybrid through the runner', () => {
     expect(await recall('the promise ferryman', withMeaning(() => Promise.reject(new Error('worker died'))))).toEqual(lexical);
   });
 
-  it('with Semantic Memory off, has no meaning match and returns the lexical result', async () => {
+  it('returns the lexical result from a source with no meaning match, where the same query finds more by meaning', async () => {
     expect(buildToolSnapshot(sampleChipScene(), sampleDictionaries(), source(turns)).meaning).toBeNull();
-    expect((await recall('the promise ferryman', withMeaning(async () => QUERY_VEC))).map((m) => m.turn)).toEqual([1, 2]);
     expect((await recall('the promise ferryman', source(turns))).map((m) => m.turn)).toEqual([2]);
+    expect((await recall('the promise ferryman', withMeaning(async () => QUERY_VEC))).map((m) => m.turn)).toEqual([1, 2]);
+  });
+
+  it('matches a rewritten digest by words only, since its new text has no cached vector', async () => {
+    const overrides: MemoryOverrides = { edits: { t1: { text: 'Wren swore to guard the ferry.', source: 'player' } } };
+    const memory = { ...withMeaning(async () => QUERY_VEC), overrides };
+    expect((await recall('the promise', memory)).map((m) => m.turn)).toEqual([]);
+    expect((await recall('swore', memory)).map((m) => m.turn)).toEqual([1]);
   });
 
   it('freezes only the vectors of the memory list into the snapshot', () => {

@@ -2,7 +2,7 @@ import { extractKeywords } from '@/lib/turnBanding';
 import { cosineSimilarity, vectorKey } from '@/lib/memoryRelevance';
 import { marginBar, REHYDRATE_SIM_THRESHOLD } from '@/lib/semanticRehydration';
 import { DIARY_SIM_THRESHOLD } from '@/lib/semanticDiary';
-import type { ToolMemory } from './toolSnapshot';
+import type { ToolMeaning, ToolMemory } from './toolSnapshot';
 
 /** The most matches one recall returns. */
 export const RECALL_LIMIT = 5;
@@ -12,14 +12,8 @@ export type RecallMatch =
   | { turn: number; kind: 'digest'; text: string }
   | { turn: number; kind: 'diary'; character: string; text: string };
 
-/** What a hybrid recall reads beside the words. */
-export interface RecallMeaning {
-  readonly queryVec: Float32Array;
-  /** Cached vectors by `vectorKey`. */
-  readonly vectors: ReadonlyMap<string, Float32Array>;
-  /** Whether diary entries match by meaning: Diary Recall is on. */
-  readonly diaries: boolean;
-}
+/** What a hybrid recall reads beside the words: the snapshot's meaning match with the query embedded. */
+export type RecallMeaning = Omit<ToolMeaning, 'embed'> & { readonly queryVec: Float32Array };
 
 /** Each memory as one searchable record, oldest first, a turn's digest before its diary entries. */
 const recallRecords = (memories: readonly ToolMemory[]): RecallMatch[] =>
@@ -28,15 +22,12 @@ const recallRecords = (memories: readonly ToolMemory[]): RecallMatch[] =>
     ...diaries.map(({ character, text }) => ({ turn, kind: 'diary' as const, character, text })),
   ]);
 
-/** Rank groups for the limit: both ways, meaning only, words only. */
-const BOTH = 0, MEANING = 1, WORDS = 2;
+/** The order of the match groups for the limit. */
+const RANK = { both: 0, meaning: 1, words: 2 } as const;
 
 /**
- * The memories that best match `query`. Lexically, a record scores by how many of the query's words it
- * holds (lowercase, stop words removed). With `meaning`, a vectored record also matches when its cosine
- * clears its kind's floor and the Scene Recall median margin; records that match both ways rank first,
- * then meaning only by cosine, then words only. A tie goes to the newer turn. The survivors come back
- * oldest first.
+ * The best matches for `query`, oldest first. Both-ways matches rank first, then meaning only by cosine,
+ * then words only by word count; a tie goes to the newer turn.
  */
 export function recallMatches(query: string, memories: readonly ToolMemory[], meaning: RecallMeaning | null = null): RecallMatch[] {
   const words = extractKeywords(query);
@@ -48,13 +39,13 @@ export function recallMatches(query: string, memories: readonly ToolMemory[], me
   });
   const bar = marginBar(scored.flatMap(({ sim }) => (sim === null ? [] : [sim])));
   const floor = { digest: REHYDRATE_SIM_THRESHOLD, diary: DIARY_SIM_THRESHOLD };
-  const ranked = scored.flatMap((s) => {
-    const meant = s.sim !== null && s.sim >= Math.max(floor[s.record.kind], bar);
-    if (!meant && !s.score) return [];
-    return [{ ...s, group: meant ? (s.score ? BOTH : MEANING) : WORDS, sim: meant ? s.sim! : 0 }];
+  const ranked = scored.flatMap(({ sim, ...s }) => {
+    const cosine = sim !== null && sim >= Math.max(floor[s.record.kind], bar) ? sim : 0;
+    if (!cosine && !s.score) return [];
+    return [{ ...s, cosine, rank: cosine ? (s.score ? RANK.both : RANK.meaning) : RANK.words }];
   });
   return ranked
-    .sort((a, b) => a.group - b.group || b.sim - a.sim || b.score - a.score || b.record.turn - a.record.turn || a.order - b.order)
+    .sort((a, b) => a.rank - b.rank || b.cosine - a.cosine || b.score - a.score || b.record.turn - a.record.turn || a.order - b.order)
     .slice(0, RECALL_LIMIT)
     .sort((a, b) => a.order - b.order)
     .map(({ record }) => record);
