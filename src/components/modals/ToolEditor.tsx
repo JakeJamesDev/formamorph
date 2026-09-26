@@ -5,16 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FieldError, Hint } from '@/components/ui/typography';
-import { CheckboxOptionGroup, OptionSwitcher } from '@/components/SettingsRows';
+import { OptionSwitcher } from '@/components/SettingsRows';
 import { CodeArea } from '@/components/prompt/CodeArea';
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
+import { cn } from '@/lib/utils';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import {
@@ -69,7 +71,8 @@ const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: st
 ];
 
 /** The prompts a Tool can be offered to, in the Prompts rail's order. */
-const OFFER_KINDS: readonly AIRequestType[] = Object.values(PROMPT_TAB_REQUESTS);
+const OFFER_OPTIONS: MultiSelectOption[] = Object.values(PROMPT_TAB_REQUESTS)
+  .map((kind) => ({ value: kind, label: REQUEST_LABELS[kind] }));
 
 /** Label, help, control, then the control's problem: the Design System's field help order. */
 function Field({ id, label, hint, error, aside, children }: {
@@ -298,16 +301,12 @@ function AvailabilityTab({ draft, onChange }: { draft: Tool; onChange: Change })
   };
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label>Offered To</Label>
+      <div className="flex flex-col gap-1">
+        <Label id={`${id}-offered`}>Offered To</Label>
         <Hint>Sends the Tool with these prompts</Hint>
-        <CheckboxOptionGroup
-          options={OFFER_KINDS.map((kind) => ({
-            id: `${id}-${kind}`, label: REQUEST_LABELS[kind], checked: draft.offeredTo.includes(kind),
-            onChange: (on: boolean) => onChange({
-              ...draft, offeredTo: on ? [...draft.offeredTo, kind] : draft.offeredTo.filter((k) => k !== kind),
-            }),
-          }))}
+        <MultiSelect
+          aria-labelledby={`${id}-offered`} options={OFFER_OPTIONS} placeholder="No prompts" allSelectedLabel="All prompts"
+          defaultValue={draft.offeredTo} onValueChange={(kinds) => onChange({ ...draft, offeredTo: kinds as AIRequestType[] })}
         />
       </div>
       <Field id={`${id}-limit`} label="Calls per Request" hint={`Leave blank for the default of ${DEFAULT_TOOL_CALL_LIMIT}`}>
@@ -316,10 +315,6 @@ function AvailabilityTab({ draft, onChange }: { draft: Tool; onChange: Change })
           value={draft.callLimit?.toString() ?? ''} onChange={(e) => setLimit(e.target.value)}
         />
       </Field>
-      <label className="flex items-center gap-2 text-label">
-        <Checkbox checked={draft.enabled} onCheckedChange={(c) => onChange({ ...draft, enabled: c === true })} />
-        Enabled
-      </label>
     </div>
   );
 }
@@ -342,7 +337,7 @@ function tabsWithProblems(problems: DraftProblems): string[] {
  * tab strip, Try It beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
  */
 export function ToolEditor({
-  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, world, fullscreenButton, onCancel, onSave,
+  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton, onCancel, onSave,
 }: {
   draft: Tool;
   onDraftChange: Change;
@@ -353,6 +348,8 @@ export function ToolEditor({
   /** True when the draft edits a saved Tool, false for a new one. */
   editing: boolean;
   world: TryItWorld;
+  /** Widens Try It to a third of the grid. */
+  fullscreen: boolean;
   fullscreenButton: ReactNode;
   onCancel: () => void;
   onSave: () => void;
@@ -368,7 +365,13 @@ export function ToolEditor({
         <p className="text-label font-medium truncate">{editing ? `Edit ${draft.name}` : 'New Tool'}</p>
         {fullscreenButton}
       </div>
-      <div className="grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+      <div
+        data-testid="tool-editor-grid"
+        className={cn(
+          'grid flex-1 min-h-0 gap-4 grid-rows-[minmax(0,2fr)_minmax(0,1fr)] lg:grid-rows-1',
+          fullscreen ? 'lg:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]',
+        )}
+      >
         <Tabs
           value={editTab} onValueChange={(t) => onEditTabChange(t as ToolEditTab)}
           className="flex flex-col min-h-0 gap-3"

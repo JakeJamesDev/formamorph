@@ -11,6 +11,7 @@ import {
 import { migrateWorld } from '@/lib/version';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
 import { buildToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
 import { ToolsTab } from './ToolsTab';
 import { EMPTY_TOOLS_VIEW, type ToolsView } from './toolsView';
 
@@ -35,7 +36,9 @@ const userStore = (tools: Tool[] = []): PromptPresetStore => ({
 
 let store: PromptPresetStore;
 
-function Harness({ initial, openWorld }: { initial: PromptPresetStore; openWorld?: () => ToolSnapshot }) {
+function Harness({ initial, openWorld, fullscreen = false }: {
+  initial: PromptPresetStore; openWorld?: () => ToolSnapshot; fullscreen?: boolean;
+}) {
   const [s, setS] = useState(initial);
   const [view, setView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
   store = s;
@@ -52,7 +55,7 @@ function Harness({ initial, openWorld }: { initial: PromptPresetStore; openWorld
       view={view}
       onViewChange={setView}
       presetSelector={<span>Preset</span>}
-      fullscreen={false}
+      fullscreen={fullscreen}
       onToggleFullscreen={() => {}}
       appVersion="9.9.9"
       openWorld={openWorld}
@@ -65,9 +68,10 @@ const list = () => within(screen.getByRole('navigation', { name: 'Tools' }));
 const tab = (name: string) => screen.getByRole('tab', { name });
 const saveButton = () => screen.getByRole('button', { name: 'Save Tool' });
 const nameInput = () => within(screen.getByRole('tabpanel')).getAllByRole('textbox', { name: 'Name' })[0];
+const offeredTo = () => screen.getByRole('combobox', { name: 'Offered To' });
 
-async function openEditor(user: ReturnType<typeof userEvent.setup>, tools: Tool[] = [weather()]) {
-  render(<Harness initial={userStore(tools)} />);
+async function openEditor(user: ReturnType<typeof userEvent.setup>, tools: Tool[] = [weather()], fullscreen = false) {
+  render(<Harness initial={userStore(tools)} fullscreen={fullscreen} />);
   await user.click(list().getByRole('button', { name: tools[0].name }));
   await user.click(screen.getByRole('button', { name: 'Edit' }));
 }
@@ -93,7 +97,9 @@ describe('creating a Tool', () => {
     await user.click(await screen.findByRole('option', { name: 'who' }));
 
     await user.click(tab('Availability'));
-    await user.click(screen.getByRole('checkbox', { name: 'Choices' }));
+    await user.click(offeredTo());
+    await user.click(await screen.findByRole('option', { name: 'Choices, not selected' }));
+    await user.keyboard('{Escape}');
     await user.type(screen.getByRole('textbox', { name: 'Calls per Request' }), '7');
 
     expect(saveButton()).toBeEnabled();
@@ -187,6 +193,78 @@ describe('editing a Tool', () => {
     await user.click(saveButton());
     expect(saved()[0].emptyResult).toBe('{"none": true}');
     expect(saved()[0]).not.toHaveProperty('callLimit');
+  });
+});
+
+describe('Offered To', () => {
+  it('checks every prompt with Select All and shows one All prompts chip', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.click(tab('Availability'));
+    expect(within(offeredTo()).getByText('Narration')).toBeInTheDocument();
+    await user.click(offeredTo());
+    await user.click(await screen.findByRole('option', { name: /^Select all \d+ options$/ }));
+    await user.keyboard('{Escape}');
+    expect(within(offeredTo()).getByText('All prompts')).toBeInTheDocument();
+    expect(within(offeredTo()).queryByText('Narration')).toBeNull();
+    await user.click(saveButton());
+    expect(saved()[0].offeredTo).toEqual(expect.arrayContaining(Object.values(PROMPT_TAB_REQUESTS)));
+    expect(saved()[0].offeredTo).toHaveLength(Object.values(PROMPT_TAB_REQUESTS).length);
+  });
+
+  it('lists the prompts in the Prompts rail order', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.click(tab('Availability'));
+    await user.click(offeredTo());
+    const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
+    const prompts = Object.values(PROMPT_TAB_REQUESTS).map((k) => REQUEST_LABELS[k]);
+    expect(options).toEqual(['(Select All)', ...prompts, 'Clear', 'Close']);
+  });
+
+  it('clears every prompt when Select All is used with all of them checked', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({ offeredTo: Object.values(PROMPT_TAB_REQUESTS) })]);
+    await user.click(tab('Availability'));
+    expect(within(offeredTo()).getByText('All prompts')).toBeInTheDocument();
+    await user.click(offeredTo());
+    await user.click(await screen.findByRole('option', { name: /^Select all \d+ options$/ }));
+    await user.keyboard('{Escape}');
+    expect(within(offeredTo()).queryByText('All prompts')).toBeNull();
+    await user.click(saveButton());
+    expect(saved()[0].offeredTo).toEqual([]);
+  });
+});
+
+describe('the enabled bit', () => {
+  it('has no Enabled checkbox in the editor, and a save keeps the bit', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather({ enabled: false })]);
+    for (const t of ['Definition', 'Parameters', 'Handler', 'Availability']) {
+      await user.click(tab(t));
+      expect(screen.queryByRole('checkbox', { name: 'Enabled' })).toBeNull();
+    }
+    await user.click(tab('Definition'));
+    await user.type(nameInput(), '_x');
+    await user.click(saveButton());
+    expect(saved()[0]).toMatchObject({ name: 'get_weather_x', enabled: false });
+  });
+});
+
+describe('the editor layout', () => {
+  const grid = () => screen.getByTestId('tool-editor-grid');
+
+  it('keeps the fixed Try It track when docked', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    expect(grid()).toHaveClass('lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
+  });
+
+  it('gives Try It one third of the width in full screen, with a 22rem floor', async () => {
+    const user = userEvent.setup();
+    await openEditor(user, [weather()], true);
+    expect(grid()).toHaveClass('lg:grid-cols-[minmax(0,2fr)_minmax(22rem,1fr)]');
+    expect(grid()).not.toHaveClass('lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]');
   });
 });
 

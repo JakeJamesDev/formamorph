@@ -186,6 +186,9 @@ interface MultiSelectProps
 	 */
 	hideSelectAll?: boolean;
 
+	/** Shown as one chip in place of the per-option chips while every option is selected. */
+	allSelectedLabel?: string;
+
 	/**
 	 * If true, shows search functionality in the popover.
 	 * If false, hides the search input completely.
@@ -334,6 +337,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			modalPopover = true,
 			className,
 			hideSelectAll = false,
+			allSelectedLabel,
 			searchable = true,
 			emptyIndicator,
 			autoSize = false,
@@ -668,13 +672,18 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			onValueChange(newSelectedValues);
 		};
 
+		const selectableOptions = getAllOptions().filter((option) => !option.disabled);
+		const everySelected =
+			selectableOptions.length > 0 &&
+			selectableOptions.every((option) => selectedValues.includes(option.value));
+		const showAllChip = !!allSelectedLabel && everySelected;
+
 		const toggleAll = () => {
 			if (disabled) return;
-			const allOptions = getAllOptions().filter((option) => !option.disabled);
-			if (selectedValues.length === allOptions.length) {
+			if (everySelected) {
 				handleClear();
 			} else {
-				const allValues = allOptions.map((option) => option.value);
+				const allValues = selectableOptions.map((option) => option.value);
 				setSelectedValues(allValues);
 				onValueChange(allValues);
 			}
@@ -850,7 +859,35 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												  }
 												: {}
 										}>
-										{selectedValues
+										{showAllChip && (
+											<Badge
+												className={cn(
+													multiSelectVariants({ variant }),
+													responsiveSettings.compactMode && "text-meta px-1.5 py-0.5",
+													singleLine && "flex-shrink-0 whitespace-nowrap"
+												)}>
+												<span>{allSelectedLabel}</span>
+												<div
+													role="button"
+													tabIndex={0}
+													onClick={(event) => {
+														event.stopPropagation();
+														handleClear();
+													}}
+													onKeyDown={(event) => {
+														if (event.key === "Enter" || event.key === " ") {
+															event.preventDefault();
+															event.stopPropagation();
+															handleClear();
+														}
+													}}
+													aria-label={`Remove ${allSelectedLabel} from selection`}
+													className="ml-2 h-4 w-4 cursor-pointer hover:bg-foreground/20 rounded-sm p-0.5 -m-0.5 focus:outline-none focus:ring-1 focus:ring-ring">
+													<XCircle className="h-3 w-3" />
+												</div>
+											</Badge>
+										)}
+										{!showAllChip && selectedValues
 											.slice(0, responsiveSettings.maxCount)
 											.map((value) => {
 												const option = getOptionByValue(value);
@@ -941,7 +978,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												);
 											})
 											.filter(Boolean)}
-										{selectedValues.length > responsiveSettings.maxCount && (
+										{!showAllChip && selectedValues.length > responsiveSettings.maxCount && (
 											<Badge
 												className={cn(
 													"bg-transparent text-foreground border-foreground/10 hover:bg-transparent",
@@ -1066,10 +1103,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											key="all"
 											onSelect={toggleAll}
 											role="option"
-											aria-selected={
-												selectedValues.length ===
-												getAllOptions().filter((opt) => !opt.disabled).length
-											}
+											aria-selected={everySelected}
 											aria-label={`Select all ${
 												getAllOptions().length
 											} options`}
@@ -1077,9 +1111,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											<div
 												className={cn(
 													"mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-													selectedValues.length ===
-														getAllOptions().filter((opt) => !opt.disabled)
-															.length
+													everySelected
 														? "bg-primary text-primary-foreground"
 														: "opacity-50 [&_svg]:invisible"
 												)}
