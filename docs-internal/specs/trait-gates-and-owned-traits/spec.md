@@ -174,7 +174,9 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 
 - Nav rows for entity nodes show the user icon. An entity's page opens with its portrait in the Persona picker's 2:3 frame, beside the name and player description. The played entity is marked "You". Owned defaults preselect per entity, so a player can leave the cast as authored and move on.
 - Locked traits stay in place, disabled, with a lock icon and a "Requires … or …" line. An unlocked gated trait shows "Unlocked by …".
-- A cascade shows one dismissible banner: "Turned off Plate Armor, because of Rogue."
+- "Unlocked by …" lists only the requirements that hold now, such as "Unlocked by Knight". The locked line already states the full rule.
+- A cascade shows one dismissible banner: "Turned off Plate Armor, because of Rogue." The cause is what the player picked. After a persona change it is the new persona's name, or "the persona change" when the player picked None.
+- An unresolved requirement with no stored name, a target deleted inside the world, reads "a missing trait", "any trait in a missing group", or "playing as a missing persona".
 - The persona picker shows "Starts at …" under a persona with a starting location. Picking it preselects that location through the existing persona location pick, which now prefers the explicit field. The Starting Location step lists that location even when it is not flagged, but only while that persona is picked. A switch to a persona that does not name it drops the selection back to the automatic pick.
 
 ### AI context
