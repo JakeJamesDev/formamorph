@@ -3179,6 +3179,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
               userTools={userTools}
               builtinPreset={activePresetIsBuiltIn}
               toolsSupported={activeToolsSupported}
+              toolsEnabled={toolsEnabled}
               onSaveTool={saveTool}
               onDeleteTool={deleteTool}
               onSetOverride={setToolOverride}

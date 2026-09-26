@@ -33,8 +33,8 @@ const builtinStore = (): PromptPresetStore => ({ activeId: 'experimental', prese
 
 let store: PromptPresetStore;
 
-function Harness({ initial, toolsSupported = true, fileTransfer }: {
-  initial: PromptPresetStore; toolsSupported?: boolean; fileTransfer?: ToolFileTransfer;
+function Harness({ initial, toolsSupported = true, toolsEnabled = true, fileTransfer }: {
+  initial: PromptPresetStore; toolsSupported?: boolean; toolsEnabled?: boolean; fileTransfer?: ToolFileTransfer;
 }) {
   const [s, setS] = useState(initial);
   const [view, setView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
@@ -45,6 +45,7 @@ function Harness({ initial, toolsSupported = true, fileTransfer }: {
       userTools={activeUserTools(s)}
       builtinPreset={isBuiltInActive(s)}
       toolsSupported={toolsSupported}
+      toolsEnabled={toolsEnabled}
       onSaveTool={(t) => setS((prev) => saveTool(prev, t))}
       onDeleteTool={(id) => setS((prev) => deleteTool(prev, id))}
       onSetOverride={(id, o) => setS((prev) => setToolOverride(prev, id, o))}
@@ -247,5 +248,10 @@ describe('the endpoint notice', () => {
     expect(screen.getByRole('note')).toHaveTextContent("won't receive Tools");
     rerender(<Harness initial={userStore()} toolsSupported />);
     expect(screen.queryByRole('note')).toBeNull();
+  });
+
+  it('names the Output switch when Tools are off, ahead of the endpoint notice', () => {
+    render(<Harness initial={userStore()} toolsSupported={false} toolsEnabled={false} />);
+    expect(screen.getByRole('note')).toHaveTextContent('Turn on Tools in the Output tab');
   });
 });
