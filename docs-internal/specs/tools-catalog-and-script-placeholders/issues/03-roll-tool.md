@@ -1,6 +1,7 @@
 # 03: Roll Tool
 
-Status: ready-for-agent
+Status: in-progress
+Base: bdb99575
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

@@ -1,4 +1,5 @@
 import type { Tool } from '@/types';
+import { ROLL } from './rollTool';
 
 /** The entity lookup. The description is the probed retrieve-first wording (narration-tool-call-probe). */
 const GET_ENTITY: Tool = {
@@ -49,7 +50,7 @@ const GET_DICTIONARY_ENTRY: Tool = {
 };
 
 /** The built-in Tools every preset lists. A preset switches them on or off; the definitions never change. */
-export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY, GET_LOCATION, GET_DICTIONARY_ENTRY];
+export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY, GET_LOCATION, GET_DICTIONARY_ENTRY, ROLL];
 
 const CATALOG_IDS = new Set(TOOL_CATALOG.map((t) => t.id));
 
