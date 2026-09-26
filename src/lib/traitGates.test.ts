@@ -289,6 +289,20 @@ describe('switching a trait', () => {
   it('refuses to switch on a locked trait', () => {
     expect(switchTrait(input(['Rogue']), WORLD_OWNER, 'Plate Armor')).toBeNull();
   });
+
+  it('never lets an exclusive sibling hold a trait up, since picking the trait retires it', () => {
+    const armor = [G('Armor', { exclusive: true })];
+    const pieces = [
+      T('Chain Mail', { groupId: 'Armor' }),
+      T('Heavy Plate', { groupId: 'Armor', requires: [trait('Chain Mail')] }),
+      T('Any Armor', { groupId: 'Armor', requires: [{ kind: 'group', id: 'Armor' }] }),
+    ];
+    const picked = world(pieces, armor, ['Chain Mail']);
+    expect(gateStates(picked).get('Heavy Plate')?.unlocked).toBe(false);
+    expect(gateStates(picked).get('Any Armor')?.unlocked).toBe(false);
+    expect(switchTrait(picked, WORLD_OWNER, 'Heavy Plate')).toBeNull();
+    expect(neverUnlockable(world(pieces, armor)).map((set) => [...set].sort())).toEqual([['Any Armor', 'Heavy Plate']]);
+  });
 });
 
 describe('default selection', () => {

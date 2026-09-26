@@ -1,8 +1,5 @@
-// Trait gates: which traits a requirement list unlocks, and what a selection settles to once every gate is
-// checked. The one owner of gate logic; the enter-world step and the in-play trait runtime call it.
-//
-// An owner is the world or an entity. Trait and group ids are unique across owners, so a requirement names
-// its target by id alone and a trait moved between owners keeps every requirement that points at it.
+// Trait gates: what a requirement list unlocks, and what a selection settles to. Trait and group ids are
+// unique across owners (the world or an entity), so a requirement names its target by id alone.
 
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { collapseExclusiveDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
@@ -79,12 +76,28 @@ function index(input: GateInput) {
     return ids;
   };
   for (const { owner, item } of groups.values()) collect(item.id, owner);
-  return { traits, groups, entities, below };
+
+  // Trait id → its exclusive siblings, which picking it retires, so they never hold it up.
+  const rivals = new Map([...traits.values()].map(({ owner, item }) =>
+    [item.id, new Set(exclusiveSiblings(item, owner.traits, owner.groups))]));
+  return { traits, groups, entities, below, rivals };
 }
 
 type Index = ReturnType<typeof index>;
 
 const activeIds = (input: GateInput): Set<string> => new Set(Object.values(input.active).flat());
+
+const traitsBelow = (idx: Index, groupId: string): readonly string[] => idx.below.get(groupId) ?? [];
+
+/** Whether `req` holds for `trait` against `active`. An exclusive sibling of the trait never counts. */
+function requirementHolds(
+  req: TraitRequirement, trait: Trait, active: ReadonlySet<string>, idx: Index, persona: PersonaRef,
+): boolean {
+  const counts = (id: string) => active.has(id) && !idx.rivals.get(trait.id)?.has(id);
+  if (req.kind === 'trait') return counts(req.id);
+  if (req.kind === 'group') return traitsBelow(idx, req.id).some(counts);
+  return persona.source === 'world' && persona.entityId === req.id;
+}
 
 function requirementText(req: TraitRequirement, from: GateOwner, idx: Index): { text: string; unresolved: boolean } {
   if (req.kind === 'trait') {
@@ -105,12 +118,6 @@ function requirementText(req: TraitRequirement, from: GateOwner, idx: Index): { 
     : { text: `playing as ${req.name ?? 'a missing persona'}`, unresolved: true };
 }
 
-function holds(req: TraitRequirement, active: ReadonlySet<string>, idx: Index, persona: PersonaRef): boolean {
-  if (req.kind === 'trait') return active.has(req.id);
-  if (req.kind === 'group') return (idx.below.get(req.id) ?? []).some((id) => active.has(id));
-  return persona.source === 'world' && persona.entityId === req.id;
-}
-
 /** Each trait's gate against the input's active sets. */
 export function gateStates(input: GateInput): Map<string, GateState> {
   const idx = index(input);
@@ -119,7 +126,7 @@ export function gateStates(input: GateInput): Map<string, GateState> {
   for (const { owner, item: trait } of idx.traits.values()) {
     const requirements = (trait.requires ?? []).map((req) => {
       const { text, unresolved } = requirementText(req, owner, idx);
-      return { text, unresolved, holds: !unresolved && holds(req, active, idx, input.persona) };
+      return { text, unresolved, holds: !unresolved && requirementHolds(req, trait, active, idx, input.persona) };
     });
     out.set(trait.id, { unlocked: requirements.length === 0 || requirements.some((r) => r.holds), requirements });
   }
@@ -153,21 +160,24 @@ function authoredRank(input: GateInput): Map<string, number> {
   return rank;
 }
 
+const byRank = <T extends Located<Trait>>(items: readonly T[], rank: ReadonlyMap<string, number>): T[] =>
+  [...items].sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+
 /** Whether `req` could be met by `id` being active. */
 const metBy = (req: TraitRequirement, id: string, idx: Index): boolean =>
-  (req.kind === 'trait' && req.id === id) || (req.kind === 'group' && (idx.below.get(req.id) ?? []).includes(id));
+  (req.kind === 'trait' && req.id === id) || (req.kind === 'group' && traitsBelow(idx, req.id).includes(id));
 
 /** Order turned-off traits so each comes before every trait it required; ties and loops go by authored rank. */
 function cascadeOrder(off: Located<Trait>[], idx: Index, rank: ReadonlyMap<string, number>): Located<Trait>[] {
-  const byRank = [...off].sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
-  const prerequisites = new Map(byRank.map((d) => [d.item.id, byRank.filter((p) =>
+  const ordered = byRank(off, rank);
+  const prerequisites = new Map(ordered.map((d) => [d.item.id, ordered.filter((p) =>
     p !== d && (d.item.requires ?? []).some((req) => metBy(req, p.item.id, idx)))]));
-  const dependents = new Map(byRank.map((p) => [p.item.id, 0]));
+  const dependents = new Map(ordered.map((p) => [p.item.id, 0]));
   for (const list of prerequisites.values()) for (const p of list) dependents.set(p.item.id, dependents.get(p.item.id)! + 1);
   const out: Located<Trait>[] = [];
-  const left = new Set(byRank);
+  const left = new Set(ordered);
   while (left.size) {
-    const next = byRank.find((t) => left.has(t) && dependents.get(t.item.id) === 0) ?? byRank.find((t) => left.has(t))!;
+    const next = ordered.find((t) => left.has(t) && dependents.get(t.item.id) === 0) ?? ordered.find((t) => left.has(t))!;
     left.delete(next);
     out.push(next);
     for (const p of prerequisites.get(next.item.id)!) dependents.set(p.item.id, dependents.get(p.item.id)! - 1);
@@ -189,21 +199,17 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
     [...ids].map((id) => idx.traits.get(id)).filter((t): t is Located<Trait> => !!t);
   const proposedIds = activeIds(input);
   const proposed = locate(proposedIds);
-  const siblingPicked = (t: Located<Trait>) =>
-    exclusiveSiblings(t.item, t.owner.traits, t.owner.groups).some((id) => proposedIds.has(id));
+  const rivalIn = (t: Located<Trait>, ids: ReadonlySet<string>) => [...idx.rivals.get(t.item.id)!].some((id) => ids.has(id));
   const waiting = locate(Object.values(cascadeOff).flat()).filter((t) => !proposedIds.has(t.item.id));
   const rank = authoredRank(input);
-  const candidates = waiting.filter((t) => !siblingPicked(t))
-    .sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+  const candidates = byRank(waiting.filter((t) => !rivalIn(t, proposedIds)), rank);
 
   const kept = new Set<string>();
   const returned: Located<Trait>[] = [];
   const opens = (trait: Trait) => {
     const reqs = trait.requires ?? [];
-    return reqs.length === 0 || reqs.some((req) => holds(req, kept, idx, input.persona));
+    return reqs.length === 0 || reqs.some((req) => requirementHolds(req, trait, kept, idx, input.persona));
   };
-  const rivalKept = (t: Located<Trait>) =>
-    exclusiveSiblings(t.item, t.owner.traits, t.owner.groups).some((id) => kept.has(id));
   for (let joined = true; joined;) {
     joined = false;
     for (const t of proposed) {
@@ -212,7 +218,7 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
       joined = true;
     }
     for (const t of candidates) {
-      if (kept.has(t.item.id) || rivalKept(t) || !opens(t.item)) continue;
+      if (kept.has(t.item.id) || rivalIn(t, kept) || !opens(t.item)) continue;
       kept.add(t.item.id);
       returned.push(t);
       joined = true;
@@ -280,26 +286,23 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): string[][] {
   const idx = index({ ...input, active: {} });
   const personas = new Set(input.entities.filter((e) => e.persona).map((e) => e.id));
   const open = new Set<string>();
-  const canHold = (req: TraitRequirement) => {
-    if (req.kind === 'playingAs') return personas.has(req.id);
-    if (req.kind === 'trait') return open.has(req.id);
-    return (idx.below.get(req.id) ?? []).some((id) => open.has(id));
-  };
+  const canHold = (trait: Trait) => (req: TraitRequirement) => req.kind === 'playingAs'
+    ? personas.has(req.id)
+    : requirementHolds(req, trait, open, idx, { source: 'none' });
   const all = [...idx.traits.values()];
   for (let grew = true; grew;) {
     grew = false;
     for (const { item } of all) {
       if (open.has(item.id)) continue;
       const reqs = item.requires ?? [];
-      if (reqs.length > 0 && !reqs.some(canHold)) continue;
+      if (reqs.length > 0 && !reqs.some(canHold(item))) continue;
       open.add(item.id);
       grew = true;
     }
   }
 
   const rank = authoredRank({ ...input, active: {} });
-  const stuck = all.filter((t) => !open.has(t.item.id))
-    .sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+  const stuck = byRank(all.filter((t) => !open.has(t.item.id)), rank);
   const root = new Map(stuck.map((t) => [t.item.id, t.item.id]));
   const find = (id: string): string => (root.get(id) === id ? id : find(root.get(id)!));
   for (const d of stuck) {
