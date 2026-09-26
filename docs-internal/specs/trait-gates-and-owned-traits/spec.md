@@ -177,7 +177,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - "Unlocked by …" lists only the requirements that hold now, such as "Unlocked by Knight". The locked line already states the full rule.
 - A cascade shows one dismissible banner: "Turned off Plate Armor, because of Rogue." The cause is what the player picked. After a persona change it is the new persona's name, or "the persona change" when the player picked None.
 - An unresolved requirement with no stored name, a target deleted inside the world, reads "a missing trait", "any trait in a missing group", or "playing as a missing persona".
-- The persona picker shows "Starts at …" under a persona with a starting location. Picking it preselects that location through the existing persona location pick, which now prefers the explicit field. The Starting Location step lists that location even when it is not flagged, but only while that persona is picked. A switch to a persona that does not name it drops the selection back to the automatic pick.
+- The persona picker shows "Starts at …" under a persona with a starting location. Picking it preselects that location through the existing persona location pick, which now prefers the explicit field. The Starting Location step lists that location even when it is not flagged, but only while that persona is picked. A switch to a persona that does not name it drops the selection back to the automatic pick: the new persona's explicit field, else its first flagged location, else Random, with the hand-pick flag cleared. A hand pick of a flagged location survives a persona switch, as today. "Starts at …" shows only for an explicit field, never for the automatic rule. A field naming a deleted location acts as Automatic.
 
 ### AI context
 
