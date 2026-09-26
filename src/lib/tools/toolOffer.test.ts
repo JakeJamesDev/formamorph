@@ -27,18 +27,22 @@ describe('toolsOfferedTo', () => {
 
   it('offers an enabled Tool to the prompts it names and to no other', () => {
     const tools = [catalogOn, userTool({ id: 'c', name: 'choices_only', offeredTo: ['choices'] })];
-    expect(toolsOfferedTo('narration', tools).map((t) => t.name)).toEqual(['get_entity']);
-    expect(toolsOfferedTo('choices', tools).map((t) => t.name)).toEqual(['choices_only']);
-    expect(toolsOfferedTo('summary', tools)).toEqual([]);
+    expect(toolsOfferedTo('narration', tools, true).map((t) => t.name)).toEqual(['get_entity']);
+    expect(toolsOfferedTo('choices', tools, true).map((t) => t.name)).toEqual(['choices_only']);
+    expect(toolsOfferedTo('summary', tools, true)).toEqual([]);
   });
 
   it('leaves a disabled Tool out', () => {
-    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({ enabled: false })])).toEqual([]);
+    expect(toolsOfferedTo('narration', [GET_ENTITY, userTool({ enabled: false })], true)).toEqual([]);
+  });
+
+  it('offers nothing with the global Tools switch off', () => {
+    expect(toolsOfferedTo('narration', [catalogOn, userTool({})], false)).toEqual([]);
   });
 
   it('keeps catalog Tools ahead of user Tools, in list order', () => {
     const tools = [catalogOn, userTool({ id: 'a', name: 'a' }), userTool({ id: 'b', name: 'b' })];
-    expect(toolsOfferedTo('narration', tools).map((t) => t.name)).toEqual(['get_entity', 'a', 'b']);
+    expect(toolsOfferedTo('narration', tools, true).map((t) => t.name)).toEqual(['get_entity', 'a', 'b']);
   });
 });
 
