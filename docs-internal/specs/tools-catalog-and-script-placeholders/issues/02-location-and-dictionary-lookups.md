@@ -1,6 +1,7 @@
 # 02: Location and Dictionary Lookup Tools
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: bdb99575
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -13,10 +14,15 @@ A player finds `get_location` and `get_dictionary_entry` in every preset's Tool 
 
 ## Acceptance criteria
 
-- [ ] Both Tools listed on every preset, default off, definition locked, Offered To and call limit editable
-- [ ] A preset export carries only the switch; import restores it
-- [ ] Location lookup: hit, case-insensitive hit, miss returns `{"matches": []}`, full description returned
-- [ ] Dictionary lookup: keyword hit, name hit, case-insensitive hit, miss returns the empty result
-- [ ] Try It works on both with and without a world open
-- [ ] Runner, catalog, and offer tests cover the above; each fails when its behavior is removed
-- [ ] Four gates green, `graphify update .` run, In-Progress changelog entry added
+- [x] Both Tools listed on every preset, default off, definition locked, Offered To and call limit editable
+- [x] A preset export carries only the switch; import restores it
+- [x] Location lookup: hit, case-insensitive hit, miss returns `{"matches": []}`, full description returned
+- [x] Dictionary lookup: keyword hit, name hit, case-insensitive hit, miss returns the empty result
+- [x] Try It works on both with and without a world open
+- [x] Runner, catalog, and offer tests cover the above; each fails when its behavior is removed
+- [x] Four gates green, `graphify update .` run, In-Progress changelog entry added
+
+## Notes
+
+- Commits: b981d70a, ac0e0669. The dictionary hint "Matches dictionary names and keywords, in any case" ships with ticket 01, by agreement between the two sessions.
+- Probe numbers for both descriptions belong to ticket 07. Both Tools stay off by default.
