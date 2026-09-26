@@ -154,7 +154,9 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 
 - **Enter-world:** each selection change and each persona change goes through `settle`. Default traits collapse through it at open, so a gated default whose requirement is off starts unselected.
 - **In play:** trait switches in the trait runtime, persona changes, and stat-code trait switches go through `settle`. World traits it turns off reverse their stats through the existing honest reversal. The story log notes a cascade with the existing switch-log wording.
-- **Stat code meets gates.** Code ignores Player Can Toggle but not gates. A code switch-on of a locked trait acquires it and `settle` turns it off in the same pass, with a switch-off log line. The sandbox's `traits` entries do not change.
+- **Stat code meets gates.** Code ignores Player Can Toggle but not gates. A code switch-on of a locked trait acquires it and `settle` turns it off in the same pass, with a switch-off log line. A switch-on the gate refuses retires no exclusive sibling. The trait joins the cascade-off list, so it returns once its gate holds. The sandbox's `traits` entries do not change.
+- **Banner and log in play.** The banner shows for a cascade the player's own switch or persona change caused. A cascade stat code caused writes only story log lines. A return writes the existing "Trait switched on" line and no banner.
+- **Cascade-off list in the save.** One additive field on the game state, keyed by owner id with the player's world traits under `world`. It rides in turn snapshots, so rewind and undo restore it.
 - The cascade banner reads the turned-off list from `settle`.
 
 ### One tree
