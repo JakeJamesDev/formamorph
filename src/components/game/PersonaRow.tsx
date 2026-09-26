@@ -21,8 +21,9 @@ import type { PersonaRef } from '@/types';
 const sameRef = (a: PersonaRef, b: PersonaRef) =>
   a.source === b.source && (a.source === 'none' || (b.source !== 'none' && a.entityId === b.entityId));
 
-/** The player's persona in the side panel: portrait, name, and a Change control that opens the picker. */
-export function PersonaRow() {
+/** The player's persona in the side panel: portrait, name, and a Change control that opens the picker.
+ *  `onChange` runs after the persona changes, with the new persona's name, or null for None. */
+export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: string | null) => void }) {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId, worldOverview } = useGameData();
   const { persona, entities: cast, worldPersonas, resolveEntityText } = useResolvedWorld();
@@ -55,13 +56,16 @@ export function PersonaRow() {
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
+  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption(resolveEntityText)), library: options });
+
   const apply = () => {
     setPersonaRef(choice);
     if (worldId) rememberWorldPersona(worldId, choice);
+    const picked = choice.source === 'none' ? undefined
+      : [...offer.world, ...offer.library].find((option) => option.id === choice.entityId);
+    onChange(choice, picked?.name ?? null);
     showPicker(false);
   };
-
-  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption(resolveEntityText)), library: options });
   const image = primaryImage(persona?.entity);
   return (
     <div className="flex items-center gap-2 pl-2" data-testid="persona-row">

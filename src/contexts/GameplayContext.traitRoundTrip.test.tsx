@@ -7,7 +7,9 @@ import { render, act } from '@testing-library/react';
 import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
-import { acquireTrait, applyCodeTraitSwitches, seedStatBases, setTraitEnabled, type TraitRuntimeState } from '@/lib/traitRuntime';
+import {
+  acquireTrait, applyCodeTraitSwitches, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
+} from '@/lib/traitRuntime';
 import type { PlayerStat, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -64,6 +66,7 @@ const slice = (g: Gameplay): TraitRuntimeState => ({
   traits: g.playerTraits,
   disabledTraitIds: g.disabledTraitIds,
   appliedValues: g.appliedTraitValues,
+  cascadeOffTraitIds: g.cascadeOffTraitIds,
 });
 
 const commit = (g: Gameplay, next: TraitRuntimeState) => {
@@ -71,6 +74,7 @@ const commit = (g: Gameplay, next: TraitRuntimeState) => {
   g.setPlayerTraits(next.traits);
   g.setDisabledTraitIds(next.disabledTraitIds);
   g.setAppliedTraitValues(next.appliedValues);
+  g.setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
 };
 
 const valueOf = (stats: PlayerStat[]) => stats.find((s) => s.id === 'vigor')!.value;
@@ -131,6 +135,55 @@ describe('trait movement records across a save/load round trip', () => {
       await live().loadGame('save-2', [], [authored]);
     });
     expect(live().appliedTraitValues).toEqual({});
+  });
+});
+
+describe('the cascade-off list across a save/load round trip', () => {
+  // Hale requires Sworn; switching Sworn off cascades Hale off.
+  const sworn: Trait = { id: 's', name: 'Sworn', statChanges: [], playerToggle: true };
+  const hale: Trait = { ...trait, requires: [{ kind: 'trait', id: 's' }] };
+  const world = { traits: [sworn, hale], groups: [] };
+  const fresh: TraitRuntimeState = { stats: seedStatBases([{ ...startStat, value: 50 }]), traits: [], disabledTraitIds: [], appliedValues: {} };
+
+  it('keeps a cascaded trait returnable after a load, and never a hand switch-off', async () => {
+    const live = mount();
+    await act(async () => {
+      let s = switchPlayerTrait(fresh, 's', true, world)!.state;
+      s = switchPlayerTrait(s, 't', true, world)!.state;
+      commit(live(), switchPlayerTrait(s, 's', false, world)!.state);
+    });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
+    expect(live().saveCurrentGameState().cascadeOffTraitIds).toEqual({ world: ['t'] });
+
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-5');
+    });
+    await act(async () => {
+      commit(live(), { stats: [], traits: [], disabledTraitIds: [], appliedValues: {} });
+    });
+    await act(async () => {
+      await live().loadGame('save-5', [], [authored]);
+    });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'] });
+
+    // Sworn back on: Hale returns on its own, and its +25 comes back with it.
+    await act(async () => {
+      commit(live(), switchPlayerTrait(slice(live()), 's', true, world)!.state);
+    });
+    expect(live().disabledTraitIds).toEqual([]);
+    expect(valueOf(live().playerStats)).toBe(75);
+    expect(live().saveCurrentGameState().cascadeOffTraitIds).toBeUndefined();
+  });
+
+  it('reads a save without the list as empty', async () => {
+    const live = mount();
+    await act(async () => {
+      commit(live(), { ...fresh, cascadeOffTraitIds: { world: ['t'] } });
+    });
+    await act(async () => {
+      live().loadGameState({ ...live().saveCurrentGameState(), cascadeOffTraitIds: undefined }, []);
+    });
+    expect(live().cascadeOffTraitIds).toEqual({});
   });
 });
 

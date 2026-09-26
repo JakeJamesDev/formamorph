@@ -92,7 +92,7 @@ describe('the persona row', () => {
   });
 
   it('raises one notice per load for a persona that no longer exists, never one per turn', async () => {
-    const h = renderInGame(<><RemountingProbe /><PersonaRow /></>, {
+    const h = renderInGame(<><RemountingProbe /><PersonaRow onChange={vi.fn()} /></>, {
       seed: (g) => g.setPersonaRef({ source: 'library', entityId: 'l-gone' }),
     });
     await waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
@@ -119,7 +119,7 @@ describe('world personas in the Change picker', () => {
 
   it("lists the world's marked entities under their own heading, apart from the library personas", async () => {
     await store(ash);
-    renderInGame(<PersonaRow />, { world });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world });
     const dialog = await openPicker();
     await within(dialog).findByRole('radio', { name: 'Ash' });
     const order = [...dialog.querySelectorAll('[role="radio"], h3')].map((el) => el.getAttribute('aria-label') ?? el.textContent);
@@ -128,7 +128,7 @@ describe('world personas in the Change picker', () => {
 
   it("shows each persona's player description under its name", async () => {
     await store({ ...ash, playerDescription: 'A courier who never sleeps.' });
-    renderInGame(<PersonaRow />, { world: { entities: [{ ...warden, playerDescription: 'Keeps the harbor ledger.' }, clerk] } });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { entities: [{ ...warden, playerDescription: 'Keeps the harbor ledger.' }, clerk] } });
     const dialog = await openPicker();
     await within(dialog).findByText('A courier who never sleeps.');
     expect(within(dialog).getByText('Keeps the harbor ledger.')).toBeTruthy();
@@ -137,7 +137,7 @@ describe('world personas in the Change picker', () => {
   it("lists only the world's personas, with no None, in a Cast world", async () => {
     await store(ash);
     const overview = worldFixture().worldOverview;
-    renderInGame(<PersonaRow />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'cast' } } });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'cast' } } });
     const dialog = await openPicker();
     await within(dialog).findByRole('radio', { name: 'Harbor Warden' });
     expect(within(dialog).queryByRole('radio', { name: 'None' })).toBeNull();
@@ -147,7 +147,7 @@ describe('world personas in the Change picker', () => {
   it('offers None and the library personas in a Fixed world', async () => {
     await store(ash);
     const overview = worldFixture().worldOverview;
-    renderInGame(<PersonaRow />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'fixed' } } });
+    renderInGame(<PersonaRow onChange={vi.fn()} />, { world: { ...world, worldOverview: { ...overview, playerSetting: 'fixed' } } });
     const dialog = await openPicker();
     await within(dialog).findByRole('radio', { name: 'Ash' });
     expect(within(dialog).getByRole('radio', { name: 'None' })).toBeTruthy();
@@ -155,7 +155,7 @@ describe('world personas in the Change picker', () => {
 
   it('takes a picked world persona out of the cast, and a switch away returns it', async () => {
     await store(ash);
-    const h = renderInGame(<><PersonaRow /><CastProbe /></>, { world });
+    const h = renderInGame(<><PersonaRow onChange={vi.fn()} /><CastProbe /></>, { world });
     expect(castNames()).toEqual(['Harbor Warden', 'Dock Clerk']);
 
     await pick(await openPicker(), 'Harbor Warden');

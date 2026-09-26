@@ -8,13 +8,15 @@ import {
   recoverStatBases,
   seedStatBases,
   setTraitEnabled,
+  settleTraits,
+  switchPlayerTrait,
   traitSwitchLog,
   withCodeBounds,
   type TraitRuntimeState,
   type TraitWorld,
 } from './traitRuntime';
 import { traitOrderIndex } from './traitEffects';
-import type { PlayerStat, StatChange, Trait, TraitGroup } from '@/types';
+import type { PersonaRef, PlayerStat, StatChange, Trait, TraitGroup } from '@/types';
 
 const stat = (id: string, over: Partial<PlayerStat> = {}): PlayerStat => ({
   id,
@@ -411,6 +413,155 @@ describe('applyCodeTraitSwitches', () => {
     const { state: next, log } = applyCodeTraitSwitches(off, [{ traitId: 'noble', enabled: false, by: 'Health' }], w);
     expect(next).toBe(off);
     expect(log).toEqual([]);
+  });
+});
+
+describe('gates in play', () => {
+  // Paladin opens Plate, Plate opens Aura. Plate and Robes share an exclusive Armor group.
+  const armor: TraitGroup = { id: 'armor', name: 'Armor', parentId: null, exclusive: true };
+  const paladin = trait('paladin', [{ statId: 'h', value: 10, type: 'starting' }], { playerToggle: true });
+  const plate = trait('plate', [{ statId: 'h', value: 20, type: 'max' }, { statId: 'h', value: 15, type: 'starting' }], {
+    playerToggle: true, groupId: 'armor', requires: [{ kind: 'trait', id: 'paladin' }],
+  });
+  const robes = trait('robes', [], { playerToggle: true, groupId: 'armor' });
+  const aura = trait('aura', [{ statId: 'h', value: 5, type: 'starting' }], { playerToggle: true, requires: [{ kind: 'trait', id: 'plate' }] });
+  const royal = trait('royal', [{ statId: 'h', value: -8, type: 'starting' }], { requires: [{ kind: 'playingAs', id: 'aldric' }] });
+  const traits = [paladin, plate, robes, aura, royal];
+  const aldric = { id: 'aldric', name: 'Sir Aldric', persona: true };
+  const gated = (persona: PersonaRef = { source: 'none' }): TraitWorld =>
+    ({ traits, groups: [armor], entities: [aldric], persona });
+  const name = (t: Trait) => t.name;
+  const on = (s: TraitRuntimeState) => activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id);
+  const player = (s: TraitRuntimeState, id: string, enabled: boolean, w = gated()) => {
+    const result = switchPlayerTrait(s, id, enabled, w, name);
+    if (!result) throw new Error(`switch of ${id} refused`);
+    return result;
+  };
+  // Resting near the cap, so Plate's raise and the clamps both matter to the reversal.
+  const armored = () => {
+    let s = state({ stats: [stat('h', { value: 90 })] });
+    for (const id of ['paladin', 'plate', 'aura']) s = player(s, id, true).state;
+    return s;
+  };
+
+  it('turns dependents off first when a prerequisite goes, and reverses their stats honestly', () => {
+    const start = armored();
+    expect(valueOf(start)).toBe(120);
+    const { state: next, log, cascade } = player(start, 'paladin', false);
+    expect(on(next)).toEqual([]);
+    expect(cascade.map((t) => t.id)).toEqual(['aura', 'plate']);
+    expect(log).toEqual(['Trait switched off: paladin', 'Trait switched off: aura', 'Trait switched off: plate']);
+    expect(valueOf(next)).toBe(90);
+    expect(boundsOf(next)).toEqual({ min: 0, max: 100, regen: 0 });
+    expect(next.cascadeOffTraitIds).toEqual({ world: ['aura', 'plate'] });
+  });
+
+  it('returns cascade-off traits once the gate holds again, and toggling stays neutral', () => {
+    let s = armored();
+    const armoredStats = s.stats;
+    for (let i = 0; i < 3; i++) {
+      s = player(s, 'paladin', false).state;
+      const back = player(s, 'paladin', true);
+      s = back.state;
+      expect(back.log).toEqual(['Trait switched on: paladin', 'Trait switched on: plate', 'Trait switched on: aura']);
+      expect(back.cascade).toEqual([]);
+    }
+    expect(on(s)).toEqual(['paladin', 'plate', 'aura']);
+    expect(s.stats).toEqual(armoredStats);
+    expect(s.cascadeOffTraitIds).toEqual({});
+  });
+
+  it('never returns a trait the player switched off by hand', () => {
+    let s = player(armored(), 'plate', false).state;
+    expect(on(s)).toEqual(['paladin']);
+    expect(s.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    s = player(s, 'paladin', false).state;
+    s = player(s, 'paladin', true).state;
+    expect(on(s)).toEqual(['paladin']);
+  });
+
+  it('keeps a cascade-off trait off once the player picks its exclusive sibling, and drops it from the list', () => {
+    let s = player(armored(), 'paladin', false).state;
+    s = player(s, 'robes', true).state;
+    s = player(s, 'paladin', true).state;
+    expect(on(s)).toEqual(['paladin', 'robes']);
+    expect(s.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    s = player(s, 'robes', false).state;
+    expect(on(s)).toEqual(['paladin']);
+  });
+
+  it('refuses the player a switch-on of a locked trait', () => {
+    expect(switchPlayerTrait(state(), 'plate', true, gated(), name)).toBeNull();
+  });
+
+  it('settles a persona change: a playing-as trait leaves with the persona and returns with it', () => {
+    let s = state();
+    s = applyCodeTraitSwitches(s, [{ traitId: 'royal', enabled: true, by: 'Vigor' }], gated({ source: 'world', entityId: 'aldric' })).state;
+    expect(on(s)).toEqual(['royal']);
+    expect(valueOf(s)).toBe(42);
+
+    const left = settleTraits(s, gated(), name);
+    expect(on(left.state)).toEqual([]);
+    expect(left.cascade.map((t) => t.id)).toEqual(['royal']);
+    expect(left.log).toEqual(['Trait switched off: royal']);
+    expect(valueOf(left.state)).toBe(50);
+
+    const back = settleTraits(left.state, gated({ source: 'world', entityId: 'aldric' }), name);
+    expect(on(back.state)).toEqual(['royal']);
+    expect(back.log).toEqual(['Trait switched on: royal']);
+    expect(valueOf(back.state)).toBe(42);
+  });
+
+  it('leaves a settled state as the same object', () => {
+    const s = armored();
+    expect(settleTraits(s, gated(), name).state).toBe(s);
+  });
+
+  describe('a code switch-on of a locked trait', () => {
+    it('acquires it and turns it off in the same pass, moving nothing, and lists it to return', () => {
+      const { state: next, log } = applyCodeTraitSwitches(state(), [{ traitId: 'plate', enabled: true, by: 'Vigor' }], gated());
+      expect(next.traits.map((t) => t.id)).toEqual(['plate']);
+      expect(on(next)).toEqual([]);
+      expect(log).toEqual(['Acquired trait: plate (by Vigor)', 'Trait switched off: plate (by Vigor)']);
+      expect(valueOf(next)).toBe(50);
+      expect(boundsOf(next)).toEqual({ min: 0, max: 100, regen: 0 });
+      expect(next.cascadeOffTraitIds).toEqual({ world: ['plate'] });
+
+      const back = player(next, 'paladin', true);
+      expect(on(back.state)).toEqual(['plate', 'paladin']);
+      expect(valueOf(back.state)).toBe(75);
+    });
+
+    it('retires no exclusive sibling', () => {
+      const withRobes = player(state(), 'robes', true).state;
+      const { state: next } = applyCodeTraitSwitches(withRobes, [{ traitId: 'plate', enabled: true, by: 'Vigor' }], gated());
+      expect(on(next)).toEqual(['robes']);
+    });
+
+    it('opens once code switches its prerequisite on later in the same run', () => {
+      const { state: next } = applyCodeTraitSwitches(state(), [
+        { traitId: 'plate', enabled: true, by: 'Vigor' },
+        { traitId: 'paladin', enabled: true, by: 'Vigor' },
+      ], gated());
+      expect(on(next)).toEqual(['plate', 'paladin']);
+      expect(next.cascadeOffTraitIds).toEqual({});
+    });
+  });
+
+  it('cascades a code switch-off with the attribution on every line', () => {
+    const { state: next, log } = applyCodeTraitSwitches(armored(), [{ traitId: 'paladin', enabled: false, by: 'Vigor' }], gated());
+    expect(on(next)).toEqual([]);
+    expect(log).toEqual([
+      'Trait switched off: paladin (by Vigor)', 'Trait switched off: aura (by Vigor)', 'Trait switched off: plate (by Vigor)',
+    ]);
+    expect(valueOf(next)).toBe(90);
+  });
+
+  it('takes a cascade-off trait off the list when code switches it off, so it never returns', () => {
+    const cascaded = player(armored(), 'paladin', false).state;
+    const { state: next } = applyCodeTraitSwitches(cascaded, [{ traitId: 'plate', enabled: false, by: 'Vigor' }], gated());
+    expect(next.cascadeOffTraitIds).toEqual({ world: ['aura'] });
+    expect(on(player(next, 'paladin', true).state)).toEqual(['paladin']);
   });
 });
 

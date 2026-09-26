@@ -44,6 +44,10 @@ export function resolvePersona(
   };
 }
 
+/** Every world entity: the cast, plus the played one when it is a world entity. */
+export const worldEntitiesOf = (cast: Entity[], persona: ResolvedPersona | null): Entity[] =>
+  persona?.source === 'world' ? [...cast, persona.entity] : cast;
+
 /** The persona chosen at world entry. A library pick carries the entity read at entry, so page one can
  *  name it; the save keeps only the reference. */
 export interface PersonaPick {

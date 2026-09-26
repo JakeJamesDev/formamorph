@@ -10,19 +10,22 @@ export interface StatCodeTraits {
   acquired: readonly Trait[];
   disabledTraitIds: readonly string[];
   appliedValues: AppliedTraitValues;
-  /** Every authored trait and group. `traits` maps each authored trait; a code switch-on acquires from here. */
+  /** Owner id → the traits a cascade turned off. Absent ⇒ none. */
+  cascadeOffTraitIds?: Record<string, string[]>;
+  /** Every authored trait and group, and who the player is, for gates. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
 }
 
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
 export function savedTraits(
-  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues'>,
+  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds'>,
   authored: Trait[],
-): Pick<StatCodeTraits, 'acquired' | 'disabledTraitIds' | 'appliedValues'> {
+): Pick<StatCodeTraits, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds'> {
   return {
     acquired: refreshChosenTraits(saved.playerTraits, authored),
     disabledTraitIds: saved.disabledTraitIds ?? [],
     appliedValues: saved.appliedTraitValues ?? {},
+    cascadeOffTraitIds: saved.cascadeOffTraitIds ?? {},
   };
 }
 

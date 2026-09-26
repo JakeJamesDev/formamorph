@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
 import type { GateState } from '@/lib/traitGates';
+import { gateLine } from '@/lib/traitGateLine';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -16,7 +17,6 @@ export interface TraitCascade {
 }
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
-const OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
 /** The banner after a selection change turns gated traits off. */
 export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCascade; onDismiss: () => void }) {
@@ -27,13 +27,6 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
       <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
     </div>
   );
-}
-
-/** "Requires A or B" for a locked trait, "Unlocked by A" for an open one, nothing for an ungated one. */
-function gateLine(gate: GateState | undefined): string | null {
-  if (!gate?.requirements.length) return null;
-  if (!gate.unlocked) return `Requires ${OR.format(gate.requirements.map((r) => r.text))}`;
-  return `Unlocked by ${OR.format(gate.requirements.filter((r) => r.holds).map((r) => r.text))}`;
 }
 
 /**

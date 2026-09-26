@@ -91,6 +91,8 @@ function useProvideGameplay() {
   // What each active trait's stat changes actually moved, so switching one off gives back what it took
   // rather than what it asked for. Snapshotted per turn alongside the switch positions.
   const [appliedTraitValues, setAppliedTraitValues] = useState<AppliedTraitValues>({});
+  // Owner id → the traits a gate cascade turned off and that may still return. Snapshotted per turn too.
+  const [cascadeOffTraitIds, setCascadeOffTraitIds] = useState<Record<string, string[]>>({});
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
@@ -218,6 +220,7 @@ function useProvideGameplay() {
       playerTraits,
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
       ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
+      ...(Object.keys(cascadeOffTraitIds).length ? { cascadeOffTraitIds } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
       discoveredEntities,
@@ -239,7 +242,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -261,6 +264,7 @@ function useProvideGameplay() {
       setPlayerTraits(gameState.playerTraits);
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
+      setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -667,6 +671,8 @@ function useProvideGameplay() {
     setDisabledTraitIds,
     appliedTraitValues,
     setAppliedTraitValues,
+    cascadeOffTraitIds,
+    setCascadeOffTraitIds,
     codePins,
     setCodePins,
     runtimeDictionaries,

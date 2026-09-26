@@ -11,8 +11,9 @@ describe('savedTraits', () => {
     expect(acquired).toEqual([{ ...authored, statChanges: saved.statChanges }]);
   });
 
-  it('reads a save with no switched-off traits and no records as empty', () => {
-    expect(savedTraits({ playerTraits: [] }, [])).toEqual({ acquired: [], disabledTraitIds: [], appliedValues: {} });
+  it('reads a save with no switched-off traits, no records and no cascade-off list as empty', () => {
+    expect(savedTraits({ playerTraits: [] }, []))
+      .toEqual({ acquired: [], disabledTraitIds: [], appliedValues: {}, cascadeOffTraitIds: {} });
   });
 
   it('carries the switched-off ids and the movement records through', () => {
