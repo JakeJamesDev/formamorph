@@ -41,13 +41,13 @@ export async function runToolScript(
     logFn.dispose();
     consoleObj.dispose();
 
-    // The helpers live in a closure, `JSON.stringify` taken before the script can replace it. The script runs
-    // as a function body whose parameter shadows the one global it could otherwise reach.
     // QuickJS seeds Math.random from the clock, so runs in one millisecond repeat it; sfc32 takes a crypto seed per run.
     const seed = [...crypto.getRandomValues(new Uint32Array(4))].join(', ');
+    // The helpers live in a closure, `JSON.stringify` taken before the script can replace it. The script runs
+    // as a function body whose parameter shadows the one global it could otherwise reach.
     const program = [
       `((m, a, b, c, d) => { m.random = () => { const t = (a + b + d) | 0; d = (d + 1) | 0; a = b ^ (b >>> 9);`,
-      '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 4294967296; };',
+      '  b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11); c = (c + t) | 0; return (t >>> 0) / 2 ** 32; };',
       `  for (let i = 0; i < 15; i++) m.random(); })(Math, ${seed});`,
       `const [args, world, scene, ${FINISH}] = ((parse, stringify, freezeOne, isFrozen, values) => {`,
       '  const freeze = (o) => { if (o && typeof o === "object" && !isFrozen(o)) { freezeOne(o); values(o).forEach(freeze); } return o; };',

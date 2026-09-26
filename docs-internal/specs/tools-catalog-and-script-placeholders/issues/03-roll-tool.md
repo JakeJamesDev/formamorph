@@ -1,6 +1,6 @@
 # 03: Roll Tool
 
-Status: in-progress
+Status: ready-for-human
 Base: bdb99575
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -14,9 +14,9 @@ The AI calls `roll` with dice notation and gets each die, the modifier, and the 
 
 ## Acceptance criteria
 
-- [ ] `roll` listed on every preset, default off, locked, Offered To narration
-- [ ] Output is `{"dice", "rolls", "modifier", "total"}` with total equal to the dice plus the modifier
-- [ ] Each notation form, a negative modifier, and every limit edge covered; bad notation returns the error text
-- [ ] Randomness checked by range over many runs, never by a fixed value
-- [ ] Try It works with and without a world open
-- [ ] Four gates green, `graphify update .` run, In-Progress changelog entry added
+- [x] `roll` listed on every preset, default off, locked, Offered To narration
+- [x] Output is `{"dice", "rolls", "modifier", "total"}` with total equal to the dice plus the modifier
+- [x] Each notation form, a negative modifier, and every limit edge covered; bad notation returns the error text
+- [x] Randomness checked by range over many runs, never by a fixed value
+- [x] Try It works with and without a world open
+- [x] Four gates green, `graphify update .` run, In-Progress changelog entry added
