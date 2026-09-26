@@ -55,7 +55,7 @@ const RECALL: Tool = {
   name: 'recall',
   description: [
     'Purpose: Search the memories of earlier turns that this conversation no longer holds in full.',
-    'Use when: The story returns to a past event, promise, gift, or person, and you need details the recent turns do not hold. Skip it when the recent turns already hold the details.',
+    'Use when: The story returns to a past event, promise, gift, or person from before the recent turns, and you need its details.',
     'Input: query — a few words from the event, such as names, places, or objects.',
     'Output: JSON with a matches array, oldest first. Each match contains turn, kind (digest or diary), text, and, for a diary entry, the character who wrote it. An empty matches array means no memory matched.',
   ].join('\n'),

@@ -1,6 +1,6 @@
 # 04: Recall Tool, Lexical
 
-Status: in-progress
+Status: ready-for-human
 Base: bdb99575
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -21,3 +21,14 @@ The AI calls `recall` with a few words and gets up to five matching memories, ol
 - [ ] Import of a Tool with the `memories` source is rejected
 - [ ] The script surface is unchanged
 - [ ] Four gates green, `graphify update .` run, In-Progress changelog entry added
+
+## Comments
+
+**Built 2026-09-26** in `fb95001d` plus a review fold-in commit.
+
+- Spec-session rulings used: turn number counts every committed turn; Memory Digests off returns nothing; a deleted digest leaves its turn's diary entries searchable; no user copy of recall.
+- Review fold-in: **Duplicate** is disabled for recall, and `copyTool` refuses any Tool whose handler a user Tool can't store (`userCanStore` in `toolValidation.ts`, which `parseHandler` shares). The description's "Skip it when…" carve-out is gone.
+- Two small additions the spec didn't name: the Handler tab hides **Returns** for Memories, because recall ignores it; the Tools list summary reads "Searches past turns and diaries by query and returns up to 5 matches".
+- "Kept milestone outside the floor matches": recall never reads milestone verdicts, so the floor-boundary test covers it. No milestone state exists at the snapshot seam to set up.
+- Open for the user: `extractKeywords` splits on `[^a-z0-9]`, so recall matches nothing in a non-ASCII playthrough (see the AI Language directive).
+- Probe numbers for the description belong to ticket 07.

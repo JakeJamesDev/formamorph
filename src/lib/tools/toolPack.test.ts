@@ -104,13 +104,18 @@ describe('copyTool', () => {
     expect(copy).toEqual({ ...catalog, id: 'fresh', name: 'get_entity_copy' });
   });
 
+  it('refuses a Tool whose source a user Tool cannot store', () => {
+    const recall = TOOL_CATALOG.find((t) => t.id === 'recall')!;
+    expect(copyTool(recall, [], 'fresh')).toBeNull();
+  });
+
   it('numbers the copy when the name is taken', () => {
     const held = [tool({ name: 'get_entity_copy' }), tool({ id: 'u-9', name: 'get_entity_copy_2' })];
-    expect(copyTool(catalog, held, 'fresh').name).toBe('get_entity_copy_3');
+    expect(copyTool(catalog, held, 'fresh')?.name).toBe('get_entity_copy_3');
   });
 
   it('keeps the copy name within 64 characters', () => {
     const long = tool({ name: 'x'.repeat(64) });
-    expect(copyTool(long, [long], 'fresh').name).toBe(`${'x'.repeat(59)}_copy`);
+    expect(copyTool(long, [long], 'fresh')?.name).toBe(`${'x'.repeat(59)}_copy`);
   });
 });

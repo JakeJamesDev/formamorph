@@ -153,6 +153,14 @@ describe('Duplicate', () => {
     expect(switchesOf('default')).toEqual({});
     expect(switchesOf('mine')).toEqual({});
   });
+
+  it('offers no Duplicate for recall, whose source a user Tool cannot store', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={userState()} />);
+    await user.click(list().getByRole('button', { name: 'recall' }));
+    expect(heading()).toBe('recall');
+    expect(screen.getByRole('button', { name: 'Duplicate' })).toBeDisabled();
+  });
 });
 
 describe('Delete', () => {

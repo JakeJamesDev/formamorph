@@ -1,5 +1,5 @@
 import type { Tool, ToolEnabledMap } from '@/types';
-import { TOOL_NAME_MAX, isRecord, parseTool, sameToolName, toolNameProblem } from './toolValidation';
+import { TOOL_NAME_MAX, isRecord, parseTool, sameToolName, toolNameProblem, userCanStore } from './toolValidation';
 
 /**
  * The shared Tool file. `formamorphTools` is the file's own shape version, which import checks; `appVersion`
@@ -86,8 +86,10 @@ export function planPresetTools(held: readonly Tool[], embedded: readonly Tool[]
 
 const COPY_SUFFIX = '_copy';
 
-/** A copy of `tool` as a new user Tool, named `<name>_copy` (numbered when taken) so it saves among `held`. */
-export function copyTool(tool: Tool, held: readonly Tool[], id: string): Tool {
+/** A copy of `tool` as a new user Tool, named `<name>_copy` (numbered when taken) so it saves among `held`.
+ *  Null when a user Tool can't store its handler. */
+export function copyTool(tool: Tool, held: readonly Tool[], id: string): Tool | null {
+  if (!userCanStore(tool.handler)) return null;
   for (let n = 1; ; n++) {
     const suffix = n === 1 ? COPY_SUFFIX : `${COPY_SUFFIX}_${n}`;
     const name = tool.name.slice(0, TOOL_NAME_MAX - suffix.length) + suffix;

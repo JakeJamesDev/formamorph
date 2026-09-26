@@ -1,4 +1,4 @@
-import type { AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolParam, ToolParamType } from '@/types';
+import type { AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolLookupSource, ToolParam, ToolParamType } from '@/types';
 import { ALL_REQUEST_KINDS } from '@/lib/reasoningEffort';
 import { TOOL_CATALOG } from './toolCatalog';
 
@@ -28,6 +28,12 @@ export function toolNameProblem(name: string, tools: readonly Tool[], selfId?: s
 type Raw = Record<string, unknown>;
 export const isRecord = (v: unknown): v is Raw => !!v && typeof v === 'object' && !Array.isArray(v);
 const PARAM_TYPES: readonly ToolParamType[] = ['string', 'number', 'boolean', 'enum'];
+
+/** The lookup sources a user Tool can store; `memories` is catalog-only. */
+const USER_LOOKUP_SOURCES: readonly ToolLookupSource[] = ['entities', 'locations', 'dictionary'];
+
+/** Whether a user Tool can store `handler`, so a copy of a Tool with it can save. */
+export const userCanStore = (handler: ToolHandler) => handler.kind !== 'lookup' || USER_LOOKUP_SOURCES.includes(handler.source);
 const REQUEST_KINDS: readonly string[] = ALL_REQUEST_KINDS;
 
 /** Known prompt kinds only; a kind from a newer version drops. Null when `raw` isn't a list. */
@@ -52,8 +58,9 @@ function parseParam(raw: unknown): ToolParam | null {
 function parseHandler(raw: unknown): ToolHandler | null {
   if (!isRecord(raw)) return null;
   if (raw.kind === 'lookup') {
-    const { source, param, returns } = raw;
-    if (source !== 'entities' && source !== 'locations' && source !== 'dictionary') return null;
+    const { param, returns } = raw;
+    const source = USER_LOOKUP_SOURCES.find((s) => s === raw.source);
+    if (!source) return null;
     if (typeof param !== 'string' || (returns !== 'full' && returns !== 'summary')) return null;
     return { kind: 'lookup', source, param, returns };
   }
