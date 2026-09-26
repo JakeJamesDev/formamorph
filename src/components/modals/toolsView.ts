@@ -1,7 +1,6 @@
 import { Braces, Cog, FileText } from 'lucide-react';
 import type { Tool, ToolHandler } from '@/types';
 import type { PanelTab } from '@/components/ui/panel-tabs';
-import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import { RECALL_LIMIT } from '@/lib/tools/toolRecall';
 
 /** Edit mode's tabs, in order. */
@@ -34,7 +33,5 @@ function lookupSummary(h: Extract<ToolHandler, { kind: 'lookup' }>): string {
 /** What the Tool does, in one line. */
 export function toolSummary(tool: Tool): string {
   const h = tool.handler;
-  const does = h.kind === 'lookup' ? lookupSummary(h) : h.kind === 'template' ? 'Returns a template' : 'Runs a script';
-  const limit = tool.callLimit ?? DEFAULT_TOOL_CALL_LIMIT;
-  return `${does} · max ${limit} call${limit === 1 ? '' : 's'} per request`;
+  return h.kind === 'lookup' ? lookupSummary(h) : h.kind === 'template' ? 'Returns a template' : 'Runs a script';
 }
