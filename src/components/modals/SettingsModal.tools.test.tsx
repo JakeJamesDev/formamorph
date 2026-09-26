@@ -132,12 +132,14 @@ describe('Settings → Tools', () => {
     }
   });
 
-  it('lists a built-in Tool with the player’s Offered To override', () => {
+  it('shows a built-in Tool with the player’s Offered To override', () => {
     const key = 'FORMAMORPH_toolCatalogOverrides';
     localStorage.setItem(key, JSON.stringify({ get_entity: { offeredTo: ['choices'] } }));
     try {
       open('advanced');
-      expect(screen.getByText(/· Offered to Choices ·/)).toBeInTheDocument();
+      const offered = screen.getByRole('combobox', { name: 'Offered To' });
+      expect(within(offered).getByText('Choices')).toBeInTheDocument();
+      expect(within(offered).queryByText('Narration')).toBeNull();
     } finally {
       localStorage.removeItem(key);
     }

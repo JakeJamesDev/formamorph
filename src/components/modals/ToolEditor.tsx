@@ -1,11 +1,10 @@
 import { useId, useMemo, type ReactNode } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import type { AIRequestType, Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
+import type { Tool, ToolHandler, ToolParam, ToolParamType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MultiSelect, type MultiSelectOption } from '@/components/ui/multi-select';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,8 +16,6 @@ import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
 import { plainVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
-import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
-import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import {
   draftProblems, finishDraft, hasDraftProblems, namedParams, renameParam, withHandlerKind,
   type DraftProblems, type HandlerProblem, type ParamProblem,
@@ -75,15 +72,7 @@ const LOOKUP_SOURCES: readonly { value: LookupSource; label: string; matches: st
   { value: 'entities', label: 'Entities', matches: 'Matches entity names and aliases, in any case' },
   { value: 'locations', label: 'Locations', matches: 'Matches location names, in any case' },
   { value: 'dictionary', label: 'Dictionary Entries', matches: 'Matches dictionary names and trigger keywords, in any case' },
-  { value: 'memories', label: 'Memories', matches: 'Matches words in past turns and diaries, in any case' },
 ];
-
-/** The Search choices for `current`: `memories` is catalog-only, so it shows only on the Tool that has it. */
-const searchChoices = (current: LookupSource) => LOOKUP_SOURCES.filter((s) => s.value !== 'memories' || current === 'memories');
-
-/** The prompts a Tool can be offered to, in the Prompts rail's order. */
-const OFFER_OPTIONS: MultiSelectOption[] = Object.values(PROMPT_TAB_REQUESTS)
-  .map((kind) => ({ value: kind, label: REQUEST_LABELS[kind] }));
 
 /** Label, help, control, then the control's problem: the Design System's field help order. */
 function Field({ id, label, hint, error, aside, children }: {
@@ -119,10 +108,10 @@ function JsonField({ id, value, onChange }: { id: string; value: string; onChang
   );
 }
 
-/** A tab body. `locked` shows a built-in Tool's field read-only. */
-interface TabProps { draft: Tool; onChange: Change; problems: DraftProblems; locked: boolean }
+/** A tab body. */
+interface TabProps { draft: Tool; onChange: Change; problems: DraftProblems }
 
-function DefinitionTab({ draft, onChange, problems, locked }: TabProps) {
+function DefinitionTab({ draft, onChange, problems }: TabProps) {
   const id = useId();
   const missing = OUTLINE.filter((heading) => !draft.description.includes(heading));
   const addOutline = () => {
@@ -142,7 +131,7 @@ function DefinitionTab({ draft, onChange, problems, locked }: TabProps) {
       <PromptField
         label="Description" ariaLabel="Description" vocabulary={DESCRIPTION_VOCABULARY}
         hint="Tells the AI what the Tool does and when to call it"
-        placeholder={OUTLINE.join('\n')} readOnly={locked}
+        placeholder={OUTLINE.join('\n')}
         labelAside={(
           <Button size="sm" variant="outline" disabled={missing.length === 0} onClick={addOutline}>Add Outline</Button>
         )}
@@ -152,8 +141,8 @@ function DefinitionTab({ draft, onChange, problems, locked }: TabProps) {
   );
 }
 
-function ParamCard({ draft, index, problem, onChange, locked }: {
-  draft: Tool; index: number; problem: ParamProblem | null; onChange: Change; locked: boolean;
+function ParamCard({ draft, index, problem, onChange }: {
+  draft: Tool; index: number; problem: ParamProblem | null; onChange: Change;
 }) {
   const id = useId();
   const param = draft.params[index];
@@ -171,7 +160,7 @@ function ParamCard({ draft, index, problem, onChange, locked }: {
           />
         </Field>
         <Field id={`${id}-type`} label="Type">
-          <Select value={param.type} onValueChange={(v) => set({ type: v as ToolParamType })} disabled={locked}>
+          <Select value={param.type} onValueChange={(v) => set({ type: v as ToolParamType })}>
             <SelectTrigger id={`${id}-type`}><SelectValue /></SelectTrigger>
             <SelectContent>
               {PARAM_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -203,7 +192,7 @@ function ParamCard({ draft, index, problem, onChange, locked }: {
   );
 }
 
-function ParametersTab({ draft, onChange, problems, locked }: TabProps) {
+function ParametersTab({ draft, onChange, problems }: TabProps) {
   const add = () => onChange({
     ...draft, params: [...draft.params, { name: '', type: 'string', description: '', required: true, options: [] }],
   });
@@ -212,7 +201,7 @@ function ParametersTab({ draft, onChange, problems, locked }: TabProps) {
       {draft.params.length === 0 && <Hint>No parameters. The AI calls this Tool with no arguments.</Hint>}
       {draft.params.map((_, i) => (
         // Parameters have no id of their own, and a rename must not remount the field being typed in.
-        <ParamCard key={i} draft={draft} index={i} problem={problems.params[i]} onChange={onChange} locked={locked} />
+        <ParamCard key={i} draft={draft} index={i} problem={problems.params[i]} onChange={onChange} />
       ))}
       <div>
         <Button size="sm" variant="outline" onClick={add}><Plus className="h-4 w-4 mr-1" />Add Parameter</Button>
@@ -221,7 +210,7 @@ function ParametersTab({ draft, onChange, problems, locked }: TabProps) {
   );
 }
 
-function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: TabProps & { placeholderNames: readonly string[] }) {
+function HandlerTab({ draft, onChange, problems, placeholderNames }: TabProps & { placeholderNames: readonly string[] }) {
   const id = useId();
   const { handler, params } = draft;
   const named = namedParams(params);
@@ -233,24 +222,24 @@ function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: Tab
   return (
     <div className="flex flex-col gap-4">
       <OptionSwitcher
-        ariaLabel="Handler" value={handler.kind} options={HANDLER_KINDS} disabled={locked}
+        ariaLabel="Handler" value={handler.kind} options={HANDLER_KINDS}
         onChange={(kind) => onChange(withHandlerKind(draft, kind))}
       />
       {handler.kind === 'lookup' && (
         <div className="flex flex-col gap-1">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id={`${id}-source`} label="Search">
-              <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })} disabled={locked}>
+              <Select value={handler.source} onValueChange={(v) => setHandler({ ...handler, source: v as LookupSource })}>
                 <SelectTrigger id={`${id}-source`} aria-describedby={`${id}-matches`}><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {searchChoices(handler.source).map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                  {LOOKUP_SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
             <Field id={`${id}-param`} label="By Parameter" error={handlerError}>
               <Select
                 value={named.some((p) => p.name === handler.param) ? handler.param : undefined}
-                onValueChange={(v) => setHandler({ ...handler, param: v })} disabled={locked}
+                onValueChange={(v) => setHandler({ ...handler, param: v })}
               >
                 <SelectTrigger
                   id={`${id}-param`} aria-invalid={!!handlerError}
@@ -266,7 +255,7 @@ function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: Tab
             </Field>
             {handler.source !== 'dictionary' && handler.source !== 'memories' && (
               <Field id={`${id}-returns`} label="Returns">
-                <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })} disabled={locked}>
+                <Select value={handler.returns} onValueChange={(v) => setHandler({ ...handler, returns: v as typeof handler.returns })}>
                   <SelectTrigger id={`${id}-returns`}><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="full">Full Description</SelectItem>
@@ -284,7 +273,7 @@ function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: Tab
         <PromptField
           label="Template" ariaLabel="Template" vocabulary={vocabulary}
           hint="Returns this text. Insert a parameter to place what the AI passed."
-          readOnly={locked} value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
+          value={handler.body} onChange={(body) => setHandler({ ...handler, body })}
         />
       )}
       {handler.kind === 'script' && (
@@ -302,17 +291,10 @@ function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: Tab
               ))}
             </dl>
           </div>
-          {locked ? (
-            <HighlightedCode
-              code={handler.code} language="javascript"
-              className="rounded-md border px-3 py-2 font-mono text-label whitespace-pre-wrap break-words"
-            />
-          ) : (
-            <CodeArea
-              label="Script" ariaLabel="Script" rows={10} surface={surface}
-              value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
-            />
-          )}
+          <CodeArea
+            label="Script" ariaLabel="Script" rows={10} surface={surface}
+            value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
+          />
         </div>
       )}
       <Field id={`${id}-empty`} label="Empty Result" hint="Goes to the AI when the handler finds nothing">
@@ -322,45 +304,7 @@ function HandlerTab({ draft, onChange, problems, locked, placeholderNames }: Tab
   );
 }
 
-function AvailabilityTab({ draft, onChange }: { draft: Tool; onChange: Change }) {
-  const id = useId();
-  const setLimit = (text: string) => {
-    const limit = Number.parseInt(text.replace(/\D/g, ''), 10);
-    const { callLimit: _, ...rest } = draft;
-    onChange(limit >= 1 ? { ...rest, callLimit: limit } : rest);
-  };
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <Label id={`${id}-offered`}>Offered To</Label>
-        <Hint>Sends the Tool with these prompts</Hint>
-        <MultiSelect
-          aria-labelledby={`${id}-offered`} options={OFFER_OPTIONS} placeholder="No Prompts" allSelectedLabel="All Prompts"
-          defaultValue={draft.offeredTo} onValueChange={(kinds) => onChange({ ...draft, offeredTo: kinds as AIRequestType[] })}
-        />
-      </div>
-      <Field id={`${id}-limit`} label="Calls per Request" hint={`Leave blank for the default of ${DEFAULT_TOOL_CALL_LIMIT}`}>
-        <Input
-          id={`${id}-limit`} className="w-24" inputMode="numeric" placeholder={String(DEFAULT_TOOL_CALL_LIMIT)}
-          value={draft.callLimit?.toString() ?? ''} onChange={(e) => setLimit(e.target.value)}
-        />
-      </Field>
-    </div>
-  );
-}
-
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
-
-const NO_PROBLEMS: DraftProblems = { name: null, params: [], handler: null };
-
-/** A definition tab: locked, its fieldset disables every native control inside, and each Radix Select takes `disabled` itself. */
-function DefinitionFieldsTab({ value, locked, children }: { value: ToolEditTab; locked: boolean; children: ReactNode }) {
-  return (
-    <TabsContent value={value} className="mt-0">
-      <fieldset disabled={locked} className="min-w-0">{children}</fieldset>
-    </TabsContent>
-  );
-}
 
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
@@ -382,11 +326,11 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
 }
 
 /**
- * Edit mode for a Tool: Definition, Parameters, Handler and Availability on the World Editor's panel tab
- * strip, Try It beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
+ * Edit mode for a user Tool: Definition, Parameters and Handler on the World Editor's panel tab strip, Try It
+ * beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
  */
 export function ToolEditor({
-  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, builtIn, world, fullscreen, fullscreenButton, onCancel, onSave,
+  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton, onCancel, onSave,
 }: {
   draft: Tool;
   onDraftChange: Change;
@@ -396,8 +340,6 @@ export function ToolEditor({
   userTools: readonly Tool[];
   /** True when the draft edits a saved Tool, false for a new one. */
   editing: boolean;
-  /** A catalog Tool: only Availability can change. */
-  builtIn: boolean;
   world: TryItWorld;
   /** Widens Try It to a third of the grid. */
   fullscreen: boolean;
@@ -405,11 +347,10 @@ export function ToolEditor({
   onCancel: () => void;
   onSave: () => void;
 }) {
-  // A catalog Tool's definition is fixed, and its name is a built-in name.
-  const problems = builtIn ? NO_PROBLEMS : draftProblems(draft, userTools);
+  const problems = draftProblems(draft, userTools);
   const blocked = hasDraftProblems(problems);
   const fixes = fixesToSave(draft, problems);
-  const body = { draft, onChange: onDraftChange, problems, locked: builtIn };
+  const body = { draft, onChange: onDraftChange, problems };
   // Autocomplete lists the shared placeholders of the world Try It runs on.
   const { snapshot } = world;
   const placeholderNames = useMemo(() => Object.keys(snapshot().placeholders), [snapshot]);
@@ -420,11 +361,6 @@ export function ToolEditor({
         <p className="text-label font-medium truncate">{editing ? `Edit ${draft.name}` : 'New Tool'}</p>
         {fullscreenButton}
       </div>
-      {builtIn && (
-        <Hint className="flex-shrink-0">
-          Built-in Tools keep their definition. Change their prompts and call limit on the <strong>Availability</strong> tab.
-        </Hint>
-      )}
       <div
         data-testid="tool-editor-grid"
         className={cn(
@@ -439,10 +375,9 @@ export function ToolEditor({
           <PanelTabsList tabs={TOOL_EDIT_TABS} stripLabel="Tool Fields" labelClassName="hidden sm:inline" />
           <ScrollArea className="flex-1 min-h-0">
             <div className="pr-3 pb-1">
-              <DefinitionFieldsTab value="definition" locked={builtIn}><DefinitionTab {...body} /></DefinitionFieldsTab>
-              <DefinitionFieldsTab value="parameters" locked={builtIn}><ParametersTab {...body} /></DefinitionFieldsTab>
-              <DefinitionFieldsTab value="handler" locked={builtIn}><HandlerTab {...body} placeholderNames={placeholderNames} /></DefinitionFieldsTab>
-              <TabsContent value="availability" className="mt-0"><AvailabilityTab draft={draft} onChange={onDraftChange} /></TabsContent>
+              <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
+              <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} placeholderNames={placeholderNames} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>
