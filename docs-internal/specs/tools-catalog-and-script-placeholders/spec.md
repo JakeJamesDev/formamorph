@@ -1,7 +1,7 @@
 # More Built-in Tools, Script Placeholders, and Tool Editor Copy
 
-Status: ready-for-agent
-Status note: Draft. The user will keep iterating on it before tickets.
+Status: needs-info
+Status note: Draft. The user will keep iterating on it before tickets, then the status moves to ready-for-agent.
 
 Four parts. Each part can ship alone.
 
@@ -25,7 +25,7 @@ A Tool script reads the world, the scene, and its arguments, but not placeholder
 The Tool editor has four helper lines that do not match what the editor does:
 
 - The Description hint lists the outline headings, but **Add Outline** already writes them.
-- The lookup's "Matches names and aliases, in any case" line sits under **By Parameter** only. The **Search** field beside it has no hint, so the two columns fall out of line.
+- The lookup's match hint already changes with the source, but it sits under **By Parameter** only. The **Search** field beside it has no hint, so the two columns fall out of line. The text also does not name what it searches: "Matches names, in any case" reads the same for entities and locations.
 - The save footer says "Check Definition and Handler to save". The editor knows the exact problem but names only the tabs.
 - A parameter type reads "Yes/No". The script surface calls it `boolean`, and Try It reads the text `true`. The author sees two words for one type.
 
@@ -44,8 +44,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 **Editor copy.**
 
 - The Description hint becomes "Tells the AI what the Tool does and when to call it".
-- The lookup's match line moves to a full-width hint under the lookup grid, and names its source: "Matches entity names and aliases, in any case".
-- The save footer names each fix, such as "Name the Tool and pick a lookup parameter to save".
+- The lookup's match hint moves to a full-width hint under the lookup grid, and names its source: "Matches entity names and aliases, in any case".
+- The save footer names each fix, such as "Name the Tool and pick the parameter to search by to save". Each phrase is the same text the tab shows inline for that problem.
 - The boolean parameter type reads **True/False**.
 
 ## User Stories
@@ -68,7 +68,7 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 11. As a player, I want a built-in location lookup, so that the AI can read a location's full description without me writing a Tool.
 12. As a player, I want a built-in dictionary lookup, so that the AI can read a lore entry on demand.
 13. As a player, I want the location lookup to match location names in any case, so that the AI finds "the docks" when the location is "The Docks".
-14. As a player, I want the dictionary lookup to match trigger keywords, so that the AI finds an entry by the words that activate it.
+14. As a player, I want the dictionary lookup to match the entry name and its trigger keywords, so that the AI finds an entry by the name it saw in a lore block or by the words that activate it.
 15. As a player, I want a lookup that finds nothing to return an empty result, so that the AI knows the name was wrong.
 16. As a player, I want the location lookup to return the full description, so that the AI gets what the location summary leaves out.
 
@@ -77,7 +77,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 17. As a player, I want the AI to fetch an old event when the story returns to it, so that characters remember promises, gifts, and insults.
 18. As a player, I want recall to search turn digests, so that it finds events milestone memory dropped.
 19. As a player, I want recall to search diary entries, so that it finds what a character thought about an event.
-20. As a player, I want recall to skip turns the request already holds in full, so that it does not repeat recent text back to the AI.
+20. As a player, I want recall to skip the turns the request holds in full, so that it does not repeat recent text back to the AI.
+20a. As a player, I want recall to find the memory as I edited it, and never one I deleted, so that my Memory Manager changes hold in recall too.
 21. As a player, I want recall to return a small number of matches, so that one call cannot fill the context.
 22. As a player, I want each match to carry its turn number, so that the AI can order events in time.
 23. As a player, I want matches returned oldest first, so that the AI reads them as a story.
@@ -148,6 +149,7 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 
 - `get_location`: lookup source `locations`, by a `name` parameter, returns the full description.
 - `get_dictionary_entry`: lookup source `dictionary`, by a `keyword` parameter.
+- **The dictionary source matches the entry name too.** The AI sees an entry name only once that entry is in a lore block, and a keyword only from the story, so the lookup matches both. This changes user dictionary lookups the same way. It is a behavior change, not a stored-shape change.
 - The empty result matches the handler's output shape (`{"matches": []}`).
 
 ### Recall
@@ -155,8 +157,9 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - `recall` is a lookup Tool with a new source, `memories`, by a `query` parameter.
 - **The source is catalog-only in this spec.** The **Search** picker for user Tools does not offer it, and Tool validation rejects it on import. This keeps the stored Tool shape unchanged. Offering it to user Tools is an open question (see Further Notes).
 - The locked editor still shows the source's label, "Memories", so the built-in Tool reads correctly.
-- **What it searches:** each committed assistant turn's digest (`summary`) and each diary entry on that turn. Diary entries that read "nothing notable" are skipped.
-- **What it skips:** the turns the narration request already carries in full. Milestone digests that the request already carries are also skipped.
+- **What it searches:** each committed assistant turn's digest and each diary entry on that turn. Digests are read through `applyMemoryOverrides`, like every other memory consumer, so a player rewrite is the text recall finds and a deleted memory never returns. Diary entries that read "nothing notable" are skipped.
+- **Not searched:** hand-written memories from the Memory Manager. They ride every request in full already. The player's per-turn scene notes are not memory and are never searched.
+- **What it skips:** the verbatim floor, the last N turns the narration prompt carries in full, where N is the verbatim-turns setting. That is the one rule for every prompt the Tool is offered to. A kept milestone digest can come back as a match; recall returns digests, not narration, so the repeat is one line.
 - **Match rule:** lexical. The query and each record are split into lowercase words, with common stop words removed. A record scores by how many query words it holds. Records with a score of zero never match. Ties go to the newer turn.
 - **Limit:** at most five matches, then sorted oldest first.
 - **Output shape:** `{"matches": [{"turn": 12, "kind": "digest", "text": "..."}, {"turn": 14, "kind": "diary", "character": "Name", "text": "..."}]}`. The empty result is `{"matches": []}`.
@@ -164,7 +167,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 - The snapshot's memory list is not given to scripts in this spec. The script surface stays as it is.
 - The sample snapshot carries a few sample memories, so Try It shows the output shape with no world open.
 - **Hybrid mode.** When the semantic memory setting is on, recall ranks by meaning and by words together. When it is off, recall is lexical only, exactly as above.
-  - **Query vector.** Recall embeds the query through the existing embedding worker. Record vectors come from the embedding cache, which the drainer already fills for digests and diary entries. Recall adds no new download and no AI request.
+  - **Query vector.** Recall embeds the query through the existing embedding worker. Record vectors come from the embedding cache, which the drainer already fills. Recall adds no new download, no new embedding work, and no AI request.
+  - **Gate per record kind.** The drainer embeds digests when Semantic Memory and digests are on, and diary entries only when Diary Recall is also on. Recall follows those gates. With Diary Recall off, diary entries have no vectors and match by words only, through the fail-open rule below. Recall does not ask the drainer for vectors the settings did not request.
   - **Meaning match.** A record passes when its cosine similarity to the query clears the Scene Recall rule: at least the surface floor, and at least the median over all vectored candidates plus the Scene Recall margin. Below the Scene Recall minimum candidate count, only the floor applies. Digests use the Scene Recall floor, and diary entries use the Diary Recall floor. Recall reuses these constants and adds none of its own.
   - **Union.** A record matches when it passes the meaning match, or when its lexical score is above zero.
   - **Rank for the limit.** First the records that match both ways, then meaning-only matches, then word-only matches. Within a group, a higher score comes first, and ties go to the newer turn. The five survivors are then sorted oldest first, as in lexical mode.
@@ -188,7 +192,8 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 ### Script placeholders
 
 - The Tool Snapshot gains a frozen, name-keyed map of world-level placeholder values.
-- **Resolved only.** Each value is the text the snapshot's resolver produces for that placeholder's chip. The resolver is the one Template chips use today, so pins, rolls, and nested chips come out the same as in a prompt this turn.
+- **Resolved only.** Each value is the text the snapshot's resolver produces for that placeholder's chip in `world` mode, with the placeholder's own id as the placement id. `readPlaceholders` in `lib/placeholders.ts` already resolves a placeholder this way, and the snapshot builder goes through it, so there is one resolver. Pins, rolls, and nested chips come out the same as in a prompt this turn.
+- **Owner context.** Entity text resolves with the entity as its owner (`resolveEntity` on the live scene), and that context carries the entity's pins. An entity item's `placeholders` resolve under the same owner context, never under the world `resolve`, or a pinned value goes missing. Book-owned placeholders resolve the same way under the book. The snapshot builder needs the scene's owner-aware resolvers, not only `resolve`.
 - **Entity owned.** A placeholder scoped to an entity goes on that entity's item, under `placeholders`, not in the world-level map.
 - **Book owned.** A placeholder scoped to a dictionary book goes on each of that book's entries in `world.dictionary`, under `placeholders`, in the same form.
 - **First name wins.** When two placeholders in one map share a name, the first in list order keeps the key. The later one is not listed under that name.
@@ -203,17 +208,17 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 ### Editor copy
 
 - The Description hint changes to "Tells the AI what the Tool does and when to call it".
-- The match rule leaves **By Parameter**. It shows as one hint under the lookup grid, full width. Each source's text names what it searches:
+- The match hint leaves **By Parameter**. It shows as one hint under the lookup grid, full width. The per-source text stays, and each one now names what it searches:
   - Entities: "Matches entity names and aliases, in any case"
   - Locations: "Matches location names, in any case"
-  - Dictionary: "Matches dictionary keywords, in any case"
+  - Dictionary: "Matches dictionary names and keywords, in any case"
   - Memories: "Matches words in past turns and diaries, in any case"
 - The footer builds its sentence from the draft problems, not from the tab names. Each problem kind maps to one verb phrase, and the phrases join with "and". Examples:
   - An empty name: "Name the Tool".
   - A repeated name: "Rename the Tool".
   - An unnamed parameter: "Name parameter 2".
   - An enum with no options: "Add options to parameter 3".
-  - No lookup parameter: "Pick a lookup parameter".
+  - No lookup parameter: "Pick the parameter to search by". This is the Handler tab's inline text today; the footer reuses it, so one problem has one wording.
 - The tab strip's problem marks stay, so the author can still see which tab holds the fix.
 - The boolean type label becomes **True/False**. The stored value stays `boolean`.
 
@@ -221,8 +226,9 @@ All four new catalog Tools open in the Tool editor with the definition locked, l
 
 - A good test drives a public entry point and asserts what a player or the AI receives. It never asserts an internal helper's call.
 - **Tool runs:** the Tool runner's call entry, with a snapshot from the real snapshot builder, is the one seam for every new built-in Tool and for script placeholders. Prior art: the runner's existing lookup and script tests.
-  - Each lookup Tool: a hit, a case-insensitive hit, a miss that returns the empty result.
-  - Recall, lexical mode: a digest hit, a diary hit with its character, a carried turn that is skipped, the five-match limit, oldest-first order, a "nothing notable" entry that is skipped, a history with no digests, and a rolled-back turn that no longer matches.
+  - Each lookup Tool: a hit, a case-insensitive hit, a miss that returns the empty result. The dictionary lookup adds a hit by entry name.
+  - Recall, lexical mode: a digest hit, a diary hit with its character, a turn inside the verbatim floor that is skipped, a kept milestone outside the floor that still matches, a rewritten digest found by its new text and not its old, a deleted digest that never matches, a hand-written memory that never matches, the five-match limit, oldest-first order, a "nothing notable" entry that is skipped, a history with no digests, and a rolled-back turn that no longer matches.
+  - Recall, hybrid gate: with Diary Recall off, a diary entry that would match by meaning matches by words only.
   - Recall, hybrid mode, with fixed vectors: a meaning-only match that shares no words, a word-only match below the threshold, both-ways matches ranked first for the limit, a record with no vector that still matches by words, a failed query embed that returns the lexical result, and a same-cast world where the median margin keeps the result small. Prior art: the Scene Recall margin tests.
   - Roll: each notation form, a negative modifier, every limit edge, bad notation, and a total that equals the dice plus the modifier. Randomness is checked by range over many runs, never by a fixed value.
   - Scripts: a world placeholder read by name, an entity placeholder and a book placeholder read from their items, a pinned value, a nested chip resolved, a repeated name, an empty map in a world with none, and a write that does not change the value.
