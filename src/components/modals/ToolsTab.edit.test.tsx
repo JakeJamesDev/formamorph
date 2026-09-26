@@ -1,25 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
-import { useState } from 'react';
 import { render, screen, within, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import rawWorld from '../../../testing/baseline/sedge-landing.json';
 import type { Tool } from '@/types';
-import {
-  activeCatalogTools, activeUserTools, deleteTool, isBuiltInActive, saveTool, setToolOverride,
-  type PromptPresetStore, type PromptValues,
-} from '@/lib/promptPresets';
 import { migrateWorld } from '@/lib/version';
 import { authoredChipScene, type AuthoredWorld } from '@/lib/chipValues/authoredScene';
-import { buildToolSnapshot, type ToolSnapshot } from '@/lib/tools/toolSnapshot';
+import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
-import { ToolsTab } from './ToolsTab';
-import { EMPTY_TOOLS_VIEW, type ToolsView } from './toolsView';
+import { ToolsHarness as Harness } from '@/test/toolsTab';
+import { current, switchesOf, toolsState } from '@/test/toolsTabState';
 
 vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 
 /**
- * Edit mode and Try It, driven through the real preset-store operations and the real Tool Runner, so every
- * assertion reads the store the tab wrote or the result the runner returned.
+ * Edit mode and Try It, driven through the real store operations and the real Tool Runner, so every
+ * assertion reads the state the tab wrote or the result the runner returned.
  */
 
 const weather = (patch: Partial<Tool> = {}): Tool => ({
@@ -27,43 +22,12 @@ const weather = (patch: Partial<Tool> = {}): Tool => ({
     { name: 'place', type: 'string', description: 'Where.', required: true, options: [] },
   ],
   handler: { kind: 'template', body: 'Sunny in {{arg:place}}.' }, emptyResult: '{"matches": []}',
-  offeredTo: ['narration'], enabled: true, ...patch,
+  offeredTo: ['narration'], ...patch,
 });
 
-const userStore = (tools: Tool[] = []): PromptPresetStore => ({
-  activeId: 'mine', presets: [{ id: 'mine', name: 'Mine', values: {} as PromptValues, tools }],
-});
+const userStore = (tools: Tool[] = []) => toolsState(tools);
 
-let store: PromptPresetStore;
-
-function Harness({ initial, openWorld, fullscreen = false }: {
-  initial: PromptPresetStore; openWorld?: () => ToolSnapshot; fullscreen?: boolean;
-}) {
-  const [s, setS] = useState(initial);
-  const [view, setView] = useState<ToolsView>(EMPTY_TOOLS_VIEW);
-  store = s;
-  return (
-    <ToolsTab
-      catalogTools={activeCatalogTools(s)}
-      userTools={activeUserTools(s)}
-      builtinPreset={isBuiltInActive(s)}
-      toolsSupported
-      toolsEnabled
-      onSaveTool={(t) => setS((prev) => saveTool(prev, t))}
-      onDeleteTool={(id) => setS((prev) => deleteTool(prev, id))}
-      onSetOverride={(id, o) => setS((prev) => setToolOverride(prev, id, o))}
-      view={view}
-      onViewChange={setView}
-      presetSelector={<span>Preset</span>}
-      fullscreen={fullscreen}
-      onToggleFullscreen={() => {}}
-      appVersion="9.9.9"
-      openWorld={openWorld}
-    />
-  );
-}
-
-const saved = () => activeUserTools(store);
+const saved = () => current().tools;
 const list = () => within(screen.getByRole('navigation', { name: 'Tools' }));
 const tab = (name: string) => screen.getByRole('tab', { name });
 const saveButton = () => screen.getByRole('button', { name: 'Save Tool' });
@@ -113,8 +77,9 @@ describe('creating a Tool', () => {
       handler: { kind: 'lookup', source: 'entities', param: 'who', returns: 'full' },
       offeredTo: ['narration', 'choices'],
       callLimit: 7,
-      enabled: true,
     });
+    expect(switchesOf('mine')).toEqual({ [made.id]: true });
+    expect(switchesOf('other')).toEqual({});
     expect(screen.getByRole('heading', { level: 3 })).toHaveTextContent('find_person');
   });
 });
@@ -237,9 +202,9 @@ describe('Offered To', () => {
 });
 
 describe('the enabled bit', () => {
-  it('has no Enabled checkbox in the editor, and a save keeps the bit', async () => {
+  it('has no Enabled checkbox in the editor, and saving an edit leaves the preset’s switch off', async () => {
     const user = userEvent.setup();
-    await openEditor(user, [weather({ enabled: false })]);
+    await openEditor(user, [weather()]);
     for (const t of ['Definition', 'Parameters', 'Handler', 'Availability']) {
       await user.click(tab(t));
       expect(screen.queryByRole('checkbox', { name: 'Enabled' })).toBeNull();
@@ -247,7 +212,8 @@ describe('the enabled bit', () => {
     await user.click(tab('Definition'));
     await user.type(nameInput(), '_x');
     await user.click(saveButton());
-    expect(saved()[0]).toMatchObject({ name: 'get_weather_x', enabled: false });
+    expect(saved()[0]).toMatchObject({ name: 'get_weather_x' });
+    expect(switchesOf('mine')).toEqual({});
   });
 });
 
@@ -274,7 +240,7 @@ describe('name validation', () => {
   it.each([
     ['a bad character', 'get weather', 'Use only letters, digits, _ and -, from 1 to 64 characters'],
     ['a name over 64 characters', 'x'.repeat(65), 'Use only letters, digits, _ and -, from 1 to 64 characters'],
-    ['another Tool’s name', 'roll_dice', 'Another Tool in this preset uses this name'],
+    ['another Tool’s name', 'roll_dice', 'Another of your Tools uses this name'],
     ['a catalog name', 'get_entity', 'A built-in Tool uses this name'],
   ])('blocks Save on %s and says why', async (_, name, message) => {
     const user = userEvent.setup();

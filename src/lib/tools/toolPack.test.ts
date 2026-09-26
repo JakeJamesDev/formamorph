@@ -7,7 +7,7 @@ const tool = (patch: Partial<Tool> = {}): Tool => ({
   id: 'u-1', name: 'get_weather', description: 'Purpose: weather.', params: [
     { name: 'place', type: 'string', description: 'Where.', required: true, options: [] },
   ],
-  handler: { kind: 'template', body: 'Sunny in {{arg:place}}.' }, emptyResult: 'Nothing.', offeredTo: ['narration'], enabled: true, ...patch,
+  handler: { kind: 'template', body: 'Sunny in {{arg:place}}.' }, emptyResult: 'Nothing.', offeredTo: ['narration'], ...patch,
 });
 
 const script = tool({ id: 'u-2', name: 'roll_dice', handler: { kind: 'script', code: 'return 4;' } });
@@ -17,6 +17,12 @@ describe('the Tool pack', () => {
     const pack = buildToolPack([tool(), script], '9.9.9');
     expect(pack).toEqual({ formamorphTools: 1, appVersion: '9.9.9', tools: [tool(), script] });
     expect(parseToolPack(JSON.stringify(pack))).toEqual({ tools: [tool(), script], warnings: [] });
+  });
+
+  it('carries definitions only, dropping an enabled bit an older pack holds', () => {
+    const { tools } = parseToolPack(JSON.stringify({ formamorphTools: 1, tools: [{ ...tool(), enabled: true }] }));
+    expect(tools).toEqual([tool()]);
+    expect(JSON.stringify(buildToolPack(tools, '9.9.9'))).not.toContain('enabled');
   });
 
   it('rejects text that is not JSON, and JSON that is not a pack', () => {
@@ -64,7 +70,7 @@ describe('planToolImport', () => {
 describe('copyTool', () => {
   const [catalog] = TOOL_CATALOG;
 
-  it('copies a Tool under a _copy name with a fresh id, enabled as the source was', () => {
+  it('copies a Tool under a _copy name with a fresh id', () => {
     const copy = copyTool(catalog, [], 'fresh');
     expect(copy).toEqual({ ...catalog, id: 'fresh', name: 'get_entity_copy' });
   });

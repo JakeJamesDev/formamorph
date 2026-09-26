@@ -1,4 +1,4 @@
-import type { Tool, ToolOverrideMap } from '@/types';
+import type { Tool } from '@/types';
 
 /** The entity lookup. The description is the probed retrieve-first wording (narration-tool-call-probe). */
 const GET_ENTITY: Tool = {
@@ -14,10 +14,9 @@ const GET_ENTITY: Tool = {
   handler: { kind: 'lookup', source: 'entities', param: 'name', returns: 'full' },
   emptyResult: '{"matches": []}',
   offeredTo: ['narration'],
-  enabled: false,
 };
 
-/** The built-in Tools every preset can see. A preset changes only their `enabled` and `offeredTo`. */
+/** The built-in Tools every preset lists. A preset switches them on or off; the definitions never change. */
 export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY];
 
 const CATALOG_IDS = new Set(TOOL_CATALOG.map((t) => t.id));
@@ -25,12 +24,4 @@ const CATALOG_IDS = new Set(TOOL_CATALOG.map((t) => t.id));
 /** Whether `id` names a catalog Tool. */
 export function isCatalogToolId(id: string): boolean {
   return CATALOG_IDS.has(id);
-}
-
-/** The catalog as a preset sees it, with that preset's overrides applied. */
-export function applyToolOverrides(overrides: ToolOverrideMap): Tool[] {
-  return TOOL_CATALOG.map((tool) => {
-    const o = overrides[tool.id];
-    return o ? { ...tool, enabled: o.enabled, offeredTo: [...o.offeredTo] } : tool;
-  });
 }

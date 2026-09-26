@@ -1,6 +1,6 @@
-import type { AIRequestType, Tool, ToolHandler, ToolOverrideMap, ToolParam, ToolParamType } from '@/types';
+import type { AIRequestType, Tool, ToolEnabledMap, ToolHandler, ToolParam, ToolParamType } from '@/types';
 import { ALL_REQUEST_KINDS } from '@/lib/reasoningEffort';
-import { TOOL_CATALOG, isCatalogToolId } from './toolCatalog';
+import { TOOL_CATALOG } from './toolCatalog';
 
 /** The longest Tool name endpoints accept. */
 export const TOOL_NAME_MAX = 64;
@@ -8,7 +8,7 @@ export const TOOL_NAME_MAX = 64;
 /** The function-name rule endpoints enforce. */
 export const TOOL_NAME_PATTERN = new RegExp(`^[A-Za-z0-9_-]{1,${TOOL_NAME_MAX}}$`);
 
-/** Why a Tool name can't be saved: bad characters or length, used by another Tool in the preset, or a catalog name. */
+/** Why a Tool name can't be saved: bad characters or length, used by another user Tool, or a catalog name. */
 export type ToolNameProblem = 'format' | 'taken' | 'builtin';
 
 const sameName = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -56,12 +56,12 @@ function parseHandler(raw: unknown): ToolHandler | null {
 }
 
 /**
- * Validate an untrusted user Tool, such as one in an imported preset. Every field must be well-formed or the
+ * Validate an untrusted user Tool, such as one in a Tool pack or local storage. Every field must be well-formed or the
  * whole Tool is rejected with a reason; only prompt kinds from a newer version are dropped quietly.
  */
 export function parseTool(raw: unknown): { tool: Tool } | { error: string } {
   if (!isRecord(raw)) return { error: "it isn't a Tool" };
-  const { id, name, description, emptyResult, enabled, callLimit } = raw;
+  const { id, name, description, emptyResult, callLimit } = raw;
   if (typeof id !== 'string' || !id) return { error: 'it has no id' };
   if (typeof name !== 'string') return { error: 'it has no name' };
   const nameProblem = toolNameProblem(name, []);
@@ -84,24 +84,18 @@ export function parseTool(raw: unknown): { tool: Tool } | { error: string } {
   if (callLimit !== undefined && !(typeof callLimit === 'number' && Number.isInteger(callLimit) && callLimit >= 1)) {
     return { error: 'its call limit is not a whole number of 1 or more' };
   }
-  if (typeof enabled !== 'boolean') return { error: 'it has no enabled flag' };
   return {
     tool: {
       id, name, description, params, handler, emptyResult, offeredTo,
       ...(callLimit !== undefined ? { callLimit } : {}),
-      enabled,
     },
   };
 }
 
-/** Keep the well-formed overrides of Tools this catalog holds; undefined when none remain. */
-export function parseToolOverrides(raw: unknown): ToolOverrideMap | undefined {
+/** Keep the boolean entries whose id `keep` accepts; undefined when none remain. */
+export function parseToolEnabledMap(raw: unknown, keep: (id: string) => boolean = () => true): ToolEnabledMap | undefined {
   if (!isRecord(raw)) return undefined;
-  const out: ToolOverrideMap = {};
-  for (const [id, o] of Object.entries(raw)) {
-    if (!isCatalogToolId(id) || !isRecord(o) || typeof o.enabled !== 'boolean') continue;
-    const offeredTo = parseOfferedTo(o.offeredTo);
-    if (offeredTo) out[id] = { enabled: o.enabled, offeredTo };
-  }
+  const out: ToolEnabledMap = {};
+  for (const [id, on] of Object.entries(raw)) if (typeof on === 'boolean' && keep(id)) out[id] = on;
   return Object.keys(out).length ? out : undefined;
 }

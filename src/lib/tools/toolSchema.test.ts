@@ -8,7 +8,7 @@ const param = (name: string, over: Partial<ToolParam> = {}): ToolParam =>
 
 const tool = (params: ToolParam[], over: Partial<Tool> = {}): Tool => ({
   id: 't', name: 'peek', description: 'Purpose: look.', params, handler: { kind: 'template', body: 'x' },
-  emptyResult: '{}', offeredTo: ['narration'], enabled: true, ...over,
+  emptyResult: '{}', offeredTo: ['narration'], ...over,
 });
 
 describe('toolSchema', () => {

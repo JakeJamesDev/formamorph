@@ -50,8 +50,8 @@ import {
   setActive as setActivePreset, addPreset as addPresetOp, renamePreset as renamePresetOp, deletePreset as deletePresetOp, resetPreset as resetPresetOp, updateValue,
   activeSamplers, activeReasoning, activeReasoningBudget, activeMaxOutput, activeVerbatim, activePromptEndpoints,
   updateSamplers, updateReasoning, updateReasoningBudget, updateMaxOutput, updateVerbatim, updatePromptEndpoints, foldTuningIntoUserPresets,
-  addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset, storedToolSet,
-  activeUserTools, activeCatalogTools, saveTool as saveToolOp, deleteTool as deleteToolOp, setToolOverride as setToolOverrideOp,
+  addFullPreset, replacePreset, putDownloadedPreset, EMPTY_OVERVIEW, activeOverview, storedOverview, updateOverview, markEdited, linkPreset,
+  userToolsCodec, saveUserTool, deleteUserTool, activeEnabledTools, setToolEnabled as setToolEnabledOp, dropToolEverywhere,
   type PromptPresetStore, type PresetDownloadLink, type PresetOverview, type PromptValues, type VerbatimMap, type PromptPreset, type ReasoningMap,
 } from '../lib/promptPresets';
 import { buildSharedPreset, type SharedPreset, type ImportedPreset } from '../lib/promptPresetShare';
@@ -64,7 +64,8 @@ import {
   setPromptEndpoint as setRoutedEndpoint,
   type ResolvedPromptEndpoint,
 } from '../lib/promptEndpoints';
-import type { AIRequestType, Tool, ToolOverride } from '../types';
+import type { AIRequestType, Tool } from '../types';
+import { TOOL_CATALOG } from '../lib/tools/toolCatalog';
 import type { ParagraphLimit } from '../lib/outputLength';
 import {
   resolveReasoningCapability, storedAfterResolve, reasoningRereadsPerSession, isReasoningEngaged, parseReasoningSetting,
@@ -253,8 +254,7 @@ function importedPresetContent(imported: ImportedPreset, name: string, includeTu
     ...(includeTuning && imported.maxOutput ? { maxOutput: imported.maxOutput } : {}),
     ...(includeTuning && imported.verbatim ? { verbatim: imported.verbatim } : {}),
     ...(imported.overview ? { overview: imported.overview } : {}),
-    ...(imported.tools ? { tools: imported.tools } : {}),
-    ...(imported.toolOverrides ? { toolOverrides: imported.toolOverrides } : {}),
+    ...(imported.enabledTools ? { enabledTools: imported.enabledTools } : {}),
   };
 }
 
@@ -727,6 +727,8 @@ function useProvideSettings() {
   // context field + setter name; values derive from the active preset (Default = read-only shipped text),
   // and setters patch the active preset (a no-op under Default). See src/lib/promptPresets.ts.
   const [presetStore, setRawPresetStore] = usePersistentState<PromptPresetStore>(`${APP_ID}_promptPresets`, emptyStore, presetStoreCodec);
+  // The player's own Tools, one list for every preset; each preset stores only which Tools it switches on.
+  const [userTools, setUserTools] = usePersistentState<Tool[]>(`${APP_ID}_tools`, [], userToolsCodec);
 
   // A world can be pinned to a preset for the duration of play (see lib/worldPromptPreset). GameViewer sets
   // this on load and clears it on unmount; it is session state, never persisted — the player's global
@@ -832,13 +834,12 @@ function useProvideSettings() {
     [thinkingMode, reasoningEffort, promptReasoning],
   );
 
-  // The active preset's Tools (Settings → Tools).
-  const userTools = useMemo(() => activeUserTools(effectiveStore), [effectiveStore]);
-  const catalogTools = useMemo(() => activeCatalogTools(effectiveStore), [effectiveStore]);
+  // The Tools the active preset switches on (Settings → Tools).
+  const enabledTools = useMemo(() => activeEnabledTools(effectiveStore), [effectiveStore]);
   // A prompt offers a Tool, so play needs the tools answer before it sends any.
   const toolsOffered = useMemo(
-    () => [...catalogTools, ...userTools].some((tool) => tool.enabled && tool.offeredTo.length > 0),
-    [catalogTools, userTools],
+    () => [...TOOL_CATALOG, ...userTools].some((tool) => enabledTools[tool.id] === true && tool.offeredTo.length > 0),
+    [userTools, enabledTools],
   );
 
   // Resolve the endpoint's capability record once reasoning is engaged or a prompt offers a Tool, and only
@@ -945,7 +946,7 @@ function useProvideSettings() {
     // Built from the effective values, so "save as new" while pinned copies what is actually running.
     setRawPresetStore((s) => {
       const from = pinnedPresetId ? { ...s, activeId: pinnedPresetId } : s;
-      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from), storedToolSet(from));
+      const next = addPresetOp(from, id, name, activeValues(from, BUILTIN_VALUES), activeStyle(from), storedOverview(from), activeEnabledTools(from));
       return pinnedPresetId ? { ...next, activeId: s.activeId } : next;
     });
     if (pinnedPresetId) {
@@ -962,11 +963,14 @@ function useProvideSettings() {
     (patch: Partial<PresetOverview>) => editPresetStore((s) => updateOverview(s, patch)),
     [editPresetStore],
   );
-  // Tool setters (Settings → Tools). Every setter no-ops under a built-in preset.
-  const saveTool = useCallback((tool: Tool) => editPresetStore((s) => saveToolOp(s, tool)), [editPresetStore]);
-  const deleteTool = useCallback((id: string) => editPresetStore((s) => deleteToolOp(s, id)), [editPresetStore]);
-  const setToolOverride = useCallback(
-    (id: string, override: ToolOverride) => editPresetStore((s) => setToolOverrideOp(s, id, override)),
+  // Tool setters (Settings → Tools). The switch no-ops under a built-in preset; a deleted Tool leaves every preset.
+  const saveTool = useCallback((tool: Tool) => setUserTools((ts) => saveUserTool(ts, tool)), [setUserTools]);
+  const deleteTool = useCallback((id: string) => {
+    setUserTools((ts) => deleteUserTool(ts, id));
+    setRawPresetStore((s) => dropToolEverywhere(s, id));
+  }, [setUserTools, setRawPresetStore]);
+  const setToolEnabled = useCallback(
+    (id: string, on: boolean) => editPresetStore((s) => setToolEnabledOp(s, id, on)),
     [editPresetStore],
   );
   const deletePreset = (id: string) => setPresetStore((s) => deletePresetOp(s, id));
@@ -989,7 +993,7 @@ function useProvideSettings() {
   const activePresetName = BUILTIN_PRESETS.find((b) => b.id === effectiveStore.activeId)?.name
     ?? effectiveStore.presets.find((p) => p.id === effectiveStore.activeId)?.name ?? 'Preset';
   const exportActivePreset = (appVersion: string): SharedPreset =>
-    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), ...storedToolSet(effectiveStore) }, appVersion);
+    buildSharedPreset({ name: activePresetName, style: activeSectionStyle, values: promptValues, samplers: promptSamplers, reasoning: promptReasoningSettings, reasoningBudget: promptReasoningBudget, maxOutput: promptMaxOutput, verbatim: verbatimMap, overview: storedOverview(effectiveStore), enabledTools }, appVersion);
   const importPreset = (imported: ImportedPreset, opts: { includeTuning: boolean; name: string; overwriteId?: string }): string => {
     const content = importedPresetContent(imported, opts.name, opts.includeTuning);
     if (opts.overwriteId) { const target = opts.overwriteId; setPresetStore((s) => replacePreset(s, target, content)); return target; }
@@ -1727,10 +1731,10 @@ function useProvideSettings() {
     presetOverview,
     setPresetOverview,
     userTools,
-    catalogTools,
+    enabledTools,
     saveTool,
     deleteTool,
-    setToolOverride,
+    setToolEnabled,
     exportActivePreset,
     linkPresetToListing,
     importPreset,

@@ -18,7 +18,7 @@ vi.mock('@/lib/embeddingWorkerClient', () => ({
 
 const weather: Tool = {
   id: 'u-weather', name: 'get_weather', description: 'Purpose: weather.', params: [],
-  handler: { kind: 'template', body: 'Sunny.' }, emptyResult: '', offeredTo: ['narration'], enabled: true,
+  handler: { kind: 'template', body: 'Sunny.' }, emptyResult: '', offeredTo: ['narration'],
 };
 
 /** A user preset holding one Tool, as a player who made one would have. */

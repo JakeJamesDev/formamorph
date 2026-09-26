@@ -35,10 +35,10 @@ function paramProblem(param: ToolParam, params: readonly ToolParam[]): ParamProb
 export const blankTool = (id: string): Tool => ({
   id, name: '', description: '', params: [],
   handler: { kind: 'lookup', source: 'entities', param: '', returns: 'full' },
-  emptyResult: '{"matches": []}', offeredTo: ['narration'], enabled: true,
+  emptyResult: '{"matches": []}', offeredTo: ['narration'],
 });
 
-/** Every problem with `draft` among the preset's own `tools`. */
+/** Every problem with `draft` among the user `tools`. */
 export function draftProblems(draft: Tool, tools: readonly Tool[]): DraftProblems {
   const { handler, params } = draft;
   return {

@@ -20,7 +20,7 @@ import { DEFAULT_TOOL_ROUND_CAP, streamAiToolLoop, type AiToolLoopEvent, type Ai
 
 const world: AuthoredWorld = migrateWorld(structuredClone(rawWorld));
 const snapshot = buildToolSnapshot(authoredChipScene(world), world.dictionaries ?? []);
-const GET_ENTITY: Tool = { ...TOOL_CATALOG.find((t) => t.id === 'get_entity')!, enabled: true };
+const GET_ENTITY: Tool = TOOL_CATALOG.find((t) => t.id === 'get_entity')!;
 const BRAM_FACT = 'only one arm';
 const ODETTE_FACT = 'burn scar';
 

@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { Tool } from '@/types';
 import { SettingsProvider, useSettings } from './SettingsContext';
-import { presetStoreCodec, type PromptPresetStore } from '@/lib/promptPresets';
+import { presetStoreCodec, userToolsCodec, type PromptPresetStore } from '@/lib/promptPresets';
 
 // Keep the provider's endpoint probes off the network.
 vi.mock('@/lib/reasoningEffort', async () => {
@@ -16,22 +16,28 @@ vi.mock('@/lib/contextLength', async () => {
 });
 
 const PROMPTS_KEY = 'FORMAMORPH_promptPresets';
+const TOOLS_KEY = 'FORMAMORPH_tools';
 const wrapper = ({ children }: { children: ReactNode }) => <SettingsProvider>{children}</SettingsProvider>;
 const TOOL: Tool = {
   id: 't1', name: 'get_weather', description: 'Purpose: weather.', params: [],
-  handler: { kind: 'template', body: 'Sunny.' }, emptyResult: '', offeredTo: ['narration'], enabled: true,
+  handler: { kind: 'template', body: 'Sunny.' }, emptyResult: '', offeredTo: ['narration'],
 };
-const OVERRIDES = { get_entity: { enabled: true, offeredTo: ['narration' as const] } };
+const SWITCHES = { get_entity: true, t1: true };
 
 function seed(activeId: string) {
   const store: PromptPresetStore = {
     activeId,
-    presets: [{ id: 'mine', name: 'Mine', values: { systemPrompt: 'A' } as never, style: 'markdown', tools: [TOOL], toolOverrides: OVERRIDES }],
+    presets: [
+      { id: 'mine', name: 'Mine', values: { systemPrompt: 'A' } as never, style: 'markdown', enabledTools: SWITCHES },
+      { id: 'other', name: 'Other', values: { systemPrompt: 'B' } as never, style: 'markdown', enabledTools: { t1: true } },
+    ],
   };
   localStorage.setItem(PROMPTS_KEY, presetStoreCodec.serialize(store));
+  localStorage.setItem(TOOLS_KEY, userToolsCodec.serialize([TOOL]));
 }
 
 const stored = (id: string) => presetStoreCodec.parse(localStorage.getItem(PROMPTS_KEY)!).presets.find((p) => p.id === id);
+const storedTools = () => userToolsCodec.parse(localStorage.getItem(TOOLS_KEY) ?? '[]');
 
 beforeEach(() => {
   localStorage.clear();
@@ -42,42 +48,69 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
 });
 
-describe('SettingsContext: Tools in export, import and copy', () => {
-  it('exports a user preset with its Tools and overrides', () => {
+describe('SettingsContext: the global Tool list', () => {
+  it('lists the same user Tools under every preset, with each preset’s own switches', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    expect(result.current.userTools).toEqual([TOOL]);
+    expect(result.current.enabledTools).toEqual(SWITCHES);
+    act(() => { result.current.selectPreset('default'); });
+    expect(result.current.userTools).toEqual([TOOL]);
+    expect(result.current.enabledTools).toEqual({});
+  });
+
+  it('switches a Tool for the active preset only', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.setToolEnabled('t1', false); });
+    expect(stored('mine')?.enabledTools).toEqual({ get_entity: true, t1: false });
+    expect(stored('other')?.enabledTools).toEqual({ t1: true });
+  });
+
+  it('deletes a Tool from the list and from every preset’s switches', () => {
+    seed('mine');
+    const { result } = renderHook(() => useSettings(), { wrapper });
+    act(() => { result.current.deleteTool('t1'); });
+    expect(storedTools()).toEqual([]);
+    expect(stored('mine')?.enabledTools).toEqual({ get_entity: true });
+    expect(stored('other')).not.toHaveProperty('enabledTools.t1');
+  });
+});
+
+describe('SettingsContext: Tool switches in export, import and copy', () => {
+  it('exports a user preset’s catalog switches and none of its user Tools', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
     const shared = result.current.exportActivePreset('2.9.2');
-    expect(shared.tools).toEqual([TOOL]);
-    expect(shared.toolOverrides).toEqual(OVERRIDES);
+    expect(shared.enabledTools).toEqual({ get_entity: true });
+    expect(JSON.stringify(shared)).not.toContain('get_weather');
   });
 
-  it('exports Experimental with its shipped override and Default with none', () => {
+  it('exports Experimental with get_entity on and Default with no switches', () => {
     seed('experimental');
     const { result } = renderHook(() => useSettings(), { wrapper });
-    expect(result.current.exportActivePreset('2.9.2').toolOverrides).toEqual(OVERRIDES);
+    expect(result.current.exportActivePreset('2.9.2').enabledTools).toEqual({ get_entity: true });
     act(() => { result.current.selectPreset('default'); });
-    const shared = result.current.exportActivePreset('2.9.2');
-    expect('toolOverrides' in shared).toBe(false);
-    expect('tools' in shared).toBe(false);
+    expect('enabledTools' in result.current.exportActivePreset('2.9.2')).toBe(false);
   });
 
-  it('stores imported Tools with or without tuning', () => {
+  it('stores imported switches with or without tuning', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
-    const gift = { name: 'Gift', style: 'markdown' as const, values: { systemPrompt: 'X' } as never, tools: [TOOL], toolOverrides: OVERRIDES };
+    const gift = { name: 'Gift', style: 'markdown' as const, values: { systemPrompt: 'X' } as never, enabledTools: { get_entity: true } };
     let id = '';
     act(() => { id = result.current.importPreset(gift, { includeTuning: false, name: 'Gift' }); });
-    expect(stored(id)).toMatchObject({ tools: [TOOL], toolOverrides: OVERRIDES });
+    expect(stored(id)?.enabledTools).toEqual({ get_entity: true });
   });
 
-  it('copies Tools into a new preset, and a copy of Experimental keeps get_entity on', () => {
+  it('copies the switches into a new preset, and a copy of Experimental keeps get_entity on', () => {
     seed('mine');
     const { result } = renderHook(() => useSettings(), { wrapper });
     let id = '';
     act(() => { id = result.current.addPreset('Copy'); });
-    expect(stored(id)).toMatchObject({ tools: [TOOL], toolOverrides: OVERRIDES });
+    expect(stored(id)?.enabledTools).toEqual(SWITCHES);
     act(() => { result.current.selectPreset('experimental'); });
     act(() => { id = result.current.addPreset('Experimental Copy'); });
-    expect(stored(id)?.toolOverrides).toEqual(OVERRIDES);
+    expect(stored(id)?.enabledTools).toEqual({ get_entity: true });
   });
 });

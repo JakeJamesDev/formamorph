@@ -844,7 +844,7 @@ describe('dialects — one spelling per row', () => {
 describe('tools — sent only where the record says the target takes them', () => {
   const peek: Tool = {
     id: 't', name: 'peek', description: 'Purpose: look.', params: [], handler: { kind: 'template', body: 'x' },
-    emptyResult: '{}', offeredTo: ['narration'], enabled: true,
+    emptyResult: '{}', offeredTo: ['narration'],
   };
   const takesTools = (over: Partial<AiEndpointTarget> = {}) =>
     external({ reasoning: { ...accepts(), tools: true, sources: { tools: 'native' } }, ...over });
