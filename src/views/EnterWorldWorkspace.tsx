@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { SetupTraitList } from '@/components/game/SetupTraitList';
+import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
+import type { GateState } from '@/lib/traitGates';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -45,6 +46,10 @@ export interface EnterWorldWorkspaceProps {
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
   onTraitSelect: (traitId: string) => void;
+  traitGates?: ReadonlyMap<string, GateState>;
+  /** What the last selection change turned off; shown until dismissed or the next change. */
+  traitCascade?: TraitCascade | null;
+  onDismissTraitCascade?: () => void;
   onLocationChange: (locationId: string | null) => void;
   onEntityToggle: (entityId: string, selected: boolean) => void;
   onDictionaryItemsChange: (items: DictionarySelectionItem[]) => void;
@@ -293,6 +298,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               resolveText={props.resolveText}
               resolveTraitText={props.resolveTraitText}
               onTraitSelect={props.onTraitSelect}
+              gates={props.traitGates}
+              cascade={props.traitCascade}
+              onDismissCascade={props.onDismissTraitCascade}
             />
           )}
           {current?.kind === 'persona' && props.persona && props.onPersonaChange && (
@@ -300,6 +308,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               <p className="mb-4 text-helper text-muted-foreground">Choose who you play in this world</p>
+              {props.traitCascade && props.onDismissTraitCascade && (
+                <TraitCascadeNotice cascade={props.traitCascade} onDismiss={props.onDismissTraitCascade} />
+              )}
               <PersonaPicker
                 world={props.worldPersonas}
                 library={personaOptions}

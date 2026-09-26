@@ -91,6 +91,13 @@ export interface PlaceholderPin {
   valueId?: string;
 }
 
+/** One way to unlock a gated trait: a trait is active, any trait below a group is active, or the player plays
+ *  as a world entity. `name` is the target's name when it was stored, so an unresolved one still reads. */
+export type TraitRequirement =
+  | { kind: 'trait'; id: string; name?: string }
+  | { kind: 'group'; id: string; name?: string }
+  | { kind: 'playingAs'; id: string; name?: string };
+
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
 export interface TraitGroup {
   id: string;
@@ -128,6 +135,8 @@ export interface Trait {
   statToggles?: TraitStatToggle[];
   /** Placeholders held at a fixed value while this trait is active. */
   placeholderPins?: PlaceholderPin[];
+  /** Any one of these unlocks the trait. Absent or empty = always available. */
+  requires?: TraitRequirement[];
 }
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */

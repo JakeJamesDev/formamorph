@@ -1,0 +1,328 @@
+// Trait gates: which traits a requirement list unlocks, and what a selection settles to once every gate is
+// checked. The one owner of gate logic; the enter-world step and the in-play trait runtime call it.
+//
+// An owner is the world or an entity. Trait and group ids are unique across owners, so a requirement names
+// its target by id alone and a trait moved between owners keeps every requirement that points at it.
+
+import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
+import { collapseExclusiveDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
+
+/** The owner id of the world's own traits. */
+export const WORLD_OWNER = 'world';
+
+/** One owner's traits and groups. An entity owner's node sits in the world tree under `parentGroupId`. */
+export interface GateOwner {
+  id: string;
+  /** The entity's name, for "Ash's Tamed". Unused for the world. */
+  name: string;
+  traits: readonly Trait[];
+  groups: readonly TraitGroup[];
+  /** The world group an entity owner's node sits in; absent or null = top level. */
+  parentGroupId?: string | null;
+}
+
+/** A world entity a "playing as" requirement can name. */
+export interface GateEntity {
+  id: string;
+  name: string;
+  persona?: boolean;
+}
+
+export interface GateInput {
+  /** Every owner, the world first. */
+  owners: readonly GateOwner[];
+  /** Owner id → its active trait ids. */
+  active: Readonly<Record<string, readonly string[]>>;
+  entities: readonly GateEntity[];
+  persona: PersonaRef;
+}
+
+export interface RequirementState {
+  text: string;
+  holds: boolean;
+  unresolved: boolean;
+}
+
+export interface GateState {
+  unlocked: boolean;
+  /** Every requirement in authored order. Empty for an ungated trait. */
+  requirements: RequirementState[];
+}
+
+interface Located<T> { owner: GateOwner; item: T }
+
+/** Lookups built once per input: where each trait and group lives, and which traits sit below each group. */
+function index(input: GateInput) {
+  const traits = new Map<string, Located<Trait>>();
+  const groups = new Map<string, Located<TraitGroup>>();
+  for (const owner of input.owners) {
+    for (const trait of owner.traits) traits.set(trait.id, { owner, item: trait });
+    for (const group of owner.groups) groups.set(group.id, { owner, item: group });
+  }
+  const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
+
+  // Group id → every trait below it: its owner's traits in its subtree, plus the traits of entity nodes
+  // placed anywhere in that subtree.
+  const below = new Map<string, string[]>();
+  const collect = (groupId: string, owner: GateOwner): string[] => {
+    const cached = below.get(groupId);
+    if (cached) return cached;
+    below.set(groupId, []);
+    const ids = [
+      ...owner.traits.filter((t) => (t.groupId ?? null) === groupId).map((t) => t.id),
+      ...owner.groups.filter((g) => g.parentId === groupId).flatMap((g) => collect(g.id, owner)),
+      ...(owner.id === WORLD_OWNER
+        ? input.owners.filter((o) => o.id !== WORLD_OWNER && o.parentGroupId === groupId).flatMap((o) => o.traits.map((t) => t.id))
+        : []),
+    ];
+    below.set(groupId, ids);
+    return ids;
+  };
+  for (const { owner, item } of groups.values()) collect(item.id, owner);
+  return { traits, groups, entities, below };
+}
+
+type Index = ReturnType<typeof index>;
+
+const activeIds = (input: GateInput): Set<string> => new Set(Object.values(input.active).flat());
+
+function requirementText(req: TraitRequirement, from: GateOwner, idx: Index): { text: string; unresolved: boolean } {
+  if (req.kind === 'trait') {
+    const target = idx.traits.get(req.id);
+    if (!target) return { text: req.name ?? 'a missing trait', unresolved: true };
+    const prefix = target.owner.id !== WORLD_OWNER && target.owner.id !== from.id ? `${target.owner.name}'s ` : '';
+    return { text: `${prefix}${target.item.name}`, unresolved: false };
+  }
+  if (req.kind === 'group') {
+    const target = idx.groups.get(req.id);
+    return target
+      ? { text: `any ${target.item.name}`, unresolved: false }
+      : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true };
+  }
+  const entity = idx.entities.get(req.id);
+  return entity
+    ? { text: `playing as ${entity.name}`, unresolved: false }
+    : { text: `playing as ${req.name ?? 'a missing persona'}`, unresolved: true };
+}
+
+function holds(req: TraitRequirement, active: ReadonlySet<string>, idx: Index, persona: PersonaRef): boolean {
+  if (req.kind === 'trait') return active.has(req.id);
+  if (req.kind === 'group') return (idx.below.get(req.id) ?? []).some((id) => active.has(id));
+  return persona.source === 'world' && persona.entityId === req.id;
+}
+
+/** Each trait's gate against the input's active sets. */
+export function gateStates(input: GateInput): Map<string, GateState> {
+  const idx = index(input);
+  const active = activeIds(input);
+  const out = new Map<string, GateState>();
+  for (const { owner, item: trait } of idx.traits.values()) {
+    const requirements = (trait.requires ?? []).map((req) => {
+      const { text, unresolved } = requirementText(req, owner, idx);
+      return { text, unresolved, holds: !unresolved && holds(req, active, idx, input.persona) };
+    });
+    out.set(trait.id, { unlocked: requirements.length === 0 || requirements.some((r) => r.holds), requirements });
+  }
+  return out;
+}
+
+/** A trait and the owner it belongs to. */
+export interface GateTraitRef {
+  ownerId: string;
+  traitId: string;
+}
+
+export interface SettleResult {
+  /** Owner id → the settled active trait ids: the proposed order, then returned traits as they joined. */
+  active: Record<string, string[]>;
+  /** Proposed traits whose gate did not hold, dependents before their prerequisites. */
+  turnedOff: GateTraitRef[];
+  /** Cascade-off traits whose gate holds again, prerequisites first. */
+  returned: GateTraitRef[];
+  /** Owner id → the traits a cascade has turned off and that may still return. */
+  cascadeOff: Record<string, string[]>;
+}
+
+/** Every trait's position across owners: the world's tree first, then each owner's in input order. */
+function authoredRank(input: GateInput): Map<string, number> {
+  const rank = new Map<string, number>();
+  for (const owner of input.owners) {
+    const base = rank.size;
+    for (const [id, i] of traitOrderIndex(owner.traits, owner.groups)) rank.set(id, base + i);
+  }
+  return rank;
+}
+
+/** Whether `req` could be met by `id` being active. */
+const metBy = (req: TraitRequirement, id: string, idx: Index): boolean =>
+  (req.kind === 'trait' && req.id === id) || (req.kind === 'group' && (idx.below.get(req.id) ?? []).includes(id));
+
+/** Order turned-off traits so each comes before every trait it required; ties and loops go by authored rank. */
+function cascadeOrder(off: Located<Trait>[], idx: Index, rank: ReadonlyMap<string, number>): Located<Trait>[] {
+  const byRank = [...off].sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+  const prerequisites = new Map(byRank.map((d) => [d.item.id, byRank.filter((p) =>
+    p !== d && (d.item.requires ?? []).some((req) => metBy(req, p.item.id, idx)))]));
+  const dependents = new Map(byRank.map((p) => [p.item.id, 0]));
+  for (const list of prerequisites.values()) for (const p of list) dependents.set(p.item.id, dependents.get(p.item.id)! + 1);
+  const out: Located<Trait>[] = [];
+  const left = new Set(byRank);
+  while (left.size) {
+    const next = byRank.find((t) => left.has(t) && dependents.get(t.item.id) === 0) ?? byRank.find((t) => left.has(t))!;
+    left.delete(next);
+    out.push(next);
+    for (const p of prerequisites.get(next.item.id)!) dependents.set(p.item.id, dependents.get(p.item.id)! - 1);
+  }
+  return out;
+}
+
+/**
+ * Settle the proposed active sets against every gate. The settled set grows from the ground up: a proposed
+ * trait joins once its gate holds against what has joined so far, until nothing joins. Traits that only
+ * require each other never join, because neither is in the set when the other is checked.
+ *
+ * A trait in `cascadeOff` joins the same way, so it returns once its gate holds again. One whose exclusive
+ * sibling is proposed stays off and leaves the list: the player picked the sibling since.
+ */
+export function settle(input: GateInput, cascadeOff: Readonly<Record<string, readonly string[]>> = {}): SettleResult {
+  const idx = index(input);
+  const locate = (ids: Iterable<string>) =>
+    [...ids].map((id) => idx.traits.get(id)).filter((t): t is Located<Trait> => !!t);
+  const proposedIds = activeIds(input);
+  const proposed = locate(proposedIds);
+  const siblingPicked = (t: Located<Trait>) =>
+    exclusiveSiblings(t.item, t.owner.traits, t.owner.groups).some((id) => proposedIds.has(id));
+  const waiting = locate(Object.values(cascadeOff).flat()).filter((t) => !proposedIds.has(t.item.id));
+  const rank = authoredRank(input);
+  const candidates = waiting.filter((t) => !siblingPicked(t))
+    .sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+
+  const kept = new Set<string>();
+  const returned: Located<Trait>[] = [];
+  const opens = (trait: Trait) => {
+    const reqs = trait.requires ?? [];
+    return reqs.length === 0 || reqs.some((req) => holds(req, kept, idx, input.persona));
+  };
+  const rivalKept = (t: Located<Trait>) =>
+    exclusiveSiblings(t.item, t.owner.traits, t.owner.groups).some((id) => kept.has(id));
+  for (let joined = true; joined;) {
+    joined = false;
+    for (const t of proposed) {
+      if (kept.has(t.item.id) || !opens(t.item)) continue;
+      kept.add(t.item.id);
+      joined = true;
+    }
+    for (const t of candidates) {
+      if (kept.has(t.item.id) || rivalKept(t) || !opens(t.item)) continue;
+      kept.add(t.item.id);
+      returned.push(t);
+      joined = true;
+    }
+  }
+
+  // An id no owner holds has no gate to check, so it stays: a save keeps a trait the world has since deleted.
+  const stays = (id: string) => kept.has(id) || !idx.traits.has(id);
+  const active: Record<string, string[]> = {};
+  for (const owner of input.owners) {
+    active[owner.id] = [
+      ...(input.active[owner.id] ?? []).filter(stays),
+      ...returned.filter((t) => t.owner === owner).map((t) => t.item.id),
+    ];
+  }
+  const off = cascadeOrder(proposed.filter((t) => !kept.has(t.item.id)), idx, rank);
+  const stillWaiting = candidates.filter((t) => !kept.has(t.item.id));
+  const nextCascadeOff: Record<string, string[]> = {};
+  for (const owner of input.owners) {
+    nextCascadeOff[owner.id] = [...off, ...stillWaiting].filter((t) => t.owner === owner).map((t) => t.item.id);
+  }
+  const ref = (t: Located<Trait>): GateTraitRef => ({ ownerId: t.owner.id, traitId: t.item.id });
+  return { active, turnedOff: off.map(ref), returned: returned.map(ref), cascadeOff: nextCascadeOff };
+}
+
+/**
+ * Switch one trait on or off, then settle. Switching on retires its exclusive siblings first, so the
+ * cascade sees the retirement. A locked trait cannot switch on: the result is null.
+ */
+export function switchTrait(
+  input: GateInput, ownerId: string, traitId: string, cascadeOff: Readonly<Record<string, readonly string[]>> = {},
+): SettleResult | null {
+  const current = input.active[ownerId] ?? [];
+  let next: string[];
+  if (current.includes(traitId)) {
+    next = current.filter((id) => id !== traitId);
+  } else {
+    if (gateStates(input).get(traitId)?.unlocked === false) return null;
+    const owner = input.owners.find((o) => o.id === ownerId);
+    const trait = owner?.traits.find((t) => t.id === traitId);
+    const retire = new Set(owner && trait ? exclusiveSiblings(trait, owner.traits, owner.groups) : []);
+    next = [...current.filter((id) => !retire.has(id)), traitId];
+  }
+  return settle({ ...input, active: { ...input.active, [ownerId]: next } }, cascadeOff);
+}
+
+/** Every owner's default traits, one per exclusive group, settled so a gated default whose chain has no open
+ *  root starts unselected. */
+export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
+  const active: Record<string, string[]> = {};
+  for (const owner of input.owners) {
+    const traits = [...owner.traits];
+    const groups = [...owner.groups];
+    active[owner.id] = collapseExclusiveDefaults(traits.filter((t) => t.isDefault).map((t) => t.id), traits, groups);
+  }
+  return settle({ ...input, active });
+}
+
+/**
+ * The traits no selection can ever unlock, grouped into sets of traits that require one another. A trait
+ * is unlockable when a chain of its requirements reaches a trait with none, a world persona, or a group
+ * holding such a trait. So "A requires B or C, B requires A" passes, because C opens A.
+ */
+export function neverUnlockable(input: Omit<GateInput, 'active'>): string[][] {
+  const idx = index({ ...input, active: {} });
+  const personas = new Set(input.entities.filter((e) => e.persona).map((e) => e.id));
+  const open = new Set<string>();
+  const canHold = (req: TraitRequirement) => {
+    if (req.kind === 'playingAs') return personas.has(req.id);
+    if (req.kind === 'trait') return open.has(req.id);
+    return (idx.below.get(req.id) ?? []).some((id) => open.has(id));
+  };
+  const all = [...idx.traits.values()];
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const { item } of all) {
+      if (open.has(item.id)) continue;
+      const reqs = item.requires ?? [];
+      if (reqs.length > 0 && !reqs.some(canHold)) continue;
+      open.add(item.id);
+      grew = true;
+    }
+  }
+
+  const rank = authoredRank({ ...input, active: {} });
+  const stuck = all.filter((t) => !open.has(t.item.id))
+    .sort((a, b) => (rank.get(a.item.id) ?? 0) - (rank.get(b.item.id) ?? 0));
+  const root = new Map(stuck.map((t) => [t.item.id, t.item.id]));
+  const find = (id: string): string => (root.get(id) === id ? id : find(root.get(id)!));
+  for (const d of stuck) {
+    for (const p of stuck) {
+      if (p !== d && (d.item.requires ?? []).some((req) => metBy(req, p.item.id, idx))) root.set(find(d.item.id), find(p.item.id));
+    }
+  }
+  const sets = new Map<string, string[]>();
+  for (const t of stuck) {
+    const key = find(t.item.id);
+    sets.set(key, [...(sets.get(key) ?? []), t.item.id]);
+  }
+  return [...sets.values()];
+}
+
+/** The gate input for a world with only its own traits, as the enter-world step uses it. */
+export const worldGateInput = (
+  world: { traits: readonly Trait[]; groups: readonly TraitGroup[]; entities: readonly GateEntity[] },
+  persona: PersonaRef,
+  active: readonly string[] = [],
+): GateInput => ({
+  owners: [{ id: WORLD_OWNER, name: '', traits: world.traits, groups: world.groups }],
+  active: { [WORLD_OWNER]: active },
+  entities: world.entities,
+  persona,
+});

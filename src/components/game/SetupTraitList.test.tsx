@@ -76,3 +76,42 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(onTraitSelect).toHaveBeenCalledWith('scholar');
   });
 });
+
+describe('SetupTraitList gates', () => {
+  const req = (text: string, holds: boolean) => ({ text, holds, unresolved: false });
+  const gates = new Map([
+    ['dockhand', { unlocked: false, requirements: [req('Paladin', false), req('Knight', false)] }],
+    ['scholar', { unlocked: true, requirements: [req('Mage', true), req('any Class', false)] }],
+  ]);
+
+  it('keeps a locked trait in place, disabled, and says what it requires', () => {
+    view({ gates, exclusive: false });
+    expect(screen.getByRole('checkbox', { name: 'Dockhand' })).toBeDisabled();
+    expect(screen.getByText('Requires Paladin or Knight')).toBeInTheDocument();
+  });
+
+  it('disables a locked radio in an exclusive group', () => {
+    view({ gates });
+    expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: 'Scholar' })).toBeEnabled();
+  });
+
+  it('names only the requirements that unlocked an open gated trait', () => {
+    view({ gates, exclusive: false });
+    expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
+    expect(screen.getByText('Unlocked by Mage')).toBeInTheDocument();
+  });
+
+  it('shows a dismissible banner naming what a change turned off and why', () => {
+    const onDismissCascade = vi.fn();
+    view({ cascade: { off: ['Plate Armor', 'Shield'], because: 'Rogue' }, onDismissCascade });
+    expect(screen.getByRole('status')).toHaveTextContent('Turned off Plate Armor and Shield, because of Rogue.');
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(onDismissCascade).toHaveBeenCalled();
+  });
+
+  it('shows no banner when nothing turned off', () => {
+    view();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});

@@ -61,7 +61,10 @@ import type { UpdateRow } from '@/lib/componentUpdates';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
-import { exclusiveSiblings, collapseExclusiveDefaults } from '@/lib/traitEffects';
+import {
+  WORLD_OWNER, gateStates, settle, settleDefaults, switchTrait, worldGateInput, type SettleResult,
+} from '@/lib/traitGates';
+import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
@@ -1332,15 +1335,36 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setDraftDictionary({ id: randomUUID(), name: 'New Dictionary', enabled: true, entries: [] });
   };
 
+  // The starting selection's gates, and the banner naming what the last change turned off.
+  const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
+  const gateInput = (traitIds: readonly string[], persona: PersonaRef) =>
+    worldGateInput({ traits, groups: traitGroups, entities: resolvedWorldEntities }, persona, traitIds);
+  const traitGates = useMemo(
+    () => gateStates(worldGateInput({ traits, groups: traitGroups, entities: resolvedWorldEntities }, entryDraft.persona, selectedTraits)),
+    [traits, traitGroups, resolvedWorldEntities, entryDraft.persona, selectedTraits],
+  );
+  const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
+    const names = result.turnedOff.map((ref) => traits.find((t) => t.id === ref.traitId)?.name ?? ref.traitId);
+    return names.length ? { off: names, because } : null;
+  };
+
   // Toggle a trait in the starting selection. Picking one from an exclusive group retires its siblings,
   // which is what makes that group read (and behave) as a set of radio buttons.
   const handleTraitSelection = (traitId: string) => {
-    const trait = traits.find(t => t.id === traitId);
-    updateDraft('traitIds', prev => {
-      if (prev.includes(traitId)) return prev.filter(id => id !== traitId);
-      const retire = trait ? new Set(exclusiveSiblings(trait, traits, traitGroups)) : new Set<string>();
-      return [...prev.filter(id => !retire.has(id)), traitId];
-    });
+    const result = switchTrait(gateInput(selectedTraits, entryDraft.persona), WORLD_OWNER, traitId);
+    if (!result) return;
+    updateDraft('traitIds', result.active[WORLD_OWNER]);
+    setTraitCascade(cascadeFrom(result, traits.find((t) => t.id === traitId)?.name ?? ''));
+  };
+
+  // A persona pick can open or close "playing as" gates, so the traits settle against the new persona.
+  const handlePersonaChange = (ref: PersonaRef) => {
+    const next = withPersonaPick(entryDraft, ref, personaPickContext);
+    const result = settle(gateInput(next.traitIds, ref));
+    reviseDraft(() => ({ ...next, traitIds: result.active[WORLD_OWNER] }));
+    const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
+      : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
+    setTraitCascade(cascadeFrom(result, picked?.name ?? 'the persona change'));
   };
 
   /** The signed-in account, for the author line that tells two same-named library items apart. */
@@ -1523,17 +1547,18 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setShowWorldModal(true);
       return;
     }
-    const defaults = collapseExclusiveDefaults(
-      rawTraits.filter(t => t.isDefault).map(t => t.id), rawTraits, rawTraitGroups);
     const additions = restoreWorldAdditionDefaults(
       selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities);
     const persona = personaPreselect(selectedWorld!.id);
+    const defaults = settleDefaults(
+      worldGateInput({ traits: rawTraits, groups: rawTraitGroups, entities: worldEntities }, persona)).active[WORLD_OWNER];
     // The persona wins a tie with a remembered character, and a world persona preselects its location.
     const draft = withPersonaPick(
       { ...emptyEntryDraft(), traitIds: defaults, ...additions }, persona, personaPickContext);
     cancelEntryResolution();
     entryStarted.current = false;
     setEntryDraft(draft);
+    setTraitCascade(null);
     setShowWorldModal(false);
     beginSession();
     const steps = enterFlowSteps();
@@ -2684,9 +2709,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         // For uploaded worlds, use the worldData from context
                         const currentWorldData = selectedWorld!.data;
                         // Skip the setup steps but honor the author's default trait choices.
-                        const defaults = collapseExclusiveDefaults(
-                          traits.filter((t) => t.isDefault).map((t) => t.id), traits, traitGroups);
                         const persona = personaPreselect(selectedWorld!.id);
+                        const defaults = settleDefaults(worldGateInput(
+                          { traits, groups: traitGroups, entities: resolvedWorldEntities }, persona)).active[WORLD_OWNER];
                         // A world persona starts at its own starting location; any other start stays random.
                         const draft = withPersonaPick({
                           ...emptyEntryDraft(), traitIds: defaults,
@@ -3111,10 +3136,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           personas={personaOffer.library}
           personaNone={personaOffer.none}
           persona={entryDraft.persona}
-          onPersonaChange={(ref) => reviseDraft((draft) => withPersonaPick(draft, ref, personaPickContext))}
+          onPersonaChange={handlePersonaChange}
           categoryIndex={entryDraft.traitSection}
           onCategoryChange={(index) => updateDraft('traitSection', index)}
           onTraitSelect={handleTraitSelection}
+          traitGates={traitGates}
+          traitCascade={traitCascade}
+          onDismissTraitCascade={() => setTraitCascade(null)}
           onLocationChange={(id) => reviseDraft((draft) => withLocationPick(draft, id))}
           onEntityToggle={(id, selected) => updateDraft('entityIds', (current) => {
             const next = new Set(current);
