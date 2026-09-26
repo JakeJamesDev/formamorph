@@ -32,14 +32,13 @@ const iconButton = 'rounded p-1 text-muted-foreground hover:bg-accent hover:text
  * the selected one, and the footer actions. Laid out like the stat Code Templates dialog.
  */
 export function ToolsTab({
-  catalogTools, userTools, enabledTools, builtinPreset, toolsSupported, toolsEnabled, onSaveTool, onDeleteTool, onSetEnabled,
+  catalogTools, userTools, enabledTools, toolsSupported, toolsEnabled, onSaveTool, onDeleteTool, onSetEnabled,
   view, onViewChange, presetSelector, fullscreen, onToggleFullscreen, appVersion, fileTransfer, openWorld,
 }: {
   catalogTools: readonly Tool[];
   userTools: readonly Tool[];
   /** The active preset's switches. */
   enabledTools: ToolEnabledMap;
-  builtinPreset: boolean;
   /** Whether the active text endpoint and model take Tools. */
   toolsSupported: boolean;
   /** The global Tools switch in Settings → Output. */
@@ -58,14 +57,13 @@ export function ToolsTab({
   openWorld?: () => ToolSnapshot;
 }) {
   const [confirmDelete, setConfirmDelete] = useState<Tool | null>(null);
-  const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const world: TryItWorld = { snapshot: openWorld ?? sampleToolSnapshot, open: !!openWorld };
 
   const mine = [...userTools].sort((a, b) => a.name.localeCompare(b.name));
   const all = [...catalogTools, ...mine];
   const selected = all.find((t) => t.id === view.selectedId) ?? all[0];
-  const select = (selectedId: string | null) => { setDuplicateBlocked(false); onViewChange({ ...view, selectedId }); };
+  const select = (selectedId: string | null) => onViewChange({ ...view, selectedId });
 
   // Named like the prompt panel's toggle: the full-screen shell hands focus back by this label.
   const fullscreenButton = (
@@ -77,7 +75,6 @@ export function ToolsTab({
   );
 
   const duplicate = (tool: Tool) => {
-    if (builtinPreset) { setDuplicateBlocked(true); return; }
     const copy = copyTool(tool, userTools, randomUUID());
     onSaveTool(copy);
     onSetEnabled(copy.id, true);
@@ -187,7 +184,7 @@ export function ToolsTab({
               <p className="text-meta text-muted-foreground">My Tools</p>
               <span className="flex items-center">
                 <Tip tip="Import Tools">
-                  <button type="button" aria-label="Import Tools" disabled={builtinPreset} className={iconButton} onClick={requestImport}>
+                  <button type="button" aria-label="Import Tools" className={iconButton} onClick={requestImport}>
                     <ActionIcon.import className="h-3.5 w-3.5" />
                   </button>
                 </Tip>
@@ -202,9 +199,8 @@ export function ToolsTab({
 
             <button
               type="button"
-              disabled={builtinPreset}
               onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID()), editTab: 'definition' })}
-              className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+              className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus className="h-4 w-4" />New Tool
             </button>
@@ -222,7 +218,6 @@ export function ToolsTab({
                 <label className="flex items-center gap-2 text-label flex-shrink-0">
                   <Checkbox
                     checked={enabledTools[selected.id] === true}
-                    disabled={builtinPreset}
                     onCheckedChange={(c) => onSetEnabled(selected.id, c === true)}
                   />
                   Enabled
@@ -238,11 +233,6 @@ export function ToolsTab({
       {/* Fixed: the actions keep their place whichever Tool is selected. */}
       {selected && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-3 flex-shrink-0">
-          {duplicateBlocked && (
-            <p role="status" className="mr-auto text-helper text-muted-foreground">
-              Built-in presets are read-only. Duplicate the preset first, then duplicate this Tool into it.
-            </p>
-          )}
           {builtInSelected ? (
             <Button variant="outline" onClick={() => duplicate(selected)}>
               <Copy className="h-4 w-4 mr-1" />Duplicate

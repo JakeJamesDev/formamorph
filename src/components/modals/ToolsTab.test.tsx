@@ -47,10 +47,19 @@ describe('the list', () => {
     expect(listed()).toEqual(['get_entity', 'get_weather', 'roll_dice', 'New Tool']);
   });
 
-  it('keeps New Tool and Import off on a built-in preset', () => {
-    render(<Harness initial={builtinState()} />);
-    expect(list().getByRole('button', { name: 'New Tool' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Import Tools' })).toBeDisabled();
+  it('offers New Tool and Import on a built-in preset, and an import arrives switched off', async () => {
+    const user = userEvent.setup();
+    const transfer: ToolFileTransfer = {
+      writeExportPack: vi.fn(),
+      readImportPack: vi.fn(async () => JSON.stringify({ formamorphTools: 1, tools: [tool()] })),
+    };
+    render(<Harness initial={builtinState()} fileTransfer={transfer} />);
+    await user.click(screen.getByRole('button', { name: 'Import Tools' }));
+    await waitFor(() => expect(current().tools.map((t) => t.name)).toEqual(['get_weather']));
+    expect(switchesOf('experimental')).toEqual({ get_entity: true });
+
+    await user.click(list().getByRole('button', { name: 'New Tool' }));
+    expect(screen.getByText('New Tool')).toBeInTheDocument();
   });
 });
 
@@ -101,10 +110,18 @@ describe('Enabled', () => {
     expect(switchesOf('mine')).toEqual({ 'u-weather': true });
   });
 
-  it('is disabled on a built-in preset and shows its shipped setting', () => {
-    render(<Harness initial={builtinState()} />);
-    expect(enabledBox()).toBeDisabled();
+  it('shows a built-in preset’s shipped setting and switches it for that built-in only', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={builtinState([tool()])} />);
     expect(enabledBox()).toBeChecked();
+    await user.click(enabledBox());
+    expect(enabledBox()).not.toBeChecked();
+    await user.click(list().getByRole('button', { name: 'get_weather' }));
+    await user.click(enabledBox());
+    expect(switchesOf('experimental')).toEqual({ get_entity: false, 'u-weather': true });
+    expect(switchesOf('default')).toEqual({});
+    expect(switchesOf('mine')).toEqual({});
+    expect(current().store).toEqual(builtinState([tool()]).store);
   });
 });
 
@@ -122,12 +139,15 @@ describe('Duplicate', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
-  it('asks for a preset copy first on a built-in preset and saves nothing', async () => {
+  it('copies a built-in Tool on a built-in preset, switched on for that built-in only', async () => {
     const user = userEvent.setup();
     render(<Harness initial={builtinState()} />);
     await user.click(screen.getByRole('button', { name: 'Duplicate' }));
-    expect(screen.getByRole('status')).toHaveTextContent('Duplicate the preset first');
-    expect(current()).toEqual(builtinState());
+    const [copy] = current().tools;
+    expect(copy).toMatchObject({ name: 'get_entity_copy' });
+    expect(switchesOf('experimental')).toEqual({ get_entity: true, [copy.id]: true });
+    expect(switchesOf('default')).toEqual({});
+    expect(switchesOf('mine')).toEqual({});
   });
 });
 

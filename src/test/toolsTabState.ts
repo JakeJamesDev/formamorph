@@ -1,11 +1,12 @@
 import { fireEvent, screen } from '@testing-library/react';
 import type { Tool, ToolEnabledMap } from '@/types';
-import { activeEnabledTools, type PromptPresetStore, type PromptValues } from '@/lib/promptPresets';
+import { activeEnabledTools, type BuiltinToolSwitches, type PromptPresetStore, type PromptValues } from '@/lib/promptPresets';
 
-/** What the Tools harness holds: the global user Tool list and the preset store. */
+/** What the Tools harness holds: the global user Tool list, the preset store, and the built-in switches. */
 export interface ToolsState {
   tools: Tool[];
   store: PromptPresetStore;
+  builtinSwitches: BuiltinToolSwitches;
 }
 
 const values = {} as PromptValues;
@@ -17,6 +18,7 @@ export const toolsState = (tools: Tool[] = [], enabled: ToolEnabledMap = {}, act
     activeId,
     presets: [{ id: 'mine', name: 'Mine', values, enabledTools: enabled }, { id: 'other', name: 'Other', values }],
   },
+  builtinSwitches: {},
 });
 
 let latest: ToolsState;
@@ -25,6 +27,6 @@ export const recordState = (s: ToolsState) => { latest = s; };
 /** The state the tab last rendered with. */
 export const current = () => latest;
 /** The switches preset `presetId` holds in the current state. */
-export const switchesOf = (presetId: string) => activeEnabledTools({ ...latest.store, activeId: presetId });
+export const switchesOf = (presetId: string) => activeEnabledTools({ ...latest.store, activeId: presetId }, latest.builtinSwitches);
 /** Choose a preset in the tab's selector. */
 export const choosePreset = (presetId: string) => fireEvent.change(screen.getByRole('combobox', { name: 'Preset' }), { target: { value: presetId } });
