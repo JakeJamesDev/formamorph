@@ -206,7 +206,7 @@ Gates on world traits come first and ship on their own. Owned traits, the one tr
 - **Save.** Extend the trait save round-trip test with per-owner owned state, the cascade-off list, picks kept across a persona switch, and state dropped for a removed entity.
 - **Trait runtime.** Extend its tests so that a cascade in play reverses stats honestly and toggling stays neutral.
 - **UI wiring only.** Component tests on the trait panel (prior art: `TraitManager.test.tsx`) for the Requires field, and on the setup trait list for disabled rows and the banner. Logic stays in the gate module's tests.
-- **Test Bench.** New rules for requirement cycle, unresolved requirement, and gated default. The prior art is the existing pin rules.
+- **Test Bench.** New rules for never-unlockable sets, unresolved requirement, and gated default. The prior art is the existing pin rules. One finding per root cause: the never-unlockable rule treats a trait with an unresolved requirement as openable, so a dead target is reported once, and any loop behind it shows after the author fixes it. The gated-default warning fires only when the default starts unselected under every persona choice the world offers, and skips a default the two error rules already report. The Requires field is Simple-mode visible, so none of the three rules is `advanced`.
 - **Persona start.** Extend the persona pick tests: the explicit field wins, Automatic falls back, an unflagged location is offered while its persona is picked, and a switch away drops it.
 - **Pins.** Extend the pin collector and Test Bench lens tests: an NPC's owned trait pins, and a player trait wins the same placeholder.
 
