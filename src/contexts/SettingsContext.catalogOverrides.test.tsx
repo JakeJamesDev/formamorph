@@ -27,7 +27,9 @@ describe('SettingsContext: catalog Tool overrides', () => {
     act(() => { result.current.saveTool({ ...GET_ENTITY, description: 'changed', offeredTo: ['choices'], callLimit: 2 }); });
 
     expect(result.current.userTools).toEqual([]);
-    expect(result.current.catalogTools).toEqual([{ ...shipped, offeredTo: ['choices'], callLimit: 2 }]);
+    expect(result.current.catalogTools).toEqual(
+      TOOL_CATALOG.map((t) => (t.id === 'get_entity' ? { ...shipped, offeredTo: ['choices'], callLimit: 2 } : t)),
+    );
     // The list play offers from.
     expect(result.current.allTools).toEqual(result.current.catalogTools);
     expect(JSON.parse(localStorage.getItem(OVERRIDES_KEY)!)).toEqual({ get_entity: { offeredTo: ['choices'], callLimit: 2 } });

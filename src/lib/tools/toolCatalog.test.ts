@@ -23,7 +23,22 @@ describe('the built-in catalog', () => {
     });
   });
 
+  it.each([
+    ['get_location', { kind: 'lookup', source: 'locations', param: 'name', returns: 'full' }],
+    ['get_dictionary_entry', { kind: 'lookup', source: 'dictionary', param: 'keyword', returns: 'full' }],
+  ])('ships %s as a lookup by one required parameter, offered to narration only', (id, handler) => {
+    const tool = TOOL_CATALOG.find((t) => t.id === id)!;
+    expect(tool).toMatchObject({
+      name: id, handler, emptyResult: '{"matches": []}', offeredTo: ['narration'],
+      params: [{ name: handler.param, type: 'string', description: '', required: true, options: [] }],
+    });
+    expect(tool.callLimit).toBeUndefined();
+    expect(tool.description.split('\n').map((line) => line.split(':')[0])).toEqual(['Purpose', 'Use when', 'Input', 'Output']);
+  });
+
   it('knows its own ids', () => {
+    expect(isCatalogToolId('get_location')).toBe(true);
+    expect(isCatalogToolId('get_dictionary_entry')).toBe(true);
     expect(isCatalogToolId('get_entity')).toBe(true);
     expect(isCatalogToolId('u-1')).toBe(false);
   });

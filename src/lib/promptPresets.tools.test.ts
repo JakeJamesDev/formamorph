@@ -3,8 +3,10 @@ import type { Tool } from '@/types';
 import {
   activeEnabledTools, setToolEnabled, dropToolEverywhere, saveUserTool, deleteUserTool, userToolsCodec,
   addPreset, presetStoreCodec, activeBuiltinId, setBuiltinToolEnabled, dropToolFromBuiltins, builtinToolSwitchesCodec,
-  type BuiltinToolSwitches, type PromptPresetStore, type PromptValues,
+  BUILTIN_PRESETS, type BuiltinToolSwitches, type PromptPresetStore, type PromptValues,
 } from './promptPresets';
+import { TOOL_CATALOG } from './tools/toolCatalog';
+import { toolsOfferedTo } from './tools/toolOffer';
 
 const values = {} as PromptValues;
 const tool = (patch: Partial<Tool> = {}): Tool => ({
@@ -80,6 +82,19 @@ describe('a built-in preset', () => {
   it('defaults to its shipped map: Experimental has get_entity on, the others have nothing on', () => {
     expect(activeEnabledTools(builtIn, {})).toEqual({ get_entity: true });
     expect(activeEnabledTools({ activeId: 'default', presets: [] }, {})).toEqual({});
+  });
+
+  it('ships the location and dictionary lookups off on every built-in, and offers them once switched on', () => {
+    const lookups = TOOL_CATALOG.filter((t) => ['get_location', 'get_dictionary_entry'].includes(t.id));
+    expect(lookups).toHaveLength(2);
+    for (const { id } of BUILTIN_PRESETS) {
+      const store: PromptPresetStore = { ...builtIn, activeId: id };
+      expect(toolsOfferedTo('narration', lookups, activeEnabledTools(store, {}), true)).toEqual([]);
+      let switches: BuiltinToolSwitches = {};
+      for (const t of lookups) switches = flip(switches, store, t.id, true);
+      expect(toolsOfferedTo('narration', lookups, activeEnabledTools(store, switches), true)).toEqual(lookups);
+      expect(toolsOfferedTo('narration', lookups, activeEnabledTools(store, switches), false)).toEqual([]);
+    }
   });
 
   it('keeps a flipped switch, over its shipped defaults, on that built-in only', () => {

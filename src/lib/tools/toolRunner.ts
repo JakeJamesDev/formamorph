@@ -93,7 +93,7 @@ function runLookup(tool: Tool, handler: Lookup, args: ToolArgs, { world }: ToolS
     ? world.entities.filter((e) => same(e.name) || e.aliases.some(same)).map((e) => match(e.id, e.name, pick(e)))
     : handler.source === 'locations'
       ? world.locations.filter((l) => same(l.name)).map((l) => match(l.id, l.name, pick(l)))
-      : world.dictionary.filter((d) => d.keys.some(same)).map((d) => match(d.id, d.name, d.value));
+      : world.dictionary.filter((d) => same(d.name) || d.keys.some(same)).map((d) => match(d.id, d.name, d.value));
   return { text: matches.length ? JSON.stringify({ matches }) : tool.emptyResult };
 }
 

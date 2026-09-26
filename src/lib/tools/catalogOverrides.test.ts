@@ -23,7 +23,7 @@ describe('withCatalogOverrides', () => {
   });
 
   it('leaves a Tool with no override as shipped', () => {
-    expect(withCatalogOverrides(TOOL_CATALOG, {})).toEqual([SHIPPED]);
+    expect(withCatalogOverrides(TOOL_CATALOG, {})).toEqual(structuredClone(TOOL_CATALOG));
   });
 });
 

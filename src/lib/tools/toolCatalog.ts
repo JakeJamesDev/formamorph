@@ -16,8 +16,40 @@ const GET_ENTITY: Tool = {
   offeredTo: ['narration'],
 };
 
+/** The location lookup. Its wording follows the entity lookup and awaits its own probe. */
+const GET_LOCATION: Tool = {
+  id: 'get_location',
+  name: 'get_location',
+  description: [
+    'Purpose: Retrieve the full authored information needed to narrate a location. Summaries help you choose where the scene can go.',
+    'Use when: Once the scene enters or looks toward a location, retrieve its full entry before describing it, unless already loaded for this response. Leave unrelated locations unfetched.',
+    "Input: name — the location's name from a location list.",
+    'Output: JSON with a matches array. Each match contains id, name, and the full authored description when provided by the author. An empty matches array means no matching location was found.',
+  ].join('\n'),
+  params: [{ name: 'name', type: 'string', description: '', required: true, options: [] }],
+  handler: { kind: 'lookup', source: 'locations', param: 'name', returns: 'full' },
+  emptyResult: '{"matches": []}',
+  offeredTo: ['narration'],
+};
+
+/** The dictionary lookup. It matches an entry's name or any trigger keyword. */
+const GET_DICTIONARY_ENTRY: Tool = {
+  id: 'get_dictionary_entry',
+  name: 'get_dictionary_entry',
+  description: [
+    'Purpose: Retrieve the lore entry that explains a term of this world. The lore sections hold only the entries the story has activated.',
+    'Use when: Once the story uses a term of this world that you need to narrate accurately, retrieve its entry, unless already loaded for this response. Leave unrelated terms unfetched.',
+    "Input: keyword — the term as the story writes it, or a lore entry's name.",
+    'Output: JSON with a matches array. Each match contains id, name, and the entry text as description when the entry has text. An empty matches array means no matching entry was found.',
+  ].join('\n'),
+  params: [{ name: 'keyword', type: 'string', description: '', required: true, options: [] }],
+  handler: { kind: 'lookup', source: 'dictionary', param: 'keyword', returns: 'full' },
+  emptyResult: '{"matches": []}',
+  offeredTo: ['narration'],
+};
+
 /** The built-in Tools every preset lists. A preset switches them on or off; the definitions never change. */
-export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY];
+export const TOOL_CATALOG: readonly Tool[] = [GET_ENTITY, GET_LOCATION, GET_DICTIONARY_ENTRY];
 
 const CATALOG_IDS = new Set(TOOL_CATALOG.map((t) => t.id));
 
