@@ -78,17 +78,13 @@ const BLANK_ENTITY: WorldRecord = {
   tags: ['Spirit', 'Archive'],
 };
 
-const STAND_IN_ART = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 720" id="stand-in-silhouette">
-  <rect width="480" height="720" fill="#5b5f68"/><circle cx="240" cy="250" r="96" fill="#8a8f99"/><path d="M90 720q0-260 150-260t150 260Z" fill="#8a8f99"/>
-</svg>`);
-
 // The server flags this listing's stored file as its stand-in silhouette.
 const FLAGGED_ENTITY: WorldRecord = {
   id: 'showcase-lantern-wright',
   name: 'Sable Lantern-Wright',
   description: 'A lamp maker whose upload carried no portrait. The server stored a stand-in, so the card draws its Morph art instead.',
   kind: 'entity',
-  thumbnail: `data:image/svg+xml,${STAND_IN_ART}`,
+  thumbnail_file: 'showcase-stand-in.png',
   placeholder: true,
   author: { id: 'river-quill', username: 'river-quill' },
   downloads: 41,

@@ -1,6 +1,6 @@
 # 07: Community Cards reference shows a flagged stand-in listing
 
-Status: in-progress
+Status: ready-for-human
 Base: 66d76f24
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -16,8 +16,9 @@ Recommended model rationale: one fixture, one test, one guide line against a shi
 
 ## Acceptance criteria
 
-- [ ] The flagged fixture renders Morph art and no image with the stored thumbnail, asserted by test
-- [ ] The no-image fixture still renders Morph art
-- [ ] The guide states the flagged-path rule; new copy has a Writing review entry
-- [ ] The showcase registry test passes
+- [x] The flagged fixture renders Morph art and no image with the stored thumbnail, asserted by test
+- [x] The no-image fixture still renders Morph art
+- [x] The guide states the flagged-path rule; new copy has a Writing review entry
+- [x] The showcase registry test passes
 - [ ] Four gates green; verified in the showcase at desktop and 375px, both themes
+  - Showcase verified. Typecheck and build are green. Full `npm test` failed on 5-second timeouts under about 50 node processes; the failed files pass serially. Lint fails only on ticket 06's in-progress `PromptChipsReference.test.tsx`. Rerun the full gates when the machine is quiet.

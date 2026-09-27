@@ -1,8 +1,13 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { CommunityCardReference } from './CommunityCardReference';
+
+const { CachedThumbnail } = vi.hoisted(() => ({
+  CachedThumbnail: vi.fn(({ file }: { file: string }) => <img alt="" data-file={file} />),
+}));
+vi.mock('@/lib/useCachedThumbnail', () => ({ CachedThumbnail }));
 
 const renderReference = () => render(
   <TooltipProvider>
@@ -49,7 +54,8 @@ describe('community card reference', () => {
 
     const card = cardNamed('Sable Lantern-Wright');
     expect(card.querySelector('[data-morph-art]')).not.toBeNull();
-    expect(card.querySelector('img[src*="stand-in-silhouette"]')).toBeNull();
+    expect(CachedThumbnail).not.toHaveBeenCalled();
+    expect(card.querySelector('img')).toBeNull();
   });
 
   it('draws Morph art for an entity with no image', () => {
