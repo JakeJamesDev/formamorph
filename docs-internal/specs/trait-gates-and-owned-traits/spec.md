@@ -162,7 +162,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 ### One tree
 
 - The existing trait tree module gains entity nodes. It places world entity nodes by their placement, and places library entity nodes (persona or added character) after everything at top level, in the order added.
-- An entity node appears only when its entity owns a trait.
+- An entity node appears only when its entity owns a trait or a group, so an owned group is never stranded outside the tree.
 - The editor tree and the enter-world workspace both build from it. The in-game Traits tab uses the same tree.
 - Drags go through the shared drag layer (ADR-0007). A trait drag across owners changes the owner and keeps the id. It is refused when the trait has stat changes or stat toggles. An entity node drags like a group.
 
@@ -173,7 +173,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - An owned trait shows its owner at the top of Details and has no Stats tab.
 - The entity editor gains a Traits panel tab, after Descriptions, that lists the entity's owned traits and groups, opens each in the Traits tab, and adds new ones (groups in Advanced only). The first add creates the entity node. Selecting an entity node in the Traits tab shows this same section in the right panel. The Traits-tab toolbar's Add buttons keep adding to the world root. The World Editor gets the tab first; the library entity editor gets it with the library ticket, where requirements can point only inside the entity.
 - The owner line reads "Owned by **Ash**", the name a link to the entity, with the hint "Describes them to the AI, and joins your traits when you play as them".
-- Duplicating an entity re-ids its owned traits and groups and remaps the requirements that point inside it. Requirements that point out of it keep their ids. A world persona gains a Starting Location select, with Automatic first and then every location.
+- Duplicating an entity re-ids its owned traits and groups and remaps the requirements that point inside it. Requirements that point out of it keep their ids. A "playing as" requirement on the entity itself remaps to the copy, since it names the owner. A world persona gains a Starting Location select, with Automatic first and then every location.
 
 ### Enter-world and in play (prototype variant A)
 
