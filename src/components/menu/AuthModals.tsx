@@ -119,7 +119,7 @@ export function AuthModals({
   const memberSince = parseServerDate(
     String(profileStats?.createdAt ?? currentUser?.createdAt ?? ''),
   )?.toLocaleDateString();
-  const [authError, setAuthError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
@@ -127,16 +127,16 @@ export function AuthModals({
   // over the top of every screen.
   const { startDeletion } = useAccountDeletion();
 
-  const resetAuthForms = () => {
+  const resetPasswordForm = () => {
     setCurrentPassword('');
     setNewPassword('');
-    setAuthError('');
+    setPasswordError('');
   };
 
   // Reset the forms when the dialog opens, not when it closes — clearing on close blanks the still-visible
   // fields for a frame or two during the fade-out.
   useResetOnOpen(showProfileDialog, () => {
-    resetAuthForms();
+    resetPasswordForm();
     setProfileTab(initialTab);
   });
 
@@ -145,20 +145,20 @@ export function AuthModals({
   useEffect(() => { setProfileTab(initialTab); }, [initialTab]);
 
   const handleChangePassword = async () => {
-    setAuthError('');
+    setPasswordError('');
 
     if (!currentPassword || !newPassword) {
-      setAuthError('Both current and new passwords are required');
+      setPasswordError('Both current and new passwords are required');
       return;
     }
 
     try {
       await AuthService.changePassword(currentPassword, newPassword);
       setShowPasswordDialog(false);
-      resetAuthForms();
+      resetPasswordForm();
       toast.success('Password changed successfully');
     } catch (error) {
-      setAuthError((error as Error).message || 'Failed to change password');
+      setPasswordError((error as Error).message || 'Failed to change password');
     }
   };
 
@@ -265,7 +265,7 @@ export function AuthModals({
       {/* Change Password: the flow that used to be the Manage tab, now behind the header button. */}
       <Dialog
         open={showPasswordDialog}
-        onOpenChange={(open) => { setShowPasswordDialog(open); if (!open) resetAuthForms(); }}
+        onOpenChange={(open) => { setShowPasswordDialog(open); if (!open) resetPasswordForm(); }}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -282,9 +282,9 @@ export function AuthModals({
               </p>
             )}
 
-            {authError && (
+            {passwordError && (
               <div className="text-label text-destructive p-2 bg-destructive/10 rounded-md">
-                {authError}
+                {passwordError}
               </div>
             )}
 

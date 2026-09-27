@@ -22,7 +22,7 @@ export function SignInHost() {
     // Keyed on the request, so a second raise while the gate is up runs the check again for it.
   }, [phase, request]);
 
-  // Nothing shows a request the host is gone for, so none outlives it.
+  // Drops a pending request on unmount.
   useEffect(() => cancelSignIn, []);
 
   // DEV: `#dev?modal=auth` opens the dialog.

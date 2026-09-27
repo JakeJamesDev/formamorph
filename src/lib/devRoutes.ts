@@ -50,7 +50,7 @@ export type DevView = (typeof DEV_VIEWS)[number];
  *  otherwise. `privacyPolicy` raises the sign-in privacy prompt on canned text
  *  (`devPrivacySample.ts`), because the real policy is a server row that ships switched off —
  *  without the sample the prompt would have nothing to render before the cutover.
- *  `auth` opens the signed-out login/register dialog directly. `designSystem` opens the live reference
+ *  `auth` raises the login/register dialog, behind the age gate's check. `designSystem` opens the live reference
  *  showcase without mounting it in production. `enterWorld` starts normal entry for the stored world
  *  named by `tab` (or the first installed world).
  *  `deleteAccount` opens the account-deletion flow at its first step, and `deletionCancelled` the notice

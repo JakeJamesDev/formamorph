@@ -655,7 +655,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // A blank character being authored but not yet saved (New Entity → editor, persisted only on Save).
   const [draftEntity, setDraftEntity] = useState<Entity | null>(null);
 
-  // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
+  // Shared auth identity (header, publish gating, community browser). The profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
