@@ -40,7 +40,8 @@ import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
-import { WORLD_OWNER, gateStates, neverUnlockable, settleDefaults, worldGateInput } from '@/lib/traitGates';
+import { editorGateInput } from '@/lib/bearers';
+import { WORLD_OWNER, gateStates, neverUnlockable, settleDefaults } from '@/lib/traitGates';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, World,
@@ -1693,11 +1694,14 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   let report = gateReportsByWorld.get(world);
   if (report) return report;
   const traits = world.traits ?? [];
-  const gateInput = (withTraits: readonly Trait[]) => worldGateInput({
+  // Every bearer is present, so a requirement that names an entity resolves; the rules still read the
+  // world's own traits until the per-bearer rules land.
+  const gateInput = (withTraits: readonly Trait[]) => editorGateInput({
     traits: withTraits,
-    groups: world.traitGroups ?? [],
-    entities: (world.entities ?? []).map((e) => ({ id: e.id, name: e.name ?? '', persona: e.persona })),
-  }, { source: 'none' });
+    traitGroups: world.traitGroups ?? [],
+    entities: (world.entities ?? []).map((e) => ({ ...e, name: e.name ?? '' })),
+    ...(world.customPersona ? { customPersona: world.customPersona } : {}),
+  });
   const label = (text: string) => quote(labelPlaceholders(text, allPlaceholders(world), { letters: lettersOf(world) }));
 
   const requirementTexts = new Map<string, string[]>();
@@ -1709,7 +1713,9 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   }
 
   const input = gateInput(traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t)));
-  const stuck = neverUnlockable(input).map((set) => set.map((r) => r.traitId));
+  const stuck = neverUnlockable(input)
+    .map((set) => set.filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId))
+    .filter((set) => set.length > 0);
   const stuckIds = new Set(stuck.flat());
   const choices: PersonaRef[] = [
     { source: 'none' },

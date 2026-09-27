@@ -1555,6 +1555,14 @@ describe('trait gate rules', () => {
       expect(ids(only(gates(chain, { entities: [resident, { ...ash, persona: false }] }), rule))).toEqual([['a', 'b']]);
     });
 
+    it('opens through a named entity that bears the target, and stays stuck behind one that does not', () => {
+      const paladin = trait({ id: 'paladin', name: 'Paladin' });
+      const named = (id: string) => gated('sq', [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id } }]);
+      expect(runRules(gates([named('ash')], { entities: [resident, { ...ash, traits: [paladin] }] }))).toEqual([]);
+      // The world's own Paladin is not Ash's, so "Ash: Paladin" stays stuck.
+      expect(ids(only(gates([named('ash'), paladin], { entities: [resident, ash] }), rule))).toEqual([['sq']]);
+    });
+
     it('leaves a trait stuck only behind a deleted target to the unresolved rule, dependents included', () => {
       const w = gates([gated('t', needs('gone')), gated('u', needs('t'))]);
       expect(runRules(w).map((f) => [f.ruleId, f.items.map((i) => i.id)]))
