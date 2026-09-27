@@ -150,7 +150,7 @@ import { toDebugEndpoint, type DebugEndpointInfo } from "../lib/promptEndpoints"
 import { ReasoningChip } from "@/components/game/ReasoningChip";
 import { composeSceneTags, stripPlaces, splitTags, MAX_SCENE_CHARACTERS, type SceneCharacter } from "../lib/sceneTags";
 import { loadDanbooruTags } from "../lib/danbooruTags";
-import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags } from "../lib/sceneImages";
+import { addSceneImage, removeSceneImage, pruneSceneImages, setSceneTags as patchSceneTags, sceneDrawTags } from "../lib/sceneImages";
 import { generateImage, buildImageRequest } from "../lib/imageGen";
 import { buildImagePrompt } from "../lib/imagePrompt";
 import { downloadBlob } from "../lib/downloadBlob";
@@ -3380,6 +3380,7 @@ const GameViewer = ({
       participants: turn.entities ?? [],
       locationId: turn.locationId,
       ...opts,
+      tags: sceneDrawTags(opts, turn.sceneTags),
       signal: controller.signal,
     });
   };
@@ -3414,7 +3415,7 @@ const GameViewer = ({
       narration: parsed.narration ?? "",
       participants: parsed.entities ?? [],
       locationId: parsed.locationId,
-      tags: queued.tags,
+      tags: sceneDrawTags(queued, parsed.sceneTags),
       tagsOnly: queued.tagsOnly,
       signal: controller.signal,
     });

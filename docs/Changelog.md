@@ -107,6 +107,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A changelog entry you write while an update uploads now reaches the listing.** Before, the publish attached only an entry written before you pressed **Publish**, and it dropped a later one without a message. It now attaches the entry as it is when the upload finishes. If the entry popup is still open at that point, the publish waits: **Attach to Update** adds your entry, and **Cancel** finishes without one.
   - **The Entities chip with Name content lists only who is in the scene in the Choices and re-roll prompts.** That variant read the whole location roster, past the presence filter the other variants respect. Every variant of the chip now comes from one enumerated set, so a new variant cannot miss the filter.
   - **Each character's planning and diary requests read that character's description with its placeholders filled in.** They sent the raw placeholder tokens before. The planning request runs with Staged thinking. Scene pictures built from a character's description fill them in too.
+  - **Drawing a scene again uses the tags you edited.** **Draw again** and **Generate Scene Image** wrote new tags from the narration before, so a redraw after an edit used the old tags and the next one used your edit. Only **Re-roll tags** writes new tags now.
 
 - **🛠️ Developer tooling**
   - **Design System:**

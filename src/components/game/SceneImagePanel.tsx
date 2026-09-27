@@ -33,7 +33,7 @@ export const SceneImagePanel = ({
   progress: number | null;
   /** The provider's live in-progress frame, shown while it renders. */
   preview: string | null;
-  /** Draw. A tag line means "use exactly this"; undefined re-runs the tag pass from the narration. */
+  /** Draw. A tag line means "use exactly this"; undefined draws the stored line. */
   onGenerate: (tags?: string) => void;
   /** Re-write the tag line from the narration without drawing anything. */
   onRegenerateTags: () => void;
@@ -110,8 +110,7 @@ export const SceneImagePanel = ({
                 <Dices className="h-4 w-4" /> Re-roll tags
               </Button>
             </Tip>
-            {/* An edited line is drawn exactly as written; an untouched one re-reads the narration, which is
-                what the player wants when the tags were fine and the picture simply came out badly. */}
+            {/* An edited line is drawn exactly as written; an untouched one redraws the stored line. */}
             <Button variant="secondary" size="sm" disabled={busy} onClick={() => onGenerate(edited ? draft : undefined)}>
               <Sparkles className="h-4 w-4" /> {edited ? 'Draw these tags' : 'Draw again'}
             </Button>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addSceneImage, removeSceneImage, pruneSceneImages, sceneImageWeight, setSceneTags, type SceneImageMap } from './sceneImages';
+import { addSceneImage, removeSceneImage, pruneSceneImages, sceneImageWeight, setSceneTags, sceneDrawTags, type SceneImageMap } from './sceneImages';
 import { parseTurnContent, serializeTurnContent } from './turnDigest';
 import type { AITurnResult, ChatMessage } from '@/types';
 
@@ -100,5 +100,18 @@ describe('the history stays free of pixels', () => {
     // The whole point of the split: a megabyte in a turn is re-parsed by every history walk.
     const tagged = setSceneTags(history(), 't1', 'tags')!;
     for (const message of tagged) expect(message.content).not.toContain('data:image');
+  });
+});
+
+describe('sceneDrawTags', () => {
+  it('redraws the stored line when no line is given', () => {
+    expect(sceneDrawTags({}, '1girl, edited')).toBe('1girl, edited');
+  });
+  it('prefers an explicit line over the stored one', () => {
+    expect(sceneDrawTags({ tags: '1girl, draft' }, '1girl, edited')).toBe('1girl, draft');
+  });
+  it('runs the tag pass for a re-roll and for a turn with no stored line', () => {
+    expect(sceneDrawTags({ tagsOnly: true }, '1girl, edited')).toBeUndefined();
+    expect(sceneDrawTags({})).toBeUndefined();
   });
 });
