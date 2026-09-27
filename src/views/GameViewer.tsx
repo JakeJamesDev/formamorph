@@ -33,7 +33,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
-import { linkToast, toastError } from "@/lib/linkToast";
+import { toastError } from "@/lib/linkToast";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
@@ -58,7 +58,6 @@ import { putSaveRecord } from "../components/modals/dbUtils";
 import WorldStorageService from "../services/WorldStorageService";
 import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
-import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
 import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
@@ -85,6 +84,7 @@ import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/ai
 import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
+import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
 import { splitSentenceSegments } from "../lib/ttsChunks";
 import { selectDueDigests, applyDigest, applyImportance, parseTurnContent, recentParticipants, selectDueDiaries, pendingDiaryNames, applyDiary, collectCharacterDiary } from "../lib/turnDigest";
 import { navigableDestinations } from "../lib/locationContext";
@@ -3150,13 +3150,9 @@ const GameViewer = ({
       } else if (silent) {
         // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
         throw error;
-      } else if (isLikelyConnectionError(error)) {
-        // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
-        // generic toast — offer the connection guide instead. The turn knows this already showed, because it
-        // knows the failed request wasn't silent.
-        linkToast("Couldn't reach your AI server.", "Fix connection →", () => setConnectionGuideOpen(true));
       } else {
-        toast.error("Failed to process AI request");
+        // The turn knows this already showed, because it knows the failed request wasn't silent.
+        toastAiRequestFailure(error, () => setConnectionGuideOpen(true));
       }
       throw error;
     } finally {

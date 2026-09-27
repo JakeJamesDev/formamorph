@@ -1,4 +1,5 @@
 import type { WireMessage } from '@/types';
+import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
@@ -18,14 +19,19 @@ export class AiStreamError extends Error {
   readonly status?: number;
   readonly response?: Response;
   readonly serverError?: AiServerError;
+  /** The Error Details text: the request, the status, the server's fields and its raw body. */
+  readonly details?: string;
 
-  constructor(kind: AiStreamErrorKind, message: string, detail?: { status?: number; response?: Response; serverError?: AiServerError; cause?: unknown }) {
+  constructor(kind: AiStreamErrorKind, message: string, detail?: {
+    status?: number; response?: Response; serverError?: AiServerError; details?: string; cause?: unknown;
+  }) {
     super(message, { cause: detail?.cause });
     this.name = 'AiStreamError';
     this.kind = kind;
     this.status = detail?.status;
     this.response = detail?.response;
     this.serverError = detail?.serverError;
+    this.details = detail?.details;
   }
 }
 
@@ -35,12 +41,10 @@ function recordOf(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-/** Read a structured OpenAI-compatible error body without turning malformed or empty failure bodies into errors. */
-async function readServerError(response: Response): Promise<AiServerError | undefined> {
-  if (typeof response.text !== 'function') return undefined;
+/** The structured fields of an OpenAI-compatible error body, or nothing when the body is empty or malformed. */
+function parseServerError(raw: string): AiServerError | undefined {
+  if (!raw.trim()) return undefined;
   try {
-    const raw = await response.text();
-    if (!raw.trim()) return undefined;
     const payload = recordOf(JSON.parse(raw));
     const error = recordOf(payload?.error) ?? payload;
     if (!error) return undefined;
@@ -49,11 +53,35 @@ async function readServerError(response: Response): Promise<AiServerError | unde
       ? error.param
       : typeof error.parameter === 'string' ? error.parameter : undefined;
     const type = typeof error.type === 'string' ? error.type : undefined;
-    const code = typeof error.code === 'string' ? error.code : undefined;
+    const code = typeof error.code === 'string' || typeof error.code === 'number' ? String(error.code) : undefined;
     return message || parameter || type || code ? { message, parameter, type, code } : undefined;
   } catch {
     return undefined;
   }
+}
+
+/** The error for an HTTP failure. The body is read once; its raw text goes into the details beside the parsed fields. */
+async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiStreamError> {
+  let raw = '';
+  try {
+    if (typeof response.text === 'function') raw = await response.text();
+  } catch { /* An unreadable body leaves only the status. */ }
+  const serverError = parseServerError(raw);
+  const lines = [
+    `Request: POST ${redactUrl(spec.url)}`,
+    spec.body.model && `Model: ${spec.body.model}`,
+    `Status: ${[response.status, response.statusText].filter(Boolean).join(' ')}`,
+    serverError?.message && `Message: ${serverError.message}`,
+    serverError?.parameter && `Param: ${serverError.parameter}`,
+    serverError?.type && `Type: ${serverError.type}`,
+    serverError?.code && `Code: ${serverError.code}`,
+  ].filter(Boolean);
+  return new AiStreamError('http', `HTTP ${response.status}`, {
+    status: response.status,
+    response,
+    serverError,
+    details: [...lines, '', 'Response:', raw.trim() ? raw : '(empty)'].join('\n'),
+  });
 }
 
 /** Clock marks for one stream, in the injected clock's units. `firstTokenAt` is the first token of any kind
@@ -238,11 +266,7 @@ export async function* streamAiRequest(spec: AiStreamSpec, options: AiStreamOpti
     throw error;
   }
 
-  if (!response.ok) throw new AiStreamError('http', `HTTP ${response.status}`, {
-    status: response.status,
-    response,
-    serverError: await readServerError(response),
-  });
+  if (!response.ok) throw await httpFailure(response, spec);
   if (!response.body) throw new AiStreamError('no-body', 'Response has no body to stream');
 
   yield { type: 'debug', debug: { kind: 'response', status: response.status, openedAt: now() } };
