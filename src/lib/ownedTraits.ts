@@ -4,7 +4,7 @@ import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
 import { WORLD_OWNER, type GateEntity, type GateInput, type GateOwner } from './traitGates';
-import { effectivePlacement, ownsTraits } from './traitTree';
+import { effectivePlacement, ownsTraits, placeableGroupIds } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
 const groupsOf = (entity: Entity): TraitGroup[] => entity.traitGroups ?? [];
@@ -64,12 +64,13 @@ export function findOwnedItem(
  *  source. Requirements that point inside the entity follow; ones that point out of it keep their target.
  *  `entityIds` maps each copied entity to its copy, so "playing as" the source becomes "playing as" the copy. */
 export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string, string> = new Map()): Entity {
-  if (!entity.traits?.length && !entity.traitGroups?.length) return entity;
-  const ids = new Map([...traitsOf(entity), ...groupsOf(entity)].map((item) => [item.id, randomUUID()] as const));
+  const links = entity.traitLinks ?? [];
+  if (!entity.traits?.length && !entity.traitGroups?.length && !links.length) return entity;
+  const ids = new Map([...traitsOf(entity), ...groupsOf(entity), ...links].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
     ({ ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
-  return withOwnedTraits(
+  const reminted = withOwnedTraits(
     entity,
     traitsOf(entity).map((t) => ({
       ...t,
@@ -79,6 +80,10 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
     })),
     groupsOf(entity).map((g) => ({ ...g, id: remap(g.id)!, parentId: remap(g.parentId) ?? null })),
   );
+  // A link's original is a world node, so only the link's own id and its place inside the entity change.
+  return links.length
+    ? { ...reminted, traitLinks: links.map((l) => ({ ...l, id: remap(l.id)!, groupId: remap(l.groupId) ?? null })) }
+    : reminted;
 }
 
 /** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group,
@@ -87,12 +92,12 @@ export function traitOwners(
   world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] },
   library: readonly Entity[] = [],
 ): GateOwner[] {
-  const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
+  const placeable = placeableGroupIds(world.traitGroups);
   const owner = (e: Entity, parentGroupId: string | null): GateOwner =>
     ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
   return [
     { id: WORLD_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
-    ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, worldGroupIds)?.groupId ?? null)),
+    ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
     ...library.filter(ownsTraits).map((e) => owner(e, null)),
   ];
 }
