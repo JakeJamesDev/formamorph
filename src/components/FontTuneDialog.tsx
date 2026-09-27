@@ -16,6 +16,9 @@ import {
   resolveFontTuning, type FontTuning,
 } from '@/lib/fontTuning';
 
+/** The settings the dialog reads and saves; the live context unless a caller supplies its own. */
+export type FontTuneSource = Pick<ReturnType<typeof useSettings>, 'fontTunings' | 'setFontTuning'>;
+
 const SAMPLE = 'The lantern guttered as you stepped into the hollow.';
 
 /** One labeled slider over a numeric field of the draft. */
@@ -45,8 +48,9 @@ function TuneSlider({
  * Per-font tuning for whichever font `font` names. The draft lives here and reaches nothing but the
  * sample text until Save — a game in progress must not reflow while the sliders move.
  */
-function FontTuneDialog({ font, open, onOpenChange }: { font: FontChoice; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { fontTunings, setFontTuning } = useSettings();
+function FontTuneDialog({ font, open, onOpenChange, source }: { font: FontChoice; open: boolean; onOpenChange: (v: boolean) => void; source?: FontTuneSource }) {
+  const live = useSettings();
+  const { fontTunings, setFontTuning } = source ?? live;
   const [draft, setDraft] = useState<FontTuning>(() => resolveFontTuning(font, fontTunings));
 
   // Reopening — or opening from the other selector, on a different font — starts from what's in force.
@@ -158,14 +162,14 @@ function FontTuneDialog({ font, open, onOpenChange }: { font: FontChoice; open: 
 }
 
 /** Button + dialog to tune one font; drop beside a font selector, passing that selector's active font. */
-export function FontTuneButton({ font }: { font: FontChoice }) {
+export function FontTuneButton({ font, source }: { font: FontChoice; source?: FontTuneSource }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         Customize…
       </Button>
-      {open && <FontTuneDialog font={font} open={open} onOpenChange={setOpen} />}
+      {open && <FontTuneDialog font={font} open={open} onOpenChange={setOpen} source={source} />}
     </>
   );
 }
