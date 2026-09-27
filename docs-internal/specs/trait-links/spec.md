@@ -170,7 +170,8 @@ All items are additive export-shape changes to the world, entity, card and save 
 - Selecting a link shows the original's Details, editable, under "Linked from **<location>**. Edits change every link." Below that is a **This Link** section with default-on and one row per bearer-relative pin: "<Placeholder> →" and a value select over the bearer's own values, or the world placeholder's values on fallback.
 - A linked trait with stat effects under an entity shows a note in the link section: under a Persona-marked entity, "Stat changes apply only when you play as them"; under any other entity, "Stat changes don't apply to entities" (Q63).
 - **+ menu:** Add Templates Group and Add Custom Persona (Advanced, hidden once present), Add Trait To Entity → (Basic), Add Group To Entity → (Advanced).
-- **Link button:** on every linkable node's Details header, in Advanced only. Its flyout lists Custom Persona first when it exists, then entities nested by entity group. Bearers that already have the link show checked and disabled.
+- **Link button:** on every linkable node's Details header, in Advanced only, and on a selected link row, where it acts on the original. Never on owned items, entity nodes, Templates or Custom Persona (Q71). Its flyout lists Custom Persona first when it exists, then world entities nested by entity group in entity-tab order. A bearer shows checked and disabled when the drag path would refuse it: a direct link, a linked group that brings it, or Custom Persona when the top level already offers it (Q72). A pick appends the link to the bearer's top level; the flyout stays open and the selection stays on the original (Q73).
+- **Add flyouts:** list world entities only, never Custom Persona, which holds no owned items (Q69). In Basic the **+** becomes a two-row menu: Add Trait, Add Trait To Entity → (Q70). A pick appends the owned item to the entity's top level, closes the popover, expands the node and selects the new row (Q73).
 - Removal confirmations name the count of links they remove. Removing Templates keeps Custom Persona's links to the moved originals; the Q64 rule covers the resulting duplicate (Q66).
 - Selecting the Custom Persona node opens a small panel: a heading and one help line on when its links apply, in the Writing Guide's voice (Q67).
 - Until tickets 05 and 08 move play onto the resolver, the player-facing tree and the world gate owner drop the Templates subtree through an interim filter, so no build between them offers a Templates trait (Q65).
@@ -269,6 +270,11 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q66 | Removing Templates keeps Custom Persona's links to the moved originals. Q64 covers the duplicate. |
   | Q67 | Selecting Custom Persona opens a heading plus one help line. |
   | Q68 | Templates and Custom Persona stay at the root; a drop into a group is refused. |
+  | Q69 | Add flyouts leave Custom Persona out; only the link flyout lists it. |
+  | Q70 | In Basic the **+** is a two-row menu: Add Trait, Add Trait To Entity →. |
+  | Q71 | The link button also shows on a selected link row and acts on the original. Never on owned items or system nodes. |
+  | Q72 | Checked-and-disabled follows the drag path's refusal rule. |
+  | Q73 | Link pick: append, flyout stays open, selection stays. Add pick: append, close, expand, select the new row. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
