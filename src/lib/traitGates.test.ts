@@ -418,6 +418,25 @@ describe('requirement options', () => {
     expect(rows(options.traits)).toContain('Tamed @ Ash › Bond');
   });
 
+  it('leaves out a group that holds only the trait and its exclusive siblings, and keeps one with another way in', () => {
+    const labels = requirementOptions(input, 'Paladin').groups.map((o) => o.label);
+    expect(labels).not.toContain('any Class');
+    expect(labels).toContain('any Gear');
+    // A parent group holds the exclusive one plus a trait of its own, so it can still unlock Paladin.
+    const nested = {
+      ...input,
+      owners: [{
+        ...input.owners[0],
+        groups: [G('Martial'), G('Class', { exclusive: true, parentId: 'Martial' })],
+        traits: [...traits.filter((t) => t.groupId === 'Class'), T('Brawler', { groupId: 'Martial' })],
+      }, wolf],
+    };
+    expect(requirementOptions(nested, 'Paladin').groups.map((o) => o.label)).toContain('any Martial');
+    // An empty group is offered: it can open the trait once the author fills it.
+    const empty = { ...input, owners: [{ ...input.owners[0], groups: [...groups, G('Oaths')] }, wolf] };
+    expect(requirementOptions(empty, 'Paladin').groups.map((o) => o.label)).toContain('any Oaths');
+  });
+
   it('lists every group as "any" with its parent path', () => {
     expect(rows(requirementOptions(input, 'Loose').groups)).toEqual([
       'any Class @ World', 'any Gear @ World', 'any Heavy @ Gear', 'any Bond @ Ash',
