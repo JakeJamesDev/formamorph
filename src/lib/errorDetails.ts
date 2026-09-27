@@ -1,4 +1,6 @@
 import { collectDiagnostics, formatDiagnostics } from './bugDiagnostics';
+import type { BugReportFill } from './bugReportStore';
+import { FEEDBACK_BODY_MAX, FEEDBACK_TITLE_MAX } from './feedbackDraft';
 
 /** An error whose message fits in a toast, plus the full text a user can copy when asking for help. */
 export class DetailedError extends Error {
@@ -125,4 +127,18 @@ export function getErrorDetailsState(): ErrorDetailsState {
 /** The text Copy puts on the clipboard: the message, the details, then the diagnostics block. */
 export function errorDetailsText(entry: ErrorDetails): string {
   return `${entry.message}\n\n${detailsWithDiagnostics(entry)}`;
+}
+
+const CUT_NOTE = '\n\n[The details are cut to fit this report. Copy in Error Details has the full text.]';
+
+/**
+ * The bug report's fields for this error: the message as the title and the details as the description,
+ * each cut to the report's limit. The diagnostics block stays out, because the report attaches its own.
+ */
+export function bugReportFromError({ message, details }: ErrorDetails): BugReportFill {
+  const title = message.length > FEEDBACK_TITLE_MAX ? `${message.slice(0, FEEDBACK_TITLE_MAX - 1)}…` : message;
+  const body = details.length > FEEDBACK_BODY_MAX
+    ? `${details.slice(0, FEEDBACK_BODY_MAX - CUT_NOTE.length)}${CUT_NOTE}`
+    : details;
+  return { title, body };
 }

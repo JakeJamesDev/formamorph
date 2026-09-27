@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ToastContainer, type ToastClassName } from "react-toastify";
 import { useTheme } from "./theme-provider";
 import { ErrorDetailsHost } from "./ErrorDetailsDialog";
+import { BugReportHost } from "./BugReportHost";
 
 // Point react-toastify's colors at our design tokens, so toasts are theme-driven. Set inline on the
 // container (rather than in a stylesheet) so they beat react-toastify's `:root` defaults regardless of CSS
@@ -37,7 +38,7 @@ const withBorder = (caller?: ToastClassName): ToastClassName =>
 /**
  * A `ToastContainer` whose theme tracks the app's resolved light/dark theme (so toasts don't stay dark on a
  * light app) and whose panel and accents come from our design tokens. Forwards any other props. Also mounts
- * the Error Details dialog that a toast's View Details link opens.
+ * the Error Details dialog that a toast's View Details link opens, and the bug report it hands off to.
  *
  * Portaled to `body` so it shares the root stacking context with Radix's dialog portals — rendered inside a
  * view's own tree, its z-index is trapped below them and toasts hide behind full-screen dialogs.
@@ -53,6 +54,7 @@ export function ThemedToastContainer(props: ComponentProps<typeof ToastContainer
         toastClassName={withBorder(props.toastClassName)}
       />
       <ErrorDetailsHost />
+      <BugReportHost />
     </>,
     document.body,
   );
