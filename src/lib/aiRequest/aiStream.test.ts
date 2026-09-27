@@ -157,6 +157,54 @@ describe('streamAiRequest', () => {
     });
   });
 
+  async function rejectionOf(response: Response, url = spec.url): Promise<AiStreamError> {
+    const error = await collect(streamAiRequest({ ...spec, url }, { fetchImpl: fetchOf(response) })).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AiStreamError);
+    return error as AiStreamError;
+  }
+
+  const notFoundBody = JSON.stringify({
+    error: { message: 'model not found', type: 'invalid_request_error', param: 'model', code: 'model_not_found' },
+    request_id: 'req-7731',
+  });
+
+  it('puts the status, the server fields and the raw body in the details', async () => {
+    const error = await rejectionOf(new Response(notFoundBody, { status: 404 }));
+
+    expect(error).toMatchObject({ kind: 'http', status: 404, serverError: { message: 'model not found', parameter: 'model' } });
+    expect(error.details).toContain('Status: 404');
+    expect(error.details).toContain('Message: model not found');
+    expect(error.details).toContain('Param: model');
+    expect(error.details).toContain('Type: invalid_request_error');
+    expect(error.details).toContain('Code: model_not_found');
+    // The raw body keeps fields the parser drops.
+    expect(error.details).toContain(notFoundBody);
+  });
+
+  it('keeps a body that is not JSON as the raw response', async () => {
+    const error = await rejectionOf(new Response('<html>502 Bad Gateway</html>', { status: 502 }));
+
+    expect(error.serverError).toBeUndefined();
+    expect(error.details).toContain('Status: 502');
+    expect(error.details).toContain('<html>502 Bad Gateway</html>');
+  });
+
+  it('masks a key in the endpoint query string and leaves a keyless url unchanged', async () => {
+    const keyed = await rejectionOf(new Response('', { status: 401 }), 'https://api.example.test/v1/chat/completions?api_key=sk-live-123&region=eu');
+    expect(keyed.details).toContain('https://api.example.test/v1/chat/completions?api_key=[redacted]&region=eu');
+    expect(keyed.details).not.toContain('sk-live-123');
+
+    const plain = await rejectionOf(new Response('', { status: 401 }));
+    expect(plain.details).toContain(spec.url);
+  });
+
+  it('keeps request headers out of the details', async () => {
+    const error = await rejectionOf(new Response(notFoundBody, { status: 404 }));
+
+    expect(error.details).not.toContain('Authorization');
+    expect(error.details).not.toContain('Bearer');
+  });
+
   it('throws a typed no-body error when the response has no stream', async () => {
     await expect(collect(streamAiRequest(spec, { fetchImpl: fetchOf(streamingResponse([], { body: false })) })))
       .rejects.toMatchObject({ kind: 'no-body' });
