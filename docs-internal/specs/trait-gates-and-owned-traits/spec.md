@@ -189,6 +189,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 
 - An NPC's active owned traits join its entity context. The full context gets each trait's AI description under the trait's name. The summary gets one "Traits: …" line of names.
 - The played entity's active owned traits join the player's trait context, beside the world traits.
+- An owned trait's text is the entity's own text: `{{char}}` reads as the owner's name, and the trait's own pins apply, in the AI context and on the in-play trait card alike.
 - Both are prompt-text changes and follow the prompt-writing guide, including probes.
 
 ### Placeholder pins
