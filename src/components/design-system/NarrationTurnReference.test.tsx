@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { playerBubbleActions } from '@/lib/bubbleActions';
 import { NarrationTurnReference } from './NarrationTurnReference';
 
 const renderReference = () => render(<TooltipProvider><NarrationTurnReference /></TooltipProvider>);
@@ -58,6 +59,44 @@ describe('narration turn reference', () => {
 
     await user.click(third);
     expect(first).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('opens the action line menu with the player actions and not the card menu', async () => {
+    const user = userEvent.setup();
+    renderReference();
+    const line = within(latest()).getByTestId('action-line');
+
+    fireEvent.contextMenu(line, { button: 2, clientX: 10, clientY: 10 });
+    const labels = within(screen.getByRole('menu')).getAllByRole('menuitem').map((item) => item.textContent);
+    const playerLabels = playerBubbleActions({ live: false, busy: false }, { edit: () => {}, copy: () => {} }).map((a) => a.label);
+    expect(labels).toEqual(playerLabels);
+    expect(labels).not.toContain('Re-generate Narration');
+
+    await user.click(screen.getByRole('menuitem', { name: 'Copy Text' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Last action: Copy Text');
+  });
+
+  it('enables Re-generate Stats on the latest turn and disables it on the past turn', async () => {
+    const user = userEvent.setup();
+    renderReference();
+    const regenerate = within(latest()).getByRole('button', { name: 'Re-generate Stats' });
+
+    expect(regenerate).toBeEnabled();
+    expect(within(past()).getByRole('button', { name: 'Re-generate Stats' })).toBeDisabled();
+
+    await user.click(regenerate);
+    expect(screen.getByRole('status')).toHaveTextContent('Last action: Re-generate Stats');
+    const edit = within(latest()).getByRole('button', { name: 'Edit Stats' });
+    await user.click(edit);
+    expect(edit).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it.each(['Edit Stats', 'Re-generate Stats'])('shows the %s tooltip', async (name) => {
+    const user = userEvent.setup();
+    renderReference();
+
+    await user.hover(within(latest()).getByRole('button', { name }));
+    expect(await screen.findByText(name)).toBeVisible();
   });
 
   it('disables the past rows and marks the choice taken', () => {

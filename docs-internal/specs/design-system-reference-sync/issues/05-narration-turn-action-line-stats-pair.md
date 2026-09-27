@@ -1,6 +1,7 @@
 # 05: Narration Turn shows the Pages action line and the Stats panel pair
 
-Status: ready-for-agent
+Status: in-progress
+Base: dce417d8
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
