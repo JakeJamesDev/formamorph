@@ -96,6 +96,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Each character's planning and diary requests read that character's description with its placeholders filled in.** They sent the raw placeholder tokens before. The planning request runs with Staged thinking. Scene pictures built from a character's description fill them in too.
   - **An image generation error toast has a View Details link to the full error, with your Formamorph version, platform and system.** The toast showed only a short message, such as "Prompt outputs failed validation", with no way to find out what failed. When ComfyUI rejects a workflow, **View Details** lists each failing node and what's wrong with it, such as "CheckpointLoaderSimple #4: Value not in list", followed by ComfyUI's full reply. For any other failure, it shows the error's name, message, causes and where in the code it failed. **Copy** puts all of it on your clipboard, version block included, ready to paste when you ask for help.
 
+- **🛠️ Developer tooling**
+  - **The Design System's Panel Tab Strip reference shows all five entity tabs, and each tab shows what it holds.** The Traits and Openings tabs opened an empty panel, and the heading still read "Three Tabs". A test now fails when a registry gains a tab with no body, or when a heading states the wrong tab count. The Design System guide lists the five entity tabs, says the library entity editor moves Traits and Placeholders to its own strip, and gives the five-tab widths.
+
 ---
 
 <details>

@@ -592,11 +592,13 @@ Each panel groups its fields by what kind of thing they are:
 
 | Panel | Tabs | Advanced only |
 | --- | --- | --- |
-| Entity | Profile · Descriptions · Placeholders | Placeholders |
+| Entity | Profile · Descriptions · Traits · Openings · Placeholders | Openings, Placeholders |
 | Location | Details · Presence · Media · Pins | Pins |
 | Stat | Details · Descriptors · Code | Descriptors, Code |
 | Trait | Details · Stats · Pins | Pins |
 | Dictionary entry | Details · Matching | Matching |
+
+The library entity editor lifts Traits and Placeholders onto its own top strip, so its Entity sub-strip shows Profile, Descriptions, and Openings.
 
 Two panels can lose their strip: Simple mode leaves the stat panel and the dictionary entry panel a single tab, which is no choice to offer, so each renders that body bare.
 
@@ -612,13 +614,13 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 | --- | --- |
 | The strip itself | `PanelTabsList` in [`panel-tabs.tsx`](../src/components/ui/panel-tabs.tsx) |
 | Tab, list, and panel primitives | [`tabs.tsx`](../src/components/ui/tabs.tsx) |
-| Three-tab instance and its registry | `EntityManager` in [`EntityManager.tsx`](../src/managers/EntityManager.tsx) and [`entityPanelTabs.ts`](../src/views/entityPanelTabs.ts) |
+| Five-tab instance and its registry | `EntityManager` in [`EntityManager.tsx`](../src/managers/EntityManager.tsx) and [`entityPanelTabs.ts`](../src/views/entityPanelTabs.ts) |
 | Four-tab instance and its registry | `LocationManager` in [`LocationManager.tsx`](../src/managers/LocationManager.tsx) and [`locationPanelTabs.ts`](../src/views/locationPanelTabs.ts) |
 | Instance whose tab name the editor also uses | `TraitManager` in [`TraitManager.tsx`](../src/managers/TraitManager.tsx) and [`traitPanelTabs.ts`](../src/views/traitPanelTabs.ts) |
 | Instance that drops its strip in Simple mode | `StatManager` in [`StatManager.tsx`](../src/managers/StatManager.tsx) and [`statPanelTabs.ts`](../src/views/statPanelTabs.ts) |
 | Two-tab instance, mounted by two hosts | `DictionaryManager` in [`DictionaryManager.tsx`](../src/managers/DictionaryManager.tsx) and [`dictionaryPanelTabs.ts`](../src/views/dictionaryPanelTabs.ts) |
 | Its second host | `DictionaryEditorModal` in [`DictionaryEditorModal.tsx`](../src/components/modals/DictionaryEditorModal.tsx) |
-| Entity strip in a second host, with Placeholders on the host's own strip | `EntityEditorModal` in [`EntityEditorModal.tsx`](../src/components/modals/EntityEditorModal.tsx), from `ENTITY_EDITOR_SUBTABS` |
+| Entity strip in a second host, with Traits and Placeholders on the host's own strip | `EntityEditorModal` in [`EntityEditorModal.tsx`](../src/components/modals/EntityEditorModal.tsx), from `ENTITY_EDITOR_SUBTABS` |
 | Isolated reference | [`PanelTabStripReference.tsx`](../src/components/design-system/PanelTabStripReference.tsx) |
 | Width coverage | [`entity-panel-widths.spec.ts`](../e2e/entity-panel-widths.spec.ts) |
 
@@ -626,7 +628,9 @@ A tab name may repeat across panels, and may match a tab on the editor's own str
 
 The pane holding these panels is not monotonic in viewport width. Below `md` the panel is the full-width detail sheet. At `md` the editor splits and the panel takes half of it. A 767px window therefore gives the panel about 715px, and an 820px window gives it about 347px.
 
-So the label steps on at `sm`, off at `md`, and on again at `xl`. Three tabs in a 375px sheet get 105px each and four get 85px, while one row of "Descriptions" needs 137px. Two tabs get 148px each, which is why the dictionary entry strip is the one case the label would fit; it hides anyway, because a strip that keeps its labels at a width where its neighbors drop theirs reads as a different control. The same shortfall returns in the half-width pane between `md` and `xl`.
+So the label steps on at `sm`, off at `md`, and on again at `xl`. The entity strip's five tabs get 63px each in a 375px sheet. "Placeholders", the longest label, is 106px wide with its icon. Two tabs in the same sheet get 157px each, which is why the dictionary entry strip is the one case the label would fit. It hides anyway, because a strip that keeps its labels at a width where its neighbors drop theirs reads as a different control.
+
+The same shortfall returns in the half-width pane between `md` and `xl`: the five tabs get 62px at 768px, 68px at 820px, and 88px at 1024px. At `xl` they get 114px, so "Placeholders" fits with less side padding. Between `sm` and `md` they get 116px to 141px.
 
 A container query would state this directly. `@tailwindcss/container-queries` is not a dependency, and these two breakpoints track the layout's own `md` switch exactly.
 
@@ -642,12 +646,13 @@ The library entity editor is the one host with other breakpoints. Its strip sits
 | Focus | Arrow keys move between tabs and the shared inset focus ring marks the active one. |
 | Overflow | Below `sm` and between `md` and `xl`, the label is hidden rather than truncated or wrapped. The icon keeps its full size. |
 
-The live reference renders four of the five production strips against their own registries. It leaves the stat panel out because that strip's width case is the entity panel's, three equal columns, and the reference exists to show the widths. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
+The live reference renders four of the five production strips against their own registries. It leaves the stat panel out because that strip's width case is the trait panel's, three equal columns, and the reference exists to show the widths. It holds the chosen tab in mounted React state and never reads or writes authored worlds, saves, library data, or preferences.
 
 ### Writing review
 
 - Tab names come from the four production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
-- **Unverified:** the section headings "Three Tabs", "Four Tabs", "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
+- **Unverified:** the section headings "Five Tabs", "Four Tabs", "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
+- **Unverified:** the entity bodies for Traits and Openings, "The entity's own traits and groups, each one opening on the editor's Traits tab" and "The entity's openings, drawn when a player starts at one of its locations", have terminology review against the production tab contents only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 
