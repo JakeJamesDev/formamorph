@@ -8,7 +8,8 @@
 import { listNames } from '@/lib/utils';
 import { applyLibraryUpdate, unlink, type LibrarySource, type LinkableContent } from '@/lib/linkedContent';
 import type { LibraryKind } from '@/lib/librarySources';
-import type { Dictionary, Entity, Placeholder } from '@/types';
+import { traitWorldOf } from '@/lib/portableTraits';
+import type { Dictionary, Entity, Placeholder, Trait, TraitGroup } from '@/types';
 
 /**
  * What a check said about one source.
@@ -27,6 +28,8 @@ export interface SourceCheckWorld {
   entities?: Entity[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
+  traits?: Trait[];
+  traitGroups?: TraitGroup[];
 }
 
 /** One copy in a world that follows a published source. */
@@ -196,7 +199,7 @@ export function applyRepair<T extends SourceCheckWorld>(
   const shared = world.placeholders ?? [];
   const added: Placeholder[] = [];
   const relink = <I extends LinkableContent>(item: I): I => {
-    const applied = applyLibraryUpdate(item, replacement.data as I, replacement.source, shared);
+    const applied = applyLibraryUpdate(item, replacement.data as I, replacement.source, shared, traitWorldOf(world));
     added.push(...applied.toAdd);
     return applied.item;
   };

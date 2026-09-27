@@ -4,14 +4,18 @@ import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
-import { addOwnedGroup, addOwnedTrait, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits } from '@/lib/ownedTraits';
-import { WORLD_OWNER } from '@/lib/traitGates';
+import {
+  addOwnedGroup, addOwnedTrait, editorGateInput, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits,
+} from '@/lib/ownedTraits';
+import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import { randomUUID } from '@/lib/uuid';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import type { Entity, Placeholder } from '@/types';
 import TraitTree from './TraitTree';
 import TraitManager from './TraitManager';
 import GroupManager from './GroupManager';
+
+const NO_WORLD: TraitWorld = { traits: [], traitGroups: [], entities: [] };
 
 /** A trait store over one library entity: its own traits fill the tree's root, and every write lands on it. */
 function libraryTraitStore(entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[]): TraitStore {
@@ -31,12 +35,8 @@ function libraryTraitStore(entity: Entity, setEntity: Dispatch<SetStateAction<En
     removeTrait: (id) => edit((e) => removeOwnedItem(e, id)),
     removeTraitGroup: (id) => edit((e) => removeOwnedItem(e, id)),
     editEntity: (id, change) => edit((e) => (e.id === id ? change(e) : e)),
-    gateInput: {
-      owners: [{ id: WORLD_OWNER, name: '', traits: [], groups: [] }, { id: entity.id, name: entity.name, traits, groups: traitGroups }],
-      active: {},
-      entities: [entity],
-      persona: { source: 'none' },
-    },
+    // Bound to no world, so "playing as" itself resolves and an outward requirement reads by its stored name.
+    gateInput: editorGateInput({ traits: [], traitGroups: [], entities: [bindOwnedTraits(entity, NO_WORLD)] }),
     pinWorld: null,
     offWorld: true,
   };

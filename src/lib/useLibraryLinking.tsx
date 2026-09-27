@@ -135,6 +135,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     entities: options.entities,
     dictionaries: options.dictionaries,
     placeholders: options.worldPlaceholders,
+    traits: options.traits,
+    traitGroups: options.traitGroups,
     writeItem: (item) => (kindOf(item) === 'dictionary'
       ? updateDictionary(item as Dictionary)
       : updateEntity(item as Entity)),

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, libraryOwnersInPlay, portableOwnedTraits, type TraitWorld,
+  SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, portableOwnedTraits, type TraitWorld,
 } from './portableTraits';
 import { gateStates } from './traitGates';
 import { traitOwners } from './ownedTraits';
@@ -125,6 +125,11 @@ describe('bindOwnedTraits', () => {
     expect(oathOf(bindOwnedTraits(carried(), world))!.slice(0, 3).map((r) => r.id)).toEqual(['', '', '']);
   });
 
+  it('keeps a "playing as" id only when it names a persona', () => {
+    const world = target({ entities: [{ id: 'aldric', name: 'Sir Aldric' }] });
+    expect(oathOf(bindOwnedTraits(carried(), world))![2]).toEqual({ kind: 'playingAs', id: '', name: 'Sir Aldric' });
+  });
+
   it('matches "playing as" against personas only', () => {
     const world = target({ entities: [{ id: 'n-aldric', name: 'Sir Aldric' }] });
     expect(oathOf(bindOwnedTraits(carried(), world))![2]).toEqual({ kind: 'playingAs', id: '', name: 'Sir Aldric' });
@@ -138,18 +143,6 @@ describe('bindOwnedTraits', () => {
   it('returns an entity that owns nothing unchanged', () => {
     const plain: Entity = { id: 'e', name: 'E' };
     expect(bindOwnedTraits(plain, target())).toBe(plain);
-  });
-});
-
-describe('libraryOwnersInPlay', () => {
-  it('binds the library persona, then the added characters, to the world', () => {
-    const persona = carried();
-    const wolf: Entity = { id: 'wolf', name: 'Wolf', traits: [trait('w-loyal', { requires: [{ kind: 'trait', id: 'x', name: 'Paladin' }] })] };
-    const owners = libraryOwnersInPlay(target(), persona, [wolf]);
-    expect(owners.map((e) => e.id)).toEqual(['copy', 'wolf']);
-    expect(oathOf(owners[0])![0].id).toBe('n-paladin');
-    expect(owners[1].traits![0].requires).toEqual([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }]);
-    expect(libraryOwnersInPlay(target(), null, [])).toEqual([]);
   });
 });
 
@@ -171,6 +164,14 @@ describe('adoptOwnedTraits', () => {
       { kind: 'trait', id: tamed.id }, { kind: 'group', id: bond.id },
     ]);
     expect(oathOf(adopted)![3]).toEqual({ kind: 'playingAs', id: 'copy', name: 'Ash' });
+  });
+
+  it('keeps every requirement of an entity written before names were stored, when the world holds its targets', () => {
+    const legacy: Entity = { ...ash([{ kind: 'trait', id: 'n-paladin' }, { kind: 'group', id: 'n-class' }]), id: 'copy' };
+    const adopted = adoptOwnedTraits(legacy, target());
+    expect(adopted.traits).toEqual(legacy.traits);
+    const plain: Entity = { id: 'e', name: 'E' };
+    expect(adoptOwnedTraits(plain, target())).toBe(plain);
   });
 
   it('ignores the copy itself when looking for collisions', () => {

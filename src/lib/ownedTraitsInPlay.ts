@@ -1,8 +1,8 @@
 // Owned traits during play: which are active, and the order every owner's traits lay their placeholder pins.
 
-import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Trait, TraitGroup } from '@/types';
+import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Trait } from '@/types';
 import { traitOwners } from './ownedTraits';
-import { libraryOwnersInPlay } from './portableTraits';
+import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { WORLD_OWNER, type GateOwner } from './traitGates';
@@ -20,7 +20,6 @@ export function activeOwnedTraitIds(states: Readonly<OwnedTraitStates>): Record<
   }));
 }
 
-type TraitWorldLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] };
 
 /** The characters added from the library at Enter World, among the discovered cast. */
 export const addedCharacters = (discovered: readonly DiscoveredEntity[]): Entity[] =>
@@ -29,11 +28,11 @@ export const addedCharacters = (discovered: readonly DiscoveredEntity[]): Entity
 /** The library entities a playthrough holds, whose nodes sit last in the one tree: the library persona, then
  *  the added characters, with their owned trait requirements bound to the world. */
 export const inPlayLibrary = (
-  world: TraitWorldLists, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
-): Entity[] => libraryOwnersInPlay(world, libraryPersona, added);
+  world: TraitWorld, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
+): Entity[] => [...(libraryPersona ? [libraryPersona] : []), ...added].map((e) => bindOwnedTraits(e, world));
 
 /** Every entity that owns traits, as the gate module reads it: the world's, then the library's. */
-export const entityTraitOwners = (world: TraitWorldLists, library: readonly Entity[] = []): GateOwner[] =>
+export const entityTraitOwners = (world: TraitWorld, library: readonly Entity[] = []): GateOwner[] =>
   traitOwners(world, library).filter((owner) => owner.id !== WORLD_OWNER);
 
 /**
@@ -45,7 +44,7 @@ export const entityTraitOwners = (world: TraitWorldLists, library: readonly Enti
  * its active owned trait ids.
  */
 export function pinTraitsInOrder(
-  world: TraitWorldLists,
+  world: TraitWorld,
   playerTraits: readonly Trait[],
   owned: Readonly<Record<string, readonly string[]>>,
   playedEntityId: string | null,

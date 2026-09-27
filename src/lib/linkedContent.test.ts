@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Dictionary, Entity, TraitRequirement } from '@/types';
-import { SELF_ENTITY } from './portableTraits';
+import { SELF_ENTITY, portableOwnedTraits } from './portableTraits';
 import {
   applyLibraryUpdate, contentMatchesSource, libraryOwned, libraryRevision,
   linkToSource, markEdited, planWriteBack, stampLinks, syncWorldContent, unlink, withoutWorldFields,
@@ -119,16 +119,32 @@ describe('planWriteBack', () => {
     expect(planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape)).toEqual([]);
   });
 
-  it('writes nothing for an owned copy whose owned traits differ from the item only by stored names and itself', () => {
+  describe('an owned copy with owned traits', () => {
     const oath = (requires: TraitRequirement[]): Entity['traits'] => [{ id: 't-oath', name: 'Oath', statChanges: [], requires }];
     const item = { ...owned, data: person({ traits: oath([
       { kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: SELF_ENTITY, name: 'Wren' },
     ]) }) };
-    const copy = person({
-      link: { libraryId: 'lib-1', sourceRevision: 'r1' },
-      traits: oath([{ kind: 'trait', id: 'w-paladin' }, { kind: 'playingAs', id: 'ent-1' }]),
+    const home = { traits: [{ id: 'w-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [], entities: [] };
+    // The library form, as Save to Library writes it: the world's fields gone, outward requirements named.
+    const libraryShape = <T extends Entity | Dictionary>(copy: T) =>
+      ({ ...withoutWorldFields(copy), ...portableOwnedTraits(copy as Entity, home) }) as T;
+    const copyWith = (requires: TraitRequirement[]) =>
+      person({ link: { libraryId: 'lib-1', sourceRevision: 'r1' }, traits: oath(requires) });
+
+    it('writes nothing from the world it was saved from, where its requirements hold no names', () => {
+      const copy = copyWith([{ kind: 'trait', id: 'w-paladin' }, { kind: 'playingAs', id: 'ent-1' }]);
+      expect(planWriteBack({ entities: [copy], dictionaries: [] }, [item], libraryShape)).toEqual([]);
     });
-    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [item], shape)).toEqual([]);
+
+    it('writes nothing from another world that bound the same names to its own ids', () => {
+      const copy = copyWith([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }, { kind: 'playingAs', id: 'ent-1', name: 'Wren' }]);
+      expect(planWriteBack({ entities: [copy], dictionaries: [] }, [item], libraryShape)).toEqual([]);
+    });
+
+    it('writes a copy whose requirement now names another target', () => {
+      const copy = copyWith([{ kind: 'trait', id: 'n-knight', name: 'Knight' }, { kind: 'playingAs', id: 'ent-1' }]);
+      expect(planWriteBack({ entities: [copy], dictionaries: [] }, [item], libraryShape)).toHaveLength(1);
+    });
   });
 
   it('writes nothing for a local replacement', () => {
