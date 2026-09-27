@@ -3,7 +3,7 @@ import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
 import {
-  activePlaceholderPins, addPinAt, allPinTexts, collectPinLayers, collectPins, commitPinSource, pinConflict, pinSourceKey, pinSourcesOfKind,
+  activePlaceholderPins, addPinAt, allPinTexts, canCommitPinSource, collectPinLayers, collectPins, commitPinSource, pinConflict, pinSourceKey, pinSourcesOfKind,
   pinsTargeting, removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
 } from './placeholderPins';
 
@@ -580,6 +580,10 @@ describe('owned traits as pin sources — every owner’s traits, the cast befor
     commitPinSource(next, { kind: 'trait', id: 'wild' }, { updateTrait, updateEntity });
     expect(updateEntity).toHaveBeenCalledWith(next.entities![0]);
     expect(updateTrait).not.toHaveBeenCalled();
+    const onlyEntity = vi.fn();
+    expect(canCommitPinSource({ kind: 'trait', id: 'wild' }, { updateEntity: onlyEntity })).toBe(true);
+    commitPinSource(next, { kind: 'trait', id: 'wild' }, { updateEntity: onlyEntity });
+    expect(onlyEntity).toHaveBeenCalledWith(next.entities![0]);
   });
 });
 

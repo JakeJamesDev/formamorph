@@ -502,10 +502,10 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       });
       return entities ? { ...world, entities } : world;
     },
-    // An owned trait goes back through its entity; a writer set without `updateEntity` drops that write.
-    commit: ({ updateTrait, updateEntity }) => updateTrait && ((next, source) => {
+    // An owned trait goes back through its entity, so either writer takes a trait pin.
+    commit: ({ updateTrait, updateEntity }) => (updateTrait || updateEntity) && ((next, source) => {
       const trait = next.traits?.find((t) => t.id === source.id);
-      if (trait) return updateTrait(trait);
+      if (trait) return updateTrait?.(trait);
       const entity = next.entities?.find((e) => e.traits?.some((t) => t.id === source.id));
       if (entity) updateEntity?.(entity);
     }),

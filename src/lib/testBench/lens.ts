@@ -216,7 +216,7 @@ export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait
   const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [] };
   const owners = traitOwners(lists);
   const proposed: Record<string, string[]> = { [WORLD_OWNER]: active.map((t) => t.id) };
-  for (const owner of owners.slice(1)) {
+  for (const owner of owners.filter((o) => o.id !== WORLD_OWNER)) {
     const defaults = owner.traits.filter((t) => t.isDefault).map((t) => t.id);
     proposed[owner.id] = collapseExclusiveDefaults(defaults, [...owner.traits], [...owner.groups]);
   }
