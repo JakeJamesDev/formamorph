@@ -94,7 +94,8 @@ The toast and the window look and behave the same everywhere: in the main menu, 
 
 - `AiStreamError` keeps its class, its `kind`, its `status` and its `serverError`, because the rejected-override code checks all three. It gains a `details` field: the status, the server's message, param, type and code, and the raw body. The stream reads the body once as text, keeps the raw string and parses the structured fields from it. The in-game "Failed to process AI request" toast passes the error through, so the server's reason reaches Error Details.
 - The InvokeAI, Automatic1111 and OpenAI image providers put the status and the body on their thrown errors, as ComfyUI does now. `InvokeHttpError` keeps its class and gains `details`.
-- The community service calls that throw on a failed response add the route, the status and the body.
+- The community service calls that throw on a failed response add the route, the status and the body. Community means the calls whose failures reach a toast: world storage, the staff API, feedback, audit, events, messages, users, the age gate and catalog downloads. Sign-in, register and the account routes are out: their errors show inline in forms, not in toasts, and they do not change.
+- A throw-site ticket proves its slice end to end by converting the few toasts that show its errors; the sweep tickets skip toasts an earlier ticket already converted. Ticket 04 converts the delete, quarantine and release toasts in the Community Creations browser; ticket 08 leaves them alone.
 
 **Redaction.** Details never include request headers. A key, token or password in a URL's query string is replaced with a mask before the URL enters the details. Response bodies are shown as the server sent them.
 
