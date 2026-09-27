@@ -194,7 +194,9 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 ### Placeholder pins
 
 - Every active owned trait lays its pins, on any owner. The pin collector lays owned traits first, in tree order per owner, then the player's world traits and the played entity's owned traits. The later pin wins, so the player's picks beat the cast's.
-- The Test Bench lens and the pin-conflict rule read every owner's active traits.
+- Within the player's set, world traits and the played entity's owned traits lay together in one-tree order.
+- The Test Bench lens and the pin-conflict rule read every owner's active traits. The lens has no persona, so its owned traits are each entity's owned defaults settled with persona None; a pin label reads "Trait: Ash's Tamed". A placeholder's Pins list and conflict note list owned-trait pins too, edits write back to the owning entity, and traits of one exclusive owned group count as never together.
+- In play, the Traits tab shows every world entity that owns traits, met or not, plus the library persona, as entity sections with the user icon and "You" on the played one. Non-toggleable owned traits are read-only rows. In the log and the banner an NPC's owned trait reads "Ash's Tamed"; the played entity's read bare, like world traits.
 
 ### Delivery order
 
