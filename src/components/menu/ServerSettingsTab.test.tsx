@@ -19,7 +19,7 @@ const settingBody = (value: unknown) =>
 
 /** A refusal, in the envelope this API uses. */
 const refusal = (error: string) =>
-  ({ ok: false, json: async () => ({ success: false, error }) }) as Response;
+  ({ ok: false, text: async () => JSON.stringify({ success: false, error }) }) as Response;
 
 /** A read that has not answered yet, so the pending state can be asserted while it hangs. */
 const never = () => new Promise<Response>(() => {});

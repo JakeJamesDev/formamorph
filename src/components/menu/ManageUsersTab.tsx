@@ -17,6 +17,7 @@ import { SentMessagesDialog } from "@/components/menu/SentMessagesDialog";
 import PolicyService from "@/services/PolicyService";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
+import { responseError } from "@/services/responseError";
 import MessageService from "@/services/MessageService";
 import UserService from "@/services/UserService";
 import { useUserProfile } from "@/contexts/userProfileStore";
@@ -183,10 +184,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to fetch users');
-      }
+      if (!response.ok) throw await responseError(response, 'Failed to fetch users');
 
       const result = await response.json();
       if (!mountedRef.current || reqId !== fetchReqRef.current) return; // superseded by a newer fetch (page change / re-search)
@@ -230,9 +228,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       });
 
       if (!response.ok) {
-        // This API answers with `error`, not `message`.
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+        throw await responseError(response, `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
       }
 
       // Update the user in the list. Matched through `userIdOf`, not `user._id` alone: this endpoint
@@ -308,10 +304,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         body: JSON.stringify({ accountType }),
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || data.message || 'Failed to change the account type');
-      }
+      if (!response.ok) throw await responseError(response, 'Failed to change the account type');
 
       // Written into the row rather than refetched, so the badge and the moderation controls on it
       // follow immediately — a demoted moderator becomes actionable in place.

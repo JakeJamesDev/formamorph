@@ -2,6 +2,7 @@ import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation,
 import { kindOf } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
+import { responseError } from '@/services/responseError';
 
 /**
  * A catalog row as the server sends it, narrowed to the fields a profile listing reads.
@@ -146,8 +147,9 @@ class UserService {
 
   /** Read a JSON body, throwing the server's own wording on a refusal. */
   private async unwrap<T>(response: Response, fallback: string): Promise<T> {
+    if (!response.ok) throw await responseError(response, fallback);
     const body = await response.json().catch(() => ({}));
-    if (!response.ok || !body?.success) throw new Error(body?.error || fallback);
+    if (!body?.success) throw new Error(body?.error || fallback);
 
     return body as T;
   }

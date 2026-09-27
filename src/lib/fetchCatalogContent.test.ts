@@ -21,7 +21,7 @@ const streaming = (chunks: string[], contentLength?: number): Response => {
 
 /** A response with no readable body — the non-streaming fallback. */
 const plain = (body: unknown, ok = true): Response =>
-  ({ ok, headers: { get: () => null }, body: null, json: async () => body } as unknown as Response);
+  ({ ok, headers: { get: () => null }, body: null, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn());

@@ -4,7 +4,7 @@ import type { AuthUser } from '@/types';
 
 /** Minimal fetch Response stub — the same shape AuthService's own tests use. */
 export const res = (body: unknown, ok = true, status = 200): Response =>
-  ({ ok, status, json: async () => body } as unknown as Response);
+  ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 
 /** Put the page at a URL, the way a rewritten route arrives. */
 export const at = (url: string) => window.history.replaceState(null, '', url);

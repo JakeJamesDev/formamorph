@@ -1,11 +1,6 @@
 import AuthService from './AuthService';
+import { responseError } from './responseError';
 import type { AuditAction, AuditEntry } from '@/types';
-
-/** Server error envelope: this API answers with `error`, older handlers elsewhere read `message`. */
-interface ErrorBody {
-  error?: string;
-  message?: string;
-}
 
 /** A page of entries, with the match count before paging so a pager can be drawn. */
 export interface AuditPage {
@@ -29,10 +24,7 @@ class AuditService {
   }
 
   private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as ErrorBody;
-      throw new Error(body.error || body.message || fallback);
-    }
+    if (!response.ok) throw await responseError(response, fallback);
     return (await response.json()) as T;
   }
 

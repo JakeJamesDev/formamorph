@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import { responseError } from './responseError';
 
 interface AccountAgeGateState {
   accepted: boolean;
@@ -6,15 +7,9 @@ interface AccountAgeGateState {
   acceptedAt: string | null;
 }
 
-interface ErrorBody {
-  error?: string;
-  message?: string;
-}
-
 async function readResponse(response: Response, fallback: string): Promise<AccountAgeGateState> {
-  const body = (await response.json().catch(() => ({}))) as AccountAgeGateState & ErrorBody;
-  if (!response.ok) throw new Error(body.error || body.message || fallback);
-  return body;
+  if (!response.ok) throw await responseError(response, fallback);
+  return (await response.json().catch(() => ({}))) as AccountAgeGateState;
 }
 
 class AgeGateService {
