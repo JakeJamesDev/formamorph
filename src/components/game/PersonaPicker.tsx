@@ -29,11 +29,15 @@ const rowClass = (selected: boolean) => cn(
   selected ? 'border-primary bg-primary/10' : 'border-border hover:border-muted-foreground/60 hover:bg-muted/40',
 );
 
-function Portrait({ option }: { option: PersonaOption }) {
+/** An entity's picture in the 2:3 portrait frame, or a user glyph when it has none. */
+export function PersonaPortrait({ image }: { image?: string }) {
   return (
-    <span className={cn('flex w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted', THUMB_FRAME.portrait)}>
-      {option.image
-        ? <img src={option.image} alt="" {...THUMB_INTRINSIC.portrait} className={cn('h-full w-full', thumbFit('portrait'))} />
+    <span
+      data-testid="persona-portrait"
+      className={cn('flex w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted', THUMB_FRAME.portrait)}
+    >
+      {image
+        ? <img src={image} alt="" {...THUMB_INTRINSIC.portrait} className={cn('h-full w-full', thumbFit('portrait'))} />
         : <User aria-hidden className="h-6 w-6 text-muted-foreground" />}
     </span>
   );
@@ -65,7 +69,7 @@ export function PersonaPicker({ world = [], library, none = true, value, onChang
   const personaRow = (source: Exclude<PersonaRef['source'], 'none'>) => (option: PersonaOption) =>
     row(`${source}:${option.id}`, option.name, (
       <>
-        <Portrait option={option} />
+        <PersonaPortrait image={option.image} />
         <span className="min-w-0">
           <strong className="block break-words text-label font-semibold">{option.name}</strong>
           {option.description && (

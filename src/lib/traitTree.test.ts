@@ -282,6 +282,16 @@ describe('ownedTraitTree', () => {
     const inOwned = { ...entities[2], traitPlacement: { groupId: 'bond', order: 0 } };
     expect(rows([ash, inOwned])).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed', 'shell', '-empty']);
   });
+
+  it('puts library nodes after everything at the top level, in the order added, whatever their placement', () => {
+    const placed = { ...ash, traitPlacement: { groupId: null, order: 5 } };
+    const wren: Entity = { id: 'wren', name: 'Wren', traits: [trait('brave', null, 0)], traitPlacement: { groupId: 'class', order: 0 } };
+    const moss: Entity = { id: 'moss', name: 'Moss', traits: [trait('quiet', null, 0)] };
+    const tree = ownedTraitTree(worldTraits, [placed], [moss, wren, { id: 'bare', name: 'Bare' }]);
+    expect(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)).map((n) => `${'-'.repeat(n.depth)}${n.id}`))
+      .toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed', 'moss', '-quiet', 'wren', '-brave']);
+    expect(tree.ownerOf.get('brave')).toBe('wren');
+  });
 });
 
 describe('applyOwnedTraitDrop', () => {

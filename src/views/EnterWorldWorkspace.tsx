@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Check, ChevronDown, ListTree } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, ListTree, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
+import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
 import type { GateState } from '@/lib/traitGates';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
@@ -9,8 +10,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
-import { PersonaPicker, type PersonaOption } from '@/components/game/PersonaPicker';
+import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
+import { primaryImage } from '@/lib/entityImages';
+import type { ResolveEntityText } from '@/lib/resolveWorldNames';
+import { ownedTraitTree } from '@/lib/traitTree';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
@@ -26,6 +30,11 @@ export interface EnterWorldWorkspaceProps {
   worldAuthor?: string;
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** The world's entities; each that owns traits gets a page in the tree. */
+  traitEntities?: readonly Entity[];
+  /** The library persona and added characters, in the order added. */
+  traitLibrary?: readonly Entity[];
+  resolveEntityText?: ResolveEntityText;
   stats: Stat[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
@@ -77,10 +86,16 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     return () => clearTimeout(timer);
   }, [additionsRemembered]);
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
-  const traitWorkspace = useMemo(
-    () => buildTraitWorkspace(props.traits, props.traitGroups),
-    [props.traits, props.traitGroups],
+  const traitTree = useMemo(
+    () => ownedTraitTree({ traits: props.traits, traitGroups: props.traitGroups }, props.traitEntities ?? [], props.traitLibrary ?? []),
+    [props.traits, props.traitGroups, props.traitEntities, props.traitLibrary],
   );
+  const traitWorkspace = useMemo(
+    () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())),
+    [traitTree],
+  );
+  const playedId = props.persona && props.persona.source !== 'none' ? props.persona.entityId : null;
+  const youMark = <span className="ml-2 text-meta font-normal text-primary">You</span>;
   // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
   const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
   const personaOptions = useMemo(
@@ -132,8 +147,12 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           categoryNavigationButton.current?.focus();
         }}
       >
-        <span className="min-w-0 flex-1 break-words">{category.name}</span>
-        {category.kind === 'traits' && (
+        {category.kind === 'traits' && category.entityId && <User aria-hidden className="h-4 w-4 shrink-0" />}
+        <span className="min-w-0 flex-1 break-words">
+          {category.name}
+          {category.kind === 'traits' && category.entityId && category.entityId === playedId && youMark}
+        </span>
+        {category.kind === 'traits' && category.traits.length > 0 && (
           <span
             aria-label={`${selected} of ${category.traits.length} selected`}
             className={cn('shrink-0 text-meta font-normal', selected ? 'text-primary' : 'text-muted-foreground')}
@@ -142,6 +161,29 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           </span>
         )}
       </button>
+    );
+  };
+  // An entity's page opens on its portrait beside its name and player description.
+  const entityHeading = (entityId: string) => {
+    const entity = traitTree.entityNodes.get(entityId);
+    if (!entity) return null;
+    const description = entity.playerDescription?.trim();
+    return (
+      <div className="mb-3 flex items-start gap-4">
+        <PersonaPortrait image={primaryImage(entity)} />
+        <div className="min-w-0">
+          <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
+          <h2 className="break-words text-heading font-semibold">
+            {entity.name}
+            {entity.id === playedId && youMark}
+          </h2>
+          {description && (
+            <div className="mt-1 max-w-3xl text-helper text-muted-foreground">
+              <MarkdownRenderer text={props.resolveEntityText ? props.resolveEntityText(entity, description) : description} />
+            </div>
+          )}
+        </div>
+      </div>
     );
   };
   const personaIndex = categories.findIndex((category) => category.kind === 'persona');
@@ -160,7 +202,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     >
     <nav aria-label="World setup categories" className="space-y-1 p-3">
       {personaIndex >= 0 && categoryButton(categories[personaIndex], personaIndex)}
-      {props.traits.length > 0 && (
+      {traitTree.traits.length > 0 && (
         <p className="my-3 flex items-center gap-3 px-2 text-meta font-medium uppercase text-muted-foreground">
           <span>Starting Traits</span><span className="h-px flex-1 bg-border" />
         </p>
@@ -287,8 +329,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {current?.kind !== 'library' && (
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-4 md:px-6 md:py-4">
-          {current?.kind === 'traits' && (
+          {current?.kind === 'traits' && current.entityId && current.traits.length === 0 && entityHeading(current.entityId)}
+          {current?.kind === 'traits' && (!current.entityId || current.traits.length > 0) && (
             <SetupTraitList
+              heading={current.entityId ? entityHeading(current.entityId) : undefined}
               name={current.name}
               groups={current.path}
               traits={current.traits}

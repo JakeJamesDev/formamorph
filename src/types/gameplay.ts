@@ -17,6 +17,16 @@ export type CodeBounds = { min?: number; max?: number; regen?: number };
 /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. */
 export type CascadeOffTraitIds = Record<string, string[]>;
 
+/** One entity's owned traits in play: the ids chosen, and the chosen ones switched off. */
+export interface OwnedTraitState {
+  chosen: string[];
+  /** Absent ⇒ none. */
+  disabled?: string[];
+}
+
+/** Entity id → its owned trait state. Absent entity ⇒ nothing chosen. */
+export type OwnedTraitStates = Record<string, OwnedTraitState>;
+
 /** A stat during gameplay — a definition Stat whose live `value` is always a number.
  *
  *  `min`, `max` and `regen` are *effective* bounds, derived from the `base*` fields plus the active traits'
@@ -170,6 +180,8 @@ export interface GameState {
   /** Owner id → the traits a gate cascade turned off, which switch back on once their gate holds again. The
    *  player's world traits sit under `world`. Absent ⇒ none. */
   cascadeOffTraitIds?: CascadeOffTraitIds;
+  /** Each entity's owned traits. Absent ⇒ none. */
+  ownedTraits?: OwnedTraitStates;
   /** Absent ⇒ none. */
   codePins?: CodePins;
   /** The live scene list — who is physically present this turn, with alias/reveal state for the tab. Legacy

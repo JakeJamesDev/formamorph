@@ -96,6 +96,7 @@ function AppViews() {
     if (import.meta.env.DEV && devRoute?.view) setCurrentView(devRoute.view as DevView);
   }, [devRoute?.view]);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
+  const [initialOwnedTraits, setInitialOwnedTraits] = useState<Record<string, string[]>>({});
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
@@ -111,8 +112,10 @@ function AppViews() {
     dictionaries?: Dictionary[] | null,
     characters?: Entity[] | null,
     persona?: PersonaPick | null,
+    ownedTraits?: Record<string, string[]>,
   ) => {
     setSelectedTraits(traits);
+    setInitialOwnedTraits(ownedTraits ?? {});
     setInitialCharacterData(customCharacterData);
     setInitialLocationId(startingLocationId ?? null);
     setInitialDictionaries(dictionaries ?? null);
@@ -180,6 +183,7 @@ function AppViews() {
             <GameplayProvider>
               <GameViewer
                 initialTraits={selectedTraits}
+                initialOwnedTraits={initialOwnedTraits}
                 initialCharacterData={initialCharacterData}
                 initialLocationId={initialLocationId}
                 initialDictionaries={initialDictionaries}

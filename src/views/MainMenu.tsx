@@ -62,14 +62,16 @@ import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  WORLD_OWNER, gateStates, settle, settleDefaults, switchTrait, worldGateInput, type SettleResult,
+  WORLD_OWNER, gateStates, settle, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
+import { traitOwners } from '@/lib/ownedTraits';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
-  emptyEntryDraft, withLocationPick, withPersonaPick, type EntryDraft,
+  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
+  type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
@@ -181,7 +183,7 @@ import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick, ownedTraits?: Record<string, string[]>) => void;
   /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
   onLoadSaveGame: (saveId: string) => void;
   /** Easter-egg: replay the first-run welcome intro (snappy). Wired to the footer version click. */
@@ -1339,30 +1341,39 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // The starting selection's gates, and the banner naming what the last change turned off.
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
-  const gateInput = (traitIds: readonly string[], persona: PersonaRef) =>
-    worldGateInput({ traits, groups: traitGroups, entities: resolvedWorldEntities }, persona, traitIds);
-  const traitGates = useMemo(
-    () => gateStates(worldGateInput({ traits, groups: traitGroups, entities: resolvedWorldEntities }, entryDraft.persona, selectedTraits)),
-    [traits, traitGroups, resolvedWorldEntities, entryDraft.persona, selectedTraits],
+  // Every owner in the cast: the world, its entities, and (with library owned traits) the library entities.
+  const entryWorld = useMemo<EntryTraitWorld>(
+    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: [] }),
+    [traits, traitGroups, resolvedWorldEntities],
+  );
+  const rawEntryWorld: EntryTraitWorld = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: [] };
+  const entryOwners = useMemo(() => traitOwners(entryWorld, entryWorld.library), [entryWorld]);
+  const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
+  const ownerOfTrait = (traitId: string) => entryOwners.find((o) => o.traits.some((t) => t.id === traitId));
+  const traitName = (traitId: string) => ownerOfTrait(traitId)?.traits.find((t) => t.id === traitId)?.name ?? traitId;
+  // Every owner's picks in one list: trait ids are unique across owners.
+  const entrySelectedTraits = useMemo(
+    () => [...entryDraft.traitIds, ...Object.values(entryDraft.ownedTraitIds).flat()],
+    [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
-    const names = result.turnedOff.map((ref) => traits.find((t) => t.id === ref.traitId)?.name ?? ref.traitId);
+    const names = result.turnedOff.map((ref) => traitName(ref.traitId));
     return names.length ? { off: names, because } : null;
   };
 
   // Toggle a trait in the starting selection; a cascade shows in the banner.
   const handleTraitSelection = (traitId: string) => {
-    const result = switchTrait(gateInput(selectedTraits, entryDraft.persona), WORLD_OWNER, traitId);
+    const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerOfTrait(traitId)?.id ?? WORLD_OWNER, traitId);
     if (!result) return;
-    updateDraft('traitIds', result.active[WORLD_OWNER]);
-    setTraitCascade(cascadeFrom(result, traits.find((t) => t.id === traitId)?.name ?? traitId));
+    reviseDraft((draft) => withSettledTraits(draft, result.active));
+    setTraitCascade(cascadeFrom(result, traitName(traitId)));
   };
 
   // A persona pick can open or close "playing as" gates, so the traits settle against the new persona.
   const handlePersonaChange = (ref: PersonaRef) => {
     const next = withPersonaPick(entryDraft, ref, personaPickContext);
-    const result = settle(gateInput(next.traitIds, ref));
-    reviseDraft(() => ({ ...next, traitIds: result.active[WORLD_OWNER] }));
+    const result = settle(entryGateInput(entryWorld, next));
+    reviseDraft(() => withSettledTraits(next, result.active));
     const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
       : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
     setTraitCascade(cascadeFrom(result, picked?.name ?? 'the persona change'));
@@ -1473,7 +1484,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         showEnterStep('avatar');
       } else {
         entryStarted.current = true;
-        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars, persona);
+        onStartGame(draft.traitIds, null, true, draft.locationId, dicts, chars, persona, castOwnedTraits(draft, entryWorld));
       }
     } catch (error) {
       if (entryRequest.current === request) {
@@ -1510,7 +1521,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // and the Introduction overlay (see `lib/enterFlow`).
   const enterFlowSteps = (mode: EnterMode = 'newGame'): EnterStep[] => buildEnterFlow({
     introReadme: selectedWorld?.data.worldOverview?.introReadme,
-    traitCount: traits.length,
+    traitCount: entryOwners.reduce((count, owner) => count + owner.traits.length, 0),
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,
@@ -1551,11 +1562,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const additions = restoreWorldAdditionDefaults(
       selectedWorld!.id, buildInitialSelection(worldBooks, dictionaries, signedInId), additionEntities);
     const persona = personaPreselect(selectedWorld!.id);
-    const defaults = settleDefaults(
-      worldGateInput({ traits: rawTraits, groups: rawTraitGroups, entities: worldEntities }, persona)).active[WORLD_OWNER];
     // The persona wins a tie with a remembered character, and a world persona preselects its location.
     const draft = withPersonaPick(
-      { ...emptyEntryDraft(), traitIds: defaults, ...additions }, persona, personaPickContext);
+      { ...emptyEntryDraft(), ...entryDefaults(rawEntryWorld, persona), ...additions }, persona, personaPickContext);
     cancelEntryResolution();
     entryStarted.current = false;
     setEntryDraft(draft);
@@ -1988,7 +1997,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           if (entryStarted.current) return;
           entryStarted.current = true;
           setShowCharacterCustomization(false);
-          onStartGame(selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters, selectedPersona);
+          onStartGame(
+            selectedTraits, customizedData, true, selectedLocationId, selectedDictionaries, selectedCharacters, selectedPersona,
+            castOwnedTraits(entryDraft, entryWorld),
+          );
         }}
         onBack={backFrom('avatar')}
         onAbort={() => {
@@ -2711,10 +2723,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         const currentWorldData = selectedWorld!.data;
                         // Skip the setup steps but honor the author's default trait choices.
                         const persona = personaPreselect(selectedWorld!.id);
-                        const defaults = settleDefaults(gateInput([], persona)).active[WORLD_OWNER];
                         // A world persona starts at its own starting location; any other start stays random.
                         const draft = withPersonaPick({
-                          ...emptyEntryDraft(), traitIds: defaults,
+                          ...emptyEntryDraft(), ...entryDefaults(rawEntryWorld, persona),
                           dictionaryItems: buildInitialSelection(worldBooks, dictionaries, signedInId),
                         }, persona, personaPickContext);
                         if (entryStarted.current) return;
@@ -2723,7 +2734,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                         setEntryDraft(draft);
                         const characterData = currentWorldData.worldOverview?.use3DModel ? defaultCharacterData : null;
                         loadPersonaPick(persona).then(
-                          (pick) => onStartGame(defaults, characterData, true, draft.locationId, null, null, pick),
+                          (pick) => onStartGame(
+                            draft.traitIds, characterData, true, draft.locationId, null, null, pick, castOwnedTraits(draft, rawEntryWorld),
+                          ),
                           (error: unknown) => {
                             entryStarted.current = false;
                             console.error('Could not read the Quick Start persona', error);
@@ -3122,11 +3135,14 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           worldName={selectedWorld.name}
           traits={traits}
           traitGroups={traitGroups}
+          traitEntities={entryWorld.entities}
+          traitLibrary={entryWorld.library}
+          resolveEntityText={resolveEntityText}
           stats={rawStats}
           locations={offeredStartLocations(entryDraft.persona, personaPickContext)}
           resolveText={resolvePH}
           resolveTraitText={resolveTraitText}
-          selectedTraits={selectedTraits}
+          selectedTraits={entrySelectedTraits}
           selectedLocationId={selectedLocationId}
           worldAuthor={selectedWorld?.author}
           libraryEntities={additionEntities}
