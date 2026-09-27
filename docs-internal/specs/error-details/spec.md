@@ -86,23 +86,29 @@ The toast and the window look and behave the same everywhere: in the main menu, 
 
 **Which toasts use it.** A toast raised in a `catch`, or from a failed result that carries an error, goes through `toastError`. Form validation, refusals and other toasts with no error behind them stay plain `toast.error`, with no link. Each of the ~150 sites is classified during the sweep; the sweep doesn't change toast wording.
 
-**Every error gets details.** `toastError` always offers View Details. A `DetailedError` supplies its own details. Any other error gets built details: its name, its message, its cause chain and the top 10 stack frames. A failed service result that holds only a string is wrapped in an error, so it still gets the link.
+**Every error gets details.** `toastError` always offers View Details. An error that carries a string `details` field supplies its own details; `toastError` checks for the field, not for a class, so any error class can carry details without changing its type. `DetailedError` stays as the plain class for throw sites that have no class of their own. Any other error gets built details: its name, its message, its cause chain and the top 10 stack frames. A failed service result that holds only a string is wrapped in an error, so it still gets the link.
 
 **The diagnostics block.** Every Error Details view ends with the same version, platform and system block that the bug report collects. It reuses the existing diagnostics collector, so the two never disagree.
 
-**Throw sites carry what they know.** The code that holds the server's response builds the details and throws a `DetailedError`. The toast code never reads a response.
+**Throw sites carry what they know.** The code that holds the server's response builds the details and puts them on the thrown error. The toast code never reads a response.
 
-- The AI stream error becomes a `DetailedError`. Its details are the status, the server's message, param, type and code, and the raw body. The in-game "Failed to process AI request" toast passes the error through, so the server's reason reaches Error Details.
-- The InvokeAI, Automatic1111 and OpenAI image providers throw `DetailedError` with the status and the body, as ComfyUI does now.
+- `AiStreamError` keeps its class, its `kind`, its `status` and its `serverError`, because the rejected-override code checks all three. It gains a `details` field: the status, the server's message, param, type and code, and the raw body. The stream reads the body once as text, keeps the raw string and parses the structured fields from it. The in-game "Failed to process AI request" toast passes the error through, so the server's reason reaches Error Details.
+- The InvokeAI, Automatic1111 and OpenAI image providers put the status and the body on their thrown errors, as ComfyUI does now. `InvokeHttpError` keeps its class and gains `details`.
 - The community service calls that throw on a failed response add the route, the status and the body.
 
 **Redaction.** Details never include request headers. A key, token or password in a URL's query string is replaced with a mask before the URL enters the details. Response bodies are shown as the server sent them.
 
 **Error Details window.** The existing dialog host stays mounted beside the toast container, so it outlives the toast. Its buttons become **Copy** and **Report Bug**. Copy puts the message, the details and the diagnostics block on the clipboard through the shared copy helper.
 
-**Report Bug.** Report Bug opens the existing bug report with a title and a description filled in. The title is the toast's message. The description is the details, without the diagnostics block, because the bug report attaches its own. The bug report takes new optional initial-title and initial-body props. A filled-in report replaces the saved draft, which is kept until the report is sent or closed. Details longer than the bug report's body limit are cut, with a line that says Copy has the full text.
+**Report Bug.** Report Bug opens the existing bug report with a title and a description filled in. The title is the toast's message. The description is the details, without the diagnostics block, because the bug report attaches its own. The bug report takes new optional initial-title and initial-body props. Details longer than the bug report's body limit are cut, with a line that says Copy has the full text.
 
-**Sign-in first.** Today only the main menu can raise the sign-in dialog. This effort adds a way to raise sign-in from anywhere, in the same store pattern Error Details uses. When a signed-out player presses Report Bug, sign-in opens. When sign-in succeeds, the filled-in bug report opens. When sign-in is canceled, Error Details stays open.
+**Where the bug report mounts.** Today the bug report is mounted only in play and in the main menu's feedback hub; the World Editor has none. This effort mounts one bug report beside the Error Details host, next to the toast container, so all three views share it. It opens through the same store pattern Error Details uses. The existing mounts in play and the feedback hub stay for their own buttons.
+
+**Report Bug and the community flag.** Bug reports are a community feature. When the community flag is off, Error Details shows Copy only, the same way play hides its own Report Bug button today.
+
+**The filled report wins over a draft.** The bug report keeps one unsent draft. When Error Details opens the report, the filled-in title and description replace that draft, and the old draft is dropped. The filled-in report then becomes the saved draft until it is sent or discarded. Merging the two is not attempted: the body limit makes a merge lossy, and the player chose to report this error.
+
+**Sign-in first.** Today only the main menu can raise the sign-in dialog. This effort adds a way to raise sign-in from anywhere, in the same store pattern Error Details uses. Sign-in in the main menu runs the age gate's `requireAuthentication` check first; sign-in raised from Error Details runs the same check, so Report Bug never bypasses a policy step. When a signed-out player presses Report Bug, the check runs and sign-in opens. When sign-in succeeds, the filled-in bug report opens. When sign-in or the check is canceled, Error Details stays open.
 
 **Existing links.** "Fix connection →" and "View Details →" both use the shared link toast. A toast has one link. The connection-guide toast keeps its link, and its error goes to the connection guide, not to Error Details.
 
@@ -117,9 +123,9 @@ A good test raises a real error through a public call and checks what the player
 Two seams, both already in use:
 
 1. **The toast and the window.** Render the real themed toast container, call `toastError`, click **View Details →**, and read the window. The prior art is the existing link-toast test. It covers the headline form, built details for plain errors, the diagnostics block, Copy, Report Bug with and without sign-in, the filled-in report and the draft, the body limit, and plain toasts staying linkless.
-2. **The throw sites.** Call each public function with a stubbed fetch that fails, and check the thrown error's message and details. The prior art is the ComfyUI provider test. It covers the AI stream, the three other image providers and the community services. Redaction is tested here: a URL with a key in its query string must come out masked.
+2. **The throw sites.** Call each public function with a stubbed fetch that fails, and check the thrown error's message and details. The prior art is the ComfyUI provider test. It covers the AI stream, the three other image providers and the community services. The stream test also checks that the rejected-override detection still sees an `AiStreamError` with its `kind`. Redaction is tested here: a URL with a key in its query string must come out masked.
 
-Each new guard is mutation-tested: remove the headline, drop the diagnostics block, skip redaction, drop the body. Each change must fail its test.
+Each new guard is mutation-tested: remove the headline, drop the diagnostics block, skip redaction, drop the body, hide Report Bug with the flag on, keep the old draft. Each change must fail its test.
 
 The sweep's classification has no unit test. The changed call sites are covered by the gates and the two seams above.
 
@@ -137,4 +143,5 @@ The sweep's classification has no unit test. The changed call sites are covered 
 - The ComfyUI rejection is the first `DetailedError`. Its tests and its dev route are the reference.
 - The glossary's **Report** means a content report to staff. This spec uses "bug report" for the feedback kind, to keep the terms apart.
 - The sign-in dialog is main-menu state today. Raising it in play is the riskiest part of this effort; check that sign-in in play doesn't reset the game view.
+- `toastError` checks for a `details` field rather than `instanceof DetailedError` because `AiStreamError` and `InvokeHttpError` already exist and other code checks their classes.
 - Bug reports are filed against an account, which is why signed-out players sign in first.
