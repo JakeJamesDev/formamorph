@@ -51,7 +51,7 @@ export function duplicateEntityNode(
   const r = duplicateNode(groups, entities, id);
   if (r.leaves === entities) return { groups: r.groups, entities, newId: r.newId };
   const original = new Set(entities.map((e) => e.id));
-  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(remintOwnedTraits({ ...e, ...remintOpenings(e) }))));
+  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(remintOwnedTraits({ ...e, ...remintOpenings(e) }, r.idMap))));
   return { groups: r.groups, entities: leaves, newId: r.newId };
 }
 

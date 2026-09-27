@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, User, ExternalLink } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -80,7 +80,7 @@ import EntityTree from '../managers/EntityTree';
 import { duplicateTraitNode, ownsTraits } from '@/lib/traitTree';
 import { findOwnedItem } from '@/lib/ownedTraits';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
-import EntityTraitsSection from '../managers/EntityTraitsSection';
+import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -989,17 +989,12 @@ const WorldEditorInner = ({
         <GroupManager key={selectedGroup.id} group={selectedGroup} ownerId={selectedOwned?.entity.id} />
       )}
       {selectedTraitNode && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-label font-medium">
-            <User className="h-4 w-4 shrink-0" aria-hidden />
-            <PlaceholderText text={selectedTraitNode.name} placeholders={placeholders} />
-          </div>
-          <Button variant="outline" size="sm" onClick={() => navigateToBenchItem('entities', selectedTraitNode.id, 'traits')}>
-            <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
-            Open Entity
-          </Button>
-          <EntityTraitsSection entity={selectedTraitNode} onOpen={setSelectedItemId} />
-        </div>
+        <EntityTraitNodePanel
+          key={selectedTraitNode.id}
+          entity={selectedTraitNode}
+          onOpen={setSelectedItemId}
+          onOpenEntity={() => navigateToBenchItem('entities', selectedTraitNode.id, 'traits')}
+        />
       )}
       {activeTab === "traits" && !selectedGroup && selectedTrait && (
         <TraitManager

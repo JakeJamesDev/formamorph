@@ -1,4 +1,4 @@
-import { Folder, Plus } from 'lucide-react';
+import { ExternalLink, Folder, Plus, User } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -59,6 +59,28 @@ const EntityTraitsSection = ({ entity, onOpen }: { entity: Entity; onOpen: (id: 
           </Button>
         )}
       </div>
+    </div>
+  );
+};
+
+/** The Traits tab's panel for an entity node: the entity's name, a way to its editor, and its traits. */
+export const EntityTraitNodePanel = ({ entity, onOpen, onOpenEntity }: {
+  entity: Entity;
+  onOpen: (id: string) => void;
+  onOpenEntity: () => void;
+}) => {
+  const { placeholders } = useGameData();
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-label font-medium">
+        <User className="h-4 w-4 shrink-0" aria-hidden />
+        <PlaceholderText text={entity.name} placeholders={placeholders} />
+      </div>
+      <Button variant="outline" size="sm" onClick={onOpenEntity}>
+        <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+        Open Entity
+      </Button>
+      <EntityTraitsSection entity={entity} onOpen={onOpen} />
     </div>
   );
 };

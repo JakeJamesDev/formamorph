@@ -37,7 +37,7 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
 
 /**
  * The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Each entity
- * that owns a trait has a node at the end of the top level, holding its own traits and groups.
+ * that owns a trait or a group has a node at the end of the top level, holding them.
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
@@ -107,7 +107,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     },
   };
 
-  if (!tree.traits.length && !traitGroups.length) {
+  if (!tree.traits.length && !tree.groups.length) {
     // Simple mode has no groups, so its + adds the item directly.
     return <EmptyListHint noun="traits" action={advanced ? "add a group or trait" : "add one"} />;
   }

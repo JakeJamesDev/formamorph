@@ -239,19 +239,19 @@ describe('ownedTraitTree', () => {
     flattenTraitTree(buildTraitTree(...(({ groups, traits }) => [groups, traits] as const)(ownedTraitTree(worldTraits, ents))))
       .map((n) => `${'-'.repeat(n.depth)}${n.id}`);
 
-  it('puts a node for each entity that owns a trait after the world items, holding its own tree', () => {
-    expect(rows()).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed']);
+  it('puts a node for each entity that owns a trait or a group after the world items, holding its own tree', () => {
+    expect(rows()).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed', 'shell', '-empty']);
     expect(ownedTraitTree(worldTraits, entities).entityNodes.get('ash')?.name).toBe('Ash');
   });
 
-  it('shows no node for an entity that owns no trait, even one holding an empty group', () => {
+  it('shows no node for an entity that owns nothing, and a node for one holding only a group', () => {
     expect(rows([{ id: 'npc', name: 'Npc' }])).toEqual(['class', '-paladin', 'loner']);
-    expect(rows([entities[2]])).not.toContain('shell');
+    expect(rows([entities[2]])).toEqual(['class', '-paladin', 'loner', 'shell', '-empty']);
   });
 
-  it('drops the node when its last trait goes', () => {
-    const emptied = { ...ash, traits: undefined };
-    expect(rows([emptied])).toEqual(['class', '-paladin', 'loner']);
+  it('keeps the node while a group is left, and drops it when the last trait and group go', () => {
+    expect(rows([{ ...ash, traits: undefined }])).toEqual(['class', '-paladin', 'loner', 'ash', '-bond']);
+    expect(rows([{ ...ash, traits: undefined, traitGroups: undefined }])).toEqual(['class', '-paladin', 'loner']);
   });
 
   it('reads an owned item whose group is gone as sitting at its entity root', () => {
