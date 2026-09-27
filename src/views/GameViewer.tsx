@@ -2524,11 +2524,12 @@ const GameViewer = ({
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
-  /** The authored world the player's trait gates read: the traits, the groups, and who the player is. */
   const entityOwners = useMemo(
     () => entityTraitOwners({ traits: authoredTraits, traitGroups, entities: traitEntities }, traitLibrary),
     [authoredTraits, traitGroups, traitEntities, traitLibrary],
   );
+  /** The authored world every owner's trait gates read: the traits, the groups, who the player is, and the
+   *  entities that own traits. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
@@ -2543,7 +2544,7 @@ const GameViewer = ({
     codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,
   };
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
-  // puts back exactly what the box moved. The last snapshot holds the same six fields — nothing else
+  // puts back exactly what the box moved. The last snapshot holds the same seven fields — nothing else
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
   // by hand while the AI was thinking. Null between turns and once a turn commits.
   const beforeBoxUndoRef = useRef<TurnCodeState | null>(null);

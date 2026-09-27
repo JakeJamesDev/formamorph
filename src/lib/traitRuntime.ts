@@ -14,7 +14,7 @@ import type {
   CascadeOffTraitIds, CodeBounds, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait, TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
-import { activeOwnedTraitIds } from './ownedTraitsInPlay';
+import { activeOwnedTraitIds, playedEntityId } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
 import {
   gateStates, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
@@ -393,7 +393,7 @@ function withOwnedSwitch(state: TraitRuntimeState, ownerId: string, traitId: str
 /** A trait as the log and the banner name it: an NPC's owned trait carries its owner's name. The world's
  *  traits and the played entity's are the player's own, so they read bare. */
 function labeler(world: TraitWorld, nameOf: (trait: Trait) => string) {
-  const played = world.persona && world.persona.source !== 'none' ? world.persona.entityId : null;
+  const played = playedEntityId(world.persona);
   const owners = new Map((world.entityOwners ?? []).map((o) => [o.id, o]));
   return (trait: Trait, ownerId: string): string => {
     const owner = ownerId === WORLD_OWNER || ownerId === played ? undefined : owners.get(ownerId);
