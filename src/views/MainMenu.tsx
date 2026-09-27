@@ -924,12 +924,15 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
         if (!isMountedRef.current) return;
         setSkeletonWorlds(existingIds.map((id) => ({ id, isLoading: true })));
         const firstRun = existingIds.length === 0;
-        const { failed, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+        const { failed, errors, updated } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
         if (!isMountedRef.current) return;
         if (firstRun) {
           if (failed.length === 0) toast.success("Loaded default worlds");
-          else if (failed.length < DEFAULT_WORLDS.length) toast.error(`Some default worlds failed to load: ${failed.join(", ")}`);
-          else toast.error("Failed to load default worlds");
+          else toastError(new AggregateError(errors, "Default worlds failed to load"), {
+            headline: failed.length < DEFAULT_WORLDS.length
+              ? `Some default worlds failed to load: ${failed.join(", ")}`
+              : "Failed to load default worlds",
+          });
         }
         if (updated.length > 0) {
           toast.info(`Updated ${updated.length} default world${updated.length > 1 ? "s" : ""}: ${updated.join(", ")}`);
