@@ -1,4 +1,4 @@
-import type { GameState, Placeholder, Trait } from '@/types';
+import type { CascadeOffTraitIds, GameState, Placeholder, Trait } from '@/types';
 import type { SandboxTrait } from './statCodeExecutor';
 import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
@@ -11,7 +11,7 @@ export interface StatCodeTraits {
   disabledTraitIds: readonly string[];
   appliedValues: AppliedTraitValues;
   /** Owner id → the traits a cascade turned off. Absent ⇒ none. */
-  cascadeOffTraitIds?: Record<string, string[]>;
+  cascadeOffTraitIds?: CascadeOffTraitIds;
   /** Every authored trait and group, and who the player is, for gates. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
 }

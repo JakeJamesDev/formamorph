@@ -62,6 +62,14 @@ describe('the persona row', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('hands the new persona and its name on, so the traits can settle under it', async () => {
+    await store(wren);
+    const onPersonaChange = vi.fn();
+    renderRightPanel({ onPersonaChange });
+    await pick(await openPicker(), 'Wren');
+    expect(onPersonaChange).toHaveBeenCalledWith({ source: 'library', entityId: 'l-wren' }, 'Wren');
+  });
+
   it('leaves a persona already in play as a character out of the picker', async () => {
     await Promise.all([store(wren), store(ash)]);
     renderRightPanel({}, {

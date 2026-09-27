@@ -41,6 +41,7 @@ import type {
   EntityVisualPreference,
   PersonaRef,
   TraitsPanelView,
+  CascadeOffTraitIds,
 } from '@/types';
 
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
@@ -92,7 +93,7 @@ function useProvideGameplay() {
   // rather than what it asked for. Snapshotted per turn alongside the switch positions.
   const [appliedTraitValues, setAppliedTraitValues] = useState<AppliedTraitValues>({});
   // Owner id → the traits a gate cascade turned off and that may still return. Snapshotted per turn too.
-  const [cascadeOffTraitIds, setCascadeOffTraitIds] = useState<Record<string, string[]>>({});
+  const [cascadeOffTraitIds, setCascadeOffTraitIds] = useState<CascadeOffTraitIds>({});
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the

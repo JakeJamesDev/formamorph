@@ -1,4 +1,4 @@
-import type { CodeBounds, CodePins, Placeholder, PlayerStat, Trait } from '@/types';
+import type { CascadeOffTraitIds, CodeBounds, CodePins, Placeholder, PlayerStat, Trait } from '@/types';
 import {
   CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type TraitWrite,
   type ValueAndMax,
@@ -19,7 +19,7 @@ export interface StatCodeTraitResult {
   acquired: Trait[];
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
-  cascadeOffTraitIds: Record<string, string[]>;
+  cascadeOffTraitIds: CascadeOffTraitIds;
   log: string[];
 }
 
