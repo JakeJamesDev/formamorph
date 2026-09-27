@@ -15,19 +15,21 @@ export function withOwnedTraits(entity: Entity, traits: Trait[], groups: TraitGr
   return { ...rest, ...(traits.length ? { traits } : {}), ...(groups.length ? { traitGroups: groups } : {}) };
 }
 
-const rootCount = (entity: Entity): number =>
+/** How many items sit at the entity's root: owned traits and groups, and links. */
+export const rootCount = (entity: Entity): number =>
   traitsOf(entity).filter((t) => (t.groupId ?? null) === null).length
-  + groupsOf(entity).filter((g) => g.parentId === null).length;
+  + groupsOf(entity).filter((g) => g.parentId === null).length
+  + (entity.traitLinks ?? []).filter((l) => (l.groupId ?? null) === null).length;
 
 /** Append a new trait at the entity's root. */
-export const addOwnedTrait = (entity: Entity, id: string): Entity =>
-  withOwnedTraits(entity, [...traitsOf(entity), newTrait(id, rootCount(entity))], groupsOf(entity));
+export const addOwnedTrait = (entity: Entity, id: string, name?: string): Entity =>
+  withOwnedTraits(entity, [...traitsOf(entity), newTrait(id, rootCount(entity), name)], groupsOf(entity));
 
 /** Append a new group at the entity's root. */
-export const addOwnedGroup = (entity: Entity, id: string): Entity =>
+export const addOwnedGroup = (entity: Entity, id: string, name = 'New Group'): Entity =>
   withOwnedTraits(entity, traitsOf(entity), [
     ...groupsOf(entity),
-    { id, name: 'New Group', playerDescription: '', aiDescription: '', parentId: null, order: rootCount(entity) },
+    { id, name, playerDescription: '', aiDescription: '', parentId: null, order: rootCount(entity) },
   ]);
 
 export const updateOwnedTrait = (entity: Entity, trait: Trait): Entity =>

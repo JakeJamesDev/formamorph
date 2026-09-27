@@ -773,6 +773,37 @@ The reference's mobile section selector previews the current prompt's sections; 
 
 Prompt and section labels reuse the production registry. The reference's title and selector label name their controls; it adds no instructional prose.
 
+## Pattern: Bearer Flyouts
+
+**Purpose:** Pick one entity from the world's entity folders without leaving the Traits tab. Approved 2026-09-27.
+
+- 🧭 **One level at a time.** The flyout shows one entity group level. A group row carries a folder icon and a trailing chevron, and opens that group's level. A group with no entity anywhere below it has no row.
+- ⬅️ **Back row.** Above the rows, a Back row with an arrow names the level you're on. It returns one level. On the top level of a menu drill-in, it names the menu row that opened the list and returns to the menu.
+- 👤 **Custom Persona first.** When a flyout offers it, Custom Persona sits first on the top level with its own icon.
+- ✅ **Check column.** A flyout that shows held state starts every row with a check column, so group rows and entity rows align. A held entity reads checked and dimmed, and can't be picked.
+- Rows use the menu's row size and padding. Long names wrap. The list scrolls inside the popover when it outgrows the space.
+
+| Instance | Where | After a pick |
+| --- | --- | --- |
+| **Add Trait To Entity** / **Add Group To Entity** | The Traits tab's **+** menu drills in | The popover closes and the new row is selected |
+| **Link To…** | Right-aligned at the top of a world trait's or group's Details, in Advanced | The popover stays open and the row turns checked |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Levels, Back row, check column | `BearerList` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
+| Rows and levels | `bearerChoices` in [`bearerChoices.ts`](../src/lib/bearerChoices.ts) |
+| Link button | `LinkToBearerButton` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
+| **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
+| Isolated reference | [`BearerFlyoutReference.tsx`](../src/components/design-system/BearerFlyoutReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=bearer-flyouts`. The reference uses sample entities and local state. It never reads or writes a world.
+
+### Responsive behavior
+
+The same levels work on desktop and on a phone. Nothing opens to the side, so a narrow panel never clips a level. Each level's Back row takes focus as it opens.
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

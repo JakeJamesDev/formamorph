@@ -3,7 +3,7 @@ import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection, linkRowId,
-  CUSTOM_PERSONA_ID,
+  CUSTOM_PERSONA_ID, linkRefusal,
 } from './traitTree';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
@@ -695,6 +695,33 @@ describe('system nodes in the one tree', () => {
     expect(getOwnedTraitDropProjection(tree, rowsOf(tree), CUSTOM_PERSONA_ID, 'loner', 48, 24)).toEqual({ depth: 0, parentId: null });
     const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait' as const, originalName: 'Loner', groupId: null, order: 1 }] };
     expect(drop(world, [linked], 'l1', 'wizard', 24)).toBeNull();
+  });
+
+  it('says why a bearer node cannot link an original, the same way a drop refuses it', () => {
+    const cp = { traitLinks: [{ id: 'l-cp', originalId: 'classes', kind: 'group' as const, originalName: 'classes', groupId: null }] };
+    const lists = { ...world, customPersona: cp };
+    const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'wizard', kind: 'trait' as const, originalName: 'wizard', groupId: null }] };
+    expect(linkRefusal(lists, [linked], 'ash', 'paladin')).toBeNull();
+    expect(linkRefusal(lists, [linked], 'ash', 'wizard')).toEqual({ reason: 'duplicate', name: 'wizard', bearer: 'Ash' });
+    // A linked group brings its children.
+    expect(linkRefusal(lists, [linked], CUSTOM_PERSONA_ID, 'paladin'))
+      .toEqual({ reason: 'duplicate', name: 'paladin', bearer: 'Custom Persona' });
+    expect(linkRefusal(lists, [linked], CUSTOM_PERSONA_ID, 'loner')).toEqual({ reason: 'offered', name: 'Loner' });
+  });
+
+  it('keeps Templates and Custom Persona at the top level (Q68)', () => {
+    const withFaction = {
+      ...world,
+      traits: [...world.traits, trait('guard', 'faction', 0)],
+      traitGroups: [...world.traitGroups, group('faction', null, 2)],
+    };
+    const tree = ownedTraitTree(withFaction, [ash], [], { links: true });
+    // Rows: templates, classes, paladin, wizard, loner, faction, guard, ash, pack, custom-persona. One level in,
+    // just after Guard, would sit in Faction.
+    expect(getOwnedTraitDropProjection(tree, rowsOf(tree), CUSTOM_PERSONA_ID, 'ash', 24, 24)).toEqual({ depth: 0, parentId: null });
+    expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['templates']), 'templates', 'guard', 24, 24)).toEqual({ depth: 0, parentId: null });
+    const out = drop(withFaction, [ash], 'templates', 'guard', 24);
+    expect(out?.kind === 'moved' && out.world?.groups.find((g) => g.id === 'templates')?.parentId).toBeNull();
   });
 
   it('keeps a hidden empty Templates group through a drop in Basic', () => {

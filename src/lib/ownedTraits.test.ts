@@ -33,6 +33,12 @@ describe('owned trait edits', () => {
     expect(withGroup.traitGroups?.find((g) => g.id === 'g-new')).toMatchObject({ parentId: null, order: 3 });
   });
 
+  it('counts the links at the entity root when it orders a new item, and takes a name', () => {
+    const linked = ash({ traitLinks: [{ id: 'l1', originalId: 't-paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 2 }] });
+    expect(addOwnedTrait(linked, 'new', 'Oath').traits?.find((t) => t.id === 'new')).toMatchObject({ name: 'Oath', order: 3 });
+    expect(addOwnedGroup(linked, 'g-new', 'Vows').traitGroups?.find((g) => g.id === 'g-new')).toMatchObject({ name: 'Vows', order: 3 });
+  });
+
   it('replaces one trait or group by id and leaves the rest', () => {
     const renamed = updateOwnedTrait(ash(), trait('t-wild', { name: 'Feral', groupId: 'g-bond' }));
     expect(renamed.traits?.map((t) => t.name)).toEqual(['Tamed', 'Feral', 'Pack Leader']);

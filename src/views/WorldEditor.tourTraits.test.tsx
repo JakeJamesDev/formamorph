@@ -68,6 +68,11 @@ const stepNumber = () => Number(/(\d+) \//.exec(within(tourBar()).getByText(/^Au
 const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).queryByText(`${stepNumber()} / ${TOTAL}`))!;
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 const addButton = () => screen.getByRole('button', { name: 'Add to Traits' });
+/** The Traits tab's + opens its menu; Add Trait there makes the trait. */
+const clickAddTrait = () => {
+  fireEvent.click(addButton());
+  fireEvent.click(screen.getByRole('button', { name: 'Add Trait' }));
+};
 
 const inPlay = () => screen.getByRole('region', { name: 'In Play' });
 const playerSees = () => within(inPlay()).queryByRole('region', { name: 'Player Sees' });
@@ -101,7 +106,7 @@ const next = async () => {
 
 /** Adds the tour trait with the Traits tab's own Add button and moves on to the Name step. */
 const addTourTrait = async () => {
-  fireEvent.click(addButton());
+  clickAddTrait();
   await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   await next();
 };
@@ -152,7 +157,7 @@ describe('Authoring Tour — Traits steps', () => {
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
 
-    fireEvent.click(addButton());
+    clickAddTrait();
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     expect(ctx().traits).toHaveLength(1);
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('New Trait'));
@@ -209,7 +214,7 @@ describe('Authoring Tour — Traits steps', () => {
   it('replays the trait step the way the Add button makes the trait', async () => {
     const replayed = (await replayTourSteps(WORLD, indexOf('trait-name'))).world.traits[0];
     const { ctx } = await resumeAt('add-trait');
-    fireEvent.click(addButton());
+    clickAddTrait();
     await waitFor(() => expect(ctx().traits).toHaveLength(1));
     const { id: _replayedId, ...shape } = replayed;
     const { id: _addedId, ...added } = onlyTrait(ctx);
