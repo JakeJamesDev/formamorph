@@ -125,10 +125,12 @@ export interface StoredWorldRecord {
 }
 
 
-/** Result of a default-world seed/update pass: ids that failed to load, and display names that were
- *  auto-updated in place (so the caller can notify the player). */
+/** Result of a default-world seed/update pass: ids that failed to load, the error behind each (named by
+ *  its id, the caught error as its cause), and display names that were auto-updated in place (so the
+ *  caller can notify the player). */
 export interface DefaultWorldSyncResult {
   failed: string[];
+  errors: Error[];
   updated: string[];
 }
 
@@ -548,6 +550,7 @@ class WorldStorageService {
     );
 
     const failed: string[] = [];
+    const errors: Error[] = [];
     const updated: string[] = [];
     await Promise.all(
       defaultWorlds.map(async world => {
@@ -586,10 +589,11 @@ class WorldStorageService {
         } catch (error) {
           console.error(`Error loading world ${world.id}:`, error);
           failed.push(world.id); // Skip this world but continue with others; report it as failed.
+          errors.push(new Error(world.id, { cause: error }));
         }
       }),
     );
-    return { failed, updated };
+    return { failed, errors, updated };
   }
 
   /**

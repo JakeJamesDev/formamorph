@@ -5,7 +5,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import type { AddonRow } from '@/lib/worldDependencies';
 import type { ReactElement } from 'react';
 import { toast } from 'react-toastify';
-import { getErrorDetailsState } from '@/lib/errorDetails';
+import { ErrorDetailsHost } from '@/components/ErrorDetailsDialog';
 import { toastTexts } from '@/test/toastText';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
@@ -244,9 +244,9 @@ describe('saving', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
     expect(toastTexts(vi.mocked(toast.error))).toEqual(['Could not save: Reed Cutter, Marsh Warden. Try again.View Details →']);
 
-    render(vi.mocked(toast.error).mock.calls[0][0] as ReactElement);
+    render(<><ErrorDetailsHost />{vi.mocked(toast.error).mock.calls[0][0] as ReactElement}</>);
     fireEvent.click(screen.getByRole('button', { name: 'View Details →' }));
-    const details = getErrorDetailsState().entry?.details ?? '';
+    const details = (await screen.findByRole('dialog', { name: 'Error Details' })).textContent ?? '';
     expect(details).toContain('Error: Reed Cutter\nCaused by: Error: HTTP 403');
     expect(details).toContain('Error: Marsh Warden\nCaused by: Error: HTTP 500');
   });

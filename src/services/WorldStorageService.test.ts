@@ -617,6 +617,16 @@ describe('loadDefaultWorlds (content-hash refresh)', () => {
     expect(failed).toEqual(['no-such-world']);
     expect(updated).toEqual([]);
   });
+
+  it('keeps the error behind each failed world, named by its id', async () => {
+    const { errors } = await WorldStorageService.loadDefaultWorlds([
+      { id: 'no-such-world', defaultName: 'Nope' },
+    ]);
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0].message).toBe('no-such-world');
+    expect(errors[0].cause).toBeInstanceOf(Error);
+  });
 });
 
 describe('default worlds: seed vs. the player deleting one', () => {
