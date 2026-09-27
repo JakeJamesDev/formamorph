@@ -7,6 +7,8 @@ import {
   decodePreviewFrame,
   toComfySampler,
   fetchComfyMeta,
+  comfyRejectionDetail,
+  comfyuiProvider,
 } from './comfyui';
 import type { ImageGenParams } from './types';
 
@@ -131,5 +133,94 @@ describe('fetchComfyMeta', () => {
   it('throws when the server responds with an error', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 403 } as Response)));
     await expect(fetchComfyMeta('http://127.0.0.1:8188')).rejects.toThrow(/403/);
+  });
+});
+
+// The /prompt 400 body ComfyUI sends for a checkpoint that isn't installed (shape from execution.py).
+const missingCheckpointRejection = {
+  error: {
+    type: 'prompt_outputs_failed_validation',
+    message: 'Prompt outputs failed validation',
+    details: '',
+    extra_info: {},
+  },
+  node_errors: {
+    '4': {
+      errors: [{
+        type: 'value_not_in_list',
+        message: 'Value not in list',
+        details: "ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']",
+        extra_info: {},
+      }],
+      dependent_outputs: ['9'],
+      class_type: 'CheckpointLoaderSimple',
+    },
+  },
+};
+
+describe('comfyRejectionDetail', () => {
+  it('names the failing node and its reason instead of the generic message', () => {
+    expect(comfyRejectionDetail(missingCheckpointRejection)).toBe(
+      "CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']",
+    );
+  });
+
+  it('joins every error across nodes', () => {
+    const body = {
+      ...missingCheckpointRejection,
+      node_errors: {
+        ...missingCheckpointRejection.node_errors,
+        '3': {
+          errors: [
+            { message: 'Value not in list', details: "sampler_name: 'dpm' not in [...]" },
+            { message: 'Value smaller than min', details: 'steps: 0' },
+          ],
+          class_type: 'KSampler',
+        },
+      },
+    };
+    expect(comfyRejectionDetail(body)).toBe(
+      "KSampler #3: Value not in list: sampler_name: 'dpm' not in [...]; "
+        + 'KSampler #3: Value smaller than min: steps: 0; '
+        + "CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']",
+    );
+  });
+
+  it('falls back to the top-level error when no node is at fault', () => {
+    expect(comfyRejectionDetail({ error: { message: 'Prompt has no outputs', details: '' }, node_errors: {} }))
+      .toBe('Prompt has no outputs');
+    expect(comfyRejectionDetail({ error: { message: 'Prompt outputs failed validation', details: 'Loop detected' } }))
+      .toBe('Prompt outputs failed validation: Loop detected');
+    expect(comfyRejectionDetail({ error: 'invalid prompt' })).toBe('invalid prompt');
+  });
+
+  it('returns undefined for a body with no reason in it', () => {
+    expect(comfyRejectionDetail({})).toBeUndefined();
+    expect(comfyRejectionDetail(null)).toBeUndefined();
+  });
+});
+
+describe('comfyuiProvider', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('puts the failing node in the thrown error when ComfyUI rejects the workflow', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      json: async () => missingCheckpointRejection,
+    } as Response)));
+    await expect(comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' })).rejects.toThrow(
+      "ComfyUI rejected the workflow: CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors'",
+    );
+  });
+
+  it('keeps the HTTP status when the body is not JSON', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      json: async () => { throw new SyntaxError('Unexpected token <'); },
+    } as unknown as Response)));
+    await expect(comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }))
+      .rejects.toThrow('ComfyUI rejected the workflow: HTTP 502');
   });
 });
