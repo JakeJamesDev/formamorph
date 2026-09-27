@@ -4,10 +4,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { linkDefaultTraits, originalPath, setLinkDefault } from '@/lib/traitLinks';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { describePlaceholders } from '@/lib/placeholders';
+import { linkPinRows } from '@/lib/placeholderPins';
+import { linkDefaultTraits, originalPath, setLinkDefault, setLinkPinValue } from '@/lib/traitLinks';
 import { CUSTOM_PERSONA_ID, hasStatEffects } from '@/lib/traitTree';
 import { useEditBearer } from './useEditBearer';
-import type { Entity, TraitLink } from '@/types';
+import type { Entity, TraitLink, TraitLinkPinValue } from '@/types';
+
+const NO_VALUE = '__none__';
 
 /** The line above a link's original: where the original lives, and that an edit reaches every link. */
 export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onOpen: (id: string) => void }) {
@@ -32,12 +37,12 @@ export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onO
 }
 
 /**
- * The link's own settings below its original's Details: default-on for each trait the row brings, and a
- * note when its stat effects apply only while the player plays as the entity, or never. Custom Persona's
- * links are the player's, so they get no note.
+ * The link's own settings below its original's Details: default-on for each trait the row brings, the
+ * value for each bearer-relative pin those traits carry, and a note when its stat effects apply only while
+ * the player plays as the entity, or never. Custom Persona's links are the player's, so they get no note.
  */
 export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; link: TraitLink; originalId: string }) {
-  const { traits, traitGroups, placeholders } = useTraitStore();
+  const { traits, traitGroups, placeholders, placeholderOwners } = useTraitStore();
   const editBearer = useEditBearer();
   const persona = entity.id === CUSTOM_PERSONA_ID;
   const defaultHint = persona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts';
@@ -45,6 +50,9 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
   const single = rows.length === 1 && rows[0].trait.id === originalId;
   const hasStats = !persona && rows.some(({ trait: t }) => hasStatEffects(t));
   const set = (traitId: string, on: boolean) => editBearer(entity.id, (e) => setLinkDefault(e, link.id, traitId, on));
+  const pinRows = linkPinRows({ placeholders, placeholderOwners }, rows.map((r) => r.trait), link, persona ? [] : entity.placeholders ?? []);
+  const setPin = (traitId: string, name: string, value: TraitLinkPinValue | null) =>
+    editBearer(entity.id, (e) => setLinkPinValue(e, link.id, traitId, name, value));
 
   return (
     <Section title="This Link">
@@ -71,6 +79,39 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
             ))}
           </ul>
         </div>
+      )}
+      {pinRows.length > 0 && (
+        <ul className="space-y-2" aria-label="Pinned Values">
+          {pinRows.map(({ trait: t, name, target, value }) => {
+            const listed = target.values.some((v) => v.text === value?.value);
+            return (
+              <li key={`${t.id}:${name}`} className="flex items-center gap-2">
+                <span className="min-w-0 shrink truncate text-label">
+                  {!single && <><PlaceholderText text={t.name} placeholders={placeholders} />: </>}
+                  {name} →
+                </span>
+                <Select
+                  value={value?.value ?? NO_VALUE}
+                  onValueChange={(text) => {
+                    const id = target.values.find((v) => v.text === text)?.id;
+                    setPin(t.id, name, text === NO_VALUE ? null : { value: text, ...(id ? { valueId: id } : {}) });
+                  }}
+                >
+                  <SelectTrigger className="min-w-0 flex-1" aria-label={`${name} Value`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_VALUE}>No Value</SelectItem>
+                    {target.values.map((v) => (
+                      <SelectItem key={v.id} value={v.text}>{describePlaceholders(v.text, placeholders)}</SelectItem>
+                    ))}
+                    {value && !listed && <SelectItem value={value.value}>{describePlaceholders(value.value, placeholders)}</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </li>
+            );
+          })}
+        </ul>
       )}
       {hasStats && (
         <Hint>{entity.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>

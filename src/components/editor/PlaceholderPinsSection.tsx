@@ -11,7 +11,7 @@ import {
   removePinAt, sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
-import type { Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
+import type { CustomPersonaNode, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
 
 /** The world the section reads pins from and writes them back to: the four source lists, and the writer
  *  for each. The world editor's data store is one. */
@@ -21,13 +21,16 @@ export interface PinsWorld extends PinEditorWorld {
   updateLocation: (location: GameLocation) => void;
   updateStat: (stat: Stat) => void;
   updatePlaceholder: (placeholder: Placeholder) => void;
+  setCustomPersona?: (node: CustomPersonaNode) => void;
 }
 
 /**
  * Every pin aimed at one placeholder, from any source, as one list: strongest kind first, each row naming
  * its source. The pins live on their sources — this section only gathers them — so a value edit, a re-aim
- * or a removal here is written to the trait, location, stat or placeholder that holds the pin. Add picks
- * the kind of source, then the source, and writes an empty pin there for the row's value field to fill.
+ * or a removal here is written to the trait, location, stat or placeholder that holds the pin. A link's
+ * value for a bearer-relative pin lists too, under its bearer: its source is fixed, and removing it clears
+ * the value. Add picks the kind of source, then the source, and writes an empty pin there for the row's
+ * value field to fill.
  */
 export function PlaceholderPinsSection({ world, placeholder }: {
   world: PinsWorld;
@@ -43,7 +46,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
    *  source written twice lands the same record twice, which is harmless. */
   const commit = (next: PinEditorWorld, ...sources: PinSourceRef[]) => {
-    for (const source of sources) commitPinSource(next, source, world);
+    for (const source of sources) commitPinSource(next, source, { ...world, updateCustomPersona: world.setCustomPersona });
   };
   const setPin = (row: PinRow, next: PlaceholderPin) => commit(updatePinAt(world, row.source, row.pin, next), row.source);
   const remove = (row: PinRow) => commit(removePinAt(world, row.source, row.pin), row.source);
@@ -69,7 +72,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
       {rows.map((row, index) => (
         <div key={`${pinSourceKey(row.source)}:${index}`} className="space-y-1">
           <div className="flex space-x-2">
-            <Select value={pinSourceKey(row.source)} onValueChange={(key) => {
+            <Select value={pinSourceKey(row.source)} disabled={row.source.kind === 'trait' && !!row.source.link} onValueChange={(key) => {
               const picked = options(row.source.kind).find((o) => pinSourceKey(o.source) === key);
               if (picked) reaim(row, picked.source);
             }}>

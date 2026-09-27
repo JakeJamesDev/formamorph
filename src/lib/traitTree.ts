@@ -440,7 +440,7 @@ export function applyOwnedTraitDrop(
   if (!isNode && from === null && to !== null) {
     const refused = duplicateIn(to, activeId);
     if (refused) return refused;
-    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
+    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 }, tree.entityNodes.get(to)!.placeholders);
     return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
   }
   if (!isNode && from !== to && to !== null) {

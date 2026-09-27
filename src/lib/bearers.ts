@@ -1,7 +1,7 @@
 // Bearers: who has which traits. A bearer is the player or an entity whose tree holds a trait, directly or
 // through a link. This module is the one place that expands a link to its original's live subtree.
 
-import type { CustomPersonaNode, Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
+import type { CustomPersonaNode, Entity, PersonaRef, Placeholder, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
@@ -70,15 +70,35 @@ export function originalOf(
   return group && group.system !== 'templates' ? { kind: 'group', item: group } : null;
 }
 
-/** A link to `originalId` at `place`, or null when the id is not an original. */
-export function makeLink(world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string, id: string, place: TraitPlacement): TraitLink | null {
+/**
+ * A link to `originalId` at `place`, or null when the id is not an original. Each bearer-relative pin the
+ * link brings starts with the pin's own value where it binds to the world placeholder, that is, where the
+ * bearer's `own` placeholders have none of that name; otherwise it starts unset.
+ */
+export function makeLink(
+  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string, id: string, place: TraitPlacement,
+  own: readonly Placeholder[] = [],
+): TraitLink | null {
   const original = originalOf(world, originalId);
-  return original && { id, originalId, kind: original.kind, originalName: original.item.name, ...place };
+  if (!original) return null;
+  const brought = original.kind === 'trait' ? [original.item] : subtreeOf(world, original.item).traits;
+  const pinValues: NonNullable<TraitLink['pinValues']> = {};
+  for (const trait of brought) {
+    for (const pin of trait.placeholderPins ?? []) {
+      const name = pin.bearerPlaceholder;
+      if (!name || !pin.value || own.some((p) => !p.ownerId && p.name === name)) continue;
+      (pinValues[trait.id] ??= {})[name] = { value: pin.value, ...(pin.valueId ? { valueId: pin.valueId } : {}) };
+    }
+  }
+  return {
+    id, originalId, kind: original.kind, originalName: original.item.name, ...place,
+    ...(Object.keys(pinValues).length ? { pinValues } : {}),
+  };
 }
 
 /** A world group's live subtree: the groups below it and every world trait in it or below it. Entity nodes
  *  are not world groups, so they never appear. */
-function subtreeOf(world: BearerWorld, group: TraitGroup): { groups: TraitGroup[]; traits: Trait[] } {
+function subtreeOf(world: Pick<BearerWorld, 'traits' | 'traitGroups'>, group: TraitGroup): { groups: TraitGroup[]; traits: Trait[] } {
   const groups = groupsBelow(world.traitGroups, group.id);
   const ids = new Set([group.id, ...groups.map((g) => g.id)]);
   return { groups, traits: world.traits.filter((t) => t.groupId != null && ids.has(t.groupId)) };

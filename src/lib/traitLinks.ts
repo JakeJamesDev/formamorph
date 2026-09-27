@@ -1,7 +1,7 @@
 // Editor edits of an entity's links: removal, the link's own defaults, Detach, and the cascade when an
 // original goes.
 
-import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink } from '@/types';
+import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink, TraitLinkPinValue } from '@/types';
 import { randomUUID } from './uuid';
 import { makeLink, originalOf, type BearerWorld } from './bearers';
 import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
@@ -57,7 +57,7 @@ export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {
 
 /** Link the original at the end of the bearer's top level. Null when the id is not an original. */
 export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
-  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
+  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) }, bearer.placeholders);
   return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
 }
 
@@ -68,6 +68,22 @@ export const removeLink = (entity: Entity, linkId: string): Entity =>
 /** Store the link's own default-on for one original trait it brings. */
 export const setLinkDefault = (entity: Entity, linkId: string, traitId: string, on: boolean): Entity =>
   withLinks(entity, (entity.traitLinks ?? []).map((l) => (l.id === linkId ? { ...l, defaults: { ...l.defaults, [traitId]: on } } : l)));
+
+/** Store the link's value for one bearer-relative pin on a trait it brings; null clears it. Emptied maps are
+ *  dropped, so a link with no values stores none. */
+export function setLinkPinValue(
+  entity: Entity, linkId: string, traitId: string, name: string, value: TraitLinkPinValue | null,
+): Entity {
+  return withLinks(entity, (entity.traitLinks ?? []).map((l) => {
+    if (l.id !== linkId) return l;
+    const { [name]: _drop, ...others } = l.pinValues?.[traitId] ?? {};
+    const forTrait = value ? { ...others, [name]: value } : others;
+    const { [traitId]: _old, ...rest } = l.pinValues ?? {};
+    const pinValues = Object.keys(forTrait).length ? { ...rest, [traitId]: forTrait } : rest;
+    const { pinValues: _prev, ...link } = l;
+    return Object.keys(pinValues).length ? { ...link, pinValues } : link;
+  }));
+}
 
 /** The original and, for a group, its live subtree. */
 function brought(world: WorldTraitLists, link: TraitLink): { groups: TraitGroup[]; traits: Trait[] } | null {
@@ -96,8 +112,13 @@ export function detachLink(world: WorldTraitLists, entity: Entity, linkId: strin
   const isOriginal = (id: string) => id === link.originalId;
   const traits = items.traits.map((t): Trait => {
     const { statToggles: _s, ...rest } = t;
+    // Held directly, a bearer-relative pin lays its own value, so it takes the link's; none lays nothing.
+    const pins = t.placeholderPins?.map((p) => (p.bearerPlaceholder
+      ? { placeholderId: '', bearerPlaceholder: p.bearerPlaceholder, ...(link.pinValues?.[t.id]?.[p.bearerPlaceholder] ?? { value: '' }) }
+      : p));
     return {
       ...rest,
+      ...(pins ? { placeholderPins: pins } : {}),
       id: ids.get(t.id)!,
       groupId: isOriginal(t.id) ? link.groupId : ids.get(t.groupId!)!,
       order: isOriginal(t.id) ? link.order ?? 0 : t.order,

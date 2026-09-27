@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { describePlaceholders, lonePlaceholderToken, placeholderValueLine } from '@/lib/placeholders';
-import { withPinnedValue } from '@/lib/placeholderPins';
+import { pinTarget, withPinnedValue } from '@/lib/placeholderPins';
 import type { Placeholder, PlaceholderPin } from '@/types';
 
 /**
@@ -36,7 +36,7 @@ export function PinValueField({ pin, placeholders, onChange }: {
         openOnFocus
         values={pin.value ? [pin.value] : []}
         onChange={(vals) => onChange(withPinnedValue(pin, vals[0] ?? '', placeholders))}
-        options={placeholders.find((p) => p.id === pin.placeholderId)?.values.map((v) => v.text) ?? []}
+        options={pinTarget(pin, placeholders)?.values.map((v) => v.text) ?? []}
         describe={describeValue}
         ariaLabel="Pinned Value"
         placeholder="Pinned value"

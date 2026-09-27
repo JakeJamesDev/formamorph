@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { inPlayBearers, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { bearerPins, inPlayBearers, inPlayLibrary } from '@/lib/ownedTraitsInPlay';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -160,7 +160,6 @@ import { statMorphMap } from "../lib/bodyMorphs";
 import {
   inAuthoredOrder, refreshChosenTraits, refreshSavedStats, activeStatEnabled, enabledStats,
 } from "../lib/traitEffects";
-import { collectPins } from "../lib/placeholderPins";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
   acquireTrait, activeTraits as traitsInForce, seedNewGameStats, settleTraits, switchPlayerTrait, traitNameIn,
@@ -1709,7 +1708,7 @@ const GameViewer = ({
     const overPins = pinsFor(over.codePins ?? {}, {
       traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.playerStats,
     });
-    const resolve = (text: string) => resolveFor(overPins, text);
+    const resolve = (text: string) => resolveFor(overPins.world, text);
     const held = savedTraits(over, traits);
     return {
       ...activeUnderTraits(resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder),
@@ -2642,7 +2641,7 @@ const GameViewer = ({
           placeholders: {
             // The world's list only: stat code is authored with the world and never reads a persona's.
             placeholders: worldPlaceholders, owners: placeholderOwners, rolls: sessionRolls,
-            pins: preTurn ? pinsFor(basePins) : live.pins,
+            pins: preTurn ? pinsFor(basePins).world : live.pins,
             // The stored shape too, so an Object pinned to a list reads that list back rather than its join.
             codePins: basePins,
           },
@@ -3982,14 +3981,14 @@ const GameViewer = ({
       // The pins the game opens under, from every source: the traits just applied, the starting location
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
       // pass resolves against these rather than the (empty) pins still in force.
-      const openingPins = collectPins({
-        traits: pinTraitsInOrder(
-          { traits: authoredTraits, traitGroups, entities: traitEntities }, chosenList, initialOwnedTraits,
-          playedEntityId(initialPersona?.ref),
-          inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []),
-        ),
-        location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls,
-      });
+      const openingPins = bearerPins({
+        world: { traits: authoredTraits, traitGroups, entities: traitEntities, customPersona },
+        persona: initialPersona?.ref,
+        library: inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []),
+        playerTraits: chosenList,
+        owned: initialOwnedTraits,
+        sharedPlaceholders: worldPlaceholders,
+      }, { location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls }).world;
       if (location && authoredLocation) {
         changeLocation(location);
         // A log line is frozen the moment it is written.
@@ -4063,6 +4062,8 @@ const GameViewer = ({
     authoredTraits,
     authoredLocations,
     traitGroups,
+    customPersona,
+    worldPlaceholders,
     traitOrder,
     locations,
     worldId,
