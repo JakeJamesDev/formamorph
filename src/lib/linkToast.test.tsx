@@ -63,6 +63,48 @@ describe('toastError', () => {
     expect(text).not.toContain('at frame10 ');
   });
 
+  it('keeps the details a cause carries, and names a cause cycle once', async () => {
+    const server = Object.assign(new Error('HTTP 404'), { details: 'model not found' });
+    const error = new Error('Request failed', { cause: server });
+    (server as Error & { cause?: unknown }).cause = error;
+    render(<ThemedToastContainer />);
+    act(() => toastError(error, 'fallback'));
+
+    const text = (await openDetails()).textContent ?? '';
+    expect(text).toContain('Caused by: Error: HTTP 404\nmodel not found');
+    expect(text.match(/Caused by:/g)).toHaveLength(1);
+  });
+
+  it('reads V8 frames only below the message, whose lines can look like frames', async () => {
+    const error = new Error('Bad body:\n   at least one field is required');
+    error.stack = `Error: ${error.message}\n    at send (api.js:1:1)`;
+    render(<ThemedToastContainer />);
+    act(() => toastError(error, 'fallback'));
+
+    const text = (await openDetails()).textContent ?? '';
+    expect(text).toContain('Stack:\n    at send (api.js:1:1)');
+  });
+
+  it('reads Firefox frames', async () => {
+    const error = new Error('Boom');
+    error.stack = 'send@http://localhost/api.js:1:1\nrun@http://localhost/app.js:2:2';
+    render(<ThemedToastContainer />);
+    act(() => toastError(error, 'fallback'));
+
+    const text = (await openDetails()).textContent ?? '';
+    expect(text).toContain('Stack:\nsend@http://localhost/api.js:1:1\nrun@http://localhost/app.js:2:2');
+  });
+
+  it('keeps the message of a thrown plain object behind a headline', async () => {
+    render(<ThemedToastContainer />);
+    act(() => toastError({ message: 'Quota exceeded', code: 507 }, { headline: 'Failed to save' }));
+
+    await screen.findByText('Failed to save');
+    const text = (await openDetails()).textContent ?? '';
+    expect(text).toContain('Quota exceeded');
+    expect(text).toContain('"code":507');
+  });
+
   it('shows a headline as the toast text and moves the error message into the details', async () => {
     render(<ThemedToastContainer />);
     act(() => toastError(new Error('QuotaExceededError: disk full'), { headline: 'Failed to save' }));

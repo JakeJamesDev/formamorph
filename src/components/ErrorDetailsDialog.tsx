@@ -7,7 +7,7 @@ import {
 import { copyWithToast } from '@/lib/clipboard';
 import { useDevRoute } from '@/lib/devRouter';
 import {
-  closeErrorDetails, diagnosticsBlock, errorDetailsText, getErrorDetailsState, subscribeErrorDetails,
+  closeErrorDetails, detailsWithDiagnostics, errorDetailsText, getErrorDetailsState, subscribeErrorDetails,
 } from '@/lib/errorDetails';
 import { toastError } from '@/lib/linkToast';
 
@@ -31,7 +31,7 @@ export function ErrorDetailsHost() {
           <DialogDescription>{entry?.message}</DialogDescription>
         </DialogHeader>
         <pre className="max-h-[50vh] overflow-auto whitespace-pre-wrap break-words rounded-md border bg-muted/40 p-3 font-mono text-meta">
-          {entry && `${entry.details}\n\n${diagnosticsBlock()}`}
+          {entry && detailsWithDiagnostics(entry)}
         </pre>
         <DialogFooter>
           <Button onClick={() => { if (entry) copyWithToast(errorDetailsText(entry)); }}>
