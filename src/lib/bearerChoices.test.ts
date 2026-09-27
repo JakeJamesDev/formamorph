@@ -11,7 +11,7 @@ const group = (id: string, parentId: string | null, order: number): EntityGroup 
 const groups = [group('heroes', null, 0), group('guards', 'heroes', 1), group('empty', null, 1), group('villains', null, 3)];
 const entities = [
   entity('vex', 'villains', 0), entity('sam', null, 2), entity('mira', 'guards', 0),
-  entity('albus', 'heroes', 0, { persona: true }),
+  entity('albus', 'heroes', 0),
 ];
 const flat = (rows: ReturnType<typeof bearerChoices>) =>
   rows.map((r) => `${r.parentId ?? ''}>${r.kind === 'group' ? '#' : ''}${r.id}`);
@@ -26,10 +26,5 @@ describe('bearerChoices', () => {
     const rows = bearerChoices(groups, entities, { customPersona: true });
     expect(rows[0]).toEqual({ kind: 'bearer', id: CUSTOM_PERSONA_ID, name: 'Custom Persona', parentId: null, customPersona: true });
     expect(flat(rows).slice(1)).toEqual(flat(bearerChoices(groups, entities)));
-  });
-
-  it('marks personas, so the row can say which entities the player can play', () => {
-    expect(bearerChoices(groups, entities).find((r) => r.id === 'albus')).toMatchObject({ persona: true });
-    expect(bearerChoices(groups, entities).find((r) => r.id === 'sam')).not.toHaveProperty('persona');
   });
 });

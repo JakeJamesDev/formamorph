@@ -11,11 +11,10 @@ import { addLink } from '@/lib/traitLinks';
 import { linkRefusal } from '@/lib/traitTree';
 import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
+import { MENU_ROW } from '@/components/menuRow';
 import { useEditBearer } from './useEditBearer';
 
 const NO_PLACEHOLDERS: Placeholder[] = [];
-
-const ROW ='flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 
 /**
  * The bearers a flyout offers, one entity group level at a time: a group row opens its level, and the Back
@@ -44,7 +43,7 @@ export function BearerList({ choices, label, onPick, held, back }: {
       {backRow && (
         <>
           {/* Keyed by level, so each level's Back row takes focus as it opens. */}
-          <button key={levelId ?? ''} type="button" className={cn(ROW, 'font-medium')} onClick={backRow.onBack} autoFocus>
+          <button key={levelId ?? ''} type="button" className={cn(MENU_ROW, 'font-medium')} onClick={backRow.onBack} autoFocus>
             <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
             <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(backRow.label)}</span>
           </button>
@@ -56,7 +55,7 @@ export function BearerList({ choices, label, onPick, held, back }: {
           {level.map((row) => {
             if (row.kind === 'group') {
               return (
-                <button key={row.id} type="button" className={ROW} onClick={() => setPath([...path, row.id])}>
+                <button key={row.id} type="button" className={MENU_ROW} onClick={() => setPath([...path, row.id])}>
                   {checkSlot(false)}
                   <Folder className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   <span className="min-w-0 flex-1 break-words [overflow-wrap:anywhere]">{text(row.name)}</span>
@@ -72,7 +71,7 @@ export function BearerList({ choices, label, onPick, held, back }: {
                 type="button"
                 disabled={isHeld}
                 aria-pressed={held ? isHeld : undefined}
-                className={ROW}
+                className={MENU_ROW}
                 onClick={() => onPick(row.id)}
               >
                 {checkSlot(isHeld)}

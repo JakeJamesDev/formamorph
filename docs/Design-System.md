@@ -775,7 +775,9 @@ Prompt and section labels reuse the production registry. The reference's title a
 
 ## Pattern: Bearer Flyouts
 
-**Purpose:** Pick one entity from the world's entity folders without leaving the Traits tab. Approved 2026-09-27.
+**Purpose:** Pick one entity from the world's entity groups without leaving the Traits tab.
+
+This pattern differs from two others on purpose. Its entity list sits inside the **+** menu, unlike the Searchable Group Picker, because each level stays short. Its rows keep a check column in a held-state flyout, unlike Compact Selection Lists, so entity rows and group rows align.
 
 - 🧭 **One level at a time.** The flyout shows one entity group level. A group row carries a folder icon and a trailing chevron, and opens that group's level. A group with no entity anywhere below it has no row.
 - ⬅️ **Back row.** Above the rows, a Back row with an arrow names the level you're on. It returns one level. On the top level of a menu drill-in, it names the menu row that opened the list and returns to the menu.
@@ -785,8 +787,8 @@ Prompt and section labels reuse the production registry. The reference's title a
 
 | Instance | Where | After a pick |
 | --- | --- | --- |
-| **Add Trait To Entity** / **Add Group To Entity** | The Traits tab's **+** menu drills in | The popover closes and the new row is selected |
-| **Link To…** | Right-aligned at the top of a world trait's or group's Details, in Advanced | The popover stays open and the row turns checked |
+| **Add Trait to Entity** / **Add Group to Entity** | The Traits tab's **+** menu drills in | The popover closes and the new row is selected |
+| **Link To…** | Right-aligned at the top of a world trait's or group's Details, and beside a selected link's Linked-from line, in Advanced | The popover stays open and the row turns checked |
 
 ### Production mapping
 
@@ -794,6 +796,7 @@ Prompt and section labels reuse the production registry. The reference's title a
 | --- | --- |
 | Levels, Back row, check column | `BearerList` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
 | Rows and levels | `bearerChoices` in [`bearerChoices.ts`](../src/lib/bearerChoices.ts) |
+| Menu row | `MENU_ROW` in [`menuRow.ts`](../src/components/menuRow.ts) |
 | Link button | `LinkToBearerButton` in [`BearerPicker.tsx`](../src/managers/BearerPicker.tsx) |
 | **+** menu drill-in | `traitsMenu` in [`WorldEditor.tsx`](../src/views/WorldEditor.tsx) |
 | Isolated reference | [`BearerFlyoutReference.tsx`](../src/components/design-system/BearerFlyoutReference.tsx) |
