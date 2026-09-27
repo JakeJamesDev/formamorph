@@ -39,8 +39,7 @@ export interface DialectSpelling {
   readonly budgetPath?: readonly string[];
   /** Fields written beside a budget, such as Anthropic's `thinking.type`. */
   readonly budgetWith?: readonly FieldWrite[];
-  /** The smallest budget the endpoint accepts. A smaller one is raised to it, and a request whose cap leaves
-   *  no room for it sends no budget at all rather than one the endpoint rejects. */
+  /** The smallest budget the endpoint accepts. The budget is raised to it before the headroom is added. */
   readonly budgetMin?: number;
   /** What this dialect says for "reasoning is on" where it has no budget and no level to say it with. */
   readonly on?: readonly FieldWrite[];
@@ -56,8 +55,6 @@ export interface DialectSpelling {
   readonly noBudgetWhenOff?: true;
   /** Set where the endpoint rejects a switched-off request, so `none` sends no reasoning field at all. */
   readonly offRejected?: true;
-  /** Set where the budget must sit below the request's output cap. */
-  readonly budgetUnderCap?: true;
   /** Set where nothing the endpoint publishes says whether it separates reasoning at all, so both controls
    *  wait for one reply to prove it. Until then the record's budget answer stays unanswered. */
   readonly controlsNeedProof?: true;
@@ -99,11 +96,10 @@ export const DIALECT_SPELLINGS: Record<ReasoningDialect, DialectSpelling> = {
     noBudgetWhenOff: true,
   },
   // Claude 4.6 and earlier, whose only thinking mode is a manual budget. The API rejects a budget under
-  // 1,024 tokens and one that is not under the reply's own cap, so both bounds are row properties.
+  // 1,024 tokens and one that is not under the reply's own cap; the headroom keeps it under the cap.
   'anthropic-budget': {
     budgetPath: ['thinking', 'budget_tokens'],
     budgetWith: [{ path: ['thinking', 'type'], value: 'enabled', label: 'Reasoning' }],
-    budgetUnderCap: true,
     budgetMin: 1024,
     off: THINKING_DISABLED,
   },
@@ -149,8 +145,6 @@ export interface ReasoningWrite {
    *  may be told about reasoning at all. A switched-off request is eligible too: `off` is what it says.
    *  A dialect with neither a budget nor a level has nothing else to write an on request from. */
   readonly eligible: boolean;
-  /** The request's output cap, for the dialects that keep the budget under it. */
-  readonly maxTokens?: number;
 }
 
 /** True where the dialect rejects a switched-off request, so the switch is shown checked and locked. */
@@ -164,6 +158,11 @@ export function reasoningOffRejected(dialect: ReasoningDialect): boolean {
  */
 export function reasoningDialectNeedsProof(dialect: ReasoningDialect): boolean {
   return DIALECT_SPELLINGS[dialect].controlsNeedProof === true;
+}
+
+/** The smallest budget the dialect accepts, or 0 where it sets none. */
+export function reasoningDialectBudgetFloor(dialect: ReasoningDialect): number {
+  return DIALECT_SPELLINGS[dialect].budgetMin ?? 0;
 }
 
 /** True where the dialect names a field for the token budget, so the budget slider is worth showing. */
@@ -227,14 +226,9 @@ export function reasoningDialectBody(dialect: ReasoningDialect, write: Reasoning
 
   let budgetWritten = false;
   if (write.budget !== null && spelling.budgetPath && !(write.off && spelling.noBudgetWhenOff)) {
-    const floor = spelling.budgetMin ?? 0;
-    const ceiling = spelling.budgetUnderCap && write.maxTokens !== undefined ? write.maxTokens - 1 : Infinity;
-    // A cap with no room for the smallest budget the endpoint takes leaves nothing valid to send.
-    if (ceiling >= floor) {
-      writePath(body, spelling.budgetPath, Math.min(Math.max(write.budget, floor), ceiling));
-      for (const field of spelling.budgetWith ?? []) writePath(body, field.path, field.value);
-      budgetWritten = true;
-    }
+    writePath(body, spelling.budgetPath, write.budget);
+    for (const field of spelling.budgetWith ?? []) writePath(body, field.path, field.value);
+    budgetWritten = true;
   }
 
   if (write.level !== null) {

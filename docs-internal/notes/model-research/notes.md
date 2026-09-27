@@ -366,6 +366,10 @@ reaches 150 thought tokens on a 2- or 6-stat world. Fixing the spill means one o
 for the budget with the cap raised to cover it; a cap that excludes thought tokens; or a parser that reads
 stat lines after spilled prose plus a larger cap. That is a product decision — see [[stat-pass-reasoning-spill]].
 
+> **Unblocked (2026-09-27):** the budget is now a percent of the endpoint's Max Output and rides on top of the
+> answer cap, so a stat pass can get a ~150-token thought without a larger answer cap. Stat Updates still ship
+> reasoning-off. Spec: `docs-internal/specs/reasoning-budget-base/spec.md`.
+
 ### Workflow (2026-07-18): engine-only, Ollama dropped
 
 Every model — catalog and reference — now screens through the built-in engine (`llmEngine.cjs`, port 8977)
