@@ -64,7 +64,7 @@ import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  WORLD_OWNER, gateStates, settle, switchTrait, type SettleResult,
+  WORLD_OWNER, gateStates, ownerHolding, settle, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
@@ -1393,7 +1393,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [entryWorld]);
   const castOwners = useMemo(() => entryOwners(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
-  const ownerOfTrait = (traitId: string) => castOwners.find((o) => o.traits.some((t) => t.id === traitId));
+  const ownerOfTrait = (traitId: string) => ownerHolding(castOwners, traitId);
   const traitName = (traitId: string) => ownerOfTrait(traitId)?.traits.find((t) => t.id === traitId)?.name ?? traitId;
   // Every owner's picks in one list: trait ids are unique across owners.
   const entrySelectedTraits = useMemo(

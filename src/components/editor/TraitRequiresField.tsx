@@ -9,16 +9,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  WORLD_OWNER, gateOf, gateStates, requirementOptions, withBearer, type RequirementBearerOption, type RequirementOption,
+  WORLD_OWNER, bearerKey, bearerOf, gateOf, gateStates, ownerHolding, requirementOptions, sameRequirement, withBearer,
+  type RequirementBearerOption, type RequirementOption,
 } from '@/lib/traitGates';
 import { cn } from '@/lib/utils';
-import type { RequirementBearer, Trait, TraitRequirement } from '@/types';
-
-const sameBearer = (a?: RequirementBearer, b?: RequirementBearer) =>
-  (a === undefined || b === undefined ? a === b : a.kind === b.kind && (a.kind !== 'entity' || b.kind !== 'entity' || a.id === b.id));
-const sameRequirement = (a: TraitRequirement, b: TraitRequirement) =>
-  a.kind === b.kind && a.id === b.id && sameBearer(a.kind === 'playingAs' ? undefined : a.bearer, b.kind === 'playingAs' ? undefined : b.bearer);
-const bearerKey = (bearer?: RequirementBearer) => (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
+import type { Trait, TraitRequirement } from '@/types';
 
 // Substring over the row's shown text; the item value is the requirement key, which no author types.
 const filterRows = (_value: string, search: string, keywords: string[] = []) =>
@@ -40,15 +35,10 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
   const [picked, setPicked] = useState<RequirementOption | null>(null);
   const requires = trait.requires ?? [];
 
-  const { states, options } = useMemo(() => {
-    // The trait's gate is read from the first owner that holds it: the world's copy of an original, or the
-    // entity that owns it.
-    const ownerId = gateInput.owners.find((o) => o.traits.some((t) => t.id === trait.id))?.id ?? WORLD_OWNER;
-    return {
-      states: gateOf(gateStates(gateInput), ownerId, trait.id)?.requirements ?? [],
-      options: requirementOptions(gateInput, trait.id),
-    };
-  }, [gateInput, trait.id]);
+  const { states, options } = useMemo(() => ({
+    states: gateOf(gateStates(gateInput), ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER, trait.id)?.requirements ?? [],
+    options: requirementOptions(gateInput, trait.id),
+  }), [gateInput, trait.id]);
 
   const listed = (requirement: TraitRequirement) => requires.some((r) => sameRequirement(r, requirement));
   const changeOpen = (next: boolean) => {
@@ -115,9 +105,8 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
           const text = state?.text ?? '';
           const plain = labelPlaceholders(text, placeholders);
           const unresolved = !!state?.unresolved;
-          const bearer = requirement.kind === 'playingAs' ? undefined : requirement.bearer;
           return (
-            <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearer)}:${i}`} className="inline-flex items-center gap-1.5">
+            <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearerOf(requirement))}:${i}`} className="inline-flex items-center gap-1.5">
               {i > 0 && <span className="text-meta text-muted-foreground">or</span>}
               <span
                 data-unresolved={unresolved || undefined}

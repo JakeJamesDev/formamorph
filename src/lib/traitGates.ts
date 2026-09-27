@@ -1,11 +1,10 @@
-// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer,
-// and a requirement holds through a bearer's own active set: the same bearer's unless it names one. The
-// player's owners (the world root and the played entity) read as one set, so a trait id can sit in several
-// owners at once and each owner's copy gates on its own.
+// Trait gates: what a requirement list unlocks, and what a selection settles to. Every owner is one bearer
+// and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
 import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { collapseExclusiveDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
-import { buildTraitTree, flattenTraitTree } from './traitTree';
+// The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
+import { buildTree, flattenTree } from './groupTree';
 
 /** The owner id of the world's own traits, and the player bearer's key. */
 export const WORLD_OWNER = 'world';
@@ -68,6 +67,22 @@ export interface GateTraitRef {
 export function playerOwnerIds(persona: PersonaRef): string[] {
   return persona.source === 'none' ? [WORLD_OWNER] : [WORLD_OWNER, persona.entityId];
 }
+
+/** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */
+export const ownerHolding = (owners: readonly GateOwner[], traitId: string): GateOwner | undefined =>
+  owners.find((o) => o.traits.some((t) => t.id === traitId));
+
+/** The bearer a requirement names; absent for the same bearer and for "playing as". */
+export const bearerOf = (req: TraitRequirement): RequirementBearer | undefined =>
+  (req.kind === 'playingAs' ? undefined : req.bearer);
+
+/** One key per bearer choice, so two requirements compare by it. */
+export const bearerKey = (bearer?: RequirementBearer): string =>
+  (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
+
+/** Whether two requirements add the same gate: the same target under the same bearer. */
+export const sameRequirement = (a: TraitRequirement, b: TraitRequirement): boolean =>
+  a.kind === b.kind && a.id === b.id && bearerKey(bearerOf(a)) === bearerKey(bearerOf(b));
 
 interface Located<T> { owner: GateOwner; item: T }
 
@@ -424,7 +439,7 @@ export const withBearer = (requirement: TraitRequirement, bearer?: RequirementBe
  */
 export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): RequirementOptions {
   const idx = index({ ...input, active: {}, persona: { source: 'none' } });
-  const from = [...idx.owners.values()].find((o) => o.traits.has(traitId))?.owner ?? input.owners[0];
+  const from = ownerHolding(input.owners, traitId) ?? input.owners[0];
   const skip = new Set([traitId, ...(idx.owners.get(from.id)?.rivals.get(traitId) ?? [])]);
   const everyOwner = new Set(idx.owners.keys());
   // A group whose every trait is skipped can never hold; an empty one still can, once it gains a trait.
@@ -456,7 +471,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   const traits: RequirementOption[] = [];
   const groups: RequirementOption[] = [];
   for (const owner of input.owners) {
-    for (const node of flattenTraitTree(buildTraitTree(owner.groups, owner.traits))) {
+    for (const node of flattenTree(buildTree(owner.groups, owner.traits))) {
       const id = node.leaf?.id ?? node.group?.id;
       if (!id || seen.has(id)) continue;
       seen.add(id);

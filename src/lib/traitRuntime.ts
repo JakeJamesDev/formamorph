@@ -352,6 +352,10 @@ const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, 
 /** The bearers other than the player's world owner. */
 const entityBearers = (world: TraitWorld): readonly GateOwner[] => (world.bearers ?? []).filter((o) => o.id !== WORLD_OWNER);
 
+/** Whether the player's world owner offers `traitId`. */
+const playerHolds = (world: TraitWorld, traitId: string): boolean =>
+  (world.bearers?.find((o) => o.id === WORLD_OWNER)?.traits ?? world.traits).some((t) => t.id === traitId);
+
 /** The lists with every empty one dropped, so an empty list and an absent one read the same. */
 function compactCascadeOff(lists: Readonly<Record<string, readonly string[]>> = {}): CascadeOffTraitIds {
   return Object.fromEntries(Object.entries(lists).filter(([, ids]) => ids.length).map(([owner, ids]) => [owner, [...ids]]));
@@ -513,8 +517,7 @@ export function switchPlayerTrait(
 ): GatedTraitResult | null {
   // The player's own trait switches in the player's lists, even when an entity links the same original.
   const acquired = state.traits.find((t) => t.id === traitId);
-  const playerHolds = !!acquired || (world.bearers?.find((o) => o.id === WORLD_OWNER)?.traits ?? world.traits).some((t) => t.id === traitId);
-  const owned = playerHolds ? null : ownedTrait(world, traitId);
+  const owned = acquired || playerHolds(world, traitId) ? null : ownedTrait(world, traitId);
   if (owned) return switchOwned(state, owned, enabled, world, nameOf);
   const trait = acquired ?? world.traits.find((t) => t.id === traitId);
   if (!trait || (!!acquired && !state.disabledTraitIds.includes(traitId)) === enabled) return null;

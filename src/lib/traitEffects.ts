@@ -6,13 +6,13 @@
 // Two traits may target the same stat or placeholder. The later one in the authored trait tree wins, so an
 // author sets precedence by dragging rows in the editor rather than by learning a rule.
 
-import { buildTraitTree, flattenTraitTree } from './traitTree';
+import { buildTree, flattenTree } from './groupTree';
 import type { PlaceholderValue, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 
 /** Trait id → its position in the authored tree, depth-first. Ids missing from the world sort last. */
 export function traitOrderIndex(traits: readonly Trait[], groups: readonly TraitGroup[]): Map<string, number> {
   const map = new Map<string, number>();
-  flattenTraitTree(buildTraitTree(groups, traits)).forEach((node, i) => {
+  flattenTree(buildTree(groups, traits)).forEach((node, i) => {
     if (node.leaf) map.set(node.leaf.id, i);
   });
   return map;
