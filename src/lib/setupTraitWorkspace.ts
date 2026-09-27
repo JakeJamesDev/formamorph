@@ -10,8 +10,10 @@ export interface TraitCategory {
   path: TraitGroup[];
   depth: number;
   traits: Trait[];
-  /** Set on an entity node's category. */
+  /** The bearer whose tree the category is in: set on an entity node's category and on every category below it. */
   entityId?: string;
+  /** Set on an entity node's own category, whose page shows the entity. */
+  entityNode?: true;
 }
 
 export interface NavigationGroup {
@@ -47,9 +49,10 @@ export const buildTraitWorkspace = (
     categories.push({ kind: 'traits', id: null, name: 'General', path: [], depth: 0, traits: general });
   }
 
-  const walk = (parentId: string | null, path: TraitGroup[], depth: number) => {
+  const walk = (parentId: string | null, path: TraitGroup[], depth: number, within?: string) => {
     for (const group of children(parentId).filter((candidate) => hasTraits(candidate.id))) {
       const entity = entityNodeIds.has(group.id);
+      const bearer = entity ? group.id : within;
       // An entity's pages describe the entity, so the world groups around its node drop out of the path.
       const nextPath = entity ? [group] : [...path, group];
       const ownTraits = directTraits(group.id);
@@ -57,11 +60,12 @@ export const buildTraitWorkspace = (
       if (categoryIndex >= 0) {
         categories.push({
           kind: 'traits', id: group.id, name: group.name, group, path: nextPath, depth, traits: ownTraits,
-          ...(entity ? { entityId: group.id } : {}),
+          ...(bearer ? { entityId: bearer } : {}),
+          ...(entity ? { entityNode: true as const } : {}),
         });
       }
       navigationGroups.push({ group, depth, categoryIndex });
-      walk(group.id, nextPath, depth + 1);
+      walk(group.id, nextPath, depth + 1, bearer);
     }
   };
   walk(null, [], 0);

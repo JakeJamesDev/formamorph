@@ -141,9 +141,22 @@ function expandLinks(world: BearerWorld, links: readonly TraitLink[], place?: (l
   return { traits, groups, linkOf };
 }
 
-/** An entity's bearer tree: its owned items with its links expanded among them. */
-function entityBearer(world: BearerWorld, entity: Entity, isPlayer: boolean, present: boolean): Bearer {
-  const expanded = expandLinks(world, entity.traitLinks ?? []);
+/** The ids the player already holds before the played persona's own tree: every root trait and group outside
+ *  Templates, plus what Custom Persona's links bring under None or a library persona. */
+function playerHeldIds(world: BearerWorld, persona: PersonaRef | undefined): Set<string> {
+  const root = offeredWorldTraits(world.traits, world.traitGroups);
+  const held = new Set([...root.traits, ...root.groups].map((item) => item.id));
+  if (persona?.source !== 'world') for (const id of customPersonaExpansion(world, root).linkOf.keys()) held.add(id);
+  return held;
+}
+
+/** An entity's bearer tree: its owned items with its links expanded among them. While the entity is played,
+ *  a link that brings anything the player already holds is dropped: the player holds it once, and the
+ *  player's own row wins. */
+function entityBearer(world: BearerWorld, entity: Entity, persona: PersonaRef | undefined, isPlayer: boolean, present: boolean): Bearer {
+  const held = isPlayer ? playerHeldIds(world, persona) : null;
+  const links = (entity.traitLinks ?? []).filter((l) => !held || !broughtIds(world, l.originalId).some((id) => held.has(id)));
+  const expanded = expandLinks(world, links);
   return {
     id: entity.id, name: entity.name, entity, isPlayer, present,
     traits: [...(entity.traits ?? []), ...expanded.traits],
@@ -187,8 +200,8 @@ export function resolveBearers(
   const played = playedId(persona);
   const placeable = placeableGroupIds(world.traitGroups);
   const worldBearers = world.entities.filter(bearsTraits).map((e) =>
-    entityBearer(world, e, e.id === played, e.id === played || inCast(e, persona)));
-  const libraryBearers = library.filter(bearsTraits).map((e) => entityBearer(world, e, e.id === played, true));
+    entityBearer(world, e, persona, e.id === played, e.id === played || inCast(e, persona)));
+  const libraryBearers = library.filter(bearsTraits).map((e) => entityBearer(world, e, persona, e.id === played, true));
   const bearers = [playerBearer(world, persona), ...worldBearers, ...libraryBearers];
   const placementOf = new Map(world.entities.map((e) => [e.id, effectivePlacement(e, placeable)?.groupId ?? null]));
   return {
@@ -230,10 +243,6 @@ export function editorGateInput(world: BearerWorld): GateInput {
  */
 export function holdsOriginal(world: BearerWorld, bearer: Bearer, originalId: string): boolean {
   const held = new Set(bearer.linkOf.keys());
-  if (bearer.entity === null) {
-    const root = offeredWorldTraits(world.traits, world.traitGroups);
-    for (const item of [...root.traits, ...root.groups]) held.add(item.id);
-    for (const id of customPersonaExpansion(world, root).linkOf.keys()) held.add(id);
-  }
+  if (bearer.entity === null) for (const id of playerHeldIds(world, undefined)) held.add(id);
   return broughtIds(world, originalId).some((id) => held.has(id));
 }

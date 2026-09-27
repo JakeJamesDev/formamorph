@@ -249,6 +249,25 @@ describe('owned trait state across a save/load round trip', () => {
     expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
   });
 
+  it("keeps a played persona's linked stat records under its own key, and drops a gone bearer's", async () => {
+    const live = mount();
+    await act(async () => {
+      live().setOwnedTraits({ ...owned, wren: { chosen: ['paladin'] } });
+      live().setAppliedTraitValues({ t: { vigor: 5 }, 'ash/paladin': { vigor: 5 }, 'wren/paladin': { vigor: 5 } });
+      live().setPersonaRef({ source: 'world', entityId: 'ash' });
+    });
+    expect(live().saveCurrentGameState().appliedTraitValues).toEqual({ t: { vigor: 5 }, 'ash/paladin': { vigor: 5 }, 'wren/paladin': { vigor: 5 } });
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-owned-5');
+    });
+    await act(async () => { live().setAppliedTraitValues({}); });
+    await act(async () => {
+      await live().loadGame('save-owned-5', [], [authored], held);
+    });
+    expect(live().appliedTraitValues).toEqual({ t: { vigor: 5 }, 'ash/paladin': { vigor: 5 } });
+    expect(live().ownedTraits).toEqual(owned);
+  });
+
   it("keeps a library persona's state, which the world never holds", async () => {
     const live = mount();
     await act(async () => {

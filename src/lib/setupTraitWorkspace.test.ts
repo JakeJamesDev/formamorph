@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildTraitWorkspace } from './setupTraitWorkspace';
-import { ownedTraitTree } from './traitTree';
+import { bearerTraitTree, bearerGroupId } from './ownedTraitsInPlay';
 import type { Entity, Trait } from '@/types';
 
 const trait = (id: string, groupId: string | null = null): Trait => ({ id, name: id, groupId, statChanges: [] });
@@ -12,12 +12,12 @@ describe('buildTraitWorkspace with entity nodes', () => {
       traitGroups: [{ id: 'temper', name: 'Temper', parentId: null, order: 0 }],
       traits: [trait('calm', 'temper')],
     };
-    const tree = ownedTraitTree({ traits: [trait('brave')], traitGroups: [] }, [wolf]);
+    const tree = bearerTraitTree({ traits: [trait('brave')], traitGroups: [], entities: [wolf] }, undefined);
     const { categories, navigationGroups } = buildTraitWorkspace(tree.traits, tree.groups, new Set(tree.entityNodes.keys()));
-    expect(categories.map((c) => [c.name, c.entityId ?? null, c.traits.map((t) => t.id)])).toEqual([
-      ['General', null, ['brave']],
-      ['Wolf', 'wolf', []],
-      ['Temper', null, ['calm']],
+    expect(categories.map((c) => [c.name, c.entityId ?? null, c.entityNode ?? false, c.traits.map((t) => t.id)])).toEqual([
+      ['General', null, false, ['brave']],
+      ['Wolf', 'wolf', true, []],
+      ['Temper', 'wolf', false, ['calm']],
     ]);
     expect(navigationGroups.map((g) => [g.group.name, g.depth])).toEqual([['Wolf', 0], ['Temper', 1]]);
   });
@@ -28,15 +28,33 @@ describe('buildTraitWorkspace with entity nodes', () => {
       traitGroups: [{ id: 'bond', name: 'Bond', parentId: null, order: 1 }],
       traits: [trait('tamed'), trait('loyal', 'bond')],
     };
-    const tree = ownedTraitTree({
+    const tree = bearerTraitTree({
       traits: [trait('paladin', 'class')],
       traitGroups: [{ id: 'class', name: 'Class', parentId: null, order: 0, playerDescription: 'Pick one class.' }],
-    }, [ash]);
+      entities: [ash],
+    }, undefined);
     const { categories } = buildTraitWorkspace(tree.traits, tree.groups, new Set(tree.entityNodes.keys()));
     expect(categories.map((c) => [c.name, c.path.map((g) => g.name)])).toEqual([
       ['Class', ['Class']],
       ['Ash', ['Ash']],
       ['Bond', ['Ash', 'Bond']],
+    ]);
+  });
+
+  it('gives a linked group under an entity its own page in that entity, so two bearers of one group get two pages', () => {
+    const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0 };
+    const link = (id: string, order: number) => ({ id, originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order });
+    const tree = bearerTraitTree({
+      traits: [trait('paladin', 'classes')],
+      traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, order: 0, system: 'templates' }, classes],
+      entities: [{ id: 'ash', name: 'Ash', traitLinks: [link('l-ash', 0)] }, { id: 'bo', name: 'Bo', traitLinks: [link('l-bo', 0)] }],
+    }, undefined);
+    const { categories } = buildTraitWorkspace(tree.traits, tree.groups, new Set(tree.entityNodes.keys()));
+    expect(categories.map((c) => [c.id, c.entityId ?? null, c.traits.map((t) => t.id)])).toEqual([
+      ['ash', 'ash', []],
+      [bearerGroupId('ash', 'classes'), 'ash', ['paladin']],
+      ['bo', 'bo', []],
+      [bearerGroupId('bo', 'classes'), 'bo', ['paladin']],
     ]);
   });
 

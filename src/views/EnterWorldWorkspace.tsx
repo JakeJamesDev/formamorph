@@ -10,11 +10,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import type { CustomPersonaNode, Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
-import { ownedTraitTree } from '@/lib/traitTree';
+import { bearerTraitTree } from '@/lib/ownedTraitsInPlay';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
@@ -30,16 +30,20 @@ export interface EnterWorldWorkspaceProps {
   worldAuthor?: string;
   traits: Trait[];
   traitGroups: TraitGroup[];
-  /** The world's entities; each that owns traits gets a page in the tree. */
+  /** The world's entities; each that bears traits gets a page in the tree. */
   traitEntities?: readonly Entity[];
   /** The library persona and the added library entities, in the order added. */
   traitLibrary?: readonly Entity[];
+  /** The world's Custom Persona node, whose links are the player's under None or a library persona. */
+  customPersona?: CustomPersonaNode;
   resolveEntityText?: ResolveEntityText;
   stats: Stat[];
   locations: GameLocation[];
   resolveText: (text: string) => string;
-  resolveTraitText: (trait: Trait, text: string) => string;
-  selectedTraits: string[];
+  /** A trait's own text, bound for its bearer, which is the Character Name in it. */
+  resolveTraitText: (trait: Trait, text: string, bearer?: Entity | null) => string;
+  /** Each bearer's picks by owner id, the player's under the world's. */
+  selectedTraits: Readonly<Record<string, readonly string[]>>;
   selectedLocationId: string | null;
   libraryEntities: EntityAddition[];
   selectedEntityIds: Set<string>;
@@ -54,7 +58,7 @@ export interface EnterWorldWorkspaceProps {
   onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
-  onTraitSelect: (traitId: string) => void;
+  onTraitSelect: (traitId: string, ownerId: string) => void;
   traitGates?: GateStates;
   /** What the last selection change turned off; shown until dismissed or the next change. */
   traitCascade?: TraitCascade | null;
@@ -87,9 +91,13 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   }, [additionsRemembered]);
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitTree = useMemo(
-    () => ownedTraitTree({ traits: props.traits, traitGroups: props.traitGroups }, props.traitEntities ?? [], props.traitLibrary ?? []),
-    [props.traits, props.traitGroups, props.traitEntities, props.traitLibrary],
+    () => bearerTraitTree(
+      { traits: props.traits, traitGroups: props.traitGroups, entities: props.traitEntities ?? [], customPersona: props.customPersona },
+      props.persona, props.traitLibrary ?? [],
+    ),
+    [props.traits, props.traitGroups, props.traitEntities, props.customPersona, props.persona, props.traitLibrary],
   );
+  const picksOf = (ownerId: string | undefined) => props.selectedTraits[ownerId ?? WORLD_OWNER] ?? [];
   const traitWorkspace = useMemo(
     () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())),
     [traitTree],
@@ -127,7 +135,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
     const selected = category.kind === 'traits'
-      ? category.traits.filter((trait) => props.selectedTraits.includes(trait.id)).length
+      ? category.traits.filter((trait) => picksOf(category.entityId).includes(trait.id)).length
       : 0;
     return (
       <button
@@ -147,10 +155,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           categoryNavigationButton.current?.focus();
         }}
       >
-        {category.kind === 'traits' && category.entityId && <User aria-hidden className="h-4 w-4 shrink-0" />}
+        {category.kind === 'traits' && category.entityNode && <User aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
-          {category.kind === 'traits' && category.entityId && category.entityId === playedEntityId && youMark}
+          {category.kind === 'traits' && category.entityNode && category.entityId === playedEntityId && youMark}
         </span>
         {category.kind === 'traits' && category.traits.length > 0 && (
           <span
@@ -329,18 +337,19 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {current?.kind !== 'library' && (
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-4 md:px-6 md:py-4">
-          {current?.kind === 'traits' && current.entityId && current.traits.length === 0 && entityHeading(current.entityId)}
-          {current?.kind === 'traits' && (!current.entityId || current.traits.length > 0) && (
+          {current?.kind === 'traits' && current.entityNode && current.traits.length === 0 && entityHeading(current.entityId!)}
+          {current?.kind === 'traits' && (!current.entityNode || current.traits.length > 0) && (
             <SetupTraitList
-              heading={current.entityId ? entityHeading(current.entityId) : undefined}
+              heading={current.entityNode ? entityHeading(current.entityId!) : undefined}
               name={current.name}
               groups={current.path}
               traits={current.traits}
               exclusive={current.group?.exclusive === true}
               stats={props.stats}
-              selectedTraits={props.selectedTraits}
+              selectedTraits={picksOf(current.entityId)}
               resolveText={props.resolveText}
-              resolveTraitText={props.resolveTraitText}
+              resolveTraitText={(trait, text) =>
+                props.resolveTraitText(trait, text, current.entityId ? traitTree.entityNodes.get(current.entityId) ?? null : null)}
               onTraitSelect={props.onTraitSelect}
               ownerId={current.entityId ?? WORLD_OWNER}
               gates={props.traitGates}

@@ -8,7 +8,7 @@ import { sandboxPlaceholders, type StatCodePlaceholderSet } from './statCodePlac
 import { sandboxTraits, type StatCodeTraits } from './statCodeTraits';
 import { enabledStats } from './traitEffects';
 import {
-  activeTraits, applyCodeTraitSwitches, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
+  applyCodeTraitSwitches, statTraitsInForce, withCodeBounds, type AppliedTraitValues, type CodeTraitSwitch,
   type TraitRuntimeState,
 } from './traitRuntime';
 import { boxCode, noBoxes, type StatCodeTiming } from './statCodeTiming';
@@ -21,6 +21,8 @@ export interface StatCodeTraitResult {
   appliedValues: AppliedTraitValues;
   cascadeOffTraitIds: CascadeOffTraitIds;
   ownedTraits: OwnedTraitStates;
+  /** Every stat trait in force after the switches, which the bounds re-derive under. */
+  inForce: Trait[];
   log: string[];
 }
 
@@ -104,7 +106,7 @@ export function overlayStatCodeResult(
   active: readonly Trait[],
 ): PlayerStat[] {
   const coded = new Map(result.stats.map((stat) => [stat.id, stat]));
-  const inForce = result.traits ? activeTraits(result.traits.acquired, result.traits.disabledTraitIds) : active;
+  const inForce = result.traits ? result.traits.inForce : active;
   return latest.map((stat) => {
     const run = coded.get(stat.id);
     const value = run && result.moved.includes(stat.id) ? run.value : stat.value;
@@ -184,15 +186,16 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     traitSwitchesInStatOrder(live, traitWritesByStat, turn.traits, placeholderDefs, turn.statNameOf),
     turn.traits.world, turn.traitNameOf,
   );
+  const active = statTraitsInForce(switched.state, turn.traits.world);
   const traitResult: StatCodeTraitResult | undefined = switched.state === before ? undefined : {
     acquired: switched.state.traits,
     disabledTraitIds: switched.state.disabledTraitIds,
     appliedValues: switched.state.appliedValues,
     cascadeOffTraitIds: switched.state.cascadeOffTraitIds ?? {},
     ownedTraits: switched.state.ownedTraits ?? {},
+    inForce: active,
     log: switched.log,
   };
-  const active = activeTraits(switched.state.traits, switched.state.disabledTraitIds);
 
   const moved: string[] = [];
   const boundsChanged: string[] = [];

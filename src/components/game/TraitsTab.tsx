@@ -14,7 +14,7 @@ import { ChevronDown, Lock, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
 import { WORLD_OWNER, gateOf, type GateStates } from '@/lib/traitGates';
-import type { Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
+import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
@@ -23,21 +23,22 @@ import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 export type TraitTabStat = Pick<Stat, 'id' | 'name'> & Pick<Partial<Stat>, 'hidden'>;
 
 export interface TraitsTabProps {
-  /** Every trait the panel lists, in authored order: those held plus those still takeable. */
+  /** Every trait the panel lists, in authored order: those held plus those still takeable. A trait under two
+   *  bearers is listed once per bearer, under each one's node. */
   traits: Trait[];
   groups: TraitGroup[];
-  /** Groups that are entity nodes, each holding that entity's owned traits. */
-  entityNodeIds?: ReadonlySet<string>;
+  /** Entity node id → the bearer it draws, each holding that bearer's tree. */
+  entityNodes?: ReadonlyMap<string, Pick<Entity, 'name'>>;
   /** The entity the player plays, whose node is marked You. */
   playedEntityId?: string | null;
   stats: TraitTabStat[];
-  /** Switched off or never taken — the panel draws no line between the two. */
-  isOff: (traitId: string) => boolean;
+  /** Switched off or never taken in the bearer's tree — the panel draws no line between the two. */
+  isOff: (traitId: string, bearerId: string) => boolean;
   /** A past turn is a record, not a control surface. */
   readOnly: boolean;
-  onToggleTrait: (traitId: string, enabled: boolean) => void;
-  /** A trait's own text resolved through its own placeholder pins. */
-  resolveTraitText: (trait: Trait, text: string) => string;
+  onToggleTrait: (traitId: string, enabled: boolean, bearerId: string) => void;
+  /** A trait's own text resolved through its own placeholder pins, bound for its bearer. */
+  resolveTraitText: (trait: Trait, text: string, bearerId: string) => string;
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
@@ -56,14 +57,18 @@ const flipKey = (keys: ReadonlySet<string>, key: string): ReadonlySet<string> =>
 
 const EMPTY: ReadonlySet<string> = new Set();
 
+/** The bearer a block's traits belong to: the world's when the block sits in no entity node. */
+const bearerOf = (block: TraitBlock): string => block.entityId ?? WORLD_OWNER;
+
 /** Which sections a fresh look at this trait list opens: the ones holding something switched on. */
-const seedOpen = (sections: TraitSection[], isOff: (id: string) => boolean): ReadonlySet<string> =>
-  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id)))).map((s) => s.key));
+const seedOpen = (sections: TraitSection[], isOff: (id: string, bearerId: string) => boolean): ReadonlySet<string> =>
+  new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id, bearerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, entityNodeIds, playedEntityId = null, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  traits, groups, entityNodes, playedEntityId = null, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
   gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
+  const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
   const sections = React.useMemo(() => buildTraitSections(traits, groups, entityNodeIds), [traits, groups, entityNodeIds]);
   // An entity node wears the user glyph, and the played one a You mark, as at Enter World.
   const entityIcon = <User aria-hidden className="h-3.5 w-3.5 shrink-0" />;
@@ -95,27 +100,32 @@ export const TraitsTab = ({
   const flipExpanded = (id: string) => setView((v) => ({ ...v, expanded: flipKey(v.expanded, id) }));
 
   const describe = React.useCallback(
-    (trait: Trait) => resolveTraitText(trait, trait.playerDescription ?? ''),
+    (trait: Trait, bearerId: string = WORLD_OWNER) => resolveTraitText(trait, trait.playerDescription ?? '', bearerId),
     [resolveTraitText],
   );
   const statById = React.useMemo(() => new Map(stats.map((s) => [s.id, s])), [stats]);
   const filtering = query.trim() !== '';
 
   const views = sections
-    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff, describe }) }))
+    .map((section) => ({ section, view: viewTraitSection(section, { query, isOff: (id, b) => isOff(id, b ?? WORLD_OWNER), describe }) }))
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
-  const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits)).filter((t) => !isOff(t.id));
+  // A cast entity's trait carries its bearer's name, as the log does; the player's own read bare.
+  const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
+    .filter((t) => !isOff(t.id, bearerOf(b)))
+    .map((t) => (b.entityId && b.entityId !== playedEntityId ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
-  const row = (trait: Trait, block: TraitBlock, section: TraitSection, off: boolean) => {
+  const row = (trait: Trait, block: TraitBlock, off: boolean) => {
+    const bearerId = bearerOf(block);
+    const rowKey = `${bearerId}/${trait.id}`;
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
       .map((change) => ({ change, stat: statById.get(change.statId) }))
       .filter((c): c is { change: StatChange; stat: TraitTabStat } => c.stat !== undefined && c.stat.hidden !== true);
-    const isExpanded = view.expanded.has(trait.id);
-    const description = describe(trait).trim();
+    const isExpanded = view.expanded.has(rowKey);
+    const description = describe(trait, bearerId).trim();
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
-    const gate = gates && gateOf(gates, block.entityId ?? section.entityId ?? WORLD_OWNER, trait.id);
+    const gate = gates && gateOf(gates, bearerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
     // A locked trait can still switch off; only switching it on waits for its gate.
@@ -128,7 +138,7 @@ export const TraitsTab = ({
     );
     return (
       <div
-        key={trait.id}
+        key={rowKey}
         className={cn('flex items-start gap-2 rounded px-1 py-1 hover:bg-accent/50', off && 'opacity-50')}
       >
         {trait.playerToggle && (block.exclusive ? (
@@ -138,7 +148,7 @@ export const TraitsTab = ({
             aria-checked={!off}
             aria-label={toggleLabel}
             disabled={disabled}
-            onClick={() => onToggleTrait(trait.id, off)}
+            onClick={() => onToggleTrait(trait.id, off, bearerId)}
             className="mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
           >
             {!off && <span className="h-2 w-2 rounded-full bg-primary" />}
@@ -149,7 +159,7 @@ export const TraitsTab = ({
             checked={!off}
             disabled={disabled}
             aria-label={toggleLabel}
-            onCheckedChange={(checked) => onToggleTrait(trait.id, checked === true)}
+            onCheckedChange={(checked) => onToggleTrait(trait.id, checked === true, bearerId)}
           />
         ))}
         {/* A trait's own text self-pins (its name already did, via the resolved collection), so a pinning
@@ -160,7 +170,7 @@ export const TraitsTab = ({
               type="button"
               className="flex w-full items-start gap-1 text-left"
               aria-expanded={isExpanded}
-              onClick={() => flipExpanded(trait.id)}
+              onClick={() => flipExpanded(rowKey)}
             >
               <span className="min-w-0 flex-1">
                 {name}
@@ -183,7 +193,7 @@ export const TraitsTab = ({
             <ul className="mt-1 list-inside list-disc text-helper text-muted-foreground">
               {changes.map(({ change, stat }, i) => (
                 <li key={i}>
-                  {resolveTraitText(trait, stat.name)}:{' '}
+                  {resolveTraitText(trait, stat.name, bearerId)}:{' '}
                   <span className={change.value > 0 ? 'text-success' : 'text-destructive'}>
                     {change.value > 0 ? '+' : ''}{change.value}
                   </span>
@@ -197,17 +207,18 @@ export const TraitsTab = ({
     );
   };
 
-  const rows = (section: TraitSection, blocks: TraitBlock[]) =>
+  const rows = (blocks: TraitBlock[]) =>
     blocks.map((block) => (
       <div key={block.key}>
         {block.subheader && (
           <p className="mb-0.5 mt-1.5 flex items-center gap-1 pl-1 text-meta font-medium text-muted-foreground">
-            {block.entityId && entityIcon}
+            {/* The glyph and the You mark sit on the node's own heading, not on every group below it. */}
+            {block.entityNode && entityIcon}
             {block.subheader}
-            {block.entityId === playedEntityId && youMark}
+            {block.entityNode && block.entityId === playedEntityId && youMark}
           </p>
         )}
-        {block.traits.map((trait) => row(trait, block, section, isOff(trait.id)))}
+        {block.traits.map((trait) => row(trait, block, isOff(trait.id, bearerOf(block))))}
       </div>
     ));
 
@@ -230,10 +241,10 @@ export const TraitsTab = ({
         <div className="space-y-2 pb-2">
           {active.length > 0 && (
             // The clipped list spelled out; the line already reads itself out in full to a screen reader.
-            <Tip tip={active.map((t) => t.name).join(', ')} labelsChild={false}>
+            <Tip tip={active.join(', ')} labelsChild={false}>
               <p className="truncate px-1 text-helper text-muted-foreground">
                 <span className="font-medium text-foreground/70">{active.length} active:</span>{' '}
-                {active.map((t) => t.name).join(', ')}
+                {active.join(', ')}
               </p>
             </Tip>
           )}
@@ -273,7 +284,7 @@ export const TraitsTab = ({
                 )}
                 {isOpen && (
                   <div className="pt-1">
-                    {rows(section, view.enabled)}
+                    {rows(view.enabled)}
                     {view.disabledCount > 0 && (
                       <div className="mt-1 rounded border border-dashed border-border p-1">
                         <button
@@ -286,7 +297,7 @@ export const TraitsTab = ({
                           <ChevronDown className={cn('h-3 w-3 transition-transform', !disabledOpen && '-rotate-90')} />
                           Disabled ({view.disabledCount})
                         </button>
-                        {disabledOpen && <div className="pt-1">{rows(section, view.disabled)}</div>}
+                        {disabledOpen && <div className="pt-1">{rows(view.disabled)}</div>}
                       </div>
                     )}
                   </div>

@@ -101,8 +101,9 @@ export function templatesSubtreeIds(groups: readonly TraitGroup[]): Set<string> 
   return new Set(templates ? [templates.id, ...groupsBelow(groups, templates.id).map((g) => g.id)] : []);
 }
 
-/** The world's traits and groups without Templates and everything below it: what the player is offered.
- *  Interim for the play readers until ticket 08 moves them onto the bearer resolver. */
+/** The world's traits and groups without Templates and everything below it: what the root offers the player.
+ *  The bearer resolver builds the player bearer from it; the trait runtime falls back to it only for a world
+ *  given without bearers. */
 export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   traits: readonly T[], groups: readonly G[],
 ): { traits: readonly T[]; groups: readonly G[] } {

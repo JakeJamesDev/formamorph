@@ -1,13 +1,13 @@
 // Owned traits during play: which are active, and the pins each bearer's traits lay.
 
-import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait } from '@/types';
+import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { PLAYER_BEARER, resolveBearers, type Bearer, type BearerWorld } from './bearers';
 import { bindBearerPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import type { GateOwner } from './traitGates';
-import { ownedTraitTree } from './traitTree';
+import { effectivePlacement, placeableGroupIds } from './traitTree';
 
 /** The entity whose owned traits are the player's own: the played persona's, or null. */
 export const playedEntityId = (ref: PersonaRef | undefined): string | null =>
@@ -36,6 +36,70 @@ export const inPlayLibrary = (
  *  library's. */
 export const inPlayBearers = (world: BearerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): readonly GateOwner[] =>
   resolveBearers(world, persona, library).gate.owners;
+
+/** The player-facing Traits tree: the player bearer's rows at the top level, and a node for each present
+ *  entity bearer with its tree below it. Trait ids are the originals', so active state reads them as they
+ *  are; a trait under two bearers is two rows with one id, told apart by the bearer whose node holds it. */
+export interface BearerTraitTree {
+  groups: TraitGroup[];
+  traits: Trait[];
+  /** Entity node id → the entity it draws. */
+  entityNodes: Map<string, Entity>;
+  /** Group row id → the entity bearer whose tree holds it: the node itself and every group below it. The
+   *  player bearer's groups are absent, so a trait row's bearer is its group's, else the player. */
+  bearerOfGroup: Map<string, string>;
+  bearers: Bearer[];
+}
+
+/** The row id of an entity bearer's group. Two bearers may link one group, so its id alone cannot be a row. */
+export const bearerGroupId = (bearerId: string, groupId: string): string => `${bearerId}/${groupId}`;
+
+/** Every present bearer's tree in one list, in the order Enter World and the Traits tab draw it: an entity
+ *  node sits where its placement puts it; an unplaced node goes to the end of the top level, in entity
+ *  order, and the library's nodes come last. */
+export function bearerTraitTree(world: BearerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): BearerTraitTree {
+  const { bearers } = resolveBearers(world, persona, library);
+  const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
+  const nodes = bearers.filter((b) => b.entity && b.present);
+  const placeable = placeableGroupIds(world.traitGroups);
+  const libraryIds = new Set(library.map((e) => e.id));
+  const placementOf = (b: Bearer) => (libraryIds.has(b.id) ? null : effectivePlacement(b.entity!, placeable));
+  const rootGroupIds = new Set(player.groups.map((g) => g.id));
+  const atRoot = (ref: string | null | undefined) => ref == null || !rootGroupIds.has(ref);
+  const rootSorts = [
+    ...player.groups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
+    ...player.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
+    ...nodes.map(placementOf).map((p) => (p?.groupId === null ? p.order : -1)),
+  ];
+  const firstNodeOrder = Math.max(-1, ...rootSorts) + 1;
+
+  const groups = [...player.groups];
+  const traits = [...player.traits];
+  const entityNodes = new Map<string, Entity>();
+  const bearerOfGroup = new Map<string, string>();
+  let unplaced = 0;
+  for (const bearer of nodes) {
+    entityNodes.set(bearer.id, bearer.entity!);
+    bearerOfGroup.set(bearer.id, bearer.id);
+    const placement = placementOf(bearer);
+    groups.push({
+      id: bearer.id, name: bearer.name,
+      parentId: placement?.groupId ?? null, order: placement ? placement.order : firstNodeOrder + unplaced++,
+    });
+    const ownIds = new Set(bearer.groups.map((g) => g.id));
+    const parent = (ref: string | null | undefined) => (ref != null && ownIds.has(ref) ? bearerGroupId(bearer.id, ref) : bearer.id);
+    for (const g of bearer.groups) {
+      groups.push({ ...g, id: bearerGroupId(bearer.id, g.id), parentId: parent(g.parentId) });
+      bearerOfGroup.set(bearerGroupId(bearer.id, g.id), bearer.id);
+    }
+    for (const t of bearer.traits) traits.push({ ...t, groupId: parent(t.groupId) });
+  }
+  return { groups, traits, entityNodes, bearerOfGroup, bearers };
+}
+
+/** The bearer a tree row belongs to: its group's entity bearer, else the player. */
+export const rowBearer = (tree: Pick<BearerTraitTree, 'bearerOfGroup'>, row: Pick<Trait, 'groupId'>): string =>
+  (row.groupId != null ? tree.bearerOfGroup.get(row.groupId) : undefined) ?? PLAYER_BEARER;
 
 /** What every bearer's pins are read from in play. */
 export interface BearerPinState {
@@ -92,10 +156,12 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
   };
 
   const off = new Set(state.disabledTraitIds ?? []);
-  const tree = ownedTraitTree(world, world.entities, library);
+  const tree = bearerTraitTree(world, persona, library);
   const playedOwned = activeIn(playedBearer);
+  // A Custom Persona pick lies dormant under a world persona: it lays nothing until a return to None.
+  const heldIds = new Set(playerBearer?.traits.map((t) => t.id));
   const playerTraits = [
-    ...inAuthoredOrder([...state.playerTraits, ...playedOwned.filter((t) => !playedBearer?.linkOf.has(t.id))],
+    ...inAuthoredOrder([...state.playerTraits.filter((t) => heldIds.has(t.id)), ...playedOwned.filter((t) => !playedBearer?.linkOf.has(t.id))],
       traitOrderIndex(tree.traits, tree.groups)),
     ...(playedBearer ? inBearerOrder(playedOwned.filter((t) => playedBearer.linkOf.has(t.id)), playedBearer) : []),
   ].filter((t) => !off.has(t.id));

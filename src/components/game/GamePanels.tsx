@@ -11,11 +11,11 @@ import { clearTurnDerived } from '@/lib/turnDigest';
 import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { listablePlayerTraits, traitGateInput } from '@/lib/traitRuntime';
-import { activeOwnedTraitIds, inPlayBearers, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
+import { listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
+import { activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playedEntityId, rowBearer } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
-import { ownedTraitTree } from '@/lib/traitTree';
+import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
@@ -1063,8 +1063,8 @@ export const RightPanel = ({
   language, setLanguage,
 }: {
   onLocationClick: () => void;
-  /** Switch a chosen trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
-  onToggleTrait: (traitId: string, enabled: boolean) => void;
+  /** Switch a bearer's trait on or off mid-play; owned by GameViewer, which reverses its stat changes. */
+  onToggleTrait: (traitId: string, enabled: boolean, bearerId: string) => void;
   /** Settle the traits after the player picks another persona. `name` is that persona's; null for None. */
   onPersonaChange: (ref: PersonaRef, name: string | null) => void;
   /** What the player's last trait switch or persona change turned off. */
@@ -1116,54 +1116,55 @@ export const RightPanel = ({
   // The save froze each chosen trait as the world stood on turn 1, so its authoring is re-read from the
   // world — otherwise a trait made switchable after this playthrough began would never get its control.
   const playerTraits = React.useMemo(() => refreshChosenTraits(savedTraits, traits), [savedTraits, traits]);
-  const traitOrder = React.useMemo(() => traitOrderIndex(traits, traitGroups), [traits, traitGroups]);
   const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
-  const activeTraits = React.useMemo(
-    () => inAuthoredOrder(playerTraits.filter((t) => !disabledTraits.has(t.id)), traitOrder),
-    [playerTraits, disabledTraits, traitOrder],
+  // The one tree from the bearer resolver: the player's rows at the top, then a node per present bearer with
+  // its owned traits and links expanded. A trait under two bearers is two rows, told apart by their node.
+  const customPersona = useGameDataOptional()?.customPersona;
+  const bearerWorld = React.useMemo(
+    () => ({ traits, traitGroups, entities: traitEntities, customPersona }),
+    [traits, traitGroups, traitEntities, customPersona],
   );
-  // Every toggleable trait is available at any time, so the list holds the player's traits and the ones they
-  // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
-  // only what was held then: acquirables can't be acted on there.
-  // The one tree: the world's traits, with a node for each entity that owns traits.
   const traitTree = React.useMemo(
-    () => ownedTraitTree({ traits, traitGroups }, traitEntities, traitLibrary),
-    [traits, traitGroups, traitEntities, traitLibrary],
+    () => bearerTraitTree(bearerWorld, personaRef, traitLibrary),
+    [bearerWorld, personaRef, traitLibrary],
   );
-  // An owned trait's card reads its owner as the Character Name, as the AI does.
+  // A bearer's trait card reads that bearer as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(
-    (trait: Trait, text: string) => {
-      const ownerId = traitTree.ownerOf.get(trait.id);
-      return resolveTraitText(trait, text, ownerId ? traitTree.entityNodes.get(ownerId) : null);
-    },
+    (trait: Trait, text: string, bearerId: string) =>
+      resolveTraitText(trait, text, bearerId === WORLD_OWNER ? null : traitTree.entityNodes.get(bearerId) ?? null),
     [traitTree, resolveTraitText],
   );
-  const activeOwnedIds = React.useMemo(
-    () => new Set(Object.values(activeOwnedTraitIds(viewOwnedTraits)).flat()),
-    [viewOwnedTraits],
-  );
-  // An entity's traits list the same way as the player's: those it holds, plus the toggleable ones it doesn't.
+  const activeOwned = React.useMemo(() => activeOwnedTraitIds(viewOwnedTraits), [viewOwnedTraits]);
+  // Every toggleable trait is available at any time, so the list holds the player's traits and the ones they
+  // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
+  // only what was held then: acquirables can't be acted on there. An entity's rows list the same way.
   const listedTraits = React.useMemo(() => {
-    const owned = traitTree.traits.filter((t) => {
-      const owner = traitTree.ownerOf.get(t.id);
-      return !!owner && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
+    const playerRows = traitTree.traits.filter((t) => rowBearer(traitTree, t) === WORLD_OWNER);
+    const entityRows = traitTree.traits.filter((t) => {
+      const bearer = rowBearer(traitTree, t);
+      return bearer !== WORLD_OWNER && (!!viewOwnedTraits[bearer]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
     });
-    return [...(isViewingPast ? playerTraits : listablePlayerTraits(playerTraits, traits, traitOrder)), ...owned];
-  }, [isViewingPast, playerTraits, traits, traitOrder, traitTree, viewOwnedTraits]);
-  const entityNodeIds = React.useMemo(() => new Set(traitTree.entityNodes.keys()), [traitTree]);
-  const statEnabled = React.useMemo(
-    () => activeStatEnabled(playerStats, activeTraits),
-    [playerStats, activeTraits],
-  );
+    const playerOrder = traitOrderIndex(playerRows, traitTree.groups);
+    // A Custom Persona pick lies dormant under a world persona: it has no row until a return to None.
+    const heldRows = new Set(playerRows.map((t) => t.id));
+    const held = playerTraits.filter((t) => heldRows.has(t.id));
+    return [...(isViewingPast ? held : listablePlayerTraits(held, playerRows, playerOrder)), ...entityRows];
+  }, [isViewingPast, playerTraits, traitTree, viewOwnedTraits]);
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
-  const customPersona = useGameDataOptional()?.customPersona;
-  const traitGates = React.useMemo(() => gateStates(traitGateInput(
-    { traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits },
-    {
-      traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-      bearers: inPlayBearers({ traits, traitGroups, entities: traitEntities, customPersona }, personaRef, traitLibrary),
-    },
-  )), [playerTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, cast, persona, personaRef, traitEntities, customPersona, traitLibrary]);
+  const gateWorld = React.useMemo<TraitWorld>(() => ({
+    traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
+    bearers: inPlayBearers(bearerWorld, personaRef, traitLibrary),
+  }), [traits, traitGroups, cast, persona, personaRef, bearerWorld, traitLibrary]);
+  const viewTraitState = React.useMemo(
+    () => ({ traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits }),
+    [playerTraits, viewDisabledTraitIds, viewOwnedTraits],
+  );
+  // The stats a trait switched off stay off under the player's world traits and the played persona's linked ones.
+  const statEnabled = React.useMemo(
+    () => activeStatEnabled(playerStats, statTraitsInForce(viewTraitState, gateWorld)),
+    [playerStats, viewTraitState, gateWorld],
+  );
+  const traitGates = React.useMemo(() => gateStates(traitGateInput(viewTraitState, gateWorld)), [viewTraitState, gateWorld]);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
@@ -1256,12 +1257,12 @@ export const RightPanel = ({
           <TraitsTab
             traits={listedTraits}
             groups={traitTree.groups}
-            entityNodeIds={entityNodeIds}
+            entityNodes={traitTree.entityNodes}
             playedEntityId={playedEntityId(personaRef)}
             stats={playerStats}
-            isOff={(id) => (traitTree.ownerOf.has(id)
-              ? !activeOwnedIds.has(id)
-              : disabledTraits.has(id) || !heldTraitIds.has(id))}
+            isOff={(id, bearerId) => (bearerId === WORLD_OWNER
+              ? disabledTraits.has(id) || !heldTraitIds.has(id)
+              : !activeOwned[bearerId]?.includes(id))}
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
             resolveTraitText={resolveTreeTraitText}
