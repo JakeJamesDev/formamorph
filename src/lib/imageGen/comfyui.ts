@@ -5,6 +5,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type { ImageGenOpts, ImageGenParams, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
+import { DetailedError } from '../errorDetails';
 import { trimUrl, authHeaders, POLL_INTERVAL_MS } from './http';
 
 /** The canonical ComfyUI txt2img API-format graph, with %tokens% for the values we inject. Users can edit
@@ -139,16 +140,20 @@ interface ComfyRejection {
   node_errors?: Record<string, { class_type?: string; errors?: ComfyValidationError[] }>;
 }
 
-/** The reason from a /prompt 400 body; per-node errors first, since the top-level message is generic. */
-export function comfyRejectionDetail(body: unknown): string | undefined {
+/** The error for a rejected /prompt: ComfyUI's summary as the message; each node's reason and the body as details. */
+export function comfyRejection(status: number, body: unknown): DetailedError {
   const { error, node_errors } = (body ?? {}) as ComfyRejection;
+  const summary = (typeof error === 'string' ? error : error?.message) || `HTTP ${status}`;
   const reason = (e: ComfyValidationError) => [e.message, e.details].filter(Boolean).join(': ');
-  const nodeReasons = Object.entries(node_errors ?? {}).flatMap(([id, node]) =>
+  const reasons = Object.entries(node_errors ?? {}).flatMap(([id, node]) =>
     (node.errors ?? []).map((e) => `${node.class_type ?? 'Node'} #${id}: ${reason(e)}`),
   );
-  if (nodeReasons.length) return nodeReasons.join('; ');
-  if (typeof error === 'string') return error || undefined;
-  return (error && reason(error)) || undefined;
+  if (typeof error === 'object' && error?.details) reasons.push(error.details);
+  const response = `Response (HTTP ${status}):\n${JSON.stringify(body, null, 2)}`;
+  return new DetailedError(
+    `ComfyUI rejected the workflow: ${summary}`,
+    [reasons.join('\n'), response].filter(Boolean).join('\n\n'),
+  );
 }
 
 /** A human-readable reason from a terminal-but-imageless history entry (the node's exception, if any). */
@@ -320,11 +325,13 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
     });
     if (!res.ok) {
       // ComfyUI returns 400 with { error, node_errors } on a bad graph (e.g. missing checkpoint).
-      let detail = `HTTP ${res.status}`;
+      let body: unknown;
       try {
-        detail = comfyRejectionDetail(await res.json()) ?? detail;
-      } catch { /* keep the status */ }
-      throw new Error(`ComfyUI rejected the workflow: ${detail}`);
+        body = await res.json();
+      } catch {
+        throw new Error(`ComfyUI rejected the workflow: HTTP ${res.status}`);
+      }
+      throw comfyRejection(res.status, body);
     }
     const submit = (await res.json()) as { prompt_id?: string };
     if (!submit.prompt_id) throw new Error('ComfyUI did not return a prompt_id');

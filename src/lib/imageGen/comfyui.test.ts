@@ -7,10 +7,11 @@ import {
   decodePreviewFrame,
   toComfySampler,
   fetchComfyMeta,
-  comfyRejectionDetail,
+  comfyRejection,
   comfyuiProvider,
 } from './comfyui';
 import type { ImageGenParams } from './types';
+import { DetailedError } from '../errorDetails';
 
 const params: ImageGenParams = {
   prompt: 'a knight, "shiny" armor\nby a river',
@@ -158,14 +159,25 @@ const missingCheckpointRejection = {
   },
 };
 
-describe('comfyRejectionDetail', () => {
-  it('names the failing node and its reason instead of the generic message', () => {
-    expect(comfyRejectionDetail(missingCheckpointRejection)).toBe(
-      "CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']",
-    );
+const CHECKPOINT_REASON =
+  "CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']";
+
+describe('comfyRejection', () => {
+  it("keeps ComfyUI's summary as the message and each node's reason as details", () => {
+    const error = comfyRejection(400, missingCheckpointRejection);
+    expect(error).toBeInstanceOf(DetailedError);
+    expect(error.message).toBe('ComfyUI rejected the workflow: Prompt outputs failed validation');
+    expect(error.details.split('\n\n')[0]).toBe(CHECKPOINT_REASON);
   });
 
-  it('joins every error across nodes', () => {
+  it('ends the details with the whole response, so a copy carries everything ComfyUI said', () => {
+    const { details } = comfyRejection(400, missingCheckpointRejection);
+    const [, response] = details.split('\n\n');
+    expect(response.split('\n')[0]).toBe('Response (HTTP 400):');
+    expect(JSON.parse(response.slice(response.indexOf('\n') + 1))).toEqual(missingCheckpointRejection);
+  });
+
+  it('lists every error across nodes, one per line', () => {
     const body = {
       ...missingCheckpointRejection,
       node_errors: {
@@ -179,39 +191,38 @@ describe('comfyRejectionDetail', () => {
         },
       },
     };
-    expect(comfyRejectionDetail(body)).toBe(
-      "KSampler #3: Value not in list: sampler_name: 'dpm' not in [...]; "
-        + 'KSampler #3: Value smaller than min: steps: 0; '
-        + "CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors' not in ['a.safetensors', 'b.safetensors']",
-    );
+    expect(comfyRejection(400, body).details.split('\n\n')[0].split('\n')).toEqual([
+      "KSampler #3: Value not in list: sampler_name: 'dpm' not in [...]",
+      'KSampler #3: Value smaller than min: steps: 0',
+      CHECKPOINT_REASON,
+    ]);
   });
 
-  it('falls back to the top-level error when no node is at fault', () => {
-    expect(comfyRejectionDetail({ error: { message: 'Prompt has no outputs', details: '' }, node_errors: {} }))
-      .toBe('Prompt has no outputs');
-    expect(comfyRejectionDetail({ error: { message: 'Prompt outputs failed validation', details: 'Loop detected' } }))
-      .toBe('Prompt outputs failed validation: Loop detected');
-    expect(comfyRejectionDetail({ error: 'invalid prompt' })).toBe('invalid prompt');
+  it("adds the top-level error's own details when ComfyUI gives them", () => {
+    const error = comfyRejection(400, { error: { message: 'Prompt outputs failed validation', details: 'Loop detected' } });
+    expect(error.details.split('\n\n')[0]).toBe('Loop detected');
   });
 
-  it('returns undefined for a body with no reason in it', () => {
-    expect(comfyRejectionDetail({})).toBeUndefined();
-    expect(comfyRejectionDetail(null)).toBeUndefined();
+  it('summarizes a string error, and the status when the body names none', () => {
+    expect(comfyRejection(400, { error: 'invalid prompt' }).message).toBe('ComfyUI rejected the workflow: invalid prompt');
+    expect(comfyRejection(400, {}).message).toBe('ComfyUI rejected the workflow: HTTP 400');
+    expect(comfyRejection(400, null).message).toBe('ComfyUI rejected the workflow: HTTP 400');
   });
 });
 
 describe('comfyuiProvider', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('puts the failing node in the thrown error when ComfyUI rejects the workflow', async () => {
+  it('throws the rejection with its node reasons when ComfyUI rejects the workflow', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: false,
       status: 400,
       json: async () => missingCheckpointRejection,
     } as Response)));
-    await expect(comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' })).rejects.toThrow(
-      "ComfyUI rejected the workflow: CheckpointLoaderSimple #4: Value not in list: ckpt_name: 'sdxl.safetensors'",
-    );
+    const error = await comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DetailedError);
+    expect((error as DetailedError).message).toBe('ComfyUI rejected the workflow: Prompt outputs failed validation');
+    expect((error as DetailedError).details).toContain(CHECKPOINT_REASON);
   });
 
   it('keeps the HTTP status when the body is not JSON', async () => {
@@ -220,7 +231,8 @@ describe('comfyuiProvider', () => {
       status: 502,
       json: async () => { throw new SyntaxError('Unexpected token <'); },
     } as unknown as Response)));
-    await expect(comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }))
-      .rejects.toThrow('ComfyUI rejected the workflow: HTTP 502');
+    const error = await comfyuiProvider(params, { endpointUrl: 'http://127.0.0.1:8188', apiToken: '' }).catch((e: unknown) => e);
+    expect(error).not.toBeInstanceOf(DetailedError);
+    expect((error as Error).message).toBe('ComfyUI rejected the workflow: HTTP 502');
   });
 });
