@@ -352,15 +352,7 @@ The reference preserves production density and panel placement. Dense labels can
 - Label the grouping section Add To Group. Show the first three eligible Groups in existing order, excluding the current Group before taking three.
 - Follow shortcuts with FolderPlus + Create New Group… and FolderSearch + Add To Group…. The full chooser is last in this section. Keep explanations in the dialog or help.
 - Separate meaning changes with semantic separators: preference, grouping, and the item's own actions.
-- End with the item's own actions. Each tab offers only the actions that apply to its items:
-
-  | Tab | Item actions before Delete |
-  | --- | --- |
-  | Entities | Check for Updates, then Set as Default Persona or Clear Default Persona on a persona |
-  | Dictionaries | Check for Updates |
-  | Avatars | Publish, when signed in |
-  | Worlds | None |
-
+- End with the item's own actions. Each tab offers only the actions that apply to its items.
 - Put Delete last in that section. Keep its production trash icon and destructive color. Delete opens the existing confirmation.
 - Keep Group names in their authored voice. Group tiles retain Open Group and Delete Group; assigned items retain Remove From Group in a separate section.
 
