@@ -10,7 +10,7 @@ import { PUBLISH_LIMITS } from '@/lib/publishLimits';
 import { KIND_LABELS } from '@/lib/catalogKinds';
 
 const res = (body: unknown, ok = true, status = 200): Response =>
-  ({ ok, status, json: async () => body } as unknown as Response);
+  ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 
 beforeEach(() => {
   AuthService.logout();

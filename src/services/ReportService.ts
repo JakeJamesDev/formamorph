@@ -1,5 +1,6 @@
 import AuthService from './AuthService';
-import { authHeaders, unwrap, type ErrorBody } from './staffApi';
+import { authHeaders, unwrap } from './staffApi';
+import type { ErrorBody } from './responseError';
 import { serverSupportsReports, type ReportGroup } from '@/lib/contentReports';
 
 /** The caps and lists this server will accept, and — by existing at all — that it takes reports. */

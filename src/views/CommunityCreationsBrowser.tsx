@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
+import { responseError } from '@/services/responseError';
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -568,10 +570,7 @@ const CommunityCreationsBrowser = ({
         }
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to delete ${noun.toLowerCase()}`);
-      }
+      if (!response.ok) throw await responseError(response, `Failed to delete ${noun.toLowerCase()}`);
 
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);
@@ -581,7 +580,7 @@ const CommunityCreationsBrowser = ({
       setTakedown(takedownTargetFor(record, currentUser?.id));
     } catch (error) {
       console.error('Error deleting remote item:', error);
-      toast.error((error as Error).message || `Failed to delete ${noun.toLowerCase()}`);
+      toastError(error, `Failed to delete ${noun.toLowerCase()}`);
     }
   };
 
@@ -608,7 +607,7 @@ const CommunityCreationsBrowser = ({
       // Someone else's work: they are owed an explanation of what to fix, and by when.
       setQuarantineNotice(quarantineTargetFor(updated, currentUser?.id));
     } catch (error) {
-      toast.error((error as Error).message || `Failed to quarantine the ${noun.toLowerCase()}`);
+      toastError(error, `Failed to quarantine the ${noun.toLowerCase()}`);
     } finally {
       setIsQuarantiningNow(false);
     }
@@ -705,7 +704,7 @@ const CommunityCreationsBrowser = ({
         : w)));
       toast.success(`${noun} released`);
     } catch (error) {
-      toast.error((error as Error).message || `Failed to release the ${noun.toLowerCase()}`);
+      toastError(error, `Failed to release the ${noun.toLowerCase()}`);
     }
   };
 

@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import { codedFailure, readFailure, responseError } from './responseError';
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
@@ -39,11 +40,13 @@ export type CatalogFetch =
  */
 export class AnonymousLikeRefused extends Error {
   readonly code: string;
+  readonly details: string;
 
-  constructor(code: string, message: string) {
+  constructor(code: string, message: string, details = '') {
     super(message);
     this.name = 'AnonymousLikeRefused';
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -749,8 +752,8 @@ class WorldStorageService {
       body: JSON.stringify({ liked }),
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to change that');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to change that');
 
     return body.data as { liked: boolean; likes: number };
   }
@@ -781,13 +784,11 @@ class WorldStorageService {
       body: JSON.stringify({ liked }),
     });
 
-    const body = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new AnonymousLikeRefused(
-        typeof body.code === 'string' ? body.code : '',
-        body.error || body.message || 'Failed to change that',
-      );
+      const { body, message, details } = await readFailure(response, 'Failed to change that');
+      throw new AnonymousLikeRefused(typeof body.code === 'string' ? body.code : '', message, details);
     }
+    const body = await response.json().catch(() => ({}));
 
     return body.data as { liked: boolean; likes: number };
   }
@@ -870,8 +871,8 @@ class WorldStorageService {
       },
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to claim those likes');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to claim those likes');
 
     return Number(body.data?.claimed) || 0;
   }
@@ -894,8 +895,8 @@ class WorldStorageService {
       body: JSON.stringify({ days }),
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to quarantine this');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to quarantine this');
 
     return body.data as { quarantinedAt: string; quarantineExpiresAt: string; quarantineExtended: boolean };
   }
@@ -911,10 +912,7 @@ class WorldStorageService {
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.message || 'Failed to release this');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to release this');
   }
 
   /** Fetch a page of comments for a published world; auth is optional. Never throws — errors resolve to
@@ -956,10 +954,7 @@ class WorldStorageService {
       },
       body: JSON.stringify({ content }),
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Failed to post comment');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to post comment');
     const responseData = await response.json();
     return responseData.data || responseData;
   }
@@ -985,10 +980,7 @@ class WorldStorageService {
       },
       body: JSON.stringify({ content }),
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || 'Failed to save the comment');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to save the comment');
     const responseData = await response.json();
     return responseData.data || responseData;
   }
@@ -1006,10 +998,7 @@ class WorldStorageService {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || errorData.message || 'Failed to delete the comment');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to delete the comment');
   }
 
   /**
@@ -1099,10 +1088,7 @@ class WorldStorageService {
     }
     const response = await fetch(`${this.API_URL}${path}`, { headers });
     if (response.status === 404 && absent !== undefined) return absent;
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.message || fallback);
-    }
+    if (!response.ok) throw await responseError(response, fallback);
     return (await response.json()).data as T;
   }
 
@@ -1166,10 +1152,7 @@ class WorldStorageService {
       body: JSON.stringify({ reviewState }),
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.message || 'Failed to save this decision');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to save this decision');
   }
 
   /**
@@ -1209,10 +1192,7 @@ class WorldStorageService {
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.message || 'Failed to delete the entry');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to delete the entry');
   }
 
   /** The half `createChangelogEntry` and `updateChangelogEntry` share: same body, same auth, same refusal. */
@@ -1233,10 +1213,7 @@ class WorldStorageService {
       body: JSON.stringify({ title: draft.title.trim(), body: draft.body.trim(), date: draft.date }),
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      throw new Error(body.error || body.message || fallbackError);
-    }
+    if (!response.ok) throw await responseError(response, fallbackError);
 
     const body = await response.json();
 
@@ -1325,12 +1302,9 @@ class WorldStorageService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
         // The refusal carries a `code` when a policy blocked it; attach it so the caller can open the
         // right dialog instead of matching on error text.
-        const failure = new Error(errorData.message || errorData.error || 'Failed to publish') as Error & { code?: string };
-        if (errorData.code) failure.code = errorData.code;
-        throw failure;
+        throw await codedFailure(response, 'Failed to publish');
       }
 
       // The listing itself, not the envelope around it: what the caller wants is its id and its fresh
@@ -1362,14 +1336,7 @@ class WorldStorageService {
       headers: { Authorization: `Bearer ${AuthService.token}` },
     });
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      const failure = new Error(
-        body.error || body.message || 'Failed to withdraw the entry',
-      ) as Error & { code?: string };
-      if (body.code) failure.code = body.code;
-      throw failure;
-    }
+    if (!response.ok) throw await codedFailure(response, 'Failed to withdraw the entry');
   }
 
   /**
@@ -1387,8 +1354,8 @@ class WorldStorageService {
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to load who liked this');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to load who liked this');
 
     const data = body.data as { total?: number; rows?: LikerRow[]; anonymous?: number } | undefined;
 
@@ -1422,8 +1389,8 @@ class WorldStorageService {
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to audit these likes');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to audit these likes');
 
     const data = body.data as {
       total?: number;
@@ -1476,10 +1443,8 @@ class WorldStorageService {
       headers: { 'Authorization': `Bearer ${AuthService.token}` },
     });
 
+    if (!response.ok) throw await responseError(response, 'Failed to remove those Anonymous Likes');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(body.error || body.message || 'Failed to remove those Anonymous Likes');
-    }
 
     const data = body.data as AnonymousLikesRemoved | undefined;
 
@@ -1506,8 +1471,8 @@ class WorldStorageService {
       { method: 'DELETE', headers: { 'Authorization': `Bearer ${AuthService.token}` } }
     );
 
+    if (!response.ok) throw await responseError(response, 'Failed to remove that like');
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || body.message || 'Failed to remove that like');
 
     return Number((body.data as { likes?: number } | undefined)?.likes) || 0;
   }

@@ -1,5 +1,6 @@
 import WorldStorageService from '@/services/WorldStorageService';
 import AuthService from '@/services/AuthService';
+import { responseError } from '@/services/responseError';
 
 /**
  * Fetch a community listing's stored content, streaming the body so a large download can report progress.
@@ -38,10 +39,7 @@ export async function fetchCatalogContent(
       signal: controller.signal,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || 'Failed to download');
-    }
+    if (!response.ok) throw await responseError(response, 'Failed to download');
 
     const total = Number(response.headers.get('Content-Length')) || 0;
     const reader = response.body?.getReader();

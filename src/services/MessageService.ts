@@ -1,4 +1,5 @@
 import AuthService from './AuthService';
+import { responseError } from './responseError';
 import type { ComposeMessageInput, EditMessageInput, InboxMessage, SentMessage } from '@/types';
 
 /** A paged inbox fetch. `total` is everything visible, so the caller can tell the list was truncated. */
@@ -12,12 +13,6 @@ export interface InboxResult {
 export interface SentResult {
   messages: SentMessage[];
   total: number;
-}
-
-/** Server error envelope: this API answers with `error`, older handlers here read `message`. */
-interface ErrorBody {
-  error?: string;
-  message?: string;
 }
 
 /**
@@ -39,10 +34,7 @@ class MessageService {
 
   /** Unwrap a response, raising the server's own error text so callers can surface it verbatim. */
   private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as ErrorBody;
-      throw new Error(body.error || body.message || fallback);
-    }
+    if (!response.ok) throw await responseError(response, fallback);
     return (await response.json()) as T;
   }
 

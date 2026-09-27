@@ -22,6 +22,7 @@ const res = (body: unknown, ok = true, status = 200): Response => ({
   ok,
   status,
   json: async () => body,
+  text: async () => JSON.stringify(body),
   headers: { get: () => null },
 } as unknown as Response);
 

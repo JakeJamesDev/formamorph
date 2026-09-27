@@ -12,6 +12,7 @@ const answer = (status: number, body: unknown) => ({
   ok: status >= 200 && status < 300,
   status,
   json: async () => body,
+  text: async () => JSON.stringify(body),
 });
 
 const fetchMock = vi.fn();

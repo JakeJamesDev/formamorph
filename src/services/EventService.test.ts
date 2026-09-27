@@ -13,7 +13,7 @@ import { serverEvent } from '@/test/serverEvents';
 
 // Minimal fetch Response stub (only the bits EventService reads).
 const res = (body: unknown, ok = true, status = 200): Response =>
-  ({ ok, status, json: async () => body } as unknown as Response);
+  ({ ok, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response);
 
 /** The URL of the nth fetch call. */
 const urlOf = (call = 0) => String(vi.mocked(fetch).mock.calls[call][0]);
