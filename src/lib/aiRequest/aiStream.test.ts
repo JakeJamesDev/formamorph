@@ -181,6 +181,13 @@ describe('streamAiRequest', () => {
     expect(error.details).toContain(notFoundBody);
   });
 
+  it('reads a numeric server code', async () => {
+    const error = await rejectionOf(new Response(JSON.stringify({ error: { message: 'Bad request', code: 400 } }), { status: 400 }));
+
+    expect(error.serverError?.code).toBe('400');
+    expect(error.details).toContain('Code: 400');
+  });
+
   it('keeps a body that is not JSON as the raw response', async () => {
     const error = await rejectionOf(new Response('<html>502 Bad Gateway</html>', { status: 502 }));
 
