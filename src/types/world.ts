@@ -114,6 +114,13 @@ export interface TraitGroup {
   exclusive?: boolean;
 }
 
+/** An entity node's place in the world's Traits tree. The parent is a world group, never an entity's own. */
+export interface TraitPlacement {
+  /** null = top level. */
+  groupId: string | null;
+  order: number;
+}
+
 /** A selectable character trait that applies `statChanges` and adds AI context when chosen at game start. */
 export interface Trait {
   id: string;
@@ -199,6 +206,9 @@ export interface Entity {
   traits?: Trait[];
   /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
   traitGroups?: TraitGroup[];
+  /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
+   *  or a group that no longer exists, = the end of the top level. */
+  traitPlacement?: TraitPlacement;
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];

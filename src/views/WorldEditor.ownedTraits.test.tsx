@@ -54,7 +54,7 @@ const treeRow = (name: string) => screen.getAllByLabelText('Drag to reorder or n
   .map((grip) => grip.parentElement as HTMLElement)
   .find((row) => within(row).queryByText(name));
 
-/** An entity node row: it has no grip, so it is found by its chevron. */
+/** An entity node row, found by its chevron, which names it an entity rather than a group. */
 const entityNodeRow = (name: string) => screen.queryAllByRole('button', { name: /(Collapse|Expand) entity/ })
   .map((chevron) => chevron.parentElement as HTMLElement)
   .find((row) => within(row).queryByText(name));
@@ -115,6 +115,15 @@ describe('entity nodes on the Traits tab', () => {
     expect(node.querySelector('.lucide-user')).not.toBeNull();
     expect(node.querySelector('.lucide-folder')).toBeNull();
     expect(entityNodeRow('Odd Wick')).toBeUndefined();
+  });
+
+  it('gives a node a drag grip, and no delete or duplicate', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Traits/);
+    const node = entityNodeRow('Ash')!;
+    expect(within(node).getByLabelText('Drag to reorder or nest')).toBeInTheDocument();
+    expect(within(node).queryByTitle('Delete')).toBeNull();
+    expect(within(node).queryByTitle('Duplicate')).toBeNull();
   });
 
   it('keeps the node while the entity owns a group, and drops it once it owns nothing', () => {

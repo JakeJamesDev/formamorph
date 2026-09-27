@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   addOwnedGroup, addOwnedTrait, editorGateInput, findOwnedItem, removeOwnedItem, remintOwnedTraits, updateOwnedGroup,
-  updateOwnedTrait,
+  traitOwners, updateOwnedTrait,
 } from './ownedTraits';
 import { gateStates, requirementOptions } from './traitGates';
 import type { Entity, Trait, TraitGroup } from '@/types';
@@ -117,5 +117,27 @@ describe('editorGateInput', () => {
 
   it('leaves out entities that own nothing', () => {
     expect(editorGateInput(world()).owners.map((o) => o.id)).toEqual(['world', 'ash']);
+  });
+});
+
+describe('traitOwners', () => {
+  const companions: TraitGroup[] = [
+    { id: 'g-allies', name: 'Allies', parentId: null },
+    { id: 'g-companions', name: 'Companions', parentId: 'g-allies' },
+  ];
+  const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ kind: 'group', id: 'g-allies' }] });
+  const unlocked = (entity: Entity) => gateStates({
+    owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
+    active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'none' },
+  }).get('t-keeper')?.unlocked;
+
+  it('counts the traits of an entity node placed inside a group, at any depth, toward that group', () => {
+    expect(unlocked(ash({ traitPlacement: { groupId: 'g-companions', order: 0 } }))).toBe(true);
+  });
+
+  it('counts no traits of an entity node at the top level, or placed in a group that is gone', () => {
+    expect(unlocked(ash())).toBe(false);
+    expect(unlocked(ash({ traitPlacement: { groupId: null, order: 0 } }))).toBe(false);
+    expect(unlocked(ash({ traitPlacement: { groupId: 'g-deleted', order: 0 } }))).toBe(false);
   });
 });

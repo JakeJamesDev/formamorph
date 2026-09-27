@@ -4,7 +4,7 @@ import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
 import { WORLD_OWNER, type GateEntity, type GateInput, type GateOwner } from './traitGates';
-import { ownsTraits } from './traitTree';
+import { effectivePlacement, ownsTraits } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
 const groupsOf = (entity: Entity): TraitGroup[] => entity.traitGroups ?? [];
@@ -83,9 +83,13 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
 
 /** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group. */
 export function traitOwners(world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] }): GateOwner[] {
+  const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
   return [
     { id: WORLD_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
-    ...world.entities.filter(ownsTraits).map((e) => ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e) })),
+    ...world.entities.filter(ownsTraits).map((e) => ({
+      id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e),
+      parentGroupId: effectivePlacement(e, worldGroupIds)?.groupId ?? null,
+    })),
   ];
 }
 
