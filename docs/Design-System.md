@@ -180,11 +180,12 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 | Frame, artwork, title scrim, author, and description | `WorldCardShell` in [`WorldCardShell.tsx`](../src/components/WorldCardShell.tsx) |
 | Stacked or split layout per art aspect | `cardLayoutFor` in [`thumbAspect.ts`](../src/lib/thumbAspect.ts) |
 | The same card in the library's detailed view | `WorldCardFace` in [`WorldCardFace.tsx`](../src/components/WorldCardFace.tsx) and `LibraryGroupTile` in [`LibraryGroupTile.tsx`](../src/components/library/LibraryGroupTile.tsx) |
-| Art for an entity with no image | `EntityPlaceholderArt` in [`EntityPlaceholderArt.tsx`](../src/components/EntityPlaceholderArt.tsx) |
+| Art for an entity with no image or a flagged stand-in | `EntityPlaceholderArt` in [`EntityPlaceholderArt.tsx`](../src/components/EntityPlaceholderArt.tsx) |
 | Community counts, tags, and contextual actions | `RemoteWorldCard` in [`RemoteWorldCard.tsx`](../src/components/community/RemoteWorldCard.tsx) |
 | Favorite selection and pending state | `LikeButton` in [`LikeButton.tsx`](../src/components/community/LikeButton.tsx) |
 | Tag density and overflow | `CardTags` in [`WorldDetails.tsx`](../src/components/WorldDetails.tsx) |
 
+- Give an entity listing that the server flags as a stand-in its Morph art too. The card never fetches or shows the stored file.
 ### Responsive behavior
 
 At desktop widths, cards form a two-column reference grid. At narrower widths they stack at one column while preserving the image-first order, count row, wrapping tags, and minimum touch targets. Title expansion and image actions retain keyboard access; a focused image action becomes visible with the shared focus ring even without hover.
@@ -200,7 +201,13 @@ At desktop widths, cards form a two-column reference grid. At narrower widths th
 | Loading | The Entity grid loads with split-card skeletons, so it keeps its shape when the listings arrive. |
 | Action | The update action and favorite callback report local outcomes only. |
 
-The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data.
+The live Community cards reference uses the production card and shell with neutral, controlled fixtures. It covers long titles, descriptions, tags, counts, selected likes, pending actions, keyboard focus, and update affordances without touching community data. Two entity cards show Morph art: one has no image, and one is a flagged stand-in with a stored thumbnail.
+
+### Writing review
+
+- The flagged stand-in line in Composition and the reference description use short active sentences and the guide's terms: entity, Morph art, stand-in.
+- The stand-in fixture's name, description, and tags are sample content and keep their own voice.
+- **Unverified:** the rest of this section's copy predates this review and has terminology review only.
 
 ## Pattern: Compact Find Utility Bar
 

@@ -78,6 +78,26 @@ const BLANK_ENTITY: WorldRecord = {
   tags: ['Spirit', 'Archive'],
 };
 
+const STAND_IN_ART = encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 720" id="stand-in-silhouette">
+  <rect width="480" height="720" fill="#5b5f68"/><circle cx="240" cy="250" r="96" fill="#8a8f99"/><path d="M90 720q0-260 150-260t150 260Z" fill="#8a8f99"/>
+</svg>`);
+
+// The server flags this listing's stored file as its stand-in silhouette.
+const FLAGGED_ENTITY: WorldRecord = {
+  id: 'showcase-lantern-wright',
+  name: 'Sable Lantern-Wright',
+  description: 'A lamp maker whose upload carried no portrait. The server stored a stand-in, so the card draws its Morph art instead.',
+  kind: 'entity',
+  thumbnail: `data:image/svg+xml,${STAND_IN_ART}`,
+  placeholder: true,
+  author: { id: 'river-quill', username: 'river-quill' },
+  downloads: 41,
+  comment_count: 3,
+  likes: 15,
+  liked: false,
+  tags: ['Artisan', 'Coastal'],
+};
+
 type PendingLike = {
   complete: () => void;
   next: boolean;
@@ -110,7 +130,7 @@ export function CommunityCardReference() {
       <div className="grid gap-2">
         <h3 id="community-card-reference-title" className="text-heading">Community Creation Cards</h3>
         <Hint>
-          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity card puts its image beside the text instead. An entity with no image shows its Morph art.
+          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity card puts its image beside the text instead. An entity with no image shows its Morph art. So does an entity that the server flags as a stand-in.
         </Hint>
       </div>
 
@@ -153,6 +173,18 @@ export function CommunityCardReference() {
         />
         <RemoteWorldCard
           world={BLANK_ENTITY}
+          downloadState="none"
+          downloadProgress={undefined}
+          isAuthenticated
+          currentUser={COMMUNITY_READER}
+          onView={(world) => {
+            setSelectedName(world.name);
+            setLastAction(`The selected creation is ${world.name}.`);
+          }}
+          onContextualDownload={(world) => setLastAction(`The local download action started for ${world.name}.`)}
+        />
+        <RemoteWorldCard
+          world={FLAGGED_ENTITY}
           downloadState="none"
           downloadProgress={undefined}
           isAuthenticated
