@@ -32,6 +32,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tip } from "@/components/ui/tooltip";
 import { toast } from "react-toastify";
+import { linkToast, toastError } from "@/lib/linkToast";
 import { ThemedToastContainer } from "@/components/ThemedToastContainer";
 import "react-toastify/dist/ReactToastify.css";
 import TTSModal, { type TTSModalHandle, type TTSProgress } from "../components/game/TTSModal";
@@ -571,6 +572,7 @@ const GameViewer = ({
     setAppliedTraitValues,
     cascadeOffTraitIds,
     setCascadeOffTraitIds,
+    ownedTraits,
     setOwnedTraits,
     codePins,
     setCodePins,
@@ -1720,6 +1722,7 @@ const GameViewer = ({
     stats: activeStats,
     traits: activeTraits,
     traitGroups,
+    ownedTraits,
     resolve: resolvePH,
     resolveTrait: resolveTraitText,
     resolveEntity: resolveEntityText,
@@ -3132,15 +3135,7 @@ const GameViewer = ({
         // A network failure (server off / wrong URL / CORS disabled) is opaque and unactionable from the
         // generic toast — offer the connection guide instead. The turn knows this already showed, because it
         // knows the failed request wasn't silent.
-        toast.error(
-          <div className="flex flex-col items-start gap-1">
-            <span>Couldn&apos;t reach your AI server.</span>
-            <button type="button" className="text-meta underline" onClick={() => setConnectionGuideOpen(true)}>
-              Fix connection →
-            </button>
-          </div>,
-          { position: "top-right", autoClose: 8000, closeOnClick: false, pauseOnHover: true, draggable: true },
-        );
+        linkToast("Couldn't reach your AI server.", "Fix connection →", () => setConnectionGuideOpen(true));
       } else {
         toast.error("Failed to process AI request");
       }
@@ -3325,7 +3320,7 @@ const GameViewer = ({
       setSceneImages((prev) => addSceneImage(prev, turnId, dataUrl));
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
-      toast.error((error as Error).message || (args.tagsOnly ? "Couldn't write tags for this scene." : "Couldn't draw this scene."));
+      toastError(error, args.tagsOnly ? "Couldn't write tags for this scene." : "Couldn't draw this scene.");
       addSystemLogEntry(args.tagsOnly ? "Scene tags failed" : "Scene image failed");
     } finally {
       setSceneImageJob(null);

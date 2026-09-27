@@ -22,7 +22,7 @@ import { TurnCard } from './TurnCard';
 import { BubbleMenu } from './BubbleMenu';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { rewriteTurnAction } from '@/lib/turnHistory';
-import { toast } from 'react-toastify';
+import { copyWithToast } from '@/lib/clipboard';
 import { useLiveReasoning } from '@/lib/reasoningStreamStore';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -661,15 +661,6 @@ export const MiddlePanel = ({
   // A turn's Edit and Rewind to Here target that turn's own page, never the viewed one.
   const [editTarget, setEditTarget] = useState<{ kind: 'narration' | 'action'; page: number; text: string } | null>(null);
   const [rewindPage, setRewindPage] = useState<number | null>(null);
-  const copyText = (text: string) => {
-    let write: Promise<void>;
-    // An insecure page has no clipboard API; that failure gets the same toast.
-    try { write = navigator.clipboard.writeText(text); } catch (error) { write = Promise.reject(error); }
-    void write.then(
-      () => toast.success('Copied'),
-      () => toast.error("Couldn't copy the text"),
-    );
-  };
   const actionsFor = (turn: ChatBubbleTurn) => {
     const page = turn.index + 1;
     return bubbleActions(
@@ -692,14 +683,14 @@ export const MiddlePanel = ({
         edit: () => { setEditTarget({ kind: 'narration', page, text: turn.text }); setIsEditMode(true); },
         textToSpeech: onTTSClick,
         regenerateAudio: () => { void onRegenerateTTS(turn.text); },
-        copy: () => copyText(turn.text),
+        copy: () => copyWithToast(turn.text),
         rewind: () => setRewindPage(page),
       },
     );
   };
   const playerActionsFor = (turn: ChatPlayerTurn) => playerBubbleActions({ live: turn.live, busy: isWaitingForAI }, {
     edit: () => { setEditTarget({ kind: 'action', page: turn.index + 1, text: turn.text }); setIsEditMode(true); },
-    copy: () => copyText(turn.text),
+    copy: () => copyWithToast(turn.text),
   });
 
   // Pages shows the viewed turn. The opening's user message is the hidden start proxy, so page 1 has no action line.

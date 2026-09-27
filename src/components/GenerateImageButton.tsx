@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { Sparkles, Loader2, SlidersHorizontal, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -178,7 +179,7 @@ export function GenerateImageButton({ subject, cap, onChange, tags, onTagsChange
       });
       if (abortRef.current === controller) setPreview(dataUrl); // ignore a superseded run; optimize on accept
     } catch (error) {
-      if ((error as Error).name !== 'AbortError') toast.error((error as Error).message || 'Image generation failed.');
+      if ((error as Error).name !== 'AbortError') toastError(error, 'Image generation failed.');
     } finally {
       if (abortRef.current === controller) { setGenerating(false); setProgress(null); setPreviewFrame(null); }
     }
