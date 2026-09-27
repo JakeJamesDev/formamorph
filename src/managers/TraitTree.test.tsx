@@ -8,6 +8,11 @@ describe('TraitDropRefusalNotice', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Albus already has Paladin.');
   });
 
+  it('says the player already has a top-level trait refused from Custom Persona', () => {
+    render(<TraitDropRefusalNotice refusal={{ reason: 'offered', name: 'Brave' }} placeholders={[]} onDismiss={() => {}} />);
+    expect(screen.getByRole('status')).toHaveTextContent('The player already has Brave at the top level.');
+  });
+
   it('names a refused trait and asks for its stat effects to go first', () => {
     render(<TraitDropRefusalNotice refusal={{ reason: 'stats', name: 'Plate Armor', kind: 'trait', offender: 'Plate Armor', owner: null }} placeholders={[]} onDismiss={() => {}} />);
     expect(screen.getByRole('status')).toHaveTextContent(

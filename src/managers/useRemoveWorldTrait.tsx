@@ -3,24 +3,40 @@ import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { linksTo } from '@/lib/traitLinks';
+import { groupHoldsItems } from '@/lib/traitTree';
 
-/** Delete a world trait or group. Its links go with it, so a linked one asks first, naming the count. */
+/** The line a removal's confirmation adds for the links that go with it. */
+export const alsoDeletesLinks = (links: number): string =>
+  `This also deletes ${links === 1 ? 'its link' : `its ${links} links`}.`;
+
+type Pending = { id: string; name: string; isGroup: boolean; links: number; templates: boolean };
+
+/** Delete a world trait or group. Its links go with it, so a linked one asks first, naming the count. A
+ *  non-empty Templates group asks too, since its traits move to the top level and reach the player. */
 export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => void; dialog: ReactNode } {
-  const { traits, traitGroups, entities, removeTrait, removeTraitGroup, placeholders } = useTraitStore();
-  const [pending, setPending] = useState<{ id: string; name: string; isGroup: boolean; links: number } | null>(null);
+  const { traits, traitGroups, entities, customPersona, removeTrait, removeTraitGroup, placeholders } = useTraitStore();
+  const [pending, setPending] = useState<Pending | null>(null);
   const remove = (id: string, isGroup: boolean) => (isGroup ? removeTraitGroup(id) : removeTrait(id));
   const ask = (id: string, isGroup: boolean) => {
-    const links = linksTo(entities, id);
-    const name = (isGroup ? traitGroups.find((g) => g.id === id)?.name : traits.find((t) => t.id === id)?.name) ?? '';
-    if (links) setPending({ id, name, isGroup, links });
+    const links = linksTo(entities, id, customPersona);
+    const group = isGroup ? traitGroups.find((g) => g.id === id) : undefined;
+    const templates = group?.system === 'templates' && groupHoldsItems({ traits, traitGroups }, id);
+    const name = (group ?? traits.find((t) => t.id === id))?.name ?? '';
+    if (links || templates) setPending({ id, name, isGroup, links, templates });
     else remove(id, isGroup);
   };
+  const title = pending?.templates
+    ? `Remove ${labelPlaceholders(pending.name, placeholders)}?`
+    : `Delete ${labelPlaceholders(pending?.name ?? '', placeholders)}?`;
+  const description = pending?.templates
+    ? 'Its traits move to the top level, where the player can pick them.'
+    : alsoDeletesLinks(pending?.links ?? 0);
   const dialog = (
     <ConfirmDialog
       open={!!pending}
       onOpenChange={(open) => { if (!open) setPending(null); }}
-      title={`Delete ${labelPlaceholders(pending?.name ?? '', placeholders)}?`}
-      description={`This also deletes ${pending?.links === 1 ? 'its link' : `its ${pending?.links ?? 0} links`}.`}
+      title={title}
+      description={description}
       onConfirm={() => {
         if (pending) remove(pending.id, pending.isGroup);
         setPending(null);

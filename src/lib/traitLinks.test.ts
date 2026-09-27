@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detachLink, detachDropsStats, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault } from './traitLinks';
+import { detachLink, detachDropsStats, dropCustomPersonaLinksTo, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault } from './traitLinks';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -49,6 +49,20 @@ describe('linksTo', () => {
     expect(linksTo(ents, 'brave')).toBe(2);
     expect(linksTo(ents, 'classes')).toBe(1);
     expect(linksTo(ents, 'paladin')).toBe(0);
+  });
+
+  it("counts Custom Persona's links too", () => {
+    const cp = { traitLinks: [link('l4', 'brave', 'trait')] };
+    expect(linksTo([{ id: 'a', name: 'A', traitLinks: [link('l1', 'brave', 'trait')] }], 'brave', cp)).toBe(2);
+  });
+});
+
+describe('dropCustomPersonaLinksTo', () => {
+  it("drops Custom Persona's links to one original, and keeps the node when none links it", () => {
+    const cp = { traitLinks: [link('l1', 'brave', 'trait'), link('l2', 'classes', 'group')] };
+    expect(dropCustomPersonaLinksTo(cp, 'brave')?.traitLinks.map((l) => l.id)).toEqual(['l2']);
+    expect(dropCustomPersonaLinksTo(cp, 'wizard')).toBe(cp);
+    expect(dropCustomPersonaLinksTo(undefined, 'brave')).toBeUndefined();
   });
 });
 

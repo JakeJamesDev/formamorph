@@ -10,6 +10,7 @@ import {
   setTraitEnabled,
   settleTraits,
   switchPlayerTrait,
+  traitGateInput,
   traitNameIn,
   traitSwitchLog,
   withCodeBounds,
@@ -681,5 +682,20 @@ describe('listablePlayerTraits', () => {
 
   it('keeps a held non-toggleable trait listed', () => {
     expect(listablePlayerTraits([middle], authored, order).map((t) => t.id)).toEqual(['first', 'middle', 'last']);
+  });
+});
+
+describe('traitGateInput', () => {
+  it("leaves Templates out of the player's gates in play", () => {
+    const world: TraitWorld = {
+      traits: [
+        { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'templates' },
+        { id: 'brave', name: 'Brave', statChanges: [], groupId: null },
+      ],
+      groups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+    };
+    const [player] = traitGateInput({ traits: [], disabledTraitIds: [] }, world).owners;
+    expect(player.traits.map((t) => t.id)).toEqual(['brave']);
+    expect(player.groups).toEqual([]);
   });
 });

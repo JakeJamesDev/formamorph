@@ -166,3 +166,21 @@ describe('library entities in the cast', () => {
       .toEqual({ 'copy-1': ['brave'], ash: ['tamed'] });
   });
 });
+
+describe('Templates at Enter World', () => {
+  it('never starts a trait under Templates, while a default root trait starts on', () => {
+    const traits: Trait[] = [
+      { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes', isDefault: true },
+      { id: 'brave', name: 'Brave', statChanges: [], groupId: null, isDefault: true },
+    ];
+    const lists: EntryTraitWorld = {
+      traits,
+      traitGroups: [
+        { id: 'templates', name: 'Templates', parentId: null, system: 'templates' },
+        { id: 'classes', name: 'Classes', parentId: 'templates' },
+      ],
+      entities: [], library: [],
+    };
+    expect(entryDefaults(lists, { source: 'none' }).traitIds).toEqual(['brave']);
+  });
+});
