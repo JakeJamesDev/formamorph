@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { UpdateAvailableDialog, type IncomingFile } from '@/components/modals/UpdateAvailableDialog';
 import { affectedCopies, type LiveWorld } from '@/lib/componentUpdateRun';
 import type { UpdateRow } from '@/lib/componentUpdates';
@@ -49,7 +50,7 @@ export function useComponentUpdates(live?: LiveWorld[]) {
       }
       setReview({ source: item, sourceData: await libraryItemData(kind, libraryId), rows });
     } catch (error) {
-      toast.error((error as Error).message || 'Formamorph could not check for updates.');
+      toastError(error, 'Formamorph could not check for updates.');
     }
   }, []);
 

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -45,7 +46,7 @@ export function useWorldExport(promptWorld: (world: World) => Promise<World | nu
       }
       await writeWorldFile(embedded, filename);
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Could not export the world.');
     } finally {
       setEmbedding(null);
       setPending(null);

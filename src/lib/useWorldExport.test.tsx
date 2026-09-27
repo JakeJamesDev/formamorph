@@ -16,6 +16,7 @@ vi.mock('./embedRemoteImages', () => ({
 }));
 
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { downloadBlob } from './downloadBlob';
 import { serializeJsonBlob } from './jsonFileWorkerUtils';
 import { embedWorldRemoteImages, remoteWorldImages } from './embedRemoteImages';
@@ -121,7 +122,7 @@ describe('useWorldExport', () => {
     await api.exportWorld(world);
 
     await userEvent.click(await screen.findByRole('button', { name: /Download and Embed/ }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('network down'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('network downView Details →'));
     expect(downloadBlob).not.toHaveBeenCalled();
   });
 });

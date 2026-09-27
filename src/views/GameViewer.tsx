@@ -1915,7 +1915,7 @@ const GameViewer = ({
    * failed request when makeAIRequest already surfaced its own toast — it does that for foreground
    * requests only, so a silent pass that can't reach the server still needs the generic one.
    */
-  const reportTurnFailure = (kind: TurnErrorKind, spokeForItself: boolean, isOpeningTurn: boolean) => {
+  const reportTurnFailure = (kind: TurnErrorKind, error: unknown, spokeForItself: boolean, isOpeningTurn: boolean) => {
     // An empty narration is its own exit: nothing was thrown, so the opening turn's started flag was
     // never set and is left alone. Silence here would be indistinguishable from a dead submit button.
     if (kind === "emptyNarration") {
@@ -1939,14 +1939,19 @@ const GameViewer = ({
       return;
     }
     const errorMessage = turnErrorMessage(kind);
-    toast.error(errorMessage, {
-      position: "top-right",
-      autoClose: 3000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
+    // One failure carries one View Details link: a foreground request's own toast already has it.
+    if (spokeForItself) {
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } else {
+      toastError(error, { headline: errorMessage });
+    }
     addSystemLogEntry(errorMessage);
   };
 
@@ -2123,8 +2128,8 @@ const GameViewer = ({
     let flaggedCast: DirectorCastMember[] = [];
     let turnParticipants: string[] = [];
 
-    const reportFailure = (kind: TurnErrorKind, spokeForItself = false) =>
-      reportTurnFailure(kind, spokeForItself, isOpeningTurn);
+    const reportFailure = (error: unknown) =>
+      reportTurnFailure(classifyTurnError(error), error, false, isOpeningTurn);
 
     try {
       // Drain last turn's stat-bar colors and fade any lingering delta text now (they clear during the AI
@@ -2468,7 +2473,7 @@ const GameViewer = ({
         // A written page one is already the story, whatever failed after it: keep the turn as Stop keeps a
         // narration that came through, so the next submit is a normal turn and not a second opening.
         const pageOneStands = plan.writtenNarration !== null && result.run.material.narration !== "";
-        reportTurnFailure(result.kind, result.request ? !result.request.silent : false, isOpeningTurn && !pageOneStands);
+        reportTurnFailure(result.kind, result.error, result.request ? !result.request.silent : false, isOpeningTurn && !pageOneStands);
         if (pageOneStands) {
           setIsGameStarted(true);
           setChoicesReady(true);
@@ -2505,7 +2510,7 @@ const GameViewer = ({
     } catch (error) {
       // The pipeline's own failures come back as a typed result above; what lands here is a derivation
       // throwing — context assembly, the read-aloud pass, or applying the commit.
-      reportFailure(classifyTurnError(error));
+      reportFailure(error);
     } finally {
       setIsWaitingForAI(false);
       setIsRevealingNarration(false);
@@ -4433,7 +4438,7 @@ const GameViewer = ({
         );
       } catch (error) {
         console.error('Cross-world load failed:', error);
-        toast.error("Couldn't load that save's world.");
+        toastError(error, { headline: "Couldn't load that save's world." });
         return false;
       }
     }

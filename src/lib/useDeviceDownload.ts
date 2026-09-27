@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import type { AvatarListingContent, Dictionary, Entity, World } from '@/types';
 import type { WorldRecord } from '@/components/WorldDetails';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -70,7 +71,7 @@ export function useDeviceDownload() {
       toast.success(`"${listing.name || KIND_LABELS[kind].one}" downloaded successfully`);
     } catch (error) {
       console.error(`Error downloading ${kindOf(listing)} for device:`, error);
-      toast.error((error as Error).message || `Failed to download ${KIND_LABELS[kindOf(listing)].one.toLowerCase()}`);
+      toastError(error, `Failed to download ${KIND_LABELS[kindOf(listing)].one.toLowerCase()}`);
     } finally {
       activeDownloads.current.delete(listingId);
       setDownloadProgress((progress) => {

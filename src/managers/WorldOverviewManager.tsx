@@ -7,7 +7,7 @@ import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { useDanbooruTags } from "@/lib/useDanbooruTags";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/ui/typography";
-import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { ImageUpload, SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
@@ -141,11 +141,11 @@ const WorldOverviewManager = () => {
           });
         } catch (error) {
           console.error('Error processing VRM:', error);
-          toast.error('Error processing player avatar. Please try again.');
+          toastError(error, { headline: 'Error processing player avatar. Please try again.' });
         }
       };
       reader.onerror = () => {
-        toast.error('Error reading file. Please try again.');
+        toastError(reader.error, { headline: 'Error reading file. Please try again.' });
       };
       reader.readAsDataURL(file);
     }

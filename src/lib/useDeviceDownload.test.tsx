@@ -22,6 +22,7 @@ vi.mock('@/services/WorldStorageService', () => ({
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { useDeviceDownload } from './useDeviceDownload';
 
 const worldListing = {
@@ -178,7 +179,7 @@ describe('useDeviceDownload', () => {
 
     await act(async () => { await result.current.download(entityListing); });
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Portrait fetch failed'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Portrait fetch failedView Details →'));
     expect(mocks.downloadBlob).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
 
@@ -194,14 +195,14 @@ describe('useDeviceDownload', () => {
 
     await act(async () => { await result.current.download(worldListing); });
 
-    expect(toast.error).toHaveBeenCalledWith('Content fetch failed');
+    expect(toastTexts(vi.mocked(toast.error))).toContain('Content fetch failedView Details →');
     expect(mocks.downloadBlob).not.toHaveBeenCalled();
 
     mocks.fetchCatalogContent.mockResolvedValueOnce({ id: 'published-world-id', worldOverview: { name: 'Sedge Landing' } });
     mocks.serializeJsonBlob.mockRejectedValueOnce(new Error('Serialization failed'));
     await act(async () => { await result.current.download(worldListing); });
 
-    expect(toast.error).toHaveBeenCalledWith('Serialization failed');
+    expect(toastTexts(vi.mocked(toast.error))).toContain('Serialization failedView Details →');
     expect(mocks.downloadBlob).not.toHaveBeenCalled();
   });
 

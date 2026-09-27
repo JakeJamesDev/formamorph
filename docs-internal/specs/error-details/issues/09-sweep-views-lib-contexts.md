@@ -1,6 +1,7 @@
 # 09: Sweep: views, lib, contexts and managers
 
-Status: ready-for-agent
+Status: in-progress
+Base: 0b6d271f
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

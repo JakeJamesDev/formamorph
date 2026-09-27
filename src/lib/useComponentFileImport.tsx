@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import { ImportComponentModal } from '@/components/modals/ImportComponentModal';
 import { addCopyToStoredWorld, storedWorldReferences } from '@/lib/addToStoredWorld';
@@ -78,7 +79,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
       await addCopyToStoredWorld(world.worldId, held.content, held.source, plan);
     } catch (error) {
       console.error('Could not add the imported component to a world:', error);
-      toast.error(`Could not add "${held.source.name}" to ${world.worldName}.`);
+      toastError(error, { headline: `Could not add "${held.source.name}" to ${world.worldName}.` });
     }
   }, []);
 
@@ -167,7 +168,7 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     try {
       source = await storeFile(kind, content, links, libraryDetails);
     } catch (error) {
-      toast.error((error as Error).message || 'Could not add this file to your library.');
+      toastError(error, 'Could not add this file to your library.');
       return;
     }
 

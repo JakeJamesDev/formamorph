@@ -54,6 +54,7 @@ import { ListDetail } from "@/components/ui/list-detail";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useBackStop } from "@/hooks/useBackStop";
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import StatManager from '../managers/StatManager';
@@ -489,7 +490,7 @@ const WorldEditorInner = ({
       // A chip in the name would otherwise put a raw placement id in the filename.
       downloadBlob(new Blob([jsonData], { type: 'application/json' }), `${labelPlaceholders(book.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Dictionary'}.json`);
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Could not export the dictionary.');
     }
   };
 
@@ -500,7 +501,7 @@ const WorldEditorInner = ({
       const links = await exportedComponentLinks(entity.link);
       downloadBlob(await exportEntityCard(entity, placeholders, links, undefined, { traits, traitGroups, entities }), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Could not export the entity.');
     }
   };
 
@@ -659,7 +660,7 @@ const WorldEditorInner = ({
       loadWorldData(await resolveImportedWorld(loadedWorld as World), false);
     } catch (error) {
       console.error('Error parsing JSON:', error);
-      toast.error('Error loading world data. Please check the file format.');
+      toastError(error, { headline: 'Error loading world data. Please check the file format.' });
     }
   };
 
