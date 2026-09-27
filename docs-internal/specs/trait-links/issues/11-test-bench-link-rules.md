@@ -18,6 +18,7 @@ The Test Bench warns when a linked trait can never unlock for its bearer, when a
 - [ ] The never-unlockable rule runs per bearer and names the bearer in its finding, such as "Albus links Smite but has no Faithful".
 - [ ] A new rule reports a link with no value for a bearer-relative pin, with a jump to the link.
 - [ ] A new rule reports a bearer-relative pin whose name matches no placeholder on the bearer or the world.
+- [ ] A new rule reports a redundant link: one whose original another link on the same bearer already reaches through a linked group (Q64). The resolver already yields each original once per bearer; if ticket 01's module does not, add that there in this ticket.
 - [ ] The lens reads bearer trees through the bearer-resolution module and checks every bearer as if picked: world personas, persona-only entities, and Custom Persona as the None player with the root traits.
 - [ ] Rule tests cover each finding and its jump target, with the pin rules as prior art. Lens tests cover a persona-only bearer and Custom Persona.
 
