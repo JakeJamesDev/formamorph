@@ -1,7 +1,7 @@
 # Spec: Error Details on Every Error Toast
 
 Status: ready-for-agent
-Status note: No tickets yet. The pattern shipped for the ComfyUI rejection in commit f796062b; this spec extends it to every error toast.
+Status note: Nine tickets in issues/; 01 gates the rest, 06 follows 05. The pattern shipped for the ComfyUI rejection in commit f796062b; this spec extends it to every error toast.
 Spec session: error-details — spec
 
 ## Problem Statement
