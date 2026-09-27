@@ -166,7 +166,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 - "World pins" are the non-trait sources: location, stat bands, value pins, Code Pins. Kind precedence is unchanged; the bearer context only swaps which trait set lays. The played persona's own text uses the player bearer's set (Q75). A cast entity's text resolves as world pins, then the player bearer's trait pins, then that entity's own trait pins on top, so a world-wide fact the player pins reads the same everywhere and the entity still wins a contested placeholder in its own text (Q79).
 - A bearer-relative pin on a trait the bearer holds directly, with no link, applies the pin's own value, bound by name to the bearer's own placeholder, else the world's (Q76).
 - The player bearer's own placeholders: the world persona's, or the library persona's, or under None the world's. Custom Persona links under a library persona bind to that persona's placeholder first (Q77).
-- In a placeholder's Pins list, a link pin is a trait row named "Albus's Paladin" with the link's value. Edits write the link's value; Remove clears it; the source select is fixed. The conflict note treats two trait pins as rivals only when one bearer can hold both (Q78).
+- In a placeholder's Pins list, a link pin is a trait row named "Albus's Paladin" with the link's value. Edits write the link's value; Remove clears it; the source select is fixed. The conflict note treats two trait pins as rivals when they can lay in one text: two on one bearer, or the player's against a cast entity's, which meet in that entity's text where the entity wins. Two cast entities never meet. A world trait and a Custom Persona link count as the player's (Q78, amended by Q79).
 
 ### Editor
 
@@ -285,7 +285,7 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q75 | World pins are the non-trait sources; the bearer context swaps only the trait set. Amended by Q79. |
   | Q76 | A direct bearer with no link applies the pin's own value, bound by name. |
   | Q77 | The player's own placeholders follow the persona; None means the world's. |
-  | Q78 | Pins list: link rows edit the link's value; conflicts only between pins one bearer can hold. |
+  | Q78 | Pins list: link rows edit the link's value; conflicts between pins that can lay in one text (one bearer, or player vs cast entity). |
   | Q79 | A cast entity's text: world pins, then the player's trait pins, then its own on top. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
