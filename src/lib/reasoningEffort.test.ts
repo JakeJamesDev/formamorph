@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reasoningEffortValue, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveRequestReasoning, reasoningOffRefused, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, reasoningBudgetTokens, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability, type ReasoningEffortField, type PromptReasoning } from './reasoningEffort';
+import { reasoningEffortValue, reasoningLevelOptions, promptReasoningLevelOptions, defaultPromptReasoning, defaultPromptReasoningSetting, resolvePromptReasoning, resolveRequestReasoning, reasoningOffRefused, resolveReasoningSetting, resolvePromptReasoningSetting, parseReasoningSetting, parsePromptReasoningSetting, parseReasoningCapability, reasoningCapabilityFromLevels, reasoningRuledOut, defaultReasoningBudgetPct, resolveReasoningBudgetPct, isReasoningEngaged, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, resolveReasoningCapability, UNKNOWN_REASONING_CAPABILITY, type ReasoningCapability, type ReasoningEffortField, type PromptReasoning } from './reasoningEffort';
 import { resetProbeMemo } from '@/lib/probeMemo';
 import type { AIRequestType } from '@/types';
 
@@ -257,25 +257,14 @@ describe('reasoning budget (local engine)', () => {
     for (const kind of ALL_KINDS.filter((k) => k !== 'narration')) expect(defaultReasoningBudgetPct(kind)).toBe(25);
   });
 
-  it('resolves every kind to its stored/default %, clamped to the slider floor and 100', () => {
+  it('resolves every kind to its stored/default %, clamped to the slider floor and 150', () => {
     expect(resolveReasoningBudgetPct('narration', {})).toBe(40);
     expect(resolveReasoningBudgetPct('narration', { narration: 20 })).toBe(20);
     expect(resolveReasoningBudgetPct('choices', { choices: 30 })).toBe(30);
     expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(90);
     expect(resolveReasoningBudgetPct('statUpdates', { statUpdates: 0 })).toBe(MIN_REASONING_BUDGET_PCT); // clamp low
-    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(100); // clamp high
-  });
-
-  it('converts the % to a token cap against max output for any resolved level', () => {
-    expect(reasoningBudgetTokens('auto', 'narration', {}, 500)).toBe(200); // 40% of 500
-    expect(reasoningBudgetTokens('high', 'narration', { narration: 20 }, 500)).toBe(100);
-    expect(reasoningBudgetTokens('low', 'choices', { choices: 30 }, 400)).toBe(120);
-    expect(reasoningBudgetTokens('low', 'director', {}, 400)).toBe(100); // 25% default
-  });
-
-  it('caps at 0 when the resolved choice is none, whatever % is stored', () => {
-    expect(reasoningBudgetTokens('none', 'narration', { narration: 40 }, 500)).toBe(0);
-    expect(reasoningBudgetTokens('none', 'choices', {}, 500)).toBe(0);
+    expect(resolveReasoningBudgetPct('narration', { narration: 150 })).toBe(150);
+    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(150); // clamp high
   });
 });
 

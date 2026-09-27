@@ -1,7 +1,7 @@
 import { PROMPT_TEXT_KEYS, hasOverviewContent, normalizeOverview, type PresetOverview, type PromptValues, type SectionStyle, type VerbatimMap, type ReasoningMap, type ReasoningBudgetMap } from './promptPresets';
 import type { PromptSamplerMap, PromptSampler, PromptSamplerSetting } from './promptSamplers';
 import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
-import { parsePromptReasoningSetting } from './reasoningEffort';
+import { MAX_REASONING_BUDGET_PCT, parsePromptReasoningSetting } from './reasoningEffort';
 import { sanitizeMaxOutput, type PromptMaxOutputMap } from './promptMaxOutput';
 import { isCatalogToolId } from './tools/toolCatalog';
 import { catalogToolNamed, isRecord, parseToolEnabledMap } from './tools/toolValidation';
@@ -223,11 +223,11 @@ function sanitizeVerbatim(raw: unknown): VerbatimMap | undefined {
   return Object.keys(out).length ? (out as VerbatimMap) : undefined;
 }
 
-/** Keep only finite-number reasoning-budget entries, clamped to 0–100 percent. */
+/** Keep only finite-number reasoning-budget entries, clamped to the slider's top percent. */
 function sanitizeReasoningBudget(raw: unknown): ReasoningBudgetMap | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(0, Math.min(100, v));
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) if (typeof v === 'number' && Number.isFinite(v)) out[k] = Math.max(0, Math.min(MAX_REASONING_BUDGET_PCT, v));
   return Object.keys(out).length ? (out as ReasoningBudgetMap) : undefined;
 }
 
