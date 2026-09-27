@@ -164,7 +164,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - The existing trait tree module gains entity nodes. It places world entity nodes by their placement, and places library entity nodes (persona or added character) after everything at top level, in the order added.
 - An entity node appears only when its entity owns a trait or a group, so an owned group is never stranded outside the tree.
 - The editor tree and the enter-world workspace both build from it. The in-game Traits tab uses the same tree.
-- Drags go through the shared drag layer (ADR-0007). A trait drag across owners changes the owner and keeps the id. It is refused when the trait has stat changes or stat toggles. An entity node drags like a group.
+- Drags go through the shared drag layer (ADR-0007). A trait drag across owners changes the owner and keeps the id. A group drags across owners with its whole subtree, every id kept. Either is refused when a trait in it has stat changes or stat toggles. The refusal shows one dismissible line above the Traits tree, the cascade banner's shape, naming the trait: "Plate Armor stays a world trait, because an entity's traits can't change stats. Remove its stat changes and stat toggles first." The item snaps back. An entity node drags like a group, and the drop projection never offers an indent into an entity node or an owned group, so that case needs no note.
 
 ### Editor (prototype variant A)
 
