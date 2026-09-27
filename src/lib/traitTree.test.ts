@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
-  duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop,
+  duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection,
 } from './traitTree';
 import type { Entity, Trait, TraitGroup } from '@/types';
 
@@ -265,6 +265,23 @@ describe('ownedTraitTree', () => {
     expect(tree.ownerOf.get('bond')).toBe('ash');
     expect(tree.ownerOf.has('paladin')).toBe(false);
   });
+
+  it('places an entity node in the world group its placement names, at its order', () => {
+    const placed = { ...ash, traitPlacement: { groupId: 'class', order: 0 } };
+    expect(rows([placed])).toEqual(['class', '-ash', '--pack', '--bond', '---tamed', '-paladin', 'loner']);
+  });
+
+  it('places an entity node among the top-level world items by its order', () => {
+    const placed = { ...ash, traitPlacement: { groupId: null, order: 1 } };
+    expect(rows([placed, entities[2]])).toEqual(['class', '-paladin', 'ash', '-pack', '-bond', '--tamed', 'loner', 'shell', '-empty']);
+  });
+
+  it('reads a placement whose group is gone, or is not a world group, as the end of the top level', () => {
+    const gone = { ...ash, traitPlacement: { groupId: 'deleted', order: 0 } };
+    expect(rows([gone])).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed']);
+    const inOwned = { ...entities[2], traitPlacement: { groupId: 'bond', order: 0 } };
+    expect(rows([ash, inOwned])).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed', 'shell', '-empty']);
+  });
 });
 
 describe('applyOwnedTraitDrop', () => {
@@ -274,32 +291,159 @@ describe('applyOwnedTraitDrop', () => {
     traitGroups: [group('bond', null, 0)],
     traits: [trait('tamed', 'bond', 0), trait('pack', null, 1)],
   };
+  const bob: Entity = { id: 'bob', name: 'Bob', traits: [trait('gruff', null, 0)] };
+  const moved = (out: ReturnType<typeof applyOwnedTraitDrop>) => (out?.kind === 'moved' ? out : null);
+  const entityOut = (out: ReturnType<typeof applyOwnedTraitDrop>, id: string) => moved(out)?.entities.find((e) => e.id === id);
+  const rowsAfter = (out: ReturnType<typeof applyOwnedTraitDrop>, ents: Entity[]) => {
+    const m = moved(out)!;
+    const world = m.world ? { traits: m.world.traits, traitGroups: m.world.groups } : worldTraits;
+    const next = ents.map((e) => m.entities.find((x) => x.id === e.id) ?? e);
+    const { groups, traits } = ownedTraitTree(world, next);
+    return flattenTraitTree(buildTraitTree(groups, traits)).map((n) => `${'-'.repeat(n.depth)}${n.id}`);
+  };
 
-  it('reorders items inside one entity and writes them back to it', () => {
+  it('reorders items inside one entity and writes back that entity alone', () => {
     // Rows: class, paladin, loner, ash, bond, tamed, pack. Pack moves above Bond, at Ash's root.
     const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'pack', 'bond', 0, 24);
-    expect(out?.kind).toBe('entity');
-    const entity = out?.kind === 'entity' ? out.entity : null;
+    expect(moved(out)?.world).toBeUndefined();
+    const entity = entityOut(out, 'ash');
     expect(entity?.traits?.find((t) => t.id === 'pack')).toMatchObject({ groupId: null, order: 0 });
     expect(entity?.traitGroups?.find((g) => g.id === 'bond')).toMatchObject({ parentId: null, order: 1 });
+    expect(entity?.traitPlacement).toBeUndefined();
   });
 
-  it('still moves world items among themselves', () => {
+  it('still moves world items among themselves, touching no entity', () => {
     const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'loner', 'paladin', 0, 24);
-    expect(out?.kind).toBe('world');
-    const traits = out?.kind === 'world' ? out.traits : [];
+    expect(moved(out)?.entities).toEqual([]);
+    const traits = moved(out)?.world?.traits ?? [];
     expect(traits.map((t) => t.id).sort()).toEqual(['loner', 'paladin']);
     expect(traits.find((t) => t.id === 'loner')?.groupId).toBe('class');
   });
 
-  it('refuses a drop that would move a trait to another owner', () => {
+  it('moves a world trait into an entity under the same id, keeping its requirements', () => {
+    const gated = { ...trait('paladin', 'class', 0), requires: [{ kind: 'trait' as const, id: 'loner' }] };
     // Paladin dropped below Pack lands at Ash's root.
-    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'paladin', 'pack', 0, 24)).toBeNull();
-    // Tamed dropped at the top level lands in the world.
-    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'tamed', 'class', -48, 24)).toBeNull();
+    const out = applyOwnedTraitDrop({ ...worldTraits, traits: [gated, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24);
+    expect(moved(out)?.world?.traits.map((t) => t.id)).toEqual(['loner']);
+    expect(entityOut(out, 'ash')?.traits?.find((t) => t.id === 'paladin')).toMatchObject({ groupId: null, requires: gated.requires });
+    expect(rowsAfter(out, [ash])).toEqual(['class', 'loner', 'ash', '-bond', '--tamed', '-pack', '-paladin']);
   });
 
-  it('never moves an entity node', () => {
-    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'ash', 'class', 0, 24)).toBeNull();
+  it('moves an owned trait out to the world under the same id', () => {
+    // Tamed dropped at the top level lands in the world.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'tamed', 'class', -48, 24);
+    expect(moved(out)?.world?.traits.find((t) => t.id === 'tamed')).toMatchObject({ groupId: null });
+    expect(entityOut(out, 'ash')?.traits?.map((t) => t.id)).toEqual(['pack']);
+  });
+
+  it('moves a trait from one entity to another', () => {
+    // Rows: class, paladin, loner, ash, bond, tamed, pack, bob, gruff. Pack dropped below Gruff joins Bob.
+    const out = applyOwnedTraitDrop(worldTraits, [ash, bob], [], 'pack', 'gruff', 0, 24);
+    expect(moved(out)?.world).toBeUndefined();
+    expect(entityOut(out, 'ash')?.traits?.map((t) => t.id)).toEqual(['tamed']);
+    expect(entityOut(out, 'bob')?.traits?.map((t) => t.id).sort()).toEqual(['gruff', 'pack']);
+  });
+
+  it('moves a group across owners with its whole subtree, every id kept', () => {
+    // Bond dropped at the top level above Class moves to the world with Tamed inside it.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'bond', 'class', -24, 24);
+    expect(moved(out)?.world?.groups.find((g) => g.id === 'bond')).toMatchObject({ parentId: null });
+    expect(moved(out)?.world?.traits.find((t) => t.id === 'tamed')).toMatchObject({ groupId: 'bond' });
+    expect(entityOut(out, 'ash')).toMatchObject({ traits: [{ id: 'pack' }] });
+    expect(entityOut(out, 'ash')?.traitGroups).toBeUndefined();
+  });
+
+  it('refuses to move a trait with stat changes or stat toggles into an entity, naming it', () => {
+    const strong = { ...trait('paladin', 'class', 0), name: 'Plate Armor', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] };
+    const out = applyOwnedTraitDrop({ ...worldTraits, traits: [strong, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24);
+    expect(out).toEqual({ kind: 'refused', refusal: { name: 'Plate Armor', kind: 'trait', offender: 'Plate Armor', owner: null } });
+    const toggled = { ...trait('paladin', 'class', 0), statToggles: [{ statId: 's', enabled: true }] };
+    expect(applyOwnedTraitDrop({ ...worldTraits, traits: [toggled, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24)?.kind)
+      .toBe('refused');
+  });
+
+  it('refuses to move a group into an entity when a trait inside it has stat effects, naming that trait', () => {
+    const strong = { ...trait('paladin', 'class', 0), name: 'Plate Armor', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] };
+    const world = { traits: [strong, trait('loner', null, 1)], traitGroups: [{ ...group('class', null, 0), name: 'Class' }] };
+    // Class dropped below Pack, one level in, lands at Ash's root with Plate Armor inside it.
+    const out = applyOwnedTraitDrop(world, [ash], [], 'class', 'pack', 24, 24);
+    expect(out).toEqual({ kind: 'refused', refusal: { name: 'Class', kind: 'group', offender: 'Plate Armor', owner: null } });
+  });
+
+  it('drags an entity node into a world group, storing its placement', () => {
+    // Visible rows while Ash drags: class, paladin, loner, ash. Ash dropped on Paladin nests under Class.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'ash', 'paladin', 0, 24);
+    expect(entityOut(out, 'ash')?.traitPlacement).toEqual({ groupId: 'class', order: 0 });
+    expect(entityOut(out, 'ash')?.traits).toEqual(ash.traits);
+    expect(rowsAfter(out, [ash])).toEqual(['class', '-ash', '--bond', '---tamed', '--pack', '-paladin', 'loner']);
+  });
+
+  it('pins an unplaced entity node where a world drop leaves it', () => {
+    // Loner dropped below Pack at depth 0 lands at the top level after Ash.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'loner', 'pack', 0, 24);
+    expect(entityOut(out, 'ash')?.traitPlacement).toEqual({ groupId: null, order: 1 });
+    expect(rowsAfter(out, [ash])).toEqual(['class', '-paladin', 'ash', '-bond', '--tamed', '-pack', 'loner']);
+  });
+
+  it('never nests an entity node in another entity node or an owned group', () => {
+    // Bob dropped on Bond at depth 1 would sit under Ash.
+    expect(applyOwnedTraitDrop(worldTraits, [ash, bob], [], 'bob', 'bond', 24, 24)).toBeNull();
+    // Bob kept last but pushed in would sit under Ash; it stays at the top level.
+    expect(applyOwnedTraitDrop(worldTraits, [ash, bob], [], 'bob', 'bob', 48, 24)).toBeNull();
+  });
+
+  it('keeps a world group holding an entity node among the world items', () => {
+    const companions = { ...worldTraits, traitGroups: [...worldTraits.traitGroups, group('companions', null, 2)] };
+    const placed = { ...ash, traitPlacement: { groupId: 'companions', order: 0 } };
+    // Rows: class, paladin, loner, companions, ash (collapsed), bob, gruff. Companions dropped under Gruff,
+    // one level in, would sit in Bob; it lands at the top level after Bob.
+    const out = applyOwnedTraitDrop(companions, [placed, bob], ['ash'], 'companions', 'gruff', 24, 24);
+    expect(moved(out)?.world?.groups.find((g) => g.id === 'companions')).toMatchObject({ parentId: null });
+    expect(entityOut(out, 'ash')).toBeUndefined();
+    expect(entityOut(out, 'bob')?.traits).toEqual(bob.traits);
+  });
+
+  it('drops into a collapsed entity node as its first item', () => {
+    // Rows: class, paladin, loner, ash (collapsed). Loner dropped on Ash, one level in.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], ['ash'], 'loner', 'ash', 24, 24);
+    expect(entityOut(out, 'ash')?.traits?.find((t) => t.id === 'loner')).toMatchObject({ groupId: null, order: 0 });
+    expect(rowsAfter(out, [ash])).toEqual(['class', '-paladin', 'ash', '-loner', '-bond', '--tamed', '-pack']);
+  });
+
+  it('names the entity a refused trait stays with', () => {
+    const stray = { ...bob, traits: [{ ...trait('gruff', null, 0), name: 'Gruff', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] }] };
+    // Rows: class, paladin, loner, ash, bond, tamed, pack, bob, gruff. Gruff dropped on Pack joins Ash.
+    expect(applyOwnedTraitDrop(worldTraits, [ash, stray], [], 'gruff', 'pack', 0, 24))
+      .toEqual({ kind: 'refused', refusal: { name: 'Gruff', kind: 'trait', offender: 'Gruff', owner: 'Bob' } });
+  });
+});
+
+describe('getOwnedTraitDropProjection', () => {
+  const worldTraits = { traits: [trait('paladin', 'class', 0)], traitGroups: [group('class', null, 0)] };
+  const ash: Entity = { id: 'ash', name: 'Ash', traitGroups: [group('bond', null, 0)], traits: [trait('tamed', 'bond', 0)] };
+  const bob: Entity = { id: 'bob', name: 'Bob', traits: [trait('gruff', null, 0)] };
+  const tree = ownedTraitTree(worldTraits, [ash, bob]);
+  const visible = removeChildrenOf(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)), ['bob']);
+
+  it('stops an entity node\'s indent at the top level or a world group', () => {
+    // Rows: class, paladin, ash, bond, tamed, bob. Two levels in from the top would reach Ash's Bond.
+    expect(getOwnedTraitDropProjection(tree, visible, 'bob', 'bob', 48, 24)).toEqual({ depth: 0, parentId: null });
+    expect(getOwnedTraitDropProjection(tree, visible, 'bob', 'paladin', 0, 24)).toEqual({ depth: 1, parentId: 'class' });
+  });
+
+  it('has no projection where the rows below would force an entity node inside another', () => {
+    expect(getOwnedTraitDropProjection(tree, visible, 'bob', 'bond', 24, 24)).toBeNull();
+  });
+
+  it('stops a world group holding an entity node the same way', () => {
+    const companions = { ...worldTraits, traitGroups: [...worldTraits.traitGroups, group('companions', null, 1)] };
+    const withGroup = ownedTraitTree(companions, [{ ...ash, traitPlacement: { groupId: 'companions', order: 0 } }, bob]);
+    const rows = removeChildrenOf(flattenTraitTree(buildTraitTree(withGroup.groups, withGroup.traits)), ['companions']);
+    // Rows: class, paladin, companions, bob, gruff. Companions on Gruff, one level in, would sit in Bob.
+    expect(getOwnedTraitDropProjection(withGroup, rows, 'companions', 'gruff', 24, 24)).toEqual({ depth: 0, parentId: null });
+  });
+
+  it('projects a trait across owners like any row', () => {
+    expect(getOwnedTraitDropProjection(tree, visible, 'paladin', 'tamed', 24, 24)).toEqual({ depth: 2, parentId: 'bond' });
   });
 });

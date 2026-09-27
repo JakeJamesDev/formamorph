@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
-import { Folder, Lock, User } from 'lucide-react';
+import { Folder, Info, Lock, User } from 'lucide-react';
 import {
-  buildTraitTree, flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyOwnedTraitDrop,
-  duplicateTraitNode, ownedTraitTree, type FlatTraitNode,
+  getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, ownedTraitRows, ownedTraitTree,
+  type FlatTraitNode, type TraitDropRefusal,
 } from '@/lib/traitTree';
+import { Button } from '@/components/ui/button';
 import { editorGateInput, removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 import { TREE_INDENT } from '@/components/EditorRow';
@@ -15,6 +16,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { gateStates, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
+import type { Placeholder } from '@/types';
 
 // Red on the primary fill is unreadable, so a selected row drops the tint for the row's own color.
 const UNRESOLVED = 'text-destructive [[data-editor-row-selected]_&]:text-current';
@@ -35,9 +37,32 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
   };
 };
 
+/** The line after a drop that would give an entity's trait stat effects. The dragged item stays put. */
+export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
+  refusal: TraitDropRefusal;
+  placeholders: Placeholder[];
+  onDismiss: () => void;
+}) {
+  const name = <strong><PlaceholderText text={refusal.name} placeholders={placeholders} /></strong>;
+  return (
+    <div role="status" className="mb-2 flex items-start gap-2 rounded-lg border p-3 text-helper">
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+      <span className="flex-1">
+        {name} stays {refusal.owner
+          ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
+          : 'a world'} {refusal.kind}, because an entity&apos;s traits can&apos;t change stats.{' '}
+        {refusal.kind === 'trait'
+          ? 'Remove its stat changes and stat toggles first.'
+          : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
+      </span>
+      <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
+    </div>
+  );
+}
+
 /**
  * The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Each entity
- * that owns a trait or a group has a node at the end of the top level, holding them.
+ * that owns a trait or a group has a node holding them, which drags like a group among the world's items.
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
@@ -46,19 +71,25 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const { advanced } = useEditorMode();
   const gates = useMemo(() => gateStates(editorGateInput({ traits, traitGroups, entities })), [traits, traitGroups, entities]);
   const tree = useMemo(() => ownedTraitTree({ traits, traitGroups }, entities), [traits, traitGroups, entities]);
+  const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
-    getVisible: (collapsed) => removeChildrenOf(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)), collapsed),
+    getVisible: (collapsed) => ownedTraitRows(tree, collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
-      getTraitDropProjection(visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
+      getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
       const next = applyOwnedTraitDrop({ traits, traitGroups }, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
-      if (next?.kind === 'world') {
-        setTraitGroups(next.groups);
-        setTraits(next.traits);
-      } else if (next?.kind === 'entity') {
-        editEntity(next.entity.id, () => next.entity);
+      if (!next) return;
+      if (next.kind === 'refused') {
+        setRefusal(next.refusal);
+        return;
       }
+      setRefusal(null);
+      if (next.world) {
+        setTraitGroups(next.world.groups);
+        setTraits(next.world.traits);
+      }
+      for (const entity of next.entities) editEntity(entity.id, () => entity);
     },
     rowSpec: (node) => {
       const entity = tree.entityNodes.get(node.id);
@@ -70,7 +101,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           label: <PlaceholderText text={entity.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           meta: entity.persona ? 'Playable' : 'Entity',
-          fixed: true,
         };
       }
       const isGroup = node.kind === 'group';
@@ -112,7 +142,12 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     return <EmptyListHint noun="traits" action={advanced ? "add a group or trait" : "add one"} />;
   }
 
-  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;
+  return (
+    <>
+      {refusal && <TraitDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+    </>
+  );
 };
 
 export default TraitTree;
