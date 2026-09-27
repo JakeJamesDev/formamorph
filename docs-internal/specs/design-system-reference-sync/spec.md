@@ -8,7 +8,7 @@ Spec session: Design System Reference Sync
 The Design System guide and its live showcase are the visual authority for Formamorph. An author of a new screen reads a pattern, opens its reference, and copies what they see. Six of the thirteen references no longer match production or the guide:
 
 - **Panel Tab Strip.** The entity panel now has five tabs. The reference still labels it "Three Tabs", and its Traits and Openings tabs open an empty panel. The guide's tab table and its width math describe three tabs.
-- **Grouped Context Actions.** The guide says Delete sits alone in the final section. Production now puts Check for Updates, Publish, and the default-persona action in that section, before Delete. The reference passes only Delete, so the section it shows is not the one players see.
+- **Grouped Context Actions.** The guide says Delete sits alone in the final section. Production now puts item actions in that section, before Delete: Check for Updates on entities and dictionaries, Publish on avatars, and the default-persona action on persona entities. The reference passes only Delete, so the section it shows is not the one players see.
 - **Aligned Settings Stack.** The Display and Output examples are written by hand. They have drifted from the Settings dialog: Narration Size sits in the wrong section, the Turn Extras hint differs, and newer rows are missing. The guide says the examples reuse the production rows.
 - **Narration Turn.** The guide describes the Pages action line and the Stats panel's Edit Stats and Re-generate Stats pair. The reference shows neither.
 - **Built-in Placeholder chips.** The reference palette shows Player Name only. Character Name, and its Preview as the owning entity's name, appear in neither the reference nor the guide.
@@ -46,9 +46,9 @@ Each drifted reference shows what production does today, and the guide says the 
 10. As a UI author, I want the rule to say that the item's own actions form the last section, so that I place Check for Updates, Publish, and similar actions correctly.
 11. As a UI author, I want the rule to say Delete is last in that section, keeps its trash icon and destructive color, and opens a confirmation, so that destructive placement stays predictable.
 12. As a UI author, I want the rule to say each item action carries an icon, so that item actions stay apart from set rows.
-13. As a UI author, I want the reference to show Check for Updates, Publish, the default-persona action, and Delete together, so that I see the section players see.
+13. As a UI author, I want the reference to show a persona entity's real final section, Check for Updates, the default-persona action, and Delete, so that I see the section players see.
 14. As a UI author, I want each item action in the reference to report a local outcome, so that I can confirm the row runs without touching my library.
-15. As a UI author, I want the reference sample to be a kind of item where every item action applies, so that no action appears on an item it would never appear on in production.
+15. As a UI author, I want the reference sample to show only the item actions its kind has in production, so that no action appears on an item it would never appear on.
 16. As a maintainer, I want the default-persona menu item built once and shared by the Main Menu and the reference, so that its label and icon cannot drift.
 17. As a maintainer, I want a test that opens the reference menu and asserts the last section's order ends in Delete, so that the rule is enforced on the reference.
 18. As a UI author, I want the guide's state table to describe the new final section, so that the Destructive state row matches the rule.
@@ -109,7 +109,7 @@ Each drifted reference shows what production does today, and the guide says the 
   - Arranging sections (Tile Size, grouping) stay above it.
   - Separators still divide kinds, not topics.
 - **Default-persona action.** The Set as Default Persona / Clear Default Persona menu item moves out of the Main Menu into a production builder next to the tile menu. The Main Menu and the reference both call it.
-- **Context Menu reference.** The sample becomes a library item kind for which Check for Updates, Publish, and the default-persona action all apply in production. It is shown with the production card treatment the Main Menu uses for that kind. Each item action writes a local status line. The existing Tile Size, grouping, picker, and deletion demonstrations stay.
+- **Context Menu reference.** The sample becomes a persona entity, so its final section is Check for Updates, the default-persona action, then Delete. No library kind has Check for Updates, Publish, and the persona action together, so the reference shows no Publish. The guide names Publish as an item action in text. Entity tiles have no Publish, although the entity editor has one; adding it is a separate product decision. The sample is shown with the production card treatment the Main Menu uses for that kind. Each item action writes a local status line. The existing Tile Size, grouping, picker, and deletion demonstrations stay.
 - **Settings extraction.** The Display and Output tab bodies move out of the Settings dialog into two production section components.
   - Each section reads a settings source with the same member names as the Settings context value. The Settings dialog passes the live context. The reference passes a local in-memory source built from the settings defaults.
   - Effects that leave the page go through that source: theme persistence, embedding-model load and dispose, and any other effect the sections trigger. The reference's source supplies local handlers that write a status line.
