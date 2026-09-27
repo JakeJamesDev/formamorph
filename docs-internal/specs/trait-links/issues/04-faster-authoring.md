@@ -16,6 +16,7 @@ An author adds an owned trait or group straight onto an entity from the Traits t
 ## Acceptance criteria
 
 - [ ] The **+** menu gains **Add Trait To Entity →** (Basic) and **Add Group To Entity →** (Advanced). The first add to an entity creates its node, and the new row is selected in place.
+- [ ] The drop projection refuses moving Templates or Custom Persona into a group; both stay at the root (Q68, left open by ticket 03).
 - [ ] Every linkable node's Details header shows a link button in Advanced. Its flyout lists Custom Persona first when it exists, then entities nested by entity group.
 - [ ] Bearers that already have the link show checked and disabled. Picking a bearer creates the link through the same path as a drag, including the one-original rule.
 - [ ] Both flyouts are new visual patterns and get design-system approval before adoption.

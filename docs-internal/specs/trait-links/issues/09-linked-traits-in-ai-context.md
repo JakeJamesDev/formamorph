@@ -18,6 +18,7 @@ The narrator knows Albus is a Paladin. An NPC's active linked traits join its en
 - [ ] An NPC's active linked traits join its entity context the same way as owned traits: full text in the full context, names in the summary. The played bearer's linked traits join the player's trait context.
 - [ ] `{{char}}` in a trait's text reads as the bearer's name. On the Custom Persona bearer under None it reads as the player name, as `{{user}}` does. The in-play trait card resolves the same way.
 - [ ] Roll priming walks linked trait names and descriptions per bearer.
+- [ ] The editor's AI-context preview (the authored chip scene) reads the player's traits through the resolver, so a default Templates trait no longer counts as the player's. Ticket 03 left this unowned.
 - [ ] Prompt changes follow the prompt-writing guide and ship with probe numbers against the cloud default, with in-batch controls.
 - [ ] Context tests cover an NPC's linked trait in full and summary context, and `{{char}}` on an NPC, a world persona and Custom Persona.
 

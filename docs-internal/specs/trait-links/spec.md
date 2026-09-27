@@ -131,7 +131,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 - **One original per bearer.** A bearer's tree holds each original at most once, directly or through a linked group. Link creation and the flyout refuse a second link; import drops it (Q49). For the player bearer this counts the root traits and groups outside Templates, so Custom Persona cannot link a trait already offered at the root (Q58).
 - **Absent default-on reads the original live.** A link with no stored default-on for a trait reads that trait's own `isDefault`. The This Link section writes a value only when the author touches it, so a later-added default child of a linked group starts on (Q57).
 - **Templates holds world originals only.** An entity node cannot be placed under Templates; the placement projection refuses it, and a placement that names Templates reads as top level, the same as a missing group (Q59).
-- **System nodes.** The world gains an optional Templates group and an optional Custom Persona node. At most one of each exists. Custom Persona holds links only.
+- **System nodes.** The world gains an optional Templates group and an optional Custom Persona node. At most one of each exists. Custom Persona holds links only. Both stay at the root: the drop projection refuses moving either into a group (Q68).
 - **Persona-only mark.** An entity gains an optional persona-only flag. It is read only with the Persona mark.
 - **Bearer-relative pin target.** A trait's placeholder pin can target a placeholder by name relative to the bearer instead of by id. It binds to the bearer's own placeholder with that name. If there is none, it binds to the world placeholder with that name. The link's per-link value supplies the pin in both cases; on fallback the author picks it from the world placeholder's values. The pin's own value is only the starting value a new link copies when it binds to the world placeholder (Q51).
 - **Named-scope requirement.** A requirement gains an optional bearer scope: absent means the same bearer, otherwise You or an entity id (with a stored name for off-world travel).
@@ -268,6 +268,7 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q65 | Ticket 03 adds an interim Templates filter on the player-facing tree and the world gate owner; 08 replaces it. |
   | Q66 | Removing Templates keeps Custom Persona's links to the moved originals. Q64 covers the duplicate. |
   | Q67 | Selecting Custom Persona opens a heading plus one help line. |
+  | Q68 | Templates and Custom Persona stay at the root; a drop into a group is refused. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
