@@ -10,7 +10,7 @@ Reasoning effort: medium
 
 The same sweep for the remaining sites: the top-level views, the hooks and helpers under lib, the contexts and the editor managers, about 60 sites. Caught-error toasts move to the shared helper with their current message as the headline; validation and refusal toasts stay plain. No wording changes.
 
-The connection-guide toast keeps its **Fix connection →** link and does not gain View Details; a toast has one link. The in-game AI request toast is owned by ticket 02 and is left alone here. A canceled request still shows no toast.
+The connection-guide toast keeps its **Fix connection →** link and does not gain View Details; a toast has one link. The in-game AI request toast is owned by ticket 02 and is left alone here. A canceled request still shows no toast. Ticket 08 adds an `errors` array to the default-world load result; the main menu's "Some default worlds failed to load" toast wraps that array in an AggregateError the same way Settings does.
 
 Recommended model rationale: same mechanical sweep with two named exceptions to respect.
 
