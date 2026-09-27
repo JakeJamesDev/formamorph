@@ -1,6 +1,6 @@
 # 07: Sweep: menu components
 
-Status: in-progress
+Status: ready-for-human
 Base: 56d36f41
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -16,8 +16,13 @@ Recommended model rationale: a mechanical sweep with a clear classification rule
 
 ## Acceptance criteria
 
-- [ ] Every caught-error toast in the menu components goes through the shared helper and offers **View Details →**
-- [ ] Every validation or refusal toast in the menu components stays plain with no link
-- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
-- [ ] The sweep touches no file outside the menu components
-- [ ] Four gates green
+- [x] Every caught-error toast in the menu components goes through the shared helper and offers **View Details →**
+- [x] Every validation or refusal toast in the menu components stays plain with no link
+- [x] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
+- [x] The sweep touches no file outside the menu components (exception: the shared test helper `src/test/toastText.ts`, which tickets 08 and 09 reuse)
+- [x] Four gates green (typecheck, lint, build green; the full suite timed out under machine load, every failed file passed alone, and another session runs the suite; the user approved the commit)
+
+## Notes
+
+- A rejected plain string now shows that string rather than the fallback, and a non-string `message` shows the fallback. No menu service throws either, so no visible toast changes.
+- BackupRestoreDialog's file-read toast had no fallback; an error with no message now shows "Failed to read the backup" instead of an empty toast.

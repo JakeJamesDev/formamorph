@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ImagePlus, Megaphone, Move, Plus, Save, Trophy } from "lucide-react";
 import {
   Dialog,
@@ -124,7 +125,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
       setPosterPlacement(null);
       setPositioning(true);
     };
-    reader.onerror = () => toast.error('That image could not be read');
+    reader.onerror = () => toastError(reader.error, { headline: 'That image could not be read' });
     reader.readAsDataURL(file);
   };
 
@@ -179,7 +180,7 @@ export function EventFormDialog({ open, onOpenChange, editing = null, onSaved }:
       onSaved?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save the event');
+      toastError(error, 'Failed to save the event');
     } finally {
       setSaving(false);
     }

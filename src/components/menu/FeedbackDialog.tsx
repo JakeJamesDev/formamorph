@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { MessageSquarePlus } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -172,7 +173,7 @@ export function FeedbackDialog({
       onFiled?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to send this');
+      toastError(error, 'Failed to send this');
     } finally {
       setIsSending(false);
     }

@@ -2,9 +2,10 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ServerSettingsTab } from './ServerSettingsTab';
 import { catalogStale, resetCatalogStale } from '@/lib/catalogStale';
+import { toastTexts } from '@/test/toastText';
 
-const toastError = vi.fn();
-vi.mock('react-toastify', () => ({ toast: { error: (...args: unknown[]) => toastError(...args) } }));
+const toastErrorMock = vi.fn();
+vi.mock('react-toastify', () => ({ toast: { error: (...args: unknown[]) => toastErrorMock(...args) } }));
 
 vi.mock('@/services/AuthService', () => ({
   default: { API_URL: 'https://server.test/api', token: 'staff-token' },
@@ -28,7 +29,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   resetCatalogStale();
-  toastError.mockClear();
+  toastErrorMock.mockClear();
   fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -65,7 +66,7 @@ describe('reading the setting', () => {
 
     render(<ServerSettingsTab active />);
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('Not staff'));
+    await waitFor(() => expect(toastTexts(toastErrorMock)).toContain('Not staffView Details →'));
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.getByText('This server didn’t answer for this setting')).toBeTruthy();
   });
@@ -113,7 +114,7 @@ describe('writing the setting', () => {
 
     fireEvent.click(anonymousLikes());
 
-    await waitFor(() => expect(toastError).toHaveBeenCalledWith('No such setting'));
+    await waitFor(() => expect(toastTexts(toastErrorMock)).toContain('No such settingView Details →'));
     expect(anonymousLikes().getAttribute('data-state')).toBe('checked');
     expect(catalogStale.marked()).toBe(0);
   });

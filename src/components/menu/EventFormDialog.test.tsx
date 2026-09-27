@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { EventFormDialog } from './EventFormDialog';
 import EventService from '@/services/EventService';
 import { daysFrom, serverEvent } from '@/test/serverEvents';
@@ -163,7 +164,7 @@ describe('scheduling one', () => {
     fillValid();
     fireEvent.click(screen.getByRole('button', { name: /Create Event/ }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That window overlaps the contest "Spring Tides"'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('That window overlaps the contest "Spring Tides"View Details →'));
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

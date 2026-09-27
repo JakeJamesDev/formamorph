@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
 import { filesFrom } from '@/lib/importFiles';
-import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { Archive } from 'lucide-react';
 import {
   Dialog,
@@ -243,7 +243,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
       setOverwrite(emptyFlags());
       setStep('restore-what');
     } catch (err) {
-      toast.error((err as Error).message);
+      toastError(err, 'Failed to read the backup');
     } finally {
       setBusy(false);
     }
@@ -255,7 +255,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
       await saveBackup(await buildBackup(exportSel));
       setStep('backup-done');
     } catch (err) {
-      toast.error(`Backup failed: ${(err as Error).message}`);
+      toastError(err, { headline: `Backup failed: ${(err as Error).message}` });
     } finally {
       setBusy(false);
     }
@@ -310,7 +310,7 @@ export function BackupRestoreDialog({ open, onOpenChange }: { open: boolean; onO
       setStep('restore-done');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
-      toast.error(`Restore failed: ${(err as Error).message}`);
+      toastError(err, { headline: `Restore failed: ${(err as Error).message}` });
       setBusy(false);
     }
   };

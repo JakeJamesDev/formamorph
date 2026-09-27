@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { RotateCcw, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import PromptField from "@/components/prompt/PromptField";
@@ -178,7 +179,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
       setNotice(data.tagNotice);
       setPrivacy(data.privacyPolicy);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load policies');
+      toastError(error, 'Failed to load policies');
     } finally {
       setIsLoading(false);
     }
@@ -217,7 +218,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
 
       toast.success('Saved');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save');
+      toastError(error, 'Failed to save');
     } finally {
       setSavingId(null);
     }
@@ -229,7 +230,7 @@ export function PoliciesTab({ active, initialTab = 'uploadGate' }: PoliciesTabPr
       await load();
       toast.success('Everyone will be asked to accept again');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to reset the terms');
+      toastError(error, 'Failed to reset the terms');
     }
   };
 

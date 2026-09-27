@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Section, CheckRow, RowLabel, HintInfo } from "@/components/SettingsRows";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Meta } from "@/components/ui/typography";
@@ -52,7 +52,7 @@ function SettingRow({ setting, active }: { setting: ServerSetting; active: boole
       .catch((error: unknown) => {
         if (!current || !mounted.current) return;
         setUnreadable(true);
-        toast.error((error as Error).message || `Failed to read ${setting.label}`);
+        toastError(error, `Failed to read ${setting.label}`);
       });
     return () => { current = false; };
   }, [active, setting.key, setting.label, mounted]);
@@ -70,7 +70,7 @@ function SettingRow({ setting, active }: { setting: ServerSetting; active: boole
       })
       .catch((error: unknown) => {
         if (!mounted.current) return;
-        toast.error((error as Error).message || `Failed to write ${setting.label}`);
+        toastError(error, `Failed to write ${setting.label}`);
       })
       .finally(() => { if (mounted.current) setWriting(false); });
   };

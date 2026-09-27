@@ -2,6 +2,7 @@ import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { PodiumDialog } from './PodiumDialog';
 import EventService from '@/services/EventService';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -743,7 +744,7 @@ describe('announcing', () => {
     fireEvent.click(entry('Pearl of the Undertow'));
     fireEvent.click(saveButton());
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('You cannot place your own entry'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot place your own entryView Details →'));
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

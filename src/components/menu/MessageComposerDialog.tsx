@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Send } from "lucide-react";
 import {
   Dialog,
@@ -155,7 +156,7 @@ export function MessageComposerDialog({
       onSent?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error((error as Error).message || (editing ? 'Failed to save the message' : 'Failed to send the message'));
+      toastError(error, editing ? 'Failed to save the message' : 'Failed to send the message');
     } finally {
       setIsSending(false);
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +59,7 @@ export function AuditLogTab({ active }: AuditLogTabProps) {
       setEntries(result.entries);
       setTotal(result.total);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load the log');
+      toastError(error, 'Failed to load the log');
       setEntries([]);
     } finally {
       setIsLoading(false);

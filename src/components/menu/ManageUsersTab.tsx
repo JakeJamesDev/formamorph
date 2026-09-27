@@ -1,5 +1,6 @@
 import { Fragment, useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, History, ImageOff, Link2, Mail, RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -198,13 +199,13 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         setUserTotalPages(pages > 0 ? pages : 1);
       } else {
         console.error('Error fetching users:', result.error);
-        toast.error(result.error || 'Failed to fetch users');
+        toastError(new Error(result.error), 'Failed to fetch users');
         setUsers([]);
       }
     } catch (error) {
       console.error('Error in fetchUsers:', error);
       if (mountedRef.current && reqId === fetchReqRef.current) {
-        toast.error((error as Error).message || 'Failed to connect to server');
+        toastError(error, 'Failed to connect to server');
         setUsers([]);
       }
     } finally {
@@ -248,7 +249,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       }
     } catch (error) {
       console.error('Error updating user status:', error);
-      toast.error((error as Error).message || `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
+      toastError(error, `Failed to ${newStatus === "normal" ? "activate" : "suspend"} user`);
     }
   };
 
@@ -316,7 +317,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         ? `${usernameOf(user)} is a normal account again`
         : `${usernameOf(user)} is now a ${ROLE_LABELS[accountType].toLowerCase()}`);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to change the account type');
+      toastError(error, 'Failed to change the account type');
     }
   };
 
@@ -330,7 +331,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       ));
       toast.success(`${usernameOf(user)} will be asked to accept the terms again`);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to reset the terms');
+      toastError(error, 'Failed to reset the terms');
     }
   };
 
@@ -345,7 +346,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       toast.success(`Removed the profile image of ${usernameOf(user)}`);
       setAvatarRemovedFrom(user);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to remove the profile image');
+      toastError(error, 'Failed to remove the profile image');
     }
   };
 
@@ -379,7 +380,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
       forThisRow(accounts.length > 0 ? { id: userId, loading: false } : null);
     } catch (error) {
       forThisRow(null);
-      toast.error((error as Error).message || 'Failed to load their linked accounts');
+      toastError(error, 'Failed to load their linked accounts');
     }
   };
 
