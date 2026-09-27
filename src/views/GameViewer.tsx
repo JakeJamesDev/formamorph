@@ -1,5 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
+import { entityTraitOwners, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -162,7 +163,7 @@ import {
 import { collectPins } from "../lib/placeholderPins";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, settleTraits, switchPlayerTrait,
+  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, settleTraits, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { TraitCascade } from "../components/game/SetupTraitList";
@@ -275,7 +276,9 @@ const pageOneLocationId = (history: readonly ChatMessage[]) => pageOneTurn(histo
 const pageOneNarration = (history: readonly ChatMessage[]) => pageOneTurn(history)?.narration;
 
 /** The pre-turn state a stat re-roll hands stat code, so code reads and switches as the turn it replaces did. */
-type PreTurnCodeState = Pick<GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds'>;
+type PreTurnCodeState = Pick<
+  GameState, 'codePins' | 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'
+>;
 
 /** What one stat-code run left, in the shapes state holds. The before box hands this to the turn's own
  *  passes, which run before React re-renders with it. */
@@ -650,7 +653,7 @@ const GameViewer = ({
   const {
     entities, locations, stats, traits, traitGroups, dictionary, playerStats, viewStats,
     currentLocation, traitOrder, pins, pinsFor, resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText,
-    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona,
+    resolveTraitFor, resolveEntityText, resolveEntityFor, playerNames, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
   usePersonaNotice();
   // The session's rolls for the init effect's pins, and its Placeholder Set with the library persona's list.
@@ -1358,6 +1361,7 @@ const GameViewer = ({
         setDisabledTraitIds(preTurn.disabledTraitIds ?? []);
         setAppliedTraitValues(preTurn.appliedTraitValues ?? {});
         setCascadeOffTraitIds(preTurn.cascadeOffTraitIds ?? {});
+        setOwnedTraits(preTurn.ownedTraits ?? {});
       };
       toPreTurn();
       // A re-roll replays the whole turn, so the before box runs again first, on the clock as it read at
@@ -1677,7 +1681,7 @@ const GameViewer = ({
   const turnCodeView = useCallback((over: TurnCodeState | null): SceneWrites | null => {
     if (!over) return null;
     const overPins = pinsFor(over.codePins ?? {}, {
-      traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, stats: over.playerStats,
+      traits: over.playerTraits, disabledTraitIds: over.disabledTraitIds, ownedTraits: over.ownedTraits, stats: over.playerStats,
     });
     const resolve = (text: string) => resolveFor(overPins, text);
     const held = savedTraits(over, traits);
@@ -2123,6 +2127,7 @@ const GameViewer = ({
       beforeBoxDeltasRef.current = {};
       const preBox: TurnCodeState = {
         playerStats: rawPlayerStatsRef.current, codePins, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds,
+        ownedTraits,
       };
       const beforeBox = await runStatCode(
         rawPlayerStatsRef.current, rawPlayerStatsRef.current, [],
@@ -2520,14 +2525,23 @@ const GameViewer = ({
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
   /** The authored world the player's trait gates read: the traits, the groups, and who the player is. */
+  const entityOwners = useMemo(
+    () => entityTraitOwners({ traits: authoredTraits, traitGroups, entities: traitEntities }, traitLibrary),
+    [authoredTraits, traitGroups, traitEntities, traitLibrary],
+  );
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
+      entityOwners,
     }),
-    [authoredTraits, traitGroups, entities, persona, personaRef],
+    [authoredTraits, traitGroups, entities, persona, personaRef, entityOwners],
   );
-  const liveCodeStateRef = useRef({ codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits });
-  liveCodeStateRef.current = { codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits };
+  const liveCodeStateRef = useRef({
+    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,
+  });
+  liveCodeStateRef.current = {
+    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,
+  };
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
   // puts back exactly what the box moved. The last snapshot holds the same six fields — nothing else
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
@@ -2588,7 +2602,7 @@ const GameViewer = ({
         const held = preTurn ? savedTraits(preTurn, traits)
           : {
             acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues,
-            cascadeOffTraitIds: live.cascadeOffTraitIds,
+            cascadeOffTraitIds: live.cascadeOffTraitIds, ownedTraits: live.ownedTraits,
           };
         const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : live.activeTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
@@ -2613,6 +2627,7 @@ const GameViewer = ({
           setDisabledTraitIds(result.traits.disabledTraitIds);
           setAppliedTraitValues(result.traits.appliedValues);
           setCascadeOffTraitIds(result.traits.cascadeOffTraitIds);
+          setOwnedTraits(result.traits.ownedTraits);
           for (const line of result.traits.log) addLogEntry(line);
         }
         /** What this run left, in the shapes state holds. */
@@ -2625,6 +2640,7 @@ const GameViewer = ({
           disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
           appliedTraitValues: result.traits?.appliedValues ?? held.appliedValues,
           cascadeOffTraitIds: result.traits?.cascadeOffTraitIds ?? held.cascadeOffTraitIds,
+          ownedTraits: result.traits?.ownedTraits ?? held.ownedTraits,
         });
         if (!result.traits && result.moved.length === 0 && result.boundsChanged.length === 0) {
           return nextPins === basePins ? null : stateAfterRun();
@@ -2648,7 +2664,7 @@ const GameViewer = ({
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
       traits, authoredStats, resolveTraitText, gatedWorld,
-      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, addLogEntry],
+      setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
   // Apply request identities to authored state; resolved names are only for code and display feedback.
@@ -2709,6 +2725,7 @@ const GameViewer = ({
       setDisabledTraitIds(undo.disabledTraitIds ?? []);
       setAppliedTraitValues(undo.appliedTraitValues ?? {});
       setCascadeOffTraitIds(undo.cascadeOffTraitIds ?? {});
+      setOwnedTraits(undo.ownedTraits ?? {});
       setRecentStatChanges({});
       setHeldStatChanges({});
     }
@@ -3839,8 +3856,10 @@ const GameViewer = ({
 
   /** The gameplay slice the trait runtime reads and rewrites, and the setters that put a result back. */
   const traitState = useMemo<TraitRuntimeState>(
-    () => ({ stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds }),
-    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds],
+    () => ({
+      stats: playerStats, traits: chosenTraits, disabledTraitIds, appliedValues: appliedTraitValues, cascadeOffTraitIds, ownedTraits,
+    }),
+    [playerStats, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits],
   );
   const commitTraitState = useCallback(
     (next: TraitRuntimeState) => {
@@ -3850,8 +3869,9 @@ const GameViewer = ({
       setDisabledTraitIds(next.disabledTraitIds);
       setAppliedTraitValues(next.appliedValues);
       setCascadeOffTraitIds(next.cascadeOffTraitIds ?? {});
+      setOwnedTraits(next.ownedTraits ?? {});
     },
-    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds],
+    [setPlayerStats, setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits],
   );
 
   // The banner naming what the player's last switch or persona change turned off. Session-only.
@@ -3861,9 +3881,9 @@ const GameViewer = ({
     (result: GatedTraitResult, because: string) => {
       if (result.state !== traitState) commitTraitState(result.state);
       for (const line of result.log) addLogEntry(line);
-      setTraitCascade(result.cascade.length ? { off: result.cascade.map(traitName), because } : null);
+      setTraitCascade(result.cascadeNames.length ? { off: result.cascadeNames, because } : null);
     },
-    [traitState, commitTraitState, addLogEntry, traitName],
+    [traitState, commitTraitState, addLogEntry],
   );
 
   /**
@@ -3874,12 +3894,12 @@ const GameViewer = ({
    */
   const toggleTrait = useCallback(
     (traitId: string, enabled: boolean) => {
-      const result = switchPlayerTrait(traitState, traitId, enabled, gatedWorld(), traitName);
+      const world = gatedWorld();
+      const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName);
       if (!result) return;
-      const trait = chosenTraits.find((t) => t.id === traitId) ?? authoredTraits.find((t) => t.id === traitId);
-      commitGatedTraits(result, trait ? traitName(trait) : traitId);
+      commitGatedTraits(result, traitNameIn(world, traitId, traitName) ?? traitId);
     },
-    [traitState, gatedWorld, traitName, chosenTraits, authoredTraits, commitGatedTraits],
+    [traitState, gatedWorld, traitName, commitGatedTraits],
   );
 
   /** Settle the traits under a new persona, which can open or close "playing as" gates. */
@@ -3941,6 +3961,7 @@ const GameViewer = ({
         traits: [],
         disabledTraitIds: [],
         appliedValues: {},
+        ownedTraits: ownedTraitStatesFrom(initialOwnedTraits),
       };
       for (const trait of chosenList) {
         seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
@@ -3949,7 +3970,6 @@ const GameViewer = ({
         addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
       }
       commitTraitState(seedState);
-      setOwnedTraits(ownedTraitStatesFrom(initialOwnedTraits));
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -3958,7 +3978,11 @@ const GameViewer = ({
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
       // pass resolves against these rather than the (empty) pins still in force.
       const openingPins = collectPins({
-        traits: chosenList, location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls,
+        traits: pinTraitsInOrder(
+          { traits: authoredTraits, traitGroups, entities: traitEntities }, chosenList, initialOwnedTraits,
+          playedEntityId(initialPersona?.ref), inPlayLibrary(initialPersona?.libraryEntity),
+        ),
+        location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls,
       });
       if (location && authoredLocation) {
         changeLocation(location);
@@ -4022,7 +4046,7 @@ const GameViewer = ({
     loadGame,
     initialTraits,
     initialOwnedTraits,
-    setOwnedTraits,
+    traitEntities,
     initialLocationId,
     placeholders,
     sessionRolls,

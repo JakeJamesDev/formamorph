@@ -3,16 +3,18 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
+import { activeOwnedTraitIds, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
 import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
-  resolveEntityNames, resolveLocationNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
+  resolveEntityNames, resolveLocationNames, resolveOwnedTraitNames, resolveStatNames, resolveTraitNames, resolveTraitGroupNames,
   resolveDictionaryEntryNames, type ResolveEntityText,
 } from '@/lib/resolveWorldNames';
 import type {
-  CodePins, Connection, DictionaryEntry, Entity, GameLocation, PlaceholderRolls, PlayerStat, Stat, Trait, TraitGroup,
+  CodePins, Connection, DictionaryEntry, Entity, GameLocation, OwnedTraitStates, PlaceholderRolls, PlayerStat, Stat, Trait,
+  TraitGroup,
 } from '@/types';
 
 /**
@@ -58,6 +60,10 @@ export interface ResolvedWorld {
   playerStats: PlayerStat[];
   viewStats: PlayerStat[];
   traitOrder: ReturnType<typeof traitOrderIndex>;
+  /** Every world entity, the played one included, with owned trait names resolved: the one Traits tree's. */
+  traitEntities: Entity[];
+  /** The library entities in the playthrough, resolved the same way; their nodes sit last in the tree. */
+  traitLibrary: Entity[];
   /** Every pin in force: the active traits', the current location's, each live stat's band's, and the Code
    *  Pins, with value pins settled underneath. */
   pins: Record<string, string>;
@@ -100,6 +106,7 @@ export interface PinSources {
   /** The chosen traits as the save holds them, before the world refresh `pinsFor` applies. */
   traits?: Trait[];
   disabledTraitIds?: string[];
+  ownedTraits?: OwnedTraitStates;
   stats?: PlayerStat[];
 }
 
@@ -205,11 +212,13 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 }
 
 export function useResolvedWorld(): ResolvedWorld {
-  const { traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations } = useGameData();
+  const {
+    traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, entities: rawEntities,
+  } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
-    currentLocation: storedLocation, playerTraits, disabledTraitIds, codePins,
+    currentLocation: storedLocation, playerTraits, disabledTraitIds, ownedTraits, codePins,
     personaRef, libraryPersona, personaPending,
   } = useGameplay();
 
@@ -217,15 +226,23 @@ export function useResolvedWorld(): ResolvedWorld {
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
+  const rawLibrary = useMemo(() => inPlayLibrary(libraryPersona), [libraryPersona]);
   const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => collectPins({
-    traits: inAuthoredOrder(refreshChosenTraits(over.traits ?? playerTraits, rawTraits), traitOrder),
+    traits: pinTraitsInOrder(
+      { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities },
+      inAuthoredOrder(refreshChosenTraits(over.traits ?? playerTraits, rawTraits), traitOrder),
+      activeOwnedTraitIds(over.ownedTraits ?? ownedTraits), playedEntityId(personaRef), rawLibrary,
+    ),
     disabledTraitIds: over.disabledTraitIds ?? disabledTraitIds,
     location: rawLocations.find((l) => l.id === storedLocationId),
     stats: over.stats ?? rawPlayerStats,
     placeholders,
     rolls,
     codePins: withCodePins,
-  }), [playerTraits, disabledTraitIds, rawTraits, traitOrder, rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls]);
+  }), [
+    playerTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, rawEntities, rawLibrary, personaRef, traitOrder,
+    rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls,
+  ]);
   const pins = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);
   const personaName = usePersonaName(rolls, pins);
 
@@ -244,6 +261,16 @@ export function useResolvedWorld(): ResolvedWorld {
     [personaRef, worldEntities, libraryEntities],
   );
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
+  // The one Traits tree's entities, their owned trait names resolved as the world's are.
+  const resolveOwnedNames = useCallback(
+    (list: Entity[]) => resolveOwnedTraitNames(list, (t) => (text) => resolveTraitText(t, text), resolvePH),
+    [resolveTraitText, resolvePH],
+  );
+  const traitEntities = useMemo(() => resolveOwnedNames(worldEntities), [resolveOwnedNames, worldEntities]);
+  const traitLibrary = useMemo(
+    () => resolveOwnedNames(resolveEntityNames(rawLibrary, resolvePH)),
+    [resolveOwnedNames, rawLibrary, resolvePH],
+  );
 
   // Every write to gameplay's `currentLocation` is a member of `locations`, so its id is the durable part —
   // the object it stored is a snapshot of how the name read on arrival. Falls back to the stored copy for a
@@ -263,7 +290,7 @@ export function useResolvedWorld(): ResolvedWorld {
   return {
     entities, persona, playerNames, worldPersonas, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
-    playerStats, viewStats, traitOrder, pins, pinsFor,
+    playerStats, viewStats, traitOrder, traitEntities, traitLibrary, pins, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,
     resolveEntityText, resolveEntityFor,
   };

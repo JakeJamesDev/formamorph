@@ -426,8 +426,8 @@ const traitToggleMissingStat: Rule = {
 
 /** The world as the pin editors read it, so a finding labels a source exactly as its editor does. */
 const pinEditorWorld = (world: RuleWorld): PinEditorWorld => ({
-  traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], locations: world.locations ?? [],
-  stats: world.stats ?? [], placeholders: allPlaceholders(world),
+  traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [],
+  locations: world.locations ?? [], stats: world.stats ?? [], placeholders: allPlaceholders(world),
   placeholderOwners: placeholderOwners(world), placementLetters: lettersOf(world),
 });
 

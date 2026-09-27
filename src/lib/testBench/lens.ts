@@ -12,7 +12,12 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { allPinRows, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
-import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { traitOwners } from '@/lib/ownedTraits';
+import { pinTraitsInOrder } from '@/lib/ownedTraitsInPlay';
+import {
+  activeStatEnabled, collapseExclusiveDefaults, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
+} from '@/lib/traitEffects';
+import { settle, WORLD_OWNER } from '@/lib/traitGates';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import type { RuleWorld } from './rules';
@@ -168,7 +173,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const location = (world.locations ?? []).find((l) => l.id === state.locationId) ?? null;
   const active = activeTraitsFor(world, pc);
   const { pins, layers } = collectPinLayers({
-    traits: active,
+    traits: lensPinTraits(world, active),
     location,
     stats: startingStatsWith(world.stats ?? [], active, { traits, groups }),
     placeholders,
@@ -176,8 +181,8 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
   // source holds, and so does every row.
   const rows = allPinRows({
-    traits, traitGroups: groups, locations: world.locations ?? [], stats: world.stats ?? [], placeholders,
-    placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world),
+    traits, traitGroups: groups, entities: world.entities ?? [], locations: world.locations ?? [], stats: world.stats ?? [],
+    placeholders, placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world),
   });
   const pinLayers = layers.map((layer): LensPinLayer => ({
     ...layer,
@@ -201,6 +206,23 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
  */
 export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
   return activeTraitsFor(world, lens.pc);
+}
+
+/**
+ * Every trait whose pins a fresh game under the lens lays, in play's order: each entity's owned defaults,
+ * settled against `active` with no persona, then `active` itself.
+ */
+export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
+  const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [] };
+  const owners = traitOwners(lists);
+  const proposed: Record<string, string[]> = { [WORLD_OWNER]: active.map((t) => t.id) };
+  for (const owner of owners.slice(1)) {
+    const defaults = owner.traits.filter((t) => t.isDefault).map((t) => t.id);
+    proposed[owner.id] = collapseExclusiveDefaults(defaults, [...owner.traits], [...owner.groups]);
+  }
+  const { [WORLD_OWNER]: _world, ...owned } =
+    settle({ owners, active: proposed, entities: lists.entities, persona: { source: 'none' } }).active;
+  return pinTraitsInOrder(lists, active, owned, null);
 }
 
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {

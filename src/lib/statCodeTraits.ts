@@ -1,4 +1,4 @@
-import type { CascadeOffTraitIds, GameState, Placeholder, Trait } from '@/types';
+import type { CascadeOffTraitIds, GameState, OwnedTraitStates, Placeholder, Trait } from '@/types';
 import type { SandboxTrait } from './statCodeExecutor';
 import { statCodeName } from './statCodeNames';
 import { refreshChosenTraits } from './traitEffects';
@@ -12,20 +12,23 @@ export interface StatCodeTraits {
   appliedValues: AppliedTraitValues;
   /** Owner id → the traits a cascade turned off. Absent ⇒ none. */
   cascadeOffTraitIds?: CascadeOffTraitIds;
+  /** Each entity's owned traits, which a cascade can switch. Absent ⇒ none. */
+  ownedTraits?: OwnedTraitStates;
   /** Every authored trait and group, and who the player is, for gates. `traits` maps each authored trait; a code switch-on acquires from here. */
   world: TraitWorld;
 }
 
 /** The player's traits as a saved state holds them, each re-read from the world as play reads them. */
 export function savedTraits(
-  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds'>,
+  saved: Pick<GameState, 'playerTraits' | 'disabledTraitIds' | 'appliedTraitValues' | 'cascadeOffTraitIds' | 'ownedTraits'>,
   authored: Trait[],
-): Pick<StatCodeTraits, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds'> {
+): Pick<StatCodeTraits, 'acquired' | 'disabledTraitIds' | 'appliedValues' | 'cascadeOffTraitIds' | 'ownedTraits'> {
   return {
     acquired: refreshChosenTraits(saved.playerTraits, authored),
     disabledTraitIds: saved.disabledTraitIds ?? [],
     appliedValues: saved.appliedTraitValues ?? {},
     cascadeOffTraitIds: saved.cascadeOffTraitIds ?? {},
+    ownedTraits: saved.ownedTraits ?? {},
   };
 }
 

@@ -3,11 +3,12 @@
 // writes at runtime. A pin masks the roll under it and never overwrites it, so every collector here is an
 // overlay computed fresh from the current state.
 //
-// Precedence: Code Pin > descriptor > location > trait > value pin. Within traits the later one in the
-// authored tree wins; within one location or one band the later row wins.
+// Precedence: Code Pin > descriptor > location > trait > value pin. Within traits the later one laid wins:
+// the cast's owned traits lay first, then the player's (see `pinTraitsInOrder`), each in tree order. Within
+// one location or one band the later row wins.
 
 import type {
-  CodePins, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
+  CodePins, Entity, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
   Trait, TraitGroup,
 } from '@/types';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap, VALUE_JOIN } from './placeholders';
@@ -16,6 +17,7 @@ import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from
 import { activeDescriptor } from './statContext';
 import { thresholdUnitOf, type BandedStat } from './statDescriptorGeometry';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
+import { ownedTraitTree } from './traitTree';
 
 /** A stat as the descriptor source reads it: its bands and the value that picks one, plus the id and
  *  enabled flag that gate them. A live `PlayerStat` is one; so is an authored stat given its start value. */
@@ -227,6 +229,8 @@ function differingKeys(a: Record<string, string>, b: Record<string, string>): st
 /** The world as the priming pass reads pins from: every trait, location and stat it has. */
 export interface PinWorld {
   traits?: readonly Trait[];
+  /** Entities whose owned traits pin too. */
+  entities?: ReadonlyArray<Pick<Entity, 'traits'>>;
   locations?: ReadonlyArray<Pick<GameLocation, 'placeholderPins'>>;
   stats?: ReadonlyArray<Pick<BandedStat, 'descriptors'>>;
   placeholders: readonly Placeholder[];
@@ -246,6 +250,7 @@ export function allPinTexts(world: PinWorld): Record<string, string[]> {
     }
   };
   for (const trait of world.traits ?? []) add(trait.placeholderPins);
+  for (const entity of world.entities ?? []) for (const trait of entity.traits ?? []) add(trait.placeholderPins);
   for (const location of world.locations ?? []) add(location.placeholderPins);
   for (const stat of world.stats ?? []) for (const band of stat.descriptors ?? []) add(band.placeholderPins);
   for (const ph of world.placeholders) for (const value of ph.values ?? []) add(value.pins);
@@ -330,6 +335,8 @@ export interface PinRow {
 export interface PinEditorWorld {
   traits?: readonly Trait[];
   traitGroups?: readonly TraitGroup[];
+  /** The world's entities, whose owned traits pin too. */
+  entities?: readonly Entity[];
   locations?: readonly GameLocation[];
   stats?: readonly Stat[];
   placeholders: readonly Placeholder[];
@@ -337,6 +344,17 @@ export interface PinEditorWorld {
   /** The world's placeholder folders, so a pin picker heads its rows the way every other picker does. */
   placeholderGroups?: readonly PlaceholderGroup[];
   placementLetters?: PlacementLetters;
+}
+
+/** A trait with the lists its exclusive siblings live in: the world's, or its entity's own. */
+function traitHome(world: PinEditorWorld, id: string): { trait: Trait; traits: readonly Trait[]; groups: readonly TraitGroup[] } | null {
+  const own = (world.traits ?? []).find((t) => t.id === id);
+  if (own) return { trait: own, traits: world.traits ?? [], groups: world.traitGroups ?? [] };
+  for (const entity of world.entities ?? []) {
+    const trait = entity.traits?.find((t) => t.id === id);
+    if (trait) return { trait, traits: entity.traits ?? [], groups: entity.traitGroups ?? [] };
+  }
+  return null;
 }
 
 type PinList = readonly PlaceholderPin[];
@@ -446,31 +464,50 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
   trait: {
     label: 'Trait',
     empty: 'No traits to pin from.',
+    // Owned traits lay before the world's in play, so they list first and lose to a world trait by order.
     sources(world) {
       const name = labeler(world);
-      const { traits = [], traitGroups = [] } = world;
-      return inAuthoredOrder(traits, traitOrderIndex(traits, traitGroups)).map((trait) => ({
-        source: { kind: 'trait' as const, id: trait.id },
-        name: trait.name,
-        label: `Trait: ${name.text(trait.name)}`,
-        option: name.text(trait.name),
-        pins: trait.placeholderPins,
-      }));
+      const { traits = [], traitGroups = [], entities = [] } = world;
+      const order = traitOrderIndex(traits, traitGroups);
+      const tree = ownedTraitTree({ traits, traitGroups }, entities);
+      const treeOrder = traitOrderIndex(tree.traits, tree.groups);
+      const owned = [...tree.entityNodes.values()].flatMap((entity) => (entity.traits ?? []).map((trait) => ({ trait, entity })));
+      return [
+        ...owned.sort((a, b) => (treeOrder.get(a.trait.id) ?? 0) - (treeOrder.get(b.trait.id) ?? 0)),
+        ...inAuthoredOrder(traits, order).map((trait) => ({ trait, entity: null })),
+      ].map(({ trait, entity }) => {
+        const shown = `${entity ? `${name.text(entity.name)}'s ` : ''}${name.text(trait.name)}`;
+        return {
+          source: { kind: 'trait' as const, id: trait.id },
+          name: trait.name,
+          label: `Trait: ${shown}`,
+          option: shown,
+          pins: trait.placeholderPins,
+        };
+      });
     },
     key: (s) => `trait:${s.id}`,
     same: (a, b) => a.id === b.id,
     neverTogether: (world, a, b) => {
-      const trait = (world.traits ?? []).find((t) => t.id === a.id);
-      return !!trait && exclusiveSiblings(trait, world.traits ?? [], world.traitGroups ?? []).includes(b.id);
+      const home = traitHome(world, a.id);
+      return !!home && exclusiveSiblings(home.trait, home.traits, home.groups).includes(b.id);
     },
     ownerId: (s) => s.id,
     write: (world, source, change) => {
       const traits = mapOne(world.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
-      return traits ? { ...world, traits } : world;
+      if (traits) return { ...world, traits };
+      const entities = mapOne(world.entities, (e) => !!e.traits?.some((t) => t.id === source.id), (e) => {
+        const owned = mapOne(e.traits, (t) => t.id === source.id, (t) => rewritten(t, 'placeholderPins', change));
+        return owned ? { ...e, traits: owned } : null;
+      });
+      return entities ? { ...world, entities } : world;
     },
-    commit: ({ updateTrait }) => updateTrait && ((next, source) => {
+    // An owned trait goes back through its entity; a writer set without `updateEntity` drops that write.
+    commit: ({ updateTrait, updateEntity }) => updateTrait && ((next, source) => {
       const trait = next.traits?.find((t) => t.id === source.id);
-      if (trait) updateTrait(trait);
+      if (trait) return updateTrait(trait);
+      const entity = next.entities?.find((e) => e.traits?.some((t) => t.id === source.id));
+      if (entity) updateEntity?.(entity);
     }),
   },
   value: {
@@ -674,6 +711,8 @@ export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourc
 /** Where each kind of rewritten source goes back to. A writer left out declines that kind. */
 export interface PinWriters {
   updateTrait?: (trait: Trait) => void;
+  /** Takes an entity whose owned trait's pins changed. */
+  updateEntity?: (entity: Entity) => void;
   updateLocation?: (location: GameLocation) => void;
   updateStat?: (stat: Stat) => void;
   updatePlaceholder?: (placeholder: Placeholder) => void;

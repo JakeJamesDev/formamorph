@@ -763,7 +763,9 @@ describe('PlaceholderManager — the preview sample', () => {
     siblings = [ph(), eyes, hair];
     // Both belong to Molly; the world's own Scene is edited first, so the tip carries her name.
     // Nothing here writes back; the tip only needs the owner index.
-    const noWrite = { updateTrait: () => {}, updateLocation: () => {}, updateStat: () => {}, updatePlaceholder: () => {} };
+    const noWrite = {
+      updateTrait: () => {}, updateEntity: () => {}, updateLocation: () => {}, updateStat: () => {}, updatePlaceholder: () => {},
+    };
     gameData = {
       ...noWrite,
       placeholders: siblings,
@@ -925,6 +927,8 @@ describe('PlaceholderManager — the Pins section', () => {
       updateLocation: (l) => setState((w) => ({ ...w, locations: swap(w.locations, l) })),
       updateStat: (s) => setState((w) => ({ ...w, stats: swap(w.stats, s) })),
       updatePlaceholder: (p) => setState((w) => ({ ...w, placeholders: swap(w.placeholders, p) })),
+      // No entity in this world owns a trait.
+      updateEntity: () => {},
     };
     return <PlaceholderManager placeholder={TOWN} />;
   };

@@ -10,6 +10,7 @@ import {
   setTraitEnabled,
   settleTraits,
   switchPlayerTrait,
+  traitNameIn,
   traitSwitchLog,
   withCodeBounds,
   type TraitRuntimeState,
@@ -562,6 +563,96 @@ describe('gates in play', () => {
     const { state: next } = applyCodeTraitSwitches(cascaded, [{ traitId: 'plate', enabled: false, by: 'Vigor' }], gated());
     expect(next.cascadeOffTraitIds).toEqual({ world: ['aura'] });
     expect(on(player(next, 'paladin', true).state)).toEqual(['paladin']);
+  });
+});
+
+describe('owned traits in play', () => {
+  // The world's Paladin opens Ash's Loyal; Ash's Tamed opens the world's Beast Tamer. Tamed and Wild share
+  // Ash's exclusive Bond group. Gruff is Ash's but not switchable.
+  const paladin = trait('paladin', [], { name: 'Paladin', playerToggle: true });
+  const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
+    name: 'Beast Tamer', playerToggle: true, requires: [{ kind: 'trait', id: 'tamed' }],
+  });
+  const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, exclusive: true };
+  const ashTraits = [
+    trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
+    trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
+    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ kind: 'trait', id: 'paladin' }] }),
+    trait('gruff', [], { name: 'Gruff' }),
+  ];
+  const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
+  const owned = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
+    traits: [paladin, tamer], groups: [], entities: [{ id: 'ash', name: 'Ash', persona: true }], persona, entityOwners: [ash],
+  });
+  const name = (t: Trait) => t.name;
+  const flip = (s: TraitRuntimeState, id: string, enabled: boolean, w = owned()) => {
+    const result = switchPlayerTrait(s, id, enabled, w, name);
+    if (!result) throw new Error(`switch of ${id} refused`);
+    return result;
+  };
+  const onOf = (s: TraitRuntimeState) => [
+    ...activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id),
+    ...Object.entries(s.ownedTraits ?? {}).flatMap(([, o]) => o.chosen.filter((id) => !(o.disabled ?? []).includes(id))),
+  ];
+
+  it('switches an NPC’s toggleable trait on and off in its entity’s own lists, moving no stat', () => {
+    const on = flip(state(), 'tamed', true);
+    expect(on.state.ownedTraits).toEqual({ ash: { chosen: ['tamed'] } });
+    expect(on.log).toEqual(["Acquired trait: Ash's Tamed"]);
+    expect(on.state.stats).toEqual(state().stats);
+    const off = flip(on.state, 'tamed', false);
+    expect(off.state.ownedTraits).toEqual({ ash: { chosen: ['tamed'], disabled: ['tamed'] } });
+    expect(off.log).toEqual(["Trait switched off: Ash's Tamed"]);
+    expect(flip(off.state, 'tamed', true).state.ownedTraits).toEqual({ ash: { chosen: ['tamed'] } });
+  });
+
+  it('retires the exclusive sibling in the entity’s own group', () => {
+    const s = flip(flip(state(), 'tamed', true).state, 'wild', true);
+    expect(onOf(s.state)).toEqual(['wild']);
+    expect(s.log).toEqual(["Trait switched off: Ash's Tamed", "Acquired trait: Ash's Wild"]);
+  });
+
+  it('refuses a locked owned trait and one the author did not make switchable', () => {
+    expect(switchPlayerTrait(state(), 'loyal', true, owned(), name)).toBeNull();
+    expect(switchPlayerTrait(state(), 'gruff', true, owned(), name)).toBeNull();
+  });
+
+  it('cascades across owners both ways, and returns what the cascade turned off', () => {
+    let s = flip(flip(state(), 'paladin', true).state, 'loyal', true).state;
+    s = flip(flip(s, 'tamed', true).state, 'tamer', true).state;
+    expect(valueOf(s)).toBe(60);
+
+    const noPaladin = flip(s, 'paladin', false);
+    expect(noPaladin.cascade.map((t) => t.id)).toEqual(['loyal']);
+    expect(noPaladin.cascadeNames).toEqual(["Ash's Loyal"]);
+    expect(noPaladin.state.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+
+    const wild = flip(noPaladin.state, 'wild', true);
+    expect(wild.cascadeNames).toEqual(['Beast Tamer']);
+    expect(valueOf(wild.state)).toBe(50);
+    expect(onOf(wild.state)).toEqual(['wild']);
+
+    const back = flip(flip(wild.state, 'paladin', true).state, 'tamed', true);
+    expect(onOf(back.state)).toEqual(['paladin', 'tamer', 'loyal', 'tamed']);
+    expect(valueOf(back.state)).toBe(60);
+    expect(back.state.cascadeOffTraitIds).toEqual({});
+  });
+
+  it('names the played entity’s own traits bare, as the player’s', () => {
+    const asAsh = owned({ source: 'world', entityId: 'ash' });
+    expect(flip(state(), 'tamed', true, asAsh).log).toEqual(['Acquired trait: Tamed']);
+    expect(traitNameIn(asAsh, 'tamed', name)).toBe('Tamed');
+    expect(traitNameIn(owned(), 'tamed', name)).toBe("Ash's Tamed");
+    expect(traitNameIn(owned(), 'paladin', name)).toBe('Paladin');
+    expect(traitNameIn(owned(), 'gone', name)).toBeNull();
+  });
+
+  it('cascades an owned trait off when stat code switches its prerequisite off', () => {
+    const s = flip(flip(state(), 'paladin', true).state, 'loyal', true).state;
+    const { state: next, log } = applyCodeTraitSwitches(s, [{ traitId: 'paladin', enabled: false, by: 'Vigor' }], owned(), name);
+    expect(onOf(next)).toEqual([]);
+    expect(log).toEqual(['Trait switched off: Paladin (by Vigor)', "Trait switched off: Ash's Loyal (by Vigor)"]);
+    expect(next.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
   });
 });
 

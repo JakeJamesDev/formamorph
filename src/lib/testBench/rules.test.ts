@@ -1722,6 +1722,15 @@ describe('placeholder pin rules', () => {
       expect(found.message).toContain('“Trait: Woven” wins whenever it is in force');
     });
 
+    it('reads an entity’s owned trait as a rival, and lets the world’s trait win it', () => {
+      const [found] = only(contest({
+        traits: [trait({ id: 't1', name: 'Sworn', placeholderPins: [pinTo('red')] })],
+        entities: [{ id: 'ash', name: 'Ash', traits: [trait({ id: 'o1', name: 'Tamed', placeholderPins: [pinTo('blue')] })] }],
+      }), 'placeholder-pin-conflict');
+      expect(found.message).toBe('“Hue” is pinned by “Trait: Ash\'s Tamed” and “Trait: Sworn” — “Trait: Sworn” wins whenever it is in force');
+      expect(found.items).toContainEqual({ id: 'o1', name: 'Tamed', section: 'traits' });
+    });
+
     it('stays quiet for pins that can never be in force together: exclusive siblings, bands of one stat', () => {
       const siblings = contest({
         traitGroups: [origin],
