@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { usePersistentState, boolCodec, intCodec, floatCodec, nullableIntCodec } from './usePersistentState';

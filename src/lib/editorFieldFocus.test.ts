@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   revealEditorMatch, revealEditorChip, revealSelectedRow, clearEditorMatch, cancelEditorReveals, CHIP_TOKEN_ATTR,

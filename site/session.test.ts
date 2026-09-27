@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import AuthService from '@/services/AuthService';
 import { serverAssetSrc } from '@/lib/serverAssets';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 // Must load before importing the service: its singleton constructor opens IndexedDB.
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';

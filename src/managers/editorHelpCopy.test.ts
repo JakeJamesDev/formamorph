@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { sentenceShapeViolation } from '@/test/copyShape';
 import { ACTIVATION_INFO, KEYWORDS_INFO } from './DictionaryManager';

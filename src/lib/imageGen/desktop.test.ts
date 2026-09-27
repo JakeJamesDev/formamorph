@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 
 // The Android app is the web build in a WebView, so the only thing marking it is the build class. Nothing

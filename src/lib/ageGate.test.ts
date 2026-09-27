@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AGE_GATE_VERSION, acceptAgeGate, isAgeAttested } from './ageGate';
 

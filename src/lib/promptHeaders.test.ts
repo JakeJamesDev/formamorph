@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { renderPromptTemplate, renderPromptTemplateRuns, parsePromptTemplate, serializeSegments } from './promptTemplate';
 import { joinToken, splitToken } from './promptVariables';

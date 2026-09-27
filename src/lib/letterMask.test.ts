@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { letterMask, MASK_CACHE_LIMIT, type MaskCanvasFactory } from './letterMask';
 

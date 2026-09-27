@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { PROMPT_TEXT_DEFAULTS } from '@/components/game/GamePrompts';
 import { buildStyledValues } from './sectionStyle';

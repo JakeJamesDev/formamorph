@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseReleases, buildRecentChangelog, checkForUpdate, androidAssets, type GithubRelease } from './UpdateService';
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useSourceChecks } from './useSourceChecks';
