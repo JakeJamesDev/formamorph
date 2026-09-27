@@ -1518,7 +1518,22 @@ describe('trait gate rules', () => {
       const found = only(gates([gated('a', needs('b')), gated('b', needs('a'))]), rule);
       expect(ids(found)).toEqual([['a', 'b']]);
       expect(found[0].severity).toBe('error');
-      expect(found[0].message).toContain('“A” and “B”');
+      expect(found[0].message).toBe('“A” and “B” can never unlock — no pick or persona can meet their requirements');
+    });
+
+    it('lists each separate set as its own finding', () => {
+      const w = gates([gated('a', needs('b')), gated('b', needs('a')), gated('c', needs('d')), gated('d', needs('c'))]);
+      expect(ids(only(w, rule))).toEqual([['a', 'b'], ['c', 'd']]);
+    });
+
+    it('flags a trait whose only requirement is its own pick-one sibling', () => {
+      const w = gates(
+        [gated('a', needs('b'), { groupId: 'g' }), trait({ id: 'b', name: 'B', groupId: 'g' })],
+        { traitGroups: [{ id: 'g', name: 'Stance', parentId: null, exclusive: true }] },
+      );
+      const found = only(w, rule);
+      expect(ids(found)).toEqual([['a']]);
+      expect(found[0].message).toBe('“A” can never unlock — no pick or persona can meet its requirements');
     });
 
     it('passes a loop that opens through a third trait', () => {
@@ -1565,15 +1580,15 @@ describe('trait gate rules', () => {
       const found = only(w, rule);
       expect(ids(found)).toEqual([['a']]);
       expect(found[0].severity).toBe('error');
-      expect(found[0].message).toBe('“A” requires “Tamed”, any trait in “Bond” and playing as “Ash”, which this world no longer has');
+      expect(found[0].message).toBe('“A” requires “Tamed”, “any Bond” and “playing as Ash”, which this world no longer has');
     });
 
-    it('reads a requirement with no stored name by its kind', () => {
+    it('reads a requirement with no stored name as its editor chip does', () => {
       const w = gates([gated('a', [{ kind: 'trait', id: 'x' }]), gated('b', [{ kind: 'group', id: 'y' }]), gated('c', [{ kind: 'playingAs', id: 'z' }])]);
       expect(only(w, rule).map((f) => f.message)).toEqual([
-        '“A” requires a trait, which this world no longer has',
-        '“B” requires a trait group, which this world no longer has',
-        '“C” requires a persona, which this world no longer has',
+        '“A” requires “a missing trait”, which this world no longer has',
+        '“B” requires “any trait in a missing group”, which this world no longer has',
+        '“C” requires “playing as a missing persona”, which this world no longer has',
       ]);
     });
 
@@ -1597,7 +1612,7 @@ describe('trait gate rules', () => {
       const found = only(w, rule);
       expect(ids(found)).toEqual([['a']]);
       expect(found[0].severity).toBe('warning');
-      expect(found[0].message).toBe('“A” is marked default but starts unselected — it requires “B”, and no default that starts selected meets that');
+      expect(found[0].message).toBe('“A” is marked default but starts unselected — no starting default or persona choice meets “B”');
       expect(only(gates([gated('a', needs('b'), def), trait({ id: 'b', name: 'B', ...def })]), rule)).toEqual([]);
     });
 
@@ -1609,7 +1624,9 @@ describe('trait gate rules', () => {
     it('passes a default that some persona choice opens', () => {
       const w = (entities: Entity[]) => gates([gated('a', needs('b', { kind: 'playingAs', id: 'ash' }), def), trait({ id: 'b', name: 'B' })], { entities });
       expect(runRules(w([resident, ash]))).toEqual([]);
-      expect(ids(only(w([resident, { ...ash, persona: false }]), rule))).toEqual([['a']]);
+      const found = only(w([resident, { ...ash, persona: false }]), rule);
+      expect(ids(found)).toEqual([['a']]);
+      expect(found[0].message).toBe('“A” is marked default but starts unselected — no starting default or persona choice meets “B” or “playing as Ash”');
     });
 
     it('leaves a default in a never-unlockable set to the error rule', () => {
