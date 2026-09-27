@@ -1,6 +1,8 @@
 # 03: Extract the Settings Display and Output sections into production components
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built; the browser check at desktop and 375px is still open
+Base: ca83824a
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -17,9 +19,18 @@ Recommended model rationale: the largest extraction in the effort, across a very
 
 ## Acceptance criteria
 
-- [ ] The Settings dialog renders the Display and Output tabs through the two section components
-- [ ] Every existing Settings dialog test passes unchanged
-- [ ] Theme persistence and embedding-model load and dispose reach the page only through the settings source
-- [ ] The section components accept the mode as input and render the same rows in Simple and Advanced as before
+- [x] The Settings dialog renders the Display and Output tabs through the two section components
+- [x] Every existing Settings dialog test passes unchanged
+- [x] Theme persistence and embedding-model load and dispose reach the page only through the settings source
+- [x] The section components accept the mode as input and render the same rows in Simple and Advanced as before
 - [ ] No visible change in the Settings dialog at desktop and 375px, both themes
-- [ ] Four gates green
+- [x] Four gates green
+
+## Comments
+
+**Implementation notes (b624cf0b):**
+
+- Sections: `DisplaySettingsSection`, `OutputSettingsSection`. The source types are in `settingsSource.ts`. The download hook is `useEmbeddingDownload`.
+- The Output section takes `nativeReasoningRuledOut` as a prop. The dialog computes it from the selected prompt tab's routed endpoint, and not from the active endpoint. This keeps the move pure. It is probably a latent bug, and a separate decision.
+- **For ticket 04:** Theme Preview and the quote color field read token values from the live page (`getComputedStyle`). A Theme change in the reference will not recolor the preview. Nothing is written.
+- **No visible change:** a throwaway jsdom test compared the old and new tab panel HTML: Display and Output, in Simple and Advanced, with defaults and with every conditional row open. All eight were byte-identical. A one-class mutation made the diff fail. The browser check at desktop and 375px in both themes did not run, because the Browser pane was hidden.

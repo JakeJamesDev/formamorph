@@ -1,9 +1,8 @@
 import { PromptNavigationRail } from './PromptNavigationRail';
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { useSettings, type ThinkingMode, type ParagraphLimit } from '@/contexts/SettingsContext';
-import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS, THEME_COLORS, FONT_OPTIONS, NARRATION_FONT_OPTIONS, DEFAULT_NARRATION_SCALE, DEFAULT_NARRATION_LINE_HEIGHT, CONTINUE_CHOICE_MODES, NARRATION_LAYOUTS, type ContinueChoiceMode, type ThemeColor, type FontChoice, type NarrationFont } from '@/contexts/settingsDefaults';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useSettings } from '@/contexts/SettingsContext';
+import { DEFAULT_ENDPOINT, DEFAULT_API_TOKEN, DEFAULT_MODEL_NAME, DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { useTheme } from '../theme-provider';
-import { ThemePreviewButton } from '@/components/ThemePreviewDialog';
 import { LocalModelPanel } from '@/components/modals/LocalModelPanel';
 import LlmSetupGuide from '@/components/modals/LlmSetupGuide';
 import { settingsTabsFor, type SettingsTabId } from '@/components/modals/settingsTabs';
@@ -16,12 +15,17 @@ import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/se
 import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
-import { Row, CheckRow, Section, SubGroup, HintInfo, RecommendedMark, OptionSwitcher, CheckboxOptionGroup } from '@/components/SettingsRows';
-import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, SETTINGS_OPTIONS, REASONING_EFFORT_HELP, REASONING_NOTES, TOOLS_NOTES, type SettingOptionCopy } from '@/components/modals/settingsCopy';
-import { rowCopy, optionRowCopy } from '@/components/modals/settingsRowCopy';
+import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
+import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, REASONING_NOTES } from '@/components/modals/settingsCopy';
+import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { reasoningLevelOptions, promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, type PromptReasoningSetting, type ReasoningSetting } from '@/lib/reasoningEffort';
+import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, budgetReadout, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import { reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
+import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
+import { DisplaySettingsSection } from './DisplaySettingsSection';
+import { OutputSettingsSection } from './OutputSettingsSection';
+import type { SettingsSource } from './settingsSource';
+import { useEmbeddingDownload } from './useEmbeddingDownload';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -44,22 +48,16 @@ import { FullscreenShell } from "@/components/FullscreenShell";
 import { useMorphFullscreen, type MorphFullscreen } from "@/lib/useMorphFullscreen";
 import { composePreviewValues, languagePreviewValue } from "@/lib/previewValuePool";
 import { Button } from "@/components/ui/button";
-import { RevealAnimationDemoButton } from "@/components/RevealAnimationDemo";
-import { FontTuneButton } from "@/components/FontTuneDialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tip } from "@/components/ui/tooltip";
-import { Progress } from "@/components/ui/progress";
-import { loadEmbeddingModel, disposeEmbeddingModel, type EmbeddingLoadProgress } from '@/lib/embeddingWorkerClient';
+import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { ColorPicker } from "@/components/ui/color-picker";
-import { useRootSnapshot } from '@/lib/useRootSnapshot';
-import { hslTripleToHex } from '@/lib/hslColor';
 import PromptField from '../prompt/PromptField';
 import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, SUBJECT } from '@/lib/promptVariables';
 import { defaultPromptSampler } from '@/lib/promptSamplers';
@@ -82,7 +80,6 @@ import { fetchInvokeMeta, invokeConnectionMessage, encodersFor, vaesFor, PREFIXE
 import { NOVELAI_MODELS, NOVELAI_DEFAULTS } from '@/lib/imageGen/novelai';
 import { DEFAULT_ENDPOINT_BY_PROVIDER, resolveImageEndpoint } from '@/lib/imageGen';
 import { TokenAutocomplete } from '@/components/TokenAutocomplete';
-import { COMMON_LANGUAGES } from '@/lib/languages';
 import ImageSetupGuide from './ImageSetupGuide';
 import ComfyWorkflowGuide from './ComfyWorkflowGuide';
 import { DEFAULT_TAG_PROMPT, SUBJECT_GUIDANCE } from '@/lib/imagePrompt';
@@ -91,11 +88,6 @@ import { resetTutorials, useSeenTutorialCount, useTutorial } from '@/lib/tutoria
 /** What the Model trigger shows for a NovelAI preset with no model set — the id the provider falls back to. */
 const novelaiDefaultLabel = NOVELAI_MODELS.find((m) => m.id === NOVELAI_DEFAULTS.model)?.label ?? NOVELAI_DEFAULTS.model;
 
-// The segmented rows' options. Copy lives in `settingsCopy`; these bindings only narrow `value` to the
-// setting's own union, so an option that drifts from the setting fails to compile.
-const THEME_OPTIONS: readonly SettingOptionCopy<'light' | 'dark' | 'system'>[] = SETTINGS_OPTIONS.theme;
-const PARAGRAPH_LIMIT_OPTIONS: readonly SettingOptionCopy<ParagraphLimit>[] = SETTINGS_OPTIONS.paragraphLimit;
-const THINKING_OPTIONS: readonly SettingOptionCopy<ThinkingMode>[] = SETTINGS_OPTIONS.thinking;
 /** Sentinel for the InvokeAI "no board" choice — Radix Select rejects an empty-string item value, and the
  *  stored setting is '' (Uncategorized). */
 const UNCATEGORIZED_BOARD = '__uncategorized__';
@@ -307,76 +299,6 @@ function PromptEndpointField({ value, activeName, presets, onChange, target, dis
 }
 
 /**
- * The strength half of a Native Reasoning control: a dropdown of the levels the endpoint accepts, or the
- * budget slider on a target that caps the thought segment by tokens — the built-in engine and LM Studio.
- * Inert while the switch beside it is off, but still showing the remembered value.
- */
-type ReasoningStrength<L extends string> =
-  | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
-  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void };
-
-/** The budget readout: the percent, and its token result when the prompt's cap is known. */
-function budgetReadout(pct: number, tokens: number | undefined): string {
-  return tokens === undefined ? `${pct}%` : `${pct}% · ${tokens} tok`;
-}
-
-/**
- * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
- * and engine share; what sits beside it depends on the engine. `id` labels the switch for assistive tech.
- */
-function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange, strength, disabled, lockedOn }: {
-  id: string;
-  enabled: boolean;
-  onEnabledChange: (on: boolean) => void;
-  /** Absent where the target takes neither a level nor a budget, so the switch is the whole control. */
-  strength: ReasoningStrength<L> | null;
-  disabled?: boolean;
-  /** The endpoint refuses to switch reasoning off, so the switch reads checked and takes no clicks. The
-   *  strength beside it stays live, and applies on every prompt whose own switch is on. A prompt left off
-   *  sends no level at all, so the model spends its own default there. */
-  lockedOn?: boolean;
-}) {
-  const inert = disabled || !(enabled || lockedOn);
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 shrink-0 items-center">
-        <Checkbox
-          id={id}
-          checked={lockedOn || enabled}
-          disabled={disabled || lockedOn}
-          onCheckedChange={(c) => onEnabledChange(c === true)}
-          aria-label={SETTINGS_COPY.nativeReasoning.label}
-        />
-      </span>
-      {strength?.kind === 'level' && (
-        <Select value={strength.value} onValueChange={(v) => strength.onChange(v as L)} disabled={inert}>
-          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {strength.options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      )}
-      {strength?.kind === 'budget' && (
-        <>
-          {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
-          <Slider
-            className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
-            value={[strength.value]}
-            min={MIN_REASONING_BUDGET_PCT}
-            max={100}
-            step={5}
-            disabled={inert}
-            onValueChange={(v) => strength.onChange(v[0])}
-            aria-label={SETTINGS_COPY.reasoningBudget.label}
-          />
-          <span className="w-[17ch] shrink-0 whitespace-nowrap text-right text-label tabular-nums">{budgetReadout(strength.value, strength.tokens)}</span>
-        </>
-      )}
-    </div>
-  );
-}
-
-/**
  * A prompt's Native Reasoning control: its switch, then Global or its own level, and on a target that takes a
  * token budget the Reasoning Budget slider under it. Both go out on the wire there, so both are shown; the one
  * switch governs both. Global follows Settings → Output → Native Reasoning, switch included. The built-in
@@ -524,27 +446,6 @@ function PromptsShell({ morph, sourceRef, title, children }: {
   );
 }
 
-/** The active theme's own dialogue color, before any custom override. */
-const readThemeDialogueHex = () =>
-  hslTripleToHex(getComputedStyle(document.documentElement).getPropertyValue('--dialogue'));
-
-/** The custom quote color for the mode on screen. Memoized so the style read skips the modal's re-renders. */
-const QuoteColorField = memo(function QuoteColorField() {
-  const { quoteColorMode, activeQuoteColor, setActiveQuoteColor } = useSettings();
-  const themeDialogueHex = useRootSnapshot(readThemeDialogueHex);
-  return (
-    <Row htmlFor="quoteColorCustom" {...rowCopy(quoteColorMode === 'dark' ? 'quoteColorDark' : 'quoteColorLight')}>
-      <ColorPicker
-        id="quoteColorCustom"
-        value={activeQuoteColor ?? themeDialogueHex}
-        onChange={setActiveQuoteColor}
-        onReset={() => setActiveQuoteColor(null)}
-        resetLabel={SETTINGS_BUTTONS.resetToTheme}
-      />
-    </Row>
-  );
-});
-
 export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, initialTab, initialEndpointTab, initialPromptTab, initialPromptSurface, initialPromptField, onWorldsRestored, onStartAuthoringTour, forcedMode }: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -647,11 +548,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // Honor a later dev-router tab change while the modal stays open (a fresh __fmDev.goto).
   useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
   useEffect(() => { if (initialEndpointTab) setEndpointTab(initialEndpointTab); }, [initialEndpointTab]);
+  const settings = useSettings();
   const {
-    bgmEnabled,
-    setBgmEnabled,
     language,
-    setLanguage,
     endpointUrl,
     setEndpointUrl,
     apiToken,
@@ -692,17 +591,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     locationChangePromptText,
     setLocationChangePromptText,
     choicesEnabled,
-    continueChoiceMode,
-    setContinueChoiceMode,
-    narrationLayout,
-    setNarrationLayout,
-    setChoicesEnabled,
     statUpdatesEnabled,
-    setStatUpdatesEnabled,
     locationChangeEnabled,
-    setLocationChangeEnabled,
     locationAutoApply,
-    setLocationAutoApply,
     narrationVerbatimTurns,
     setNarrationVerbatimTurns,
     thinkingVerbatimTurns,
@@ -716,14 +607,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     summaryVerbatimTurns,
     setSummaryVerbatimTurns,
     thinkingMode,
-    setThinkingMode,
     limitActiveCharacters,
-    setLimitActiveCharacters,
     activeCharacterLimit,
-    setActiveCharacterLimit,
     reasoningEffort,
-    nativeReasoning,
-    setNativeReasoning,
     reasoningCapability,
     promptReasoningSettings,
     setPromptReasoning,
@@ -783,8 +669,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setDiscoverEntityPrompt,
     discoverEntityUserPrompt,
     setDiscoverEntityUserPrompt,
-    sceneImageAuto,
-    setSceneImageAuto,
     setSummaryUserPrompt,
     promptPresets,
     builtinPresets,
@@ -808,31 +692,19 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     exportActivePreset,
     importPreset,
     memoryDigests,
-    setMemoryDigests,
     semanticMemory,
-    setSemanticMemory,
     semanticLore,
-    setSemanticLore,
     semanticRehydration,
     timeContext,
-    setTimeContext,
     aiClock,
-    setAiClock,
-    setSemanticRehydration,
     semanticDiaries,
-    setSemanticDiaries,
     semanticBandCap,
-    setSemanticBandCap,
     concurrentTurnRequests,
-    setConcurrentTurnRequests,
     toolsEnabled,
-    setToolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
     characterDiaries,
     describeCharacters,
-    setDescribeCharacters,
-    setCharacterDiaries,
     genTemperature,
     genRepetitionPenalty,
     promptSamplers,
@@ -842,17 +714,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     setPromptEndpoint,
     resolveEndpointForKind,
     showSilentRequests,
-    setShowSilentRequests,
     showReasoning,
-    setShowReasoning,
     paragraphLimit,
-    setParagraphLimit,
-    locationBackground,
-    setLocationBackground,
-    backgroundOverlay,
-    setBackgroundOverlay,
     markdownOutput,
-    setMarkdownOutput,
     imageProvider,
     setImageProvider,
     imageEndpoint,
@@ -901,50 +765,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     resetImageEndpointPreset,
     imageTagPrompt,
     setImageTagPrompt,
-    themeColor,
-    setThemeColor,
-    fontFamily,
-    setFontFamily,
-    narrationFont,
-    setNarrationFont,
-    narrationScale,
-    setNarrationScale,
-    narrationLineHeight,
-    setNarrationLineHeight,
-    quoteColor,
-    setQuoteColor,
-    quoteItalic,
-    setQuoteItalic
-  } = useSettings();
+  } = settings;
   const sharedEndpointActive = activeTextEndpointPresetIsBuiltIn && !localModelActive;
-  const { theme, setTheme } = useTheme();
+  const themeState = useTheme();
   const desktop = isDesktop();
   const [connectionGuideOpen, setConnectionGuideOpen] = useState(false);
-  // Embedding-model download state for the semantic memory toggle. Local to the modal: the toggle
-  // stays on through a failed download (scoring fails open until the model arrives), so this state
-  // only drives the progress bar / error row.
-  const [embedLoading, setEmbedLoading] = useState(false);
-  const [embedProgress, setEmbedProgress] = useState<EmbeddingLoadProgress | null>(null);
-  const [embedError, setEmbedError] = useState<string | null>(null);
-  const startEmbeddingDownload = () => {
-    setEmbedLoading(true);
-    setEmbedError(null);
-    setEmbedProgress(null);
-    loadEmbeddingModel(setEmbedProgress)
-      .then(() => setEmbedError(null))
-      .catch((err) => setEmbedError((err as Error).message))
-      .finally(() => { setEmbedLoading(false); setEmbedProgress(null); });
-  };
-  const handleSemanticMemoryToggle = (on: boolean) => {
-    setSemanticMemory(on);
-    if (on) startEmbeddingDownload();
-    else if (!semanticLore) void disposeEmbeddingModel(); // model stays while any semantic feature needs it
-  };
-  const handleSemanticLoreToggle = (on: boolean) => {
-    setSemanticLore(on);
-    if (on) startEmbeddingDownload();
-    else if (!semanticMemory) void disposeEmbeddingModel();
-  };
+  const embeddingModel = useEmbeddingDownload(loadEmbeddingModel, disposeEmbeddingModel);
+  const settingsSource: SettingsSource = { ...settings, ...themeState, embeddingModel };
   const handleResetEndpointSettings = () => {
     setEndpointUrl(DEFAULT_ENDPOINT);
     setModelName(DEFAULT_MODEL_NAME);
@@ -1483,9 +1310,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
   // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
   const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
-  // The Output row reads the ACTIVE endpoint's record, which is a different target from the one a pinned
-  // prompt resolves to.
-  const activeReasoningAlwaysOn = reasoningOffRefused(reasoningCapability);
   const activeToolsSupported = toolsSupported(reasoningCapability);
   // A dialect that publishes nothing about its own reasoning, such as a vLLM server, has no per-prompt
   // control worth drawing until one reply proves it separates its reasoning: no budget to send, and no
@@ -1607,553 +1431,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
           <TabsContent value="display" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-6 py-4">
-              <Section title="Appearance">
-              <Row top {...optionRowCopy('theme', THEME_OPTIONS.find((o) => o.value === theme))}>
-                <div>
-                  <ToggleGroup
-                    type="single"
-                    value={theme}
-                    // A single ToggleGroup clears its value when the active item is clicked again; a theme
-                    // is always set, so an empty result is ignored rather than stored.
-                    onValueChange={(v) => { if (v) setTheme(v as 'light' | 'dark' | 'system'); }}
-                    className="grid w-full grid-cols-3"
-                  >
-                    {THEME_OPTIONS.map((o) => (
-                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                  {/* Help texts stacked in one cell so switching options doesn't reflow the layout. */}
-                  <div className="grid mt-2">
-                    {THEME_OPTIONS.map((o) => (
-                      <p
-                        key={o.value}
-                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === theme ? '' : ' invisible'}`}
-                      >
-                        {o.help}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </Row>
-              <Row htmlFor="themeColor" {...rowCopy('themeColor')}>
-                <div className="flex items-center gap-3">
-                  <Select value={themeColor} onValueChange={(v) => setThemeColor(v as ThemeColor)}>
-                    <SelectTrigger id="themeColor" className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {THEME_COLORS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <ThemePreviewButton />
-                </div>
-              </Row>
-              <Row htmlFor="fontFamily" {...rowCopy('font')}>
-                <div className="flex items-center gap-3">
-                  <Select value={fontFamily} onValueChange={(v) => setFontFamily(v as FontChoice)}>
-                    <SelectTrigger id="fontFamily" className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {FONT_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FontTuneButton font={fontFamily} />
-                </div>
-              </Row>
-              </Section>
-
-              <Section title="Scene">
-              <CheckRow
-                htmlFor="bgmEnabled"
-                checked={bgmEnabled}
-                onChange={setBgmEnabled}
-                {...rowCopy('backgroundMusic')}
-              />
-              <CheckRow
-                htmlFor="locationBackground"
-                checked={locationBackground}
-                onChange={setLocationBackground}
-                {...rowCopy('locationBackground')}
-              />
-              {locationBackground && (
-                <SubGroup>
-                <Row {...rowCopy('backgroundFade')}>
-                  <div className="flex items-center gap-3">
-                    <Slider
-                      value={[backgroundOverlay]}
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      onValueChange={(v) => setBackgroundOverlay(v[0])}
-                      className="max-w-[220px]"
-                    />
-                    <span className="text-meta text-muted-foreground tabular-nums w-9 shrink-0">
-                      {Math.round(backgroundOverlay * 100)}%
-                    </span>
-                  </div>
-                </Row>
-                </SubGroup>
-              )}
-              {/* Whether every turn gets a picture is a scene setting; the server that draws it stays on
-                  Endpoints. Hidden with image generation itself, which is the switch it depends on. */}
-              {!imageGenDisabled && (
-                <CheckRow
-                  htmlFor="sceneImageAuto"
-                  checked={sceneImageAuto}
-                  onChange={setSceneImageAuto}
-                  {...rowCopy('sceneImages')}
-                />
-              )}
-              </Section>
-
-              <Section title="Narration">
-              <Row {...rowCopy('narrationLayout')}>
-                <OptionSwitcher
-                  ariaLabel="Narration Layout"
-                  value={narrationLayout}
-                  onChange={setNarrationLayout}
-                  options={NARRATION_LAYOUTS}
-                />
-              </Row>
-              <Row {...rowCopy('narrationReveal')}>
-                <RevealAnimationDemoButton />
-              </Row>
-              <Row {...rowCopy('aiLanguage')}>
-                <TokenAutocomplete
-                  single
-                  openOnFocus
-                  values={language ? [language] : []}
-                  onChange={(vals) => setLanguage(vals[0] ?? '')}
-                  options={COMMON_LANGUAGES}
-                  placeholder="Language or style…"
-                />
-              </Row>
-              {advanced && (
-              <Row top {...optionRowCopy('paragraphLimit', PARAGRAPH_LIMIT_OPTIONS.find((o) => o.value === paragraphLimit))}>
-                <div>
-                  <ToggleGroup
-                    type="single"
-                    value={paragraphLimit}
-                    // A single ToggleGroup clears its value when the active item is clicked again; the limit
-                    // always has a setting, so an empty result is ignored rather than stored.
-                    onValueChange={(v) => { if (v) setParagraphLimit(v as ParagraphLimit); }}
-                    className="grid w-full grid-cols-3"
-                  >
-                    {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
-                      <ToggleGroupItem key={o.value} value={o.value}>{o.label}{o.recommended && <RecommendedMark />}</ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                  {/* All option texts stacked in one grid cell so the block is always as tall as the
-                      longest — switching options shows the active one without reflowing the layout. */}
-                  <div className="grid mt-2">
-                    {PARAGRAPH_LIMIT_OPTIONS.map((o) => (
-                      <p
-                        key={o.value}
-                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === paragraphLimit ? '' : ' invisible'}`}
-                      >
-                        {o.help}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </Row>
-              )}
-              {advanced && (
-              <CheckRow
-                htmlFor="markdownOutput"
-                checked={markdownOutput}
-                onChange={setMarkdownOutput}
-                {...rowCopy('markdownFormatting')}
-              />
-              )}
-              </Section>
-
-              {/* These rows sit with the rest of what the story looks like; the section keeps the word
-                  "Accessibility" so the term stays findable. */}
-              <Section title="Accessibility" hint="Applies to the story text only, not the rest of the app.">
-              <Row htmlFor="narrationFont" {...rowCopy('narrationFont')}>
-                <div className="flex items-center gap-3">
-                  <Select value={narrationFont} onValueChange={(v) => setNarrationFont(v as NarrationFont)}>
-                    <SelectTrigger id="narrationFont" className="w-56">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NARRATION_FONT_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value} style={{ fontFamily: o.stack || undefined }}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {/* `global` ⇒ this pane runs on the app font, so Customize tunes that same font. */}
-                  <FontTuneButton font={narrationFont === 'global' ? fontFamily : narrationFont} />
-                </div>
-              </Row>
-              <Row {...rowCopy('narrationTextSize')}>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[narrationScale]}
-                    min={0.85}
-                    max={1.6}
-                    step={0.05}
-                    onValueChange={(v) => setNarrationScale(v[0])}
-                    className="max-w-[220px]"
-                  />
-                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
-                    {Math.round(narrationScale * 100)}%
-                  </span>
-                </div>
-              </Row>
-              <Row {...rowCopy('lineSpacing')}>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[narrationLineHeight]}
-                    min={1.2}
-                    max={2.2}
-                    step={0.05}
-                    onValueChange={(v) => setNarrationLineHeight(v[0])}
-                    className="max-w-[220px]"
-                  />
-                  <span className="text-meta text-muted-foreground tabular-nums w-10 shrink-0">
-                    {narrationLineHeight.toFixed(2)}
-                  </span>
-                </div>
-              </Row>
-              <CheckRow
-                htmlFor="quoteColor"
-                checked={quoteColor}
-                onChange={setQuoteColor}
-                {...rowCopy('quoteColor')}
-              />
-              {quoteColor && <QuoteColorField />}
-              <CheckRow
-                htmlFor="quoteItalic"
-                checked={quoteItalic}
-                onChange={setQuoteItalic}
-                {...rowCopy('quoteItalic')}
-              />
-              <Row>
-                <div>
-                  <ConfirmDialog
-                    {...SETTINGS_CONFIRMS.resetSizeSpacing}
-                    onConfirm={() => { setNarrationScale(DEFAULT_NARRATION_SCALE); setNarrationLineHeight(DEFAULT_NARRATION_LINE_HEIGHT); }}
-                  >
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={narrationScale === DEFAULT_NARRATION_SCALE && narrationLineHeight === DEFAULT_NARRATION_LINE_HEIGHT}
-                    >
-                      {SETTINGS_BUTTONS.resetSizeSpacing}
-                    </Button>
-                  </ConfirmDialog>
-                </div>
-              </Row>
-              </Section>
-
-              {/* Both rows only decide whether a panel appears on screen — nothing about them changes what
-                  the AI produces, which is what keeps the Output tab honest. */}
-              {advanced && (
-              <Section title="Inspection" hint="Surfaces work that normally happens out of sight.">
-              <CheckRow
-                htmlFor="showReasoning"
-                checked={showReasoning}
-                onChange={setShowReasoning}
-                {...rowCopy('showReasoning')}
-              />
-              <CheckRow
-                htmlFor="showSilentRequests"
-                checked={showSilentRequests}
-                onChange={setShowSilentRequests}
-                {...rowCopy('showSilentRequests')}
-              />
-              </Section>
-              )}
-            </div>
+              <DisplaySettingsSection source={settingsSource} mode={mode} />
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="output" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-            <div className="grid gap-6 py-4">
-              <Section title="Turn Extras" hint="Optional passes that run alongside each turn's narration.">
-              {/* Enable/disable the optional per-turn requests. Synced with the System Prompts tab, which
-                  shows a prompt's editor tab only while it's enabled here. */}
-              <Row {...rowCopy('systemPrompts')}>
-                <CheckboxOptionGroup options={[
-                  { id: 'choicesEnabled', label: 'Choices', checked: choicesEnabled, onChange: setChoicesEnabled },
-                  { id: 'statUpdatesEnabled', label: 'Stat Updates', checked: statUpdatesEnabled, onChange: setStatUpdatesEnabled },
-                  { id: 'locationChangeEnabled', label: 'Location Change', checked: locationChangeEnabled, onChange: setLocationChangeEnabled },
-                ]} />
-              </Row>
-              {/* Auto-apply detected location changes — its own row, only shown while Location Change is on. */}
-              {locationChangeEnabled && (
-                <SubGroup>
-                <CheckRow
-                  htmlFor="locationAutoApply"
-                  checked={locationAutoApply}
-                  onChange={setLocationAutoApply}
-                  {...rowCopy('moveAutomatically')}
-                />
-                </SubGroup>
-              )}
-              </Section>
-
-              <Section title="Reasoning">
-              <Row top {...optionRowCopy('thinking', THINKING_OPTIONS.find((o) => o.value === thinkingMode))}>
-                <div>
-                  <OptionSwitcher value={thinkingMode} onChange={(v) => setThinkingMode(v as ThinkingMode)} options={THINKING_OPTIONS} />
-                  {/* Stacked like Paragraph Limit so switching thinking modes doesn't reflow the layout. */}
-                  <div className="grid mt-2">
-                    {THINKING_OPTIONS.map((o) => (
-                      <p
-                        key={o.value}
-                        className={`col-start-1 row-start-1 text-helper text-muted-foreground${o.value === thinkingMode ? '' : ' invisible'}`}
-                      >
-                        {o.help}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </Row>
-              {/* Staged only: cap how many characters the director stages per turn (each is its own pass). Off =
-                  unbounded. Feeds both the hard cap and the <ACTIVE CHARACTER GUIDANCE> chip in the director prompt. */}
-              {advanced && thinkingMode === 'staged' && (
-                <SubGroup>
-                <Row {...rowCopy('limitActiveCharacters')}>
-                  <div className="flex items-center gap-3">
-                    <Checkbox
-                      checked={limitActiveCharacters}
-                      onCheckedChange={(v) => setLimitActiveCharacters(v === true)}
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      value={activeCharacterLimit}
-                      disabled={!limitActiveCharacters}
-                      onChange={(e) => setActiveCharacterLimit(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-20"
-                    />
-                  </div>
-                </Row>
-                </SubGroup>
-              )}
-              {/* The endpoint-wide effort every prompt set to Global follows, in every Thinking mode. The levels
-                  are whichever the active endpoint accepts (detected on connect). */}
-              {advanced && noNativeReasoning && (
-                <SubGroup>
-                <Row muted label={SETTINGS_COPY.nativeReasoning.label}>
-                  <p className="pt-2 text-helper text-muted-foreground">{REASONING_NOTES.never}</p>
-                </Row>
-                </SubGroup>
-              )}
-              {advanced && !noNativeReasoning && (
-                <SubGroup>
-                <Row top htmlFor="nativeReasoning" {...optionRowCopy('nativeReasoning')}>
-                  {/* Stacks the selected level's help under the control, so the label pins to the first line. */}
-                  <div data-row-stacked>
-                    <ReasoningSwitch
-                      id="nativeReasoning"
-                      enabled={nativeReasoning.enabled}
-                      onEnabledChange={(enabled) => setNativeReasoning({ ...nativeReasoning, enabled })}
-                      lockedOn={activeReasoningAlwaysOn}
-                      strength={{
-                        kind: 'level',
-                        value: nativeReasoning.level,
-                        options: reasoningLevelOptions(reasoningCapability, nativeReasoning.level),
-                        onChange: (level: ReasoningSetting['level']) => setNativeReasoning({ ...nativeReasoning, level }),
-                      }}
-                    />
-                    <p className="mt-2 text-helper text-muted-foreground">
-                      {activeReasoningAlwaysOn ? REASONING_NOTES.always : REASONING_EFFORT_HELP[reasoningEffort]}
-                    </p>
-                  </div>
-                </Row>
-                </SubGroup>
-              )}
-              </Section>
-
-              {/* Reads the active endpoint's record, like the Native Reasoning row; the wire gate checks each
-                  prompt's own target. */}
-              {advanced && (
-              <Section title="Tools" hint="What the AI can look up while it works.">
-              {activeToolsSupported ? (
-                <CheckRow
-                  htmlFor="toolsEnabled"
-                  checked={toolsEnabled}
-                  onChange={setToolsEnabled}
-                  {...rowCopy('tools')}
-                />
-              ) : (
-                <Row muted label={SETTINGS_COPY.tools.label} experimental={SETTINGS_COPY.tools.experimental}>
-                  <p className="pt-2 text-helper text-muted-foreground">{TOOLS_NOTES.unsupported}</p>
-                </Row>
-              )}
-              </Section>
-              )}
-
-              {advanced && (<>
-              <Section title="Memory" hint="What the AI carries forward from earlier turns.">
-              <CheckRow
-                htmlFor="memoryDigests"
-                checked={memoryDigests}
-                onChange={setMemoryDigests}
-                {...rowCopy('memorySummaries')}
-              />
-              {memoryDigests && (
-                <SubGroup>
-                <CheckRow
-                  htmlFor="semanticMemory"
-                  checked={semanticMemory}
-                  onChange={handleSemanticMemoryToggle}
-                  {...rowCopy('semanticMemory')}
-                />
-                {semanticMemory && (
-                  <SubGroup>
-                  {/* Always-on top-K cap: derived checkbox (cap > 0), enabling seeds a sensible default. */}
-                  <Row {...rowCopy('memoryCap')}>
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        checked={semanticBandCap > 0}
-                        onCheckedChange={(v) => setSemanticBandCap(v === true ? 12 : 0)}
-                      />
-                      <Input
-                        type="number"
-                        min={3}
-                        value={semanticBandCap > 0 ? semanticBandCap : 12}
-                        disabled={semanticBandCap === 0}
-                        onChange={(e) => setSemanticBandCap(Math.max(3, parseInt(e.target.value) || 3))}
-                        className="w-20"
-                      />
-                    </div>
-                  </Row>
-                  <CheckRow
-                    htmlFor="semanticRehydration"
-                    checked={semanticRehydration}
-                    onChange={setSemanticRehydration}
-                    {...rowCopy('sceneRecall')}
-                  />
-                  </SubGroup>
-                )}
-                </SubGroup>
-              )}
-              {embedLoading && (
-                <Row>
-                  <div className="flex items-center gap-2">
-                    <Progress
-                      className="h-2 flex-1"
-                      value={embedProgress && embedProgress.total > 0 ? (embedProgress.loaded / embedProgress.total) * 100 : 0}
-                    />
-                    <span className="text-meta text-muted-foreground whitespace-nowrap">
-                      {embedProgress && embedProgress.total > 0
-                        ? `${Math.round(embedProgress.loaded / 1048576)} / ${Math.round(embedProgress.total / 1048576)} MB`
-                        : 'Preparing…'}
-                    </span>
-                  </div>
-                </Row>
-              )}
-              {embedError && !embedLoading && (semanticMemory || semanticLore) && (
-                <Row>
-                  <div className="flex items-center gap-2">
-                    <span className="text-helper text-destructive">Model download failed: {embedError}</span>
-                    <Button variant="outline" size="sm" onClick={startEmbeddingDownload}>Retry</Button>
-                  </div>
-                </Row>
-              )}
-              </Section>
-
-              {/* Both rows are about the story's clock rather than what the AI remembers, so they get their
-                  own section — gated on Memory Summaries, which is what they already depended on as rows. */}
-              {memoryDigests && (
-              <Section title="Time" hint="How long each turn takes, and when things happened.">
-              <CheckRow
-                htmlFor="timeContext"
-                checked={timeContext}
-                onChange={setTimeContext}
-                {...rowCopy('timeInMemory')}
-              />
-              <CheckRow
-                htmlFor="aiClock"
-                checked={aiClock}
-                onChange={setAiClock}
-                {...rowCopy('measuredClock')}
-              />
-              </Section>
-              )}
-
-              {/* Semantic Lore acts on the dictionary, not on memories — it sat under Memory only because it
-                  shares Semantic Memory's on-device model, whose download progress stays up there. */}
-              <Section title="Lore" hint="How dictionary entries reach the AI.">
-              <CheckRow
-                htmlFor="semanticLore"
-                checked={semanticLore}
-                onChange={handleSemanticLoreToggle}
-                {...rowCopy('semanticLore')}
-              />
-              </Section>
-
-              {/* Split out of Memory: these three are about the cast, and only sat under Memory because
-                  that is where the code for them happens to live. */}
-              <Section title="Characters">
-              {/* Descriptions work from the narration alone, so unlike diaries this is offered in every mode. */}
-              <CheckRow
-                htmlFor="describeCharacters"
-                checked={describeCharacters}
-                onChange={setDescribeCharacters}
-                {...rowCopy('describeNewCharacters')}
-              />
-              {/* Diaries are only read by the staged character pass, so the option only appears in that mode. */}
-              {thinkingMode === 'staged' && (
-                <>
-                <CheckRow
-                  htmlFor="characterDiaries"
-                  checked={characterDiaries}
-                  onChange={setCharacterDiaries}
-                  {...rowCopy('characterDiaries')}
-                />
-                {characterDiaries && semanticMemory && (
-                  <SubGroup>
-                  <CheckRow
-                    htmlFor="semanticDiaries"
-                    checked={semanticDiaries}
-                    onChange={setSemanticDiaries}
-                    {...rowCopy('diaryRecall')}
-                  />
-                  </SubGroup>
-                )}
-                </>
-              )}
-              </Section>
-              </>)}
-
-              <Section title="Choices">
-              <Row {...rowCopy('continueTheStory')}>
-                <OptionSwitcher
-                  value={continueChoiceMode}
-                  onChange={(v) => setContinueChoiceMode(v as ContinueChoiceMode)}
-                  options={CONTINUE_CHOICE_MODES}
-                />
-              </Row>
-              </Section>
-
-              {advanced && (
-              <Section title="Performance">
-              <CheckRow
-                htmlFor="concurrentTurnRequests"
-                checked={concurrentTurnRequests}
-                onChange={setConcurrentTurnRequests}
-                {...rowCopy('concurrentRequests')}
-              />
-              </Section>
-              )}
-            </div>
+              <OutputSettingsSection source={settingsSource} mode={mode} nativeReasoningRuledOut={noNativeReasoning} />
             </ScrollArea>
           </TabsContent>
 

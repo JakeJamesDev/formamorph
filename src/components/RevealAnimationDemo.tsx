@@ -29,6 +29,17 @@ import {
 } from '@/lib/narrationRevealConfig';
 import 'streamdown/styles.css';
 
+/** The reveal settings the dialog reads and writes; the live context unless a caller supplies its own. */
+export type RevealAnimationSource = Pick<ReturnType<typeof useSettings>,
+  | 'revealSpec' | 'revealFade' | 'setRevealFade' | 'revealMove' | 'setRevealMove'
+  | 'revealMoveDirection' | 'setRevealMoveDirection' | 'revealMoveDistance' | 'setRevealMoveDistance'
+  | 'revealScale' | 'setRevealScale' | 'revealScaleMode' | 'setRevealScaleMode'
+  | 'revealScaleDirection' | 'setRevealScaleDirection' | 'revealScaleAmount' | 'setRevealScaleAmount'
+  | 'revealBlur' | 'setRevealBlur' | 'revealBlurAmount' | 'setRevealBlurAmount'
+  | 'revealEasing' | 'setRevealEasing' | 'revealMinDuration' | 'setRevealMinDuration'
+  | 'revealMinStagger' | 'setRevealMinStagger' | 'prefersReducedMotion'
+>;
+
 const SAMPLE =
   'The lantern guttered as you stepped into the hollow. Cold air pressed close, and somewhere ahead water dripped in the dark. You are not alone here.';
 const WORDS = SAMPLE.split(' ');
@@ -44,7 +55,8 @@ function DirectionSelect({ value, onChange }: { value: RevealDirection; onChange
   );
 }
 
-function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; onOpenChange: (v: boolean) => void; source?: RevealAnimationSource }) {
+  const live = useSettings();
   const {
     revealSpec,
     revealFade, setRevealFade,
@@ -61,7 +73,7 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     revealMinDuration, setRevealMinDuration,
     revealMinStagger, setRevealMinStagger,
     prefersReducedMotion,
-  } = useSettings();
+  } = source ?? live;
 
   const [loop, setLoop] = useState(true);
   const [playKey, setPlayKey] = useState(0);
@@ -314,14 +326,14 @@ function RevealAnimationDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 }
 
 /** Button + dialog to compose and preview the narration reveal animation; drop into settings. */
-export function RevealAnimationDemoButton() {
+export function RevealAnimationDemoButton({ source }: { source?: RevealAnimationSource }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
         Choose reveal animation…
       </Button>
-      <RevealAnimationDialog open={open} onOpenChange={setOpen} />
+      <RevealAnimationDialog open={open} onOpenChange={setOpen} source={source} />
     </>
   );
 }
