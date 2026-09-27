@@ -3151,7 +3151,7 @@ const GameViewer = ({
         // A failed silent request (the digest) is non-fatal — let the drainer swallow it without a toast.
         throw error;
       } else {
-        // The turn knows this already showed, because it knows the failed request wasn't silent.
+        // The turn knows this failure toast already showed, because it knows the failed request wasn't silent.
         toastAiRequestFailure(error, () => setConnectionGuideOpen(true));
       }
       throw error;

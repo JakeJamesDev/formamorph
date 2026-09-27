@@ -1,6 +1,6 @@
 # 02: AI stream errors carry the server's reason
 
-Status: in-progress
+Status: ready-for-human
 Base: e92ea5ef
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -18,10 +18,10 @@ Recommended model rationale: the stream is the app's hottest path and the overri
 
 ## Acceptance criteria
 
-- [ ] An HTTP failure from a stubbed fetch throws the stream error with `details` naming the status, the server's message, param, type, code and the raw body
-- [ ] The thrown error is still an instance of its class with its `kind`, so rejected-override detection still returns its notice
-- [ ] The in-game toast on that failure shows **View Details →**, and the window contains the server's message
-- [ ] A URL with a key in its query string appears masked in the details; a URL without one is unchanged
-- [ ] Details contain no request headers
-- [ ] Mutation checks: skipping redaction and dropping the raw body each fail a test
-- [ ] Four gates green
+- [x] An HTTP failure from a stubbed fetch throws the stream error with `details` naming the status, the server's message, param, type, code and the raw body
+- [x] The thrown error is still an instance of its class with its `kind`, so rejected-override detection still returns its notice
+- [x] The in-game toast on that failure shows **View Details →**, and the window contains the server's message
+- [x] A URL with a key in its query string appears masked in the details; a URL without one is unchanged
+- [x] Details contain no request headers
+- [x] Mutation checks: skipping redaction and dropping the raw body each fail a test
+- [x] Four gates green
