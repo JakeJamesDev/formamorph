@@ -98,8 +98,18 @@ export function useDevRoute(): DevRoute | null {
 }
 
 /** Install `window.__fmDev` (goto/route/clear). Returns a cleanup; a no-op outside DEV. Call once from App. */
+/**
+ * Seed the `#dev` hash from `VITE_DEV_ROUTE` (the query part, e.g. `modal=designSystem`) so a launch
+ * entry can land on a screen with no console call. A hash already in the URL wins.
+ */
+export function seedDevRouteFromEnv(query: string | undefined = import.meta.env.VITE_DEV_ROUTE): void {
+  if (!DEV || !query || window.location.hash) return;
+  window.location.hash = `#dev?${query.replace(/^#?dev\??/, '')}`;
+}
+
 export function installDevRouter(): () => void {
   if (!DEV) return () => {};
+  seedDevRouteFromEnv();
   const w = window as unknown as { __fmDev?: Record<string, unknown> };
   // Merge (don't replace) so imperative hooks registered by mounted providers (e.g. `setImage` from
   // SettingsContext) survive regardless of effect order — child effects run before this parent effect.
