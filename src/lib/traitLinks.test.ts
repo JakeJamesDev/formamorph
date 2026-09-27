@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { addLink, detachLink, detachDropsStats, dropCustomPersonaLinksTo, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault } from './traitLinks';
+import {
+  addLink, detachLink, detachDropsStats, dropCustomPersonaLinksTo, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault,
+  setLinkPinValue,
+} from './traitLinks';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -160,5 +163,41 @@ describe('detachLink', () => {
     const a: Entity = { id: 'a', name: 'A', traitLinks: [link('l1', 'gone', 'trait')] };
     expect(detachLink(world, a, 'l1')).toBeNull();
     expect(detachLink(world, a, 'nope')).toBeNull();
+  });
+});
+
+describe('bearer-relative pin values on links', () => {
+  const garb = (value: string, valueId?: string) =>
+    ({ placeholderId: '', value, ...(valueId ? { valueId } : {}), bearerPlaceholder: 'Class Garb' });
+  const pinned = {
+    traits: [trait('paladin', { name: 'Paladin', groupId: 'classes', placeholderPins: [garb('Tabard', 'v-tabard')] }), trait('wizard', { groupId: 'classes' })],
+    traitGroups: [group('classes', null, { name: 'Classes' })],
+  };
+  const ownGarb = [{ id: 'albus-garb', name: 'Class Garb', values: [] }];
+
+  it("starts a new link with the pin's own value where it binds to the world placeholder", () => {
+    expect(addLink(pinned, { id: 'mira', name: 'Mira' }, 'classes', 'new')?.traitLinks?.[0].pinValues)
+      .toEqual({ paladin: { 'Class Garb': { value: 'Tabard', valueId: 'v-tabard' } } });
+  });
+
+  it("starts it unset where the bearer has its own placeholder of that name", () => {
+    expect(addLink(pinned, { id: 'albus', name: 'Albus', placeholders: ownGarb }, 'paladin', 'new')?.traitLinks?.[0])
+      .not.toHaveProperty('pinValues');
+  });
+
+  it('stores and clears one value, dropping emptied maps', () => {
+    const bearer: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l1', 'paladin', 'trait')] };
+    const set = setLinkPinValue(bearer, 'l1', 'paladin', 'Class Garb', { value: 'Plate' });
+    expect(set.traitLinks![0].pinValues).toEqual({ paladin: { 'Class Garb': { value: 'Plate' } } });
+    expect(setLinkPinValue(set, 'l1', 'paladin', 'Class Garb', null).traitLinks![0]).toEqual(link('l1', 'paladin', 'trait'));
+  });
+
+  it("gives a detached copy the link's value as its own, and an empty one where the link had none", () => {
+    const valued: Entity = {
+      id: 'mira', name: 'Mira', traitLinks: [link('l1', 'paladin', 'trait', { pinValues: { paladin: { 'Class Garb': { value: 'Plate' } } } })],
+    };
+    expect(detachLink(pinned, valued, 'l1')!.entity.traits![0].placeholderPins).toEqual([garb('Plate')]);
+    const unset: Entity = { id: 'bo', name: 'Bo', traitLinks: [link('l1', 'paladin', 'trait')] };
+    expect(detachLink(pinned, unset, 'l1')!.entity.traits![0].placeholderPins).toEqual([garb('')]);
   });
 });

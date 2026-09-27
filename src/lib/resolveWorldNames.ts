@@ -27,10 +27,11 @@ function list(values: string[] | undefined, resolve: ResolveText): string[] | un
   return mapPreservingIdentity(values, (v) => (hasPlaceholders(v) ? resolve(v) : v));
 }
 
-export function resolveEntityNames(entities: Entity[], resolve: ResolveText): Entity[] {
+export function resolveEntityNames(entities: Entity[], resolve: (text: string, entity: Entity) => string): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
-    const name = one(e.name, resolve);
-    const aliases = list(e.aliases, resolve);
+    const own: ResolveText = (text) => resolve(text, e);
+    const name = one(e.name, own);
+    const aliases = list(e.aliases, own);
     return name === e.name && aliases === e.aliases ? e : { ...e, name: name ?? '', aliases };
   });
 }

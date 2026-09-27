@@ -11,13 +11,8 @@
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { allPinRows, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
-import { traitOwners } from '@/lib/ownedTraits';
-import { pinTraitsInOrder } from '@/lib/ownedTraitsInPlay';
-import {
-  activeStatEnabled, collapseExclusiveDefaults, exclusiveSiblings, inAuthoredOrder, traitOrderIndex,
-} from '@/lib/traitEffects';
-import { settle, WORLD_OWNER } from '@/lib/traitGates';
+import { allPinRows, bindBearerPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import type { GameLocation, Placeholder, Trait } from '@/types';
 import type { RuleWorld } from './rules';
@@ -186,7 +181,9 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   });
   const pinLayers = layers.map((layer): LensPinLayer => ({
     ...layer,
-    label: rows.find((r) => sameSource(r.source, layer.source) && (r.pin === layer.pin || samePin(r.pin, layer.pin)))?.label ?? '',
+    // A bound bearer-relative pin matches no stored row, but its source's label is the same for every pin.
+    label: (rows.find((r) => sameSource(r.source, layer.source) && (r.pin === layer.pin || samePin(r.pin, layer.pin)))
+      ?? rows.find((r) => sameSource(r.source, layer.source)))?.label ?? '',
   }));
   return {
     state,
@@ -208,21 +205,10 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
   return activeTraitsFor(world, lens.pc);
 }
 
-/**
- * Every trait whose pins a fresh game under the lens lays, in play's order: each entity's owned defaults,
- * settled against `active` with no persona, then `active` itself.
- */
+/** Every trait whose pins world-level text reads in a fresh game under the lens: the player's `active`, with
+ *  no persona, so a bearer-relative pin binds to the world's placeholder. */
 export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
-  const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [], entities: world.entities ?? [] };
-  const owners = traitOwners(lists);
-  const proposed: Record<string, string[]> = { [WORLD_OWNER]: active.map((t) => t.id) };
-  for (const owner of owners.filter((o) => o.id !== WORLD_OWNER)) {
-    const defaults = owner.traits.filter((t) => t.isDefault).map((t) => t.id);
-    proposed[owner.id] = collapseExclusiveDefaults(defaults, [...owner.traits], [...owner.groups]);
-  }
-  const { [WORLD_OWNER]: _world, ...owned } =
-    settle({ owners, active: proposed, entities: lists.entities, persona: { source: 'none' } }).active;
-  return pinTraitsInOrder(lists, active, owned, null);
+  return active.map((t) => bindBearerPins(t, undefined, [], world.placeholders ?? []));
 }
 
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {

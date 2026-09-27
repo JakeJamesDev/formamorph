@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
+import type { Entity, GameLocation, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
 import {
   activePlaceholderPins, addPinAt, allPinTexts, canCommitPinSource, collectPinLayers, collectPins, commitPinSource, pinConflict, pinSourceKey, pinSourcesOfKind,
-  pinsTargeting, removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
+  pinsTargeting, removePinAt, sameSource, updatePinAt, valuePinRollChips, type PinnableStat,
 } from './placeholderPins';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -538,7 +538,7 @@ describe('pin write-back — add, update and remove on the source a row names', 
   });
 });
 
-describe('owned traits as pin sources — every owner’s traits, the cast before the world', () => {
+describe('owned traits as pin sources — the world’s traits, then each cast entity’s', () => {
   const ash = {
     id: 'ash', name: 'Ash',
     traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
@@ -554,16 +554,22 @@ describe('owned traits as pin sources — every owner’s traits, the cast befor
     placeholders: [P('town', ['Marrow'])],
   } as unknown as EditorWorld;
 
-  it('lists an owned trait’s pin under its owner’s name, before the world’s traits', () => {
-    expect(pinsTargeting(world, 'town').map((r) => r.label)).toEqual(["Trait: Ash's Tamed", "Trait: Ash's Wild", 'Trait: Sworn']);
-    expect(pinSourcesOfKind(world, 'trait', 'town').map((o) => o.label)).toEqual(["Ash's Tamed", "Ash's Wild", 'Sworn']);
+  it('lists an owned trait’s pin under its owner’s name, after the world’s traits', () => {
+    expect(pinsTargeting(world, 'town').map((r) => r.label)).toEqual(['Trait: Sworn', "Trait: Ash's Tamed", "Trait: Ash's Wild"]);
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((o) => o.label)).toEqual(['Sworn', "Ash's Tamed", "Ash's Wild"]);
   });
 
-  it('lets a world trait beat an owned trait on the same placeholder, by order', () => {
-    const fromTamed = pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!;
-    expect(fromTamed.winner?.label).toBe('Trait: Sworn');
-    expect(fromTamed.rule).toBe('order');
-    expect(pinConflict(world, 'town', { kind: 'trait', id: 'sworn' })!.winner).toBeNull();
+  it('lets a cast entity’s owned trait beat the player’s world trait, since it lays last in its own text', () => {
+    const fromSworn = pinConflict(world, 'town', { kind: 'trait', id: 'sworn' })!;
+    expect(fromSworn.winner?.label).toBe("Trait: Ash's Wild");
+    expect(fromSworn.rule).toBe('order');
+    expect(pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!.winner).toBeNull();
+  });
+
+  it('never pits two cast entities’ traits against each other', () => {
+    const bo = { id: 'bo', name: 'Bo', traits: [trait('feral', [pin('town', 'Feral')], { name: 'Feral' })] };
+    const both = { ...world, entities: [ash, bo] } as unknown as EditorWorld;
+    expect(pinConflict(both, 'town', { kind: 'trait', id: 'feral' })!.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
   });
 
   it('never pits an owned trait against its exclusive sibling', () => {
@@ -584,6 +590,72 @@ describe('owned traits as pin sources — every owner’s traits, the cast befor
     expect(canCommitPinSource({ kind: 'trait', id: 'wild' }, { updateEntity: onlyEntity })).toBe(true);
     commitPinSource(next, { kind: 'trait', id: 'wild' }, { updateEntity: onlyEntity });
     expect(onlyEntity).toHaveBeenCalledWith(next.entities![0]);
+  });
+});
+
+describe('link values as pin sources — a bearer-relative pin, valued per link', () => {
+  const garb = (value: string): PlaceholderPin => ({ placeholderId: '', value, bearerPlaceholder: 'Class Garb' });
+  const link = (id: string, value?: string): TraitLink => ({
+    id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 0,
+    ...(value ? { pinValues: { paladin: { 'Class Garb': { value } } } } : {}),
+  });
+  const albusGarb: Placeholder = { id: 'albus-garb', name: 'Class Garb', values: phValues(['Gilded plate']) };
+  const worldGarb: Placeholder = { id: 'garb', name: 'Class Garb', values: phValues(['Robe', 'Plate']) };
+  const world = {
+    traits: [trait('paladin', [garb('Tabard')], { name: 'Paladin', groupId: 'templates' })],
+    traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+    entities: [
+      { id: 'albus', name: 'Albus', placeholders: [albusGarb], traitLinks: [link('l-albus', 'Gilded plate')] },
+      { id: 'mira', name: 'Mira', traitLinks: [link('l-mira', 'Plate')] },
+      { id: 'bo', name: 'Bo', traitLinks: [link('l-bo')] },
+    ],
+    customPersona: { traitLinks: [link('l-you', 'Robe')] },
+    placeholders: [worldGarb, albusGarb],
+  } as unknown as EditorWorld;
+  const mira = { kind: 'trait' as const, id: 'paladin', link: { bearerId: 'mira', linkId: 'l-mira', name: 'Class Garb' } };
+
+  it('lists each link value on the placeholder it binds to, the bearer named, and leaves an unset link out', () => {
+    expect(pinsTargeting(world, 'albus-garb').map((r) => [r.label, r.pin.value])).toEqual([["Trait: Albus's Paladin", 'Gilded plate']]);
+    expect(pinsTargeting(world, 'garb').map((r) => [r.label, r.pin.value])).toEqual([
+      ["Trait: Custom Persona's Paladin", 'Robe'], ["Trait: Mira's Paladin", 'Plate'],
+    ]);
+  });
+
+  it('keeps link values out of the add and re-aim pickers', () => {
+    expect(pinSourcesOfKind(world, 'trait', 'garb').map((o) => o.label)).toEqual(['Paladin']);
+  });
+
+  it('writes a value edit to the link, and hands the bearer to its writer', () => {
+    const [row] = pinsTargeting(world, 'garb').filter((r) => sameSource(r.source, mira));
+    const next = updatePinAt(world, row.source, row.pin, { placeholderId: 'garb', value: 'Robe', valueId: 'v1' });
+    expect(next.entities![1].traitLinks![0].pinValues).toEqual({ paladin: { 'Class Garb': { value: 'Robe', valueId: 'v1' } } });
+    expect(next.traits).toBe(world.traits);
+    const updateEntity = vi.fn();
+    commitPinSource(next, row.source, { updateTrait: vi.fn(), updateEntity });
+    expect(updateEntity).toHaveBeenCalledWith(next.entities![1]);
+  });
+
+  it('clears the link’s value on remove, which lays no pin', () => {
+    const [row] = pinsTargeting(world, 'garb').filter((r) => sameSource(r.source, mira));
+    const next = removePinAt(world, row.source, row.pin);
+    expect(next.entities![1].traitLinks![0].pinValues).toBeUndefined();
+    expect(pinsTargeting(next, 'garb').map((r) => r.label)).toEqual(["Trait: Custom Persona's Paladin"]);
+  });
+
+  it('writes a Custom Persona link value back through its own writer', () => {
+    const [row] = pinsTargeting(world, 'garb');
+    const next = updatePinAt(world, row.source, row.pin, { placeholderId: 'garb', value: 'Plate' });
+    expect(next.customPersona!.traitLinks[0].pinValues).toEqual({ paladin: { 'Class Garb': { value: 'Plate' } } });
+    const updateCustomPersona = vi.fn();
+    commitPinSource(next, row.source, { updateTrait: vi.fn(), updateCustomPersona });
+    expect(updateCustomPersona).toHaveBeenCalledWith(next.customPersona);
+  });
+
+  it('pits a cast entity’s link value against the player’s, never against another cast entity’s', () => {
+    const sameGarb = { ...world, entities: [(world.entities as Entity[])[1], { ...(world.entities as Entity[])[2], traitLinks: [link('l-bo', 'Robe')] }] } as unknown as EditorWorld;
+    const conflict = pinConflict(sameGarb, 'garb', mira)!;
+    expect(conflict.rivals.map((r) => r.label)).toEqual(["Trait: Custom Persona's Paladin"]);
+    expect(conflict.winner).toBeNull();
   });
 });
 

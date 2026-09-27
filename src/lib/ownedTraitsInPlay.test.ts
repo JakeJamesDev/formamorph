@@ -1,65 +1,119 @@
 import { describe, it, expect } from 'vitest';
-import type { Entity, Placeholder, PlaceholderPin, Trait } from '@/types';
+import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
 import { phValues } from '@/test/placeholderValues';
-import { collectPinLayers, collectPins } from './placeholderPins';
-import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, pinTraitsInOrder } from './ownedTraitsInPlay';
+import type { PinnableStat } from './placeholderPins';
+import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type BearerPinState } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 
 const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
 const trait = (id: string, pins: PlaceholderPin[] = [], extra: Partial<Trait> = {}): Trait =>
   ({ id, name: id, statChanges: [], ...(pins.length ? { placeholderPins: pins } : {}), ...extra });
-const placeholders: Placeholder[] = [{ id: 'mood', name: 'mood', values: phValues(['calm', 'wary', 'fierce']) }];
+const NONE: PersonaRef = { source: 'none' };
+const shared: Placeholder[] = [
+  { id: 'garb', name: 'Class Garb', values: phValues(['Robe', 'Plate', 'Tabard']) },
+  { id: 'mood', name: 'Mood', values: phValues(['calm', 'wary', 'fierce']) },
+];
+const garb = (value: string): PlaceholderPin => ({ placeholderId: '', value, bearerPlaceholder: 'Class Garb' });
+const link = (id: string, originalId: string, pinValues?: TraitLink['pinValues']): TraitLink =>
+  ({ id, originalId, kind: 'trait', originalName: originalId, groupId: null, order: 5, ...(pinValues ? { pinValues } : {}) });
+const worn = (value: string) => ({ paladin: { 'Class Garb': { value } } });
 
-// Ash sits before the world's Class group in the tree; Bo is placed after it.
-const ash: Entity = {
-  id: 'ash', name: 'Ash', traitPlacement: { groupId: null, order: 0 },
-  traits: [trait('t-tamed', [pin('mood', 'calm')])],
+const paladin = trait('paladin', [garb('Tabard')], { groupId: 'templates', statToggles: [{ statId: 'hunger', enabled: false }] });
+const brave = trait('brave', [pin('mood', 'wary')], { groupId: null, order: 0 });
+const cloak = trait('cloak', [garb('Robe')], { groupId: null, order: 1 });
+// Albus carries his own Class Garb; Mira and Bo fall back to the world's.
+const albus: Entity = {
+  id: 'albus', name: 'Albus', persona: true,
+  placeholders: [{ id: 'albus-garb', name: 'Class Garb', values: phValues(['Gilded plate', 'Chain']) }],
+  traits: [trait('t-stern', [pin('mood', 'fierce')], { groupId: null, order: 0 })],
+  traitLinks: [link('l-albus', 'paladin', worn('Gilded plate'))],
 };
-const bo: Entity = {
-  id: 'bo', name: 'Bo', traitPlacement: { groupId: null, order: 5 },
-  traits: [trait('t-feral', [pin('mood', 'fierce')])],
+const mira: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l-mira', 'paladin', worn('Plate'))] };
+const bo: Entity = { id: 'bo', name: 'Bo', traitLinks: [link('l-bo', 'paladin')] };
+const lib: Entity = {
+  id: 'lib', name: 'Wren', persona: true,
+  placeholders: [{ id: 'lib-garb', name: 'Class Garb', values: phValues(['Wren cloak']) }],
 };
 const world = {
-  traits: [trait('t-paladin', [pin('mood', 'wary')], { groupId: 'g-class' }), trait('t-plain', [], { groupId: 'g-class' })],
-  traitGroups: [{ id: 'g-class', name: 'Class', parentId: null, order: 1 }],
-  entities: [ash, bo],
+  traits: [brave, cloak, paladin],
+  traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const }],
+  entities: [albus, mira, bo],
+  customPersona: { traitLinks: [link('l-you', 'paladin', worn('Robe'))] },
 };
+const hunger: PinnableStat = {
+  id: 'hunger', value: 10, min: 0, max: 100, enabled: true,
+  descriptors: [{ id: 'starving', threshold: 20, description: 'Starving', placeholderPins: [pin('mood', 'calm')] }],
+};
+const owned = { albus: ['t-stern', 'paladin'], mira: ['paladin'], bo: ['paladin'] };
+const pinsUnder = (persona: PersonaRef, playerTraits: Trait[], extra: Partial<BearerPinState> = {}) =>
+  bearerPins(
+    { world, persona, library: [lib], playerTraits, owned, sharedPlaceholders: shared, ...extra },
+    { placeholders: [...shared, ...albus.placeholders!, ...lib.placeholders!] },
+  );
 
-describe('pinTraitsInOrder — every owner lays its pins, the player last', () => {
-  it('lets an NPC’s active owned trait pin a placeholder', () => {
-    const traits = pinTraitsInOrder(world, [world.traits[1]], { ash: ['t-tamed'] }, null);
-    expect(collectPins({ traits, placeholders })).toEqual({ mood: 'calm' });
+describe('bearerPins — each bearer lays its own pins', () => {
+  it("binds a bearer-relative pin to the bearer's own placeholder, valued by the link", () => {
+    expect(pinsUnder(NONE, []).of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
   });
 
-  it('lets the player’s world trait beat an NPC’s owned trait on the same placeholder', () => {
-    // Bo's node sits after Class in the tree, so tree order alone would hand Bo the win.
-    const traits = pinTraitsInOrder(world, [world.traits[0]], { ash: ['t-tamed'], bo: ['t-feral'] }, null);
-    const { pins, layers } = collectPinLayers({ traits, placeholders });
-    expect(pins).toEqual({ mood: 'wary' });
-    expect(layers.map((l) => [l.source.kind === 'trait' && l.source.id, l.wins])).toEqual([
-      ['t-tamed', false], ['t-feral', false], ['t-paladin', true],
-    ]);
+  it('falls back to the world placeholder of that name, valued by the link', () => {
+    expect(pinsUnder(NONE, []).of('mira')).toEqual({ garb: 'Plate' });
   });
 
-  it('counts the played entity’s owned traits as the player’s, in tree order beside the world traits', () => {
-    // Playing as Bo: Bo's Feral now lays after Ash's Tamed, and after Paladin since Bo's node follows Class.
-    const asBo = pinTraitsInOrder(world, [world.traits[0]], { ash: ['t-tamed'], bo: ['t-feral'] }, 'bo');
-    expect(asBo.map((t) => t.id)).toEqual(['t-tamed', 't-paladin', 't-feral']);
-    expect(collectPins({ traits: asBo, placeholders })).toEqual({ mood: 'fierce' });
-    // Playing as Ash: Ash's node sits before Class, so Paladin still lays after Tamed.
-    const asAsh = pinTraitsInOrder(world, [world.traits[0]], { ash: ['t-tamed'], bo: ['t-feral'] }, 'ash');
-    expect(asAsh.map((t) => t.id)).toEqual(['t-feral', 't-tamed', 't-paladin']);
+  it('lays no pin for a link with no value', () => {
+    expect(pinsUnder(NONE, []).of('bo')).toEqual({});
   });
 
-  it('places a library entity’s node last', () => {
-    const lib: Entity = { id: 'lib', name: 'Lib', traits: [trait('t-lib', [pin('mood', 'calm')])] };
-    const traits = pinTraitsInOrder(world, [world.traits[0]], { lib: ['t-lib'], bo: ['t-feral'] }, 'lib', [lib]);
-    expect(traits.map((t) => t.id)).toEqual(['t-feral', 't-paladin', 't-lib']);
+  it("keeps a cast entity's pins out of world-level text", () => {
+    const pins = pinsUnder(NONE, [brave]);
+    expect(pins.world).toEqual({ mood: 'wary' });
+    expect(pins.of(null)).toBe(pins.world);
   });
 
-  it('lays nothing for an owned trait that is not active, or an owner the playthrough does not hold', () => {
-    const traits = pinTraitsInOrder(world, [], { ash: [], ghost: ['t-gone'] }, null);
-    expect(traits).toEqual([]);
+  it("lays the player's pins in world-level text and in a cast entity's, under the entity's own", () => {
+    const pins = pinsUnder(NONE, [brave, paladin]);
+    expect(pins.world).toEqual({ mood: 'wary', garb: 'Robe' });
+    // Mira's Plate beats the player's Robe in her own text; the player's Wary reaches it untouched.
+    expect(pins.of('mira')).toEqual({ mood: 'wary', garb: 'Plate' });
+    expect(pins.of('bo')).toBe(pins.world);
+  });
+
+  it("gives a directly held bearer-relative pin the pin's own value", () => {
+    expect(pinsUnder(NONE, [cloak]).world).toEqual({ garb: 'Robe' });
+    // Played as Albus, the same root trait binds to his own Class Garb.
+    expect(pinsUnder({ source: 'world', entityId: 'albus' }, [cloak], { owned: { albus: ['t-stern'] } }).world)
+      .toEqual({ 'albus-garb': 'Robe', mood: 'fierce' });
+  });
+
+  it("reads the played persona's own text with the player's set", () => {
+    const pins = pinsUnder({ source: 'world', entityId: 'albus' }, [brave]);
+    expect(pins.world).toEqual({ mood: 'fierce', 'albus-garb': 'Gilded plate' });
+    expect(pins.of('albus')).toBe(pins.world);
+  });
+
+  it("binds Custom Persona's links to a library persona's own placeholder first", () => {
+    expect(pinsUnder({ source: 'library', entityId: 'lib' }, [paladin]).world).toEqual({ 'lib-garb': 'Robe' });
+  });
+
+  it("lets only the player's traits decide which stat bands pin", () => {
+    const pins = bearerPins(
+      { world, persona: NONE, playerTraits: [], owned, sharedPlaceholders: shared },
+      { placeholders: shared, stats: [hunger] },
+    );
+    // Mira's Paladin switches Hunger off; that toggle is not the player's, so the band still pins.
+    expect(pins.of('mira')).toEqual({ garb: 'Plate', mood: 'calm' });
+  });
+
+  it('drops a disabled player trait, and binds a trait card for its bearer', () => {
+    const pins = pinsUnder(NONE, [brave, paladin], { disabledTraitIds: ['brave'] });
+    expect(pins.world).toEqual({ garb: 'Robe' });
+    expect(pins.bind(paladin, 'albus').placeholderPins).toEqual([{ placeholderId: 'albus-garb', value: 'Gilded plate' }]);
+    expect(pins.bind(paladin, 'bo').placeholderPins).toEqual([]);
+    expect(pins.bind(brave, 'albus')).toBe(brave);
+  });
+
+  it('lays nothing for a bearer the playthrough does not hold', () => {
+    expect(pinsUnder(NONE, []).of('ghost')).toEqual({});
   });
 });
 

@@ -187,23 +187,19 @@ describe('pins from owned traits', () => {
     ],
   }];
 
-  it('lays an NPC’s owned default trait, labeled with its owner', () => {
+  it('keeps a cast entity’s owned default out of the world-level pins', () => {
     const lens = buildLens(world({ entities: ash() }), { pcTraitId: null, locationId: null });
+    expect(lens.pins).toEqual({});
+    expect(buildLens(world({ entities: ash() }), { pcTraitId: 't-sedge', locationId: null }).pinLayers.map((l) => [l.label, l.wins]))
+      .toEqual([['Trait: Sedge-Born', true]]);
+  });
+
+  it('binds the PC’s bearer-relative pin to the world placeholder of that name, labeled with the trait', () => {
+    const relative = { placeholderId: '', value: 'jet', bearerPlaceholder: 'Hair Color' };
+    const w = world({ traits: [{ ...traits[0], placeholderPins: [relative] }, ...traits.slice(1)] });
+    const lens = buildLens(w, { pcTraitId: 't-sedge', locationId: null });
     expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
-    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([["Trait: Ash's Tamed", true]]);
-  });
-
-  it('lets the PC’s own trait win a placeholder an NPC’s trait also pins', () => {
-    const lens = buildLens(world({ entities: ash() }), { pcTraitId: 't-sedge', locationId: null });
-    expect(lens.pins).toEqual({ 'ph-hair': 'copper' });
-    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([["Trait: Ash's Tamed", false], ['Trait: Sedge-Born', true]]);
-  });
-
-  it('leaves out an owned default whose gate the lens does not meet', () => {
-    // Ash's Tamed needs the player's Reach, which only the lens's PC pick supplies.
-    const gated = ash({ requires: [{ kind: 'trait', id: 't-reach', bearer: { kind: 'you' } }] });
-    expect(buildLens(world({ entities: gated }), { pcTraitId: null, locationId: null }).pins).toEqual({});
-    expect(buildLens(world({ entities: gated }), { pcTraitId: 't-reach', locationId: null }).pins).toEqual({ 'ph-hair': 'jet' });
+    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
   });
 });
 

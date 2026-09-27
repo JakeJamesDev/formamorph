@@ -14,7 +14,7 @@ import type { Placeholder, PlaceholderPin } from '@/types';
  * conflict note under each row. The rows are the whole editor; the section heading, its help button and
  * the popover a row sits in belong to the host.
  */
-export function PlaceholderPinRows({ pins, onChange, source, world, placeholders, excludeId, onOpenTrait }: {
+export function PlaceholderPinRows({ pins, onChange, source, world, placeholders, excludeId, bearerNames, onOpenTrait }: {
   pins: readonly PlaceholderPin[];
   onChange: (next: PlaceholderPin[]) => void;
   /** The source these pins live on: what the note leaves out of its rivals. */
@@ -27,6 +27,9 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
   /** Left out of the picker, and refused with a note when a stored pin names it: a value cannot pin the
    *  placeholder it belongs to. */
   excludeId?: string;
+  /** Given, the picker also offers these placeholder names relative to the bearer: a trait's pin on "the
+   *  bearer's own Class Garb", else the world's. */
+  bearerNames?: readonly string[];
   onOpenTrait?: (id: string) => void;
 }) {
   const setPin = (index: number, next: PlaceholderPin) => onChange(pins.map((p, i) => (i === index ? next : p)));
@@ -51,8 +54,15 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
             <PlaceholderSectionList
               rows={rows}
               selectedId={pin.placeholderId}
-              onSelect={(id) => setPin(index, withPinnedValue({ ...pin, placeholderId: id }, pin.value, placeholders))}
+              onSelect={(id) => setPin(index, withPinnedValue({ placeholderId: id, value: pin.value }, pin.value, placeholders))}
               placeholders={placeholders}
+              names={bearerNames && {
+                heading: "Bearer's Own",
+                items: bearerNames,
+                picked: pin.bearerPlaceholder,
+                label: (name) => `Bearer's ${name}`,
+                onPick: (name) => setPin(index, withPinnedValue({ placeholderId: '', value: pin.value, bearerPlaceholder: name }, pin.value, placeholders)),
+              }}
               className="min-w-0 px-3"
             />
             <PinValueField pin={pin} placeholders={placeholders} onChange={(next) => setPin(index, next)} />

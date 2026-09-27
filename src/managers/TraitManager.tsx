@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { PanelTabsList } from "@/components/ui/panel-tabs";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
+import { bearerPlaceholderNames } from '@/lib/placeholderPins';
 import { TraitRequiresField } from '@/components/editor/TraitRequiresField';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
@@ -82,6 +83,7 @@ const TraitManager = ({ trait, owner, detailsHeader, detailsFooter, onOpenTrait,
     updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld,
   } = useTraitStore();
   const ownerId = owner?.id;
+  const bearerNames = useMemo(() => (pinWorld ? bearerPlaceholderNames(pinWorld) : undefined), [pinWorld]);
   const write = useCallback(
     (next: Trait) => (ownerId ? editEntity(ownerId, (e) => updateOwnedTrait(e, next)) : updateTrait(next)),
     [ownerId, editEntity, updateTrait],
@@ -328,6 +330,7 @@ const TraitManager = ({ trait, owner, detailsHeader, detailsFooter, onOpenTrait,
         source={{ kind: 'trait', id: editingTrait.id }}
         world={pinWorld}
         placeholders={placeholders}
+        bearerNames={bearerNames}
         onOpenTrait={onOpenTrait}
       />
     </div>

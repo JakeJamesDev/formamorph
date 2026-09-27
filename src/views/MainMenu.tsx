@@ -7,8 +7,7 @@ import { useLingeringMount } from '@/lib/useLingeringMount';
 import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
-import { collectPins } from '@/lib/placeholderPins';
+import { bearerPins } from '@/lib/ownedTraitsInPlay';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
@@ -279,7 +278,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
-    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, customPersona,
+    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, customPersona, worldPlaceholders,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -451,19 +450,22 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       rawTraits.filter((t) => selectedTraits.includes(t.id)), traitOrderIndex(rawTraits, rawTraitGroups),
     );
     const starting = startingStatsWith(rawStats, chosen, { traits: rawTraits, groups: rawTraitGroups });
-    return collectPins({
-      traits: pinTraitsInOrder(
-        { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities }, chosen, ownedTraitPicks,
-        playedEntityId(draftPersona), libraryCast,
-      ),
+    return bearerPins({
+      world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona },
+      persona: draftPersona,
+      library: libraryCast,
+      playerTraits: chosen,
+      owned: ownedTraitPicks,
+      sharedPlaceholders: worldPlaceholders,
+    }, {
       location: rawLocations.find((l) => l.id === selectedLocationId),
       stats: starting,
       placeholders,
       rolls,
     });
   }, [
-    selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities, rawStats,
-    rawLocations, placeholders, rolls, libraryCast,
+    selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities, customPersona,
+    worldPlaceholders, rawStats, rawLocations, placeholders, rolls, libraryCast,
   ]);
   const {
     traits, traitGroups, stats, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText,
