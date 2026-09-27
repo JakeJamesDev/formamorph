@@ -1,0 +1,24 @@
+# 03: Settings Slider, Readout and Copy
+
+Status: ready-for-agent
+Blocked by: 01 — Budget Function and Request Body
+Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
+Reasoning effort: medium
+
+Spec: `docs-internal/specs/reasoning-budget-base/spec.md` (rulings Q10, Q11, Q14).
+
+## What to build
+
+The Reasoning Budget slider tells the truth. Its readout shows `pct% · N tok` from the routed endpoint's Max Output for every prompt, Stat Updates and Location Change included, so it matches what the request sends. The slider goes up to 150% in steps of 5. When the endpoint's Max Output override is off, the slider is disabled, still shows the percent, and a hint tells the player to set a Max Output on the endpoint. The description and ⓘ say the percent is a share of the endpoint's Max Output and that the thinking comes in addition to the answer.
+
+Workload rationale: Settings modal wiring, copy, and readout tests. Sonnet at medium effort.
+
+## Acceptance criteria
+
+- [ ] Readout tokens come from the endpoint base through ticket 01's function, even with a custom Max Output row set. Stat Updates and Location Change no longer fall back to a different cap.
+- [ ] Slider max is 150, step 5, no new mark at 100%.
+- [ ] Override off: slider disabled, percent still shown, hint present. Hint copy follows the Writing Guide (verb-first, second person).
+- [ ] Description and ⓘ rewritten per the spec's Copy line; `copy-sweep` on the touched strings.
+- [ ] Settings tests: tokens from the endpoint base with a custom row set; disabled slider and hint with the override off; slider max 150.
+- [ ] `verify-ui` on the Settings prompt options panel via the dev-router, both states (override on and off).
+- [ ] Four gates green.
