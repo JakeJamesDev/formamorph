@@ -1,6 +1,6 @@
 # 01: Details field, headline and diagnostics in every error toast
 
-Status: in-progress
+Status: ready-for-human
 Base: c8a7f81d
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -18,12 +18,12 @@ Recommended model rationale: this ticket sets the contract every other ticket bu
 
 ## Acceptance criteria
 
-- [ ] Calling the helper with a plain `Error` shows a toast with **View Details →**; the window lists the error's name, message, cause chain and no more than 10 stack frames
-- [ ] Calling the helper with a headline shows the headline as the toast text and the error's message inside the details
-- [ ] An error with a string `details` field shows those details verbatim; a class check is not used
-- [ ] A string failure reason is wrapped and still gets the link
-- [ ] Error Details ends with the diagnostics block from the existing collector; Copy includes message, details and that block
-- [ ] Plain `toast.error` calls with no error behind them are unchanged and have no link
-- [ ] The `#dev?modal=errorDetails` route still raises its sample toast and the dialog shows the diagnostics block
-- [ ] Mutation checks: removing the headline handling, dropping the diagnostics block and skipping the string wrap each fail a test
-- [ ] Four gates green
+- [x] Calling the helper with a plain `Error` shows a toast with **View Details →**; the window lists the error's name, message, cause chain and no more than 10 stack frames
+- [x] Calling the helper with a headline shows the headline as the toast text and the error's message inside the details
+- [x] An error with a string `details` field shows those details verbatim; a class check is not used
+- [x] A string failure reason is wrapped and still gets the link
+- [x] Error Details ends with the diagnostics block from the existing collector; Copy includes message, details and that block
+- [x] Plain `toast.error` calls with no error behind them are unchanged and have no link
+- [x] The `#dev?modal=errorDetails` route still raises its sample toast and the dialog shows the diagnostics block
+- [x] Mutation checks: removing the headline handling, dropping the diagnostics block and skipping the string wrap each fail a test
+- [x] Four gates green
