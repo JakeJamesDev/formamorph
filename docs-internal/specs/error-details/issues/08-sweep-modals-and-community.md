@@ -7,7 +7,7 @@ Reasoning effort: medium
 
 ## What to build
 
-The same sweep for the modal components, the community components and the Community Creations browser, about 32 sites. Caught-error toasts move to the shared helper with their current message as the headline; validation and refusal toasts stay plain. No wording changes.
+The same sweep for the modal components, the community components and the Community Creations browser, about 32 sites. Caught-error toasts move to the shared helper with their current message as the headline; validation and refusal toasts stay plain. No wording changes. Ticket 04 already converts the delete, quarantine and release toasts in the Community Creations browser; leave those three as they are.
 
 Recommended model rationale: same mechanical sweep as ticket 07 over a second directory set.
 
