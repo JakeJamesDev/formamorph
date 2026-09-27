@@ -401,11 +401,11 @@ export function defaultReasoningBudgetPct(kind: AIRequestType): number {
   return kind === 'narration' ? 40 : 25;
 }
 
-/** The budget slider's ceiling, so a thought may run a little longer than one normal reply. */
+/** The highest budget percent, so a thought may run a little longer than one normal reply. */
 export const MAX_REASONING_BUDGET_PCT = 150;
 
 /** The budget percent a prompt would spend while on: the stored value or the shipped default, clamped to the
- *  slider's range. */
+ *  budget range. */
 export function resolveReasoningBudgetPct(kind: AIRequestType, budgets: Partial<Record<AIRequestType, number>>): number {
   const pct = budgets[kind] ?? defaultReasoningBudgetPct(kind);
   return Math.max(MIN_REASONING_BUDGET_PCT, Math.min(MAX_REASONING_BUDGET_PCT, pct));
@@ -421,29 +421,25 @@ export interface ReasoningBudgetInput {
   readonly base: number | undefined;
   /** The answer's own cap: the prompt's Max Output row, else the call's cap, else the endpoint's. */
   readonly answerCap: number | undefined;
-  /** The smallest budget the target's dialect accepts, where it sends one. */
-  readonly floor?: number;
+  /** The smallest budget the target's dialect accepts, or 0 where it sends none. */
+  readonly floor: number;
 }
 
 /** One prompt's thinking room and the request cap that holds it. */
 export interface ReasoningBudget {
   /** The thinking budget: `null` sends none, and 0 is the off signal. */
   readonly budget: number | null;
-  /** The cap for a request that carries a reasoning signal: the answer cap plus the budget. A request that
-   *  carries no reasoning field sends the answer cap alone. */
+  /** The answer cap plus the budget. */
   readonly maxTokens: number | undefined;
 }
 
-/**
- * The thinking budget, `round(pct% × base)`, and the request cap with that budget on top of the answer cap.
- * Effort `none` gives the 0 off signal with no headroom. With no base, a dialect's floor is the budget, and
- * a dialect with no floor sends no budget. The floor applies before the headroom, so the budget always fits.
- */
+/** The budget, `round(pct% × base)` raised to the dialect's floor, and the answer cap plus that budget. */
 export function reasoningBudget(input: ReasoningBudgetInput): ReasoningBudget {
-  const { effort, kind, budgets, base, answerCap, floor = 0 } = input;
+  const { effort, kind, budgets, base, answerCap, floor } = input;
   if (effort === 'none') return { budget: 0, maxTokens: answerCap };
   const scaled = base === undefined ? 0 : Math.round((resolveReasoningBudgetPct(kind, budgets) / 100) * base);
-  const budget = Math.max(scaled, floor);
+  // 0 is the off signal, so an on prompt with a base never rounds down to it.
+  const budget = Math.max(scaled, floor, base === undefined ? 0 : 1);
   if (base === undefined && floor === 0) return { budget: null, maxTokens: answerCap };
   return { budget, maxTokens: answerCap === undefined ? undefined : answerCap + budget };
 }

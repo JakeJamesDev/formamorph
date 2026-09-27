@@ -145,6 +145,8 @@ export interface ReasoningWrite {
    *  may be told about reasoning at all. A switched-off request is eligible too: `off` is what it says.
    *  A dialect with neither a budget nor a level has nothing else to write an on request from. */
   readonly eligible: boolean;
+  /** True where the endpoint sets no Max Output, so thinking runs unbounded and no level stands in for a budget. */
+  readonly unbounded?: boolean;
 }
 
 /** True where the dialect rejects a switched-off request, so the switch is shown checked and locked. */
@@ -234,7 +236,7 @@ export function reasoningDialectBody(dialect: ReasoningDialect, write: Reasoning
   if (write.level !== null) {
     if (spelling.levelPath) writePath(body, spelling.levelPath, write.level);
     // A dialect that spells strength as a budget has only the one field, so the player's own budget wins it.
-    else if (spelling.levelBudgets && spelling.budgetPath && !budgetWritten) {
+    else if (spelling.levelBudgets && spelling.budgetPath && !budgetWritten && !write.unbounded) {
       const mapped = spelling.levelBudgets[write.level];
       if (mapped !== undefined) writePath(body, spelling.budgetPath, mapped);
     }
