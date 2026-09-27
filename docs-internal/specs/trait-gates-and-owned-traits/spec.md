@@ -153,6 +153,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 ### Callers of the gate module
 
 - **Enter-world:** each selection change and each persona change goes through `settle`. Default traits collapse through it at open, so a gated default whose requirement is off starts unselected.
+- Enter-world keeps a cascade-off list for the visit, world and owned traits alike, so a gated pick returns when its gate holds again, under the same return rule as play. Switching persona and back keeps every pick, gated ones included.
 - **In play:** trait switches in the trait runtime, persona changes, and stat-code trait switches go through `settle`. World traits it turns off reverse their stats through the existing honest reversal. The story log notes a cascade with the existing switch-log wording.
 - **Stat code meets gates.** Code ignores Player Can Toggle but not gates. A code switch-on of a locked trait acquires it and `settle` turns it off in the same pass, with a switch-off log line. A switch-on the gate refuses retires no exclusive sibling. The trait joins the cascade-off list, so it returns once its gate holds. The sandbox's `traits` entries do not change.
 - **Banner and log in play.** The banner shows for a cascade the player's own switch or persona change caused. A cascade stat code caused writes only story log lines. A return writes the existing "Trait switched on" line and no banner.
@@ -177,7 +178,7 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 
 ### Enter-world and in play (prototype variant A)
 
-- Nav rows for entity nodes show the user icon. An entity's page opens with its portrait in the Persona picker's 2:3 frame, beside the name and player description. The played entity is marked "You". Owned defaults preselect per entity, so a player can leave the cast as authored and move on.
+- Nav rows for entity nodes show the user icon. An entity's page opens with its portrait in the Persona picker's 2:3 frame, beside the name and player description. The played entity is marked "You". An entity's page and its owned-group pages show group descriptions from the entity node down only, never those of the world groups around it. Owned defaults preselect per entity, so a player can leave the cast as authored and move on.
 - Locked traits stay in place, disabled, with a lock icon and a "Requires … or …" line. An unlocked gated trait shows "Unlocked by …".
 - "Unlocked by …" lists only the requirements that hold now, such as "Unlocked by Knight". The locked line already states the full rule.
 - A cascade shows one dismissible banner: "Turned off Plate Armor, because of Rogue." The cause is what the player picked. After a persona change it is the new persona's name, or "the persona change" when the player picked None.
