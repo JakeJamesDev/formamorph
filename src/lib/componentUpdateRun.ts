@@ -12,7 +12,8 @@ import { markReviewed, needsReview, type UpdateAction, type UpdateRow } from '@/
 import { contentLinkState } from '@/lib/contentLink';
 import type { LibraryKind } from '@/lib/librarySources';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { ContentLink, Dictionary, Entity, Placeholder } from '@/types';
+import { traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
+import type { ContentLink, Dictionary, Entity, Placeholder, Trait, TraitGroup } from '@/types';
 
 /**
  * A world whose content is held in memory rather than in storage.
@@ -28,6 +29,9 @@ export interface LiveWorld {
   dictionaries: Dictionary[];
   /** The world's shared list, which updated content resolves its references against. */
   placeholders: Placeholder[];
+  /** The world's traits and groups, which an updated entity's owned trait requirements bind to. */
+  traits?: Trait[];
+  traitGroups?: TraitGroup[];
   writeItem: (item: LinkableContent) => void;
   addPlaceholder: (placeholder: Placeholder) => void;
 }
@@ -98,11 +102,12 @@ function revisedCopy(
   source: LibrarySource,
   sourceData: LinkableContent | null,
   worldShared: readonly Placeholder[],
+  traitWorld?: TraitWorld,
 ): { item: LinkableContent; toAdd: Placeholder[] } {
   if (action === 'keep') return { item: markReviewed(copy, source.revision), toAdd: [] };
   if (action === 'unlink') return { item: unlink(copy), toAdd: [] };
   if (!sourceData) throw new Error(`"${source.name}" is no longer in your library.`);
-  return applyLibraryUpdate(copy, sourceData, source, worldShared);
+  return applyLibraryUpdate(copy, sourceData, source, worldShared, traitWorld);
 }
 
 /**
@@ -122,7 +127,7 @@ export async function applyUpdate(
   if (world) {
     const copy = liveCopyFor(world, row);
     if (!copy) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
-    const revised = revisedCopy(copy, action, source, sourceData, world.placeholders);
+    const revised = revisedCopy(copy, action, source, sourceData, world.placeholders, traitWorldOf(world));
     world.writeItem(revised.item);
     revised.toAdd.forEach(world.addPlaceholder);
     return;
@@ -134,7 +139,7 @@ export async function applyUpdate(
     const index = list.findIndex((item) => item.id === row.itemId);
     if (index < 0) throw new Error(`"${row.itemName}" is no longer in ${row.worldName}.`);
     const shared = (data.placeholders ?? []) as Placeholder[];
-    const revised = revisedCopy(list[index], action, source, sourceData, shared);
+    const revised = revisedCopy(list[index], action, source, sourceData, shared, traitWorldOf(data as Parameters<typeof traitWorldOf>[0]));
     const next = [...list];
     next[index] = revised.item;
     return {

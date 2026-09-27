@@ -73,7 +73,7 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryOwners, libraryCastIds, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { bindOwnedTraits } from '@/lib/portableTraits';
+import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   clearDefaultPersona, hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona,
@@ -416,6 +416,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The global default persona: a library entity id, device-local.
   const [defaultPersona, setDefaultPersonaId] = useState(readDefaultPersona);
 
+  // The raw world's traits, whose names carried requirements were stored under and bind to.
+  const rawTraitWorld = useMemo<TraitWorld>(
+    () => ({ traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities }),
+    [rawTraits, rawTraitGroups, worldEntities],
+  );
   // The library entities in the cast, loaded in full on pick so their owned traits join the tree.
   const [libraryCastData, setLibraryCastData] = useState<ReadonlyMap<string, Entity>>(() => new Map());
   const castIds = libraryCastIds(entryDraft);
@@ -430,11 +435,10 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     });
     return () => { cancelled = true; };
   }, [castKey, libraryCastData]);
-  // Bound against the raw world, whose names the carried requirements were stored under.
   const libraryCast = useMemo(
     () => castKey.split('|').flatMap((id) => libraryCastData.get(id) ?? [])
-      .map((e) => bindOwnedTraits(e, { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities })),
-    [castKey, libraryCastData, rawTraits, rawTraitGroups, worldEntities],
+      .map((e) => bindOwnedTraits(e, rawTraitWorld)),
+    [castKey, libraryCastData, rawTraitWorld],
   );
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
   // the bands the starting stats fall in once those traits have applied — so these screens resolve the way
@@ -1503,7 +1507,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       const chars = loaded.filter((e): e is Entity => e !== null).map((e) => {
         const id = randomUUID();
         copyIds.set(e.id, id);
-        return bindOwnedTraits({ ...e, id }, { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities });
+        return bindOwnedTraits({ ...e, id }, rawTraitWorld);
       });
       const castPicks = rekeyOwnedPicks(castOwnedTraits(draft, entryWorld), copyIds);
       const books = new Map<string, Dictionary>();
@@ -2786,7 +2790,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                             const cast: EntryTraitWorld = {
                               ...rawEntryWorld,
                               library: pick.libraryEntity
-                                ? [bindOwnedTraits(pick.libraryEntity, { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities })]
+                                ? [bindOwnedTraits(pick.libraryEntity, rawTraitWorld)]
                                 : [],
                             };
                             onStartGame(

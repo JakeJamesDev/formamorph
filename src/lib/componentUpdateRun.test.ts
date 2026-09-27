@@ -126,6 +126,19 @@ describe('applyUpdate', () => {
     expect(await affectedCopies(source)).toEqual([]);
   });
 
+  it("binds the updated copy's owned trait requirements to the stored world", async () => {
+    await storeWorld('w-1', 'Sedge Landing', [copy({ libraryId: 'lib-1', sourceRevision: 'r1' })]);
+    await WorldStorageService.updateWorldContent('w-1', (data) => ({ ...data, traits: [{ id: 'w-paladin', name: 'Paladin', statChanges: [] }] }));
+    const [row] = await affectedCopies(source);
+
+    await applyUpdate(row, 'update', source, sourceData({
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] }],
+    }));
+
+    const [written] = await storedEntities('w-1');
+    expect(written.traits![0].requires).toEqual([{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }]);
+  });
+
   it('leaves the record every wrapper field it had', async () => {
     await storeWorld('w-1', 'Sedge Landing', [copy({ libraryId: 'lib-1', sourceRevision: 'r1' })]);
     const [row] = await affectedCopies(source);

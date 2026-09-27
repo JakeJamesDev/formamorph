@@ -1,5 +1,5 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
-import { SELF_ENTITY, adoptOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
+import { adoptOwnedTraits, comparableOwnedTraits, traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { randomUUID } from '@/lib/uuid';
@@ -148,13 +148,7 @@ export function chipTexts(item: LinkableContent): string[] {
  *  own, so two identical books never share them. */
 function authoredContent(item: LinkableContent): unknown {
   const shed: Record<string, unknown> = withoutWorldFields(item);
-  // A requirement's stored name and a self "playing as" differ between a world copy and its library form.
-  if (!('entries' in item) && item.traits) {
-    shed.traits = item.traits.map((t) => (t.requires ? {
-      ...t,
-      requires: t.requires.map(({ name: _name, ...r }) => (r.kind === 'playingAs' && r.id === item.id ? { ...r, id: SELF_ENTITY } : r)),
-    } : t));
-  }
+  if (!('entries' in item) && item.traits) shed.traits = comparableOwnedTraits(item);
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }
@@ -265,8 +259,10 @@ export function planWriteBack(
     if (!libraryId || copy.link?.localReplacement) return [];
     const source = byId.get(libraryId);
     if (!source?.owned || !source.data) return [];
-    if (contentMatchesSource(copy, source.data)) return [];
-    return [{ copy, source, content: shape(copy) }];
+    // Compared in library form, which names what the copy's owned traits require, as the item stores them.
+    const content = shape(copy);
+    if (contentMatchesSource(content, source.data)) return [];
+    return [{ copy, source, content }];
   });
 }
 
@@ -330,9 +326,7 @@ export function syncWorldContent(
   sources: LibrarySource[],
 ): WorldContent & { updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
-  const traitWorld = world.traits && world.traitGroups
-    ? { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities }
-    : undefined;
+  const traitWorld = traitWorldOf(world);
   const entities = syncList(world.entities, byId, world.placeholders, traitWorld);
   const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
   return {

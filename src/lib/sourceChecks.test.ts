@@ -141,6 +141,20 @@ describe('applyRepair', () => {
     });
   });
 
+  it("binds a Replace's owned trait requirements to the world, and its self \"playing as\" to the copy", () => {
+    const source: LibrarySource = { id: 'lib-c', name: 'Fen Warden', revision: 'R9', owned: true, sourceId: 'src-c' };
+    const data: Entity = {
+      id: 'other', name: 'Fen Warden',
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [
+        { kind: 'trait', id: 'elsewhere', name: 'Paladin' }, { kind: 'playingAs', id: 'self', name: 'Fen Warden' },
+      ] }],
+    };
+    const repaired = applyRepair({ ...world(), traits: [{ id: 'w-paladin', name: 'Paladin', statChanges: [] }] }, 'e1', 'replace', { source, data });
+    expect(repaired.entities![0].traits![0].requires).toEqual([
+      { kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: 'e1', name: 'Fen Warden' },
+    ]);
+  });
+
   it('relinks a book Replace in the dictionaries', () => {
     const source: LibrarySource = { id: 'lib-d', name: 'Marsh Lore', revision: 'R2', owned: true };
     const repaired = applyRepair(world(), 'd1', 'replace', { source, data: book('other', 'Marsh Lore') });
