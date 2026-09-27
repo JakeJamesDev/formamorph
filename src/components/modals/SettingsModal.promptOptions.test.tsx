@@ -293,6 +293,17 @@ describe('the Reasoning Budget readout', () => {
     expect(screen.getByText('40%')).toBeTruthy();
     expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
   });
+
+  it('shows the floor a floor dialect still sends while the endpoint override is off', () => {
+    localStorage.setItem(
+      'FORMAMORPH_reasoningSupport',
+      JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [], dialect: 'anthropic-budget' } }),
+    );
+    seedEndpointMaxOutput({ enabled: false, value: 800 });
+    openOptions('narration');
+    expect(screen.getByText('40% · 1024 tok')).toBeTruthy();
+    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
+  });
 });
 
 describe('the Milestone Select tab', () => {

@@ -307,8 +307,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
-  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise.
-   *  `disabled` while the target has no Max Output to take the percent of. */
+  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
   budget: { value: number; set: (v: number) => void; tokens?: number; disabled: boolean } | null;
   /** Whether the target honors the effort level, so the dropdown is worth showing. */
   level: boolean;
@@ -317,6 +316,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
   disabled?: boolean;
 }) {
   const inert = disabled || !(setting.enabled || lockedOn);
+  const sliderInert = inert || budget?.disabled === true;
   const levelStrength: ReasoningStrength<PromptReasoningSetting['level']> = {
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
@@ -352,12 +352,12 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
           {/* Same switch as above: the row only carries the slider, flush with every other track. */}
           <div className="flex items-center gap-3 pl-2.5">
             <Slider
-              className={`flex-grow${inert || budgetStrength.disabled ? ' opacity-60' : ''}`}
+              className={`flex-grow${sliderInert ? ' opacity-60' : ''}`}
               value={[budgetStrength.value]}
               min={MIN_REASONING_BUDGET_PCT}
               max={MAX_REASONING_BUDGET_PCT}
               step={5}
-              disabled={inert || budgetStrength.disabled}
+              disabled={sliderInert}
               onValueChange={(v) => budgetStrength.onChange(v[0])}
               aria-label={SETTINGS_COPY.reasoningBudget.label}
             />
@@ -1245,9 +1245,10 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         onValueChange: (v: number) => setPromptMaxOutputValue(activeKind, v),
       }
     : null;
-  // The readout's tokens come from the routed endpoint's Max Output, the same base the request reads.
+  // The readout's tokens come from the routed endpoint's Max Output, the same base the request reads. With no
+  // base, a floor dialect still sends its floor.
   const budgetBase = promptTarget.maxTokens;
-  const budgetTokens = budgetBase === undefined ? undefined : reasoningBudget({
+  const budgetTokens = reasoningBudget({
     effort: 'auto', kind: activeKind, budgets: promptReasoningBudget, base: budgetBase, answerCap: undefined,
     floor: reasoningDialectBudgetFloor(promptReasoningCapability.dialect),
   }).budget ?? undefined;

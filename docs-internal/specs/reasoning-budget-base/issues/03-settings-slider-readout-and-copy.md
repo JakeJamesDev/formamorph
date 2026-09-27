@@ -1,6 +1,7 @@
 # 03: Settings Slider, Readout and Copy
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: ae2cdfc7
 Blocked by: 01 — Budget Function and Request Body
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -15,14 +16,16 @@ Workload rationale: Settings modal wiring, copy, and readout tests. Sonnet at me
 
 ## Acceptance criteria
 
-- [ ] Readout tokens come from the endpoint base through ticket 01's function, even with a custom Max Output row set. Stat Updates and Location Change no longer fall back to a different cap.
-- [ ] Slider max is 150, step 5, no new mark at 100%.
-- [ ] Override off: slider disabled, percent still shown, hint present. Hint copy follows the Writing Guide (verb-first, second person).
-- [ ] Description and ⓘ rewritten per the spec's Copy line; `copy-sweep` on the touched strings.
-- [ ] Settings tests: tokens from the endpoint base with a custom row set; disabled slider and hint with the override off; slider max 150.
+- [x] Readout tokens come from the endpoint base through ticket 01's function, even with a custom Max Output row set. Stat Updates and Location Change no longer fall back to a different cap.
+- [x] Slider max is 150, step 5, no new mark at 100%.
+- [x] Override off: slider disabled, percent still shown, hint present. Hint copy follows the Writing Guide (verb-first, second person).
+- [x] Description and ⓘ rewritten per the spec's Copy line; `copy-sweep` on the touched strings.
+- [x] Settings tests: tokens from the endpoint base with a custom row set; disabled slider and hint with the override off; slider max 150.
 - [ ] `verify-ui` on the Settings prompt options panel via the dev-router, both states (override on and off).
 - [ ] Four gates green.
 
 ## Comments
 
 **Handoff from ticket 01 (2026-09-27, commits 1d649f2f and 38d31dbc).** The shared function is `reasoningBudget({ effort, kind, budgets, base, answerCap, floor })` in the reasoning-effort module. Get `floor` from `reasoningDialectBudgetFloor(dialect)` where the record takes a budget, else 0. `MAX_REASONING_BUDGET_PCT` is 150. Its `maxTokens` assumes a reasoning signal: the request adds headroom only when a reasoning field goes out or the record answers `reasons: true` (Q16). Apply the same rule where you consume the function.
+
+**Ticket 03 done (2026-09-27, commit ce8e994d).** The readout calls `reasoningBudget` with no base guard, so a floor dialect with the override off reads its floor, as the request sends it (Q14). Not verified: `verify-ui`. On the 5182 preview, every dev-router modal (Settings and Changelog alike) empties the page with no error logged, so the panel could not be reached. Test gate: 220 failures in the full run, all 5 s timeouts under machine load except `VariableNode.label.test.tsx`, which fails alone and is outside this unit. The Settings files pass alone (61/61).
