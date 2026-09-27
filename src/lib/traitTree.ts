@@ -75,7 +75,7 @@ type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGr
 
 /** The world's traits, with a node for each entity that owns a trait or a group. A node sits where its
  *  placement puts it; an unplaced node goes to the end of the top level, in entity order. Library entities
- *  (a persona or an added character) come last at the top level, in the order given. */
+ *  (a persona or an added entity) come last at the top level, in the order given. */
 export function ownedTraitTree(
   world: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
 ): OwnedTraitTree {

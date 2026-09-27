@@ -25,7 +25,7 @@ import { IntroSequence } from './components/IntroSequence';
 import { TooltipProvider } from './components/ui/tooltip';
 import GameViewer from './views/GameViewer';
 import MainMenu from './views/MainMenu';
-import type { CharacterData, Dictionary, Entity } from '@/types';
+import type { CharacterData, Dictionary, Entity, OwnedTraitPicks } from '@/types';
 import type { PersonaPick } from '@/lib/persona';
 
 const DesignSystemShowcase = import.meta.env.DEV
@@ -96,7 +96,7 @@ function AppViews() {
     if (import.meta.env.DEV && devRoute?.view) setCurrentView(devRoute.view as DevView);
   }, [devRoute?.view]);
   const [selectedTraits, setSelectedTraits] = useState<string[]>([]);
-  const [initialOwnedTraits, setInitialOwnedTraits] = useState<Record<string, string[]>>({});
+  const [initialOwnedTraits, setInitialOwnedTraits] = useState<OwnedTraitPicks>({});
   const [initialCharacterData, setInitialCharacterData] = useState<CharacterData | null>(null);
   const [initialLocationId, setInitialLocationId] = useState<string | null>(null);
   const [initialDictionaries, setInitialDictionaries] = useState<Dictionary[] | null>(null);
@@ -112,7 +112,7 @@ function AppViews() {
     dictionaries?: Dictionary[] | null,
     characters?: Entity[] | null,
     persona?: PersonaPick | null,
-    ownedTraits?: Record<string, string[]>,
+    ownedTraits?: OwnedTraitPicks,
   ) => {
     setSelectedTraits(traits);
     setInitialOwnedTraits(ownedTraits ?? {});

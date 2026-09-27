@@ -27,6 +27,9 @@ export interface OwnedTraitState {
 /** Entity id → its owned trait state. Absent entity ⇒ nothing chosen. */
 export type OwnedTraitStates = Record<string, OwnedTraitState>;
 
+/** Entity id → the owned trait ids picked at the entry step. */
+export type OwnedTraitPicks = Record<string, string[]>;
+
 /** A stat during gameplay — a definition Stat whose live `value` is always a number.
  *
  *  `min`, `max` and `regen` are *effective* bounds, derived from the `base*` fields plus the active traits'

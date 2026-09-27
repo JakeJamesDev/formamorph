@@ -1,6 +1,7 @@
 # 08: Enter-world cast pages
 
-Status: in-progress
+Status: ready-for-human
+Status note: built in 34d012cf and its review follow-up; notes for later tickets under Comments.
 Base: d740336b
 Blocked by: 03 — Gates in play, 07 — Entity nodes in the tree: placement and drags
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -31,3 +32,13 @@ At enter-world the player shapes the cast. Every entity with owned traits has a 
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**Hand-over (2026-09-27).** Picks live in `EntryDraft.ownedTraitIds` (entity id → ids) with a visit-scoped `cascadeOffTraitIds`; `entryGateInput` / `withSettledTraits` / `entryDefaults` / `castOwnedTraits` in `src/lib/entryDraft.ts`. The save field is `GameState.ownedTraits` (additive), pruned on load by `withHeldOwners` in `src/lib/ownedTraitState.ts`.
+
+- **Rulings applied (spec session):** ticket 11 loads library owners (08 wires `library: []`); Q1 = B, Enter World keeps a visit-scoped cascade-off list, so a pick a persona switch turned off returns on the switch back, world traits too; Q2 = keep, an entity's pages show group descriptions from its node down only.
+- **Ticket 11:** pass the loaded library persona and added entities as `EntryTraitWorld.library` in MainMenu (in the order added) and re-key an added entity's picks to its copy id in `enterWorld`. The tree and the workspace already place them last.
+- **Ticket 09:** the game starts with `ownedTraits[id].chosen` from the picks and no `disabled`; the runtime still settles the `world` owner only.
+- **Not changed:** the legacy nested-save load paths (worker conversion, raw fallback) skip the prune, since those saves predate owned traits. The entity page repeats SetupTraitList's "Starting Traits" eyebrow. `PersonaPortrait` stays exported from PersonaPicker though it now draws any entity. The GameViewer seed line has no component test (no GameViewer harness); `ownedTraitStatesFrom` and the MainMenu start arguments are tested.
+- **Live preview:** a seeded world on port 5215 showed Ash nested in Class with the user icon and "You", the 2:3 portrait page, "Unlocked by playing as Ash", and after a switch to Bob the banner "Turned off Royal Guard, because of Bob." with the row locked. Frames in dark and light; DOM reads for the rest.

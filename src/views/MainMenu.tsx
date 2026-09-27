@@ -64,13 +64,12 @@ import { startingLocations } from '@/lib/startingLocation';
 import {
   WORLD_OWNER, gateStates, settle, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
-import { traitOwners } from '@/lib/ownedTraits';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
 import { libraryLines } from '@/lib/librarySources';
 import { followedLibraryId } from '@/lib/publishLinks';
 import {
-  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
+  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryOwners, withLocationPick, withPersonaPick, withSettledTraits,
   type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
@@ -90,7 +89,7 @@ import ModelStorageService from '../services/ModelStorageService';
 import AuthService from '../services/AuthService';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import type { ReferenceChoices, ReferenceRow } from '@/lib/worldReferences';
-import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, PersonaRef, ServerEvent, WorldOverview } from '@/types';
+import type { World, Stat, CharacterData, Dictionary, DictionaryMetadata, Entity, EntityMetadata, ModelMetadata, PersonaRef, ServerEvent, WorldOverview, OwnedTraitPicks } from '@/types';
 import { migrateWorld } from '@/lib/version';
 import { updateBridge } from '@/lib/updates/updateBridge';
 import { useIsMobile } from '@/lib/useIsMobile';
@@ -183,7 +182,7 @@ import GithubIcon from "@/components/GithubIcon";
 import { describePlaceholders } from '@/lib/placeholders';
 
 interface MainMenuProps {
-  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick, ownedTraits?: Record<string, string[]>) => void;
+  onStartGame: (traits: string[], characterData: CharacterData | null, isNewGame?: boolean, startingLocationId?: string | null, dictionaries?: Dictionary[] | null, characters?: Entity[] | null, persona?: PersonaPick, ownedTraits?: OwnedTraitPicks) => void;
   /** Cold-load a save from the menu: its world is loaded into GameData here, then App enters the game. */
   onLoadSaveGame: (saveId: string) => void;
   /** Easter-egg: replay the first-run welcome intro (snappy). Wired to the footer version click. */
@@ -1347,9 +1346,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     [traits, traitGroups, resolvedWorldEntities],
   );
   const rawEntryWorld: EntryTraitWorld = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: [] };
-  const entryOwners = useMemo(() => traitOwners(entryWorld, entryWorld.library), [entryWorld]);
+  const castOwners = useMemo(() => entryOwners(entryWorld), [entryWorld]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
-  const ownerOfTrait = (traitId: string) => entryOwners.find((o) => o.traits.some((t) => t.id === traitId));
+  const ownerOfTrait = (traitId: string) => castOwners.find((o) => o.traits.some((t) => t.id === traitId));
   const traitName = (traitId: string) => ownerOfTrait(traitId)?.traits.find((t) => t.id === traitId)?.name ?? traitId;
   // Every owner's picks in one list: trait ids are unique across owners.
   const entrySelectedTraits = useMemo(
@@ -1363,17 +1362,20 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // Toggle a trait in the starting selection; a cascade shows in the banner.
   const handleTraitSelection = (traitId: string) => {
-    const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerOfTrait(traitId)?.id ?? WORLD_OWNER, traitId);
+    const result = switchTrait(
+      entryGateInput(entryWorld, entryDraft), ownerOfTrait(traitId)?.id ?? WORLD_OWNER, traitId, entryDraft.cascadeOffTraitIds,
+    );
     if (!result) return;
-    reviseDraft((draft) => withSettledTraits(draft, result.active));
+    reviseDraft((draft) => withSettledTraits(draft, result));
     setTraitCascade(cascadeFrom(result, traitName(traitId)));
   };
 
   // A persona pick can open or close "playing as" gates, so the traits settle against the new persona.
   const handlePersonaChange = (ref: PersonaRef) => {
     const next = withPersonaPick(entryDraft, ref, personaPickContext);
-    const result = settle(entryGateInput(entryWorld, next));
-    reviseDraft(() => withSettledTraits(next, result.active));
+    // A pick the last persona turned off returns once the new one opens its gate again.
+    const result = settle(entryGateInput(entryWorld, next), next.cascadeOffTraitIds);
+    reviseDraft(() => withSettledTraits(next, result));
     const picked = ref.source === 'world' ? worldPersonaOptions.find((p) => p.id === ref.entityId)
       : ref.source === 'library' ? personaOptions.find((p) => p.id === ref.entityId) : undefined;
     setTraitCascade(cascadeFrom(result, picked?.name ?? 'the persona change'));
@@ -1521,7 +1523,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // and the Introduction overlay (see `lib/enterFlow`).
   const enterFlowSteps = (mode: EnterMode = 'newGame'): EnterStep[] => buildEnterFlow({
     introReadme: selectedWorld?.data.worldOverview?.introReadme,
-    traitCount: entryOwners.reduce((count, owner) => count + owner.traits.length, 0),
+    traitCount: castOwners.reduce((count, owner) => count + owner.traits.length, 0),
     startingLocationCount: startingLocations(locations).length,
     hasLibraryAdditions,
     hasWorldPersonas: worldPersonaOptions.length > 0,

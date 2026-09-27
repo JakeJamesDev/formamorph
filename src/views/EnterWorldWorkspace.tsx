@@ -32,7 +32,7 @@ export interface EnterWorldWorkspaceProps {
   traitGroups: TraitGroup[];
   /** The world's entities; each that owns traits gets a page in the tree. */
   traitEntities?: readonly Entity[];
-  /** The library persona and added characters, in the order added. */
+  /** The library persona and the added library entities, in the order added. */
   traitLibrary?: readonly Entity[];
   resolveEntityText?: ResolveEntityText;
   stats: Stat[];
@@ -94,7 +94,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())),
     [traitTree],
   );
-  const playedId = props.persona && props.persona.source !== 'none' ? props.persona.entityId : null;
+  const playedEntityId = props.persona && props.persona.source !== 'none' ? props.persona.entityId : null;
   const youMark = <span className="ml-2 text-meta font-normal text-primary">You</span>;
   // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
   const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
@@ -150,7 +150,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         {category.kind === 'traits' && category.entityId && <User aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
-          {category.kind === 'traits' && category.entityId && category.entityId === playedId && youMark}
+          {category.kind === 'traits' && category.entityId && category.entityId === playedEntityId && youMark}
         </span>
         {category.kind === 'traits' && category.traits.length > 0 && (
           <span
@@ -175,7 +175,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
           <h2 className="break-words text-heading font-semibold">
             {entity.name}
-            {entity.id === playedId && youMark}
+            {entity.id === playedEntityId && youMark}
           </h2>
           {description && (
             <div className="mt-1 max-w-3xl text-helper text-muted-foreground">
