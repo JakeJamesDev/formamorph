@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import {
   REVEAL_EASINGS, REVEAL_DIRECTIONS, REVEAL_SCALE_MODES, revealActive, revealAnimName, revealVars,
   DEFAULT_REVEAL_EASING, DEFAULT_REVEAL_FADE, DEFAULT_REVEAL_MOVE, DEFAULT_REVEAL_MOVE_DIRECTION,
@@ -56,7 +56,6 @@ function DirectionSelect({ value, onChange }: { value: RevealDirection; onChange
 }
 
 function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; onOpenChange: (v: boolean) => void; source?: RevealAnimationSource }) {
-  const live = useSettings();
   const {
     revealSpec,
     revealFade, setRevealFade,
@@ -73,7 +72,7 @@ function RevealAnimationDialog({ open, onOpenChange, source }: { open: boolean; 
     revealMinDuration, setRevealMinDuration,
     revealMinStagger, setRevealMinStagger,
     prefersReducedMotion,
-  } = source ?? live;
+  } = useSettingsSource(source);
 
   const [loop, setLoop] = useState(true);
   const [playKey, setPlayKey] = useState(0);

@@ -5,6 +5,13 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DesignSystemShowcase } from './DesignSystemShowcase';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
+import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
+
+vi.mock('@/lib/embeddingWorkerClient', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/embeddingWorkerClient')>()),
+  loadEmbeddingModel: vi.fn(() => Promise.resolve()),
+  disposeEmbeddingModel: vi.fn(() => Promise.resolve()),
+}));
 
 const renderShowcase = () => render(
   <ThemeProvider storageKey="design-system-test-theme">
@@ -40,44 +47,105 @@ describe('settings design reference', () => {
       .toHaveAttribute('data-reference-theme', 'dark');
   });
 
-  it('exercises production controls without writing persistent settings', async () => {
+  it('renders the production Display and Output sections in order', () => {
+    renderShowcase();
+
+    const headings = (name: string) => within(screen.getByRole('region', { name }))
+      .getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent).filter((text) => text !== name);
+    expect(headings('Display Reference')).toEqual(['Appearance', 'Scene', 'Narration', 'Accessibility', 'Inspection']);
+    expect(headings('Output Reference')).toEqual(
+      ['Turn Extras', 'Reasoning', 'Tools', 'Memory', 'Time', 'Lore', 'Characters', 'Choices', 'Performance'],
+    );
+  });
+
+  it('switches between the Simple and Advanced row sets', async () => {
     const user = userEvent.setup();
     renderShowcase();
 
-    expect(screen.getByRole('heading', { name: 'Display Reference' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Output Reference' })).toBeInTheDocument();
+    const modeSwitch = screen.getByRole('radiogroup', { name: 'Settings mode' });
+    await user.click(screen.getByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label }));
+    await user.click(within(modeSwitch).getByRole('radio', { name: 'Simple' }));
+    expect(screen.queryByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Memory' })).toBeNull();
+    expect(screen.getByLabelText('Hidden settings are off their defaults')).toBeInTheDocument();
 
-    const music = screen.getByRole('checkbox', { name: 'Background Music' });
-    expect(music).toBeChecked();
+    await user.click(within(modeSwitch).getByRole('radio', { name: /^Advanced/ }));
+    expect(screen.getByRole('checkbox', { name: SETTINGS_COPY.markdownFormatting.label })).not.toBeChecked();
+    expect(screen.getByRole('heading', { name: 'Memory' })).toBeInTheDocument();
+  });
+
+  it('changes production controls without writing settings or the theme', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+    const root = document.documentElement;
+    const rootClasses = root.className;
+    const rootPalette = root.getAttribute('data-theme');
+
+    const music = screen.getByRole('checkbox', { name: SETTINGS_COPY.backgroundMusic.label });
     await user.click(music);
     expect(music).not.toBeChecked();
 
-    const palette = screen.getByRole('combobox', { name: 'Palette' });
+    const palette = screen.getByRole('combobox', { name: SETTINGS_COPY.themeColor.label });
     await user.click(palette);
     await user.click(await screen.findByRole('option', { name: 'Purple' }));
     expect(palette).toHaveTextContent('Purple');
 
-    const thinking = screen.getByRole('radiogroup', { name: 'Thinking' });
-    const planning = within(thinking).getByRole('radio', { name: /^Planning/ });
+    const output = screen.getByRole('region', { name: 'Output Reference' });
+    const planning = within(output).getByRole('radio', { name: /^Planning/ });
     await user.click(planning);
     expect(planning).toHaveAttribute('data-state', 'on');
 
-    const layout = screen.getByRole('radiogroup', { name: 'Narration Layout' });
-    const chat = within(layout).getByRole('radio', { name: 'Chat' });
-    await user.click(chat);
-    expect(chat).toHaveAttribute('data-state', 'on');
+    const display = screen.getByRole('region', { name: 'Display Reference' });
+    await user.click(within(display).getByRole('radio', { name: /^Dark/ }));
+    expect(screen.getByRole('status')).toHaveTextContent('Settings saves the Dark theme at this step.');
 
-    const scale = screen.getByRole('slider', { name: 'Narration Size' });
-    scale.focus();
-    await user.keyboard('{ArrowRight}');
-    expect(screen.getByText('105%')).toBeInTheDocument();
+    const sample = screen.getByText('The lanterns wake along the harbor.').parentElement;
+    expect(sample).toHaveAttribute('data-reference-theme', 'dark');
+    expect(sample).toHaveAttribute('data-theme', 'purple');
 
-    const displayReference = screen.getByRole('region', { name: 'Display Reference' });
-    const appearance = within(displayReference).getByRole('heading', { name: 'Appearance' }).closest('section') as HTMLElement;
-    await user.click(within(appearance).getByRole('button', { name: 'More info' }));
-    // The popover carries the production description, read from the table so a copy edit can't strand this.
-    expect(await screen.findByText(SETTINGS_COPY.theme.description)).toBeInTheDocument();
     expect(localStorage).toHaveLength(0);
+    expect(root.className).toBe(rootClasses);
+    expect(root.getAttribute('data-theme')).toBe(rootPalette);
+  });
+
+  it('turns on semantic features without loading the embedding model', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    const status = screen.getByRole('status');
+    for (const label of [SETTINGS_COPY.semanticLore.label, SETTINGS_COPY.semanticMemory.label]) {
+      await user.click(screen.getByRole('checkbox', { name: label }));
+      expect(status).toHaveTextContent('The reference skipped the download.');
+      await user.click(screen.getByRole('checkbox', { name: label }));
+      expect(status).toHaveTextContent('The reference skipped the unload.');
+    }
+
+    expect(loadEmbeddingModel).not.toHaveBeenCalled();
+    expect(disposeEmbeddingModel).not.toHaveBeenCalled();
+    expect(localStorage).toHaveLength(0);
+  });
+
+  it('opens the nested Display dialogs against local settings', async () => {
+    const user = userEvent.setup();
+    renderShowcase();
+
+    await user.click(screen.getAllByRole('button', { name: /customize/i })[0]);
+    await user.click(await screen.findByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: /choose reveal animation/i }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: /preview theme/i }));
+    expect(await screen.findByText(/Seeded from your current theme/)).toBeInTheDocument();
+    expect(localStorage).toHaveLength(0);
+  });
+
+  it('keeps the Live Sample in its own block', () => {
+    renderShowcase();
+
+    const sample = screen.getByRole('region', { name: 'Live Sample' });
+    expect(within(sample).getByText('The lanterns wake along the harbor.')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Display Reference' }))
+      .queryByText('The lanterns wake along the harbor.')).toBeNull();
   });
 
   it('labels a Default and a Selected example in the control states reference', () => {

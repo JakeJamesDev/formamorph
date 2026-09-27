@@ -31,7 +31,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { WorldCardShell } from '@/components/WorldCardShell';
 import { CardTags } from '@/components/WorldDetails';
 import { Settings, Plus, GripVertical, Copy, X } from 'lucide-react';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from './theme-provider';
 import { hslTripleToHex, hexToHslTriple } from '@/lib/hslColor';
 import { QUOTE_CLASS } from '@/lib/quoteSegments';
@@ -287,9 +287,9 @@ function PreviewPanel() {
 }
 
 function ThemePreviewDialog({ open, onOpenChange, source }: { open: boolean; onOpenChange: (v: boolean) => void; source?: ThemePreviewSource }) {
-  const liveSettings = useSettings();
+  const { themeColor } = useSettingsSource(source);
   const liveTheme = useTheme();
-  const { themeColor, resolvedTheme } = source ?? { themeColor: liveSettings.themeColor, resolvedTheme: liveTheme.resolvedTheme };
+  const resolvedTheme = source?.resolvedTheme ?? liveTheme.resolvedTheme;
   const [values, setValues] = useState<Record<string, string>>({});
 
   // Seed from the live theme whenever the dialog opens or the underlying theme changes beneath it.

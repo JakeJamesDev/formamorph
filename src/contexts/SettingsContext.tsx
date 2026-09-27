@@ -635,7 +635,8 @@ function useProvideSettings() {
       },
       serialize: (v) => JSON.stringify(v),
     });
-  const reasoningCapability = reasoningCapabilityCache[reasoningCapabilitySig] ?? null;
+  // A signature with no probe answer yet has no record.
+  const reasoningCapability = (reasoningCapabilityCache[reasoningCapabilitySig] as ReasoningCapability | undefined) ?? null;
 
   /** One record into the cache, dropping the oldest entry once the cache is over its cap. */
   const storeCapability = useCallback(
@@ -1851,6 +1852,15 @@ export const useSettings = () => {
   }
   return context;
 };
+
+/** The passed source, else the live settings. A source lets a component run outside a `SettingsProvider`. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useSettingsSource<T>(source: T | undefined): T | SettingsContextValue {
+  const context = useContext(SettingsContext);
+  if (source) return source;
+  if (!context) throw new Error('useSettingsSource needs a source or a SettingsProvider');
+  return context;
+}
 
 /** Provides all persisted user settings (see `useSettings`); runs one-time localStorage migrations and
  *  seeds the prompt/image preset stores on first render. */

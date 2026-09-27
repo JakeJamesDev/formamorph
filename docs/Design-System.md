@@ -48,7 +48,10 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Slider plus current value | `ValueSlider` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Optional detail | `HintInfo` in [`SettingsRows.tsx`](../src/components/SettingsRows.tsx) |
 | Inputs and choices | `Input`, `Checkbox`, `Slider`, `Select`, and `ToggleGroup` in [`src/components/ui`](../src/components/ui) |
-| Approved compositions | Display and Output in [`SettingsModal.tsx`](../src/components/modals/SettingsModal.tsx) |
+| Display tab body | `DisplaySettingsSection` in [`DisplaySettingsSection.tsx`](../src/components/modals/DisplaySettingsSection.tsx) |
+| Output tab body | `OutputSettingsSection` in [`OutputSettingsSection.tsx`](../src/components/modals/OutputSettingsSection.tsx) |
+| What a section reads and writes | `SettingsSource` in [`settingsSource.ts`](../src/components/modals/settingsSource.ts) |
+| Simple/Advanced switch | `SettingsModeSwitch` in [`SettingsModeSwitch.tsx`](../src/components/modals/SettingsModeSwitch.tsx) |
 
 ### State reference
 
@@ -61,7 +64,13 @@ Cards use `card` rather than inventing a second panel color. Destructive, succes
 | Validation | Set `aria-invalid`, connect the message with `aria-describedby`, and use `FieldError`. |
 | Overflow | Constrain the control column and preserve the full value through its menu, title, or detail view. |
 
-The live Settings reference shows all six states. Its Display and Output examples reuse the same rows, options, theme registries, font registries, and controls as production.
+The live Settings reference renders the production Display and Output sections and the Simple/Advanced switch. A local source built from the settings defaults backs them, so a change writes no settings and no theme. Where Settings would save a theme or load the embedding model, the reference writes a status line. The Live Sample shows the reference theme, palette, and font in its own block. The Control States card shows all six states.
+Open `#dev?modal=designSystem&tab=settings`.
+
+### Writing review
+
+- Section, row, hint, and switch copy comes from the production components, so the reference and Settings cannot drift. Reuse does not certify that copy as fully ASD-STE100 compliant.
+- **Unverified:** the card descriptions, the Live Sample description, and the three status lines have terminology review only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Focused Markdown Authoring
 
