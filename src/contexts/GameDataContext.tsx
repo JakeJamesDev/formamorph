@@ -190,6 +190,15 @@ function useProvideGameData() {
     ));
   }, []);
 
+  // A content edit read off the entity as it stands at write time, so two edits in one tick both land.
+  const editEntity = useCallback((entityId: string, edit: (entity: Entity) => Entity) => {
+    setEntities(prevEntities => prevEntities.map(entity =>
+      entity.id === entityId
+        ? markEdited(edit(entity), ownedLibraryIds.current.has(followedLibraryId(entity) ?? ''))
+        : entity
+    ));
+  }, []);
+
   // Membership rides on the entity itself, so deleting it takes every location link with it — no
   // location-side cleanup to do.
   const removeEntity = useCallback((entityId: string) => {
@@ -598,6 +607,7 @@ function useProvideGameData() {
     removeConnection,
     addEntity,
     updateEntity,
+    editEntity,
     removeEntity,
     addEntityGroup,
     updateEntityGroup,

@@ -8,6 +8,7 @@ import {
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
 import { duplicateEntityPlaceholders } from './placeholderHomes';
+import { remintOwnedTraits } from './ownedTraits';
 import { remintOpenings } from './openings';
 import type { Entity, EntityGroup } from '@/types';
 
@@ -42,14 +43,15 @@ export const getEntityDropProjection = (
   getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
 
 /** Deep-duplicate an entity or a whole group subtree, inserting the copy right after the original. A copy
- *  with placeholders of its own gets fresh ones, its chips re-aimed at them, so the two never share a def. */
+ *  with placeholders of its own gets fresh ones, its chips re-aimed at them, so the two never share a def.
+ *  Its owned traits and groups get fresh ids too. */
 export function duplicateEntityNode(
   groups: EntityGroup[], entities: Entity[], id: string,
 ): { groups: EntityGroup[]; entities: Entity[]; newId: string } {
   const r = duplicateNode(groups, entities, id);
   if (r.leaves === entities) return { groups: r.groups, entities, newId: r.newId };
   const original = new Set(entities.map((e) => e.id));
-  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders({ ...e, ...remintOpenings(e) })));
+  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(remintOwnedTraits({ ...e, ...remintOpenings(e) }))));
   return { groups: r.groups, entities: leaves, newId: r.newId };
 }
 

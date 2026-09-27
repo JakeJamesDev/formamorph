@@ -7,7 +7,7 @@ import {
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
-import type { Trait, TraitGroup } from '@/types';
+import type { Entity, Trait, TraitGroup } from '@/types';
 import { xmlEscape } from './utils';
 
 export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
@@ -49,6 +49,99 @@ export function applyTraitDrop(
 ): { groups: TraitGroup[]; traits: Trait[] } {
   const r = applyDrop(groups, traits, collapsedIds, activeId, overId, dragOffset, indentationWidth);
   return { groups: r.groups, traits: r.leaves };
+}
+
+/** Whether the entity owns a trait, which is what gives it a node in the Traits tree. */
+export const ownsTraits = (entity: Entity): boolean => (entity.traits?.length ?? 0) > 0;
+
+/** The Traits tab's one tree as flat group and trait lists. An entity node is a group whose id is the
+ *  entity's; the entity's own root items sit under it. */
+export interface OwnedTraitTree {
+  groups: TraitGroup[];
+  traits: Trait[];
+  /** Entity node id → the entity it draws. */
+  entityNodes: Map<string, Entity>;
+  /** Owned trait or group id → its entity's id. World items are absent. */
+  ownerOf: Map<string, string>;
+}
+
+/** The world's traits, then a node for each entity that owns a trait, at the end of the top level. */
+export function ownedTraitTree(
+  world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] }, entities: readonly Entity[],
+): OwnedTraitTree {
+  const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
+  const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
+  const rootSorts = [
+    ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
+    ...world.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
+  ];
+  const firstNodeOrder = Math.max(-1, ...rootSorts) + 1;
+
+  const groups = [...world.traitGroups];
+  const traits = [...world.traits];
+  const entityNodes = new Map<string, Entity>();
+  const ownerOf = new Map<string, string>();
+  entities.filter(ownsTraits).forEach((entity, i) => {
+    entityNodes.set(entity.id, entity);
+    groups.push({ id: entity.id, name: entity.name, parentId: null, order: firstNodeOrder + i });
+    const own = new Set((entity.traitGroups ?? []).map((g) => g.id));
+    const parent = (ref: string | null | undefined) => (ref != null && own.has(ref) ? ref : entity.id);
+    for (const g of entity.traitGroups ?? []) {
+      groups.push({ ...g, parentId: parent(g.parentId) });
+      ownerOf.set(g.id, entity.id);
+    }
+    for (const t of entity.traits ?? []) {
+      traits.push({ ...t, groupId: parent(t.groupId) });
+      ownerOf.set(t.id, entity.id);
+    }
+  });
+  return { groups, traits, entityNodes, ownerOf };
+}
+
+/** What a drop in the one tree writes: the world's lists, or one entity with its own lists. */
+export type OwnedTraitDrop =
+  | { kind: 'world'; traits: Trait[]; groups: TraitGroup[] }
+  | { kind: 'entity'; entity: Entity };
+
+/**
+ * Resolve a drag in the one tree. A drop inside one owner reorders and nests as in the world tree. Entity
+ * nodes do not move, and a drop that would change an item's owner is refused. Null = nothing to write.
+ */
+export function applyOwnedTraitDrop(
+  world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] }, entities: readonly Entity[],
+  collapsedIds: Iterable<string>, activeId: string, overId: string, dragOffset: number, indentationWidth: number,
+): OwnedTraitDrop | null {
+  const tree = ownedTraitTree(world, entities);
+  if (tree.entityNodes.has(activeId)) return null;
+  const r = applyDrop(tree.groups, tree.traits, collapsedIds, activeId, overId, dragOffset, indentationWidth);
+  if (r.groups === tree.groups && r.leaves === tree.traits) return null;
+
+  const byId = new Map(r.groups.map((g) => [g.id, g]));
+  const moved = byId.get(activeId) ?? r.leaves.find((t) => t.id === activeId);
+  let ref = moved && ('parentId' in moved ? moved.parentId : moved.groupId);
+  while (ref && !tree.entityNodes.has(ref)) ref = byId.get(ref)?.parentId ?? null;
+  const ownerId = tree.ownerOf.get(activeId) ?? null;
+  if ((ref ?? null) !== ownerId) return null;
+
+  if (!ownerId) {
+    return {
+      kind: 'world',
+      traits: r.leaves.filter((t) => !tree.ownerOf.has(t.id)),
+      groups: r.groups.filter((g) => !tree.ownerOf.has(g.id) && !tree.entityNodes.has(g.id)),
+    };
+  }
+  const own = (ref: string | null | undefined) => (ref === ownerId ? null : ref ?? null);
+  const entity = tree.entityNodes.get(ownerId)!;
+  return {
+    kind: 'entity',
+    entity: {
+      ...entity,
+      traits: r.leaves.filter((t) => tree.ownerOf.get(t.id) === ownerId).map((t) => ({ ...t, groupId: own(t.groupId) })),
+      ...(entity.traitGroups ? {
+        traitGroups: r.groups.filter((g) => tree.ownerOf.get(g.id) === ownerId).map((g) => ({ ...g, parentId: own(g.parentId) })),
+      } : {}),
+    },
+  };
 }
 
 /**

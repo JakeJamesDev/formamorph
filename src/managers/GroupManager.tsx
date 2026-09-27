@@ -1,14 +1,21 @@
+import { useCallback } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
+import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
 
-/** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). */
-const GroupManager = ({ group }: { group: TraitGroup }) => {
-  const { updateTraitGroup, placeholders } = useGameData();
-  const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, updateTraitGroup);
+/** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
+ *  makes it that entity's group, and edits write to the entity. */
+const GroupManager = ({ group, ownerId }: { group: TraitGroup; ownerId?: string }) => {
+  const { updateTraitGroup, editEntity, placeholders } = useGameData();
+  const write = useCallback(
+    (next: TraitGroup) => (ownerId ? editEntity(ownerId, (e) => updateOwnedGroup(e, next)) : updateTraitGroup(next)),
+    [ownerId, editEntity, updateTraitGroup],
+  );
+  const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, write);
 
   if (!editingGroup) return null;
 

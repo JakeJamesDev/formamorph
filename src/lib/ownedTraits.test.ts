@@ -1,0 +1,115 @@
+import { describe, it, expect } from 'vitest';
+import {
+  addOwnedGroup, addOwnedTrait, editorGateInput, findOwnedItem, removeOwnedItem, remintOwnedTraits, updateOwnedGroup,
+  updateOwnedTrait,
+} from './ownedTraits';
+import { gateStates, requirementOptions } from './traitGates';
+import type { Entity, Trait, TraitGroup } from '@/types';
+
+const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
+
+const ash = (extra: Partial<Entity> = {}): Entity => ({
+  id: 'ash', name: 'Ash',
+  traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+  traits: [
+    trait('t-tamed', { name: 'Tamed', groupId: 'g-bond' }),
+    trait('t-wild', { name: 'Wild', groupId: 'g-bond' }),
+    trait('t-pack', { name: 'Pack Leader', requires: [{ kind: 'trait', id: 't-tamed' }] }),
+  ],
+  ...extra,
+});
+
+const WORLD_TRAITS: Trait[] = [
+  trait('t-paladin', { name: 'Paladin' }),
+  trait('t-tamer', { name: 'Beast Tamer', requires: [{ kind: 'trait', id: 't-tamed' }] }),
+];
+
+describe('owned trait edits', () => {
+  it('adds the first trait at the entity root with no stat effects', () => {
+    const next = addOwnedTrait({ id: 'wolf', name: 'Wolf' }, 'new');
+    expect(next.traits).toEqual([expect.objectContaining({ id: 'new', groupId: null, statChanges: [], order: 0 })]);
+    expect(next.traits?.[0].statToggles).toBeUndefined();
+  });
+
+  it('orders a new trait or group after the root items already there', () => {
+    const withTrait = addOwnedTrait(ash(), 'new');
+    expect(withTrait.traits?.find((t) => t.id === 'new')?.order).toBe(2);
+    const withGroup = addOwnedGroup(withTrait, 'g-new');
+    expect(withGroup.traitGroups?.find((g) => g.id === 'g-new')).toMatchObject({ parentId: null, order: 3 });
+  });
+
+  it('replaces one trait or group by id and leaves the rest', () => {
+    const renamed = updateOwnedTrait(ash(), trait('t-wild', { name: 'Feral', groupId: 'g-bond' }));
+    expect(renamed.traits?.map((t) => t.name)).toEqual(['Tamed', 'Feral', 'Pack Leader']);
+    const regrouped = updateOwnedGroup(ash(), { id: 'g-bond', name: 'Temper', parentId: null });
+    expect(regrouped.traitGroups).toEqual([{ id: 'g-bond', name: 'Temper', parentId: null }]);
+  });
+
+  it('removing a group moves its traits up to its parent, as a world group does', () => {
+    const next = removeOwnedItem(ash(), 'g-bond');
+    expect(next.traitGroups).toBeUndefined();
+    expect(next.traits?.find((t) => t.id === 't-tamed')?.groupId).toBeNull();
+  });
+
+  it('removing the last trait leaves the entity owning nothing', () => {
+    const next = removeOwnedItem({ id: 'wolf', name: 'Wolf', traits: [trait('only')] }, 'only');
+    expect(next.traits).toBeUndefined();
+  });
+
+  it('finds an owned trait or group with its owner', () => {
+    const entities = [{ id: 'npc', name: 'Npc' }, ash()];
+    expect(findOwnedItem(entities, 't-pack')).toMatchObject({ entity: { id: 'ash' }, trait: { name: 'Pack Leader' } });
+    expect(findOwnedItem(entities, 'g-bond')).toMatchObject({ entity: { id: 'ash' }, group: { name: 'Bond' } });
+    expect(findOwnedItem(entities, 't-paladin')).toBeNull();
+  });
+});
+
+describe('remintOwnedTraits', () => {
+  it('gives every owned trait and group a fresh id, keeping the tree and inward requirements', () => {
+    const source = ash({ traits: [...ash().traits!, trait('t-oath', { requires: [{ kind: 'trait', id: 't-paladin' }] })] });
+    const copy = remintOwnedTraits(source);
+    const ids = [...copy.traits!.map((t) => t.id), ...copy.traitGroups!.map((g) => g.id)];
+    expect(ids.some((id) => ['t-tamed', 't-wild', 't-pack', 't-oath', 'g-bond'].includes(id))).toBe(false);
+
+    const byName = (name: string) => copy.traits!.find((t) => t.name === name)!;
+    expect(byName('Tamed').groupId).toBe(copy.traitGroups![0].id);
+    expect(byName('Pack Leader').requires).toEqual([{ kind: 'trait', id: byName('Tamed').id }]);
+    // A requirement pointing out of the entity keeps its target.
+    expect(byName('t-oath').requires).toEqual([{ kind: 'trait', id: 't-paladin' }]);
+  });
+
+  it('remaps an inward group requirement too', () => {
+    const source = ash({ traits: [trait('t-x', { requires: [{ kind: 'group', id: 'g-bond' }] })] });
+    const copy = remintOwnedTraits(source);
+    expect(copy.traits![0].requires).toEqual([{ kind: 'group', id: copy.traitGroups![0].id }]);
+  });
+
+  it('leaves an entity that owns nothing as it is', () => {
+    const plain: Entity = { id: 'npc', name: 'Npc' };
+    expect(remintOwnedTraits(plain)).toBe(plain);
+  });
+});
+
+describe('editorGateInput', () => {
+  const world = (groups: TraitGroup[] = []) => ({ traits: WORLD_TRAITS, traitGroups: groups, entities: [ash(), { id: 'npc', name: 'Npc' }] });
+
+  it('resolves requirements across owners in both directions', () => {
+    const input = editorGateInput({
+      ...world(),
+      entities: [ash({ traits: [...ash().traits!, trait('t-loyal', { requires: [{ kind: 'trait', id: 't-paladin' }] })] })],
+    });
+    const gates = gateStates(input);
+    expect(gates.get('t-tamer')?.requirements).toEqual([{ text: "Ash's Tamed", holds: false, unresolved: false }]);
+    expect(gates.get('t-loyal')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
+  });
+
+  it('offers owned traits in the picker with their owner', () => {
+    const options = requirementOptions(editorGateInput(world()), 't-paladin');
+    expect(options.traits).toContainEqual({ requirement: { kind: 'trait', id: 't-tamed' }, label: "Ash's Tamed", where: 'Ash › Bond' });
+    expect(options.groups).toContainEqual({ requirement: { kind: 'group', id: 'g-bond' }, label: 'any Bond', where: 'Ash' });
+  });
+
+  it('leaves out entities that own nothing', () => {
+    expect(editorGateInput(world()).owners.map((o) => o.id)).toEqual(['world', 'ash']);
+  });
+});

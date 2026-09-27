@@ -194,6 +194,11 @@ export interface Entity {
   openings?: Opening[];
   /** Relative draw weight per opening id; an opening absent from the map weighs 1, and 0 benches it. */
   openingWeights?: Record<string, number>;
+  /** Traits this entity owns. They describe it to the AI, and join the player's traits when the player plays
+   *  as it. They carry no stat changes and no stat toggles. Ids are unique across the world and every entity. */
+  traits?: Trait[];
+  /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
+  traitGroups?: TraitGroup[];
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
