@@ -1,6 +1,6 @@
 # 06: Pins per bearer
 
-Status: in-progress
+Status: ready-for-human
 Base: 22fdad11
 Blocked by: 02 — Links in the editor
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -34,3 +34,5 @@ An NPC's pins apply only in that NPC's own text. World-level text resolves with 
 ## Comments
 
 **From ticket 01 (2026-09-27, commit 72f20e90).** A bearer-relative pin keeps `placeholderId` as `''` and names its target in `bearerPlaceholder`. The collector does not read it yet; this ticket owns that.
+
+**From ticket 06 (2026-09-27).** Left open: a directly held bearer-relative pin (Q76) does not list in a placeholder's Pins list or conflict note, since its row would need its own write-back. A seeded link value keeps the world's `valueId` if the bearer later gains its own placeholder of that name; the spec's unruled "rename remap" candidate covers it. Roll priming of link values is ticket 09's.

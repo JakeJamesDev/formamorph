@@ -6,7 +6,7 @@ import { Section } from '@/components/SettingsRows';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { describePlaceholders } from '@/lib/placeholders';
-import { linkPinRows } from '@/lib/placeholderPins';
+import { linkPinRows, pinValueOf } from '@/lib/placeholderPins';
 import { linkDefaultTraits, originalPath, setLinkDefault, setLinkPinValue } from '@/lib/traitLinks';
 import { CUSTOM_PERSONA_ID, hasStatEffects } from '@/lib/traitTree';
 import { useEditBearer } from './useEditBearer';
@@ -93,8 +93,8 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
                 <Select
                   value={value?.value ?? NO_VALUE}
                   onValueChange={(text) => {
-                    const id = target.values.find((v) => v.text === text)?.id;
-                    setPin(t.id, name, text === NO_VALUE ? null : { value: text, ...(id ? { valueId: id } : {}) });
+                    const valueId = target.values.find((v) => v.text === text)?.id;
+                    setPin(t.id, name, text === NO_VALUE ? null : pinValueOf({ value: text, valueId }));
                   }}
                 >
                   <SelectTrigger className="min-w-0 flex-1" aria-label={`${name} Value`}>
