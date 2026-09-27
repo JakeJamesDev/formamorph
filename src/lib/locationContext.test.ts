@@ -403,6 +403,58 @@ describe("buildEntityContext", () => {
     expect(buildEntityContext(elsewhere, [guard])).toBe(NONE_PLACEHOLDER);
   });
 
+  describe("owned traits in force", () => {
+    // A wolf with a temperament group; Tamed and Calm are in force, Scarred is owned but not active.
+    const wolf: Entity = {
+      id: "wolf", name: "Ash", aiDescription: "A gray wolf.", aiSummary: "A gray wolf.", locations: ["loc1"],
+      traitGroups: [{ id: "temper", name: "Temperament", aiDescription: "How Ash meets strangers.", parentId: null }],
+      traits: [
+        { id: "calm", name: "Calm", groupId: "temper", aiDescription: "Ash waits before acting.", statChanges: [] },
+        { id: "tamed", name: "Tamed", aiDescription: "Ash obeys the player.", statChanges: [], order: 0 },
+        { id: "scarred", name: "Scarred", aiDescription: "An old wound across the muzzle.", statChanges: [], order: 1 },
+      ],
+    };
+    const ownedTraits = { wolf: ["tamed", "calm"] };
+
+    it("gives each trait's AI description under its name in the full context", () => {
+      const out = renderEntityRoster(["wolf"], [wolf], { ownedTraits });
+      expect(out).toBe(
+        "Ash\n" +
+        "  description: A gray wolf.\n" +
+        "  traits:\n" +
+        "    Tamed: Ash obeys the player.\n" +
+        "    Temperament:\n" +
+        "      How Ash meets strangers.\n" +
+        "      Calm: Ash waits before acting.\n",
+      );
+    });
+
+    it("nests the traits the same way in markdown and xml", () => {
+      const md = renderEntityRoster(["wolf"], [wolf], { ownedTraits, format: "markdown" });
+      expect(md).toContain("  - **traits:**\n    - **Tamed:** Ash obeys the player.\n    - **Temperament:** How Ash meets strangers.\n      - **Calm:** Ash waits before acting.\n");
+      const xml = renderEntityRoster(["wolf"], [wolf], { ownedTraits, format: "xml" });
+      expect(xml).toContain("  <traits>\n    <trait>\n      <name>Tamed</name>\n      <description>Ash obeys the player.</description>\n    </trait>\n");
+      expect(xml).toContain("  </traits>\n</entity>\n");
+    });
+
+    it("gives the summary one line of trait names, in tree order", () => {
+      const out = renderEntityRoster(["wolf"], [wolf], { ownedTraits, preferSummary: true });
+      expect(out).toBe("Ash\n  description: A gray wolf.\n  traits: Tamed, Calm\n");
+      expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits, preferSummary: true, format: "xml" }))
+        .toContain("  <traits>Tamed, Calm</traits>\n");
+    });
+
+    it("leaves out an owned trait that is not in force, and the whole line when none is", () => {
+      expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits })).not.toContain("Scarred");
+      expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits: { wolf: [] } })).not.toContain("traits");
+      expect(renderEntityRoster(["wolf"], [wolf])).not.toContain("traits");
+    });
+
+    it("keeps the name-only content to names", () => {
+      expect(renderEntityRoster(["wolf"], [wolf], { ownedTraits, nameOnly: true })).toBe("Ash");
+    });
+  });
+
   it("skips a rostered id that resolves to no entity, and is N/A when none of them do", () => {
     expect(renderEntityRoster(["missing", "e1"], [guard])).toContain("Guard");
     expect(renderEntityRoster(["missing"], [guard])).toBe(NONE_PLACEHOLDER);

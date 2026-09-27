@@ -1,6 +1,7 @@
 import type { Connection, Entity, GameLocation } from "@/types";
 import { entityIdsAt, entityIdsAtAny } from "./entityPresence";
 import { effectiveDestinations } from "./locationGraph";
+import { buildTraitContext, traitsInContextOrder } from "./traitTree";
 import { NONE_PLACEHOLDER } from "./promptFallbacks";
 import {
   decodeVariant, encodeVariant, tokenVariant, variableAxes, variableForToken, withVariant,
@@ -122,6 +123,30 @@ export function buildLocationContext(
   return output;
 }
 
+/** Entity id → the ids of its owned traits in force. Absent entity ⇒ none. */
+export type OwnedTraitsInForce = Readonly<Record<string, readonly string[]>>;
+
+/** How a roster renders: the chip content and format, and each entity's owned traits in force. */
+export type RosterOpts = { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; ownedTraits?: OwnedTraitsInForce };
+
+/** An entity's owned traits in force as roster field lines, or '' when none is. */
+function ownedTraitLines(
+  entity: Entity,
+  ids: readonly string[],
+  preferSummary: boolean,
+  format: ContextFormat,
+  field: (key: string, value: string) => string,
+): string {
+  const traits = entity.traits ?? [];
+  const groups = entity.traitGroups ?? [];
+  const inForce = traitsInContextOrder(ids, traits, groups);
+  if (!inForce.length) return "";
+  if (preferSummary) return field("traits", inForce.map((t) => t.name).join(", "));
+  const block = buildTraitContext(ids, traits, groups, format).split("\n").map((line) => `    ${line}`).join("\n");
+  if (format === "xml") return `  <traits>\n${block}\n  </traits>\n`;
+  return `${format === "markdown" ? "  - **traits:**" : "  traits:"}\n${block}\n`;
+}
+
 /**
  * Serialize a roster of entity ids into the block the AI prompts inject for `<ENTITIES>` — a top-level
  * list, separate from the location so the model reads the cast as "characters/things that could appear
@@ -132,13 +157,16 @@ export function buildLocationContext(
  * `key: value` fields indented under it; `'markdown'` makes the name a bold subject bullet with nested
  * bold-key field bullets (`- **Name**` / `  - **key:** value`); `'xml'` wraps each entity in `<entity>` with
  * a `<name>` and one `<key>` child per field.
+ *
+ * `ownedTraits` names each entity's owned traits in force. The full content nests them under a `traits`
+ * field as the Traits chip renders them; the summary content lists their names on one `traits` line.
  */
 export function renderEntityRoster(
   entityIds: string[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+  opts: RosterOpts = {},
 ): string {
-  const { preferSummary = false, format = "simple", nameOnly = false } = opts;
+  const { preferSummary = false, format = "simple", nameOnly = false, ownedTraits } = opts;
   if (nameOnly) {
     const names = entityIds
       .map((id) => entities.find((e) => e.id === id)?.name)
@@ -168,12 +196,14 @@ export function renderEntityRoster(
       : "";
     const pronouns = entityItem.pronouns?.trim();
     const pronounLine = pronouns ? field("pronouns", pronouns) : "";
+    const traitLines = ownedTraitLines(entityItem, ownedTraits?.[entityItem.id] ?? [], preferSummary, format, field);
     if (xml) {
       let inner = field("name", entityItem.name);
       inner += aliasLine;
       inner += pronounLine;
       if (hasDesc) inner += field("description", entityDescription!);
       inner += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
+      inner += traitLines;
       output += `<entity>\n${inner}</entity>\n`;
       return;
     }
@@ -182,6 +212,7 @@ export function renderEntityRoster(
     output += pronounLine;
     if (hasDesc) output += field("description", entityDescription!);
     output += appendAllowedFields(entityItem, AI_ENTITY_FIELDS, field);
+    output += traitLines;
   });
 
   // All listed ids failed to resolve to a real entity → treat as empty.
@@ -197,7 +228,7 @@ export function renderEntityRoster(
 export function buildEntityContext(
   location: MaybeLocation,
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+  opts: RosterOpts = {},
 ): string {
   if (!location) return NONE_PLACEHOLDER;
   return renderEntityRoster(entityIdsAt(location.id, entities), entities, opts);
@@ -238,7 +269,7 @@ export function buildSublocationEntitiesContext(
   current: MaybeLocation,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
+  opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);
@@ -351,7 +382,7 @@ export function buildParentLocationContext(
 export function buildSceneEntitiesContext(
   names: string[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean } = {},
+  opts: RosterOpts = {},
 ): string {
   if (names.length === 0) return NONE_PLACEHOLDER;
   if (opts.nameOnly) return names.join(', ');
@@ -412,7 +443,7 @@ export function buildReachableEntitiesContext(
   current: MaybeLocation,
   locations: GameLocation[],
   entities: Entity[],
-  opts: { preferSummary?: boolean; format?: ContextFormat; nameOnly?: boolean; excludeIds?: string[] } = {},
+  opts: RosterOpts & { excludeIds?: string[] } = {},
 ): string {
   if (!current) return NONE_PLACEHOLDER;
   const exclude = new Set(opts.excludeIds ?? []);

@@ -1,0 +1,45 @@
+{
+  "owned": {
+    "ent-bram": [
+      {
+        "id": "owned-bram-limp",
+        "name": "Limping",
+        "playerDescription": "The ferryman limps.",
+        "aiDescription": "Bram walks with a heavy limp from a knee that never healed, and every step he takes on the dock makes the boards creak.",
+        "statChanges": []
+      }
+    ],
+    "ent-odette": [
+      {
+        "id": "owned-odette-sings",
+        "name": "Sings at Work",
+        "playerDescription": "The eel-smoker sings as she works.",
+        "aiDescription": "Odette sings old river songs under her breath whenever her hands are busy.",
+        "statChanges": []
+      }
+    ]
+  },
+  "persona": {
+    "id": "ent-wren",
+    "name": "Wren",
+    "persona": true,
+    "type": "Person",
+    "aiDescription": "A traveling mapmaker on the road south.",
+    "traits": [
+      {
+        "id": "owned-wren-scarf",
+        "name": "Red Scarf",
+        "playerDescription": "You wear a red scarf.",
+        "aiDescription": "Wren wears a long red wool scarf wound twice around the neck, and tugs at it when uneasy.",
+        "statChanges": []
+      }
+    ]
+  },
+  "cases": [
+    { "id": "narr-bram", "kind": "narration", "action": "I walk up to the ferryman and ask if he'll take me across.", "checks": ["limp", "name-leak", "label-leak"] },
+    { "id": "narr-odette", "kind": "narration", "action": "I crouch by the firepit and watch the woman turn the eels.", "checks": ["sing", "name-leak", "label-leak"] },
+    { "id": "narr-idle", "kind": "narration", "action": "I sit on the edge of the dock and rest my feet.", "checks": ["scarf", "name-leak", "label-leak"] },
+    { "id": "plan-bram", "kind": "planning", "action": "I walk up to the ferryman and ask if he'll take me across.", "checks": ["limp", "label-leak"] },
+    { "id": "plan-odette", "kind": "planning", "action": "I crouch by the firepit and watch the woman turn the eels.", "checks": ["sing", "label-leak"] }
+  ]
+}
