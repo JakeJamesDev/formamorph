@@ -272,13 +272,16 @@ export function applyOwnedTraitDrop(
   };
 }
 
+/** The selected traits directly in one group (null: ungrouped), in authored order. */
+const selectedTraitsIn = (traits: Trait[], sel: ReadonlySet<string>, groupId: string | null): Trait[] =>
+  traits
+    .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
 /** The selected traits in the order `buildTraitContext` renders them: ungrouped first, then group by group. */
 export function traitsInContextOrder(selectedIds: Iterable<string>, traits: Trait[], groups: TraitGroup[]): Trait[] {
   const sel = new Set(selectedIds);
-  const selectedIn = (groupId: string | null) =>
-    traits
-      .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
   const walk = (nodes: TraitTreeNode[]): Trait[] =>
     nodes.flatMap((node) => (node.kind === 'group' ? [...selectedIn(node.id), ...walk(node.children)] : []));
   return [...selectedIn(null), ...walk(buildTraitTree(groups, traits))];
@@ -308,10 +311,7 @@ export function buildTraitContext(
     const bare = md ? `**${t.name}**` : t.name;
     return t.aiDescription?.trim() ? `${name} ${t.aiDescription.trim()}` : bare;
   };
-  const selectedIn = (groupId: string | null) =>
-    traits
-      .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
 
   const lines: string[] = [];
   for (const t of selectedIn(null)) lines.push(md ? `- ${traitLine(t)}` : traitLine(t));
@@ -344,10 +344,7 @@ export function buildTraitContext(
  *  `<group>` nesting its `<name>`/`<description>`, its traits, and any descendant groups. A group with no
  *  directly-selected trait isn't wrapped but its descendants still surface (mirrors the simple/markdown walk). */
 function buildTraitContextXml(sel: Set<string>, traits: Trait[], groups: TraitGroup[]): string {
-  const selectedIn = (groupId: string | null) =>
-    traits
-      .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const selectedIn = (groupId: string | null) => selectedTraitsIn(traits, sel, groupId);
 
   const traitXml = (t: Trait, pad: string): string => {
     const desc = t.aiDescription?.trim();

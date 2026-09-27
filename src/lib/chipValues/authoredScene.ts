@@ -2,7 +2,10 @@ import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { resolveEntityText, resolvePlaceholders } from '../placeholders';
-import { resolveEntityTexts, type ResolveEntityText } from '../resolveWorldNames';
+import { traitScopedPins } from '../placeholderPins';
+import {
+  resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
+} from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
 import type {
   Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup,
@@ -62,7 +65,13 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const resolveEntity = options.resolveEntity ?? (options.resolve
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
-  const cast = resolveEntity ? resolveEntityTexts(entities, resolveEntity) : entities;
+  // An owned trait reads its own pins, with its owner as the Character Name.
+  const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
+    ? (_trait, text, owner) => options.resolveEntity!(owner, text)
+    : (trait, text, owner) => resolveEntityText(owner, text, { placeholders, rolls: {}, pins: traitScopedPins(trait, {}, placeholders) });
+  const cast = resolveEntity
+    ? resolveOwnedTraitTexts(resolveEntityTexts(entities, resolveEntity), resolveOwned, resolveEntity)
+    : entities;
   const presentIds = entityIdsAt(location?.id, entities);
   const activeIds = new Set(options.activeTraitIds ?? traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
 

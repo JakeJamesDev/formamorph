@@ -75,11 +75,21 @@ describe('authoredChipScene', () => {
   });
 
   it("holds each entity's default owned traits in force, as the entry step preselects them", () => {
-    const keen: Trait = { id: 'keen', name: 'Keen-Eyed', isDefault: true, aiDescription: 'Sees the far shore.', statChanges: [] };
+    const keen: Trait = { id: 'keen', name: 'Keen-Eyed', isDefault: true, aiDescription: '{{char}} sees the far shore.', statChanges: [] };
     const idle: Trait = { id: 'idle', name: 'Idle', aiDescription: 'Sits all day.', statChanges: [] };
     const scene = authoredChipScene(world({ entities: [{ ...wren, traits: [keen, idle] }, harrow] }));
     expect(scene.ownedTraits).toEqual({ wren: ['keen'] });
-    expect(chipValues(scene)['<ENTITIES>']).toContain('Keen-Eyed: Sees the far shore.');
+    expect(chipValues(scene)['<ENTITIES>']).toContain('Keen-Eyed: Wren sees the far shore.');
+  });
+
+  it("resolves an owned trait's text with its owner and its own pins", () => {
+    const coat = { id: 'coat', name: 'Coat', values: phValues(['gray', 'red']) };
+    const worn: Trait = {
+      id: 'worn', name: 'Red Coat', isDefault: true, aiDescription: '{{char}} wears a {{ph:coat:world:p1}} coat.',
+      statChanges: [], placeholderPins: [{ placeholderId: 'coat', value: 'crimson' }],
+    };
+    const scene = authoredChipScene(world({ entities: [{ ...wren, traits: [worn] }, harrow], placeholders: [coat] }));
+    expect(chipValues(scene)['<ENTITIES>']).toContain('Red Coat: Wren wears a crimson coat.');
   });
 
   it('holds every enabled lore entry with its position, since no keyword has fired yet', () => {

@@ -3,10 +3,13 @@ import type {
   Connection, Entity, GameLocation, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
 import { entityIdsAt } from '../entityPresence';
-import { entityNamed, scenePresentHere } from '../locationContext';
+import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
 import type { ResolvedPersona } from '../persona';
-import { resolveEntityTexts, type ResolveEntityText } from '../resolveWorldNames';
+import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
+
+/** A trait's own text under its own pins; an owned trait passes its owner. */
+export type ResolveTraitText = (trait: Trait, text: string, owner?: Entity | null) => string;
 
 /** The playthrough as the game view holds it, after placeholder resolution. */
 export interface LiveSceneSources {
@@ -19,8 +22,8 @@ export interface LiveSceneSources {
   /** Each entity's owned trait picks and switch-offs. None when absent. */
   ownedTraits?: OwnedTraitStates;
   resolve: (text: string) => string;
-  /** A trait's own text under its own pins. */
-  resolveTrait: (trait: Trait, text: string) => string;
+  /** A trait's own text under its own pins, with an owned trait's owner as the Character Name. */
+  resolveTrait: ResolveTraitText;
   /** An entity's own text, with that entity as the Character Name. */
   resolveEntity: ResolveEntityText;
   persona: ResolvedPersona | null;
@@ -43,8 +46,10 @@ export interface LiveSceneSources {
 export interface SceneWrites {
   activeStats: PlayerStat[];
   activeTraits: Trait[];
+  /** Each entity's owned trait state after the box's switches and cascades. */
+  ownedTraits: OwnedTraitStates;
   resolve: (text: string) => string;
-  resolveTrait: (trait: Trait, text: string) => string;
+  resolveTrait: ResolveTraitText;
   resolveEntity: ResolveEntityText;
 }
 
@@ -59,10 +64,11 @@ export function liveChipScene(
 ): ChipScene {
   // Each entity's text resolves with that entity as its owner, as trait text resolves under its own pins.
   const resolveEntity = box?.resolveEntity ?? sources.resolveEntity;
-  const allEntities = resolveEntityTexts(sources.allEntities, resolveEntity);
-  const persona = sources.persona && {
-    ...sources.persona, entity: resolveEntityTexts([sources.persona.entity], resolveEntity)[0],
-  };
+  const resolveTrait = box?.resolveTrait ?? sources.resolveTrait;
+  const ownText = (entities: Entity[]) =>
+    resolveOwnedTraitTexts(resolveEntityTexts(entities, resolveEntity), resolveTrait, resolveEntity);
+  const allEntities = ownText(sources.allEntities);
+  const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
   const presentIds = entityIdsAt(loc?.id, allEntities);
   // Who has taken part lately, minus anyone the dialogue merely kept naming: an authored entity who lives
@@ -77,7 +83,6 @@ export function liveChipScene(
   }
   // A trait's own description resolves with its own pins, so the AI reads the same words the player's card
   // shows; the scene's resolve then covers the group headers, since trait text is token-free by then.
-  const resolveTrait = box?.resolveTrait ?? sources.resolveTrait;
   const traits = (box?.activeTraits ?? sources.traits).map((trait) =>
     trait.aiDescription ? { ...trait, aiDescription: resolveTrait(trait, trait.aiDescription) } : trait,
   );
@@ -87,7 +92,7 @@ export function liveChipScene(
     stats: box?.activeStats ?? sources.stats,
     traits,
     traitGroups: sources.traitGroups,
-    ownedTraits: ownedTraitsInForce(sources.ownedTraits),
+    ownedTraits: inForceByOwner(box?.ownedTraits ?? sources.ownedTraits),
     persona,
     location: loc,
     locations: sources.locations,
@@ -102,13 +107,13 @@ export function liveChipScene(
     resolve: box?.resolve ?? sources.resolve,
     resolveEntity,
     placeholders: sources.placeholders,
-    outerScopeEntities: resolveEntityTexts(sources.entities, resolveEntity),
+    outerScopeEntities: ownText(sources.entities),
     inSceneNames,
   };
 }
 
 /** Each entity's chosen owned traits minus the ones switched off. */
-function ownedTraitsInForce(states: OwnedTraitStates | undefined): Record<string, string[]> {
+function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForce {
   return Object.fromEntries(Object.entries(states ?? {}).map(([id, { chosen, disabled = [] }]) => {
     const off = new Set(disabled);
     return [id, chosen.filter((traitId) => !off.has(traitId))];

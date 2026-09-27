@@ -55,7 +55,7 @@ import type { TTSProgress } from './TTSModal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
-import type { Entity, PersonaRef, SceneEntity } from '@/types';
+import type { Entity, PersonaRef, SceneEntity, Trait } from '@/types';
 import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
@@ -1140,6 +1140,14 @@ export const RightPanel = ({
     () => ownedTraitTree({ traits, traitGroups }, traitEntities, traitLibrary),
     [traits, traitGroups, traitEntities, traitLibrary],
   );
+  // An owned trait's card reads its owner as the Character Name, as the AI does.
+  const resolveTreeTraitText = React.useCallback(
+    (trait: Trait, text: string) => {
+      const ownerId = traitTree.ownerOf.get(trait.id);
+      return resolveTraitText(trait, text, ownerId ? traitTree.entityNodes.get(ownerId) : null);
+    },
+    [traitTree, resolveTraitText],
+  );
   const activeOwnedIds = React.useMemo(
     () => new Set(Object.values(activeOwnedTraitIds(viewOwnedTraits)).flat()),
     [viewOwnedTraits],
@@ -1286,7 +1294,7 @@ export const RightPanel = ({
               : disabledTraits.has(id) || !heldTraitIds.has(id))}
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
-            resolveTraitText={resolveTraitText}
+            resolveTraitText={resolveTreeTraitText}
             view={traitsView}
             setView={setTraitsView}
             gates={traitGates}

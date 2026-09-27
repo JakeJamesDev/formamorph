@@ -30,7 +30,8 @@ const sources = (over: Partial<LiveSceneSources> = {}): LiveSceneSources => ({
   traits: [seaLegs],
   traitGroups: [],
   resolve: (text) => text.replaceAll('{{deck}}', 'a wet deck'),
-  resolveTrait: (_trait, text) => text.replaceAll('{{deck}}', 'any deck'),
+  resolveTrait: (_trait, text, owner) =>
+    resolveEntityText(owner ?? null, text.replaceAll('{{deck}}', 'any deck'), { placeholders: [], rolls: {} }),
   resolveEntity: (entity, text) => resolveEntityText(entity, text, { placeholders: [], rolls: {} }),
   persona: null,
   location: quay,
@@ -74,6 +75,7 @@ describe('the live adapter', () => {
     const scene = liveChipScene(sources(), null, {
       activeStats: [hardened],
       activeTraits: [],
+      ownedTraits: {},
       resolve: (text) => text.replaceAll('{{deck}}', 'the box deck'),
       resolveTrait: (_trait, text) => text,
       resolveEntity: (_entity, text) => text.replaceAll('{{char}}', 'the box hauler'),
@@ -97,7 +99,7 @@ describe('the live adapter', () => {
     const cap = { id: 'cap', name: 'Cap', values: [{ id: 'cap-1', text: 'the cap of {{char}}' }] };
     const capped = entities.map((e) => (e.id === 'porter' ? { ...e, placeholders: [cap] } : e));
     const scene = liveChipScene(sources({ allEntities: capped, placeholders: [shade] }), null, {
-      activeStats: [grit], activeTraits: [], resolve: (text) => text, resolveTrait: (_trait, text) => text,
+      activeStats: [grit], activeTraits: [], ownedTraits: {}, resolve: (text) => text, resolveTrait: (_trait, text) => text,
       resolveEntity: (_entity, text) => `${text} [box]`,
     });
     const snapshot = buildToolSnapshot(scene, []);
@@ -135,6 +137,15 @@ describe('the live adapter', () => {
       expect(values['<ENTITIES>']).toContain('Loyal: Harbormaster stands by the player.');
       expect(values['<ENTITIES>']).not.toContain('Sullen');
       expect(values['<ENTITIES|summary>']).toContain('traits: Loyal');
+    });
+
+    it("reads an NPC's traits from a before box in flight", () => {
+      const chosen = { ...cast, ownedTraits: { harbormaster: { chosen: ['loyal'] } } };
+      const scene = liveChipScene(chosen, null, {
+        activeStats: [grit], activeTraits: [seaLegs], ownedTraits: { harbormaster: { chosen: ['loyal'], disabled: ['loyal'] } },
+        resolve: (text) => text, resolveTrait: (_trait, text) => text, resolveEntity: (_entity, text) => text,
+      });
+      expect(chipValues(scene)['<ENTITIES>']).not.toContain('Loyal');
     });
 
     it('gives an NPC nothing when the playthrough chose none of its traits', () => {
