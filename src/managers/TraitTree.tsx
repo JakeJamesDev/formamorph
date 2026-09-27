@@ -12,9 +12,9 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { gateStates, worldGateInput, type GateState } from '@/lib/traitGates';
+import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 
-const OR = new Intl.ListFormat('en', { type: 'disjunction' });
 // Red on the primary fill is unreadable, so a selected row drops the tint for the row's own color.
 const UNRESOLVED = 'text-destructive [[data-editor-row-selected]_&]:text-current';
 
@@ -29,7 +29,8 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
         <Lock className="h-3.5 w-3.5" aria-hidden />{gate.requirements.length}
       </span>
     ),
-    metaTitle: labelPlaceholders(`Requires ${OR.format(gate.requirements.map((r) => r.text))}`, placeholders),
+    // The editor's gate input holds nothing active, so every gated row reads locked: "Requires A or B".
+    metaTitle: labelPlaceholders(gateLine(gate) ?? '', placeholders),
   };
 };
 

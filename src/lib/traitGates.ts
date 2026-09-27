@@ -334,14 +334,19 @@ export interface RequirementOptions {
 }
 
 /**
- * Every requirement an author can give `traitId`, in tree order per owner. The trait itself and its
- * exclusive siblings are left out, because none of them can ever hold it up.
+ * Every requirement an author can give `traitId`, in tree order per owner. The trait itself, its
+ * exclusive siblings, and a group holding only those are left out, because none of them can ever hold it up.
  */
 export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): RequirementOptions {
   const idx = index({ ...input, active: {}, persona: { source: 'none' } });
   const from = idx.traits.get(traitId)?.owner ?? input.owners[0];
   const skip = new Set([traitId, ...(idx.rivals.get(traitId) ?? [])]);
-  const where = (owner: GateOwner, groupId: string | null | undefined) => {
+  // A group whose every trait is skipped can never hold; an empty one still can, once it gains a trait.
+  const deadGroup = (groupId: string) => {
+    const ids = traitsBelow(idx, groupId);
+    return ids.length > 0 && ids.every((id) => skip.has(id));
+  };
+  const where =(owner: GateOwner, groupId: string | null | undefined) => {
     const path: string[] = [];
     for (let id = groupId ?? null, seen = 0; id && seen < owner.groups.length; seen++) {
       const group = owner.groups.find((g) => g.id === id);
@@ -360,7 +365,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   for (const owner of input.owners) {
     for (const node of flattenTraitTree(buildTraitTree(owner.groups, owner.traits))) {
       if (node.leaf && !skip.has(node.leaf.id)) traits.push(option({ kind: 'trait', id: node.leaf.id }, where(owner, node.leaf.groupId)));
-      if (node.group) groups.push(option({ kind: 'group', id: node.group.id }, where(owner, node.group.parentId)));
+      if (node.group && !deadGroup(node.group.id)) groups.push(option({ kind: 'group', id: node.group.id }, where(owner, node.group.parentId)));
     }
   }
   const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, 'Persona'));
