@@ -1,6 +1,8 @@
 # 03: Gates in play
 
-Status: ready-for-agent
+Status: ready-for-human
+Status note: built in 9a85f190 and its review follow-up; notes for later tickets under Comments.
+Base: 9ab25d6d
 Blocked by: 01 — Gate module and enter-world gates
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -31,3 +33,13 @@ The same gates and cascade hold after the game starts. Switching a trait off in 
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**Hand-over (2026-09-26).** The in-play seam is `settleTraits`, `switchPlayerTrait` and `applyCodeTraitSwitches` in `src/lib/traitRuntime.ts`. Notes for later tickets:
+
+- **Rulings applied (spec session, Q1–Q4):** a code switch-on the gate refuses retires no sibling and joins the cascade-off list; a code cascade writes log lines only, no banner; returns log "Trait switched on: X" with no banner.
+- **Decided here:** a code switch-off of a trait already on the cascade-off list takes it off the list, so it never returns. This matches a hand switch-off.
+- **Ticket 09 (owned traits in play):** the runtime settles the `world` owner only. `cascadeOffTraitIds` is keyed by owner and merges other owners' lists untouched.
+- **Live preview:** real clicks in the White Room fixture showed locked rows, "Unlocked by" lines and the banner "Turned off Order Crest and Plate Armor, because of Rogue." Parallel sessions' edits kept reloading the shared dev server, so only the locked-row frame has a light-theme screenshot. The banner and dark theme have no screenshot.
+- **Not changed:** a stat re-roll gates against the live persona, not the persona of the turn it replays. The per-turn snapshot does not hold the persona.

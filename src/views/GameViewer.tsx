@@ -2519,7 +2519,7 @@ const GameViewer = ({
   const liveCodeStateRef = useRef({ codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits });
   liveCodeStateRef.current = { codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, activeTraits };
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
-  // puts back exactly what the box moved. The last snapshot holds the same five fields — nothing else
+  // puts back exactly what the box moved. The last snapshot holds the same six fields — nothing else
   // touches them between it and the box — and undoing the box alone spares a trait the player switched
   // by hand while the AI was thinking. Null between turns and once a turn commits.
   const beforeBoxUndoRef = useRef<TurnCodeState | null>(null);
@@ -3866,7 +3866,7 @@ const GameViewer = ({
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
-   * author marked switchable is available at any time; everything the trait does beyond its stat changes (AI
+   * author marked switchable is available whenever its gate holds; everything the trait does beyond its stat changes (AI
    * text, stat availability, placeholder pins) is derived from the active set and simply follows. An acquired
    * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */

@@ -10,7 +10,7 @@
 //   switching it off must give back nothing. Each switch stores what actually moved and the next switch of
 //   that trait reverses it, rather than the authored number.
 
-import type { CodeBounds, PersonaRef, PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, CodeBounds, PersonaRef, PlayerStat, Stat, StatChange, Trait, TraitGroup } from '@/types';
 import { clamp } from './utils';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
 import { gateStates, settle, worldGateInput, type GateEntity, type GateInput, type GateTraitRef } from './traitGates';
@@ -26,7 +26,7 @@ export interface TraitRuntimeState {
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
   /** Owner id → the traits a cascade turned off, which return once their gate holds. Absent ⇒ none. */
-  cascadeOffTraitIds?: Record<string, string[]>;
+  cascadeOffTraitIds?: CascadeOffTraitIds;
 }
 
 /** The authored world, for exclusive-group lookups and gates. Absent `entities` or `persona`, no "playing
@@ -332,11 +332,11 @@ const isLocked = (state: TraitRuntimeState, world: TraitWorld, traitId: string):
   gateStates(gateInput(state, world)).get(traitId)?.unlocked === false;
 
 /** The lists with every empty one dropped, so an empty list and an absent one read the same. */
-function compactCascadeOff(lists: Readonly<Record<string, readonly string[]>> = {}): Record<string, string[]> {
+function compactCascadeOff(lists: Readonly<Record<string, readonly string[]>> = {}): CascadeOffTraitIds {
   return Object.fromEntries(Object.entries(lists).filter(([, ids]) => ids.length).map(([owner, ids]) => [owner, [...ids]]));
 }
 
-function sameCascadeOff(a: Record<string, string[]>, b: Record<string, string[]>): boolean {
+function sameCascadeOff(a: CascadeOffTraitIds, b: CascadeOffTraitIds): boolean {
   const owners = Object.keys(a);
   return owners.length === Object.keys(b).length
     && owners.every((owner) => a[owner].length === b[owner]?.length && a[owner].every((id, i) => b[owner][i] === id));
