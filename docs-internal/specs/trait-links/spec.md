@@ -128,7 +128,9 @@ All items are additive export-shape changes to the world, entity, card and save 
 - **Link node.** An entity's owned tree gains link items beside owned traits and groups. A link has its own id, the original's id and kind (trait or group), a stored original name for off-world travel, a place in the tree (parent and order), and per-link data:
   - default-on state, keyed by original trait id so that a linked group can set defaults for its children;
   - pin values for bearer-relative pins, keyed by original trait id and target placeholder name.
-- **One original per bearer.** A bearer's tree holds each original at most once, directly or through a linked group. Link creation and the flyout refuse a second link; import drops it (Q49).
+- **One original per bearer.** A bearer's tree holds each original at most once, directly or through a linked group. Link creation and the flyout refuse a second link; import drops it (Q49). For the player bearer this counts the root traits and groups outside Templates, so Custom Persona cannot link a trait already offered at the root (Q58).
+- **Absent default-on reads the original live.** A link with no stored default-on for a trait reads that trait's own `isDefault`. The This Link section writes a value only when the author touches it, so a later-added default child of a linked group starts on (Q57).
+- **Templates holds world originals only.** An entity node cannot be placed under Templates; the placement projection refuses it, and a placement that names Templates reads as top level, the same as a missing group (Q59).
 - **System nodes.** The world gains an optional Templates group and an optional Custom Persona node. At most one of each exists. Custom Persona holds links only.
 - **Persona-only mark.** An entity gains an optional persona-only flag. It is read only with the Persona mark.
 - **Bearer-relative pin target.** A trait's placeholder pin can target a placeholder by name relative to the bearer instead of by id. It binds to the bearer's own placeholder with that name. If there is none, it binds to the world placeholder with that name. The link's per-link value supplies the pin in both cases; on fallback the author picks it from the world placeholder's values. The pin's own value is only the starting value a new link copies when it binds to the world placeholder (Q51).
@@ -253,6 +255,9 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q54 | No compat for scopeless cross-owner requirements. Unreleased, unused. |
   | Q55 | The Test Bench lens checks every bearer as if picked. |
   | Q56 | `{{char}}` on Custom Persona under None reads as the player name. |
+  | Q57 | A link with no stored default-on reads the original's `isDefault` live. Written only when touched. |
+  | Q58 | The player bearer's "already holds" counts root traits and groups outside Templates. |
+  | Q59 | No entity node under Templates. A placement naming it reads as top level. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
