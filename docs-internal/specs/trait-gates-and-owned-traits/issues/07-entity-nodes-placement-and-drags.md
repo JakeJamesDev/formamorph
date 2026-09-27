@@ -1,6 +1,6 @@
 # 07: Entity nodes in the tree: placement and drags
 
-Status: in-progress
+Status: ready-for-human
 Base: 8c74e005
 Blocked by: 06 — Owned traits in the editor
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -30,3 +30,14 @@ An author organizes the one tree: entity nodes drag into world groups such as "C
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**Hand-over (2026-09-26).** Commit `adbf650c`. Placement is `Entity.traitPlacement?: { groupId, order }` (additive world export change). The drag rules live in `getOwnedTraitDropProjection` / `applyOwnedTraitDrop` in `src/lib/traitTree.ts`; real-mouse drags are in `e2e/trait-entity-nodes.spec.ts` (outside the four gates).
+
+- **Refusal note for a group:** "Class stays a world group, because an entity's traits can't change stats. Remove the stat changes and stat toggles from Plate Armor first." The ruling quoted only the trait form; this group form awaits a look.
+- **Entity-to-entity refusal:** the note names the owner the item stays with ("Gruff stays Bob's trait, …"). Only imported data can reach it, because owned traits have no Stats tab.
+- **A world group holding an entity node** is kept among world items by the projection, the same way as the node itself.
+- **Left on purpose:** a deleted group's `traitPlacement` stays on the entity and reads as top level, so undo puts the node back into the restored group.
+- **Ticket 11:** entity exports carry `traitPlacement` like `groupId`. A foreign group id reads as top level, so it is harmless, but import could clear it.
+- **Term split, not changed:** the trait panel says **Stat Availability**; the note and the Test Bench say "stat toggles".
