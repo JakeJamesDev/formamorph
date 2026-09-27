@@ -5,6 +5,7 @@ import { LikePrompt } from './LikePrompt';
 import { ANONYMOUS_LIKE_CODES } from '@/lib/anonymousLikes';
 import { promptedListings } from '@/lib/likePromptStore';
 import WorldStorageService, { AnonymousLikeRefused } from '@/services/WorldStorageService';
+import { openLatestDetails, toastTexts } from '@/test/toastText';
 
 /**
  * The in-game card, through its real JSX.
@@ -175,6 +176,8 @@ describe('the in-game like prompt', () => {
     fireEvent.click(await screen.findByRole('button', { name: /like/i }));
 
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(toastTexts(vi.mocked(toast.error))).toEqual(["That like didn't send. Try again on a later turn.View Details →"]);
+    expect(openLatestDetails(vi.mocked(toast.error))?.details).toContain('TypeError: Failed to fetch');
     expect(promptedListings().has('listing-1')).toBe(false);
     expect(onClosed).toHaveBeenCalled();
   });

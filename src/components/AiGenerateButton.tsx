@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { summarizeDescription } from '@/lib/summarize';
@@ -7,6 +6,7 @@ import { bridgeDescription, type BridgeKind } from '@/lib/bridgeDescription';
 import { buildImagePrompt, type ImageSubjectKind } from '@/lib/imagePrompt';
 import { TOOLBAR_BTN } from '@/components/prompt/toolbarStyles';
 import { Tip } from '@/components/ui/tooltip';
+import { toastError } from '@/lib/linkToast';
 
 type GenerateMode = 'summary' | 'tags' | 'playerDesc' | 'aiDesc';
 
@@ -64,7 +64,7 @@ const AiGenerateButton = ({ mode, source, onChange, kind }: {
       onChange(result);
     } catch (error) {
       if ((error as Error).name === 'AbortError') return;
-      toast.error(`Failed to generate ${noun}.`);
+      toastError(error, { headline: `Failed to generate ${noun}.` });
     } finally {
       setLoading(false);
     }

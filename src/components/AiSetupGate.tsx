@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toastError } from '@/lib/linkToast';
 import {
   VRAM_TIERS, formatModelSize, groupModelsByFit, tierForVram, type LocalModelInfo, type VramTier,
 } from '@/lib/localModels';
@@ -211,7 +212,7 @@ export function AiSetupGate({ open, reason, mode, blocker, reachable, recheck, o
       // the toast up would claim work that ended, and hide why it ended.
       if (progressToastRef.current) { toast.dismiss(PROGRESS_TOAST); progressToastRef.current = false; }
       setHandedOff(false);
-      if (error) toast.error(`Setup stopped: ${error}`);
+      if (error) toastError(error, { headline: `Setup stopped: ${error}` });
       return;
     }
     const body = phase === 'loading' ? (

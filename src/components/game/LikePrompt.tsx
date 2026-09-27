@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toastError } from '@/lib/linkToast';
 import { ADDRESS_CAP_REACHED, refusalAnswer } from '@/lib/anonymousLikes';
 import { markListingPrompted } from '@/lib/likePromptStore';
 import AuthService from '@/services/AuthService';
@@ -126,7 +127,7 @@ export function LikePrompt({
         }
       }
 
-      toast.error("That like didn't send. Try again on a later turn.");
+      toastError(error, { headline: "That like didn't send. Try again on a later turn." });
       close();
     }
   };

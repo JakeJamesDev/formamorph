@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tip } from '@/components/ui/tooltip';
+import { toastError } from '@/lib/linkToast';
 import { bundledContentLinked, embedBundled } from '@/lib/worldBundle';
 import { linkBundledContent } from '@/lib/worldBundleRun';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -41,7 +42,7 @@ export function BundledContentChoice({ worldId, data, onApplied }: BundledConten
         ? 'This world\'s bundled content is in your library.'
         : 'This world\'s bundled content is embedded.');
     } catch (error) {
-      toast.error((error as Error).message || 'Could not change the link.');
+      toastError(error, 'Could not change the link.');
     } finally {
       setBusy(false);
     }
