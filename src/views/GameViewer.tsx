@@ -1,6 +1,6 @@
 import { randomUUID } from "@/lib/uuid";
 import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
-import { entityTraitOwners, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { inPlayBearers, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -412,6 +412,7 @@ const GameViewer = ({
     isWorldDirty,
     saveWorld,
     loadWorldData,
+    customPersona,
   } = useGameData();
 
   // World README popup — shown once on entry (new game or save load) when the world has README text and
@@ -2555,18 +2556,14 @@ const GameViewer = ({
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
-  const entityOwners = useMemo(
-    () => entityTraitOwners({ traits: authoredTraits, traitGroups, entities: traitEntities }, traitLibrary),
-    [authoredTraits, traitGroups, traitEntities, traitLibrary],
-  );
-  /** The authored world every owner's trait gates read: the traits, the groups, who the player is, and the
-   *  entities that own traits. */
+  /** The authored world every bearer's trait gates read: the traits, the groups, who the player is, and each
+   *  present bearer's tree under that persona. */
   const gatedWorld = useCallback(
     (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
       traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      entityOwners,
+      bearers: inPlayBearers({ traits: authoredTraits, traitGroups, entities: traitEntities, customPersona }, ref, traitLibrary),
     }),
-    [authoredTraits, traitGroups, entities, persona, personaRef, entityOwners],
+    [authoredTraits, traitGroups, entities, persona, personaRef, traitEntities, customPersona, traitLibrary],
   );
   const liveCodeStateRef = useRef({
     codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,

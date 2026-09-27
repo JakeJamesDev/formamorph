@@ -1,6 +1,7 @@
 # 05: Gates per bearer
 
-Status: ready-for-agent
+Status: in-progress
+Base: a1b44ca4
 Blocked by: 01 — Link data and bearer resolution
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

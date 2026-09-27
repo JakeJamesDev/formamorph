@@ -13,7 +13,8 @@ import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { listablePlayerTraits, traitGateInput } from '@/lib/traitRuntime';
-import { activeOwnedTraitIds, entityTraitOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, inPlayBearers, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { ownedTraitTree } from '@/lib/traitTree';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
@@ -1155,13 +1156,14 @@ export const RightPanel = ({
     [playerStats, activeTraits],
   );
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
+  const customPersona = useGameDataOptional()?.customPersona;
   const traitGates = React.useMemo(() => gateStates(traitGateInput(
     { traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits },
     {
       traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
-      entityOwners: entityTraitOwners({ traits, traitGroups, entities: traitEntities }, traitLibrary),
+      bearers: inPlayBearers({ traits, traitGroups, entities: traitEntities, customPersona }, personaRef, traitLibrary),
     },
-  )), [playerTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, cast, persona, personaRef, traitEntities, traitLibrary]);
+  )), [playerTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, cast, persona, personaRef, traitEntities, customPersona, traitLibrary]);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).

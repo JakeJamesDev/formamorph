@@ -568,22 +568,23 @@ describe('gates in play', () => {
 });
 
 describe('owned traits in play', () => {
-  // The world's Paladin opens Ash's Loyal; Ash's Tamed opens the world's Beast Tamer. Tamed and Wild share
-  // Ash's exclusive Bond group. Gruff is Ash's but not switchable.
+  // The player's Paladin opens Ash's Loyal (You: Paladin); Ash's Tamed opens the world's Beast Tamer
+  // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.
   const paladin = trait('paladin', [], { name: 'Paladin', playerToggle: true });
   const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
-    name: 'Beast Tamer', playerToggle: true, requires: [{ kind: 'trait', id: 'tamed' }],
+    name: 'Beast Tamer', playerToggle: true, requires: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }],
   });
   const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, exclusive: true };
   const ashTraits = [
     trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
     trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
-    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ kind: 'trait', id: 'paladin' }] }),
+    trait('loyal', [], { name: 'Loyal', playerToggle: true, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'you' } }] }),
     trait('gruff', [], { name: 'Gruff' }),
   ];
   const ash = { id: 'ash', name: 'Ash', traits: ashTraits, groups: [bond] };
   const owned = (persona: PersonaRef = { source: 'none' }): TraitWorld => ({
-    traits: [paladin, tamer], groups: [], entities: [{ id: 'ash', name: 'Ash', persona: true }], persona, entityOwners: [ash],
+    traits: [paladin, tamer], groups: [], entities: [{ id: 'ash', name: 'Ash', persona: true }], persona,
+    bearers: [{ id: 'world', name: '', traits: [paladin, tamer], groups: [] }, ash],
   });
   const name = (t: Trait) => t.name;
   const flip = (s: TraitRuntimeState, id: string, enabled: boolean, w = owned()) => {

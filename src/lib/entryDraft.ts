@@ -1,8 +1,8 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
-import { traitOwners } from './ownedTraits';
+import { resolveBearers } from './bearers';
 import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
-import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, CustomPersonaNode, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
 export interface EntryDraft {
@@ -43,21 +43,21 @@ export interface EntryTraitWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  customPersona?: CustomPersonaNode;
   /** The library persona and the added library entities, in the order added. */
   library: readonly Entity[];
 }
 
-/** Every owner in the cast: the world, its entities, then the library entities. */
-export const entryOwners = (world: EntryTraitWorld): GateOwner[] => traitOwners(world, world.library);
+/** Every present bearer under `persona`: the player, the world's entities, then the library entities. */
+export const entryOwners = (world: EntryTraitWorld, persona: PersonaRef): readonly GateOwner[] =>
+  resolveBearers(world, persona, world.library).gate.owners;
 
-/** The gates of the draft's picks: every owner in the cast, under the draft's persona. */
+/** The gates of the draft's picks: every present bearer, under the draft's persona. */
 export const entryGateInput = (
   world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'>,
 ): GateInput => ({
-  owners: entryOwners(world),
+  ...resolveBearers(world, draft.persona, world.library).gate,
   active: { ...draft.ownedTraitIds, [WORLD_OWNER]: draft.traitIds },
-  entities: world.entities,
-  persona: draft.persona,
 });
 
 /** The draft with settled picks and cascade-off lists. An owner the settle did not cover keeps both. */
@@ -74,7 +74,7 @@ export function withSettledTraits(draft: EntryDraft, result: Pick<SettleResult, 
 /** Every owner's default picks under `persona`. */
 export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
   const { [WORLD_OWNER]: traitIds = [], ...ownedTraitIds } =
-    settleDefaults({ owners: entryOwners(world), entities: world.entities, persona }).active;
+    settleDefaults(resolveBearers(world, persona, world.library).gate).active;
   return { traitIds, ownedTraitIds };
 }
 
@@ -101,10 +101,10 @@ export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): 
 export const rekeyOwnedPicks = (picks: OwnedTraitPicks, copyIds: ReadonlyMap<string, string>): OwnedTraitPicks =>
   Object.fromEntries(Object.entries(picks).map(([id, ids]) => [copyIds.get(id) ?? id, ids]));
 
-/** The owned picks the game starts with: those of the entities in the cast that picked anything. */
-export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds'>, world: EntryTraitWorld): OwnedTraitPicks {
+/** The owned picks the game starts with: those of the present bearers that picked anything. */
+export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds' | 'persona'>, world: EntryTraitWorld): OwnedTraitPicks {
   const out: OwnedTraitPicks = {};
-  for (const owner of entryOwners(world)) {
+  for (const owner of entryOwners(world, draft.persona)) {
     const picks = draft.ownedTraitIds[owner.id];
     if (owner.id !== WORLD_OWNER && picks?.length) out[owner.id] = picks;
   }

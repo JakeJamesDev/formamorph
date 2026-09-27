@@ -3,7 +3,7 @@ import { BookOpen, Check, ChevronDown, ListTree, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SetupTraitList, TraitCascadeNotice, type TraitCascade } from '@/components/game/SetupTraitList';
 import { MarkdownRenderer } from '@/components/game/MarkdownRenderer';
-import type { GateState } from '@/lib/traitGates';
+import { WORLD_OWNER, type GateStates } from '@/lib/traitGates';
 import { choiceRowClass } from '@/components/game/setupChoiceRow';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, dialogCenteredAnimation } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -55,7 +55,7 @@ export interface EnterWorldWorkspaceProps {
   categoryIndex: number;
   onCategoryChange: (index: number) => void;
   onTraitSelect: (traitId: string) => void;
-  traitGates?: ReadonlyMap<string, GateState>;
+  traitGates?: GateStates;
   /** What the last selection change turned off; shown until dismissed or the next change. */
   traitCascade?: TraitCascade | null;
   onDismissTraitCascade?: () => void;
@@ -342,6 +342,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               resolveText={props.resolveText}
               resolveTraitText={props.resolveTraitText}
               onTraitSelect={props.onTraitSelect}
+              ownerId={current.entityId ?? WORLD_OWNER}
               gates={props.traitGates}
               cascade={props.traitCascade}
               onDismissCascade={props.onDismissTraitCascade}

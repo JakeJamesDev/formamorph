@@ -79,10 +79,10 @@ describe('SetupTraitList outside the setup dialog', () => {
 
 describe('SetupTraitList gates', () => {
   const req = (text: string, holds: boolean) => ({ text, holds, unresolved: false });
-  const gates = new Map([
+  const gates = new Map([['world', new Map([
     ['dockhand', { unlocked: false, requirements: [req('Paladin', false), req('Knight', false)] }],
     ['scholar', { unlocked: true, requirements: [req('Mage', true), req('any Class', false)] }],
-  ]);
+  ])]]);
 
   it('keeps a locked trait in place, disabled, and says what it requires', () => {
     view({ gates, exclusive: false });

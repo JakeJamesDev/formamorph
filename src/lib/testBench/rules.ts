@@ -40,7 +40,7 @@ import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
-import { gateStates, neverUnlockable, settleDefaults, worldGateInput } from '@/lib/traitGates';
+import { WORLD_OWNER, gateStates, neverUnlockable, settleDefaults, worldGateInput } from '@/lib/traitGates';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
   Trait, World,
@@ -1702,14 +1702,14 @@ const gateReportOf = (world: RuleWorld): GateReport => {
 
   const requirementTexts = new Map<string, string[]>();
   const unresolved = new Map<string, string[]>();
-  for (const [id, state] of gateStates(gateInput(traits))) {
+  for (const [id, state] of gateStates(gateInput(traits)).get(WORLD_OWNER) ?? []) {
     requirementTexts.set(id, state.requirements.map((r) => label(r.text)));
     const dead = state.requirements.filter((r) => r.unresolved).map((r) => label(r.text));
     if (dead.length) unresolved.set(id, dead);
   }
 
   const input = gateInput(traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t)));
-  const stuck = neverUnlockable(input);
+  const stuck = neverUnlockable(input).map((set) => set.map((r) => r.traitId));
   const stuckIds = new Set(stuck.flat());
   const choices: PersonaRef[] = [
     { source: 'none' },

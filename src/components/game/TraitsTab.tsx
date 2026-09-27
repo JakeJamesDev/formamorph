@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Lock, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import type { GateState } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, type GateStates } from '@/lib/traitGates';
 import type { Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
@@ -41,8 +41,8 @@ export interface TraitsTabProps {
   /** The tab's own filter/fold state, owned by Gameplay so it outlives the unmount. */
   view: TraitsPanelView;
   setView: React.Dispatch<React.SetStateAction<TraitsPanelView>>;
-  /** Each trait's gate; absent shows every trait open. */
-  gates?: ReadonlyMap<string, GateState>;
+  /** Each bearer's gates; absent shows every trait open. */
+  gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
 }
@@ -106,7 +106,7 @@ export const TraitsTab = ({
     .flatMap(({ section, view }) => (view ? [{ section, view }] : []));
   const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits)).filter((t) => !isOff(t.id));
 
-  const row = (trait: Trait, block: TraitBlock, off: boolean) => {
+  const row = (trait: Trait, block: TraitBlock, section: TraitSection, off: boolean) => {
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
     const changes = trait.statChanges
@@ -115,7 +115,7 @@ export const TraitsTab = ({
     const isExpanded = view.expanded.has(trait.id);
     const description = describe(trait).trim();
     const toggleLabel = `${off ? 'Switch on' : 'Switch off'} ${trait.name}`;
-    const gate = gates?.get(trait.id);
+    const gate = gates && gateOf(gates, block.entityId ?? section.entityId ?? WORLD_OWNER, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
     // A locked trait can still switch off; only switching it on waits for its gate.
@@ -197,7 +197,7 @@ export const TraitsTab = ({
     );
   };
 
-  const rows = (blocks: TraitBlock[]) =>
+  const rows = (section: TraitSection, blocks: TraitBlock[]) =>
     blocks.map((block) => (
       <div key={block.key}>
         {block.subheader && (
@@ -207,7 +207,7 @@ export const TraitsTab = ({
             {block.entityId === playedEntityId && youMark}
           </p>
         )}
-        {block.traits.map((trait) => row(trait, block, isOff(trait.id)))}
+        {block.traits.map((trait) => row(trait, block, section, isOff(trait.id)))}
       </div>
     ));
 
@@ -273,7 +273,7 @@ export const TraitsTab = ({
                 )}
                 {isOpen && (
                   <div className="pt-1">
-                    {rows(view.enabled)}
+                    {rows(section, view.enabled)}
                     {view.disabledCount > 0 && (
                       <div className="mt-1 rounded border border-dashed border-border p-1">
                         <button
@@ -286,7 +286,7 @@ export const TraitsTab = ({
                           <ChevronDown className={cn('h-3 w-3 transition-transform', !disabledOpen && '-rotate-90')} />
                           Disabled ({view.disabledCount})
                         </button>
-                        {disabledOpen && <div className="pt-1">{rows(view.disabled)}</div>}
+                        {disabledOpen && <div className="pt-1">{rows(section, view.disabled)}</div>}
                       </div>
                     )}
                   </div>

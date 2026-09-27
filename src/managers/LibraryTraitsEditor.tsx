@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
 import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
+import { editorGateInput } from '@/lib/bearers';
 import {
-  addOwnedGroup, addOwnedTrait, editorGateInput, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits,
+  addOwnedGroup, addOwnedTrait, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits,
 } from '@/lib/ownedTraits';
 import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import { randomUUID } from '@/lib/uuid';

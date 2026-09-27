@@ -179,7 +179,26 @@ export function resolveBearers(
       owners: bearers.filter((b) => b.present).map((b) => gateOwner(b, placementOf.get(b.id) ?? null)),
       entities: world.entities,
       persona: persona ?? { source: 'none' },
+      originals: { traits: world.traits, groups: world.traitGroups },
     },
+  };
+}
+
+/**
+ * The gate input the editor reads: the whole world as the player's owner, Templates included so every row
+ * reads its gate, then each entity bearer with its links expanded, a persona-only one included since the
+ * author sees every tree. Nothing is active and there is no persona.
+ */
+export function editorGateInput(world: BearerWorld): GateInput {
+  const { bearers, gate } = resolveBearers(world, undefined);
+  const placeable = placeableGroupIds(world.traitGroups);
+  return {
+    ...gate,
+    owners: [
+      { id: PLAYER_BEARER, name: '', traits: world.traits, groups: world.traitGroups },
+      ...bearers.filter((b) => b.entity).map((b) => gateOwner(b, effectivePlacement(b.entity!, placeable)?.groupId ?? null)),
+    ],
+    active: {},
   };
 }
 

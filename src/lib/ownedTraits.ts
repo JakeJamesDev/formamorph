@@ -3,7 +3,7 @@
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
-import { WORLD_OWNER, type GateEntity, type GateInput, type GateOwner } from './traitGates';
+import { WORLD_OWNER, type GateOwner } from './traitGates';
 import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
@@ -105,7 +105,3 @@ export function traitOwners(
   ];
 }
 
-/** The gate input the editor reads: every owner, nothing active, no persona. */
-export const editorGateInput = (
-  world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly (Entity & GateEntity)[] },
-): GateInput => ({ owners: traitOwners(world, [], { keepTemplates: true }), active: {}, entities: world.entities, persona: { source: 'none' } });

@@ -200,7 +200,8 @@ describe('pins from owned traits', () => {
   });
 
   it('leaves out an owned default whose gate the lens does not meet', () => {
-    const gated = ash({ requires: [{ kind: 'trait', id: 't-reach' }] });
+    // Ash's Tamed needs the player's Reach, which only the lens's PC pick supplies.
+    const gated = ash({ requires: [{ kind: 'trait', id: 't-reach', bearer: { kind: 'you' } }] });
     expect(buildLens(world({ entities: gated }), { pcTraitId: null, locationId: null }).pins).toEqual({});
     expect(buildLens(world({ entities: gated }), { pcTraitId: 't-reach', locationId: null }).pins).toEqual({ 'ph-hair': 'jet' });
   });
