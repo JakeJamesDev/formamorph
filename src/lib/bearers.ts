@@ -62,7 +62,7 @@ export function inCast(entity: Entity, persona: PersonaRef | undefined): boolean
 
 /** A world trait or group a link may point at. Templates itself and every owned item are not originals. */
 export function originalOf(
-  world: BearerWorld, id: string,
+  world: Pick<BearerWorld, 'traits' | 'traitGroups'>, id: string,
 ): { kind: 'trait'; item: Trait } | { kind: 'group'; item: TraitGroup } | null {
   const trait = world.traits.find((t) => t.id === id);
   if (trait) return { kind: 'trait', item: trait };
@@ -71,7 +71,7 @@ export function originalOf(
 }
 
 /** A link to `originalId` at `place`, or null when the id is not an original. */
-export function makeLink(world: BearerWorld, originalId: string, id: string, place: TraitPlacement): TraitLink | null {
+export function makeLink(world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string, id: string, place: TraitPlacement): TraitLink | null {
   const original = originalOf(world, originalId);
   return original && { id, originalId, kind: original.kind, originalName: original.item.name, ...place };
 }

@@ -6,6 +6,7 @@ import { dirtyDiff } from '@/lib/dirtyDiff';
 import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
+import { dropLinksTo } from '@/lib/traitLinks';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
@@ -240,8 +241,10 @@ function useProvideGameData() {
     ));
   }, []);
 
+  // A link to a gone original resolves to nothing, so its links go with it.
   const removeTrait = useCallback((traitId: string) => {
     setTraits(prevTraits => prevTraits.filter(trait => trait.id !== traitId));
+    setEntities(prevEntities => dropLinksTo(prevEntities, traitId));
   }, []);
 
   const addTraitGroup = useCallback((newGroup: TraitGroup) => {
@@ -267,6 +270,7 @@ function useProvideGameData() {
       const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
       return prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t));
     });
+    setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, [traitGroups]);
 
   const addStatUpdate = useCallback((newStatUpdate: StatUpdate) => {

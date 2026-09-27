@@ -3,9 +3,9 @@ import { gotoDev, openApp } from './app';
 import { IN_TAB_PANEL, editorGrip, editorRow, rowIndents, rowLabels } from './dragSampling';
 
 /**
- * Entity nodes in the Traits tree, dragged with the real mouse: a node into a world group, a trait into an
- * entity under its own id, and a trait with stat effects refused with a note. jsdom has no layout, so where
- * a drop lands is only real here.
+ * Entity nodes in the Traits tree, dragged with the real mouse: a node into a world group, a world trait
+ * linked into an entity, and a second link refused with a note. jsdom has no layout, so where a drop lands
+ * is only real here.
  */
 
 interface DevRouter {
@@ -16,7 +16,12 @@ interface DevRouter {
 
 interface StoredWorld {
   traits: Array<{ id: string }>;
-  entities: Array<{ id: string; traits?: Array<{ id: string }>; traitPlacement?: { groupId: string | null; order: number } }>;
+  entities: Array<{
+    id: string;
+    traits?: Array<{ id: string }>;
+    traitLinks?: Array<{ originalId: string }>;
+    traitPlacement?: { groupId: string | null; order: number };
+  }>;
 }
 
 const ROOT = IN_TAB_PANEL;
@@ -90,7 +95,7 @@ async function saved(page: Page): Promise<StoredWorld> {
   return page.evaluate(async (id) => (window as unknown as { __fmDev: DevRouter }).__fmDev.getWorld(id), WORLD.id);
 }
 
-test('an entity node drags into a world group, and a trait joins it under its own id', async ({ page }) => {
+test('an entity node drags into a world group, and a world trait dropped on it becomes a link', async ({ page }) => {
   await openTraits(page);
   expect(await tree(page)).toEqual(['Companions', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Ash', '-Tamed', 'Bob', '-Gruff']);
 
@@ -98,31 +103,29 @@ test('an entity node drags into a world group, and a trait joins it under its ow
   await dragOnto(page, 'Ash', 'Class', 1);
   expect(await tree(page)).toEqual(['Companions', '-Ash', '--Tamed', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Bob', '-Gruff']);
 
-  // Onto Tamed: Knight joins Ash's node.
+  // Onto Tamed: Ash links Knight, and Knight stays in Class.
   await dragOnto(page, 'Knight', 'Tamed', 1);
-  expect(await tree(page)).toEqual(['Companions', '-Ash', '--Knight', '--Tamed', 'Class', '-Plate Armor', '-Royal Guard', 'Bob', '-Gruff']);
+  expect(await tree(page)).toEqual(['Companions', '-Ash', '--Knight', '--Tamed', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Bob', '-Gruff']);
 
   const world = await saved(page);
   const ash = world.entities.find((e) => e.id === 'ash')!;
   expect(ash.traitPlacement).toEqual({ groupId: 'g-companions', order: 0 });
-  expect(ash.traits?.map((t) => t.id)).toEqual(['t-knight', 't-tamed']);
-  expect(world.traits.map((t) => t.id)).not.toContain('t-knight');
-
-  // Royal Guard's requirement still names Knight, now Ash's.
-  await editorRow(page, ROOT, 'Royal Guard').click();
-  await expect(page.getByRole('button', { name: "Remove Ash's Knight" })).toBeVisible();
+  expect(ash.traits?.map((t) => t.id)).toEqual(['t-tamed']);
+  expect(ash.traitLinks?.map((l) => l.originalId)).toEqual(['t-knight']);
+  expect(world.traits.map((t) => t.id)).toContain('t-knight');
 });
 
-test('a trait with stat effects stays in the world, with a note', async ({ page }) => {
+test('a trait with stat effects links like any other, and a second link is refused with a note', async ({ page }) => {
   await openTraits(page);
   await dragOnto(page, 'Plate Armor', 'Tamed', 1);
+  expect(await tree(page)).toEqual(['Companions', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Ash', '-Tamed', '-Plate Armor', 'Bob', '-Gruff']);
 
+  // Plate Armor again: Ash already has it.
+  await dragOnto(page, 'Plate Armor', 'Tamed', 1);
   // dnd-kit's live regions are statuses too, so the note is found by its own wording.
-  const note = page.getByRole('status').filter({ hasText: 'stays a world' });
-  await expect(note).toHaveText(
-    "Plate Armor stays a world trait, because an entity's traits can't change stats. Remove its stat changes and stat toggles first.Dismiss",
-  );
-  expect(await tree(page)).toEqual(['Companions', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Ash', '-Tamed', 'Bob', '-Gruff']);
+  const note = page.getByRole('status').filter({ hasText: 'already has' });
+  await expect(note).toHaveText('Ash already has Plate Armor.Dismiss');
+  expect(await tree(page)).toEqual(['Companions', 'Class', '-Plate Armor', '-Knight', '-Royal Guard', 'Ash', '-Tamed', '-Plate Armor', 'Bob', '-Gruff']);
   await page.getByRole('button', { name: 'Dismiss' }).click();
   await expect(note).toHaveCount(0);
 });

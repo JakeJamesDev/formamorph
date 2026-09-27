@@ -65,10 +65,13 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
  * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone.
+ * A link shows its original here, with its own lines in `detailsHeader` and `detailsFooter`.
  */
-const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
+const TraitManager = ({ trait, owner, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
   trait: Trait;
   owner?: Entity;
+  detailsHeader?: ReactNode;
+  detailsFooter?: ReactNode;
   onOpenTrait: (id: string) => void;
   onOpenEntity?: (id: string) => void;
   tab: TraitPanelTab;
@@ -144,6 +147,7 @@ const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChang
 
   const detailsPanel = (
     <>
+      {detailsHeader}
       {owner && (
         <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
           <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -205,6 +209,7 @@ const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChang
         <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
       </label>
       <TraitRequiresField trait={editingTrait} onChange={setRequires} onOpen={openRequirement} />
+      {detailsFooter}
     </>
   );
 

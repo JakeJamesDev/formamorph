@@ -65,6 +65,7 @@ import GroupManager from '../managers/GroupManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
 import PlaceholderGroupManager from '../managers/PlaceholderGroupManager';
 import TraitTree from '../managers/TraitTree';
+import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
@@ -78,7 +79,9 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { duplicateTraitNode, ownsTraits } from '@/lib/traitTree';
+import { duplicateTraitNode, ownedTraitTree } from '@/lib/traitTree';
+import { bearsTraits } from '@/lib/bearers';
+import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { findOwnedItem } from '@/lib/ownedTraits';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
@@ -156,7 +159,7 @@ const WorldEditorInner = ({
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
-    removeStat, removeEntity, removeLocation, removeTrait, removeStatUpdate,
+    removeStat, removeEntity, removeLocation, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
@@ -780,7 +783,16 @@ const WorldEditorInner = ({
   const selectedTrait = traits.find(t => t.id === selectedItemId) ?? selectedOwned?.trait;
   const selectedGroup = traitGroups.find(g => g.id === selectedItemId) ?? selectedOwned?.group;
   const selectedEntity = entities.find(e => e.id === selectedItemId);
-  const selectedTraitNode = activeTab === 'traits' && selectedEntity && ownsTraits(selectedEntity) ? selectedEntity : undefined;
+  const selectedTraitNode = activeTab === 'traits' && selectedEntity && bearsTraits(selectedEntity) ? selectedEntity : undefined;
+  // A link's row, or a row of its linked group's subtree, edits the original it reads.
+  const selectedLinkRow = useMemo(
+    () => (activeTab === 'traits' && selectedItemId
+      ? ownedTraitTree({ traits, traitGroups }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
+    [activeTab, selectedItemId, traits, traitGroups, entities],
+  );
+  const selectedLinkBearer = selectedLinkRow && entities.find((e) => e.id === selectedLinkRow.entityId);
+  const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
+  const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
@@ -874,6 +886,7 @@ const WorldEditorInner = ({
     setSelectedItemId(copy.id);
   };
 
+  const { ask: askRemoveWorldTrait, dialog: removeWorldTraitDialog } = useRemoveWorldTrait();
   const removeItem = (id: string) => {
     if (activeTab === "stats") {
       removeStat(id);
@@ -882,7 +895,7 @@ const WorldEditorInner = ({
     } else if (activeTab === "locations") {
       removeLocation(id);
     } else if (activeTab === "traits") {
-      removeTrait(id);
+      askRemoveWorldTrait(id, false);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
     }
@@ -935,6 +948,7 @@ const WorldEditorInner = ({
         ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
         : searchTerm.trim() ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "traits" && (searchTerm.trim() ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {removeWorldTraitDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
       {activeTab === "statUpdates" && renderItemList(filteredItems)}
       {activeTab === "placeholders" && <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />}
@@ -1008,6 +1022,27 @@ const WorldEditorInner = ({
           tab={shownTraitTab}
           onTabChange={setTraitTab}
           focusField={focusFieldForItem(findField, selectedTrait.id)}
+        />
+      )}
+      {selectedLinkRow && selectedLinkBearer && linkedTrait && (
+        <TraitManager
+          key={selectedItemId}
+          trait={linkedTrait}
+          detailsHeader={<LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />}
+          detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
+          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
+          onOpenEntity={(id) => navigateToBenchItem('entities', id)}
+          tab={shownTraitTab}
+          onTabChange={setTraitTab}
+          focusField={focusFieldForItem(findField, linkedTrait.id)}
+        />
+      )}
+      {selectedLinkRow && selectedLinkBearer && linkedGroup && (
+        <GroupManager
+          key={selectedItemId}
+          group={linkedGroup}
+          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />}
+          detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedGroup.id} />}
         />
       )}
       {activeTab === "dictionary" && selectedBook && (

@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
-  duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection,
+  duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection, linkRowId,
 } from './traitTree';
-import type { Entity, Trait, TraitGroup } from '@/types';
+import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
   ({ id, name: id, parentId, order });
@@ -294,6 +294,60 @@ describe('ownedTraitTree', () => {
   });
 });
 
+describe('ownedTraitTree with links', () => {
+  const world = {
+    traits: [{ ...trait('paladin', 'classes', 0), name: 'Paladin' }, trait('wizard', 'classes', 1), trait('brave', null, 1)],
+    traitGroups: [{ ...group('classes', null, 0), name: 'Classes' }, group('schools', 'classes', 2)],
+  };
+  const link = (id: string, originalId: string, kind: 'trait' | 'group', groupId: string | null, order: number): TraitLink =>
+    ({ id, originalId, kind, originalName: originalId, groupId, order });
+  const rows = (ents: Entity[]) => {
+    const tree = ownedTraitTree(world, ents, [], { links: true });
+    return flattenTraitTree(buildTraitTree(tree.groups, tree.traits)).map((n) => `${'-'.repeat(n.depth)}${n.id}`);
+  };
+
+  it('draws a trait link under its entity by the link id, reading the original live', () => {
+    const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0)], traitLinks: [link('l1', 'paladin', 'trait', null, 1)] };
+    expect(rows([ash])).toEqual(['classes', '-paladin', '-wizard', '-schools', 'brave', 'ash', '-pack', '-l1']);
+    const tree = ownedTraitTree(world, [ash], [], { links: true });
+    expect(tree.traits.find((t) => t.id === 'l1')?.name).toBe('Paladin');
+    expect(tree.linkRows.get('l1')).toMatchObject({ entityId: 'ash', originalId: 'paladin', root: true });
+    expect(tree.ownerOf.get('l1')).toBe('ash');
+  });
+
+  it('gives an entity with links only a node, and sits a link inside an owned group', () => {
+    const bob: Entity = { id: 'bob', name: 'Bob', traitGroups: [group('bond', null, 0)], traitLinks: [link('l1', 'brave', 'trait', 'bond', 0)] };
+    expect(rows([bob])).toEqual(['classes', '-paladin', '-wizard', '-schools', 'brave', 'bob', '-bond', '--l1']);
+    expect(rows([{ id: 'cy', name: 'Cy', traitLinks: [link('l2', 'brave', 'trait', null, 0)] }]))
+      .toEqual(['classes', '-paladin', '-wizard', '-schools', 'brave', 'cy', '-l2']);
+  });
+
+  it('draws a group link with the original\'s live subtree under row ids of its own', () => {
+    const ash: Entity = { id: 'ash', name: 'Ash', traitLinks: [link('l1', 'classes', 'group', null, 0)] };
+    expect(rows([ash])).toEqual([
+      'classes', '-paladin', '-wizard', '-schools', 'brave',
+      'ash', '-l1', `--${linkRowId('l1', 'paladin')}`, `--${linkRowId('l1', 'wizard')}`, `--${linkRowId('l1', 'schools')}`,
+    ]);
+    const tree = ownedTraitTree(world, [ash], [], { links: true });
+    expect(tree.linkRows.get(linkRowId('l1', 'wizard'))).toMatchObject({ entityId: 'ash', originalId: 'wizard', root: false });
+    expect(tree.groups.find((g) => g.id === 'l1')?.name).toBe('Classes');
+  });
+
+  it('leaves links out of the tree play reads, and gives an entity with links only no node there', () => {
+    const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0)], traitLinks: [link('l1', 'paladin', 'trait', null, 1)] };
+    const cy: Entity = { id: 'cy', name: 'Cy', traitLinks: [link('l2', 'brave', 'trait', null, 0)] };
+    const tree = ownedTraitTree(world, [ash, cy]);
+    expect(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)).map((n) => n.id))
+      .toEqual(['classes', 'paladin', 'wizard', 'schools', 'brave', 'ash', 'pack']);
+    expect(tree.linkRows.size).toBe(0);
+  });
+
+  it('draws nothing for a link whose original is gone', () => {
+    expect(rows([{ id: 'ash', name: 'Ash', traits: [trait('pack', null, 0)], traitLinks: [link('l1', 'gone', 'trait', null, 1)] }]))
+      .toEqual(['classes', '-paladin', '-wizard', '-schools', 'brave', 'ash', '-pack']);
+  });
+});
+
 describe('applyOwnedTraitDrop', () => {
   const worldTraits = { traits: [trait('paladin', 'class', 0), trait('loner', null, 1)], traitGroups: [group('class', null, 0)] };
   const ash: Entity = {
@@ -308,7 +362,7 @@ describe('applyOwnedTraitDrop', () => {
     const m = moved(out)!;
     const world = m.world ? { traits: m.world.traits, traitGroups: m.world.groups } : worldTraits;
     const next = ents.map((e) => m.entities.find((x) => x.id === e.id) ?? e);
-    const { groups, traits } = ownedTraitTree(world, next);
+    const { groups, traits } = ownedTraitTree(world, next, [], { links: true });
     return flattenTraitTree(buildTraitTree(groups, traits)).map((n) => `${'-'.repeat(n.depth)}${n.id}`);
   };
 
@@ -330,13 +384,12 @@ describe('applyOwnedTraitDrop', () => {
     expect(traits.find((t) => t.id === 'loner')?.groupId).toBe('class');
   });
 
-  it('moves a world trait into an entity under the same id, keeping its requirements', () => {
-    const gated = { ...trait('paladin', 'class', 0), requires: [{ kind: 'trait' as const, id: 'loner' }] };
+  it('links a world trait dropped into an entity; the world trait stays where it is', () => {
     // Paladin dropped below Pack lands at Ash's root.
-    const out = applyOwnedTraitDrop({ ...worldTraits, traits: [gated, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24);
-    expect(moved(out)?.world?.traits.map((t) => t.id)).toEqual(['loner']);
-    expect(entityOut(out, 'ash')?.traits?.find((t) => t.id === 'paladin')).toMatchObject({ groupId: null, requires: gated.requires });
-    expect(rowsAfter(out, [ash])).toEqual(['class', 'loner', 'ash', '-bond', '--tamed', '-pack', '-paladin']);
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'paladin', 'pack', 0, 24, { newLinkId: () => 'l1' });
+    expect(moved(out)?.world).toBeUndefined();
+    expect(entityOut(out, 'ash')?.traitLinks).toMatchObject([{ id: 'l1', originalId: 'paladin', groupId: null }]);
+    expect(rowsAfter(out, [ash])).toEqual(['class', '-paladin', 'loner', 'ash', '-bond', '--tamed', '-pack', '-l1']);
   });
 
   it('moves an owned trait out to the world under the same id', () => {
@@ -363,21 +416,21 @@ describe('applyOwnedTraitDrop', () => {
     expect(entityOut(out, 'ash')?.traitGroups).toBeUndefined();
   });
 
-  it('refuses to move a trait with stat changes or stat toggles into an entity, naming it', () => {
+  it('links a world trait with stat changes or stat toggles, which stay on the original', () => {
     const strong = { ...trait('paladin', 'class', 0), name: 'Plate Armor', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] };
     const out = applyOwnedTraitDrop({ ...worldTraits, traits: [strong, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24);
-    expect(out).toEqual({ kind: 'refused', refusal: { name: 'Plate Armor', kind: 'trait', offender: 'Plate Armor', owner: null } });
+    expect(entityOut(out, 'ash')?.traitLinks).toMatchObject([{ originalId: 'paladin' }]);
     const toggled = { ...trait('paladin', 'class', 0), statToggles: [{ statId: 's', enabled: true }] };
     expect(applyOwnedTraitDrop({ ...worldTraits, traits: [toggled, worldTraits.traits[1]] }, [ash], [], 'paladin', 'pack', 0, 24)?.kind)
-      .toBe('refused');
+      .toBe('moved');
   });
 
-  it('refuses to move a group into an entity when a trait inside it has stat effects, naming that trait', () => {
+  it('links a world group with stat effects inside it', () => {
     const strong = { ...trait('paladin', 'class', 0), name: 'Plate Armor', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] };
     const world = { traits: [strong, trait('loner', null, 1)], traitGroups: [{ ...group('class', null, 0), name: 'Class' }] };
-    // Class dropped below Pack, one level in, lands at Ash's root with Plate Armor inside it.
+    // Class dropped below Pack, one level in, lands at Ash's root.
     const out = applyOwnedTraitDrop(world, [ash], [], 'class', 'pack', 24, 24);
-    expect(out).toEqual({ kind: 'refused', refusal: { name: 'Class', kind: 'group', offender: 'Plate Armor', owner: null } });
+    expect(entityOut(out, 'ash')?.traitLinks).toMatchObject([{ originalId: 'class', kind: 'group', groupId: null }]);
   });
 
   it('drags an entity node into a world group, storing its placement', () => {
@@ -413,18 +466,121 @@ describe('applyOwnedTraitDrop', () => {
     expect(entityOut(out, 'bob')?.traits).toEqual(bob.traits);
   });
 
-  it('drops into a collapsed entity node as its first item', () => {
+  it('links into a collapsed entity node as its first item', () => {
     // Rows: class, paladin, loner, ash (collapsed). Loner dropped on Ash, one level in.
-    const out = applyOwnedTraitDrop(worldTraits, [ash], ['ash'], 'loner', 'ash', 24, 24);
-    expect(entityOut(out, 'ash')?.traits?.find((t) => t.id === 'loner')).toMatchObject({ groupId: null, order: 0 });
-    expect(rowsAfter(out, [ash])).toEqual(['class', '-paladin', 'ash', '-loner', '-bond', '--tamed', '-pack']);
+    const out = applyOwnedTraitDrop(worldTraits, [ash], ['ash'], 'loner', 'ash', 24, 24, { newLinkId: () => 'l1' });
+    expect(entityOut(out, 'ash')?.traitLinks).toMatchObject([{ id: 'l1', originalId: 'loner', groupId: null, order: 0 }]);
+    expect(rowsAfter(out, [ash])).toEqual(['class', '-paladin', 'loner', 'ash', '-l1', '-bond', '--tamed', '-pack']);
   });
 
   it('names the entity a refused trait stays with', () => {
     const stray = { ...bob, traits: [{ ...trait('gruff', null, 0), name: 'Gruff', statChanges: [{ statId: 's', value: 1, type: 'min' as const }] }] };
     // Rows: class, paladin, loner, ash, bond, tamed, pack, bob, gruff. Gruff dropped on Pack joins Ash.
     expect(applyOwnedTraitDrop(worldTraits, [ash, stray], [], 'gruff', 'pack', 0, 24))
-      .toEqual({ kind: 'refused', refusal: { name: 'Gruff', kind: 'trait', offender: 'Gruff', owner: 'Bob' } });
+      .toEqual({ kind: 'refused', refusal: { reason: 'stats', name: 'Gruff', kind: 'trait', offender: 'Gruff', owner: 'Bob' } });
+  });
+});
+
+describe('applyOwnedTraitDrop with links', () => {
+  // Rows: templates, classes (in templates), paladin, wizard, loner, ash, pack, bond, tamed.
+  const world = {
+    traits: [trait('paladin', 'classes', 0), trait('wizard', 'classes', 1), { ...trait('loner', null, 1), name: 'Loner' }],
+    traitGroups: [{ ...group('templates', null, 0), system: 'templates' as const }, { ...group('classes', 'templates', 0), name: 'Classes' }],
+  };
+  const ash: Entity = {
+    id: 'ash', name: 'Ash',
+    traits: [trait('pack', null, 0), trait('tamed', 'bond', 0)],
+    traitGroups: [group('bond', null, 1)],
+  };
+  const drop = (ents: Entity[], activeId: string, overId: string, offset: number, collapsed: string[] = [], createLinks = true) =>
+    applyOwnedTraitDrop(world, ents, collapsed, activeId, overId, offset, 24, { createLinks, newLinkId: () => 'new' });
+  const entityOut = (out: ReturnType<typeof applyOwnedTraitDrop>, id: string) =>
+    (out?.kind === 'moved' ? out.entities.find((e) => e.id === id) : undefined);
+
+  it('links a world trait dropped into an entity, in the place it was dropped, and leaves the world alone', () => {
+    // Loner dropped below Pack at Ash's root.
+    const out = drop([ash], 'loner', 'pack', 0);
+    expect(out?.kind === 'moved' && out.world).toBeFalsy();
+    const next = entityOut(out, 'ash')!;
+    expect(next.traitLinks).toEqual([{ id: 'new', originalId: 'loner', kind: 'trait', originalName: 'Loner', groupId: null, order: 1 }]);
+    expect(next.traits?.find((t) => t.id === 'pack')).toMatchObject({ order: 0 });
+    expect(next.traitGroups?.find((g) => g.id === 'bond')).toMatchObject({ order: 2 });
+    expect(next.traits?.some((t) => t.id === 'loner')).toBe(false);
+  });
+
+  it('links a group from under Templates, stat effects and all', () => {
+    const strong = { ...world, traits: world.traits.map((t) => (t.id === 'paladin' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'min' as const }] } : t)) };
+    // Classes dropped inside Bond, below Tamed.
+    const out = applyOwnedTraitDrop(strong, [ash], [], 'classes', 'tamed', 24, 24, { newLinkId: () => 'new' });
+    expect(entityOut(out, 'ash')?.traitLinks).toEqual([
+      { id: 'new', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: 'bond', order: 1 },
+    ]);
+  });
+
+  it('refuses a link to an original the entity already holds, directly or through a linked group', () => {
+    const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order: 3 }] };
+    expect(drop([linked], 'paladin', 'pack', 0)).toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', bearer: 'Ash' } });
+    const paladin = { ...ash, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait' as const, originalName: 'paladin', groupId: null, order: 3 }] };
+    expect(drop([paladin], 'classes', 'pack', 0)?.kind).toBe('refused');
+  });
+
+  it('reorders a link inside its entity, into an owned group', () => {
+    const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait' as const, originalName: 'Loner', groupId: null, order: 2 }] };
+    // Rows: …, ash, pack, bond, tamed, l1. The link dropped on Tamed, one level in, lands in Bond.
+    const out = drop([linked], 'l1', 'tamed', 24);
+    expect(entityOut(out, 'ash')?.traitLinks).toEqual([{ ...linked.traitLinks[0], groupId: 'bond', order: 0 }]);
+    expect(entityOut(out, 'ash')?.traits?.find((t) => t.id === 'tamed')).toMatchObject({ groupId: 'bond', order: 1 });
+  });
+
+  it('moves a link to another entity with its own data, refused when that entity already holds the original', () => {
+    const strong = { ...world, traits: world.traits.map((t) => (t.id === 'paladin' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'min' as const }] } : t)) };
+    const l1 = { id: 'l1', originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order: 2, defaults: { paladin: true } };
+    const linked = { ...ash, traitLinks: [l1] };
+    const bob: Entity = { id: 'bob', name: 'Bob', traits: [trait('gruff', null, 0)] };
+    // Rows: …, ash, pack, bond, tamed, l1 (collapsed), bob, gruff. The link dropped on Gruff joins Bob.
+    const out = applyOwnedTraitDrop(strong, [linked, bob], ['l1'], 'l1', 'gruff', 0, 24);
+    expect(entityOut(out, 'bob')?.traitLinks).toEqual([{ ...l1, order: 1 }]);
+    expect(entityOut(out, 'ash')).not.toHaveProperty('traitLinks');
+    const holding = { ...bob, traitLinks: [{ id: 'l2', originalId: 'wizard', kind: 'trait' as const, originalName: 'wizard', groupId: null, order: 1 }] };
+    expect(applyOwnedTraitDrop(strong, [linked, holding], ['l1'], 'l1', 'gruff', 0, 24))
+      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Classes', bearer: 'Bob' } });
+  });
+
+  it('keeps an owned group holding a link inside an entity, and checks the link where it lands', () => {
+    const strong = { ...world, traits: world.traits.map((t) => (t.id === 'loner' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'min' as const }] } : t)) };
+    const l1 = { id: 'l1', originalId: 'loner', kind: 'trait' as const, originalName: 'Loner', groupId: 'bond', order: 1 };
+    const linked = { ...ash, traitLinks: [l1] };
+    // Rows: …, ash, pack, bond (collapsed), bob, gruff. Bond at the top level would carry the link out of Ash.
+    const bob: Entity = { id: 'bob', name: 'Bob', traits: [trait('gruff', null, 0)] };
+    expect(applyOwnedTraitDrop(strong, [linked, bob], ['bond'], 'bond', 'templates', -24, 24)).toBeNull();
+    // Bond onto Gruff joins Bob, link and all; the link's stat effects don't refuse it.
+    const out = applyOwnedTraitDrop(strong, [linked, bob], ['bond'], 'bond', 'gruff', 0, 24);
+    expect(entityOut(out, 'bob')?.traitLinks).toEqual([l1]);
+    // Bob already links Loner, so the move is refused.
+    const holding = { ...bob, traitLinks: [{ ...l1, id: 'l2', groupId: null, order: 1 }] };
+    expect(applyOwnedTraitDrop(strong, [linked, holding], ['bond'], 'bond', 'gruff', 0, 24))
+      .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'Loner', bearer: 'Bob' } });
+  });
+
+  it('never lands a link row outside an entity', () => {
+    const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait' as const, originalName: 'Loner', groupId: null, order: 2 }] };
+    // The link dropped on Loner, at the world's top level.
+    expect(drop([linked], 'l1', 'loner', -24)).toBeNull();
+  });
+
+  it('never drops a row inside a linked group\'s subtree', () => {
+    const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'classes', kind: 'group' as const, originalName: 'Classes', groupId: null, order: 2 }] };
+    const tree = ownedTraitTree(world, [linked], [], { links: true });
+    const rows = removeChildrenOf(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)), ['pack']);
+    // Pack dropped on the linked Wizard, last in the list and two levels in, would sit inside the link; it
+    // lands after the link instead. Between Paladin and Wizard, there is no spot outside it.
+    expect(getOwnedTraitDropProjection(tree, rows, 'pack', linkRowId('l1', 'wizard'), 48, 24)).toEqual({ depth: 1, parentId: 'ash' });
+    expect(getOwnedTraitDropProjection(tree, rows, 'pack', linkRowId('l1', 'paladin'), 48, 24)).toBeNull();
+  });
+
+  it('makes no link with links off: the row stays among the world items', () => {
+    // Loner dropped on Pack, one level in, would sit in Ash.
+    expect(drop([ash], 'loner', 'pack', 0, [], false)).toBeNull();
   });
 });
 

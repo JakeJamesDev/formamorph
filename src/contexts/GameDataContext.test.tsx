@@ -22,6 +22,44 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
 
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
 
+describe('trait links when an original goes', () => {
+  const linked = {
+    ...world('w', {}),
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes' }, { id: 'brave', name: 'Brave', statChanges: [] }],
+    traitGroups: [{ id: 'classes', name: 'Classes', parentId: null }],
+    entities: [
+      { id: 'ash', name: 'Ash', traitLinks: [
+        { id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null },
+        { id: 'l2', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: null },
+      ] },
+      { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l3', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null }] },
+    ],
+  } as unknown as World;
+
+  it('deleting a trait deletes its links and nothing else', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(linked); });
+    act(() => { result.current.removeTrait('paladin'); });
+    expect(result.current.entities.map((e) => e.traitLinks?.map((l) => l.id))).toEqual([['l2'], ['l3']]);
+  });
+
+  it('deleting a group deletes the links to it; its children and their links stay', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(linked); });
+    act(() => { result.current.removeTraitGroup('classes'); });
+    expect(result.current.entities.map((e) => e.traitLinks?.map((l) => l.id))).toEqual([['l1'], ['l3']]);
+    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
+  });
+
+  it('leaves the entities untouched when nothing linked the deleted trait', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData({ ...linked, traits: [...linked.traits, { id: 'lone', name: 'Lone', statChanges: [] }] } as World); });
+    const before = result.current.entities;
+    act(() => { result.current.removeTrait('lone'); });
+    expect(result.current.entities).toBe(before);
+  });
+});
+
 describe('entity ↔ location membership', () => {
   // Membership is entity-owned (ADR-0003), so these worlds are stated the way the editor writes them.
   const worldWith = (entityIds: string[]) => ({

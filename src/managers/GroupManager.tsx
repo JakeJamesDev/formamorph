@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Label } from '@/components/ui/label';
@@ -8,8 +8,14 @@ import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
 
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
- *  makes it that entity's group, and edits write to the entity. */
-const GroupManager = ({ group, ownerId }: { group: TraitGroup; ownerId?: string }) => {
+ *  makes it that entity's group, and edits write to the entity. A link shows its original here, with its
+ *  own lines in `detailsHeader` and `detailsFooter`. */
+const GroupManager = ({ group, ownerId, detailsHeader, detailsFooter }: {
+  group: TraitGroup;
+  ownerId?: string;
+  detailsHeader?: ReactNode;
+  detailsFooter?: ReactNode;
+}) => {
   const { updateTraitGroup, editEntity, placeholders } = useTraitStore();
   const write = useCallback(
     (next: TraitGroup) => (ownerId ? editEntity(ownerId, (e) => updateOwnedGroup(e, next)) : updateTraitGroup(next)),
@@ -21,6 +27,7 @@ const GroupManager = ({ group, ownerId }: { group: TraitGroup; ownerId?: string 
 
   return (
     <div className="space-y-4">
+      {detailsHeader}
       <div className="space-y-2">
         <Label>Group Name</Label>
         <PlaceholderNameField
@@ -54,6 +61,7 @@ const GroupManager = ({ group, ownerId }: { group: TraitGroup; ownerId?: string 
         <span>Exclusive</span>
         <span className="text-meta text-muted-foreground">Shows as radio buttons, so the player picks at most one trait here</span>
       </label>
+      {detailsFooter}
     </div>
   );
 };
