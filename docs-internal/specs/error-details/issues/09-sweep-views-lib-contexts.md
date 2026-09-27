@@ -1,6 +1,6 @@
 # 09: Sweep: views, lib, contexts and managers
 
-Status: in-progress
+Status: ready-for-human
 Base: 0b6d271f
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -16,9 +16,9 @@ Recommended model rationale: same mechanical sweep with two named exceptions to 
 
 ## Acceptance criteria
 
-- [ ] Every caught-error toast in the views, lib, contexts and managers goes through the shared helper and offers **View Details →**
-- [ ] Every validation or refusal toast in those files stays plain with no link
-- [ ] The connection-guide toast still shows **Fix connection →** and only that link
-- [ ] A canceled AI request shows no error toast
-- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
-- [ ] Four gates green
+- [x] Every caught-error toast in the views, lib, contexts and managers goes through the shared helper and offers **View Details →**
+- [x] Every validation or refusal toast in those files stays plain with no link
+- [x] The connection-guide toast still shows **Fix connection →** and only that link
+- [x] A canceled AI request shows no error toast
+- [x] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
+- [x] Four gates green

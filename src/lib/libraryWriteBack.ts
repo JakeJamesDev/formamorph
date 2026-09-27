@@ -43,7 +43,7 @@ export async function writeBackOwnedCopies(world: WorldToWriteBack): Promise<Lin
       await replaceLibraryItemContent(kindOf(copy), source.id, content, revision);
       stamps.push({ id: copy.id, link: { ...copy.link, sourceName: content.name, sourceRevision: revision } });
     } catch (error) {
-      toastError(error, { headline: `Could not write “${source.name}” to your library: ${(error as Error).message}` });
+      toastError(error, { headline: `Could not write “${source.name}” to your library: ${error instanceof Error ? error.message : String(error)}` });
     }
   }
   if (stamps.length) {
