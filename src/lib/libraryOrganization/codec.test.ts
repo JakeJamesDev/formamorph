@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LEGACY_ORDER_KEYS, TILE_STORAGE_KEYS, loadTabOrganization, saveTabOrganization } from './codec';
 import { addToGroup, createGroupFromItem, setTileSize } from './operations';

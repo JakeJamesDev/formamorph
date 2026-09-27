@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
 import { seedDevRouteFromEnv } from './devRouter';

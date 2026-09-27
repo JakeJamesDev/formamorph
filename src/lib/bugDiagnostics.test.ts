@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { collectDiagnostics, summarizeUserAgent } from './bugDiagnostics';
 import { APP_VERSION } from './version';

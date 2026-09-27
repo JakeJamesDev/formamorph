@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ChangeEvent } from 'react';
 import { filesFrom, importSummaryToast } from './importFiles';

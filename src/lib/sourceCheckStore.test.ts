@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EMPTY_SOURCE_CHECK, readSourceCheck, writeSourceCheck } from './sourceCheckStore';
 

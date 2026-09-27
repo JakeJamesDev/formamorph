@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { WorldOverview } from '@/types';

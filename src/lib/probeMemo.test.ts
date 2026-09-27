@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { probeKnownAbsent, recordProbeStatus, resetProbeMemo } from './probeMemo';
 import { fetchContextLength } from './contextLength';

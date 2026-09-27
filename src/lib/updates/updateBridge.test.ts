@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, afterEach, vi } from 'vitest';
 import { updateBridge } from '@/lib/updates/updateBridge';
 

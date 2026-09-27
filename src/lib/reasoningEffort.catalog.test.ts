@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveReasoningCapability, SAFE_REASONING_EFFORTS } from './reasoningEffort';
 import { parseReasoningCatalog, resetReasoningCatalog, REASONING_CATALOG_URL, REASONING_CATALOG_STORAGE_KEY } from './reasoningCatalog';

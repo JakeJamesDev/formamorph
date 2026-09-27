@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useCanvasConnectionStyle, useCanvasGridVisible, useCanvasSnap } from './canvasPrefs';

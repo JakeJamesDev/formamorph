@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { restyle, buildStyledValues } from './sectionStyle';
 import { PROMPT_TEXT_KEYS, type PromptValues } from './promptPresets';

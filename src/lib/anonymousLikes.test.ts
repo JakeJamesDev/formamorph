@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ANONYMOUS_LIKE_CODES, INSTALL_STORAGE_KEY, mayPressHeart, refusalAnswer } from './anonymousLikes';
 

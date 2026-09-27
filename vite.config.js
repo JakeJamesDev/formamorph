@@ -69,8 +69,13 @@ export default defineConfig({
   test: {
     // e2e/ belongs to Playwright; .scratch/ contains untracked working copies and experiments.
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.scratch/**', '.claude/worktrees/**'],
-    environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // A new jsdom per file is a large share of the suite's CPU, so plain .ts tests run in node. A .ts test
+    // that needs the DOM opts in with `// @vitest-environment jsdom`.
+    projects: [
+      { extends: true, test: { name: 'dom', include: ['**/*.test.{tsx,mjs}'], environment: 'jsdom' } },
+      { extends: true, test: { name: 'node', include: ['**/*.test.ts'], environment: 'node' } },
+    ],
   },
 })

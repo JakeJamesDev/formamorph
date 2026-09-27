@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { APP_VERSION } from '@/lib/version';
 
