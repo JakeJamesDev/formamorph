@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detachLink, detachDropsStats, dropCustomPersonaLinksTo, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault } from './traitLinks';
+import { addLink, detachLink, detachDropsStats, dropCustomPersonaLinksTo, dropLinksTo, linkDefaultTraits, linksTo, originalPath, removeLink, setLinkDefault } from './traitLinks';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -18,6 +18,25 @@ const world = {
   ] satisfies Trait[],
   traitGroups: [group('classes', null, { name: 'Classes', exclusive: true }), group('schools', 'classes', { order: 2 })],
 };
+
+describe('addLink', () => {
+  it('links an original at the end of the bearer\'s top level, after its owned items and links', () => {
+    const bearer: Entity = {
+      id: 'ash', name: 'Ash',
+      traits: [trait('oath', { groupId: null, order: 0 }), trait('vow', { groupId: 'g-own' })],
+      traitGroups: [group('g-own', null, { order: 1 })],
+      traitLinks: [link('l1', 'wizard', 'trait', { order: 2 })],
+    };
+    expect(addLink(world, bearer, 'classes', 'new')?.traitLinks).toEqual([
+      link('l1', 'wizard', 'trait', { order: 2 }),
+      { id: 'new', originalId: 'classes', kind: 'group', originalName: 'Classes', groupId: null, order: 3 },
+    ]);
+  });
+
+  it('links nothing when the id is not an original', () => {
+    expect(addLink(world, { id: 'ash', name: 'Ash' }, 'gone', 'new')).toBeNull();
+  });
+});
 
 describe('originalPath', () => {
   it('names the world groups down to the original, the original last', () => {

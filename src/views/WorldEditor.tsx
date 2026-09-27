@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Save, FolderPlus, FilePlus, LayoutTemplate, CircleUserRound, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, ChevronRight, Save, FolderPlus, FilePlus, LayoutTemplate, CircleUserRound, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -81,9 +81,11 @@ import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { CUSTOM_PERSONA_ID, customPersonaEntity, duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
 import { CustomPersonaPanel } from '../managers/CustomPersonaPanel';
-import { bearsTraits } from '@/lib/bearers';
+import { bearsTraits, originalOf } from '@/lib/bearers';
 import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
-import { findOwnedItem } from '@/lib/ownedTraits';
+import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
+import { bearerChoices } from '@/lib/bearerChoices';
+import { BearerList, LinkToBearerButton } from '../managers/BearerPicker';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
@@ -162,7 +164,7 @@ const WorldEditorInner = ({
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeEntity, removeLocation, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds, editEntity,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -453,6 +455,8 @@ const WorldEditorInner = ({
   const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
   useBackStop(requestClose, editorRootRef);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  // The + menu's drill-in: which kind of owned item it adds to the entity picked next.
+  const [addToEntity, setAddToEntity] = useState<'trait' | 'group' | null>(null);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
   // Back out of the connection step reopens the picker on the picks already made rather than a clean one.
@@ -755,6 +759,16 @@ const WorldEditorInner = ({
     setCustomPersona({ traitLinks: [] });
     setSelectedItemId(CUSTOM_PERSONA_ID);
   };
+  // The first add to an entity gives it a node in the tree, which reveals the selected row.
+  const handleAddToEntity = (kind: 'trait' | 'group', entityId: string) => {
+    const id = randomUUID();
+    const name = searchTerm.trim() || undefined;
+    editEntity(entityId, (e) => (kind === 'trait' ? addOwnedTrait(e, id, name) : addOwnedGroup(e, id, name)));
+    setSearchTerm('');
+    setSelectedItemId(id);
+    setAddMenuOpen(false);
+    setAddToEntity(null);
+  };
 
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
@@ -812,6 +826,16 @@ const WorldEditorInner = ({
   const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
   const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
+  // In Advanced, a world original's Details open with its link button, beside a link's Linked-from line.
+  const linkHeader = (originalId: string, line?: ReactNode) => {
+    if (!advanced || !originalOf({ traits, traitGroups }, originalId)) return line;
+    return (
+      <div className="flex items-start gap-2">
+        {line ? <div className="min-w-0 flex-1">{line}</div> : <div className="flex-1" />}
+        <LinkToBearerButton originalId={originalId} />
+      </div>
+    );
+  };
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
@@ -1019,7 +1043,12 @@ const WorldEditorInner = ({
         />
       )}
       {activeTab === "traits" && selectedGroup && (
-        <GroupManager key={selectedGroup.id} group={selectedGroup} ownerId={selectedOwned?.entity.id} />
+        <GroupManager
+          key={selectedGroup.id}
+          group={selectedGroup}
+          ownerId={selectedOwned?.entity.id}
+          detailsHeader={selectedOwned ? undefined : linkHeader(selectedGroup.id)}
+        />
       )}
       {activeTab === "traits" && customPersona && selectedItemId === CUSTOM_PERSONA_ID && <CustomPersonaPanel />}
       {selectedTraitNode && (
@@ -1035,6 +1064,7 @@ const WorldEditorInner = ({
           key={selectedTrait.id}
           trait={selectedTrait}
           owner={selectedOwned?.entity}
+          detailsHeader={selectedOwned ? undefined : linkHeader(selectedTrait.id)}
           // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
@@ -1047,7 +1077,7 @@ const WorldEditorInner = ({
         <TraitManager
           key={selectedItemId}
           trait={linkedTrait}
-          detailsHeader={<LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />}
+          detailsHeader={linkHeader(linkedTrait.id, <LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />)}
           detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
@@ -1060,7 +1090,7 @@ const WorldEditorInner = ({
         <GroupManager
           key={selectedItemId}
           group={linkedGroup}
-          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />}
+          detailsHeader={linkHeader(linkedGroup.id, <LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />)}
           detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedGroup.id} />}
         />
       )}
@@ -1217,29 +1247,53 @@ const WorldEditorInner = ({
   const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
   const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
+  const menuRowClass = "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent";
   const addMenuItem = (icon: ReactNode, label: string, add: () => void) => (
-    <button
-      type="button"
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
-      onClick={() => { add(); setAddMenuOpen(false); }}
-    >
+    <button type="button" className={menuRowClass} onClick={() => { add(); setAddMenuOpen(false); }}>
       {icon} {label}
     </button>
   );
+  // A drill-in row: its label heads the entity list it opens in place of the menu.
+  const toEntityLabel = { trait: 'Add Trait To Entity', group: 'Add Group To Entity' } as const;
+  const addToEntityItem = (icon: ReactNode, kind: 'trait' | 'group') => entities.length > 0 && (
+    <button type="button" className={menuRowClass} onClick={() => setAddToEntity(kind)}>
+      {icon} <span className="flex-1">{toEntityLabel[kind]}</span>
+      <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+    </button>
+  );
+  const traitsMenu = addToEntity ? (
+    <BearerList
+      choices={bearerChoices(entityGroups, entities)}
+      label="Entities"
+      onPick={(id) => handleAddToEntity(addToEntity, id)}
+      back={{ label: toEntityLabel[addToEntity], onBack: () => setAddToEntity(null) }}
+    />
+  ) : (
+    <>
+      {advanced && addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', handleAddGroup)}
+      {addMenuItem(<FilePlus className="h-4 w-4" />, 'Add Trait', handleAddTrait)}
+      {advanced && addToEntityItem(<FolderPlus className="h-4 w-4" />, 'group')}
+      {addToEntityItem(<FilePlus className="h-4 w-4" />, 'trait')}
+      {advanced && !hasTemplates
+        && addMenuItem(<LayoutTemplate className="h-4 w-4" />, 'Add Templates Group', handleAddTemplates)}
+      {advanced && !customPersona
+        && addMenuItem(<CircleUserRound className="h-4 w-4" />, 'Add Custom Persona', handleAddCustomPersona)}
+    </>
+  );
   const addSearchBar = activeTab !== "overview" && (
     <ListToolbar className="mt-4">
-      {advanced && grouped ? (
-        <Popover open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+      {activeTab === "traits" || (advanced && grouped) ? (
+        <Popover open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); if (!open) setAddToEntity(null); }}>
           <PopoverTrigger asChild>
             <ListAddButton label={addLabel} data-tour-anchor="list-add" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className={cn(activeTab === "traits" ? "w-52" : "w-44", "p-1")}>
-            {addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', addGroupHere)}
-            {addMenuItem(<FilePlus className="h-4 w-4" />, addItemLabel, addItemHere)}
-            {activeTab === "traits" && !hasTemplates
-              && addMenuItem(<LayoutTemplate className="h-4 w-4" />, 'Add Templates Group', handleAddTemplates)}
-            {activeTab === "traits" && !customPersona
-              && addMenuItem(<CircleUserRound className="h-4 w-4" />, 'Add Custom Persona', handleAddCustomPersona)}
+          <PopoverContent side="bottom" align="start" className={cn(activeTab === "traits" ? "w-56" : "w-44", "p-1")}>
+            {activeTab === "traits" ? traitsMenu : (
+              <>
+                {addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', addGroupHere)}
+                {addMenuItem(<FilePlus className="h-4 w-4" />, addItemLabel, addItemHere)}
+              </>
+            )}
           </PopoverContent>
         </Popover>
       ) : (

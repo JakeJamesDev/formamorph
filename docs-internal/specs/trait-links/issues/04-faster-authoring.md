@@ -1,6 +1,7 @@
 # 04: Faster authoring
 
-Status: ready-for-agent
+Status: in-progress
+Base: 8d9bffd5
 Blocked by: 03 — Templates and Custom Persona
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

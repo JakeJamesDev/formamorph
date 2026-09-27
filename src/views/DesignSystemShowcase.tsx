@@ -1,5 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
+import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -318,6 +319,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Narration Turn',
     description: 'Turn Card, Scene Plate, and choice rows',
     Component: NarrationTurnReference,
+  },
+  {
+    id: 'bearer-flyouts',
+    label: 'Bearer Flyouts',
+    description: 'Drill-down entity pickers in a menu and on a button',
+    Component: BearerFlyoutReference,
   },
 ];
 

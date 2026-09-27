@@ -256,7 +256,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   return (
     <>
       {refusal && <TraitDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
-      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} revealSelected />
       {removeDialog}
       <ConfirmDialog
         open={!!pendingDetach}

@@ -3,9 +3,9 @@
 
 import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink } from '@/types';
 import { randomUUID } from './uuid';
-import { originalOf, type BearerWorld } from './bearers';
+import { makeLink, originalOf, type BearerWorld } from './bearers';
 import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
-import { withOwnedTraits } from './ownedTraits';
+import { rootCount, withOwnedTraits } from './ownedTraits';
 
 type WorldTraitLists = Pick<BearerWorld, 'traits' | 'traitGroups'>;
 
@@ -53,6 +53,12 @@ export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {
   if (!entities.some((e) => linksOriginal(e, originalId))) return entities;
   return entities.map((e) =>
     (linksOriginal(e, originalId) ? withLinks(e, e.traitLinks!.filter((l) => l.originalId !== originalId)) : e));
+}
+
+/** Link the original at the end of the bearer's top level. Null when the id is not an original. */
+export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
+  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
+  return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
 }
 
 /** Remove one link. The original is untouched. */

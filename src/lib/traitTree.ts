@@ -293,7 +293,7 @@ function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
 }
 
 /**
- * Where a drag in the one tree would land. A row that is or holds an entity node stops at the top level
+ * Where a drag in the one tree would land. Templates and Custom Persona stay at the top level. A row that is or holds an entity node stops at the top level
  * or a world group outside Templates. Nothing lands inside a linked group, whose subtree is its original's.
  * A row carrying a link stays in an entity, Custom Persona takes links only, and without `createLinks` a
  * world row stays among the world items. Null when the rows below would hold the row where it can't be.
@@ -309,7 +309,8 @@ export function getOwnedTraitDropProjection(
   const worldRow = !inEntity(activeId);
   const ownedRow = tree.ownerOf.has(activeId) && !tree.linkRows.has(activeId);
   const inTemplates = templatesSubtreeIds(tree.groups);
-  const blocked = carriesEntityNode(tree, activeId)
+  const systemNode = activeId === CUSTOM_PERSONA_ID || active.group?.system === 'templates';
+  const blocked = systemNode ? () => true : carriesEntityNode(tree, activeId)
     ? (id: string) => inEntity(id) || inTemplates.has(id)
     : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id))
       || (ownedRow && id === CUSTOM_PERSONA_ID);
@@ -325,6 +326,26 @@ export function getOwnedTraitDropProjection(
   if (replayed.depth !== depth || replayed.parentId !== parentId) return null;
   if (ownerOfParent(tree, parentId) === null && linksCarried(tree, activeId).length) return null;
   return replayed;
+}
+
+/**
+ * Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once.
+ * Custom Persona's node is the player bearer, which already has every original outside Templates.
+ */
+export function linkRefusal(
+  world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
+): Extract<TraitDropRefusal, { reason: 'duplicate' | 'offered' }> | null {
+  const bearerWorld = { ...world, entities };
+  const bearerId = nodeId === CUSTOM_PERSONA_ID ? PLAYER_BEARER : nodeId;
+  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === bearerId);
+  if (!resolved || !holdsOriginal(bearerWorld, resolved, originalId)) return null;
+  const name = originalOf(world, originalId)?.item.name ?? '';
+  const offered = offeredWorldTraits(world.traits, world.traitGroups);
+  if (nodeId === CUSTOM_PERSONA_ID && [...offered.traits, ...offered.groups].some((item) => item.id === originalId)) {
+    return { reason: 'offered', name };
+  }
+  const bearer = nodeId === CUSTOM_PERSONA_ID ? CUSTOM_PERSONA_NAME : entities.find((e) => e.id === nodeId)?.name ?? '';
+  return { reason: 'duplicate', name, bearer };
 }
 
 /**
@@ -400,18 +421,9 @@ export function applyOwnedTraitDrop(
     };
   };
 
-  // A bearer's tree holds each original once, so a link arriving at another entity checks it first.
-  // Custom Persona's node is the player bearer, which already has every original outside Templates.
   const duplicateIn = (nodeId: string, originalId: string): OwnedTraitDrop | null => {
-    const bearerId = nodeId === CUSTOM_PERSONA_ID ? PLAYER_BEARER : nodeId;
-    const resolved = resolveBearers({ ...world, entities }, undefined).bearers.find((b) => b.id === bearerId);
-    const name = originalOf(world, originalId)?.item.name ?? '';
-    if (!resolved || !holdsOriginal({ ...world, entities }, resolved, originalId)) return null;
-    const offered = offeredWorldTraits(world.traits, world.traitGroups);
-    if (nodeId === CUSTOM_PERSONA_ID && [...offered.traits, ...offered.groups].some((item) => item.id === originalId)) {
-      return { kind: 'refused', refusal: { reason: 'offered', name } };
-    }
-    return { kind: 'refused', refusal: { reason: 'duplicate', name, bearer: tree.entityNodes.get(nodeId)!.name } };
+    const refusal = linkRefusal(world, entities, nodeId, originalId);
+    return refusal && { kind: 'refused', refusal };
   };
   /** The drop's writes, with Custom Persona's node split off the entities. */
   const moved = (entitiesOut: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop => {
