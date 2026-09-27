@@ -6,6 +6,25 @@ import { ENTITY_PANEL_TABS } from '@/views/entityPanelTabs';
 import { LOCATION_PANEL_TABS } from '@/views/locationPanelTabs';
 import { TRAIT_PANEL_TABS } from '@/views/traitPanelTabs';
 import { DICTIONARY_PANEL_TABS } from '@/views/dictionaryPanelTabs';
+import type { PanelTab } from '@/components/ui/panel-tabs';
+
+/** Every registry the reference renders, by the name of the strip that shows it. */
+const REGISTRIES: [string, readonly PanelTab[]][] = [
+  ['Sample Entity Fields', ENTITY_PANEL_TABS],
+  ['Sample Location Fields', LOCATION_PANEL_TABS],
+  ['Sample Trait Fields', TRAIT_PANEL_TABS],
+  ['Sample Entry Fields', DICTIONARY_PANEL_TABS],
+];
+
+const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** The innermost named region around a strip: its own section, not the reference card. */
+function sectionOf(strip: HTMLElement) {
+  const around = screen.getAllByRole('region').filter((region) => region.contains(strip));
+  const section = around.find((region) => !around.some((inner) => inner !== region && region.contains(inner)));
+  if (!section) throw new Error('strip has no region');
+  return section;
+}
 
 describe('panel tab strip reference', () => {
   it('renders all four production registries and switches the body with the tab', async () => {
@@ -48,6 +67,35 @@ describe('panel tab strip reference', () => {
     await user.click(within(trait).getByRole('tab', { name: 'Pins' }));
     expect(screen.getByText('Placeholder pin rows.')).toBeInTheDocument();
     expect(screen.queryByText('Placeholder pin rows and their conflict notes.')).toBeNull();
+  });
+
+  it('opens a body with text on every tab of every strip', async () => {
+    const user = userEvent.setup();
+    render(<PanelTabStripReference />);
+
+    for (const [stripLabel, tabs] of REGISTRIES) {
+      const strip = screen.getByRole('tablist', { name: stripLabel });
+      const section = sectionOf(strip);
+      for (const { label } of tabs) {
+        await user.click(within(strip).getByRole('tab', { name: label }));
+        expect(within(section).getByRole('tabpanel').textContent?.trim(), `${stripLabel} › ${label}`).not.toBe('');
+      }
+    }
+  });
+
+  it('states each strip\'s real tab count in its heading, in descending order', () => {
+    render(<PanelTabStripReference />);
+
+    for (const [stripLabel, tabs] of REGISTRIES) {
+      const section = sectionOf(screen.getByRole('tablist', { name: stripLabel }));
+      const heading = within(section).getByRole('heading').textContent ?? '';
+      const stated = COUNT_WORDS.findIndex((word) => new RegExp(`\\b${word}\\b`, 'i').test(heading));
+      // A heading may name another property instead of a count; one that states a count must be right.
+      if (stated !== -1) expect(stated, heading).toBe(tabs.length);
+    }
+
+    const counts = screen.getAllByRole('tablist').map((strip) => within(strip).getAllByRole('tab').length);
+    expect(counts).toEqual([...counts].sort((a, b) => b - a));
   });
 
   it('names every tab even where the label is not drawn', () => {
