@@ -59,12 +59,11 @@ describe('entityTabForField', () => {
 });
 
 describe('the library entity editor tabs', () => {
-  it('put Placeholders on the top strip and every other panel tab on the Entity sub-strip', () => {
-    expect(ENTITY_EDITOR_TABS.map((t) => t.value)).toEqual(['entity', 'placeholders']);
+  it('put Traits and Placeholders on the top strip and every other panel tab on the Entity sub-strip', () => {
+    expect(ENTITY_EDITOR_TABS.map((t) => t.value)).toEqual(['entity', 'traits', 'placeholders']);
     expect(ENTITY_EDITOR_SUBTABS.map((t) => t.value)).toEqual(['profile', 'descriptions', 'openings']);
-    const both = [...ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS[1]].map((t) => t.value).sort();
-    // Traits is the World Editor's own until the library editor gains owned traits.
-    expect(both).toEqual(ENTITY_PANEL_TABS.map((t) => t.value).filter((v) => v !== 'traits').sort());
+    const both = [...ENTITY_EDITOR_SUBTABS, ...ENTITY_EDITOR_TABS.slice(1)].map((t) => t.value).sort();
+    expect(both).toEqual(ENTITY_PANEL_TABS.map((t) => t.value).sort());
   });
 
   it('send a field to the Entity tab and the sub-tab that holds it', () => {

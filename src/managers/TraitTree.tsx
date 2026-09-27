@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Folder, Info, Lock, User } from 'lucide-react';
 import {
   getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, ownedTraitRows, ownedTraitTree,
   type FlatTraitNode, type TraitDropRefusal,
 } from '@/lib/traitTree';
 import { Button } from '@/components/ui/button';
-import { editorGateInput, removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
+import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
@@ -66,10 +66,10 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
-    traits, traitGroups, entities, setTraits, setTraitGroups, removeTrait, removeTraitGroup, editEntity, placeholders,
-  } = useGameData();
+    traits, traitGroups, entities, setTraits, setTraitGroups, removeTrait, removeTraitGroup, editEntity, placeholders, gateInput,
+  } = useTraitStore();
   const { advanced } = useEditorMode();
-  const gates = useMemo(() => gateStates(editorGateInput({ traits, traitGroups, entities })), [traits, traitGroups, entities]);
+  const gates = useMemo(() => gateStates(gateInput), [gateInput]);
   const tree = useMemo(() => ownedTraitTree({ traits, traitGroups }, entities), [traits, traitGroups, entities]);
   const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
 

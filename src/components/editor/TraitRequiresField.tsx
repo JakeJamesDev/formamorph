@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
@@ -9,7 +9,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { gateStates, requirementOptions, type RequirementOption } from '@/lib/traitGates';
-import { editorGateInput } from '@/lib/ownedTraits';
 import { cn } from '@/lib/utils';
 import type { Trait, TraitRequirement } from '@/types';
 
@@ -28,17 +27,14 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
   onChange: (requires: TraitRequirement[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
 }) {
-  const { traits, traitGroups, entities, placeholders } = useGameData();
+  const { gateInput, placeholders, offWorld } = useTraitStore();
   const [open, setOpen] = useState(false);
   const requires = trait.requires ?? [];
 
-  const { states, options } = useMemo(() => {
-    const input = editorGateInput({ traits, traitGroups, entities });
-    return {
-      states: gateStates(input).get(trait.id)?.requirements ?? [],
-      options: requirementOptions(input, trait.id),
-    };
-  }, [traits, traitGroups, entities, trait.id]);
+  const { states, options } = useMemo(() => ({
+    states: gateStates(gateInput).get(trait.id)?.requirements ?? [],
+    options: requirementOptions(gateInput, trait.id),
+  }), [gateInput, trait.id]);
 
   const add = (requirement: TraitRequirement) => {
     onChange([...requires, requirement]);
@@ -120,12 +116,12 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
             collisionBoundary={typeof document === 'undefined' ? undefined : document.documentElement}
           >
             <Command filter={filterRows}>
-              <CommandInput placeholder="Search traits, groups, and personas" />
+              <CommandInput placeholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'} />
               <CommandList>
                 <CommandEmpty>No matches</CommandEmpty>
                 {section('Traits', options.traits)}
                 {section('Any Trait in a Group', options.groups)}
-                {section('Playing As', options.personas)}
+                {!offWorld && section('Playing As', options.personas)}
               </CommandList>
             </Command>
           </PopoverContent>

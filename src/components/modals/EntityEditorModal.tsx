@@ -15,6 +15,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import { LibraryAuthorField } from '@/components/LibraryAuthorField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import LibraryTraitsEditor from '@/managers/LibraryTraitsEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
@@ -244,6 +245,8 @@ const EntityEditorModal = ({
               </FieldColumn>
             </div>
           </ScrollArea>
+        ) : entity && tab === 'traits' ? (
+          <LibraryTraitsEditor entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} />
         ) : (
           // The same palette the field tabs get, over the value fields: a value is a chip field too.
           <ChipInsertTargetProvider>

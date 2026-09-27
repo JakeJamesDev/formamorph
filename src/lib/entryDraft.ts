@@ -1,7 +1,7 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
 import { traitOwners } from './ownedTraits';
-import { WORLD_OWNER, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
+import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
 import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
@@ -77,6 +77,29 @@ export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick
     settleDefaults({ owners: entryOwners(world), entities: world.entities, persona }).active;
   return { traitIds, ownedTraitIds };
 }
+
+/** The library entities in the cast, by library id: the library persona, then the added characters as picked. */
+export function libraryCastIds(draft: Pick<EntryDraft, 'persona' | 'entityIds'>): string[] {
+  const persona = draft.persona.source === 'library' ? [draft.persona.entityId] : [];
+  return [...persona, ...withoutPersona(draft.entityIds, draft.persona)];
+}
+
+/** The draft with each library entity that joined the cast holding its default picks, settled against the
+ *  rest. An entity with picks keeps them, so a return to the cast finds them as the player left them. */
+export function withLibraryDefaults(draft: EntryDraft, world: EntryTraitWorld): EntryDraft {
+  const joined = world.library.filter((e) => !(e.id in draft.ownedTraitIds));
+  if (!joined.length) return draft;
+  const defaults = entryDefaults(world, draft.persona).ownedTraitIds;
+  const next = {
+    ...draft,
+    ownedTraitIds: { ...draft.ownedTraitIds, ...Object.fromEntries(joined.map((e) => [e.id, defaults[e.id] ?? []])) },
+  };
+  return withSettledTraits(next, settle(entryGateInput(world, next), next.cascadeOffTraitIds));
+}
+
+/** Picks keyed by library id moved to the ids of the copies that play. */
+export const rekeyOwnedPicks = (picks: OwnedTraitPicks, copyIds: ReadonlyMap<string, string>): OwnedTraitPicks =>
+  Object.fromEntries(Object.entries(picks).map(([id, ids]) => [copyIds.get(id) ?? id, ids]));
 
 /** The owned picks the game starts with: those of the entities in the cast that picked anything. */
 export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds'>, world: EntryTraitWorld): OwnedTraitPicks {

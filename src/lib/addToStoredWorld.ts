@@ -15,7 +15,8 @@ import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholde
 import { randomUUID } from '@/lib/uuid';
 import { unresolvedReferences, type ConnectionPlan, type ReferenceRow } from '@/lib/worldReferences';
 import WorldStorageService from '@/services/WorldStorageService';
-import type { Dictionary, Entity, GameLocation, Placeholder, WorldOverview } from '@/types';
+import { adoptOwnedTraits } from '@/lib/portableTraits';
+import type { Dictionary, Entity, GameLocation, Placeholder, Trait, TraitGroup, WorldOverview } from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
 interface StoredContent extends Record<string, unknown> {
@@ -24,6 +25,8 @@ interface StoredContent extends Record<string, unknown> {
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
   locations?: GameLocation[];
+  traits?: Trait[];
+  traitGroups?: TraitGroup[];
 }
 
 /** One stored world, named for a picker and for what a failure says. */
@@ -97,8 +100,11 @@ export async function addCopyToStoredWorld(
       return known.has(id) ? [[ref.id, id]] : [];
     }));
     const connections = { ...adopted.connections, ...used };
+    const kept = data.entities ?? [];
     const entity: Entity = {
-      ...withEntityLocations(rest as Entity, Object.values(used)),
+      ...adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
+        traits: data.traits ?? [], traitGroups: data.traitGroups ?? [], entities: kept,
+      }),
       link: {
         ...linkToSource(source),
         ...(Object.keys(connections).length ? { connections } : {}),
@@ -106,7 +112,6 @@ export async function addCopyToStoredWorld(
     };
     // A switched-off list would bench the arriving openings, so the copy switches it back on, exactly as
     // the World Editor's own add does.
-    const kept = data.entities ?? [];
     const overview = hasAuthoredOpenings(entity) && !openingsEnabled(data.worldOverview, [...kept, entity])
       ? { worldOverview: { ...(data.worldOverview as WorldOverview), ...setOpeningsEnabled(true) } }
       : {};

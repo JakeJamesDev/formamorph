@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
@@ -10,7 +10,7 @@ import type { TraitGroup } from '@/types';
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
  *  makes it that entity's group, and edits write to the entity. */
 const GroupManager = ({ group, ownerId }: { group: TraitGroup; ownerId?: string }) => {
-  const { updateTraitGroup, editEntity, placeholders } = useGameData();
+  const { updateTraitGroup, editEntity, placeholders } = useTraitStore();
   const write = useCallback(
     (next: TraitGroup) => (ownerId ? editEntity(ownerId, (e) => updateOwnedGroup(e, next)) : updateTraitGroup(next)),
     [ownerId, editEntity, updateTraitGroup],

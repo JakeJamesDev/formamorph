@@ -10,7 +10,7 @@ import { tabForField } from './findFocus';
 export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: User },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
-  { value: 'traits', label: 'Traits', icon: Sparkles, worldOnly: true },
+  { value: 'traits', label: 'Traits', icon: Sparkles },
   { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: Braces, advancedOnly: true },
 ] as const;
@@ -22,23 +22,23 @@ export function entityPanelTabsFor(advanced: boolean) {
   return ENTITY_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
 }
 
-/** The panel tab that the library entity editor puts on its top strip instead of the Entity sub-strip. */
-const LIBRARY_TOP_TAB = 'placeholders' satisfies EntityPanelTab;
+/** The panel tabs that the library entity editor puts on its top strip instead of the Entity sub-strip. */
+type LibraryTopTab = 'traits' | 'placeholders';
+const isLibraryTopTab = (value: EntityPanelTab): value is LibraryTopTab => value === 'traits' || value === 'placeholders';
 
 /** The library entity editor's sub-tabs, inside its Entity tab. It sits outside Simple and Advanced mode, so it
- *  shows every one but the World Editor's own. */
+ *  shows every one. */
 export const ENTITY_EDITOR_SUBTABS = ENTITY_PANEL_TABS.filter(
-  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB } | { worldOnly: true }> =>
-    t.value !== LIBRARY_TOP_TAB && !('worldOnly' in t && t.worldOnly),
+  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab }> => !isLibraryTopTab(t.value),
 );
 
 export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value'];
 
-/** The library entity editor's top tabs: Entity for the fields, then the panel's own Placeholders. */
+/** The library entity editor's top tabs: Entity for the fields, then the panel's own Traits and Placeholders. */
 export const ENTITY_EDITOR_TABS = [
   { value: 'entity', label: 'Entity', icon: SquareUser },
   ...ENTITY_PANEL_TABS.filter(
-    (t): t is Extract<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB }> => t.value === LIBRARY_TOP_TAB,
+    (t): t is Extract<(typeof ENTITY_PANEL_TABS)[number], { value: LibraryTopTab }> => isLibraryTopTab(t.value),
   ),
 ] as const;
 

@@ -289,6 +289,35 @@ describe('the retained entry draft', () => {
     );
   });
 
+  it("puts an added library character's owned traits in the tree and starts the game with them on its copy", async () => {
+    await EntityStorageService.storeEntity({
+      id: 'wolf', name: 'Wolf',
+      data: {
+        id: 'wolf', name: 'Wolf',
+        traits: [
+          { id: 'loyal', name: 'Loyal', isDefault: true, statChanges: [] },
+          { id: 'oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'elsewhere', name: 'Extra trait' }] },
+        ],
+      },
+    });
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(screen.getByRole('button', { name: 'Library Additions' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Include Wolf' }));
+    // The entity node's nav row appears once the library data loads; it reads its pick count.
+    fireEvent.click(await screen.findByRole('button', { name: /^Wolf/ }, { timeout: 3000 }));
+    expect(await screen.findByRole('checkbox', { name: 'Loyal' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Oath/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    const copy = (onStartGame.mock.calls[0][5] as { id: string; name: string; traits: { requires?: { id: string }[] }[] }[])
+      .find((e) => e.name === 'Wolf')!;
+    expect(copy.id).not.toBe('wolf');
+    expect(copy.traits[1].requires).toEqual([{ kind: 'trait', id: 'extra', name: 'Extra trait' }]);
+    expect(onStartGame.mock.calls[0][7]).toEqual({ [copy.id]: ['loyal'] });
+  });
+
   it('retains workspace and library choices through navigation and starts from those choices', async () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });

@@ -1,7 +1,9 @@
 // Owned traits during play: which are active, and the order every owner's traits lay their placeholder pins.
 
-import type { Entity, OwnedTraitStates, PersonaRef, Trait, TraitGroup } from '@/types';
+import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Trait, TraitGroup } from '@/types';
 import { traitOwners } from './ownedTraits';
+import { libraryOwnersInPlay } from './portableTraits';
+import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { WORLD_OWNER, type GateOwner } from './traitGates';
 import { ownedTraitTree } from './traitTree';
@@ -20,8 +22,15 @@ export function activeOwnedTraitIds(states: Readonly<OwnedTraitStates>): Record<
 
 type TraitWorldLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] };
 
-/** The library entities a playthrough holds, whose nodes sit last in the one tree. */
-export const inPlayLibrary = (libraryPersona: Entity | null | undefined): Entity[] => (libraryPersona ? [libraryPersona] : []);
+/** The characters added from the library at Enter World, among the discovered cast. */
+export const addedCharacters = (discovered: readonly DiscoveredEntity[]): Entity[] =>
+  discovered.filter((d) => d.sourceTurnId === INITIAL_SOURCE_TURN_ID).map((d) => d.entity);
+
+/** The library entities a playthrough holds, whose nodes sit last in the one tree: the library persona, then
+ *  the added characters, with their owned trait requirements bound to the world. */
+export const inPlayLibrary = (
+  world: TraitWorldLists, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
+): Entity[] => libraryOwnersInPlay(world, libraryPersona, added);
 
 /** Every entity that owns traits, as the gate module reads it: the world's, then the library's. */
 export const entityTraitOwners = (world: TraitWorldLists, library: readonly Entity[] = []): GateOwner[] =>

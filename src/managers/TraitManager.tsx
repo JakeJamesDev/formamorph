@@ -1,5 +1,5 @@
 import { useCallback, useEffect, type ReactNode } from 'react';
-import { useGameData } from '@/contexts/GameDataContext';
+import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,8 +75,9 @@ const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChang
   onTabChange: (tab: TraitPanelTab) => void;
   focusField?: FocusFieldHint | null;
 }) => {
-  const world = useGameData();
-  const { updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
+  const {
+    updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld,
+  } = useTraitStore();
   const ownerId = owner?.id;
   const write = useCallback(
     (next: Trait) => (ownerId ? editEntity(ownerId, (e) => updateOwnedTrait(e, next)) : updateTrait(next)),
@@ -320,7 +321,7 @@ const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChang
         pins={pins}
         onChange={setPins}
         source={{ kind: 'trait', id: editingTrait.id }}
-        world={world}
+        world={pinWorld}
         placeholders={placeholders}
         onOpenTrait={onOpenTrait}
       />

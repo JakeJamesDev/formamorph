@@ -498,7 +498,7 @@ const WorldEditorInner = ({
     try {
       // The card's own data keeps the chips; only the filename is flattened, since a placement id is not a name.
       const links = await exportedComponentLinks(entity.link);
-      downloadBlob(await exportEntityCard(entity, placeholders, links), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
+      downloadBlob(await exportEntityCard(entity, placeholders, links, undefined, { traits, traitGroups, entities }), `${labelPlaceholders(entity.name, placeholders, { letters: placementLetters, owners: placeholderOwners }) || 'Character'}.webp`);
     } catch (error) {
       toast.error((error as Error).message);
     }
@@ -526,7 +526,7 @@ const WorldEditorInner = ({
   const linking = useLibraryLinking({
     worldId: worldId ?? '',
     worldName: worldOverview?.name || 'This world',
-    entities, dictionaries, placeholders, worldPlaceholders, locations,
+    entities, dictionaries, placeholders, worldPlaceholders, locations, traits, traitGroups,
     updateEntity, updateDictionary, setEntities, setDictionaries,
     addEntityToWorld, addBookToWorld, addPlaceholder, addLocation, setOwnedLibraryIds,
     reopenPicker: (kind) => {

@@ -22,8 +22,8 @@ const store: { trait: Trait; stats: Stat[]; rerender: () => void } = {
   rerender: () => {},
 };
 
-vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({
+vi.mock('@/contexts/GameDataContext', () => {
+  const world = () => ({
     stats: store.stats,
     traits: [store.trait],
     traitGroups: [],
@@ -34,15 +34,14 @@ vi.mock('@/contexts/GameDataContext', () => ({
       store.trait = next;
       store.rerender();
     },
-  }),
-  useGameDataOptional: () => ({
-    stats: store.stats,
     updateStat: (next: Stat) => {
       store.stats = store.stats.map((entry) => (entry.id === next.id ? next : entry));
       store.rerender();
     },
-  }),
-}));
+  });
+  // Both readers of the one context, as the real module has.
+  return { useGameData: world, useGameDataOptional: world };
+});
 
 // The real name field is a Lexical editor; a plain input over the same value and the same commit handlers
 // is what this test drives.

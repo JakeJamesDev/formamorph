@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { Dictionary, Entity } from '@/types';
+import type { Dictionary, Entity, TraitRequirement } from '@/types';
+import { SELF_ENTITY } from './portableTraits';
 import {
   applyLibraryUpdate, contentMatchesSource, libraryOwned, libraryRevision,
   linkToSource, markEdited, planWriteBack, stampLinks, syncWorldContent, unlink, withoutWorldFields,
@@ -116,6 +117,18 @@ describe('planWriteBack', () => {
   it('writes nothing for an owned copy that matches its item', () => {
     const copy = person({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } });
     expect(planWriteBack({ entities: [copy], dictionaries: [] }, [owned], shape)).toEqual([]);
+  });
+
+  it('writes nothing for an owned copy whose owned traits differ from the item only by stored names and itself', () => {
+    const oath = (requires: TraitRequirement[]): Entity['traits'] => [{ id: 't-oath', name: 'Oath', statChanges: [], requires }];
+    const item = { ...owned, data: person({ traits: oath([
+      { kind: 'trait', id: 'w-paladin', name: 'Paladin' }, { kind: 'playingAs', id: SELF_ENTITY, name: 'Wren' },
+    ]) }) };
+    const copy = person({
+      link: { libraryId: 'lib-1', sourceRevision: 'r1' },
+      traits: oath([{ kind: 'trait', id: 'w-paladin' }, { kind: 'playingAs', id: 'ent-1' }]),
+    });
+    expect(planWriteBack({ entities: [copy], dictionaries: [] }, [item], shape)).toEqual([]);
   });
 
   it('writes nothing for a local replacement', () => {
@@ -324,6 +337,20 @@ describe('applyLibraryUpdate', () => {
 
 describe('syncWorldContent', () => {
   const source = { id: 'lib-1', name: 'Sedge Lore', revision: 'r2', owned: true, data: book({ name: 'Sedge Lore II' }) };
+
+  it("binds an updated entity's owned trait requirements to the world, and keeps its tree placement", () => {
+    const data = person({
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }],
+    });
+    const copy = person({ link: { libraryId: 'lib-9', sourceRevision: 'r1' }, traitPlacement: { groupId: 'g-cast', order: 2 } });
+    const world = {
+      placeholders: [], dictionaries: [], entities: [copy],
+      traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [{ id: 'g-cast', name: 'Cast', parentId: null }],
+    };
+    const result = syncWorldContent(world, [{ id: 'lib-9', name: 'Wren', revision: 'r2', owned: true, data }]);
+    expect(result.entities[0].traits![0].requires).toEqual([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }]);
+    expect(result.entities[0].traitPlacement).toEqual({ groupId: 'g-cast', order: 2 });
+  });
 
   it('updates a linked copy of an owned source whose revision moved on', () => {
     const world = { placeholders: [], entities: [], dictionaries: [book({ link: { libraryId: 'lib-1', sourceRevision: 'r1' } })] };

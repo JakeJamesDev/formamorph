@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Entity, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { collectPinLayers, collectPins } from './placeholderPins';
-import { activeOwnedTraitIds, pinTraitsInOrder } from './ownedTraitsInPlay';
+import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, pinTraitsInOrder } from './ownedTraitsInPlay';
+import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 
 const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
 const trait = (id: string, pins: PlaceholderPin[] = [], extra: Partial<Trait> = {}): Trait =>
@@ -66,5 +67,26 @@ describe('activeOwnedTraitIds', () => {
   it('reads each entity’s chosen traits less the ones switched off', () => {
     expect(activeOwnedTraitIds({ ash: { chosen: ['a', 'b'], disabled: ['a'] }, bo: { chosen: ['c'] } }))
       .toEqual({ ash: ['b'], bo: ['c'] });
+  });
+});
+
+describe('the library entities in play', () => {
+  const world = { traits: [trait('w-paladin', [], { name: 'Paladin' })], traitGroups: [], entities: [] };
+  const persona: Entity = {
+    id: 'lib-wren', name: 'Wren', persona: true,
+    traits: [trait('t-oath', [], { requires: [{ kind: 'trait', id: 'elsewhere', name: 'Paladin' }] })],
+  };
+  const added: Entity = { id: 'copy-moss', name: 'Moss', traits: [trait('t-calm')] };
+
+  it('lists the library persona, then the characters added at Enter World, never a character met in play', () => {
+    const discovered = [
+      { entity: added, locationId: 'dock', sourceTurnId: INITIAL_SOURCE_TURN_ID },
+      { entity: { id: 'met', name: 'Met' }, locationId: 'dock', sourceTurnId: 'turn-3' },
+    ];
+    expect(inPlayLibrary(world, persona, addedCharacters(discovered)).map((e) => e.id)).toEqual(['lib-wren', 'copy-moss']);
+  });
+
+  it("binds the library persona's requirements to the world by name", () => {
+    expect(inPlayLibrary(world, persona)[0].traits![0].requires).toEqual([{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }]);
   });
 });

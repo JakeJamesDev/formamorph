@@ -1,13 +1,16 @@
 import { toast } from 'react-toastify';
 import { planWriteBack, type LibrarySource, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
-import type { GameLocation, Placeholder } from '@/types';
+import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
 
-/** What a world save hands over: its content, the combined placeholder pool its chips point at, and its
- *  locations, which an entity's membership is named against. */
+/** What a world save hands over: its content, the combined placeholder pool its chips point at, its
+ *  locations, which an entity's membership is named against, and its traits, which owned trait requirements
+ *  are named against. */
 export interface WorldToWriteBack extends WorldContent {
   placeholders: Placeholder[];
   locations: GameLocation[];
+  traits: Trait[];
+  traitGroups: TraitGroup[];
 }
 
 /**
@@ -30,7 +33,7 @@ export async function writeBackOwnedCopies(world: WorldToWriteBack): Promise<Lin
     toast.error('Could not read your library, so nothing was written to it.');
     return [];
   }
-  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations));
+  const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world));
   if (!plan.length) return [];
   const revision = new Date().toISOString();
   const stamps: LinkStamp[] = [];

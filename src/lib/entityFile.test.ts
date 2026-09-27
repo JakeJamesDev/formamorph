@@ -3,6 +3,7 @@ import { buildEntityCardData, parseEntityCardData, importCharacterFile, ENTITY_F
 import { readLibraryDetails } from './contentAuthor';
 import { embedEntityCard, readEntityCard } from './entityCard';
 import { PLAYER_NAME } from './builtinPlaceholders';
+import { SELF_ENTITY, adoptOwnedTraits } from './portableTraits';
 import type { Entity } from '@/types';
 
 import { phValues } from '@/test/placeholderValues';
@@ -328,5 +329,72 @@ describe('a character card’s openings', () => {
     });
     expect(parsed.openings?.map((o) => [o.text, o.kind])).toEqual([['Kept.', 'action']]);
     expect(parsed).not.toHaveProperty('openingWeights');
+  });
+});
+
+/** Owned traits on a character card: the card names what a requirement points at outside the entity. */
+describe('a character card’s owned traits', () => {
+  const tamer: Entity = {
+    id: 'ash', name: 'Ash', persona: true,
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traits: [
+      { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], isDefault: true },
+      {
+        id: 't-oath', name: 'Oath', statChanges: [],
+        requires: [
+          { kind: 'trait', id: 't-tamed' },
+          { kind: 'trait', id: 'w-paladin' },
+          { kind: 'playingAs', id: 'ash' },
+        ],
+      },
+    ],
+  };
+  const origin = { traits: [{ id: 'w-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [], entities: [tamer] };
+  const roundTrip = (card: unknown) => parseEntityCardData(JSON.parse(JSON.stringify(card)));
+
+  it('keeps inward ids and outward names through the card', () => {
+    const parsed = roundTrip(buildEntityCardData(tamer, undefined, {}, undefined, origin));
+    expect(parsed.traitGroups).toEqual(tamer.traitGroups);
+    expect(parsed.traits!.map((t) => t.id)).toEqual(['t-tamed', 't-oath']);
+    expect(parsed.traits![0].isDefault).toBe(true);
+    expect(parsed.traits![1].requires).toEqual([
+      { kind: 'trait', id: 't-tamed' },
+      { kind: 'trait', id: 'w-paladin', name: 'Paladin' },
+      { kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' },
+    ]);
+  });
+
+  it('binds on import to the one trait in the new world carrying the name', () => {
+    const parsed = roundTrip(buildEntityCardData(tamer, undefined, {}, undefined, origin));
+    const world = { traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }], traitGroups: [], entities: [] };
+    const adopted = adoptOwnedTraits(parsed, world);
+    expect(adopted.traits![1].requires).toEqual([
+      { kind: 'trait', id: 't-tamed' },
+      { kind: 'trait', id: 'n-paladin', name: 'Paladin' },
+      { kind: 'playingAs', id: parsed.id, name: 'Ash' },
+    ]);
+  });
+
+  it('reads no stat effects and drops junk rows', () => {
+    const parsed = parseEntityCardData({
+      formamorphKind: 'entity', name: 'X',
+      traits: [
+        { id: 'a', name: 'A', statChanges: [{ statId: 's', value: 5, type: 'min' }], statToggles: [{ statId: 's', enabled: true }] },
+        { id: 7, name: 'B' }, 'junk', { id: 'c', name: 'C', requires: [{ kind: 'weird', id: 'x' }, { kind: 'group', id: 'g' }] },
+      ],
+      traitGroups: [{ id: 'g', name: 'G', parentId: 5 }, null],
+    });
+    expect(parsed.traits).toEqual([
+      { id: 'a', name: 'A', statChanges: [] },
+      { id: 'c', name: 'C', statChanges: [], requires: [{ kind: 'group', id: 'g' }] },
+    ]);
+    expect(parsed.traitGroups).toEqual([{ id: 'g', name: 'G', parentId: null }]);
+  });
+
+  it('are absent, with no error, on a card written before owned traits', () => {
+    expect(buildEntityCardData(entity)).not.toHaveProperty('traits');
+    const parsed = parseEntityCardData({ formamorphKind: 'entity', name: 'Old' });
+    expect(parsed).not.toHaveProperty('traits');
+    expect(parsed).not.toHaveProperty('traitGroups');
   });
 });
