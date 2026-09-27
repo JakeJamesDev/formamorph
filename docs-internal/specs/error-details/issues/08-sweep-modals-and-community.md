@@ -15,6 +15,6 @@ Recommended model rationale: same mechanical sweep as ticket 07 over a second di
 
 - [ ] Every caught-error toast in the modals, community components and Community Creations browser goes through the shared helper and offers **View Details →**
 - [ ] Every validation or refusal toast in those files stays plain with no link
-- [ ] No toast's visible words changed; existing toast-text tests pass unmodified
+- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
 - [ ] The sweep touches no file outside those directories
 - [ ] Four gates green
