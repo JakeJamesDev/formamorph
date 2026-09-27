@@ -1,6 +1,7 @@
 # 01: Details field, headline and diagnostics in every error toast
 
-Status: ready-for-agent
+Status: in-progress
+Base: c8a7f81d
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
