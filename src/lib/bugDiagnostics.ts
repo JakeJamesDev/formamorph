@@ -60,3 +60,11 @@ export function collectDiagnostics(): BugDiagnostics {
     system: summarizeUserAgent(typeof navigator === 'undefined' ? '' : navigator.userAgent),
   };
 }
+
+/** The diagnostics as labeled lines, for text a user copies. Empty values are left out. */
+export function formatDiagnostics(diagnostics: BugDiagnostics): string {
+  return (Object.keys(DIAGNOSTIC_LABELS) as (keyof BugDiagnostics)[])
+    .filter((key) => diagnostics[key])
+    .map((key) => `${DIAGNOSTIC_LABELS[key]}: ${diagnostics[key]}`)
+    .join('\n');
+}

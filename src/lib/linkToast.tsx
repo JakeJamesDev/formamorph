@@ -1,5 +1,5 @@
 import { toast } from 'react-toastify';
-import { DetailedError, showErrorDetails } from './errorDetails';
+import { describeError, showErrorDetails } from './errorDetails';
 
 /** An error toast with a text link under its message; it stays open on click so the link can be pressed. */
 export function linkToast(message: string, linkLabel: string, onLink: () => void): void {
@@ -14,13 +14,11 @@ export function linkToast(message: string, linkLabel: string, onLink: () => void
   );
 }
 
-/** Toasts an error's message; a DetailedError adds a View Details link to its full text. */
-export function toastError(error: unknown, fallback: string): void {
-  const message = (error as Error | undefined)?.message || fallback;
-  if (!(error instanceof DetailedError)) {
-    toast.error(message);
-    return;
-  }
-  const { details } = error;
-  linkToast(message, 'View Details →', () => showErrorDetails({ message, details }));
+/**
+ * Toasts a caught error with a View Details link. A string is the fallback, shown when the error has
+ * no message; `{ headline }` is always shown, and the error's own message moves into the details.
+ */
+export function toastError(error: unknown, text: string | { headline: string }): void {
+  const entry = typeof text === 'string' ? describeError(error, text) : describeError(error, text.headline, text.headline);
+  linkToast(entry.message, 'View Details →', () => showErrorDetails(entry));
 }
