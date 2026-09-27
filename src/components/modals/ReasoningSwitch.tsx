@@ -2,7 +2,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { SETTINGS_COPY } from '@/components/modals/settingsCopy';
-import { MIN_REASONING_BUDGET_PCT, budgetReadout } from '@/lib/reasoningEffort';
+import { MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout } from '@/lib/reasoningEffort';
 
 /**
  * The strength half of a Native Reasoning control: a dropdown of the levels the endpoint accepts, or the
@@ -11,7 +11,11 @@ import { MIN_REASONING_BUDGET_PCT, budgetReadout } from '@/lib/reasoningEffort';
  */
 export type ReasoningStrength<L extends string> =
   | { kind: 'level'; value: L; options: { value: L; label: string }[]; onChange: (v: L) => void }
-  | { kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void };
+  | {
+      kind: 'budget'; value: number; tokens?: number; onChange: (v: number) => void;
+      /** The target has no base to take a percent of, so the slider is inert while the switch stays live. */
+      disabled?: boolean;
+    };
 
 /**
  * A Native Reasoning control: the on/off switch, then the strength. The switch is the one lever every prompt
@@ -30,6 +34,7 @@ export function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange
   lockedOn?: boolean;
 }) {
   const inert = disabled || !(enabled || lockedOn);
+  const sliderInert = inert || (strength?.kind === 'budget' && strength.disabled === true);
   return (
     <div className="flex items-center gap-3">
       <span className="flex h-9 shrink-0 items-center">
@@ -53,12 +58,12 @@ export function ReasoningSwitch<L extends string>({ id, enabled, onEnabledChange
         <>
           {/* pl-2.5 for the thumb's overhang at the floor — see SamplerControl. */}
           <Slider
-            className={`flex-grow pl-2.5${inert ? ' opacity-60' : ''}`}
+            className={`flex-grow pl-2.5${sliderInert ? ' opacity-60' : ''}`}
             value={[strength.value]}
             min={MIN_REASONING_BUDGET_PCT}
-            max={100}
+            max={MAX_REASONING_BUDGET_PCT}
             step={5}
-            disabled={inert}
+            disabled={sliderInert}
             onValueChange={(v) => strength.onChange(v[0])}
             aria-label={SETTINGS_COPY.reasoningBudget.label}
           />

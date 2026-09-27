@@ -525,7 +525,8 @@ Small steps matter: 1.05 to 1.15 is typical. High values can break names and pun
   },
   reasoningBudget: {
     label: 'Reasoning Budget',
-    description: 'Sets the share of output tokens this prompt spends on reasoning',
+    description: 'Sets reasoning tokens as a percent of the endpoint’s “Max Output Tokens”',
+    info: 'Reasoning gets these tokens in addition to the answer, so the answer keeps its full length. Above 100%, the model can reason longer than one full reply.',
   },
   promptNativeReasoning: {
     label: 'Native Reasoning',
@@ -709,6 +710,7 @@ export const SETTINGS_OPTIONS = {
 export const REASONING_NOTES = {
   never: 'This model doesn’t support reasoning, so there’s nothing to configure',
   always: 'This model always reasons, so it can’t be switched off',
+  noBudgetBase: 'Set “Max Output Tokens” on this prompt’s endpoint to use this budget',
 } as const;
 
 export const TOOLS_NOTES = {
