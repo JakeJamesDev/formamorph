@@ -152,6 +152,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 ### Gate module (existing)
 
 - `settle` and `gateStates` run per bearer. A requirement without a scope holds when its target is active in the same bearer's set. A named requirement holds when the target is active in the named bearer's set. You means the played persona's set.
+- The player bearer's set is the union of the world root owner (root traits outside Templates, plus Custom Persona's links under None or a library persona) and the played entity's owner (its owned traits and links). A scopeless requirement on either side, and a named You requirement, checks that union (Q74).
 - No compat for scopeless requirements that pointed across owners. The shape is unreleased and no world uses it (Q54).
 - Never-unlockable analysis runs per bearer, so a linked trait whose requirement no link or owned trait on that bearer can meet is reported.
 
@@ -275,6 +276,7 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q71 | The link button also shows on a selected link row and acts on the original. Never on owned items or system nodes. |
   | Q72 | Checked-and-disabled follows the drag path's refusal rule. |
   | Q73 | Link pick: append, flyout stays open, selection stays. Add pick: append, close, expand, select the new row. |
+  | Q74 | The player bearer's gate set is the union of the world root owner and the played entity's owner. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
