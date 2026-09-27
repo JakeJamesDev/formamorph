@@ -279,7 +279,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
-    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData,
+    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, customPersona,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -1379,17 +1379,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
 
   // The starting selection's gates, and the banner naming what the last change turned off.
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
-  // Every owner in the cast: the world, its entities, and the library entities.
+  // Every bearer in the cast: the player, the world's entities, and the library entities.
   const entryWorld = useMemo<EntryTraitWorld>(
-    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast }),
-    [traits, traitGroups, resolvedWorldEntities, libraryCast],
+    () => ({ traits, traitGroups, entities: resolvedWorldEntities, customPersona, library: libraryCast }),
+    [traits, traitGroups, resolvedWorldEntities, customPersona, libraryCast],
   );
-  const rawEntryWorld: EntryTraitWorld = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast };
+  const rawEntryWorld: EntryTraitWorld = {
+    traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona, library: libraryCast,
+  };
   // A library entity that joins the cast starts on its own defaults.
   useEffect(() => {
     setEntryDraft((draft) => withLibraryDefaults(draft, entryWorld));
   }, [entryWorld]);
-  const castOwners = useMemo(() => entryOwners(entryWorld), [entryWorld]);
+  const castOwners = useMemo(() => entryOwners(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
   const ownerOfTrait = (traitId: string) => castOwners.find((o) => o.traits.some((t) => t.id === traitId));
   const traitName = (traitId: string) => ownerOfTrait(traitId)?.traits.find((t) => t.id === traitId)?.name ?? traitId;

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  addOwnedGroup, addOwnedTrait, editorGateInput, findOwnedItem, removeOwnedItem, remintOwnedTraits, updateOwnedGroup,
+  addOwnedGroup, addOwnedTrait, findOwnedItem, removeOwnedItem, remintOwnedTraits, updateOwnedGroup,
   traitOwners, updateOwnedTrait,
 } from './ownedTraits';
-import { gateStates, requirementOptions } from './traitGates';
+import { gateOf, gateStates } from './traitGates';
 import type { Entity, Trait, TraitGroup } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -18,11 +18,6 @@ const ash = (extra: Partial<Entity> = {}): Entity => ({
   ],
   ...extra,
 });
-
-const WORLD_TRAITS: Trait[] = [
-  trait('t-paladin', { name: 'Paladin' }),
-  trait('t-tamer', { name: 'Beast Tamer', requires: [{ kind: 'trait', id: 't-tamed' }] }),
-];
 
 describe('owned trait edits', () => {
   it('adds the first trait at the entity root with no stat effects', () => {
@@ -96,40 +91,17 @@ describe('remintOwnedTraits', () => {
   });
 });
 
-describe('editorGateInput', () => {
-  const world = (groups: TraitGroup[] = []) => ({ traits: WORLD_TRAITS, traitGroups: groups, entities: [ash(), { id: 'npc', name: 'Npc' }] });
-
-  it('resolves requirements across owners in both directions', () => {
-    const input = editorGateInput({
-      ...world(),
-      entities: [ash({ traits: [...ash().traits!, trait('t-loyal', { requires: [{ kind: 'trait', id: 't-paladin' }] })] })],
-    });
-    const gates = gateStates(input);
-    expect(gates.get('t-tamer')?.requirements).toEqual([{ text: "Ash's Tamed", holds: false, unresolved: false }]);
-    expect(gates.get('t-loyal')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
-  });
-
-  it('offers owned traits in the picker with their owner', () => {
-    const options = requirementOptions(editorGateInput(world()), 't-paladin');
-    expect(options.traits).toContainEqual({ requirement: { kind: 'trait', id: 't-tamed' }, label: "Ash's Tamed", where: 'Ash › Bond' });
-    expect(options.groups).toContainEqual({ requirement: { kind: 'group', id: 'g-bond' }, label: 'any Bond', where: 'Ash' });
-  });
-
-  it('leaves out entities that own nothing', () => {
-    expect(editorGateInput(world()).owners.map((o) => o.id)).toEqual(['world', 'ash']);
-  });
-});
-
 describe('traitOwners', () => {
   const companions: TraitGroup[] = [
     { id: 'g-allies', name: 'Allies', parentId: null },
     { id: 'g-companions', name: 'Companions', parentId: 'g-allies' },
   ];
   const keeper = trait('t-keeper', { name: 'Keeper', requires: [{ kind: 'group', id: 'g-allies' }] });
-  const unlocked = (entity: Entity) => gateStates({
+  // Playing Ash, so Ash's active traits are the player's own and can meet the world's group requirement.
+  const unlocked = (entity: Entity) => gateOf(gateStates({
     owners: traitOwners({ traits: [keeper], traitGroups: companions, entities: [entity] }),
-    active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'none' },
-  }).get('t-keeper')?.unlocked;
+    active: { ash: ['t-tamed'] }, entities: [], persona: { source: 'world', entityId: 'ash' },
+  }), 'world', 't-keeper')?.unlocked;
 
   it('counts the traits of an entity node placed inside a group, at any depth, toward that group', () => {
     expect(unlocked(ash({ traitPlacement: { groupId: 'g-companions', order: 0 } }))).toBe(true);

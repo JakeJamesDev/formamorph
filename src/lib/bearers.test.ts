@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PLAYER_BEARER, bearsTraits, holdsOriginal, inCast, makeLink, originalOf, resolveBearers, type BearerWorld,
+  PLAYER_BEARER, bearsTraits, editorGateInput, holdsOriginal, inCast, makeLink, originalOf, resolveBearers, type BearerWorld,
 } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
+import { gateOf, gateStates } from './traitGates';
 import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -201,6 +202,37 @@ describe('resolveBearers: the gate input', () => {
     expect(r.gate.owners[2].parentGroupId).toBe('oaths');
     expect(r.gate.entities.map((e) => e.id)).toEqual(['albus', 'mira', 'custom']);
     expect(r.gate.persona).toEqual(AS_ALBUS);
+    expect(r.gate.originals).toEqual({ traits: world().traits, groups: world().traitGroups });
+  });
+
+  it('names a requirement’s target from the originals when no present bearer holds it', () => {
+    // Smite sits under Templates and no bearer links it under Albus, yet the gate still reads its name.
+    const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] })] };
+    const r = resolveBearers(world({ entities: [albus, gated] }), AS_ALBUS);
+    expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.requirements).toEqual([
+      { text: 'You: Smite', holds: false, unresolved: false },
+    ]);
+  });
+
+  it('gates each bearer on its own set, so a link never unlocks through another bearer', () => {
+    // Albus links Smite next to Classes; the player's Paladin is not his.
+    const w = world({ entities: [{ ...albus, traitLinks: [...albus.traitLinks!, link('l-smite', 'smite', 'trait', { order: 2 })] }, mira] });
+    const gate = (active: Record<string, string[]>) => gateOf(gateStates({ ...resolveBearers(w, NONE).gate, active }), 'albus', 'smite')?.unlocked;
+    expect(gate({ [PLAYER_BEARER]: ['paladin'] })).toBe(false);
+    expect(gate({ albus: ['paladin'] })).toBe(true);
+  });
+});
+
+describe('editorGateInput', () => {
+  it('reads the whole world as the player, Templates included, then each bearer with its links expanded', () => {
+    const input = editorGateInput(world({ customPersona: { traitLinks: [link('cp-smite', 'smite', 'trait')] } }));
+    expect(input.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'custom']);
+    expect(ids(input.owners[0].traits)).toEqual(['brave', 'paladin', 'wizard', 'smite']);
+    expect(ids(input.owners[0].groups)).toEqual(['oaths', 'templates', 'classes']);
+    expect(ids(input.owners[1].traits)).toEqual(['oath', 'paladin', 'wizard']);
+    expect(input.active).toEqual({});
+    expect(input.persona).toEqual(NONE);
+    expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
   });
 
   it('reads an entity placement under Templates as the top level', () => {

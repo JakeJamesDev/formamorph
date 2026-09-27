@@ -1,11 +1,11 @@
 // Owned traits during play: which are active, and the order every owner's traits lay their placeholder pins.
 
 import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Trait } from '@/types';
-import { traitOwners } from './ownedTraits';
+import { resolveBearers, type BearerWorld } from './bearers';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
-import { WORLD_OWNER, type GateOwner } from './traitGates';
+import type { GateOwner } from './traitGates';
 import { ownedTraitTree } from './traitTree';
 
 /** The entity whose owned traits are the player's own: the played persona's, or null. */
@@ -31,9 +31,10 @@ export const inPlayLibrary = (
   world: TraitWorld, libraryPersona: Entity | null | undefined, added: readonly Entity[] = [],
 ): Entity[] => [...(libraryPersona ? [libraryPersona] : []), ...added].map((e) => bindOwnedTraits(e, world));
 
-/** Every entity that owns traits, as the gate module reads it: the world's, then the library's. */
-export const entityTraitOwners = (world: TraitWorld, library: readonly Entity[] = []): GateOwner[] =>
-  traitOwners(world, library).filter((owner) => owner.id !== WORLD_OWNER);
+/** Every present bearer as the gate module reads it in play: the player, the world's entities, then the
+ *  library's. */
+export const inPlayBearers = (world: BearerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): readonly GateOwner[] =>
+  resolveBearers(world, persona, library).gate.owners;
 
 /**
  * The active traits whose pins lay, in the order play lays them. The cast's owned traits come first, in

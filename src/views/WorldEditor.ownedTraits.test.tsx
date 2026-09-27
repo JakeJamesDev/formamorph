@@ -204,16 +204,20 @@ describe('an owned trait\'s panel', () => {
 });
 
 describe('requirements across owners', () => {
-  it('lists owned traits in the picker with their owner, and adds one to a world trait', async () => {
+  it('lists owned traits in the picker with where they live, and adds one to a world trait on its owner', async () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Beast Tamer')!);
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     const list = await screen.findByRole('listbox');
-    const tamed = within(list).getByRole('option', { name: /^Ash's Tamed/ });
-    expect(tamed).toHaveTextContent("Ash's TamedAsh › Bond");
+    const tamed = within(list).getByRole('option', { name: /^Tamed/ });
+    expect(tamed).toHaveTextContent('TamedAsh › Bond');
     fireEvent.click(tamed);
-    expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires).toEqual([{ kind: 'trait', id: 't-tamed' }]);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same BearerWhoever has the trait', 'You', 'Ash']);
+    fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
+    expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires)
+      .toEqual([{ kind: 'trait', id: 't-tamed', bearer: { kind: 'entity', id: 'ash', name: 'Ash' } }]);
+    expect(screen.getByRole('button', { name: 'Ash: Tamed' })).toBeInTheDocument();
   });
 
   it('reads a world requirement on an owned trait by name, and opens it', () => {

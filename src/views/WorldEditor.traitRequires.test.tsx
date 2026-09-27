@@ -77,7 +77,9 @@ describe('the Requires field', () => {
     expect(within(list).getByRole('option', { name: /^playing as Sir Aldric/ })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: /Odd Wick/ })).toBeNull();
 
+    // A target asks which bearer next; the same bearer is the plain requirement.
     fireEvent.click(paladin);
+    fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
     expect(traitRequires(ctx, 't-loose')).toEqual([{ kind: 'trait', id: 't-paladin' }]);
     expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
   });
@@ -87,15 +89,18 @@ describe('the Requires field', () => {
     selectTrait('Plate Armor');
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     const list = await screen.findByRole('listbox');
-    // A requirement already listed stays in place, disabled.
-    expect(within(list).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
+    // A requirement already listed stays in place; its bearer reads disabled on the next page.
+    fireEvent.click(within(list).getByRole('option', { name: /^Paladin/ }));
+    expect(screen.getByRole('option', { name: /^Same Bearer/ })).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
     const search = screen.getByPlaceholderText('Search traits, groups, and personas');
     // The search reads what a row shows, never the requirement key behind it.
     fireEvent.change(search, { target: { value: 'trait' } });
-    expect(within(list).queryAllByRole('option')).toEqual([]);
+    expect(screen.queryAllByRole('option')).toEqual([]);
     fireEvent.change(search, { target: { value: 'any cl' } });
-    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['any ClassWorld']);
-    fireEvent.click(within(list).getByRole('option', { name: /any Class/ }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['any ClassWorld']);
+    fireEvent.click(screen.getByRole('option', { name: /any Class/ }));
+    fireEvent.click(screen.getByRole('option', { name: /^Same Bearer/ }));
 
     expect(traitRequires(ctx, 't-plate')).toEqual([{ kind: 'trait', id: 't-paladin' }, { kind: 'group', id: 'g-class' }]);
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();

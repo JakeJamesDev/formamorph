@@ -107,7 +107,7 @@ describe('bindOwnedTraits', () => {
     ]);
     const gate = gateStates({
       owners: traitOwners({ traits: [], traitGroups: [], entities: [bound] }), active: {}, entities: [], persona: { source: 'none' },
-    }).get('t-oath')!;
+    }).get(bound.id)!.get('t-oath')!;
     expect(gate.unlocked).toBe(false);
     expect(gate.requirements.map((r) => r.text).slice(0, 3)).toEqual(['Paladin', 'any Class', 'playing as Sir Aldric']);
   });

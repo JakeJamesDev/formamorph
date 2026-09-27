@@ -18,7 +18,7 @@ import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { gateStates, type GateState } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, gateStates, type GateState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
@@ -119,7 +119,9 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow): TreeRowSpec => {
     const isGroup = node.kind === 'group';
     const name = (isGroup ? node.group?.name : node.leaf?.name) ?? '';
-    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gates.get(linkRow.originalId), placeholders);
+    // A link row reads its bearer's gate on the original; Custom Persona's rows are the player's.
+    const bearerId = linkRow.entityId === CUSTOM_PERSONA_ID ? WORLD_OWNER : linkRow.entityId;
+    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, bearerId, linkRow.originalId), placeholders);
     const shared = {
       lead: isGroup ? 'chevron' : 'none',
       collapseLabels: ['Expand group', 'Collapse group'],
@@ -203,7 +205,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       }
       const isGroup = node.kind === 'group';
       const ownerId = tree.ownerOf.get(node.id);
-      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gates.get(node.id), placeholders);
+      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, ownerId ?? WORLD_OWNER, node.id), placeholders);
       if (node.group?.system === 'templates') {
         return {
           lead: 'chevron',

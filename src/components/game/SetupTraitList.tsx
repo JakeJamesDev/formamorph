@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
-import type { GateState } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, type GateStates } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
@@ -35,7 +35,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, exclusive, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  gates, cascade, onDismissCascade, heading,
+  ownerId = WORLD_OWNER, gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
   /** Replaces the eyebrow and the name heading. */
@@ -50,8 +50,10 @@ export function SetupTraitList({
   resolveText: (text: string) => string;
   resolveTraitText: (trait: Trait, text: string) => string;
   onTraitSelect: (traitId: string) => void;
-  /** Each trait's gate; absent shows every trait open. */
-  gates?: ReadonlyMap<string, GateState>;
+  /** The bearer whose traits these are; the world's by default. */
+  ownerId?: string;
+  /** Each bearer's gates; absent shows every trait open. */
+  gates?: GateStates;
   cascade?: TraitCascade | null;
   onDismissCascade?: () => void;
 }) {
@@ -59,7 +61,7 @@ export function SetupTraitList({
   const selectedExclusive = traits.find((trait) => selectedTraits.includes(trait.id))?.id;
   const rows = traits.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
-    const gate = gates?.get(trait.id);
+    const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();

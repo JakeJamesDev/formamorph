@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { ChevronLeft, Plus, X } from 'lucide-react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,11 +8,17 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { gateStates, requirementOptions, type RequirementOption } from '@/lib/traitGates';
+import {
+  WORLD_OWNER, gateOf, gateStates, requirementOptions, withBearer, type RequirementBearerOption, type RequirementOption,
+} from '@/lib/traitGates';
 import { cn } from '@/lib/utils';
-import type { Trait, TraitRequirement } from '@/types';
+import type { RequirementBearer, Trait, TraitRequirement } from '@/types';
 
-const sameRequirement = (a: TraitRequirement, b: TraitRequirement) => a.kind === b.kind && a.id === b.id;
+const sameBearer = (a?: RequirementBearer, b?: RequirementBearer) =>
+  (a === undefined || b === undefined ? a === b : a.kind === b.kind && (a.kind !== 'entity' || b.kind !== 'entity' || a.id === b.id));
+const sameRequirement = (a: TraitRequirement, b: TraitRequirement) =>
+  a.kind === b.kind && a.id === b.id && sameBearer(a.kind === 'playingAs' ? undefined : a.bearer, b.kind === 'playingAs' ? undefined : b.bearer);
+const bearerKey = (bearer?: RequirementBearer) => (bearer === undefined ? 'same' : bearer.kind === 'you' ? 'you' : `entity:${bearer.id}`);
 
 // Substring over the row's shown text; the item value is the requirement key, which no author types.
 const filterRows = (_value: string, search: string, keywords: string[] = []) =>
@@ -20,7 +26,9 @@ const filterRows = (_value: string, search: string, keywords: string[] = []) =>
 
 /**
  * The trait panel's Requires field: the trait's requirements as chips joined by "or", and a searchable picker
- * that adds one. A chip opens its target; a chip whose target is gone reads red under its stored name.
+ * that adds one. Picking a target opens a second page for the bearer: the same bearer, You, or an entity that
+ * bears it. Off-world the target is added for the same bearer at once. A chip opens its target; a chip whose
+ * target is gone reads red under its stored name.
  */
 export function TraitRequiresField({ trait, onChange, onOpen }: {
   trait: Trait;
@@ -29,27 +37,46 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
   const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<RequirementOption | null>(null);
   const requires = trait.requires ?? [];
 
-  const { states, options } = useMemo(() => ({
-    states: gateStates(gateInput).get(trait.id)?.requirements ?? [],
-    options: requirementOptions(gateInput, trait.id),
-  }), [gateInput, trait.id]);
+  const { states, options } = useMemo(() => {
+    // The trait's gate is read from the first owner that holds it: the world's copy of an original, or the
+    // entity that owns it.
+    const ownerId = gateInput.owners.find((o) => o.traits.some((t) => t.id === trait.id))?.id ?? WORLD_OWNER;
+    return {
+      states: gateOf(gateStates(gateInput), ownerId, trait.id)?.requirements ?? [],
+      options: requirementOptions(gateInput, trait.id),
+    };
+  }, [gateInput, trait.id]);
 
+  const listed = (requirement: TraitRequirement) => requires.some((r) => sameRequirement(r, requirement));
+  const changeOpen = (next: boolean) => {
+    setOpen(next);
+    if (!next) setPicked(null);
+  };
   const add = (requirement: TraitRequirement) => {
     onChange([...requires, requirement]);
-    setOpen(false);
+    changeOpen(false);
   };
+  // A playing-as row and an off-world row add at once; any other target asks which bearer first.
+  const pick = (option: RequirementOption) => {
+    if (option.requirement.kind === 'playingAs' || offWorld) add(option.requirement);
+    else setPicked(option);
+  };
+  /** Every way the row could be added is already listed, so the row has nothing left to add. */
+  const exhausted = (option: RequirementOption) =>
+    listed(option.requirement) && option.bearers.every((b) => listed(withBearer(option.requirement, b.bearer)));
 
-  const row = (option: RequirementOption) => {
+  const targetRow = (option: RequirementOption) => {
     const { kind, id } = option.requirement;
     return (
       <CommandItem
         key={`${kind}:${id}`}
         value={`${kind}:${id}`}
         keywords={[labelPlaceholders(option.label, placeholders), option.where]}
-        disabled={requires.some((r) => sameRequirement(r, option.requirement))}
-        onSelect={() => add(option.requirement)}
+        disabled={exhausted(option)}
+        onSelect={() => pick(option)}
       >
         <span className="min-w-0 flex-1 truncate"><PlaceholderText text={option.label} placeholders={placeholders} /></span>
         <span className="shrink-0 text-meta text-muted-foreground">
@@ -59,7 +86,24 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
     );
   };
   const section = (heading: string, list: RequirementOption[]) =>
-    list.length > 0 && <CommandGroup heading={heading}>{list.map(row)}</CommandGroup>;
+    list.length > 0 && <CommandGroup heading={heading}>{list.map(targetRow)}</CommandGroup>;
+
+  const bearerRow = (option: RequirementOption, choice: RequirementBearerOption | null) => {
+    const requirement = withBearer(option.requirement, choice?.bearer);
+    const name = choice?.name ?? 'Same Bearer';
+    return (
+      <CommandItem
+        key={bearerKey(choice?.bearer)}
+        value={bearerKey(choice?.bearer)}
+        keywords={[labelPlaceholders(name, placeholders)]}
+        disabled={listed(requirement)}
+        onSelect={() => add(requirement)}
+      >
+        <span className="min-w-0 flex-1 truncate"><PlaceholderText text={name} placeholders={placeholders} /></span>
+        {!choice && <span className="shrink-0 text-meta text-muted-foreground">Whoever has the trait</span>}
+      </CommandItem>
+    );
+  };
 
   return (
     <div className="space-y-2">
@@ -71,8 +115,9 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
           const text = state?.text ?? '';
           const plain = labelPlaceholders(text, placeholders);
           const unresolved = !!state?.unresolved;
+          const bearer = requirement.kind === 'playingAs' ? undefined : requirement.bearer;
           return (
-            <span key={`${requirement.kind}:${requirement.id}:${i}`} className="inline-flex items-center gap-1.5">
+            <span key={`${requirement.kind}:${requirement.id}:${bearerKey(bearer)}:${i}`} className="inline-flex items-center gap-1.5">
               {i > 0 && <span className="text-meta text-muted-foreground">or</span>}
               <span
                 data-unresolved={unresolved || undefined}
@@ -104,7 +149,7 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
             </span>
           );
         })}
-        <Popover open={open} onOpenChange={setOpen} modal>
+        <Popover open={open} onOpenChange={changeOpen} modal>
           <PopoverTrigger asChild>
             <Button type="button" size="sm" variant="outline" className="h-7 gap-1">
               <Plus className="h-3.5 w-3.5" aria-hidden />Add Requirement
@@ -115,15 +160,37 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
             align="start"
             collisionBoundary={typeof document === 'undefined' ? undefined : document.documentElement}
           >
-            <Command filter={filterRows}>
-              <CommandInput placeholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'} />
-              <CommandList>
-                <CommandEmpty>No matches</CommandEmpty>
-                {section('Traits', options.traits)}
-                {section('Any Trait in a Group', options.groups)}
-                {!offWorld && section('Playing As', options.personas)}
-              </CommandList>
-            </Command>
+            {picked ? (
+              // Its own Command, so the target search never carries over to the bearer page.
+              <Command key="bearer" filter={filterRows}>
+                <div className="flex items-center gap-1 border-b px-2 py-1.5 text-label">
+                  <Button type="button" variant="ghost" size="xs" className="h-7 w-7 shrink-0 p-0" aria-label="Back to targets" onClick={() => setPicked(null)}>
+                    <ChevronLeft className="h-4 w-4" aria-hidden />
+                  </Button>
+                  <span className="min-w-0 truncate">
+                    Requires <PlaceholderText text={picked.label} placeholders={placeholders} /> on
+                  </span>
+                </div>
+                <CommandInput placeholder="Search bearers" />
+                <CommandList>
+                  <CommandEmpty>No matches</CommandEmpty>
+                  <CommandGroup>
+                    {bearerRow(picked, null)}
+                    {picked.bearers.map((choice) => bearerRow(picked, choice))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            ) : (
+              <Command key="target" filter={filterRows}>
+                <CommandInput placeholder={offWorld ? 'Search traits and groups' : 'Search traits, groups, and personas'} />
+                <CommandList>
+                  <CommandEmpty>No matches</CommandEmpty>
+                  {section('Traits', options.traits)}
+                  {section('Any Trait in a Group', options.groups)}
+                  {!offWorld && section('Playing As', options.personas)}
+                </CommandList>
+              </Command>
+            )}
           </PopoverContent>
         </Popover>
       </div>
