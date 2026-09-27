@@ -12,7 +12,7 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import {
-  clearFeedbackDraft, FEEDBACK_BODY_MAX as BODY_MAX, FEEDBACK_TITLE_MAX as TITLE_MAX, hasDraftContent,
+  clearFeedbackDraft, FEEDBACK_BODY_MAX, FEEDBACK_TITLE_MAX, hasDraftContent,
   loadFeedbackDraft, saveFeedbackDraft,
 } from "@/lib/feedbackDraft";
 import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
@@ -108,10 +108,10 @@ export function FeedbackDialog({
   const filedRef = useRef(false);
 
   // An unsent report outranks the caller's requested branch: it opens on whatever was being written,
-  // announced and one click from gone, rather than the writing being silently dropped. A fill outranks
-  // the draft: the player chose to report this, and the mirror below saves the fill in its place.
+  // announced and one click from gone, rather than the writing being silently dropped.
   useResetOnOpen(open, () => {
     const filled = initialTitle !== undefined || initialBody !== undefined;
+    // A fill replaces the draft; the mirror below saves the fill in its place.
     if (filled) clearFeedbackDraft();
     const draft = filled ? null : loadFeedbackDraft();
     const startType = draft?.type ?? initialType;
@@ -210,7 +210,7 @@ export function FeedbackDialog({
             <Input
               id="feedbackTitle"
               value={title}
-              maxLength={TITLE_MAX}
+              maxLength={FEEDBACK_TITLE_MAX}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={copy.titlePlaceholder}
             />
@@ -231,11 +231,11 @@ export function FeedbackDialog({
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
               <span className="text-label font-medium">{copy.bodyLabel}</span>
-              <span className="text-meta text-muted-foreground">{body.length} / {BODY_MAX}</span>
+              <span className="text-meta text-muted-foreground">{body.length} / {FEEDBACK_BODY_MAX}</span>
             </div>
             <PromptField
               value={body}
-              onChange={(next) => setBody(next.slice(0, BODY_MAX))}
+              onChange={(next) => setBody(next.slice(0, FEEDBACK_BODY_MAX))}
               vocabulary={plainVocab}
               markdown
               ariaLabel={copy.bodyLabel}

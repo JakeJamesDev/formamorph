@@ -99,7 +99,7 @@ describe('Report Bug in Error Details', () => {
     const body = bodyValue();
     expect(body.length).toBeLessThanOrEqual(4000);
     expect(body.startsWith('xxxx')).toBe(true);
-    expect(body).toMatch(/Copy in Error Details has the full text\.\]$/);
+    expect(body).toMatch(/“Copy” in “Error Details” has the full text\.\]$/);
   });
 
   it('cuts a title past the title limit', async () => {
