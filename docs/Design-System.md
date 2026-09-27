@@ -142,7 +142,15 @@ Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape 
 - A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.
 - A palette chip that the focused field refuses stays in place, dimmed, so the strip doesn't reflow.
 
-The Prompt Chips reference's placeholder palette shows Player Name.
+Preview reads each Built-in chip by one rule:
+
+| Chip | Preview shows |
+| --- | --- |
+| **Character Name** | The owning entity's name |
+| **Character Name**, blank owner name or no owner | Its label |
+| **Player Name** | Its label |
+
+The Prompt Chips reference's placeholder palette sits over a sample entity, Oren, so it lists both Built-in chips. Its Entity Description field belongs to Oren, and its Preview shows Character Name as Oren. Description and Notes are world text, so Character Name stays dimmed while one of them holds focus.
 
 ### Shared chip insertion and movement
 
@@ -156,6 +164,12 @@ Drag a palette chip into an editable field to create one placement at the drop c
 Both use the same drag image, insertion indicator, drop handling, and cleanup. Cancellation and unsupported drops preserve the document. Read-only fields and Preview reject edits; placed chips do not move between fields or token families.
 
 The Prompt Chips reference includes production prompt and placeholder editors with local state. Use its empty Notes field to check palette targeting, and its Read-Only control to check protected states. Shared behavior lives in [the drag source](../src/components/prompt/chipDragSource.ts), [field registration](../src/components/prompt/ChipInsertTarget.tsx), and [drop handling](../src/components/prompt/ChipDrag.tsx). Both real screens run [the same browser contract](../e2e/chipInteraction.ts).
+
+### Writing review
+
+- The Built-in Placeholder chips Preview rule and the reference note use short active sentences and the guide's terms: entity, owner, label, Preview.
+- “Entity Description” is a field label in title case. “Oren” and “Oren keeps the lamp lit.” are sample content and keep their own voice.
+- **Unverified:** the rest of this pattern's copy predates this review and has terminology review only.
 
 ## Pattern: Image-Led Community Creation Cards
 
