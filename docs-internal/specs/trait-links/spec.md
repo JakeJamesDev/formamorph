@@ -164,7 +164,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ### Editor
 
-- Drags go through the shared drag layer (ADR-0007). A world row (root, world group, or Templates) dropped into an entity creates a link and the original stays put. A drag that starts from an owned row is still a move that keeps its id, with the stat-effects refusal (Q60). A link row dropped into another entity moves with its per-link data, refused when the target already holds the original; a link row is never droppable at the root or in a world group (Q61). A refused drop does nothing and shows a toast that names the reason, the stat-effects refusal's shape (Q62).
+- Drags go through the shared drag layer (ADR-0007). A world row (root, world group, or Templates) dropped into an entity creates a link and the original stays put. A drag that starts from an owned row is still a move that keeps its id, with the stat-effects refusal (Q60). A link row dropped into another entity moves with its per-link data, refused when the target already holds the original; a link row is never droppable at the root or in a world group (Q61). A refused drop does nothing and shows the stat-effects refusal's inline notice with the reason (Q62). A world-to-world move can still nest one original under another the same bearer links; the resolver yields each original once per bearer, first in tree order, and the Test Bench reports the redundant link (Q64).
 - The drop projection lets links sit anywhere in a bearer's subtree. It never offers a link inside Templates or at the root.
 - The link row shows a link icon in the trait icon's slot. Its row action menu shows **Detach** where an owned row shows **Duplicate**. Detach of an original with stat changes or stat toggles confirms first and makes the copy without them (Q53).
 - Selecting a link shows the original's Details, editable, under "Linked from **<location>**. Edits change every link." Below that is a **This Link** section with default-on and one row per bearer-relative pin: "<Placeholder> →" and a value select over the bearer's own values, or the world placeholder's values on fallback.
@@ -195,7 +195,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ### Test Bench
 
-- New rules: never-unlockable per bearer (extends the existing rule), a link with no value for a bearer-relative pin, and a bearer-relative pin whose name matches no placeholder on the bearer or the world.
+- New rules: never-unlockable per bearer (extends the existing rule), a link with no value for a bearer-relative pin, a bearer-relative pin whose name matches no placeholder on the bearer or the world, and a redundant link whose original another link on the same bearer already reaches (Q64).
 - The lens reads bearer trees through the bearer-resolution module. It checks every bearer as if picked: world personas, persona-only entities, and Custom Persona as the None player with the root traits (Q55).
 
 ## Testing Decisions
@@ -260,8 +260,9 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q59 | No entity node under Templates. A placement naming it reads as top level. |
   | Q60 | A drag from an owned row is a move, as today. Only a world row dropped into an entity makes a link. |
   | Q61 | A link row moves between bearers with its per-link data. Never at the root or in a world group. |
-  | Q62 | A refused drop shows a toast naming the reason. |
+  | Q62 | A refused drop shows the inline refusal notice naming the reason. |
   | Q63 | The stat note reads "play as them" under a Persona; "don't apply to entities" otherwise. |
+  | Q64 | A duplicate made by a world-to-world move resolves once per bearer, first in tree order. The Test Bench reports the redundant link. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.

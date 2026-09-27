@@ -12,7 +12,7 @@ Parent: [Trait Links spec](../spec.md)
 
 ## What to build
 
-In Advanced mode an author drags a world trait or group under an entity and gets a link. The link row shows a link icon, reads the original live, and sits anywhere in the entity's subtree. Selecting it edits the original under a "Linked from" line, with a This Link section for the link's own default-on. Detach turns it into an owned copy. Deleting an original or an entity removes its links after a confirmation that names the count.
+In Advanced mode an author drags a world trait or group under an entity and gets a link. The link row shows a link icon, reads the original live, and sits anywhere in the entity's subtree. Selecting it edits the original under a "Linked from" line, with a This Link section for the link's own default-on. Detach turns it into an owned copy. Deleting an original removes its links after a confirmation that names the count. Deleting an entity takes its own links with it.
 
 ## Acceptance criteria
 
