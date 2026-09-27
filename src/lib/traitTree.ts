@@ -65,10 +65,34 @@ export interface OwnedTraitTree {
   ownerOf: Map<string, string>;
 }
 
-/** The entity node's placement when its group is a world group; a gone or foreign group reads as none. */
-export function effectivePlacement(entity: Entity, worldGroupIds: ReadonlySet<string>): TraitPlacement | null {
+/** The world's Templates group, when the author added one. */
+export const templatesGroup = (groups: readonly TraitGroup[]): TraitGroup | undefined =>
+  groups.find((g) => g.system === 'templates');
+
+/** Templates and every world group below it. Empty when the world has no Templates group. */
+export function templatesSubtreeIds(groups: readonly TraitGroup[]): Set<string> {
+  const ids = new Set<string>();
+  const templates = templatesGroup(groups);
+  if (!templates) return ids;
+  ids.add(templates.id);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const g of groups) if (g.parentId && ids.has(g.parentId) && !ids.has(g.id)) { ids.add(g.id); grew = true; }
+  }
+  return ids;
+}
+
+/** The world groups an entity node can sit in: every one outside Templates. */
+export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
+  const inTemplates = templatesSubtreeIds(groups);
+  return new Set(groups.filter((g) => !inTemplates.has(g.id)).map((g) => g.id));
+}
+
+/** The entity node's placement when its group is a world group outside Templates; a gone, foreign or Templates
+ *  group reads as none. */
+export function effectivePlacement(entity: Entity, placeableIds: ReadonlySet<string>): TraitPlacement | null {
   const p = entity.traitPlacement;
-  return p && (p.groupId === null || worldGroupIds.has(p.groupId)) ? p : null;
+  return p && (p.groupId === null || placeableIds.has(p.groupId)) ? p : null;
 }
 
 type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
@@ -80,12 +104,13 @@ export function ownedTraitTree(
   world: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
 ): OwnedTraitTree {
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
+  const placeable = placeableGroupIds(world.traitGroups);
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
   const owning = entities.filter(ownsTraits);
   const rootSorts = [
     ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
     ...world.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
-    ...owning.map((e) => effectivePlacement(e, worldGroupIds)).map((p) => (p?.groupId === null ? p.order : -1)),
+    ...owning.map((e) => effectivePlacement(e, placeable)).map((p) => (p?.groupId === null ? p.order : -1)),
   ];
   const firstNodeOrder = Math.max(-1, ...rootSorts) + 1;
 
@@ -97,7 +122,7 @@ export function ownedTraitTree(
   const libraryIds = new Set(library.map((e) => e.id));
   [...owning, ...library.filter(ownsTraits)].forEach((entity) => {
     entityNodes.set(entity.id, entity);
-    const placement = libraryIds.has(entity.id) ? null : effectivePlacement(entity, worldGroupIds);
+    const placement = libraryIds.has(entity.id) ? null : effectivePlacement(entity, placeable);
     groups.push({
       id: entity.id, name: entity.name,
       parentId: placement?.groupId ?? null, order: placement ? placement.order : firstNodeOrder + unplaced++,
@@ -232,8 +257,8 @@ export function applyOwnedTraitDrop(
   for (const t of dropped.leaves) touchOwners(t.id, t.groupId, t.order);
 
   // Unplaced nodes still ending the top level in entity order stay unplaced; the rest store where they landed.
-  const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
-  const unplaced = [...tree.entityNodes.values()].filter((e) => !effectivePlacement(e, worldGroupIds)).map((e) => e.id);
+  const placeable = placeableGroupIds(world.traitGroups);
+  const unplaced = [...tree.entityNodes.values()].filter((e) => !effectivePlacement(e, placeable)).map((e) => e.id);
   const rootIds = [...dropped.groups.filter((g) => g.parentId === null), ...dropped.leaves.filter((t) => (t.groupId ?? null) === null)]
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((item) => item.id);
   const stillUnplaced = new Set<string>();

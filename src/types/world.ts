@@ -84,18 +84,28 @@ export interface TraitStatToggle {
 /** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's
  *  roll. The one shape every source carries: a trait, a location, a stat descriptor, a placeholder value. */
 export interface PlaceholderPin {
+  /** Empty when `bearerPlaceholder` names the target instead. */
   placeholderId: string;
   value: string;
   /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
    *  pin picked off the list follows the author re-spelling it. Absent for a value typed off the list. */
   valueId?: string;
+  /** A trait pin's target by name, relative to the bearer: the bearer's own placeholder with this name, else
+   *  the world's. The bearer's link supplies the value; `value` is only what a new link starts from. */
+  bearerPlaceholder?: string;
 }
+
+/** Whose active set a requirement reads: the played persona's, or a named entity's. `name` is the entity's
+ *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same bearer. */
+export type RequirementBearer =
+  | { kind: 'you' }
+  | { kind: 'entity'; id: string; name?: string };
 
 /** One way to unlock a gated trait: a trait is active, any trait below a group is active, or the player plays
  *  as a world entity. `name` is the target's name when it was stored, so an unresolved one still reads. */
 export type TraitRequirement =
-  | { kind: 'trait'; id: string; name?: string }
-  | { kind: 'group'; id: string; name?: string }
+  | { kind: 'trait'; id: string; name?: string; bearer?: RequirementBearer }
+  | { kind: 'group'; id: string; name?: string; bearer?: RequirementBearer }
   | { kind: 'playingAs'; id: string; name?: string };
 
 /** A folder grouping traits in the editor and the selection screen; nestable via `parentId`. */
@@ -112,13 +122,48 @@ export interface TraitGroup {
   order?: number;
   /** At most one trait in this group may be active — rendered as radio buttons rather than checkboxes. */
   exclusive?: boolean;
+  /** `templates` marks the world's Templates group: it holds originals that reach play only through links.
+   *  At most one world group carries it. Never set on an entity's own group. */
+  system?: 'templates';
 }
 
-/** An entity node's place in the world's Traits tree. The parent is a world group, never an entity's own. */
+/** An entity node's place in the world's Traits tree. The parent is a world group, never an entity's own and
+ *  never Templates: a placement that names Templates or a group below it reads as the top level. */
 export interface TraitPlacement {
   /** null = top level. */
   groupId: string | null;
   order: number;
+}
+
+/** A node under a bearer that points at a world trait or group, the original, and reads it live. It stores
+ *  only its own place and per-link data; the original's text, gates and pins reach every link. */
+export interface TraitLink {
+  id: string;
+  /** The original's id: a world trait or group at the root or under Templates. */
+  originalId: string;
+  kind: 'trait' | 'group';
+  /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
+  originalName: string;
+  /** null = the bearer's root; otherwise one of the bearer's own groups. */
+  groupId: string | null;
+  /** Sibling order among the bearer's items sharing the same parent. */
+  order?: number;
+  /** Original trait id → default-on for this link. Absent = the original's own `isDefault`, read live. A
+   *  linked group keys its children here. */
+  defaults?: Record<string, boolean>;
+  /** Original trait id → bearer placeholder name → the value this link pins it to. */
+  pinValues?: Record<string, Record<string, TraitLinkPinValue>>;
+}
+
+/** The value one link gives a bearer-relative pin, from the bearer's own list or the world's on fallback. */
+export type TraitLinkPinValue = Pick<PlaceholderPin, 'value' | 'valueId'>;
+
+/** The Custom Persona node: links whose originals are the player's traits when the persona is None or a
+ *  library persona. It holds links only, and at most one exists. Its bearer key is the player's world key. */
+export interface CustomPersonaNode {
+  traitLinks: TraitLink[];
+  /** Where the node sits in the world's Traits tree. Absent = the end of the top level. */
+  traitPlacement?: TraitPlacement;
 }
 
 /** A selectable character trait that applies `statChanges` and adds AI context when chosen at game start. */
@@ -158,6 +203,9 @@ export interface Entity {
   /** Marks the entity as a Persona. In the library it is one of the player's personas; in a world the
    *  player can play as it. */
   persona?: boolean;
+  /** The entity exists only while it is the picked persona: unpicked, it leaves the cast and never joins a
+   *  scene. Read only with the Persona mark. */
+  personaOnly?: boolean;
   /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
    *  its locations that is a starting location. Read only for a world entity with the Persona mark. */
   startingLocationId?: string;
@@ -206,6 +254,9 @@ export interface Entity {
   traits?: Trait[];
   /** Groups for this entity's own traits, nestable via `parentId` like the world's. */
   traitGroups?: TraitGroup[];
+  /** Links to world traits and groups, placed among the entity's own items (see lib/bearers). Each original
+   *  appears at most once in the entity's tree, directly or through a linked group. */
+  traitLinks?: TraitLink[];
   /** Where this entity's node sits in the world's Traits tree: a world group and a sibling order. Absent,
    *  or a group that no longer exists, = the end of the top level. */
   traitPlacement?: TraitPlacement;
@@ -458,6 +509,8 @@ export interface World {
   traits: Trait[];
   /** Folders organizing traits in the editor and selection screen. */
   traitGroups?: TraitGroup[];
+  /** The Custom Persona node, when the author added one (see `CustomPersonaNode`). */
+  customPersona?: CustomPersonaNode;
   statUpdates: StatUpdate[];
   /** v2.x: ordered books of lorebook entries (replaces the flat `dictionary`; legacy worlds fold to one
    *  "Default" book on load via `migrateWorld`). Guaranteed ≥1 book after that normalization. */
