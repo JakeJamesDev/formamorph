@@ -1,6 +1,7 @@
 # 03: Image provider errors carry status and body
 
-Status: ready-for-agent
+Status: in-progress
+Base: 476f427e
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

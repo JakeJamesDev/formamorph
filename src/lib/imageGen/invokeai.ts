@@ -11,7 +11,8 @@
 // mixed content).
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
 import { bytesToDataUrl } from '../imageOptim';
-import { trimUrl, authHeaders, POLL_INTERVAL_MS } from './http';
+import { trimUrl, authHeaders, POLL_INTERVAL_MS, readBody, refusalDetails } from './http';
+import { DetailedError } from '../errorDetails';
 
 /** Model bases this provider can build a graph for. */
 export type InvokeBase = 'sdxl' | 'sd-1' | 'sd-2' | 'z-image' | 'anima';
@@ -476,11 +477,19 @@ export function resolveSubmodels(
  */
 export class InvokeHttpError extends Error {
   readonly status: number;
-  constructor(status: number) {
+  /** The Error Details text: the request, the status and the body. */
+  readonly details: string;
+  constructor(status: number, details = '') {
     super(`HTTP ${status}`);
     this.name = 'InvokeHttpError';
     this.status = status;
+    this.details = details;
   }
+}
+
+/** The InvokeHttpError for a non-OK GET, carrying its details. */
+async function invokeRefusal(url: string, res: Response): Promise<InvokeHttpError> {
+  return new InvokeHttpError(res.status, refusalDetails('GET', url, res, await readBody(res)));
 }
 
 /** Player-facing advice for a failed InvokeAI request, shared by the generation path and the Settings
@@ -499,8 +508,9 @@ export function invokeConnectionMessage(error: unknown, endpointUrl: string): st
 /** Fetch the model list from /api/v2/models/. */
 export async function fetchInvokeModels(endpointUrl: string, apiToken?: string): Promise<InvokeModel[]> {
   const base = trimUrl(endpointUrl);
-  const res = await fetch(`${base}/api/v2/models/`, { headers: authHeaders(apiToken, 'Bearer') });
-  if (!res.ok) throw new InvokeHttpError(res.status);
+  const url = `${base}/api/v2/models/`;
+  const res = await fetch(url, { headers: authHeaders(apiToken, 'Bearer') });
+  if (!res.ok) throw await invokeRefusal(url, res);
   const body = (await res.json()) as { models?: InvokeModel[] };
   return body.models ?? [];
 }
@@ -515,8 +525,9 @@ export interface InvokeBoard {
 /** Fetch the gallery boards. `all=true` returns the flat list rather than a paginated page. */
 export async function fetchInvokeBoards(endpointUrl: string, apiToken?: string): Promise<InvokeBoard[]> {
   const base = trimUrl(endpointUrl);
-  const res = await fetch(`${base}/api/v1/boards/?all=true`, { headers: authHeaders(apiToken, 'Bearer') });
-  if (!res.ok) throw new InvokeHttpError(res.status);
+  const url = `${base}/api/v1/boards/?all=true`;
+  const res = await fetch(url, { headers: authHeaders(apiToken, 'Bearer') });
+  if (!res.ok) throw await invokeRefusal(url, res);
   const body = (await res.json()) as InvokeBoard[] | { items?: InvokeBoard[] };
   return Array.isArray(body) ? body : (body.items ?? []);
 }
@@ -718,7 +729,8 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
     // A rejected token and an unreachable host both land here and need opposite advice.
-    throw new Error(invokeConnectionMessage(error, opts.endpointUrl));
+    const message = invokeConnectionMessage(error, opts.endpointUrl);
+    throw error instanceof InvokeHttpError ? new DetailedError(message, error.details) : new Error(message);
   }
   const model = findModel(models, params.model);
   if (!model) {
@@ -761,18 +773,20 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
   /** Enqueue one graph and poll it to completion. */
   const runGraph = async (graph: Graph): Promise<QueueItem> => {
     itemId = null;
-    const res = await fetch(`${base}/api/v1/queue/default/enqueue_batch`, {
+    const enqueueUrl = `${base}/api/v1/queue/default/enqueue_batch`;
+    const res = await fetch(enqueueUrl, {
       method: 'POST', headers: jsonHeaders,
       body: JSON.stringify({ batch: { graph, runs: 1 }, prepend: false }),
       signal: opts.signal,
     });
     if (!res.ok) {
+      const raw = await readBody(res);
       let detail = `HTTP ${res.status}`;
       try {
-        const body = await res.json();
+        const body = JSON.parse(raw);
         detail = body?.detail ? JSON.stringify(body.detail) : JSON.stringify(body);
       } catch { /* keep the status */ }
-      throw new Error(`InvokeAI rejected the batch: ${detail}`);
+      throw new DetailedError(`InvokeAI rejected the batch: ${detail}`, refusalDetails('POST', enqueueUrl, res, raw));
     }
     const enq = (await res.json()) as { item_ids?: number[] };
     itemId = enq.item_ids?.[0] ?? null;
@@ -856,8 +870,11 @@ export const invokeaiProvider: ImageProvider = async (params: ImageGenParams, op
       report({ progress: 1 });
     }
 
-    const view = await fetch(`${base}/api/v1/images/i/${encodeURIComponent(name)}/full`, { headers: auth, signal: opts.signal });
-    if (!view.ok) throw new Error(`Failed to fetch image: HTTP ${view.status}`);
+    const viewUrl = `${base}/api/v1/images/i/${encodeURIComponent(name)}/full`;
+    const view = await fetch(viewUrl, { headers: auth, signal: opts.signal });
+    if (!view.ok) {
+      throw new DetailedError(`Failed to fetch image: HTTP ${view.status}`, refusalDetails('GET', viewUrl, view, await readBody(view)));
+    }
     const bytes = new Uint8Array(await view.arrayBuffer());
     return bytesToDataUrl(bytes, view.headers.get('content-type') || 'image/png');
   } finally {
