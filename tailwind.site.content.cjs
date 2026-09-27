@@ -75,6 +75,7 @@ const FILES = [
   'src/lib/deletionCancellation.ts',
   'src/lib/errorDetails.ts',
   'src/lib/letterMask.ts',
+  'src/lib/linkToast.tsx',
   'src/lib/numberInputWheel.ts',
   'src/lib/placeholderArt.ts',
   'src/lib/redactUrl.ts',

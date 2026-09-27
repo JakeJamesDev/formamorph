@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { UserProfileDialog } from './UserProfileDialog';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import UserService from '@/services/UserService';
@@ -257,7 +258,7 @@ describe('clearing an account’s likes', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Clear all/ }));
     fireEvent.click(await screen.findByRole('button', { name: /continue|confirm|^ok$/i }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('You cannot moderate them'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot moderate themView Details →'));
     expect(screen.getByText('Sedge Landing')).toBeTruthy();
   });
 });

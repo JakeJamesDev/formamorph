@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { ListDetail } from '@/components/ui/list-detail';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ListAddButton, ListToolbar } from '@/components/ListToolbar';
@@ -87,7 +88,9 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
         detailsBaselineRef.current = canon(details);
         seed(b);
       })
-      .catch(() => { if (!cancelled) { toast.error('Could not load dictionary.'); onCloseRef.current(); } });
+      .catch((error: unknown) => {
+        if (!cancelled) { toastError(error, { headline: 'Could not load dictionary.' }); onCloseRef.current(); }
+      });
     return () => { cancelled = true; };
   }, [dictionaryId, draft, setDictionaries]);
 
@@ -151,8 +154,8 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
       detailsBaselineRef.current = canon(libraryDetails);
       toast.success('Dictionary saved!');
       return true;
-    } catch {
-      toast.error('Could not save dictionary.');
+    } catch (error) {
+      toastError(error, { headline: 'Could not save dictionary.' });
       return false;
     }
   };

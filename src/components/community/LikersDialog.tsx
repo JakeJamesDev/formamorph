@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Fingerprint, HeartOff, Link2, UserCheck, VenetianMask } from "lucide-react";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -202,7 +202,7 @@ export function LikersDialog({
       setTotal((prev) => Math.max(prev - 1, 0));
       onLikesChanged?.(likes);
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to remove that like');
+      toastError(e, 'Failed to remove that like');
     }
   };
 
@@ -233,7 +233,7 @@ export function LikersDialog({
         { groupId: row.groupId, linkedToAuthor: row.linkedToAuthor },
       ])));
     } catch (e) {
-      if (shown.current === asked) toast.error((e as Error).message || 'Failed to audit these likes');
+      if (shown.current === asked) toastError(e, 'Failed to audit these likes');
     } finally {
       if (shown.current === asked) setIsAuditing(false);
     }
@@ -271,7 +271,7 @@ export function LikersDialog({
         : prev.filter((row) => row.addressKey !== action.addressKey)));
     } catch (e) {
       if (shown.current === asked) {
-        toast.error((e as Error).message || 'Failed to remove those Anonymous Likes');
+        toastError(e, 'Failed to remove those Anonymous Likes');
       }
     }
   };

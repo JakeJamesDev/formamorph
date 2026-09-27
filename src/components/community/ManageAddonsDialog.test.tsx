@@ -3,6 +3,10 @@ import { describe, it, expect, beforeEach, afterEach, vi, type MockInstance } fr
 import { ManageAddonsDialog } from './ManageAddonsDialog';
 import WorldStorageService from '@/services/WorldStorageService';
 import type { AddonRow } from '@/lib/worldDependencies';
+import type { ReactElement } from 'react';
+import { toast } from 'react-toastify';
+import { getErrorDetailsState } from '@/lib/errorDetails';
+import { toastTexts } from '@/test/toastText';
 
 vi.mock('react-toastify', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }));
 
@@ -224,6 +228,27 @@ describe('saving', () => {
     await waitFor(() => expect(setReview).toHaveBeenCalled());
     await waitFor(() => expect(rowFor('Reed Cutter').textContent).toContain('Pending change'));
     expect((screen.getByRole('button', { name: /Save Changes/ }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('names every refused add-on in one toast, whose details keep each failure', async () => {
+    setReview.mockImplementation(async (_world, componentId) => {
+      throw new Error(componentId === 'stale' ? 'HTTP 403' : 'HTTP 500');
+    });
+    render(<ManageAddonsDialog open onOpenChange={vi.fn()} world={world} />);
+    await listed('Reed Cutter');
+
+    fireEvent.click(segment('Reed Cutter', 'Declined'));
+    fireEvent.click(segment('Marsh Warden', 'Approved'));
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/ }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
+    expect(toastTexts(vi.mocked(toast.error))).toEqual(['Could not save: Reed Cutter, Marsh Warden. Try again.View Details →']);
+
+    render(vi.mocked(toast.error).mock.calls[0][0] as ReactElement);
+    fireEvent.click(screen.getByRole('button', { name: 'View Details →' }));
+    const details = getErrorDetailsState().entry?.details ?? '';
+    expect(details).toContain('Error: Reed Cutter\nCaused by: Error: HTTP 403');
+    expect(details).toContain('Error: Marsh Warden\nCaused by: Error: HTTP 500');
   });
 
   it('keeps a decision staged that the author made while the writes were in flight', async () => {

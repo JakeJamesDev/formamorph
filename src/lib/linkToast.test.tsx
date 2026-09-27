@@ -75,6 +75,22 @@ describe('toastError', () => {
     expect(text.match(/Caused by:/g)).toHaveLength(1);
   });
 
+  it('lists every failure an aggregate error holds, each with its name and its own details', async () => {
+    const refused = Object.assign(new Error('HTTP 403'), { details: 'Route: /api/addons/a\nStatus: 403' });
+    const error = new AggregateError([
+      new Error('Add-on A', { cause: refused }),
+      new TypeError('Failed to fetch'),
+    ], 'Two add-on reviews failed');
+    render(<ThemedToastContainer />);
+    act(() => toastError(error, { headline: 'Could not save: Add-on A, Add-on B. Try again.' }));
+
+    await screen.findByText('Could not save: Add-on A, Add-on B. Try again.');
+    const text = (await openDetails()).textContent ?? '';
+    expect(text).toContain('AggregateError: Two add-on reviews failed');
+    expect(text).toContain('Failure 1 of 2:\nError: Add-on A\nCaused by: Error: HTTP 403\nRoute: /api/addons/a\nStatus: 403');
+    expect(text).toContain('Failure 2 of 2:\nTypeError: Failed to fetch');
+  });
+
   it('reads V8 frames only below the message, whose lines can look like frames', async () => {
     const error = new Error('Bad body:\n   at least one field is required');
     error.stack = `Error: ${error.message}\n    at send (api.js:1:1)`;

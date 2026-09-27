@@ -65,6 +65,7 @@ import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
 import { isMaxOutputKind, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import WorldStorageService from '@/services/WorldStorageService';
 import { cachedImageBytes, clearCachedImages } from '@/lib/remoteImageCache';
 import { formatBytes } from '@/lib/imageOptim';
@@ -530,8 +531,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       await clearCachedImages();
       setCachedBytes(0);
       toast.success('Cached images cleared');
-    } catch {
-      toast.error('Could not clear the cached images');
+    } catch (error) {
+      toastError(error, { headline: 'Could not clear the cached images' });
     }
   };
 
@@ -541,8 +542,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
       if (failed.length) toast.error(`Some default worlds failed to restore: ${failed.join(', ')}`);
       else toast.success('Default worlds restored');
-    } catch {
-      toast.error('Could not restore the default worlds');
+    } catch (error) {
+      toastError(error, { headline: 'Could not restore the default worlds' });
     }
     setDeletedDefaultCount(readDeletedDefaultWorlds().size);
     onWorldsRestored?.();

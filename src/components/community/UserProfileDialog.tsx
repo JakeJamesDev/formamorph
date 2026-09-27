@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { UserPlus, UserMinus, Flag } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -87,7 +87,7 @@ export function UserProfileDialog({ userId, onOpenChange, fallbackUsername, onOp
       // disagree about what just happened.
       setProfile({ ...profile, ...next });
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to change that');
+      toastError(e, 'Failed to change that');
     } finally {
       setIsFollowBusy(false);
     }

@@ -1,6 +1,7 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { Copy, Maximize2, Minimize2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import type { AIRequestType, Tool, ToolEnabledMap } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -143,7 +144,7 @@ export function ToolsTab({
       if (plan.added.length) toast.success(`Imported ${plan.added.length} Tool${plan.added.length === 1 ? '' : 's'}`);
       if (plan.hasScript) toast.warn('This pack holds a Script Tool. A script runs code when the AI calls it, so read it before you turn it on.');
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Couldn’t import those Tools');
     }
   };
 

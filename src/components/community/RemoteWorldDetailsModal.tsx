@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -204,7 +204,7 @@ export function RemoteWorldDetailsModal({
       setCommentsTotal((n) => n + 1);
       setCommentText('');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to post comment');
+      toastError(error, 'Failed to post comment');
     } finally {
       setPostingComment(false);
     }
@@ -222,7 +222,7 @@ export function RemoteWorldDetailsModal({
       setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
       setEditingId(null);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save the comment');
+      toastError(error, 'Failed to save the comment');
     } finally {
       setSavingEdit(false);
     }
@@ -236,7 +236,7 @@ export function RemoteWorldDetailsModal({
       // The edit box would otherwise stay open over a comment that no longer exists.
       if (editingId === commentId) setEditingId(null);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete the comment');
+      toastError(error, 'Failed to delete the comment');
     }
   };
 
