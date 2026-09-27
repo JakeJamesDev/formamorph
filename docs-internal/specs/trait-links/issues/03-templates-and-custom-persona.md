@@ -1,6 +1,7 @@
 # 03: Templates and Custom Persona
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: cb4b8820
 Blocked by: 02 — Links in the editor
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

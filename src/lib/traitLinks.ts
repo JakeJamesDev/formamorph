@@ -1,7 +1,7 @@
 // Editor edits of an entity's links: removal, the link's own defaults, Detach, and the cascade when an
 // original goes.
 
-import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
+import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink } from '@/types';
 import { randomUUID } from './uuid';
 import { originalOf, type BearerWorld } from './bearers';
 import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
@@ -35,11 +35,18 @@ export function linkDefaultTraits(world: WorldTraitLists, link: TraitLink, origi
     .map((r) => ({ trait: r.leaf!, on: link.defaults?.[r.id] ?? !!r.leaf!.isDefault }));
 }
 
-/** How many links across `entities` point at the original. */
-export const linksTo = (entities: readonly Entity[], originalId: string): number =>
-  entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => l.originalId === originalId).length, 0);
+/** How many links across `entities` and Custom Persona point at the original. */
+export const linksTo = (entities: readonly Entity[], originalId: string, customPersona?: CustomPersonaNode): number =>
+  [...entities.map((e) => e.traitLinks ?? []), customPersona?.traitLinks ?? []]
+    .reduce((n, links) => n + links.filter((l) => l.originalId === originalId).length, 0);
 
 const linksOriginal = (entity: Entity, originalId: string) => entity.traitLinks?.some((l) => l.originalId === originalId);
+
+/** Custom Persona without its links to the original; the same node when none links it. */
+export function dropCustomPersonaLinksTo(node: CustomPersonaNode | undefined, originalId: string): CustomPersonaNode | undefined {
+  if (!node?.traitLinks.some((l) => l.originalId === originalId)) return node;
+  return { ...node, traitLinks: node.traitLinks.filter((l) => l.originalId !== originalId) };
+}
 
 /** Every entity without its links to the original; the same array when none links it. */
 export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {

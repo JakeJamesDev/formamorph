@@ -3,7 +3,7 @@
 
 import type { CustomPersonaNode, Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
-import { effectivePlacement, groupsBelow, ownsTraits, placeableGroupIds, templatesSubtreeIds } from './traitTree';
+import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
 /** The player bearer's id: the world's root traits, plus Custom Persona's links when they apply. It is the
  *  player's world key, so None and a library persona share the same state. */
@@ -132,17 +132,8 @@ function entityBearer(world: BearerWorld, entity: Entity, isPlayer: boolean, pre
   };
 }
 
-/** The player's root: every world group and trait outside Templates. */
-function playerRoot(world: BearerWorld): { groups: TraitGroup[]; traits: Trait[] } {
-  const inTemplates = templatesSubtreeIds(world.traitGroups);
-  return {
-    groups: world.traitGroups.filter((g) => !inTemplates.has(g.id)),
-    traits: world.traits.filter((t) => t.groupId == null || !inTemplates.has(t.groupId)),
-  };
-}
-
 /** Custom Persona's links expanded at the player's root, after every root item. */
-function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof playerRoot>) {
+function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof offeredWorldTraits>) {
   const links = world.customPersona?.traitLinks ?? [];
   const rootOrders = [...root.groups.filter((g) => g.parentId === null), ...root.traits.filter((t) => (t.groupId ?? null) === null)]
     .map((item, i) => item.order ?? i);
@@ -152,7 +143,7 @@ function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof play
 
 /** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library persona. */
 function playerBearer(world: BearerWorld, persona: PersonaRef | undefined): Bearer {
-  const root = playerRoot(world);
+  const root = offeredWorldTraits(world.traits, world.traitGroups);
   const expanded = persona?.source === 'world' ? expandLinks(world, []) : customPersonaExpansion(world, root);
   return {
     id: PLAYER_BEARER, name: '', entity: null, isPlayer: true, present: true,
@@ -201,7 +192,7 @@ export function resolveBearers(
 export function holdsOriginal(world: BearerWorld, bearer: Bearer, originalId: string): boolean {
   const held = new Set(bearer.linkOf.keys());
   if (bearer.entity === null) {
-    const root = playerRoot(world);
+    const root = offeredWorldTraits(world.traits, world.traitGroups);
     for (const item of [...root.traits, ...root.groups]) held.add(item.id);
     for (const id of customPersonaExpansion(world, root).linkOf.keys()) held.add(id);
   }

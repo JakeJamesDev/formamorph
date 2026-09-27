@@ -22,6 +22,67 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
 
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
 
+describe('Custom Persona in the world store', () => {
+  const cp = { traitLinks: [
+    { id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null },
+    { id: 'l2', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null },
+  ], traitPlacement: { groupId: null, order: 3 } };
+  const withPersona = {
+    ...world('w', {}),
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'templates' }, { id: 'brave', name: 'Brave', statChanges: [] }],
+    traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+    customPersona: cp,
+  } as unknown as World;
+
+  it('loads, saves and discards the node with the world, clean on load', async () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(withPersona); });
+    expect(result.current.customPersona).toEqual(cp);
+    expect(result.current.getWorldData().customPersona).toEqual(cp);
+    expect(result.current.isWorldDirty).toBe(false);
+
+    act(() => { result.current.setCustomPersona(undefined); });
+    expect(result.current.isWorldDirty).toBe(true);
+    expect(result.current.getWorldData()).not.toHaveProperty('customPersona');
+    act(() => { result.current.discardChanges(); });
+    expect(result.current.customPersona).toEqual(cp);
+  });
+
+  it('carries no node over from the world loaded before', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(withPersona); });
+    act(() => { result.current.loadWorldData(world('other', {})); });
+    expect(result.current.customPersona).toBeUndefined();
+  });
+
+  it('deleting an original deletes Custom Persona\'s links to it', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(withPersona); });
+    act(() => { result.current.removeTrait('paladin'); });
+    expect(result.current.customPersona?.traitLinks.map((l) => l.id)).toEqual(['l2']);
+  });
+
+  it('removing Templates moves its traits to the top level and keeps Custom Persona\'s links to them', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(withPersona); });
+    act(() => { result.current.removeTraitGroup('templates'); });
+    expect(result.current.traitGroups).toEqual([]);
+    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
+    expect(result.current.customPersona).toEqual(cp);
+  });
+
+  it('removing Templates inside another group still moves its traits to the top level', () => {
+    const nested = {
+      ...withPersona,
+      traitGroups: [{ id: 'lore', name: 'Lore', parentId: null }, { id: 'templates', name: 'Templates', parentId: 'lore', system: 'templates' }],
+    } as unknown as World;
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(nested); });
+    act(() => { result.current.removeTraitGroup('templates'); });
+    expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
+  });
+});
+
 describe('trait links when an original goes', () => {
   const linked = {
     ...world('w', {}),

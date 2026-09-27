@@ -6,7 +6,7 @@ import { dirtyDiff } from '@/lib/dirtyDiff';
 import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
-import { dropLinksTo } from '@/lib/traitLinks';
+import { dropCustomPersonaLinksTo, dropLinksTo } from '@/lib/traitLinks';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
@@ -38,6 +38,7 @@ import type {
   EntityGroup,
   Trait,
   TraitGroup,
+  CustomPersonaNode,
   StatUpdate,
   Connection,
   Dictionary,
@@ -64,8 +65,12 @@ function buildWorldData(
   dictionaries: Dictionary[],
   placeholders: Placeholder[],
   placeholderGroups: PlaceholderGroup[],
+  customPersona: CustomPersonaNode | undefined,
 ): Omit<World, 'id' | 'version'> {
-  return { worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups };
+  return {
+    worldOverview: overview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placeholderGroups,
+    ...(customPersona ? { customPersona } : {}),
+  };
 }
 
 function useProvideGameData() {
@@ -90,6 +95,7 @@ function useProvideGameData() {
   const [placeholderGroups, setPlaceholderGroups] = useState<PlaceholderGroup[]>([]);
   const [traits, setTraits] = useState<Trait[]>([]);
   const [traitGroups, setTraitGroups] = useState<TraitGroup[]>([]);
+  const [customPersona, setCustomPersona] = useState<CustomPersonaNode | undefined>(undefined);
   const [statUpdates, setStatUpdates] = useState<StatUpdate[]>([]);
   // The world's own shared placeholders. Entities and books carry lists of their own; `placeholders` below
   // is the combined view every reader takes.
@@ -245,6 +251,7 @@ function useProvideGameData() {
   const removeTrait = useCallback((traitId: string) => {
     setTraits(prevTraits => prevTraits.filter(trait => trait.id !== traitId));
     setEntities(prevEntities => dropLinksTo(prevEntities, traitId));
+    setCustomPersona(prev => dropCustomPersonaLinksTo(prev, traitId));
   }, []);
 
   const addTraitGroup = useCallback((newGroup: TraitGroup) => {
@@ -258,19 +265,24 @@ function useProvideGameData() {
   }, []);
 
   // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
-  // rather than orphaning them under a deleted id.
+  // rather than orphaning them under a deleted id. Templates' children go to the top level wherever it sits.
   const removeTraitGroup = useCallback((groupId: string) => {
+    const heirOf = (groups: TraitGroup[]) => {
+      const group = groups.find(g => g.id === groupId);
+      return group?.system === 'templates' ? null : group?.parentId ?? null;
+    };
     setTraitGroups(prev => {
-      const parentId = prev.find(g => g.id === groupId)?.parentId ?? null;
+      const parentId = heirOf(prev);
       return prev
         .filter(g => g.id !== groupId)
         .map(g => (g.parentId === groupId ? { ...g, parentId } : g));
     });
     setTraits(prev => {
-      const parentId = traitGroups.find(g => g.id === groupId)?.parentId ?? null;
+      const parentId = heirOf(traitGroups);
       return prev.map(t => (t.groupId === groupId ? { ...t, groupId: parentId } : t));
     });
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
+    setCustomPersona(prev => dropCustomPersonaLinksTo(prev, groupId));
   }, [traitGroups]);
 
   const addStatUpdate = useCallback((newStatUpdate: StatUpdate) => {
@@ -368,6 +380,7 @@ function useProvideGameData() {
       ? worldData.dictionaries : [makeDefaultBook()];
     const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
     const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
+    const nextCustomPersona = worldData.customPersona && Array.isArray(worldData.customPersona.traitLinks) ? worldData.customPersona : undefined;
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -380,10 +393,11 @@ function useProvideGameData() {
     setDictionaries(nextDictionaries);
     setWorldPlaceholders(nextPlaceholders);
     setPlaceholderGroups(nextPlaceholderGroups);
+    setCustomPersona(nextCustomPersona);
 
     // Baseline for dirty detection: a freshly loaded world has no pending changes.
     setSavedSnapshot(JSON.stringify(buildWorldData(
-      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups,
+      normalizedOverview, nextStats, nextLocations, nextConnections, nextEntities, nextEntityGroups, nextTraits, nextTraitGroups, nextStatUpdates, nextDictionaries, nextPlaceholders, nextPlaceholderGroups, nextCustomPersona,
     )));
 
     return { world: worldData, isDefault };
@@ -391,8 +405,8 @@ function useProvideGameData() {
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
-    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups),
-    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups],
+    () => buildWorldData(worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, customPersona),
+    [worldOverview, stats, locations, connections, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, worldPlaceholders, placeholderGroups, customPersona],
   );
 
   // Every reader takes one list: the world's shared placeholders, then each entity's own in tree order,
@@ -595,6 +609,7 @@ function useProvideGameData() {
     entityGroups,
     traits,
     traitGroups,
+    customPersona,
     statUpdates,
     dictionaries,
     // The combined view: shared placeholders, then every entity's and book's own.
@@ -646,6 +661,7 @@ function useProvideGameData() {
     setEntityGroups,
     setTraits,
     setTraitGroups,
+    setCustomPersona,
     setStatUpdates,
     setDictionaries,
     setWorldPlaceholders,

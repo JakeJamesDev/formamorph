@@ -16,6 +16,7 @@ import type {
 import { clamp } from './utils';
 import { activeOwnedTraitIds, playedEntityId } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
+import { offeredWorldTraits } from './traitTree';
 import {
   gateStates, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
 } from './traitGates';
@@ -334,7 +335,7 @@ export interface CodeTraitSwitch {
 export const traitGateInput = (
   state: Pick<TraitRuntimeState, 'traits' | 'disabledTraitIds' | 'ownedTraits'>, world: TraitWorld,
 ): GateInput => ({
-  owners: [{ id: WORLD_OWNER, name: '', traits: world.traits, groups: world.groups }, ...(world.entityOwners ?? [])],
+  owners: [{ id: WORLD_OWNER, name: '', ...offeredWorldTraits(world.traits, world.groups) }, ...(world.entityOwners ?? [])],
   active: {
     ...activeOwnedTraitIds(state.ownedTraits ?? {}),
     [WORLD_OWNER]: activeTraits(state.traits, state.disabledTraitIds).map((t) => t.id),

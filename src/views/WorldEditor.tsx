@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, LayoutTemplate, CircleUserRound, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -79,7 +79,8 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { duplicateTraitNode, ownedTraitTree } from '@/lib/traitTree';
+import { CUSTOM_PERSONA_ID, customPersonaEntity, duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
+import { CustomPersonaPanel } from '../managers/CustomPersonaPanel';
 import { bearsTraits } from '@/lib/bearers';
 import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { findOwnedItem } from '@/lib/ownedTraits';
@@ -153,7 +154,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups,
+    worldPlaceholders, placeholderOwners, placeholderGroups, customPersona, setCustomPersona,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -740,6 +741,21 @@ const WorldEditorInner = ({
     setSelectedItemId(id);
   };
 
+  // The world holds at most one of each system node, so each add hides once its node exists.
+  const hasTemplates = !!templatesGroup(traitGroups);
+  const handleAddTemplates = () => {
+    const id = randomUUID();
+    addTraitGroup({
+      id, name: 'Templates', playerDescription: '', aiDescription: '', parentId: null,
+      order: traitRootCount({ traits, traitGroups }), system: 'templates',
+    });
+    setSelectedItemId(id);
+  };
+  const handleAddCustomPersona = () => {
+    setCustomPersona({ traitLinks: [] });
+    setSelectedItemId(CUSTOM_PERSONA_ID);
+  };
+
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
@@ -787,10 +803,12 @@ const WorldEditorInner = ({
   // A link's row, or a row of its linked group's subtree, edits the original it reads.
   const selectedLinkRow = useMemo(
     () => (activeTab === 'traits' && selectedItemId
-      ? ownedTraitTree({ traits, traitGroups }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
-    [activeTab, selectedItemId, traits, traitGroups, entities],
+      ? ownedTraitTree({ traits, traitGroups, customPersona }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
+    [activeTab, selectedItemId, traits, traitGroups, customPersona, entities],
   );
-  const selectedLinkBearer = selectedLinkRow && entities.find((e) => e.id === selectedLinkRow.entityId);
+  const selectedLinkBearer = selectedLinkRow && (selectedLinkRow.entityId === CUSTOM_PERSONA_ID
+    ? customPersona && customPersonaEntity(customPersona)
+    : entities.find((e) => e.id === selectedLinkRow.entityId));
   const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
   const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
@@ -1003,6 +1021,7 @@ const WorldEditorInner = ({
       {activeTab === "traits" && selectedGroup && (
         <GroupManager key={selectedGroup.id} group={selectedGroup} ownerId={selectedOwned?.entity.id} />
       )}
+      {activeTab === "traits" && customPersona && selectedItemId === CUSTOM_PERSONA_ID && <CustomPersonaPanel />}
       {selectedTraitNode && (
         <EntityTraitNodePanel
           key={selectedTraitNode.id}
@@ -1198,6 +1217,15 @@ const WorldEditorInner = ({
   const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
   const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
+  const addMenuItem = (icon: ReactNode, label: string, add: () => void) => (
+    <button
+      type="button"
+      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
+      onClick={() => { add(); setAddMenuOpen(false); }}
+    >
+      {icon} {label}
+    </button>
+  );
   const addSearchBar = activeTab !== "overview" && (
     <ListToolbar className="mt-4">
       {advanced && grouped ? (
@@ -1205,21 +1233,13 @@ const WorldEditorInner = ({
           <PopoverTrigger asChild>
             <ListAddButton label={addLabel} data-tour-anchor="list-add" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-44 p-1">
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
-              onClick={() => { addGroupHere(); setAddMenuOpen(false); }}
-            >
-              <FolderPlus className="h-4 w-4" /> Add Group
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-label hover:bg-accent"
-              onClick={() => { addItemHere(); setAddMenuOpen(false); }}
-            >
-              <FilePlus className="h-4 w-4" /> {addItemLabel}
-            </button>
+          <PopoverContent side="bottom" align="start" className={cn(activeTab === "traits" ? "w-52" : "w-44", "p-1")}>
+            {addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', addGroupHere)}
+            {addMenuItem(<FilePlus className="h-4 w-4" />, addItemLabel, addItemHere)}
+            {activeTab === "traits" && !hasTemplates
+              && addMenuItem(<LayoutTemplate className="h-4 w-4" />, 'Add Templates Group', handleAddTemplates)}
+            {activeTab === "traits" && !customPersona
+              && addMenuItem(<CircleUserRound className="h-4 w-4" />, 'Add Custom Persona', handleAddCustomPersona)}
           </PopoverContent>
         </Popover>
       ) : (

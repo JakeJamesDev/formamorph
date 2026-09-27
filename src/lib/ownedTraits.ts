@@ -4,7 +4,7 @@ import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { randomUUID } from './uuid';
 import { newTrait } from './blankWorld';
 import { WORLD_OWNER, type GateEntity, type GateInput, type GateOwner } from './traitGates';
-import { effectivePlacement, ownsTraits, placeableGroupIds } from './traitTree';
+import { effectivePlacement, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
 
 const traitsOf = (entity: Entity): Trait[] => entity.traits ?? [];
 const groupsOf = (entity: Entity): TraitGroup[] => entity.traitGroups ?? [];
@@ -87,16 +87,19 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
 }
 
 /** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group,
- *  then the library entities, whose nodes sit at the top level. */
+ *  then the library entities, whose nodes sit at the top level. The world owner leaves out Templates unless
+ *  `keepTemplates`, which the editor sets so its rows still read their gates. */
 export function traitOwners(
   world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] },
   library: readonly Entity[] = [],
+  { keepTemplates = false } = {},
 ): GateOwner[] {
   const placeable = placeableGroupIds(world.traitGroups);
   const owner = (e: Entity, parentGroupId: string | null): GateOwner =>
     ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
+  const offered = keepTemplates ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups);
   return [
-    { id: WORLD_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
+    { id: WORLD_OWNER, name: '', ...offered },
     ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),
     ...library.filter(ownsTraits).map((e) => owner(e, null)),
   ];
@@ -105,4 +108,4 @@ export function traitOwners(
 /** The gate input the editor reads: every owner, nothing active, no persona. */
 export const editorGateInput = (
   world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly (Entity & GateEntity)[] },
-): GateInput => ({ owners: traitOwners(world), active: {}, entities: world.entities, persona: { source: 'none' } });
+): GateInput => ({ owners: traitOwners(world, [], { keepTemplates: true }), active: {}, entities: world.entities, persona: { source: 'none' } });
