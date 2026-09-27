@@ -80,7 +80,7 @@ import { selectDueDiscovery, materializeDiscoveredEntity, discoveredAsEntities, 
 import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
-import { buildAiRequestSpec, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
+import { buildAiRequestSpec, outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
 import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
@@ -1465,8 +1465,33 @@ const GameViewer = ({
   // The planner resolves its own below, since routing may point the two at very differently-sized models.
   const narrationEndpoint = useMemo(() => resolveEndpointForKind('narration'), [resolveEndpointForKind]);
   const contextWindow = narrationEndpoint.contextWindow;
-  const narrationMaxTokens = narrationEndpoint.maxTokens;
-  const maxTokens = outputReserve(narrationMaxTokens);
+
+  // The per-call settings snapshot the AI Request Spec layer reads. Every engine-shaped decision
+  // (sampler resolution, the reasoning budget/effort split, the `/no_think` switch, penalty spellings)
+  // lives behind that seam; this component only states the values.
+  const snapshotFor = (target: AiEndpointTarget): AiSettingsSnapshot => ({
+    resolveTarget: () => target,
+    thinkingMode,
+    reasoningEffort,
+    reasoningEngaged,
+    promptReasoning,
+    // The stored switches and strengths, which the spec layer reads only on an endpoint that refuses off.
+    keptReasoning: { prompts: promptReasoningSettings, global: nativeReasoning },
+    promptReasoningBudget,
+    promptSamplers,
+    genTemperature,
+    promptMaxOutput,
+    genRepetitionPenalty,
+    genTopP,
+    genTopK,
+    genMinP,
+    paragraphLimit,
+    disableThinking,
+  });
+  // The reserve holds what narration's request sends, thinking included; the length guidance reads the answer alone.
+  const narrationCaps = outputCaps(snapshotFor(narrationEndpoint), { requestType: 'narration' });
+  const narrationAnswerCap = narrationCaps.answerCap;
+  const maxTokens = outputReserve(narrationCaps.maxTokens);
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
@@ -2161,7 +2186,7 @@ const GameViewer = ({
           embedVectors: embedVectorsRef.current,
           language,
           paragraphLimit,
-          maxTokens: narrationMaxTokens,
+          maxTokens: narrationAnswerCap,
           markdownOutput,
           sectionStyle: activeSectionStyle,
           resolvePH: codeView?.resolve ?? resolvePH,
@@ -2825,29 +2850,8 @@ const GameViewer = ({
     // disagree about which target answered.
     const target = resolveEndpointForKind(requestType);
 
-    // The per-call settings snapshot the AI Request Spec layer reads. Every engine-shaped decision
-    // (sampler resolution, the reasoning budget/effort split, the `/no_think` switch, penalty spellings)
-    // lives behind that seam; this component only states the values.
-    const snapshot: AiSettingsSnapshot = {
-      // Already resolved above, so the spec layer and the capture can't disagree about the target.
-      resolveTarget: () => target,
-      thinkingMode,
-      reasoningEffort,
-      reasoningEngaged,
-      promptReasoning,
-      // The stored switches and strengths, which the spec layer reads only on an endpoint that refuses off.
-      keptReasoning: { prompts: promptReasoningSettings, global: nativeReasoning },
-      promptReasoningBudget,
-      promptSamplers,
-      genTemperature,
-      promptMaxOutput,
-      genRepetitionPenalty,
-      genTopP,
-      genTopK,
-      genMinP,
-      paragraphLimit,
-      disableThinking,
-    };
+    // Already resolved above, so the spec layer and the capture can't disagree about the target.
+    const snapshot = snapshotFor(target);
     // Every request of a prompt that offers Tools carries them; the spec layer sends them where the target
     // takes them. A request outside a turn (a drainer, a re-roll) reads a snapshot of its own.
     const tools = toolsOfferedTo(requestType, allTools, enabledTools, toolsEnabled);
