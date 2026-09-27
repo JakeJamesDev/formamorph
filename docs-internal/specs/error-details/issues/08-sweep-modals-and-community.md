@@ -1,6 +1,7 @@
 # 08: Sweep: modals, community and Community Creations
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 0b6d271f
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

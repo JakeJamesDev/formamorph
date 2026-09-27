@@ -539,9 +539,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   const restoreDefaultWorlds = async () => {
     clearDeletedDefaultWorlds();
     try {
-      const { failed } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
-      if (failed.length) toast.error(`Some default worlds failed to restore: ${failed.join(', ')}`);
-      else toast.success('Default worlds restored');
+      const { failed, errors } = await WorldStorageService.loadDefaultWorlds(DEFAULT_WORLDS);
+      if (failed.length) {
+        toastError(
+          new AggregateError(errors, 'Default worlds failed to restore'),
+          { headline: `Some default worlds failed to restore: ${failed.join(', ')}` },
+        );
+      } else toast.success('Default worlds restored');
     } catch (error) {
       toastError(error, { headline: 'Could not restore the default worlds' });
     }

@@ -152,8 +152,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
     const sent = pending;
     setSaving(true);
     const failed: Record<string, ReviewState> = {};
-    const refused: string[] = [];
-    const errors: Error[] = [];
+    // Each error's message is the add-on's name, so the toast and its details name the same rows.
+    const refused: Error[] = [];
     for (const [componentId, state] of Object.entries(sent)) {
       try {
         await WorldStorageService.setAddonReview(worldId, componentId, state);
@@ -162,8 +162,7 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
         // recorded.
         failed[componentId] = state;
         const name = rows.find((row) => row.id === componentId)?.name ?? componentId;
-        refused.push(name);
-        errors.push(new Error(name, { cause: error }));
+        refused.push(new Error(name, { cause: error }));
       }
     }
 
@@ -184,8 +183,8 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
     if (saved > 0) toast.success(`Saved ${saved} decision${saved === 1 ? '' : 's'}.`);
     if (refused.length) {
       toastError(
-        new AggregateError(errors, 'Add-on reviews failed'),
-        { headline: `Could not save: ${refused.join(', ')}. Try again.` },
+        new AggregateError(refused, 'Add-on reviews failed'),
+        { headline: `Could not save: ${refused.map((error) => error.message).join(', ')}. Try again.` },
       );
     }
   };
