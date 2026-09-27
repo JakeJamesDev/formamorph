@@ -53,6 +53,8 @@ describe('entity readers in play', () => {
     { reader: 'scene tags', source: viewer, pattern: /\.map\(\(name\) => allEntities\.find\(\(e\) => sameCharacterName\(e\.name, name\)\)\)/ },
     { reader: "planner's cast", source: viewer, pattern: /classifyCast\(cast, allEntities, playerNames\)/ },
     { reader: 'in-game entity panel', source: viewer, pattern: /entities=\{allEntities\}/ },
+    // The seed resolves the pick itself, so it reads every world entity: a picked persona-only one is in no cast yet.
+    { reader: 'opening pool, new game', source: viewer, pattern: /drawNewGameOpening\(\{\s*pick: personaPick, worldEntities: traitEntities,/ },
     { reader: 'opening pool, regenerate and load', source: viewer, pattern: /const sessionPool = \(\) => openingPool\(\{\s*overview: worldOverview,\s*entities,/ },
     { reader: 'panels, scene list', source: panels, pattern: /const \{ entities: authoredEntities(?:, \w+)* \} = useResolvedWorld\(\)/ },
     { reader: 'panels, narration names', source: panels, pattern: /const \{ entities \} = useResolvedWorld\(\)/ },

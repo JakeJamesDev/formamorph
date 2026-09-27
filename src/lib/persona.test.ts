@@ -85,6 +85,47 @@ describe('resolvePersona', () => {
   });
 });
 
+describe('resolvePersona: persona-only entities', () => {
+  const custom = ent('w-custom', 'Custom Character', { persona: true, personaOnly: true, locations: ['dock'] });
+  const withCustom = [mira, vos, custom];
+
+  it.each<{ label: string; ref: PersonaRef | undefined }>([
+    { label: 'absent', ref: undefined },
+    { label: 'None', ref: { source: 'none' } },
+    { label: 'another world persona', ref: { source: 'world', entityId: 'w-mira' } },
+    { label: 'a library persona', ref: { source: 'library', entityId: 'l-wren' } },
+    { label: 'a reference that no longer resolves', ref: { source: 'world', entityId: 'w-gone' } },
+  ])('leaves an unpicked persona-only entity out of the cast under $label', ({ ref }) => {
+    const { cast } = resolvePersona(ref, withCustom, library);
+    expect(cast.map((e) => e.id)).not.toContain('w-custom');
+    expect(entityIdsAt('dock', cast)).not.toContain('w-custom');
+  });
+
+  it('plays a picked persona-only entity and keeps it out of the cast', () => {
+    const res = resolvePersona({ source: 'world', entityId: 'w-custom' }, withCustom, library);
+    expect(res.persona?.entity.id).toBe('w-custom');
+    expect(res.cast.map((e) => e.id)).toEqual(['w-mira', 'w-vos']);
+  });
+
+  it('does not return an unpicked persona-only entity to the cast after a switch away', () => {
+    const switched = resolvePersona({ source: 'world', entityId: 'w-mira' }, withCustom, library);
+    expect(switched.cast.map((e) => e.id)).toEqual(['w-vos']);
+  });
+
+  it('reads the flag only with the Persona mark', () => {
+    const unmarked = { ...custom, persona: false };
+    const { cast } = resolvePersona({ source: 'none' }, [mira, vos, unmarked], library);
+    expect(cast.map((e) => e.id)).toContain('w-custom');
+  });
+
+  it('leaves an unpicked persona-only entity out of the roster', () => {
+    const { cast } = resolvePersona({ source: 'none' }, withCustom, library);
+    const dock: GameLocation = { id: 'dock', name: 'Dock' };
+    expect(buildEntityContext(dock, cast, { format: 'markdown' })).not.toContain('Custom Character');
+    expect(buildEntityContext(dock, cast, { format: 'markdown' })).toContain('Captain Vos');
+  });
+});
+
 describe('the roster without the played entity', () => {
   const town: GameLocation = { id: 'town', name: 'Town' };
   const dock: GameLocation = { id: 'dock', name: 'Dock', parentId: 'town' };
