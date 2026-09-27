@@ -1,6 +1,7 @@
 # 02: Links in the editor
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 418b140f
 Blocked by: 01 — Link data and bearer resolution
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -37,3 +38,5 @@ In Advanced mode an author drags a world trait or group under an entity and gets
 ## Comments
 
 **From ticket 01 (2026-09-27, commit 72f20e90).** The bearer module is `src/lib/bearers.ts`. The tree builder's `ownsTraits` in `traitTree.ts` still ignores links; switch it to `bearsTraits` from the bearer module so an entity with links only still gets its node.
+
+**From ticket 02 (2026-09-27).** `ownedTraitTree` draws links only with `{ links: true }`, which the editor passes; Enter World, the in-game Traits tab and the pin readers still build it without links. Ticket 08 moves them to `resolveBearers` and can drop the option. Link edits live in `src/lib/traitLinks.ts`. Open, not ruled: a world-to-world move can still give a bearer one original twice (it links T and G, and T moves into G); and deleting an entity has no confirmation naming its link count. The design-system approval of the link row is still with the user.

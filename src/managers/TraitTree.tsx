@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
-import { Folder, Info, Lock, User } from 'lucide-react';
+import { Folder, Info, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
   getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, ownedTraitRows, ownedTraitTree,
-  type FlatTraitNode, type TraitDropRefusal,
+  type FlatTraitNode, type LinkRow, type TraitDropRefusal,
 } from '@/lib/traitTree';
 import { Button } from '@/components/ui/button';
+import { Tip } from '@/components/ui/tooltip';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
-import { SortableTree, type SortableTreeAdapter } from './SortableTree';
+import { detachDropsStats, detachLink, removeLink } from '@/lib/traitLinks';
+import { SortableTree, type SortableTreeAdapter, type TreeRowSpec } from './SortableTree';
+import { useRemoveWorldTrait } from './useRemoveWorldTrait';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -37,7 +41,8 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
   };
 };
 
-/** The line after a drop that would give an entity's trait stat effects. The dragged item stays put. */
+/** The line after a refused drop: an entity's trait would gain stat effects, or the entity already has the
+ *  trait. The dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -47,14 +52,20 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   return (
     <div role="status" className="mb-2 flex items-start gap-2 rounded-lg border p-3 text-helper">
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-      <span className="flex-1">
-        {name} stays {refusal.owner
-          ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
-          : 'a world'} {refusal.kind}, because an entity&apos;s traits can&apos;t change stats.{' '}
-        {refusal.kind === 'trait'
-          ? 'Remove its stat changes and stat toggles first.'
-          : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
-      </span>
+      {refusal.reason === 'duplicate' ? (
+        <span className="flex-1">
+          <PlaceholderText text={refusal.bearer} placeholders={placeholders} /> already has {name}.
+        </span>
+      ) : (
+        <span className="flex-1">
+          {name} stays {refusal.owner
+            ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
+            : 'a world'} {refusal.kind}, because an entity&apos;s traits can&apos;t change stats.{' '}
+          {refusal.kind === 'trait'
+            ? 'Remove its stat changes and stat toggles first.'
+            : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
+        </span>
+      )}
       <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
     </div>
   );
@@ -66,19 +77,69 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
-    traits, traitGroups, entities, setTraits, setTraitGroups, removeTrait, removeTraitGroup, editEntity, placeholders, gateInput,
+    traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput,
   } = useTraitStore();
   const { advanced } = useEditorMode();
   const gates = useMemo(() => gateStates(gateInput), [gateInput]);
-  const tree = useMemo(() => ownedTraitTree({ traits, traitGroups }, entities), [traits, traitGroups, entities]);
+  const tree = useMemo(() => ownedTraitTree({ traits, traitGroups }, entities, [], { links: true }), [traits, traitGroups, entities]);
   const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
+  const { ask: askRemoveOriginal, dialog: removeDialog } = useRemoveWorldTrait();
+  const [pendingDetach, setPendingDetach] = useState<{ entityId: string; linkId: string; name: string } | null>(null);
+
+  const detach = (entityId: string, linkId: string) => {
+    const bearer = entities.find((e) => e.id === entityId);
+    const res = bearer && detachLink({ traits, traitGroups }, bearer, linkId);
+    if (!res) return;
+    editEntity(entityId, () => res.entity);
+    onSelect(res.newId);
+  };
+  // An owned copy can't carry stat effects, so a Detach that drops them asks first.
+  const askDetach = ({ entityId, link }: LinkRow, name: string) => {
+    if (detachDropsStats({ traits, traitGroups }, link)) setPendingDetach({ entityId, linkId: link.id, name });
+    else detach(entityId, link.id);
+  };
+
+  const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow): TreeRowSpec => {
+    const isGroup = node.kind === 'group';
+    const name = (isGroup ? node.group?.name : node.leaf?.name) ?? '';
+    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gates.get(linkRow.originalId), placeholders);
+    const shared = {
+      lead: isGroup ? 'chevron' : 'none',
+      collapseLabels: ['Expand group', 'Collapse group'],
+      label: <PlaceholderText text={name} placeholders={placeholders} />,
+      labelClass: isGroup ? 'font-medium' : unresolved ? UNRESOLVED : undefined,
+      meta,
+      metaTitle,
+    } satisfies Partial<TreeRowSpec>;
+    // A linked group's subtree is the original's, so its rows are read here and edited there.
+    if (!linkRow.root) return { ...shared, icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined, fixed: true };
+    return {
+      ...shared,
+      icon: (
+        <Tip tip={`Linked, opens ${labelPlaceholders(name, placeholders)}`} labelsChild={false}>
+          <button
+            type="button"
+            aria-label={`Open ${labelPlaceholders(name, placeholders)}`}
+            onClick={(e) => { e.stopPropagation(); onSelect(linkRow.originalId); }}
+            className="shrink-0 px-0.5"
+          >
+            <Link2 className="h-4 w-4" />
+          </button>
+        </Tip>
+      ),
+      actions: [{ icon: <Unlink className="h-4 w-4" />, title: 'Detach', onClick: () => askDetach(linkRow, name) }],
+      removeTitle: 'Remove Link',
+      remove: () => editEntity(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
+    };
+  };
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
     getVisible: (collapsed) => ownedTraitRows(tree, collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) =>
-      getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT)?.depth ?? null,
+      getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced })?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
-      const next = applyOwnedTraitDrop({ traits, traitGroups }, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
+      // Creating a link is Advanced only; existing links still drag in Simple.
+      const next = applyOwnedTraitDrop({ traits, traitGroups }, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced });
       if (!next) return;
       if (next.kind === 'refused') {
         setRefusal(next.refusal);
@@ -92,6 +153,8 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       for (const entity of next.entities) editEntity(entity.id, () => entity);
     },
     rowSpec: (node) => {
+      const linkRow = tree.linkRows.get(node.id);
+      if (linkRow) return linkRowSpec(node, linkRow);
       const entity = tree.entityNodes.get(node.id);
       if (entity) {
         return {
@@ -117,8 +180,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         metaTitle,
         remove: () => {
           if (ownerId) editEntity(ownerId, (e) => removeOwnedItem(e, node.id));
-          else if (isGroup) removeTraitGroup(node.id);
-          else removeTrait(node.id);
+          else askRemoveOriginal(node.id, isGroup);
         },
         duplicate: () => {
           const owner = ownerId && tree.entityNodes.get(ownerId);
@@ -146,6 +208,17 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     <>
       {refusal && <TraitDropRefusalNotice refusal={refusal} placeholders={placeholders} onDismiss={() => setRefusal(null)} />}
       <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+      {removeDialog}
+      <ConfirmDialog
+        open={!!pendingDetach}
+        onOpenChange={(open) => { if (!open) setPendingDetach(null); }}
+        title={`Detach ${labelPlaceholders(pendingDetach?.name ?? '', placeholders)}?`}
+        description="The copy won't keep its stat changes and stat toggles, because an entity's traits can't change stats."
+        onConfirm={() => {
+          if (pendingDetach) detach(pendingDetach.entityId, pendingDetach.linkId);
+          setPendingDetach(null);
+        }}
+      />
     </>
   );
 };
