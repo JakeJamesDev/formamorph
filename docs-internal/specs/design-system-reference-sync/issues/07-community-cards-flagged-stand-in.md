@@ -1,6 +1,7 @@
 # 07: Community Cards reference shows a flagged stand-in listing
 
-Status: ready-for-agent
+Status: in-progress
+Base: 66d76f24
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium

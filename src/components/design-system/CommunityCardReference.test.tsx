@@ -12,6 +12,12 @@ const renderReference = () => render(
 
 afterEach(() => localStorage.clear());
 
+const cardNamed = (name: string) => {
+  const card = screen.getAllByText(name)[0].closest<HTMLElement>('[data-layout]');
+  if (!card) throw new Error(`No card named ${name}`);
+  return card;
+};
+
 describe('community card reference', () => {
   it('uses production cards with long content and selected likes', () => {
     renderReference();
@@ -36,5 +42,19 @@ describe('community card reference', () => {
 
     await user.click(screen.getByRole('button', { name: 'Update available' }));
     expect(screen.getByText('The local update action started for The Glass Marsh Almanac.')).toBeInTheDocument();
+  });
+
+  it('draws Morph art for a flagged stand-in and never shows its stored thumbnail', () => {
+    renderReference();
+
+    const card = cardNamed('Sable Lantern-Wright');
+    expect(card.querySelector('[data-morph-art]')).not.toBeNull();
+    expect(card.querySelector('img[src*="stand-in-silhouette"]')).toBeNull();
+  });
+
+  it('draws Morph art for an entity with no image', () => {
+    renderReference();
+
+    expect(cardNamed('Quill Warden').querySelector('[data-morph-art]')).not.toBeNull();
   });
 });
