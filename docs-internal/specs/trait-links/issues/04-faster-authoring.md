@@ -1,6 +1,6 @@
 # 04: Faster authoring
 
-Status: in-progress
+Status: ready-for-human
 Base: 8d9bffd5
 Blocked by: 03 — Templates and Custom Persona
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

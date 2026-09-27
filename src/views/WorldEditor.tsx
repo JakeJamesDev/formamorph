@@ -86,6 +86,7 @@ import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
 import { bearerChoices } from '@/lib/bearerChoices';
 import { BearerList, LinkToBearerButton } from '../managers/BearerPicker';
+import { MENU_ROW } from '@/components/menuRow';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
@@ -133,6 +134,8 @@ import { Tip } from '@/components/ui/tooltip';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
+/** What the + menu's drill-in adds to an entity. */
+type OwnedKind = 'trait' | 'group';
 
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
@@ -456,7 +459,7 @@ const WorldEditorInner = ({
   useBackStop(requestClose, editorRootRef);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The + menu's drill-in: which kind of owned item it adds to the entity picked next.
-  const [addToEntity, setAddToEntity] = useState<'trait' | 'group' | null>(null);
+  const [addToEntity, setAddToEntity] = useState<OwnedKind | null>(null);
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
   // Back out of the connection step reopens the picker on the picks already made rather than a clean one.
@@ -760,7 +763,7 @@ const WorldEditorInner = ({
     setSelectedItemId(CUSTOM_PERSONA_ID);
   };
   // The first add to an entity gives it a node in the tree, which reveals the selected row.
-  const handleAddToEntity = (kind: 'trait' | 'group', entityId: string) => {
+  const handleAddToEntity = (kind: OwnedKind, entityId: string) => {
     const id = randomUUID();
     const name = searchTerm.trim() || undefined;
     editEntity(entityId, (e) => (kind === 'trait' ? addOwnedTrait(e, id, name) : addOwnedGroup(e, id, name)));
@@ -1247,16 +1250,15 @@ const WorldEditorInner = ({
   const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
   const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const menuRowClass = "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent";
   const addMenuItem = (icon: ReactNode, label: string, add: () => void) => (
-    <button type="button" className={menuRowClass} onClick={() => { add(); setAddMenuOpen(false); }}>
+    <button type="button" className={MENU_ROW} onClick={() => { add(); setAddMenuOpen(false); }}>
       {icon} {label}
     </button>
   );
   // A drill-in row: its label heads the entity list it opens in place of the menu.
-  const toEntityLabel = { trait: 'Add Trait To Entity', group: 'Add Group To Entity' } as const;
-  const addToEntityItem = (icon: ReactNode, kind: 'trait' | 'group') => entities.length > 0 && (
-    <button type="button" className={menuRowClass} onClick={() => setAddToEntity(kind)}>
+  const toEntityLabel: Record<OwnedKind, string> = { trait: 'Add Trait to Entity', group: 'Add Group to Entity' };
+  const addToEntityItem = (icon: ReactNode, kind: OwnedKind) => entities.length > 0 && (
+    <button type="button" className={MENU_ROW} onClick={() => setAddToEntity(kind)}>
       {icon} <span className="flex-1">{toEntityLabel[kind]}</span>
       <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
     </button>
@@ -1282,7 +1284,8 @@ const WorldEditorInner = ({
   );
   const addSearchBar = activeTab !== "overview" && (
     <ListToolbar className="mt-4">
-      {activeTab === "traits" || (advanced && grouped) ? (
+      {/* Basic's Traits + is a menu only when it has a second row to offer. */}
+      {(activeTab === "traits" && (advanced || entities.length > 0)) || (advanced && grouped) ? (
         <Popover open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); if (!open) setAddToEntity(null); }}>
           <PopoverTrigger asChild>
             <ListAddButton label={addLabel} data-tour-anchor="list-add" />

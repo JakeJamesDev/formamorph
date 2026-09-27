@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ListAddButton } from '@/components/ListToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Hint } from '@/components/ui/typography';
+import { MENU_ROW } from '@/components/menuRow';
 import { BearerList } from '@/managers/BearerPicker';
 import { bearerChoices } from '@/lib/bearerChoices';
 import { CUSTOM_PERSONA_ID } from '@/lib/traitTree';
@@ -39,12 +40,12 @@ export function BearerFlyoutReference() {
               <BearerList
                 choices={bearerChoices(GROUPS, ENTITIES)}
                 label="Entities"
-                back={{ label: 'Add Trait To Entity', onBack: () => setDrilled(false) }}
+                back={{ label: 'Add Trait to Entity', onBack: () => setDrilled(false) }}
                 onPick={(id) => { setStatus(`The sample added a trait to ${nameOf(id)}.`); setAddOpen(false); setDrilled(false); }}
               />
             ) : (
-              <button type="button" className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent" onClick={() => setDrilled(true)}>
-                Add Trait To Entity
+              <button type="button" className={MENU_ROW} onClick={() => setDrilled(true)}>
+                Add Trait to Entity
               </button>
             )}
           </PopoverContent>

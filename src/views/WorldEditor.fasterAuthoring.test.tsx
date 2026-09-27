@@ -60,14 +60,22 @@ const flyoutRow = (label: string, name: string) => within(screen.getByRole('grou
 beforeEach(() => { localStorage.clear(); });
 
 describe('the + menu', () => {
-  it('offers Add Trait To Entity in Basic, and Add Group To Entity in Advanced only', () => {
+  it('offers Add Trait to Entity in Basic, and Add Group to Entity in Advanced only', () => {
     renderWorldEditorBench(WORLD, 'simple');
     openTab(/Traits/);
     openAddMenu();
     expect(menuButton('Add Trait')).toBeInTheDocument();
-    expect(menuButton('Add Trait To Entity')).toBeInTheDocument();
-    expect(menuButton('Add Group To Entity')).toBeNull();
+    expect(menuButton('Add Trait to Entity')).toBeInTheDocument();
+    expect(menuButton('Add Group to Entity')).toBeNull();
     expect(menuButton('Add Group')).toBeNull();
+  });
+
+  it('adds a trait in one click in Basic when the world has no entity to offer', () => {
+    const { ctx } = renderWorldEditorBench({ ...WORLD, entities: [], customPersona: undefined }, 'simple');
+    openTab(/Traits/);
+    openAddMenu();
+    expect(menuButton('Add Trait to Entity')).toBeNull();
+    expect(ctx().traits.map((t) => t.name)).toContain('New Trait');
   });
 
   it('adds an owned trait to an entity with no node, which gets one with the new row selected', () => {
@@ -75,7 +83,7 @@ describe('the + menu', () => {
     openTab(/Traits/);
     expect(treeRow('Mira')).toBeUndefined();
     openAddMenu();
-    fireEvent.click(menuButton('Add Trait To Entity')!);
+    fireEvent.click(menuButton('Add Trait to Entity')!);
     // Custom Persona holds links only, so the add list leaves it out (Q69).
     expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex']);
     fireEvent.click(flyoutRow('Entities', 'Heroes'));
@@ -96,7 +104,7 @@ describe('the + menu', () => {
     fireEvent.click(within(treeRow('Albus')!).getByRole('button', { name: 'Collapse entity' }));
     expect(treeRow('Oath')).toBeUndefined();
     openAddMenu();
-    fireEvent.click(menuButton('Add Group To Entity')!);
+    fireEvent.click(menuButton('Add Group to Entity')!);
     fireEvent.click(flyoutRow('Entities', 'Heroes'));
     fireEvent.click(flyoutRow('Entities', 'Albus'));
 
@@ -111,7 +119,7 @@ describe('the + menu', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     openAddMenu();
-    fireEvent.click(menuButton('Add Trait To Entity')!);
+    fireEvent.click(menuButton('Add Trait to Entity')!);
     fireEvent.click(flyoutRow('Entities', 'Heroes'));
     fireEvent.click(flyoutRow('Entities', 'City Guard'));
     expect(flyoutRows('Entities')).toEqual(['Tomas']);
@@ -119,9 +127,9 @@ describe('the + menu', () => {
     expect(flyoutRows('Entities')).toEqual(['Albus', 'Mira', '#City Guard']);
     fireEvent.click(menuButton('Heroes')!);
     expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex']);
-    fireEvent.click(menuButton('Add Trait To Entity')!);
+    fireEvent.click(menuButton('Add Trait to Entity')!);
     expect(menuButton('Add Templates Group')).toBeNull();
-    expect(menuButton('Add Group To Entity')).toBeInTheDocument();
+    expect(menuButton('Add Group to Entity')).toBeInTheDocument();
   });
 });
 

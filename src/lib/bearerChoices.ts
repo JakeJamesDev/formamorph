@@ -7,7 +7,7 @@ import type { Entity, EntityGroup } from '@/types';
 /** One row of a drill-down level. `parentId` is the entity group the row sits in; null = the top level. */
 export type BearerChoice =
   | { kind: 'group'; id: string; name: string; parentId: string | null }
-  | { kind: 'bearer'; id: string; name: string; parentId: string | null; persona?: true; customPersona?: true };
+  | { kind: 'bearer'; id: string; name: string; parentId: string | null; customPersona?: true };
 
 /** Custom Persona first when asked for, then every entity and entity group in Entities tab order. A group
  *  with no entity anywhere below it has no row. */
@@ -25,8 +25,7 @@ export function bearerChoices(
     : [];
   for (const row of rows) {
     if (row.leaf) {
-      const { id, name, persona } = row.leaf;
-      choices.push({ kind: 'bearer', id, name, parentId: row.parentId, ...(persona ? { persona: true } : {}) });
+      choices.push({ kind: 'bearer', id: row.leaf.id, name: row.leaf.name, parentId: row.parentId });
     } else if (row.group && holdsEntity.has(row.group.id)) {
       choices.push({ kind: 'group', id: row.group.id, name: row.group.name, parentId: row.parentId });
     }

@@ -9,7 +9,7 @@ describe('BearerFlyoutReference', () => {
   it('drills from the menu into entity group levels and adds to the sample without a world', () => {
     render(<BearerFlyoutReference />);
     fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Trait To Entity' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Trait to Entity' }));
     expect(level('Entities')).toEqual(['Heroes', 'Villains', 'Sam']);
     fireEvent.click(row('Entities', 'Heroes'));
     fireEvent.click(row('Entities', 'City Guard'));
