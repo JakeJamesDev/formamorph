@@ -117,14 +117,28 @@ describe('entity nodes on the Traits tab', () => {
     expect(entityNodeRow('Odd Wick')).toBeUndefined();
   });
 
-  it('drops the node when the entity\'s last trait is deleted', () => {
+  it('keeps the node while the entity owns a group, and drops it once it owns nothing', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     for (const name of ['Tamed', 'Wild']) {
       fireEvent.click(within(treeRow(name)!).getByRole('button', { name: 'Delete' }));
     }
     expect(entity(ctx, 'ash').traits).toBeUndefined();
+    expect(entityNodeRow('Ash')).toBeDefined();
+    fireEvent.click(within(treeRow('Bond')!).getByRole('button', { name: 'Delete' }));
+    expect(entity(ctx, 'ash').traitGroups).toBeUndefined();
     expect(entityNodeRow('Ash')).toBeUndefined();
+  });
+
+  it('gives an entity a node when its first add is a group', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Entities/);
+    fireEvent.click(screen.getAllByText('Odd Wick')[0]);
+    fireEvent.mouseDown(entityFieldsTab('Traits'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }));
+    expect(entity(ctx, 'wick').traitGroups).toEqual([expect.objectContaining({ name: 'New Group', parentId: null })]);
+    expect(entityNodeRow('Odd Wick')).toBeDefined();
+    expect(selectedRowText()).toBe('New Group');
   });
 
   it('opens the node on a panel listing its traits, with a way to the entity', () => {

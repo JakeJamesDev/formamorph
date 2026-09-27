@@ -61,13 +61,14 @@ export function findOwnedItem(
 }
 
 /** A copy of the entity whose owned traits and groups have fresh ids, so the copy shares none with the
- *  source. Requirements that point inside the entity follow; ones that point out of it keep their target. */
-export function remintOwnedTraits(entity: Entity): Entity {
+ *  source. Requirements that point inside the entity follow; ones that point out of it keep their target.
+ *  `entityIds` maps each copied entity to its copy, so "playing as" the source becomes "playing as" the copy. */
+export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string, string> = new Map()): Entity {
   if (!entity.traits?.length && !entity.traitGroups?.length) return entity;
   const ids = new Map([...traitsOf(entity), ...groupsOf(entity)].map((item) => [item.id, randomUUID()] as const));
   const remap = (id: string | null | undefined) => (id ? ids.get(id) ?? id : id);
   const remapRequirement = (r: TraitRequirement): TraitRequirement =>
-    r.kind === 'playingAs' ? r : { ...r, id: remap(r.id)! };
+    ({ ...r, id: (r.kind === 'playingAs' ? entityIds.get(r.id) : ids.get(r.id)) ?? r.id });
   return withOwnedTraits(
     entity,
     traitsOf(entity).map((t) => ({
@@ -80,7 +81,7 @@ export function remintOwnedTraits(entity: Entity): Entity {
   );
 }
 
-/** Every owner's traits for the gate module: the world first, then each entity that owns a trait. */
+/** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group. */
 export function traitOwners(world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] }): GateOwner[] {
   return [
     { id: WORLD_OWNER, name: '', traits: world.traits, groups: world.traitGroups },

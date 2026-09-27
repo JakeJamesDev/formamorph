@@ -80,14 +80,14 @@ export function isDescendantGroup<G extends TreeGroup>(groups: G[], ancestorId: 
  * the same parent/group. Groups bring all nested subgroups + leaves, each with a fresh id and remapped parent
  * links; only the top copied item's name gets a " (Copy)" suffix. Sibling `order`s of the affected parent are
  * renormalized so the copy reliably follows the original. Never mutates inputs; a missing id is a no-op
- * (returns the same arrays + the id unchanged).
+ * (returns the same arrays + the id unchanged). `idMap` maps each copied id to its copy's.
  */
 export function duplicateNode<G extends TreeGroup, L extends TreeLeaf>(
   groups: G[], leaves: L[], id: string,
-): { groups: G[]; leaves: L[]; newId: string } {
+): { groups: G[]; leaves: L[]; newId: string; idMap: ReadonlyMap<string, string> } {
   const isGroup = groups.some((g) => g.id === id);
   const isLeaf = leaves.some((l) => l.id === id);
-  if (!isGroup && !isLeaf) return { groups, leaves, newId: id };
+  if (!isGroup && !isLeaf) return { groups, leaves, newId: id, idMap: new Map() };
 
   // Subtree membership: the group + all descendant groups, and every leaf inside any of them.
   const subtreeGroupIds = new Set<string>();
@@ -146,7 +146,7 @@ export function duplicateNode<G extends TreeGroup, L extends TreeLeaf>(
     if (l) l.order = i;
   });
 
-  return { groups: g2, leaves: l2, newId };
+  return { groups: g2, leaves: l2, newId, idMap };
 }
 
 /** Depth-first flatten of the tree, tagging each node with its parent and indentation depth. */

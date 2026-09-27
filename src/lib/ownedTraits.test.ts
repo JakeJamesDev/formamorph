@@ -84,6 +84,12 @@ describe('remintOwnedTraits', () => {
     expect(copy.traits![0].requires).toEqual([{ kind: 'group', id: copy.traitGroups![0].id }]);
   });
 
+  it('points a "playing as" the source requirement at the copy, and leaves other personas alone', () => {
+    const source = ash({ traits: [trait('t-self', { requires: [{ kind: 'playingAs', id: 'ash' }, { kind: 'playingAs', id: 'aldric' }] })] });
+    const copy = remintOwnedTraits({ ...source, id: 'ash-copy' }, new Map([['ash', 'ash-copy']]));
+    expect(copy.traits![0].requires).toEqual([{ kind: 'playingAs', id: 'ash-copy' }, { kind: 'playingAs', id: 'aldric' }]);
+  });
+
   it('leaves an entity that owns nothing as it is', () => {
     const plain: Entity = { id: 'npc', name: 'Npc' };
     expect(remintOwnedTraits(plain)).toBe(plain);
