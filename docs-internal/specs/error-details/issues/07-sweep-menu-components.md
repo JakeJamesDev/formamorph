@@ -9,6 +9,8 @@ Reasoning effort: medium
 
 Every error toast in the menu components gets the same treatment. Each of the 55 sites is classified: a toast raised in a catch, or from a failed result that carries an error, moves to the shared helper with its current message as the headline; a form validation, refusal or other toast with no error behind it stays plain. No toast wording changes.
 
+Ticket 04 already made the three inline staff fetches in the Manage Users tab throw with details; their toasts are still plain. Converting those three toasts is part of this sweep.
+
 Recommended model rationale: a mechanical sweep with a clear classification rule over one directory; judgment per site, no new design.
 
 ## Acceptance criteria
