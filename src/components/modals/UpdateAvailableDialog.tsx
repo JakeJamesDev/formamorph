@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { HelpButton } from '@/components/HelpButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -238,7 +239,7 @@ export function UpdateAvailableDialog({
         await incoming.commit();
       } catch (error) {
         setApplying(false);
-        toast.error((error as Error).message || 'Could not save the imported content to your library.');
+        toastError(error, 'Could not save the imported content to your library.');
         return;
       }
     }

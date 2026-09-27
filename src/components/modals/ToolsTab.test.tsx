@@ -9,6 +9,7 @@ import { TOOL_CATALOG } from '@/lib/tools/toolCatalog';
 import { withCatalogOverrides } from '@/lib/tools/catalogOverrides';
 import { toolsOfferedTo } from '@/lib/tools/toolOffer';
 import { PROMPT_TAB_REQUESTS, REQUEST_LABELS } from '@/lib/promptGroups';
+import { toastTexts } from '@/test/toastText';
 
 const toast = vi.hoisted(() => ({ info: vi.fn(), success: vi.fn(), error: vi.fn(), warn: vi.fn() }));
 vi.mock('react-toastify', () => ({ toast, ToastContainer: () => null }));
@@ -389,7 +390,7 @@ describe('import and export', () => {
     const transfer: ToolFileTransfer = { writeExportPack: vi.fn(), readImportPack: vi.fn(async () => '{"templates":[]}') };
     render(<Harness initial={userState()} fileTransfer={transfer} />);
     await user.click(screen.getByRole('button', { name: 'Import Tools' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('That file isn’t a Formamorph Tool pack.'));
+    await waitFor(() => expect(toastTexts(toast.error)).toContain('That file isn’t a Formamorph Tool pack.View Details →'));
     expect(current().tools).toEqual([]);
   });
 });

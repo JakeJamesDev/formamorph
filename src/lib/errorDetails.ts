@@ -50,15 +50,27 @@ function stackFrames(error: Error): string[] {
   return stack.split('\n').filter((line) => /^\s+at\s/.test(line) || /@.*:\d+:\d+$/.test(line)).slice(0, MAX_STACK_FRAMES);
 }
 
-function builtDetails(error: Error): string {
+function chainLines(error: unknown): string[] {
   const lines = [describe(error)];
+  const own = ownDetails(error);
+  if (own) lines.push(own);
   const seen = new Set<unknown>([error]);
-  for (let cause = error.cause; cause !== undefined && !seen.has(cause); cause = field(cause, 'cause')) {
+  for (let cause = field(error, 'cause'); cause !== undefined && !seen.has(cause); cause = field(cause, 'cause')) {
     if (seen.size > MAX_CAUSES) { lines.push('Caused by: …'); break; }
     seen.add(cause);
     lines.push(`Caused by: ${describe(cause)}`);
     const details = ownDetails(cause);
     if (details) lines.push(details);
+  }
+  return lines;
+}
+
+function builtDetails(error: Error): string {
+  const lines = chainLines(error);
+  // An AggregateError's failures each keep their own name and details.
+  const failures = field(error, 'errors');
+  if (Array.isArray(failures)) {
+    failures.forEach((failure, i) => lines.push('', `Failure ${i + 1} of ${failures.length}:`, ...chainLines(failure)));
   }
   const frames = stackFrames(error);
   if (frames.length) lines.push('', 'Stack:', ...frames);

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type SetStateAction } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
 import { FieldColumn } from './FieldColumn';
@@ -98,7 +99,9 @@ const EntityEditorModal = ({
         setEntity(e);
         baselineRef.current = canon(e);
       })
-      .catch(() => { if (!cancelled) { toast.error('Could not load character.'); onCloseRef.current(); } });
+      .catch((error: unknown) => {
+        if (!cancelled) { toastError(error, { headline: 'Could not load character.' }); onCloseRef.current(); }
+      });
     return () => { cancelled = true; };
   }, [entityId, draft]);
 
@@ -158,8 +161,8 @@ const EntityEditorModal = ({
       detailsBaselineRef.current = canon(libraryDetails);
       toast.success('Character saved!');
       return true;
-    } catch {
-      toast.error('Could not save character.');
+    } catch (error) {
+      toastError(error, { headline: 'Could not save character.' });
       return false;
     }
   };
@@ -172,7 +175,7 @@ const EntityEditorModal = ({
       // A chip in the name would otherwise put a raw placement id in the filename.
       downloadBlob(blob, `${labelPlaceholders(entity.name, pool, { letters }) || 'Character'}.webp`);
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Could not export the entity.');
     }
   };
 

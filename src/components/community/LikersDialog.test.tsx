@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { LikersDialog } from './LikersDialog';
 import { UserProfileContext } from '@/contexts/userProfileStore';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -226,7 +227,7 @@ describe('removing one like', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Remove the like by wren_hallow' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('You cannot moderate them'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot moderate themView Details →'));
     expect(screen.getByText('wren_hallow')).toBeTruthy();
     expect(screen.getByText(/^1 like/)).toBeTruthy();
   });
@@ -487,7 +488,7 @@ describe('auditing the network record behind the likes', () => {
     show();
     await pressAudit();
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Staff only'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Staff onlyView Details →'));
     expect(screen.getByText('wren_hallow')).toBeTruthy();
   });
 
@@ -777,7 +778,7 @@ describe('the Anonymous Likes on a listing', () => {
     fireEvent.click(await screen.findByRole('button', { name: /from this address/ }));
     await confirm();
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('You cannot moderate them'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('You cannot moderate themView Details →'));
     expect(markEls()).toHaveLength(2);
   });
 

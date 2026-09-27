@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
 import { ActionIcon } from '@/lib/actionIcons';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { filesFrom } from '@/lib/importFiles';
 import { useResetOnOpen } from '@/lib/useResetOnOpen';
@@ -242,7 +243,7 @@ export function StatCodeTemplateDialog({
     try {
       setUserTemplates(await repository.list());
     } catch (error) {
-      toast.error(`Couldn’t read your templates: ${(error as Error).message}`);
+      toastError(error, { headline: `Couldn’t read your templates: ${(error as Error).message}` });
     }
   }, [repository]);
 
@@ -299,7 +300,7 @@ export function StatCodeTemplateDialog({
       setDraft(null);
       toast.success('Template saved');
     } catch (error) {
-      toast.error(`Couldn’t save: ${(error as Error).message}`);
+      toastError(error, { headline: `Couldn’t save: ${(error as Error).message}` });
     }
   };
 
@@ -310,7 +311,7 @@ export function StatCodeTemplateDialog({
       await refresh();
       setSelectedId(builtIns[0].id);
     } catch (error) {
-      toast.error(`Couldn’t delete: ${(error as Error).message}`);
+      toastError(error, { headline: `Couldn’t delete: ${(error as Error).message}` });
     }
   };
 
@@ -336,7 +337,7 @@ export function StatCodeTemplateDialog({
         ? `Imported ${added} template${added === 1 ? '' : 's'}`
         : 'Those templates are already in your library');
     } catch (error) {
-      toast.error((error as Error).message);
+      toastError(error, 'Couldn’t import those templates');
     }
   };
 

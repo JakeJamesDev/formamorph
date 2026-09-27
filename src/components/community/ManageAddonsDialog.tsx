@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -152,14 +153,17 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
     setSaving(true);
     const failed: Record<string, ReviewState> = {};
     const refused: string[] = [];
+    const errors: Error[] = [];
     for (const [componentId, state] of Object.entries(sent)) {
       try {
         await WorldStorageService.setAddonReview(worldId, componentId, state);
-      } catch {
+      } catch (error) {
         // A refused write stays staged and is named. Clearing it would report a decision the server never
         // recorded.
         failed[componentId] = state;
-        refused.push(rows.find((row) => row.id === componentId)?.name ?? componentId);
+        const name = rows.find((row) => row.id === componentId)?.name ?? componentId;
+        refused.push(name);
+        errors.push(new Error(name, { cause: error }));
       }
     }
 
@@ -178,7 +182,12 @@ export function ManageAddonsDialog({ open, onOpenChange, world }: ManageAddonsDi
 
     const saved = Object.keys(sent).length - refused.length;
     if (saved > 0) toast.success(`Saved ${saved} decision${saved === 1 ? '' : 's'}.`);
-    if (refused.length) toast.error(`Could not save: ${refused.join(', ')}. Try again.`);
+    if (refused.length) {
+      toastError(
+        new AggregateError(errors, 'Add-on reviews failed'),
+        { headline: `Could not save: ${refused.join(', ')}. Try again.` },
+      );
+    }
   };
 
   // Closing discards the stage, so an unsaved review asks first. Discard Changes is the deliberate exit

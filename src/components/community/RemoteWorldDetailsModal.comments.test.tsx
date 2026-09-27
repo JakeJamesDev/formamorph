@@ -40,6 +40,7 @@ vi.mock('@/components/prompt/PromptField', () => ({
  */
 
 const toast = vi.mocked(await import('react-toastify')).toast;
+const { toastTexts } = await import('@/test/toastText');
 
 const world = (over: Record<string, unknown> = {}): WorldRecord => ({
   id: 'w1',
@@ -241,7 +242,7 @@ describe('rewriting one’s own comment', () => {
     fireEvent.change(screen.getByLabelText('Comment text'), { target: { value: 'Sanitized.' } });
     fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Not authorized'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Not authorizedView Details →'));
     // The editor stays open over the failed draft rather than discarding it, and the comment behind it
     // is untouched — backing out shows the words that are still stored.
     expect((screen.getByLabelText('Comment text') as HTMLTextAreaElement).value).toBe('Sanitized.');
@@ -311,7 +312,7 @@ describe('taking one down', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /confirm/i }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Not authorized'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Not authorizedView Details →'));
     expect(screen.getByText('A fine place to drown.')).toBeTruthy();
     expect(screen.getByText('Comments (1)')).toBeTruthy();
   });

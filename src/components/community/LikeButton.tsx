@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/ui/tooltip";
@@ -45,7 +45,7 @@ export function LikeButton({ likes, liked, onToggle, onOpenLikers, size = 'sm', 
     try {
       await onToggle(!liked);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to change that');
+      toastError(error, 'Failed to change that');
     } finally {
       setIsBusy(false);
     }

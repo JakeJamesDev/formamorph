@@ -1,6 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { ReportDialog } from './ReportDialog';
 import ReportService, { AlreadyReportedError } from '@/services/ReportService';
 
@@ -151,7 +152,7 @@ describe('reporting the same thing twice', () => {
     await pickCategory('Spam or scam');
     fireEvent.click(screen.getByRole('button', { name: 'Send Report' }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Network down'));
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Network downView Details →'));
     // Still on the form, with the draft intact, because the send is worth retrying.
     expect(screen.getByRole('button', { name: 'Send Report' })).toBeTruthy();
   });

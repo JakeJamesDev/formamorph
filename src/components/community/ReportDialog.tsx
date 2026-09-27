@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Flag } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -101,7 +102,7 @@ export function ReportDialog({ open, onOpenChange, target }: ReportDialogProps) 
         return;
       }
 
-      toast.error((e as Error).message || 'Failed to send this report');
+      toastError(e, 'Failed to send this report');
     } finally {
       setIsSending(false);
     }

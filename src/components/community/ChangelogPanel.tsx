@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -57,7 +57,7 @@ export function ChangelogPanel({ worldId, entries, onEntriesChange, canEdit }: C
       await WorldStorageService.deleteChangelogEntry(worldId, entry.id);
       onEntriesChange(entries.filter((e) => e.id !== entry.id));
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete the entry');
+      toastError(error, 'Failed to delete the entry');
     }
   };
 

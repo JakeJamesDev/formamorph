@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { EyeOff, HeartOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,7 +68,7 @@ export function UserLikesTab({ userId, username, canModerateAccount, onOpenListi
       setTotal(0);
       toast.success(`Removed ${removed} ${removed === 1 ? 'like' : 'likes'}`);
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to clear their likes');
+      toastError(e, 'Failed to clear their likes');
     } finally {
       setIsClearing(false);
     }
