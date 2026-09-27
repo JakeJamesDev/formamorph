@@ -63,7 +63,7 @@ Three more problems follow from this:
 
 27. As an author, I want to mark a persona as persona-only, so that Custom Character exists only when the player picks it.
 28. As a player who picks Albus, I want Custom Character absent from the world, so that I never meet an empty player slot in the cast.
-29. As a player, I want a persona-only entity's openings to count only while it is picked, so that its openings never run for someone else.
+29. As a player, I want a persona-only entity's openings never to draw, so that its openings never run for someone else. Picked, it is the played entity and persona story 54 keeps it out; unpicked, it is absent (Q80).
 
 ### Bearers in play
 
@@ -188,7 +188,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 - Entity pages and the in-game Traits tab show the bearer tree in author order, with links and owned traits together.
 - The player picks a cast entity's link defaults under the existing owned-trait rules. Toggling in play follows the original's Player Can Toggle for every bearer (Q52).
 - A persona switch in play applies the new persona's active linked stat traits and reverses the old one's, through the honest reversal path, like traits turning on and off (Q53).
-- The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool.
+- The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool. A persona-only entity's openings therefore never draw (Q80). The Persona-only switch shows in the world entity editor only; a library entity is never in a cast (Q81).
 
 ### AI context
 
@@ -287,6 +287,8 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q77 | The player's own placeholders follow the persona; None means the world's. |
   | Q78 | Pins list: link rows edit the link's value; conflicts between pins that can lay in one text (one bearer, or player vs cast entity). |
   | Q79 | A cast entity's text: world pins, then the player's trait pins, then its own on top. |
+  | Q80 | Persona story 54 stands: a persona-only entity's openings never draw. |
+  | Q81 | The Persona-only switch is in the world entity editor only. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
