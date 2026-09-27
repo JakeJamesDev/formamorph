@@ -479,7 +479,7 @@ export class InvokeHttpError extends Error {
   readonly status: number;
   /** The Error Details text: the request, the status and the body. */
   readonly details: string;
-  constructor(status: number, details = '') {
+  constructor(status: number, details: string) {
     super(`HTTP ${status}`);
     this.name = 'InvokeHttpError';
     this.status = status;

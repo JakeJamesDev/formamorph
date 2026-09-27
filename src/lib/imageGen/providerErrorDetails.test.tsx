@@ -43,12 +43,16 @@ async function failure(provider: ImageProviderId, endpointUrl = 'http://127.0.0.
   throw new Error(`${provider} did not fail`);
 }
 
-const cases: { provider: ImageProviderId; status: number; statusText: string; body: string; message: string }[] = [
-  { provider: 'a1111', status: 422, statusText: 'Unprocessable Entity', body: A1111_BODY, message: 'HTTP 422' },
-  { provider: 'openai', status: 400, statusText: '', body: OPENAI_BODY, message: 'HTTP 400' },
+const cases: { provider: ImageProviderId; status: number; statusText: string; body: string; message: string; statusLine: string }[] = [
+  {
+    provider: 'a1111', status: 422, statusText: 'Unprocessable Entity', body: A1111_BODY,
+    message: 'HTTP 422', statusLine: 'Status: 422 Unprocessable Entity',
+  },
+  { provider: 'openai', status: 400, statusText: '', body: OPENAI_BODY, message: 'HTTP 400', statusLine: 'Status: 400' },
   {
     provider: 'invokeai', status: 422, statusText: 'Unprocessable Entity', body: INVOKE_BODY,
-    message: `InvokeAI rejected the batch: ${JSON.stringify(JSON.parse(INVOKE_BODY).detail)}`,
+    message: 'InvokeAI rejected the batch: [{"loc":["body","batch","graph"],"msg":"cfg_scale must be <= 200"}]',
+    statusLine: 'Status: 422 Unprocessable Entity',
   },
 ];
 
@@ -60,13 +64,13 @@ afterEach(() => {
   });
 });
 
-describe.each(cases)('$provider refusal', ({ provider, status, statusText, body, message }) => {
+describe.each(cases)('$provider refusal', ({ provider, status, statusText, body, message, statusLine }) => {
   it('keeps its short message and puts the status and the body in the details', async () => {
     stubRefusal(status, statusText, body);
     const error = await failure(provider);
 
     expect(error.message).toBe(message);
-    expect(error.details).toContain(`Status: ${[status, statusText].filter(Boolean).join(' ')}`);
+    expect(error.details).toContain(statusLine);
     expect(error.details).toContain(`Response:\n${body}`);
   });
 
