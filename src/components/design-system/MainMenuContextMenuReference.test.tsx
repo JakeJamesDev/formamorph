@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MainMenuContextMenuReference } from './MainMenuContextMenuReference';
@@ -88,15 +88,13 @@ describe('main menu context menu reference', () => {
     renderReference();
     openSampleMenu();
 
-    const rows = [...screen.getByRole('menu').querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="separator"]')];
-    const sections = rows.reduce<Element[][]>((all, row) => {
-      if (row.getAttribute('role') === 'separator') all.push([]);
-      else all[all.length - 1].push(row);
-      return all;
-    }, [[]]);
-    const last = sections[sections.length - 1];
+    const menu = screen.getByRole('menu');
+    const lastSeparator = within(menu).getAllByRole('separator').at(-1)!;
+    const last = within(menu).getAllByRole('menuitem')
+      .filter((row) => lastSeparator.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING);
 
     expect(last.map((row) => row.textContent?.trim())).toEqual(['Check for Updates', 'Set as Default Persona', 'Delete']);
+    // The icon is decorative, so no accessible name carries it.
     for (const row of last) expect(row.querySelector('svg')).not.toBeNull();
   });
 
