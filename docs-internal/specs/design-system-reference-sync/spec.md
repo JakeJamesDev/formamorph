@@ -35,7 +35,7 @@ Each drifted reference shows what production does today, and the guide says the 
 2. As a UI author, I want every tab in every reference strip to open a body that says what it holds, so that switching tabs shows a real change.
 3. As a UI author, I want the section heading to state the entity strip's real tab count, so that the reference does not contradict what it renders.
 4. As a UI author, I want the guide's tab table to list Profile, Descriptions, Traits, Openings, and Placeholders for the entity panel, so that I know the current grouping.
-5. As a UI author, I want the guide to say which entity tabs are Advanced-only and which are World Editor-only, so that I know why the library editor shows fewer.
+5. As a UI author, I want the guide to say which entity tabs are Advanced-only and which ones the library entity editor lifts onto its top strip, so that I know why its sub-strip shows fewer.
 6. As a UI author, I want the guide's width figures to match the five-tab strip at 375px and in the half-width pane, so that the label breakpoints are justified by current numbers.
 7. As a UI author, I want the guide to say which strip shares the stat panel's width case, so that the reason the stat strip is left out stays true.
 8. As a maintainer, I want a test that fails when a panel registry gains a tab with no reference body, so that the next added tab cannot open an empty panel.
@@ -101,7 +101,7 @@ Each drifted reference shows what production does today, and the guide says the 
 
 - **Scope.** Six references and their guide sections change: Panel Tab Strip, Grouped Context Actions, Aligned Settings Stack, Narration Turn, Built-in Placeholder chips (in Focused Markdown Authoring), and Image-Led Community Creation Cards. The other seven references stay as they are.
 - **Panel Tab Strip reference.** The entity strip keeps rendering the full production registry, which is the World Editor's Advanced set. Body text stays one map per registry, and it gains entries for Traits and Openings. The heading becomes "Five Tabs". The sections stay in descending tab count: five, four, three, two.
-- **Panel Tab Strip guide.** The table lists Entity as Profile · Descriptions · Traits · Openings · Placeholders. Openings and Placeholders are Advanced-only. Traits is World Editor-only, and the library editor's strip leaves it out. Width figures are measured again at 375px and in the half-width pane between `md` and `xl`, and replace the three-tab figures. The label breakpoints themselves do not change unless the measurements show a label now fits or overflows where it did not before. The sentence that leaves the stat strip out now names the trait strip as its width twin: both have three equal columns.
+- **Panel Tab Strip guide.** The table lists Entity as Profile · Descriptions · Traits · Openings · Placeholders. Openings and Placeholders are Advanced-only. The library entity editor moves Traits and Placeholders onto its own top strip, so its Entity sub-strip shows Profile, Descriptions, and Openings. Width figures are measured again at 375px and in the half-width pane between `md` and `xl`, and replace the three-tab figures. The label breakpoints themselves do not change unless the measurements show a label now fits or overflows where it did not before. The sentence that leaves the stat strip out now names the trait strip as its width twin: both have three equal columns.
 - **Grouped Context Actions rule.** The rule changes as follows:
   - The item's own actions form the final section.
   - Each item action carries an icon.
