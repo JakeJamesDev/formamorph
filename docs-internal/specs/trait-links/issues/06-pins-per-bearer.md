@@ -29,3 +29,7 @@ An NPC's pins apply only in that NPC's own text. World-level text resolves with 
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**From ticket 01 (2026-09-27, commit 72f20e90).** A bearer-relative pin keeps `placeholderId` as `''` and names its target in `bearerPlaceholder`. The collector does not read it yet; this ticket owns that.
