@@ -40,10 +40,10 @@ import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
-import { gateStates, neverUnlockable, settleDefaults, worldGateInput, type GateState } from '@/lib/traitGates';
+import { gateStates, neverUnlockable, settleDefaults, worldGateInput } from '@/lib/traitGates';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
-  Trait, TraitRequirement, World,
+  Trait, World,
 } from '@/types';
 
 /**
@@ -1674,10 +1674,10 @@ const traitGroupTooSmall: Rule = {
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
 interface GateReport {
-  /** Each trait's gate with no persona and nothing active, for its requirement texts. */
-  states: Map<string, GateState>;
-  /** Trait id → its requirements whose target this world no longer has. */
-  unresolved: Map<string, TraitRequirement[]>;
+  /** Trait id → each requirement as its editor chip reads, quoted. */
+  requirementTexts: Map<string, string[]>;
+  /** Trait id → the requirements whose target this world no longer has, quoted. */
+  unresolved: Map<string, string[]>;
   /** Never-unlockable sets, with a trait behind a deleted target counted as openable. */
   stuck: string[][];
   /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
@@ -1693,42 +1693,40 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   let report = gateReportsByWorld.get(world);
   if (report) return report;
   const traits = world.traits ?? [];
-  const groups = world.traitGroups ?? [];
-  const entities = (world.entities ?? []).map((e) => ({ id: e.id, name: e.name ?? '', persona: e.persona }));
-  const states = gateStates(worldGateInput({ traits, groups, entities }, { source: 'none' }));
-  const unresolved = new Map<string, TraitRequirement[]>();
-  for (const t of traits) {
-    const dead = (t.requires ?? []).filter((_, i) => states.get(t.id)?.requirements[i]?.unresolved);
-    if (dead.length) unresolved.set(t.id, dead);
+  const gateInput = (withTraits: readonly Trait[]) => worldGateInput({
+    traits: withTraits,
+    groups: world.traitGroups ?? [],
+    entities: (world.entities ?? []).map((e) => ({ id: e.id, name: e.name ?? '', persona: e.persona })),
+  }, { source: 'none' });
+  const label = (text: string) => quote(labelPlaceholders(text, allPlaceholders(world), { letters: lettersOf(world) }));
+
+  const requirementTexts = new Map<string, string[]>();
+  const unresolved = new Map<string, string[]>();
+  for (const [id, state] of gateStates(gateInput(traits))) {
+    requirementTexts.set(id, state.requirements.map((r) => label(r.text)));
+    const dead = state.requirements.filter((r) => r.unresolved).map((r) => label(r.text));
+    if (dead.length) unresolved.set(id, dead);
   }
 
-  const openable = traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t));
-  const input = worldGateInput({ traits: openable, groups, entities }, { source: 'none' });
+  const input = gateInput(traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t)));
   const stuck = neverUnlockable(input);
   const stuckIds = new Set(stuck.flat());
   const choices: PersonaRef[] = [
     { source: 'none' },
-    ...entities.filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
+    ...input.entities.filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
   ];
   const offUnder = choices.map((persona) => new Set(settleDefaults({ ...input, persona }).turnedOff.map((r) => r.traitId)));
   const offDefaults = traits
     .filter((t) => !stuckIds.has(t.id) && offUnder.every((off) => off.has(t.id)))
     .map((t) => t.id);
 
-  report = { states, unresolved, stuck, offDefaults };
+  report = { requirementTexts, unresolved, stuck, offDefaults };
   gateReportsByWorld.set(world, report);
   return report;
 };
 
 const traitItem = (id: string, world: RuleWorld): FindingItem =>
   namedItem(id, (world.traits ?? []).find((t) => t.id === id)?.name, world);
-
-/** A deleted target as the finding names it: the stored name when there is one, else its kind. */
-const deadTargetText = (req: TraitRequirement): string => {
-  if (req.kind === 'trait') return req.name ? quote(req.name) : 'a trait';
-  if (req.kind === 'group') return req.name ? `any trait in ${quote(req.name)}` : 'a trait group';
-  return req.name ? `playing as ${quote(req.name)}` : 'a persona';
-};
 
 const traitRequirementNeverUnlockable: Rule = {
   id: 'trait-requirement-never-unlockable',
@@ -1739,7 +1737,7 @@ const traitRequirementNeverUnlockable: Rule = {
     const items = set.map((id) => traitItem(id, world));
     return finding(
       traitRequirementNeverUnlockable,
-      `${listNames(items.map((i) => quote(i.name)))} can never unlock — no chain of requirements reaches a trait or persona that opens them`,
+      `${listNames(items.map((i) => quote(i.name)))} can never unlock — no pick or persona can meet ${items.length === 1 ? 'its' : 'their'} requirements`,
       items,
     );
   }),
@@ -1754,7 +1752,7 @@ const traitRequirementUnresolved: Rule = {
     const item = traitItem(id, world);
     return finding(
       traitRequirementUnresolved,
-      `${quote(item.name)} requires ${listNames(dead.map(deadTargetText))}, which this world no longer has`,
+      `${quote(item.name)} requires ${listNames(dead)}, which this world no longer has`,
       [item],
     );
   }),
@@ -1766,13 +1764,12 @@ const traitDefaultGated: Rule = {
   section: 'traits',
   summary: (count) => `${count} default traits start unselected because their requirements aren’t met`,
   check: (world) => {
-    const { offDefaults, states } = gateReportOf(world);
+    const { offDefaults, requirementTexts } = gateReportOf(world);
     return offDefaults.map((id) => {
       const item = traitItem(id, world);
-      const needs = (states.get(id)?.requirements ?? []).map((r) => quote(r.text)).join(' or ');
       return finding(
         traitDefaultGated,
-        `${quote(item.name)} is marked default but starts unselected — it requires ${needs}, and no default that starts selected meets that`,
+        `${quote(item.name)} is marked default but starts unselected — no starting default or persona choice meets ${(requirementTexts.get(id) ?? []).join(' or ')}`,
         [item],
       );
     });
