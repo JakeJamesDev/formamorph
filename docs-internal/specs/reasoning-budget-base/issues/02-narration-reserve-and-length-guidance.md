@@ -1,6 +1,6 @@
 # 02: Narration Reserve and Length Guidance
 
-Status: in-progress
+Status: ready-for-human
 Base: ae2cdfc7
 Blocked by: 01 — Budget Function and Request Body
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -16,11 +16,11 @@ Workload rationale: a contained change in the narration context path with two te
 
 ## Acceptance criteria
 
-- [ ] With reasoning on for narration, the reserve equals the total cap from ticket 01's function. With reasoning off, it equals the answer cap, as today.
-- [ ] Override off keeps today's behavior: no reserve and no guidance.
-- [ ] The endpoint's Max Output moves both the reserve and the length guidance, and both come from the request's own answer-cap resolution.
-- [ ] One test for the reserve with reasoning on and off. One test that the endpoint's Max Output moves both numbers.
-- [ ] Four gates green.
+- [x] With reasoning on for narration, the reserve equals the total cap from ticket 01's function. With reasoning off, it equals the answer cap, as today.
+- [x] Override off keeps today's behavior: no reserve and no guidance.
+- [x] The endpoint's Max Output moves both the reserve and the length guidance, and both come from the request's own answer-cap resolution.
+- [x] One test for the reserve with reasoning on and off. One test that the endpoint's Max Output moves both numbers.
+- [x] Four gates green.
 
 ## Comments
 
