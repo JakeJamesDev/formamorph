@@ -21,4 +21,4 @@ Recommended model rationale: one fixture, one test, one guide line against a shi
 - [x] The guide states the flagged-path rule; new copy has a Writing review entry
 - [x] The showcase registry test passes
 - [ ] Four gates green; verified in the showcase at desktop and 375px, both themes
-  - Showcase verified. Typecheck and build are green. Full `npm test` failed on 5-second timeouts under about 50 node processes; the failed files pass serially. Lint fails only on ticket 06's in-progress `PromptChipsReference.test.tsx`. Rerun the full gates when the machine is quiet.
+  - Showcase verified. Typecheck, lint, and build are green. Full `npm test` failed on 5-second timeouts under about 50 node processes; the failed files pass serially. Rerun `npm test` when the machine is quiet.
