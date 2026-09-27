@@ -185,7 +185,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ### Enter-world and play
 
-- Entity pages and the in-game Traits tab show the bearer tree in author order, with links and owned traits together.
+- Entity pages and the in-game Traits tab show the bearer tree in author order, with links and owned traits together. Under None or a library persona, Custom Persona's links merge into the player's root categories with no separate heading (Q83). A played persona's link to an original the root already offers shows once, at the root, with one stat record; the Test Bench reports it as redundant (Q84).
 - The player picks a cast entity's link defaults under the existing owned-trait rules. Toggling in play follows the original's Player Can Toggle for every bearer (Q52).
 - A persona switch in play applies the new persona's active linked stat traits and reverses the old one's, through the honest reversal path, like traits turning on and off (Q53).
 - The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool. A persona-only entity's openings therefore never draw (Q80). The Persona-only switch shows in the world entity editor only; a library entity is never in a cast (Q81).
@@ -290,6 +290,8 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q80 | Persona story 54 stands: a persona-only entity's openings never draw. |
   | Q81 | The Persona-only switch is in the world entity editor only. |
   | Q82 | In the conflict note a Persona-marked entity's traits count as both its own and the player's, so they rival every cast entity's; the cast entity wins in its own text. |
+  | Q83 | Under None or a library persona, Custom Persona's links merge into the player's root categories; no separate heading. |
+  | Q84 | The player is one bearer, so Q64 applies to the union: an original held at the root and through the played persona's link shows once (root wins), holds one stat record, and the Test Bench reports the redundant link. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
