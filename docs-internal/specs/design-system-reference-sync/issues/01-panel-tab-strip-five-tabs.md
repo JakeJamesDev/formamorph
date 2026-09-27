@@ -1,6 +1,7 @@
 # 01: Panel Tab Strip shows five entity tabs and the guide matches
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: c8a7f81d
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -17,11 +18,16 @@ Recommended model rationale: reference and guide edits against settled registrie
 
 ## Acceptance criteria
 
-- [ ] Every tab in the entity, location, trait, and dictionary entry strips opens a body with text
-- [ ] The entity section heading says "Five Tabs" and the sections run five, four, three, two
-- [ ] The guide's tab table, Advanced-only note, library top-strip note, width figures, and stat-strip sentence match the registries and the new measurements
-- [ ] A test fails when a registry gains a tab with no body entry, proven by removing one entry
-- [ ] A test fails when a heading's count disagrees with its registry, proven by changing one heading
-- [ ] The reference description still says what it shows and where to act; new copy has a Writing review entry
-- [ ] The existing width e2e specs and the showcase registry test pass
-- [ ] Four gates green; verified in the showcase at desktop and 375px, both themes
+- [x] Every tab in the entity, location, trait, and dictionary entry strips opens a body with text
+- [x] The entity section heading says "Five Tabs" and the sections run five, four, three, two
+- [x] The guide's tab table, Advanced-only note, library top-strip note, width figures, and stat-strip sentence match the registries and the new measurements
+- [x] A test fails when a registry gains a tab with no body entry, proven by removing one entry
+- [x] A test fails when a heading's count disagrees with its registry, proven by changing one heading
+- [x] The reference description still says what it shows and where to act; new copy has a Writing review entry
+- [x] The existing width e2e specs and the showcase registry test pass
+- [x] Four gates green; verified in the showcase at desktop and 375px, both themes
+
+## Comments
+
+- Width figures come from Playwright in the World Editor. Every drawn label fits: at `xl` the trigger is 114px and "Placeholders" draws 106px with its icon. So the breakpoints stay. The two-tab 157px figure is derived from the measured 314px strip interior.
+- The location `Meta` line lost "where each tab has less room", which became false; the entity line now says it.

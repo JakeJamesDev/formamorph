@@ -83,7 +83,7 @@ describe('panel tab strip reference', () => {
     }
   });
 
-  it('states each strip\'s real tab count in its heading, in descending order', () => {
+  it('states each strip\'s real tab count in its heading', () => {
     render(<PanelTabStripReference />);
 
     for (const [stripLabel, tabs] of REGISTRIES) {
@@ -93,6 +93,10 @@ describe('panel tab strip reference', () => {
       // A heading may name another property instead of a count; one that states a count must be right.
       if (stated !== -1) expect(stated, heading).toBe(tabs.length);
     }
+  });
+
+  it('runs the strips from most tabs to fewest', () => {
+    render(<PanelTabStripReference />);
 
     const counts = screen.getAllByRole('tablist').map((strip) => within(strip).getAllByRole('tab').length);
     expect(counts).toEqual([...counts].sort((a, b) => b - a));
