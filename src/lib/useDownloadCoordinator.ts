@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import WorldStorageService from "@/services/WorldStorageService";
 import { migrateWorld } from "@/lib/version";
 import { fetchCatalogContent } from "@/lib/fetchCatalogContent";
@@ -420,7 +421,7 @@ export function useDownloadCoordinator(
       }
     } catch (error) {
       console.error('Error downloading world:', error);
-      toast.error((error as Error).message || 'Failed to download world');
+      toastError(error, 'Failed to download world');
     } finally {
       // Clear the in-flight bar whether it succeeded or failed.
       setDownloadProgress((p) => { const next = { ...p }; delete next[worldId]; return next; });
@@ -475,8 +476,7 @@ export function useDownloadCoordinator(
     } catch (error) {
       // What the update would do to this copy's components is unknown, and writing anyway could discard
       // the player's own edits. Nothing is written.
-      toast.error((error as Error).message
-        || `Formamorph could not read what "${localName}" holds, so it was not updated.`);
+      toastError(error, `Formamorph could not read what "${localName}" holds, so it was not updated.`);
       return;
     }
 

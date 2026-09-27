@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Filesystem } from '@capacitor/filesystem';
-import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 
 interface FileExportPlugin {
   save(options: { uri: string; filename: string; mimeType: string }): Promise<void>;
@@ -58,9 +58,9 @@ async function saveFile(blob: Blob, filename: string): Promise<void> {
 export function downloadBlob(blob: Blob, filename: string): void {
   if (Capacitor.isNativePlatform()) {
     saveFile(blob, filename).catch((error: unknown) => {
-      // The plugin's own text names its internals, so the player gets ours and the log keeps the reason.
+      // The plugin's own text names its internals, so the headline is ours and Error Details keeps the reason.
       console.error('Failed to save an export:', error);
-      toast.error(`Could not save ${filename}.`);
+      toastError(error, { headline: `Could not save ${filename}.` });
     });
     return;
   }

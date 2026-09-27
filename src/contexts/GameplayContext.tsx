@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect, us
 import { putSaveRecord, getSaveRecord, getAllSaveRecords } from '../components/modals/dbUtils';
 import { findAutosaveId, AUTOSAVE_NAME } from '../lib/autosave';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { convertSaveFile, terminateWorker } from '../lib/saveConversionWorkerUtils';
 import { useTtsPlayback } from '../lib/useTtsPlayback';
 import { APP_VERSION, isSaveEnvelope, migrateSave, migrateLegacySaveState, stripSnapshotHistory } from '../lib/version';
@@ -328,7 +329,7 @@ function useProvideGameplay() {
       return true;
     } catch (error) {
       console.error('Error loading game state:', error);
-      toast.error('Failed to load game state');
+      toastError(error, { headline: 'Failed to load game state' });
       addSystemLogEntry('Failed to load game state');
       return false;
     }
@@ -383,7 +384,7 @@ function useProvideGameplay() {
     } catch (error) {
       console.error('Error saving game:', error);
       if (!isAutosave) {
-        toast.error('Failed to save game');
+        toastError(error, { headline: 'Failed to save game' });
         addSystemLogEntry('Failed to save game');
       }
       return false;
@@ -514,14 +515,7 @@ function useProvideGameplay() {
           return success;
         } catch (error) {
           console.error('Error converting old save format:', error);
-          toast.error('Failed to convert old save format. Some features may not work correctly.', {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true
-          });
+          toastError(error, { headline: 'Failed to convert old save format. Some features may not work correctly.' });
 
           addSystemLogEntry('Failed to convert old save format');
 
@@ -534,7 +528,7 @@ function useProvideGameplay() {
             return success;
           } catch (loadError) {
             console.error('Error loading game after conversion failure:', loadError);
-            toast.error('Failed to load game');
+            toastError(loadError, { headline: 'Failed to load game' });
             addSystemLogEntry('Failed to load game');
             return false;
           }
@@ -542,7 +536,7 @@ function useProvideGameplay() {
       }
     } catch (error) {
       console.error('Error loading game:', error);
-      toast.error('Failed to load game');
+      toastError(error, { headline: 'Failed to load game' });
       addSystemLogEntry('Failed to load game');
       return false;
     }

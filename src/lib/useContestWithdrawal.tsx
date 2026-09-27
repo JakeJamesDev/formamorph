@@ -1,5 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { Trophy } from 'lucide-react';
 import {
   AlertDialog,
@@ -55,10 +56,12 @@ export function useContestWithdrawal(onWithdrawn?: (listingId: string) => void):
       toast.success(`${pending.name} is out of the contest.`);
       onWithdrawn?.(pending.id);
     } catch (error) {
-      const failure = error as Error & { code?: string };
-      toast.error(failure.code === CONTEST_PLACED
-        ? 'A world that placed cannot be withdrawn. Delete the listing if you want it gone.'
-        : failure.message || 'Failed to withdraw the entry');
+      // A placed entry is a refusal, not a failure, so it stays a plain toast.
+      if ((error as { code?: string }).code === CONTEST_PLACED) {
+        toast.error('A world that placed cannot be withdrawn. Delete the listing if you want it gone.');
+      } else {
+        toastError(error, 'Failed to withdraw the entry');
+      }
     } finally {
       setBusy(false);
       setPending(null);

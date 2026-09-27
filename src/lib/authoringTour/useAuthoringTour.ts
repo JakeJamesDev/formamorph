@@ -6,7 +6,7 @@
  * first one.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import WorldStorageService from '@/services/WorldStorageService';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, useTutorialSeen } from '@/lib/tutorials';
@@ -161,7 +161,7 @@ export function useAuthoringTour({ worldId, world, api, save, showStep, onPlay }
   const applyExample = useCallback(() => {
     if (!canUseExample) return;
     Promise.resolve(step?.useExample?.(api, world, items ?? {}))
-      .catch((error: unknown) => toast.error((error as Error).message));
+      .catch((error: unknown) => toastError(error, 'Could not load the example.'));
   }, [canUseExample, step, api, world, items]);
 
   return {

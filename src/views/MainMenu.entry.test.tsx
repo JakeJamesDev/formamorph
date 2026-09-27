@@ -10,6 +10,7 @@ import { acceptAgeGate } from '@/lib/ageGate';
 import type { StoredWorldRecord } from '@/services/WorldStorageService';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona } from '@/lib/personaPick';
 import { saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import type { PersonaRef, WorldOverview } from '@/types';
@@ -214,7 +215,7 @@ describe('the retained entry draft', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
     expect(screen.queryByRole('button', { name: 'Remembered' })).not.toBeInTheDocument();
-    expect(toast.error).toHaveBeenCalledWith('Formamorph could not save these additions. Try again.');
+    expect(toastTexts(vi.mocked(toast.error))).toContain('Formamorph could not save these additions. Try again.View Details →');
     expect(screen.getByRole('checkbox', { name: 'Include Companion' })).toBeChecked();
     write.mockRestore();
     fireEvent.click(screen.getByRole('button', { name: 'Remember Additions' }));
@@ -560,8 +561,8 @@ describe('the retained entry draft', () => {
       : vi.spyOn(DictionaryStorageService, 'getDictionaryData').mockRejectedValueOnce(new Error('IndexedDB unavailable'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(
-      'Formamorph could not prepare those library additions. Try again.',
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain(
+      'Formamorph could not prepare those library additions. Try again.View Details →',
     ));
     expect(consoleError).toHaveBeenCalledWith(
       'Could not finalize enter-world library additions',

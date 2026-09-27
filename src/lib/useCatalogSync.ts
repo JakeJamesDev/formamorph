@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import WorldStorageService from "@/services/WorldStorageService";
 import AuthService from "@/services/AuthService";
 import { getCatalog, getCatalogAnonymousLikes, getCatalogTag, replaceCatalog } from "@/lib/worldCatalog";
@@ -112,7 +112,7 @@ export function useCatalogSync(
           result.anonymousLikes,
         );
       } else if (result.status === 'error' && !cached.length) {
-        toast.error(result.error || 'Failed to fetch worlds');
+        toastError(result.error, 'Failed to fetch worlds');
       }
       // 'unchanged': the rows already rendered are the answer. Nothing is written, and the tag beside
       // them still describes them.

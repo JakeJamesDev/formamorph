@@ -55,6 +55,7 @@ vi.mock('@/lib/uuid', () => ({ randomUUID: () => 'fixed' }));
 vi.mock('react-toastify', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import { toast } from 'react-toastify';
+import { toastTexts } from '@/test/toastText';
 import { useDownloadCoordinator } from './useDownloadCoordinator';
 
 // Drive the hook with a stateful `worlds` list so we can observe add vs replace.
@@ -588,7 +589,7 @@ describe('useDownloadCoordinator', () => {
       await act(async () => { result.current.coord.handleContextualDownload(remote, 'update'); });
       await act(async () => { result.current.coord.handleChooseOverwrite(); });
 
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Server said no'));
+      await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toContain('Server said noView Details →'));
       expect(result.current.coord.worldUpdateReview).toBeNull();
       expect(storeWorld).not.toHaveBeenCalled();
     });

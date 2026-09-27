@@ -1,4 +1,5 @@
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { planWriteBack, type LibrarySource, type LinkStamp, type WorldContent } from '@/lib/linkedContent';
 import { kindOf, loadLinkedSources, replaceLibraryItemContent, toLibraryItem } from '@/lib/librarySources';
 import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
@@ -30,7 +31,7 @@ export async function writeBackOwnedCopies(world: WorldToWriteBack): Promise<Lin
     sources = await loadLinkedSources(linkedIds);
   } catch (error) {
     console.error('Could not read your library:', (error as Error).message);
-    toast.error('Could not read your library, so nothing was written to it.');
+    toastError(error, { headline: 'Could not read your library, so nothing was written to it.' });
     return [];
   }
   const plan = planWriteBack(world, sources, (copy) => toLibraryItem(copy, world.placeholders, world.locations, world));
@@ -42,7 +43,7 @@ export async function writeBackOwnedCopies(world: WorldToWriteBack): Promise<Lin
       await replaceLibraryItemContent(kindOf(copy), source.id, content, revision);
       stamps.push({ id: copy.id, link: { ...copy.link, sourceName: content.name, sourceRevision: revision } });
     } catch (error) {
-      toast.error(`Could not write “${source.name}” to your library: ${(error as Error).message}`);
+      toastError(error, { headline: `Could not write “${source.name}” to your library: ${(error as Error).message}` });
     }
   }
   if (stamps.length) {

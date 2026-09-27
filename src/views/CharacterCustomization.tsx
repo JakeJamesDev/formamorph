@@ -17,7 +17,7 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { useBackStop } from '@/hooks/useBackStop';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { DEFAULT_AVATAR_ID, DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
-import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 
 const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
   onCharacterCustomized: (data: CharacterData) => void;
@@ -56,7 +56,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
       setSelectedModelId(model.id);
     } catch (err) {
       console.error('Failed to add model', err);
-      toast.error('Could not save that player avatar (storage may be full).');
+      toastError(err, { headline: 'Could not save that player avatar (storage may be full).' });
     }
   };
 
@@ -65,7 +65,7 @@ const CharacterCustomization = ({ onCharacterCustomized, onBack, onAbort }: {
       await ModelStorageService.deleteModel(id);
     } catch (err) {
       // The library refuses to drop its last avatar; surface why rather than failing the click silently.
-      toast.error((err as Error).message);
+      toastError(err, 'Could not delete that player avatar.');
       return;
     }
     if (selectedModelId === id) setSelectedModelId(worldOverview?.customPlayerVRM ? 'world' : DEFAULT_AVATAR_ID);

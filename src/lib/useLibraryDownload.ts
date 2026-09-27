@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { fetchCatalogContent } from "@/lib/fetchCatalogContent";
 import { randomUUID } from "@/lib/uuid";
 import { getDownloadState, type DownloadState } from "@/lib/downloadState";
@@ -112,7 +113,7 @@ export function useLibraryDownload<T extends { id?: string }>(target: LibraryTar
       toast.success(`"${listing.name || noun}" downloaded successfully`);
     } catch (error) {
       console.error(`Error downloading ${target.kind}:`, error);
-      toast.error((error as Error).message || `Failed to download ${noun.toLowerCase()}`);
+      toastError(error, `Failed to download ${noun.toLowerCase()}`);
     } finally {
       setDownloadProgress((p) => { const next = { ...p }; delete next[listingId]; return next; });
     }

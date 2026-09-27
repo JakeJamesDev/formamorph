@@ -16,6 +16,7 @@ import { MAIN_MENU_CARD_TABS, type MainMenuCardTab } from './mainMenuTabs';
 import { findSavesUsingModel } from '@/lib/modelUsage';
 import { DEFAULT_AVATAR_URL } from '@/lib/defaultAvatar';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button } from "@/components/ui/button";
@@ -620,7 +621,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       onLoadSaveGame(saveId);
     } catch (error) {
       console.error('Cold-load failed:', error);
-      toast.error("Couldn't load that save's world.");
+      toastError(error, { headline: "Couldn't load that save's world." });
     }
   };
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1288,7 +1289,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     try {
       backup = await readStPersonaFiles(backups[0], images);
     } catch (err) {
-      toast.error((err as Error).message);
+      toastError(err, 'Could not read that persona backup.');
       return;
     }
     const mode = await promptImagesBatch(backup.personas.flatMap((p) => entityImages(p.entity)), IMAGE_CAPS.entity);
@@ -1538,7 +1539,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       if (entryRequest.current === request) {
         entryStarted.current = false;
         console.error('Could not finalize enter-world library additions', error);
-        toast.error('Formamorph could not prepare those library additions. Try again.');
+        toastError(error, { headline: 'Formamorph could not prepare those library additions. Try again.' });
       }
     } finally {
       if (entryRequest.current === request) cancelEntryResolution();
@@ -1696,8 +1697,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       } else {
         toast.success(`This world's ${cached} linked image${cached === 1 ? '' : 's'} are available offline.`);
       }
-    } catch {
-      toast.error('Could not save the images for offline use');
+    } catch (error) {
+      toastError(error, { headline: 'Could not save the images for offline use' });
     } finally {
       setWarmingOffline(false);
     }
@@ -1751,7 +1752,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       toast.success('World duplicated successfully!');
     } catch (error) {
       console.error('Error duplicating world:', error);
-      toast.error('Failed to duplicate world');
+      toastError(error, { headline: 'Failed to duplicate world' });
     }
   };
 
@@ -1767,7 +1768,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       setShowWorldEditor(true);
     } catch (error) {
       console.error('Error creating new world:', error);
-      toast.error('Failed to create new world');
+      toastError(error, { headline: 'Failed to create new world' });
     }
   };
 
@@ -2802,7 +2803,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                           (error: unknown) => {
                             entryStarted.current = false;
                             console.error('Could not read the Quick Start persona', error);
-                            toast.error('Formamorph could not read that persona. Try again.');
+                            toastError(error, { headline: 'Formamorph could not read that persona. Try again.' });
                           },
                         );
                       }}
@@ -3039,7 +3040,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             setModels(prev => prev.filter(m => m.id !== modelToDelete));
           } catch (error) {
             // The library refuses to drop its last avatar; tell the player why rather than failing silently.
-            toast.error((error as Error).message);
+            toastError(error, 'Could not delete that player avatar.');
           } finally {
             setModelToDelete(null);
           }
@@ -3232,8 +3233,8 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             try {
               saveWorldAdditionDefaults(selectedWorld.id, entryDraft);
               return true;
-            } catch {
-              toast.error('Formamorph could not save these additions. Try again.');
+            } catch (error) {
+              toastError(error, { headline: 'Formamorph could not save these additions. Try again.' });
               return false;
             }
           }}

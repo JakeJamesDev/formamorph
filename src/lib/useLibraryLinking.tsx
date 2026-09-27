@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { HelpTopicModal } from '@/components/HelpButton';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import DictionaryEditorModal from '@/components/modals/DictionaryEditorModal';
@@ -231,7 +232,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {
-      toast.error((error as Error).message || 'Could not save to your library.');
+      toastError(error, 'Could not save to your library.');
     }
   }, [applyLink, locations, placeholders]);
 
@@ -446,7 +447,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         setImportReview({ kind, item, libraryDetails });
       }
     } catch (error) {
-      toast.error((error as Error).message || 'Could not read this file.');
+      toastError(error, 'Could not read this file.');
     }
   }, []);
 
@@ -462,7 +463,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         const source = await saveCopyToLibrary(item, placeholders, locations, libraryDetails, latest.current);
         entry = { kind, item: { ...item, link: linkToSource(source) }, source };
       } catch (error) {
-        toast.error((error as Error).message || 'Could not save to your library.');
+        toastError(error, 'Could not save to your library.');
         return;
       }
     }

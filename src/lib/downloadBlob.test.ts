@@ -20,6 +20,7 @@ vi.mock('@capacitor/filesystem', () => ({
 }));
 vi.mock('react-toastify', () => ({ toast: { error: bridge.toast } }));
 
+import { toastTexts } from '@/test/toastText';
 import { downloadBlob } from './downloadBlob';
 
 beforeEach(() => {
@@ -101,7 +102,7 @@ describe('downloadBlob', () => {
   it('reports native write failures and still cleans up', async () => {
     bridge.save.mockRejectedValue(new Error('Provider denied writing'));
     downloadBlob(new Blob(['{}']), 'world.json');
-    await vi.waitFor(() => expect(bridge.toast).toHaveBeenCalledWith('Could not save world.json.'));
+    await vi.waitFor(() => expect(toastTexts(bridge.toast)).toEqual(['Could not save world.json.View Details →']));
     expect(bridge.remove).toHaveBeenCalledOnce();
   });
 

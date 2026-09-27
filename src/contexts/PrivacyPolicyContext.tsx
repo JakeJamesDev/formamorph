@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
+import { toastError } from '@/lib/linkToast';
 import { PolicyDialog } from '@/components/menu/PolicyDialog';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { useAgeGate } from '@/contexts/AgeGateContext';
@@ -123,7 +124,7 @@ export function PrivacyPolicyProvider({ children }: { children: ReactNode }) {
       authenticationPrivacyResolved();
     } catch (error) {
       // Left open on failure: closing it would strand the account, still refused, with nothing on screen.
-      toast.error((error as Error).message || 'Failed to record your acceptance');
+      toastError(error, 'Failed to record your acceptance');
     } finally {
       setBusy(false);
     }

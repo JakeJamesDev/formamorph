@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, cleanup, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { toastTexts } from '@/test/toastText';
 import { markHelpSeen } from '@/lib/helpSeenStore';
 import { openingsEnabled } from '@/lib/openings';
 import type { Dictionary, Entity, World } from '@/types';
@@ -464,7 +465,7 @@ describe('Editing a copy of your own library item', () => {
     clickButton('Save');
 
     await waitFor(() => expect(ctx().isWorldDirty).toBe(false));
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('“Fen Lore”'));
+    expect(toastTexts(toast.error)).toContainEqual(expect.stringContaining('“Fen Lore”'));
     expect(library.dictionaries.get('lib-a')?.name).toBe('Fen Lore');
     // The copy did not write, so it still holds the revision it opened with and stays Linked.
     expect(ctx().dictionaries[0].link?.sourceRevision).toBe(REVISION);
