@@ -146,6 +146,7 @@ import { EventAckModal } from "@/components/events/EventAckModal";
 import FeedbackService from "@/services/FeedbackService";
 import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
+import { onSignInSucceeded, requestSignIn } from "@/lib/signInStore";
 import { PublishModal } from "@/components/menu/PublishModal";
 import { entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
 import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
@@ -490,7 +491,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // to stay in the footer rather than collapsing into the ⋯ menu — an update offer nobody opens is no offer.
   const canUpdate = updateBridge() !== null;
   // The age attestation every community surface waits on (see AgeGateContext).
-  const { attested, gateOpen, requireAttestation, requireAuthentication } = useAgeGate();
+  const { attested, gateOpen, requireAttestation } = useAgeGate();
 
   /**
    * Open Community Creations, asking for the age attestation first.
@@ -519,7 +520,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     // The add-on review hangs off a published world, so this route opens the catalog and lands there too.
     if (devRoute?.modal === 'manageAddons') openCommunityBrowser();
     if (devRoute?.modal === 'profile') setShowProfileDialog(true);
-    if (devRoute?.modal === 'auth') setShowAuthDialog(true);
     if (devRoute?.modal === 'feedbackHub') setShowFeedback(true);
     if (devRoute?.modal === 'adminPanel') setShowAdminPanel(true);
     if (devRoute?.modal === 'worldEditor' || devRoute?.modal === 'replaceSource') setShowWorldEditor(true);
@@ -658,7 +658,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // Shared auth identity (header, publish gating, community browser). The login/profile forms live in AuthModals.
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<WorldRecord | null>(null);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showProfileDialog, setShowProfileDialog] = useState(false);
   // Bumped when another tab signs in, so the identity below is re-read rather than left as this tab
   // found it. Signing in on formamorph.ai writes the same storage keys this build reads.
@@ -1919,6 +1918,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     setUnreadMessages(0);
   }), []);
 
+  // The sign-in dialog is shared by every view, so a sign-in raised from Error Details lands here too.
+  useEffect(() => onSignInSucceeded(() => {
+    setIsAuthenticated(true);
+    setCurrentUser(AuthService.getCurrentUser());
+  }), []);
+
   // Signing in is raised from more than this screen's dialog too: /login on the site writes the same
   // session, and this tab has to show it without a reload. The check above does the adopting — it is
   // already the one path that waits on the age attestation and refreshes the profile.
@@ -2493,7 +2498,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 // An account is what unlocks profiles and comments, so signing up sits behind the same
                 // attestation the browser does. A player who already attested is not asked twice.
                 if (isAuthenticated) setShowProfileDialog(true);
-                else requireAuthentication({ onAccept: () => setShowAuthDialog(true) });
+                else requestSignIn();
               }}
               aria-label={
                 isAuthenticated
@@ -3245,14 +3250,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       {/* Community-server dialogs (auth, publish, world browser) — omitted entirely in the hosted build. */}
       {COMMUNITY_ENABLED && (
         <>
-          {/* Auth + Profile dialogs (login/register + change password/logout) */}
+          {/* Profile dialogs (change password/logout). Sign-in is the app-wide SignInHost. */}
           <AuthModals
-            showAuthDialog={showAuthDialog}
-            setShowAuthDialog={setShowAuthDialog}
             showProfileDialog={showProfileDialog}
             setShowProfileDialog={setShowProfileDialog}
             currentUser={currentUser}
-            onAuthenticated={() => { setIsAuthenticated(true); setCurrentUser(AuthService.getCurrentUser()); }}
             onAvatarChanged={() => setCurrentUser(AuthService.getCurrentUser())}
             onLogout={handleLogout}
             onUnreadChange={setUnreadMessages}
@@ -3292,7 +3294,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             onListingOpened={handleListingOpened}
             // Only on a press, and only where a guest's like cannot land: a server with the feature
             // switched off, and the cap toast's own Sign in. Closing it leaves them on the listing.
-            onGuestLike={() => setShowAuthDialog(true)}
+            onGuestLike={() => requestSignIn()}
             promptLibrary={{ target: promptTarget, activeId: activePresetId, select: selectPreset }}
             openLikersOnMount={devRoute?.modal === 'likers'}
             openManageAddonsOnMount={devRoute?.modal === 'manageAddons'}

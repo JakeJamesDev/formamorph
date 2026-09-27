@@ -44,12 +44,9 @@ const renderProfile = (over: Record<string, unknown> = {}) =>
     <AccountDeletionProvider>
     <PrivacyPolicyProvider>
     <AuthModals
-      showAuthDialog={false}
-      setShowAuthDialog={() => {}}
       showProfileDialog
       setShowProfileDialog={() => {}}
       currentUser={user()}
-      onAuthenticated={() => {}}
       onLogout={() => {}}
       {...over}
     />
@@ -201,12 +198,9 @@ describe('landing on a tab while already open', () => {
     <AccountDeletionProvider>
     <PrivacyPolicyProvider>
       <AuthModals
-        showAuthDialog={false}
-        setShowAuthDialog={() => {}}
         showProfileDialog
         setShowProfileDialog={() => {}}
         currentUser={user()}
-        onAuthenticated={() => {}}
         onLogout={() => {}}
         initialTab="messages"
       />
@@ -221,12 +215,9 @@ describe('landing on a tab while already open', () => {
     <AccountDeletionProvider>
     <PrivacyPolicyProvider>
       <AuthModals
-        showAuthDialog={false}
-        setShowAuthDialog={() => {}}
         showProfileDialog
         setShowProfileDialog={() => {}}
         currentUser={user()}
-        onAuthenticated={() => {}}
         onLogout={() => {}}
         initialTab="notifications"
       />
