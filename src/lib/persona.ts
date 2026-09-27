@@ -1,4 +1,5 @@
 import { primaryImage } from './entityImages';
+import { inCast } from './bearers';
 import type { Entity, PersonaRef } from '@/types';
 import type { ResolveEntityText } from './resolveWorldNames';
 
@@ -11,7 +12,8 @@ export interface ResolvedPersona {
 export interface PersonaResolution {
   /** Null for no reference, an explicit None, or a reference that no longer resolves. */
   persona: ResolvedPersona | null;
-  /** The world's entities without the played one. Every in-play reader of the entity list reads this. */
+  /** The world's entities without the played one and without unpicked persona-only entities. Every in-play
+   *  reader of the entity list reads this. */
   cast: Entity[];
   /** The names the planner reads as the player: the persona's name and aliases. */
   playerNames: string[];
@@ -23,28 +25,30 @@ export interface PersonaResolution {
  * Turn a save's persona reference into the persona, the cast, and the player-name list.
  *
  * A reference resolves by id alone: the Persona mark gates the picker, so an entity unmarked after the pick
- * still plays. A library persona is never a world entity, so the cast only changes for a world persona.
+ * still plays. A library persona is never a world entity. An unpicked persona-only entity is never in the cast.
  */
 export function resolvePersona(
   ref: PersonaRef | undefined,
   worldEntities: Entity[],
   libraryEntities: Entity[],
 ): PersonaResolution {
+  const kept = worldEntities.filter((e) => inCast(e, ref));
+  const cast = kept.length === worldEntities.length ? worldEntities : kept;
   if (!ref || ref.source === 'none') {
-    return { persona: null, cast: worldEntities, playerNames: [], unresolved: false };
+    return { persona: null, cast, playerNames: [], unresolved: false };
   }
   const pool = ref.source === 'world' ? worldEntities : libraryEntities;
   const entity = pool.find((e) => e.id === ref.entityId);
-  if (!entity) return { persona: null, cast: worldEntities, playerNames: [], unresolved: true };
+  if (!entity) return { persona: null, cast, playerNames: [], unresolved: true };
   return {
     persona: { entity, source: ref.source },
-    cast: ref.source === 'world' ? worldEntities.filter((e) => e.id !== entity.id) : worldEntities,
+    cast,
     playerNames: [entity.name, ...(entity.aliases ?? [])].map((n) => n.trim()).filter(Boolean),
     unresolved: false,
   };
 }
 
-/** Every world entity: the cast, plus the played one when it is a world entity. */
+/** Every present world entity: the cast, plus the played one when it is a world entity. */
 export const worldEntitiesOf = (cast: Entity[], persona: ResolvedPersona | null): Entity[] =>
   persona?.source === 'world' ? [...cast, persona.entity] : cast;
 

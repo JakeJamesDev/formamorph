@@ -85,7 +85,7 @@ A **Persona** is an entity that fills the player slot for a playthrough. It is n
 35. As a player, I want an edit to a persona to reach every save that uses it, so that I fix a description one time.
 36. As a player, I want a save to remember None, so that loading it never applies my default persona.
 37. As a player, I want one notice when a save's persona is missing from my library, so that I know why the playthrough runs without one.
-38. As a player who switches away from a world persona, I want that entity to return to the cast, so that the world stays complete.
+38. As a player who switches away from a world persona, I want that entity to return to the cast, so that the world stays complete. A persona-only entity does not return: unpicked, it is absent (amended by the trait-links spec).
 
 ### Prompts
 

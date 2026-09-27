@@ -4028,9 +4028,9 @@ const GameViewer = ({
       // Pre-fill the drawn opening so the player can shape the first turn before submitting it. Resolved
       // here (against the pins the traits above are about to impose) so the player reads plain prose.
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
-      // `entities` is the whole world here: the persona set above is not in state until the next render.
+      // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
-        pick: personaPick, worldEntities: entities, overview: worldOverview, startingLocationId: location?.id,
+        pick: personaPick, worldEntities: traitEntities, overview: worldOverview, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {

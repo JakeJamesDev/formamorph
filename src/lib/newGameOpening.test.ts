@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { drawNewGameOpening } from './newGameOpening';
 import { drawUnseenOpening, openingPool } from './openings';
 import { resolvePersona } from './persona';
-import type { Entity, Opening, WorldOverview } from '@/types';
+import type { Entity, Opening, PersonaRef, WorldOverview } from '@/types';
 
 const action = (id: string): Opening => ({ id, text: `Opening ${id}.`, kind: 'action' });
 
@@ -113,5 +113,39 @@ describe('the pool after the first draw, with a world persona', () => {
   it('draws both openings with no persona, so the guard above can fail', () => {
     const { cast } = resolvePersona({ source: 'none' }, worldEntities, []);
     expect(new Set(drawIds(cast, []))).toEqual(new Set(['guide-hello', 'keeper-hello']));
+  });
+});
+
+describe('the pool with a persona-only entity', () => {
+  const custom = entity('custom', { persona: true, personaOnly: true, locations: ['start'], openings: [action('custom-hello')] });
+  const worldEntities = [guide, keeper, custom];
+  const drawAll = (ref: PersonaRef) => {
+    const { cast } = resolvePersona(ref, worldEntities, []);
+    const random = seeded(11);
+    let seen: string[] = [];
+    const ids = Array.from({ length: 20 }, () => {
+      const next = drawUnseenOpening(openingPool({ overview, entities: cast, startingLocationId: 'start', picked: [] }), seen, random);
+      seen = next.shown;
+      return next.opening.id;
+    });
+    return { cast, ids: new Set(ids) };
+  };
+
+  it('keeps a picked persona-only entity out: it is the played entity', () => {
+    const result = drawNewGameOpening({
+      pick: { ref: { source: 'world', entityId: 'custom' } }, worldEntities, overview, startingLocationId: 'start',
+      picked: [], random: always,
+    });
+    expect(result.persona?.entity.id).toBe('custom');
+    expect(drawAll({ source: 'world', entityId: 'custom' }).ids).toEqual(new Set(['guide-hello', 'keeper-hello']));
+  });
+
+  it.each<{ label: string; ref: PersonaRef }>([
+    { label: 'None', ref: { source: 'none' } },
+    { label: 'another world persona', ref: { source: 'world', entityId: 'guide' } },
+  ])('leaves an unpicked persona-only entity out of the pool cast under $label', ({ ref }) => {
+    const { cast, ids } = drawAll(ref);
+    expect(cast.map((e) => e.id)).not.toContain('custom');
+    expect(ids).not.toContain('custom-hello');
   });
 });

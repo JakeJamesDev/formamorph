@@ -97,19 +97,32 @@ const PERSONA_HINT: Record<EntityHome, string> = {
   library: 'Lets you play as this entity in any world',
 };
 
-/** The Persona mark. Advanced only in the World Editor; the library editor is always Advanced. */
+/** The Persona mark, and under it in a world the Persona-Only mark. Advanced only in the World Editor; the
+ *  library editor is always Advanced. */
 export const EntityPersonaField = ({ value, onChange, home }: EntityFieldGroupProps & { home: EntityHome }) => {
   const { advanced } = useEditorMode();
   if (!advanced) return null;
   return (
-    <label className="flex items-center gap-2 text-label cursor-pointer">
-      <Checkbox
-        checked={value.persona === true}
-        onCheckedChange={(c) => onChange('persona', c === true ? true : undefined)}
-      />
-      Persona
-      <Hint as="span">{PERSONA_HINT[home]}</Hint>
-    </label>
+    <>
+      <label className="flex items-center gap-2 text-label cursor-pointer">
+        <Checkbox
+          checked={value.persona === true}
+          onCheckedChange={(c) => onChange('persona', c === true ? true : undefined)}
+        />
+        Persona
+        <Hint as="span">{PERSONA_HINT[home]}</Hint>
+      </label>
+      {home === 'world' && value.persona === true && (
+        <label className="flex items-center gap-2 text-label cursor-pointer">
+          <Checkbox
+            checked={value.personaOnly === true}
+            onCheckedChange={(c) => onChange('personaOnly', c === true ? true : undefined)}
+          />
+          Persona-Only
+          <Hint as="span">{"Keeps this entity out of the world unless it's the player's persona"}</Hint>
+        </label>
+      )}
+    </>
   );
 };
 

@@ -109,6 +109,18 @@ describe('the resolved world under a persona', () => {
     expect(live().gameData.entities.map((e) => e.name)).toEqual(['Mira', 'Captain Vos']);
   });
 
+  it('leaves an unpicked persona-only entity out of the cast, and plays it when picked', async () => {
+    const custom: Entity = { id: 'w-custom', name: 'Custom Character', persona: true, personaOnly: true, locations: ['dock'] };
+    const live = mount();
+    await act(async () => { live().gameData.loadWorldData(worldFixture({ entities: [mira, vos, custom] })); });
+    expect(castNames(live)).toEqual(['Mira', 'Captain Vos']);
+    await act(async () => { live().gameplay.setPersonaRef({ source: 'world', entityId: 'w-custom' }); });
+    expect(castNames(live)).toEqual(['Mira', 'Captain Vos']);
+    expect(live().world.persona?.entity.name).toBe('Custom Character');
+    await act(async () => { live().gameplay.setPersonaRef({ source: 'world', entityId: 'w-mira' }); });
+    expect(castNames(live)).toEqual(['Captain Vos']);
+  });
+
   it('reads a library persona live, at load and when the library changes', async () => {
     await EntityStorageService.initialize();
     await storeLibraryEntity({ id: 'l-wren', name: 'Wren', persona: true });
