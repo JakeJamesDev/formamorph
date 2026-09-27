@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { useSettings } from '@/contexts/SettingsContext';
+import { useSettingsSource, type useSettings } from '@/contexts/SettingsContext';
 import { FONT_OPTIONS, fontStack, fontSizeAdjust, SYSTEM_FONT_STACK, type FontChoice } from '@/contexts/settingsDefaults';
 import {
   FONT_TUNING_RANGES, boldWeightRange, boldWeightFor, fontTuningDefaults, isFontTuningDefault,
@@ -49,8 +49,7 @@ function TuneSlider({
  * sample text until Save — a game in progress must not reflow while the sliders move.
  */
 function FontTuneDialog({ font, open, onOpenChange, source }: { font: FontChoice; open: boolean; onOpenChange: (v: boolean) => void; source?: FontTuneSource }) {
-  const live = useSettings();
-  const { fontTunings, setFontTuning } = source ?? live;
+  const { fontTunings, setFontTuning } = useSettingsSource(source);
   const [draft, setDraft] = useState<FontTuning>(() => resolveFontTuning(font, fontTunings));
 
   // Reopening — or opening from the other selector, on a different font — starts from what's in force.

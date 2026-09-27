@@ -102,7 +102,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Each character's planning and diary requests read that character's description with its placeholders filled in.** They sent the raw placeholder tokens before. The planning request runs with Staged thinking. Scene pictures built from a character's description fill them in too.
 
 - **🛠️ Developer tooling**
-  - **The Design System's Panel Tab Strip reference shows all five entity tabs, and each tab shows what it holds.** The Traits and Openings tabs opened an empty panel, and the heading still read "Three Tabs". A test now fails when a registry gains a tab with no body, or when a heading states the wrong tab count. The Design System guide lists the five entity tabs, says the library entity editor moves Traits and Placeholders to its own strip, and gives the five-tab widths.
+  - **Design System:**
+    - **The Settings reference renders the production Display and Output sections, with the Simple/Advanced switch.** The hand-written examples had drifted: Narration Size sat in the wrong section, a hint differed, and newer rows were missing. The sections now run on local values built from the settings defaults, so a change writes no settings and no theme, and turning on semantic memory or semantic lore downloads nothing. A status line reports each skipped effect. The Live Sample moves into its own block, and the font, reveal animation, and theme preview dialogs now open in the showcase.
+    - **The Panel Tab Strip reference shows all five entity tabs, and each tab shows what it holds.** The Traits and Openings tabs opened an empty panel, and the heading still read "Three Tabs". A test now fails when a registry gains a tab with no body, or when a heading states the wrong tab count. The Design System guide lists the five entity tabs, says the library entity editor moves Traits and Placeholders to its own strip, and gives the five-tab widths.
 
 ---
 

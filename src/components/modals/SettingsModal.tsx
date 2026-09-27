@@ -12,7 +12,7 @@ import { blankTool } from '@/lib/tools/toolDraft';
 import { randomUUID } from '@/lib/uuid';
 import type { ToolSnapshot } from '@/lib/tools/toolSnapshot';
 import { readSettingsMode, writeSettingsMode, type SettingsMode } from '@/lib/settingsMode';
-import { settingsUseAdvancedValues } from '@/lib/settingsAdvancedData';
+import { settingsUseAdvancedValues, sectionHiddenFields } from '@/lib/settingsAdvancedData';
 import { TutorialPopover } from '@/components/TutorialPopover';
 import { useDevRoute } from '@/lib/devRouter';
 import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
@@ -26,6 +26,7 @@ import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
 import type { SettingsSource } from './settingsSource';
 import { useEmbeddingDownload } from './useEmbeddingDownload';
+import { SettingsModeSwitch } from './SettingsModeSwitch';
 import { ExportPresetDialog, ImportPresetDialog } from '@/components/modals/PresetShareDialogs';
 import { usePresetPublish } from '@/components/modals/usePresetPublish';
 import { type SharedPreset } from '@/lib/promptPresetShare';
@@ -51,10 +52,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tip } from "@/components/ui/tooltip";
 import { loadEmbeddingModel, disposeEmbeddingModel } from '@/lib/embeddingWorkerClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectSeparator, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -609,7 +608,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     thinkingMode,
     limitActiveCharacters,
     activeCharacterLimit,
-    reasoningEffort,
     reasoningCapability,
     promptReasoningSettings,
     setPromptReasoning,
@@ -693,13 +691,9 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     importPreset,
     memoryDigests,
     semanticMemory,
-    semanticLore,
     semanticRehydration,
     timeContext,
     aiClock,
-    semanticDiaries,
-    semanticBandCap,
-    concurrentTurnRequests,
     toolsEnabled,
     autosaveEnabled,
     setAutosaveEnabled,
@@ -713,8 +707,6 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     promptEndpoints,
     setPromptEndpoint,
     resolveEndpointForKind,
-    showSilentRequests,
-    showReasoning,
     paragraphLimit,
     markdownOutput,
     imageProvider,
@@ -1347,12 +1339,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // them. Native Reasoning is the exception: an endpoint that rejects every effort level has no such row to
   // reach, so a stored level there is left out rather than promising one.
   const hasHiddenValues = !advanced && settingsUseAdvancedValues({
-    paragraphLimit, markdownOutput, limitActiveCharacters, activeCharacterLimit,
-    ...(activeNoNativeReasoning ? {} : { reasoningEffort }),
-    memoryDigests, semanticMemory, semanticBandCap, semanticRehydration, timeContext, aiClock,
-    semanticLore, describeCharacters, characterDiaries, semanticDiaries,
-    concurrentTurnRequests, showReasoning, showSilentRequests, maxTokens,
-    ...(activeToolsSupported ? { toolsEnabled } : {}),
+    ...sectionHiddenFields(settings),
+    maxTokens,
     imagePortraitWidth, imagePortraitHeight, imageLandscapeWidth, imageLandscapeHeight,
     imageWorkflowCustom: imageWorkflow !== DEFAULT_COMFY_WORKFLOW,
     imageInvokeBoard, imageInvokeEncoder, imageInvokeVae,
@@ -1381,32 +1369,13 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           <div className="flex items-center gap-4 pr-8">
             <DialogTitle className="flex items-center gap-2"><Settings className="h-4 w-4" /> Settings</DialogTitle>
             <TutorialPopover entry={tutorial} nav={tutorialNav}>
-              <ToggleGroup
-                type="single"
-                value={mode}
+              <SettingsModeSwitch
+                mode={mode}
                 // Using the switch is itself the lesson, so it retires the tutorial as surely as the button does.
-                onValueChange={(v) => { if (v) { dismissTutorial(); setMode(v as SettingsMode); } }}
-                aria-label="Settings mode"
-                className="ml-auto h-8"
-              >
-                <ToggleGroupItem value="simple" className="px-2 py-1">Simple</ToggleGroupItem>
-                {/* The marker rides the switch that acts on it: it says "there is more through here",
-                    which is exactly what this control does. */}
-                <Tip
-                  tip={hasHiddenValues ? 'Some hidden settings are off their defaults. Switch to Advanced to see them.' : undefined}
-                  labelsChild={false}
-                >
-                  <ToggleGroupItem value="advanced" className="relative px-2 py-1">
-                    Advanced
-                    {hasHiddenValues && (
-                      <span
-                        aria-label="Hidden settings are off their defaults"
-                        className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-primary"
-                      />
-                    )}
-                  </ToggleGroupItem>
-                </Tip>
-              </ToggleGroup>
+                onModeChange={(next) => { dismissTutorial(); setMode(next); }}
+                hasHiddenValues={hasHiddenValues}
+                className="ml-auto"
+              />
             </TutorialPopover>
           </div>
         </DialogHeader>
