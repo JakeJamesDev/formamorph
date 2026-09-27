@@ -171,7 +171,9 @@ All items are additive export-shape changes to the world, entity, card and save 
 - A linked trait with stat effects under an entity shows a note in the link section: under a Persona-marked entity, "Stat changes apply only when you play as them"; under any other entity, "Stat changes don't apply to entities" (Q63).
 - **+ menu:** Add Templates Group and Add Custom Persona (Advanced, hidden once present), Add Trait To Entity → (Basic), Add Group To Entity → (Advanced).
 - **Link button:** on every linkable node's Details header, in Advanced only. Its flyout lists Custom Persona first when it exists, then entities nested by entity group. Bearers that already have the link show checked and disabled.
-- Removal confirmations name the count of links they remove.
+- Removal confirmations name the count of links they remove. Removing Templates keeps Custom Persona's links to the moved originals; the Q64 rule covers the resulting duplicate (Q66).
+- Selecting the Custom Persona node opens a small panel: a heading and one help line on when its links apply, in the Writing Guide's voice (Q67).
+- Until tickets 05 and 08 move play onto the resolver, the player-facing tree and the world gate owner drop the Templates subtree through an interim filter, so no build between them offers a Templates trait (Q65).
 - Both flyouts and the link row are new visual patterns. They need design-system approval before adoption.
 
 ### Enter-world and play
@@ -263,6 +265,9 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q62 | A refused drop shows the inline refusal notice naming the reason. |
   | Q63 | The stat note reads "play as them" under a Persona; "don't apply to entities" otherwise. |
   | Q64 | A duplicate made by a world-to-world move resolves once per bearer, first in tree order. The Test Bench reports the redundant link. |
+  | Q65 | Ticket 03 adds an interim Templates filter on the player-facing tree and the world gate owner; 08 replaces it. |
+  | Q66 | Removing Templates keeps Custom Persona's links to the moved originals. Q64 covers the duplicate. |
+  | Q67 | Selecting Custom Persona opens a heading plus one help line. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
