@@ -129,6 +129,28 @@ interface ComfyHistoryEntry {
 /** How many consecutive failed /history fetches to tolerate before giving up (matches the InvokeAI poll). */
 const MAX_POLL_ERRORS = 5;
 
+interface ComfyValidationError {
+  message?: string;
+  details?: string;
+}
+
+interface ComfyRejection {
+  error?: ComfyValidationError | string;
+  node_errors?: Record<string, { class_type?: string; errors?: ComfyValidationError[] }>;
+}
+
+/** The reason from a /prompt 400 body; per-node errors first, since the top-level message is generic. */
+export function comfyRejectionDetail(body: unknown): string | undefined {
+  const { error, node_errors } = (body ?? {}) as ComfyRejection;
+  const reason = (e: ComfyValidationError) => [e.message, e.details].filter(Boolean).join(': ');
+  const nodeReasons = Object.entries(node_errors ?? {}).flatMap(([id, node]) =>
+    (node.errors ?? []).map((e) => `${node.class_type ?? 'Node'} #${id}: ${reason(e)}`),
+  );
+  if (nodeReasons.length) return nodeReasons.join('; ');
+  if (typeof error === 'string') return error || undefined;
+  return (error && reason(error)) || undefined;
+}
+
 /** A human-readable reason from a terminal-but-imageless history entry (the node's exception, if any). */
 function comfyHistoryError(entry?: ComfyHistoryEntry): string {
   const errMsg = entry?.status?.messages?.find((m) => m[0] === 'execution_error');
@@ -300,8 +322,7 @@ export const comfyuiProvider: ImageProvider = async (params: ImageGenParams, opt
       // ComfyUI returns 400 with { error, node_errors } on a bad graph (e.g. missing checkpoint).
       let detail = `HTTP ${res.status}`;
       try {
-        const body = await res.json();
-        detail = body?.error?.message || body?.error || JSON.stringify(body?.node_errors ?? body);
+        detail = comfyRejectionDetail(await res.json()) ?? detail;
       } catch { /* keep the status */ }
       throw new Error(`ComfyUI rejected the workflow: ${detail}`);
     }
