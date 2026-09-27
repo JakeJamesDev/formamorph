@@ -19,5 +19,5 @@ Recommended model rationale: same mechanical sweep with two named exceptions to 
 - [ ] Every validation or refusal toast in those files stays plain with no link
 - [ ] The connection-guide toast still shows **Fix connection →** and only that link
 - [ ] A canceled AI request shows no error toast
-- [ ] No toast's visible words changed; existing toast-text tests pass unmodified
+- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
 - [ ] Four gates green

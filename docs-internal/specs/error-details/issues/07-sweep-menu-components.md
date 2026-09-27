@@ -1,6 +1,7 @@
 # 07: Sweep: menu components
 
-Status: ready-for-agent
+Status: in-progress
+Base: 56d36f41
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -17,6 +18,6 @@ Recommended model rationale: a mechanical sweep with a clear classification rule
 
 - [ ] Every caught-error toast in the menu components goes through the shared helper and offers **View Details →**
 - [ ] Every validation or refusal toast in the menu components stays plain with no link
-- [ ] No toast's visible words changed; existing tests that assert toast text still pass unmodified
+- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
 - [ ] The sweep touches no file outside the menu components
 - [ ] Four gates green
