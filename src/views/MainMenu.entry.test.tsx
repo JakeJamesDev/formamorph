@@ -139,13 +139,13 @@ describe('the retained entry draft', () => {
     expect(screen.getByRole('checkbox', { name: 'Enable Library book from Library' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
     cleanup();
     onStartGame.mockClear();
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA, {}));
   });
 
   it('keeps defaults independent for two local worlds', async () => {
@@ -176,7 +176,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Library Additions' }));
     expect(screen.getByRole('checkbox', { name: 'Enable World book from World' })).not.toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, [], [], NO_PERSONA, {}));
   });
 
   it('keeps a remembered lone world dictionary editable after the library is removed', async () => {
@@ -256,7 +256,7 @@ describe('the retained entry draft', () => {
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA, {}));
     expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
   });
 
@@ -285,6 +285,7 @@ describe('the retained entry draft', () => {
       [expect.objectContaining({ name: 'Default', enabled: true })],
       [],
       NO_PERSONA,
+      {},
     );
   });
 
@@ -324,7 +325,7 @@ describe('the retained entry draft', () => {
       }),
       expect.objectContaining({ name: 'World book', id: 'shared' }),
     ],
-      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })], NO_PERSONA);
+      [expect.objectContaining({ name: 'Companion', id: expect.not.stringMatching(/^companion$/) })], NO_PERSONA, {});
     expect((await EntityStorageService.getEntityData('companion')).id).toBe('companion');
     expect(await DictionaryStorageService.getDictionaryData('shared')).toMatchObject({
       id: 'shared', entries: [{ id: 'library-entry' }],
@@ -364,7 +365,7 @@ describe('the retained entry draft', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Avatar' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Finalize Character' }));
     expect(onStartGame).toHaveBeenCalledWith(['default'], expect.any(Object), true, 'hill', [],
-      [expect.objectContaining({ name: 'Companion' })], NO_PERSONA);
+      [expect.objectContaining({ name: 'Companion' })], NO_PERSONA, {});
     // The harness keeps MainMenu mounted after handoff; start another ordinary visit.
     await enter();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Default trait' }));
@@ -511,6 +512,7 @@ describe('the retained entry draft', () => {
       [expect.objectContaining({ id: 'shared', name: 'World book' })],
       [],
       NO_PERSONA,
+      {},
     );
   });
 
@@ -707,7 +709,7 @@ describe('a world persona at world entry', () => {
     renderMainMenu({ onStartGame });
     fireEvent.click(await screen.findByText('Entry World'));
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, 'hill', null, null, { ref: keeperRef }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, 'hill', null, null, { ref: keeperRef }, {}));
   });
 });
 
@@ -767,5 +769,43 @@ describe("the world's player setting at world entry", () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][6]).toEqual(NO_PERSONA);
+  });
+});
+
+describe("an entity's owned traits at world entry", () => {
+  beforeEach(async () => {
+    const record = world();
+    record.data.entities = [{
+      id: 'wolf', name: 'Grey Wolf', playerDescription: 'A wolf at the gate.', aiDescription: '', aiSummary: '',
+      traits: [
+        { id: 'tamed', name: 'Tamed', isDefault: true, statChanges: [] },
+        { id: 'wild', name: 'Wild', statChanges: [] },
+      ],
+    }];
+    await WorldStorageService.storeWorld(record);
+  });
+
+  it("starts the game with the player's picks on the entity's page", async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'World setup categories' })).getByRole('button', { name: /Grey Wolf/ }));
+    expect(screen.getByText('A wolf at the gate.')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Tamed' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Wild' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][0]).toEqual(['default']);
+    expect(onStartGame.mock.calls[0][7]).toEqual({ wolf: ['wild'] });
+  });
+
+  it("starts Quick Start with the entity's defaults", async () => {
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][7]).toEqual({ wolf: ['tamed'] });
   });
 });

@@ -187,6 +187,96 @@ describe('the cascade-off list across a save/load round trip', () => {
   });
 });
 
+describe('owned trait state across a save/load round trip', () => {
+  const owned = { ash: { chosen: ['tamed', 'scarred'], disabled: ['scarred'] }, bob: { chosen: ['gruff'] } };
+  const held = ['ash', 'bob'];
+
+  it("keeps each entity's chosen and switched-off traits, beside the cascade-off list", async () => {
+    const live = mount();
+    await act(async () => {
+      live().setOwnedTraits(owned);
+      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'] });
+    });
+    expect(live().saveCurrentGameState().ownedTraits).toEqual(owned);
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-owned-1');
+    });
+    await act(async () => {
+      live().setOwnedTraits({});
+      live().setCascadeOffTraitIds({});
+    });
+    await act(async () => {
+      await live().loadGame('save-owned-1', [], [authored], held);
+    });
+    expect(live().ownedTraits).toEqual(owned);
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], bob: ['loyal'] });
+  });
+
+  it("keeps every entity's picks when the persona switches and back", async () => {
+    const live = mount();
+    await act(async () => {
+      live().setOwnedTraits(owned);
+      live().setPersonaRef({ source: 'world', entityId: 'ash' });
+    });
+    await act(async () => { live().setPersonaRef({ source: 'world', entityId: 'bob' }); });
+    await act(async () => { live().setPersonaRef({ source: 'world', entityId: 'ash' }); });
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-owned-2');
+    });
+    await act(async () => { live().setOwnedTraits({}); });
+    await act(async () => {
+      await live().loadGame('save-owned-2', [], [authored], held);
+    });
+    expect(live().ownedTraits).toEqual(owned);
+    expect(live().personaRef).toEqual({ source: 'world', entityId: 'ash' });
+  });
+
+  it('drops the state of an entity the world no longer holds, keeping the player and a discovered character', async () => {
+    const live = mount();
+    const wren = { id: 'wren', name: 'Wren' };
+    await act(async () => {
+      live().setOwnedTraits({ ...owned, wren: { chosen: ['brave'] } });
+      live().setCascadeOffTraitIds({ world: ['t'], bob: ['loyal'], wren: ['calm'] });
+      live().setDiscoveredEntities([{ entity: wren, sourceTurnId: 'start' }]);
+    });
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-owned-3');
+    });
+    await act(async () => {
+      await live().loadGame('save-owned-3', [], [authored], ['ash']);
+    });
+    expect(live().ownedTraits).toEqual({ ash: owned.ash, wren: { chosen: ['brave'] } });
+    expect(live().cascadeOffTraitIds).toEqual({ world: ['t'], wren: ['calm'] });
+  });
+
+  it("keeps a library persona's state, which the world never holds", async () => {
+    const live = mount();
+    await act(async () => {
+      live().setOwnedTraits({ lib: { chosen: ['brave'] } });
+      live().setPersonaRef({ source: 'library', entityId: 'lib' });
+    });
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-owned-4');
+    });
+    await act(async () => {
+      await live().loadGame('save-owned-4', [], [authored], []);
+    });
+    expect(live().ownedTraits).toEqual({ lib: { chosen: ['brave'] } });
+  });
+
+  it('omits the field from a save with no owned state, and reads its absence as none', async () => {
+    const live = mount();
+    expect(live().saveCurrentGameState().ownedTraits).toBeUndefined();
+    await act(async () => {
+      live().setOwnedTraits(owned);
+    });
+    await act(async () => {
+      live().loadGameState({ ...live().saveCurrentGameState(), ownedTraits: undefined }, []);
+    });
+    expect(live().ownedTraits).toEqual({});
+  });
+});
+
 describe('a code trait switch under undo', () => {
   it('restores the pre-switch trait state and the value the switch moved', async () => {
     const live = mount();

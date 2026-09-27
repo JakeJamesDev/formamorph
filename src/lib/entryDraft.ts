@@ -1,10 +1,14 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
-import type { PersonaRef } from '@/types';
+import { traitOwners } from './ownedTraits';
+import { WORLD_OWNER, settleDefaults, type GateInput } from './traitGates';
+import type { Entity, PersonaRef, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
 export interface EntryDraft {
   traitIds: string[];
+  /** Entity id → its owned trait picks. An entity that leaves the cast keeps its picks for a return. */
+  ownedTraitIds: Record<string, string[]>;
   locationId: string | null;
   /** The player picked the location in this step, so no persona pick moves it. */
   locationChosen: boolean;
@@ -15,7 +19,7 @@ export interface EntryDraft {
 }
 
 export const emptyEntryDraft = (): EntryDraft => ({
-  traitIds: [], locationId: null, locationChosen: false, entityIds: new Set(), dictionaryItems: [],
+  traitIds: [], ownedTraitIds: {}, locationId: null, locationChosen: false, entityIds: new Set(), dictionaryItems: [],
   persona: { source: 'none' }, traitSection: 0,
 });
 
@@ -31,3 +35,45 @@ export function withPersonaPick(draft: EntryDraft, ref: PersonaRef, context: Per
 
 export const withLocationPick = (draft: EntryDraft, locationId: string | null): EntryDraft =>
   ({ ...draft, locationId, locationChosen: true });
+
+/** The traits Enter World shows: the world's, its entities', and those of the library entities in the cast. */
+export interface EntryTraitWorld {
+  traits: readonly Trait[];
+  traitGroups: readonly TraitGroup[];
+  entities: readonly Entity[];
+  /** The library persona and added characters, in the order added. */
+  library: readonly Entity[];
+}
+
+/** The gates of the draft's picks: every owner in the cast, under the draft's persona. */
+export const entryGateInput = (
+  world: EntryTraitWorld, draft: Pick<EntryDraft, 'traitIds' | 'ownedTraitIds' | 'persona'>,
+): GateInput => ({
+  owners: traitOwners(world, world.library),
+  active: { ...draft.ownedTraitIds, [WORLD_OWNER]: draft.traitIds },
+  entities: world.entities,
+  persona: draft.persona,
+});
+
+/** The draft with settled picks. An owner the settle did not cover keeps its picks. */
+export function withSettledTraits(draft: EntryDraft, active: Readonly<Record<string, string[]>>): EntryDraft {
+  const { [WORLD_OWNER]: traitIds = draft.traitIds, ...owned } = active;
+  return { ...draft, traitIds, ownedTraitIds: { ...draft.ownedTraitIds, ...owned } };
+}
+
+/** Every owner's default picks under `persona`. */
+export function entryDefaults(world: EntryTraitWorld, persona: PersonaRef): Pick<EntryDraft, 'traitIds' | 'ownedTraitIds'> {
+  const { [WORLD_OWNER]: traitIds = [], ...ownedTraitIds } =
+    settleDefaults({ owners: traitOwners(world, world.library), entities: world.entities, persona }).active;
+  return { traitIds, ownedTraitIds };
+}
+
+/** The owned picks the game starts with: those of the entities in the cast that picked anything. */
+export function castOwnedTraits(draft: Pick<EntryDraft, 'ownedTraitIds'>, world: EntryTraitWorld): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const owner of traitOwners(world, world.library)) {
+    const picks = draft.ownedTraitIds[owner.id];
+    if (owner.id !== WORLD_OWNER && picks?.length) out[owner.id] = picks;
+  }
+  return out;
+}

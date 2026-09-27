@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { emptyEntryDraft, withLocationPick, withPersonaPick } from './entryDraft';
+import {
+  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
+  type EntryDraft, type EntryTraitWorld,
+} from './entryDraft';
+import { settle } from './traitGates';
 import type { PersonaPickContext } from './personaPick';
-import type { Entity, GameLocation, PersonaRef } from '@/types';
+import type { Entity, GameLocation, PersonaRef, Trait } from '@/types';
 
 const entity = (id: string, locations: string[], startingLocationId?: string): Entity => ({
   id, name: id, playerDescription: '', aiDescription: '', aiSummary: '', persona: true, locations, startingLocationId,
@@ -55,5 +59,57 @@ describe('withPersonaPick', () => {
   it('drops a library persona from the added characters', () => {
     const draft = { ...emptyEntryDraft(), entityIds: new Set(['lib', 'other']) };
     expect([...withPersonaPick(draft, library('lib'), context).entityIds]).toEqual(['other']);
+  });
+});
+
+describe('owned trait picks in the draft', () => {
+  const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
+  const ash: Entity = {
+    id: 'ash', name: 'Ash', persona: true,
+    traits: [
+      trait('tamed', { isDefault: true }), trait('scarred'), trait('guard', { requires: [{ kind: 'playingAs', id: 'ash' }] }),
+      trait('crest', { isDefault: true, requires: [{ kind: 'playingAs', id: 'ash' }] }),
+    ],
+  };
+  const bob: Entity = { id: 'bob', name: 'Bob', persona: true };
+  const wren: Entity = { id: 'wren', name: 'Wren', traits: [trait('brave', { isDefault: true })] };
+  const castWorld = (library: Entity[] = []): EntryTraitWorld => ({
+    traits: [trait('paladin', { isDefault: true })], traitGroups: [], entities: [ash, bob], library,
+  });
+  const repick = (draft: EntryDraft, ref: PersonaRef, w = castWorld()) =>
+    withSettledTraits(draft, settle(entryGateInput(w, { ...draft, persona: ref })).active);
+
+  it("preselects every owner's defaults, the world's and each entity's, settled under the persona", () => {
+    const asAsh = entryDefaults(castWorld([wren]), world('ash'));
+    expect(asAsh.traitIds).toEqual(['paladin']);
+    expect(asAsh.ownedTraitIds).toEqual({ ash: ['tamed', 'crest'], wren: ['brave'] });
+    expect(entryDefaults(castWorld([wren]), world('bob')).ownedTraitIds.ash).toEqual(['tamed']);
+  });
+
+  it("keeps an entity's picks when the player switches persona and back", () => {
+    let draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'scarred'] } };
+    draft = repick(draft, world('bob'));
+    draft = repick(draft, world('ash'));
+    expect(draft.ownedTraitIds.ash).toEqual(['tamed', 'scarred']);
+  });
+
+  it('turns a "playing as" owned trait off when the persona changes', () => {
+    const draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'guard'] } };
+    const result = settle(entryGateInput(castWorld(), { ...draft, persona: world('bob') }));
+    expect(result.turnedOff).toEqual([{ ownerId: 'ash', traitId: 'guard' }]);
+    expect(withSettledTraits(draft, result.active).ownedTraitIds.ash).toEqual(['tamed']);
+  });
+
+  it('keeps the picks of a library persona that left the cast, and starts the game without them', () => {
+    const draft: EntryDraft = { ...emptyEntryDraft(), persona: library('wren'), ownedTraitIds: { wren: ['brave'], ash: ['tamed'] } };
+    const none = repick(draft, { source: 'none' }, castWorld());
+    expect(none.ownedTraitIds.wren).toEqual(['brave']);
+    expect(castOwnedTraits(none, castWorld())).toEqual({ ash: ['tamed'] });
+    expect(castOwnedTraits(none, castWorld([wren]))).toEqual({ ash: ['tamed'], wren: ['brave'] });
+  });
+
+  it('starts the game with no entry for an owner with nothing picked', () => {
+    const draft: EntryDraft = { ...emptyEntryDraft(), ownedTraitIds: { ash: [] } };
+    expect(castOwnedTraits(draft, castWorld())).toEqual({});
   });
 });

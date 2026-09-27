@@ -372,7 +372,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   return { traits, groups, personas };
 }
 
-/** The gate input for a world with only its own traits, as the enter-world step uses it. */
+/** The gate input for a world with only its own traits. */
 export const worldGateInput = (
   world: { traits: readonly Trait[]; groups: readonly TraitGroup[]; entities: readonly GateEntity[] },
   persona: PersonaRef,

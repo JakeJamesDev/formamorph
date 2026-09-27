@@ -14,6 +14,7 @@ import type { SceneImageMap } from '../lib/sceneImages';
 import { matchChoicesToAction, CONTINUE_CHOICE } from '../lib/choices';
 import { pageStatDeltas } from '../lib/statChanges';
 import { activeTraits, recoverStatBases, type AppliedTraitValues } from '../lib/traitRuntime';
+import { heldEntityIds, withHeldOwners } from '../lib/ownedTraitState';
 import { pageAssistantIndex, pageNextActionIndex, placeSnapshot } from '../lib/turnHistory';
 import { backfillGameStateStats } from '../lib/statBackfill';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
@@ -42,6 +43,7 @@ import type {
   PersonaRef,
   TraitsPanelView,
   CascadeOffTraitIds,
+  OwnedTraitStates,
 } from '@/types';
 
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
@@ -94,6 +96,8 @@ function useProvideGameplay() {
   const [appliedTraitValues, setAppliedTraitValues] = useState<AppliedTraitValues>({});
   // Owner id → the traits a gate cascade turned off and that may still return. Snapshotted per turn too.
   const [cascadeOffTraitIds, setCascadeOffTraitIds] = useState<CascadeOffTraitIds>({});
+  // Entity id → its owned traits chosen and switched off. Snapshotted per turn too.
+  const [ownedTraits, setOwnedTraits] = useState<OwnedTraitStates>({});
   // Placeholder id → the text stat code pinned it to. Snapshotted per turn, so undo and re-roll restore it.
   const [codePins, setCodePins] = useState<CodePins>(EMPTY_PINS);
   // Per-playthrough dictionary set chosen at world entry (or restored from a save). Runtime-only: the
@@ -222,6 +226,7 @@ function useProvideGameplay() {
       ...(disabledTraitIds.length ? { disabledTraitIds } : {}),
       ...(Object.keys(appliedTraitValues).length ? { appliedTraitValues } : {}),
       ...(Object.keys(cascadeOffTraitIds).length ? { cascadeOffTraitIds } : {}),
+      ...(Object.keys(ownedTraits).length ? { ownedTraits } : {}),
       ...(Object.keys(codePins).length ? { codePins } : {}),
       visibleEntities,
       discoveredEntities,
@@ -243,7 +248,7 @@ function useProvideGameplay() {
       // Add a version flag for backward compatibility
       stateVersion: 2
     };
-  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
+  }, [playerStats, playerTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, codePins, visibleEntities, discoveredEntities, suppressedCharacterNames, logEntries, currentLocation,
       gameTime, startHour, fullMessageHistory, characterData, choices, isGameStarted, playerNotes, currentPage]);
 
   /** Restore a `GameState` into the live gameplay state, resolving `locationId` against `locations` and
@@ -266,6 +271,7 @@ function useProvideGameplay() {
       setDisabledTraitIds(gameState.disabledTraitIds ?? []);
       setAppliedTraitValues(gameState.appliedTraitValues ?? {});
       setCascadeOffTraitIds(gameState.cascadeOffTraitIds ?? {});
+      setOwnedTraits(gameState.ownedTraits ?? {});
       setCodePins(gameState.codePins ?? EMPTY_PINS);
       setVisibleEntities(normalizeVisibleEntities(gameState.visibleEntities));
       // Rollback / re-generate also keep the live discovered cast + suppressed names (they carry the
@@ -402,8 +408,11 @@ function useProvideGameplay() {
 
   /** Load a save by its record `id` from IndexedDB and restore it. A flat envelope (`isSaveEnvelope`, current or
    *  legacy numeric version) loads directly; an older nested shape is flattened off-thread via the
-   *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success. */
-  const loadGame = useCallback(async (saveId: string, locations: GameLocation[], worldStats: Stat[] = []) => {
+   *  `convertSaveFile` worker, with a best-effort raw load if conversion throws. Returns success.
+   *  `worldEntityIds` given, owned trait state of an entity the playthrough no longer holds is dropped. */
+  const loadGame = useCallback(async (
+    saveId: string, locations: GameLocation[], worldStats: Stat[] = [], worldEntityIds?: readonly string[],
+  ) => {
     try {
       // IndexedDB returns dynamically-shaped data; narrowed by the runtime checks below.
       const savedData = await getSaveRecord(saveId) as SaveObject | null;
@@ -421,16 +430,19 @@ function useProvideGameplay() {
         // Migrate a legacy v1.2 envelope to the current shape (no-op for a save already stamped with
         // APP_VERSION). Same migrateSave the import boundary runs, so both stay in lockstep.
         const migrated = migrateSave(savedData);
+        const held = (state: GameState) => (worldEntityIds
+          ? withHeldOwners(state, heldEntityIds(worldEntityIds, state, migrated.persona))
+          : state);
         // Snapshots are history-free post-migration; reconstitute the live current state with the canonical
         // top-level history so loadGameState restores narration/rollback correctly. Backfill any stat the
         // world has since added (e.g. an updated default world) so an older save shows it — additive only.
         const success = loadGameState(
-          backfillGameStateStats({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, worldStats),
+          held(backfillGameStateStats({ ...migrated.currentState, fullMessageHistory: migrated.messageHistory ?? [] }, worldStats)),
           locations,
           { worldStats },
         );
         if (success) {
-          setGameStates(migrated.stateHistory.map((s) => backfillGameStateStats(s, worldStats)));
+          setGameStates(migrated.stateHistory.map((s) => held(backfillGameStateStats(s, worldStats))));
           // Restore the per-playthrough dictionary set; older saves lack it, so keep the entry-seeded set.
           if (Array.isArray(migrated.dictionaries)) setRuntimeDictionaries(migrated.dictionaries);
           setPlaceholderRolls(migrated.placeholderRolls ?? {});
@@ -674,6 +686,8 @@ function useProvideGameplay() {
     setAppliedTraitValues,
     cascadeOffTraitIds,
     setCascadeOffTraitIds,
+    ownedTraits,
+    setOwnedTraits,
     codePins,
     setCodePins,
     runtimeDictionaries,

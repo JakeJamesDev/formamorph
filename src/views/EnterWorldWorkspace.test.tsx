@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import { emptyEntryDraft, withLocationPick, withPersonaPick } from '@/lib/entryDraft';
+import {
+  emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
+  type EntryDraft, type EntryTraitWorld,
+} from '@/lib/entryDraft';
+import { gateStates, settle, switchTrait } from '@/lib/traitGates';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
 
@@ -917,5 +921,104 @@ describe('world personas in the Persona category', () => {
     await user.click(screen.getByRole('button', { name: 'Starting Location' }));
     expect(screen.queryByRole('radio', { name: 'Old Road' })).not.toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Random' })).toBeChecked();
+  });
+});
+
+describe('EnterWorldWorkspace cast pages', () => {
+  const owned = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id[0].toUpperCase() + id.slice(1), statChanges: [], ...extra });
+  const ash: Entity = {
+    id: 'ash', name: 'Ash', persona: true, images: ['data:image/png;base64,ash'], playerDescription: 'A grey wolf.',
+    traitPlacement: { groupId: 'origin', order: 1 },
+    traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ kind: 'playingAs', id: 'ash' }] })],
+  };
+  const bob: Entity = { id: 'bob', name: 'Bob', persona: true, traits: [owned('gruff')] };
+  const cast: EntryTraitWorld = { traits, traitGroups: groups, entities: [ash, bob], library: [] };
+  const optionOf = (e: Entity) => ({ id: e.id, name: e.name });
+
+  function CastHarness({ persona: initialPersona = { source: 'world', entityId: 'ash' } as PersonaRef }) {
+    const [draft, setDraft] = useState<EntryDraft>(() => ({
+      ...emptyEntryDraft(), ...entryDefaults(cast, initialPersona), persona: initialPersona,
+    }));
+    const [categoryIndex, setCategoryIndex] = useState(0);
+    const input = entryGateInput(cast, draft);
+    const ownerOf = (id: string) => input.owners.find((o) => o.traits.some((t) => t.id === id))!.id;
+    return (
+      <Harness
+        traitEntities={cast.entities}
+        resolveEntityText={(_entity, text) => text}
+        selectedTraits={[...draft.traitIds, ...Object.values(draft.ownedTraitIds).flat()]}
+        onTraitSelect={(id) => {
+          const result = switchTrait(input, ownerOf(id), id);
+          if (result) setDraft((d) => withSettledTraits(d, result.active));
+        }}
+        traitGates={gateStates(input)}
+        worldPersonas={cast.entities.map(optionOf)}
+        persona={draft.persona}
+        onPersonaChange={(ref) => setDraft((d) => withSettledTraits({ ...d, persona: ref }, settle(entryGateInput(cast, { ...d, persona: ref })).active))}
+        categoryIndex={categoryIndex}
+        onCategoryChange={setCategoryIndex}
+      />
+    );
+  }
+
+  const nav = () => screen.getByRole('navigation', { name: 'World setup categories' });
+
+  it("opens an entity's page with its portrait, name, description and owned traits, defaults picked", async () => {
+    const user = userEvent.setup();
+    render(<CastHarness />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('heading', { name: /^Ash/ })).toBeInTheDocument();
+    expect(within(main).getByTestId('persona-portrait').querySelector('img')).toHaveAttribute('src', 'data:image/png;base64,ash');
+    expect(within(main).getByTestId('persona-portrait')).toHaveClass('aspect-[2/3]');
+    expect(within(main).getByText('A grey wolf.')).toBeInTheDocument();
+    expect(within(main).getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
+    expect(within(main).getByRole('checkbox', { name: 'Guard' })).not.toBeDisabled();
+  });
+
+  it('places a world entity node where the author put it, with the user icon, and ends the top level with the rest', () => {
+    render(<CastHarness />);
+    const text = nav().textContent!;
+    // Ash sits in Origin after Culture's branch; Bob, unplaced, ends the top level.
+    expect(text.indexOf('Origin')).toBeLessThan(text.indexOf('Practice'));
+    expect(text.indexOf('Practice')).toBeLessThan(text.indexOf('Ash'));
+    expect(text.indexOf('Ash')).toBeLessThan(text.indexOf('Bob'));
+    const ashRow = within(nav()).getByRole('button', { name: /^Ash/ });
+    expect(ashRow).toHaveStyle({ paddingLeft: '20px' });
+    expect(within(nav()).getByRole('button', { name: /^Bob/ })).toHaveStyle({ paddingLeft: '8px' });
+    expect(ashRow.querySelector('svg.lucide-user')).not.toBeNull();
+  });
+
+  it('marks the played entity "You" in its place, and moves the mark on a persona switch', async () => {
+    const user = userEvent.setup();
+    render(<CastHarness />);
+    expect(within(nav()).getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
+    expect(within(nav()).getByRole('button', { name: /^Bob/ })).not.toHaveTextContent('You');
+
+    await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Bob' }));
+    expect(within(nav()).getByRole('button', { name: /^Ash/ })).not.toHaveTextContent('You');
+    await user.click(within(nav()).getByRole('button', { name: /^Bob/ }));
+    expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
+  });
+
+  it('locks a "playing as" owned trait after a switch away, and keeps the other picks when the player switches back', async () => {
+    const user = userEvent.setup();
+    render(<CastHarness />);
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    await user.click(screen.getByRole('checkbox', { name: 'Guard' }));
+    expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeChecked();
+
+    await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Bob' }));
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeDisabled();
+    expect(screen.getByText('Requires playing as Ash')).toBeInTheDocument();
+
+    await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
+    await user.click(screen.getByRole('radio', { name: 'Ash' }));
+    await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
+    expect(screen.getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Guard' })).not.toBeChecked();
   });
 });

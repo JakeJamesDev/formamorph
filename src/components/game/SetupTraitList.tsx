@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Info, Lock } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from '@/components/ui/button';
@@ -35,9 +35,11 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  */
 export function SetupTraitList({
   name, groups, traits, exclusive, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
-  gates, cascade, onDismissCascade,
+  gates, cascade, onDismissCascade, heading,
 }: {
   name: string;
+  /** Replaces the eyebrow and the name heading. */
+  heading?: ReactNode;
   /** The groups from the root down to this category's own. */
   groups: TraitGroup[];
   /** This category's traits, in authored order. */
@@ -125,8 +127,12 @@ export function SetupTraitList({
 
   return (
     <>
-      <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
-      <h2 className="mb-3 text-heading font-semibold">{name}</h2>
+      {heading ?? (
+        <>
+          <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
+          <h2 className="mb-3 text-heading font-semibold">{name}</h2>
+        </>
+      )}
       {groups.map((group) => group.playerDescription?.trim() && (
         <div key={group.id} className="mb-2 max-w-3xl text-helper text-muted-foreground">
           <MarkdownRenderer text={resolveText(group.playerDescription)} />

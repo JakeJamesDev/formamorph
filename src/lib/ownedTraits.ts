@@ -81,15 +81,19 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
   );
 }
 
-/** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group. */
-export function traitOwners(world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] }): GateOwner[] {
+/** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group,
+ *  then the library entities, whose nodes sit at the top level. */
+export function traitOwners(
+  world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] },
+  library: readonly Entity[] = [],
+): GateOwner[] {
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
+  const owner = (e: Entity, parentGroupId: string | null): GateOwner =>
+    ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
   return [
     { id: WORLD_OWNER, name: '', traits: world.traits, groups: world.traitGroups },
-    ...world.entities.filter(ownsTraits).map((e) => ({
-      id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e),
-      parentGroupId: effectivePlacement(e, worldGroupIds)?.groupId ?? null,
-    })),
+    ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, worldGroupIds)?.groupId ?? null)),
+    ...library.filter(ownsTraits).map((e) => owner(e, null)),
   ];
 }
 

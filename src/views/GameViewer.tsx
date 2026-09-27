@@ -1,4 +1,5 @@
 import { randomUUID } from "@/lib/uuid";
+import { ownedTraitStatesFrom } from '@/lib/ownedTraitState';
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo } from "react";
 import { useGameData } from "../contexts/GameDataContext";
 import { useSettings } from "@/contexts/SettingsContext";
@@ -188,6 +189,8 @@ type DemoAIEntryState = 'waiting' | 'open' | 'done';
 
 interface GameViewerProps {
   initialTraits?: string[];
+  /** Entity id → the owned traits picked at the entry step. */
+  initialOwnedTraits?: Record<string, string[]>;
   initialCharacterData: CharacterData | null;
   initialLocationId?: string | null;
   /** Per-playthrough dictionary set chosen at the entry step; null when the step was skipped (falls back
@@ -373,8 +376,11 @@ const revealedSentences = (text: string): string => {
   return text.slice(0, text.length - segments[segments.length - 1].length).replace(/\s+$/, '');
 };
 
+const NO_OWNED_TRAITS: Record<string, string[]> = {};
+
 const GameViewer = ({
   initialTraits = [],
+  initialOwnedTraits = NO_OWNED_TRAITS,
   initialCharacterData,
   initialLocationId = null,
   initialDictionaries = null,
@@ -565,6 +571,7 @@ const GameViewer = ({
     setAppliedTraitValues,
     cascadeOffTraitIds,
     setCascadeOffTraitIds,
+    setOwnedTraits,
     codePins,
     setCodePins,
     recentStatChanges,
@@ -953,9 +960,9 @@ const GameViewer = ({
       // Seed the fixture as an id-keyed record and load it by that id.
       const id = randomUUID();
       await putSaveRecord({ ...(fx.save as unknown as Record<string, unknown>), id, name: fx.saveName } as unknown as SaveRecord);
-      await loadGame(id, locations, stats);
+      await loadGame(id, locations, stats, entities.map((e) => e.id));
     })();
-  }, [devRoute?.fixture, locations, stats, loadGame]);
+  }, [devRoute?.fixture, locations, stats, entities, loadGame]);
   const [isEditingWorld, setIsEditingWorld] = useState(false);
   const [uiHidden, setUiHidden] = useState(false); // hide all panels/buttons to reveal the background image
   const [showEditorExitPrompt, setShowEditorExitPrompt] = useState(false);
@@ -3914,7 +3921,7 @@ const GameViewer = ({
       // Cold-load from the main menu: restore the save instead of starting a fresh game. Its world is
       // already in GameData (loaded before this view mounted), so `locations` here are the right ones.
       if (initialSaveId) {
-        void loadGame(initialSaveId, locations, authoredStats);
+        void loadGame(initialSaveId, locations, authoredStats, entities.map((e) => e.id));
         return;
       }
 
@@ -3947,6 +3954,7 @@ const GameViewer = ({
         addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
       }
       commitTraitState(seedState);
+      setOwnedTraits(ownedTraitStatesFrom(initialOwnedTraits));
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
       const location = resolveStartingLocation(locations, initialLocationId);
@@ -4018,6 +4026,8 @@ const GameViewer = ({
     initialSaveId,
     loadGame,
     initialTraits,
+    initialOwnedTraits,
+    setOwnedTraits,
     initialLocationId,
     placeholders,
     sessionRolls,
@@ -4395,14 +4405,17 @@ const GameViewer = ({
         // Use the migrated world for the save restore — the raw one may be a legacy shape whose locations/
         // stats lack the migration fixes (morph bindings, renamed keys) that loadWorldData just applied.
         const { world: migrated } = loadWorldData(world);
-        return await loadGame(id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : []);
+        return await loadGame(
+          id, Array.isArray(migrated.locations) ? migrated.locations : [], Array.isArray(migrated.stats) ? migrated.stats : [],
+          Array.isArray(migrated.entities) ? migrated.entities.map((e) => e.id) : [],
+        );
       } catch (error) {
         console.error('Cross-world load failed:', error);
         toast.error("Couldn't load that save's world.");
         return false;
       }
     }
-    return loadGame(id, locations, stats);
+    return loadGame(id, locations, stats, entities.map((e) => e.id));
   };
   const menuModal = (extra?: { onEditWorld?: () => void; onShowAiContext?: () => void }) => (
     <MenuModal

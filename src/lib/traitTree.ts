@@ -74,8 +74,11 @@ export function effectivePlacement(entity: Entity, worldGroupIds: ReadonlySet<st
 type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
 
 /** The world's traits, with a node for each entity that owns a trait or a group. A node sits where its
- *  placement puts it; an unplaced node goes to the end of the top level, in entity order. */
-export function ownedTraitTree(world: WorldTraitLists, entities: readonly Entity[]): OwnedTraitTree {
+ *  placement puts it; an unplaced node goes to the end of the top level, in entity order. Library entities
+ *  (a persona or an added character) come last at the top level, in the order given. */
+export function ownedTraitTree(
+  world: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
+): OwnedTraitTree {
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
   const owning = entities.filter(ownsTraits);
@@ -91,9 +94,10 @@ export function ownedTraitTree(world: WorldTraitLists, entities: readonly Entity
   const entityNodes = new Map<string, Entity>();
   const ownerOf = new Map<string, string>();
   let unplaced = 0;
-  owning.forEach((entity) => {
+  const libraryIds = new Set(library.map((e) => e.id));
+  [...owning, ...library.filter(ownsTraits)].forEach((entity) => {
     entityNodes.set(entity.id, entity);
-    const placement = effectivePlacement(entity, worldGroupIds);
+    const placement = libraryIds.has(entity.id) ? null : effectivePlacement(entity, worldGroupIds);
     groups.push({
       id: entity.id, name: entity.name,
       parentId: placement?.groupId ?? null, order: placement ? placement.order : firstNodeOrder + unplaced++,
