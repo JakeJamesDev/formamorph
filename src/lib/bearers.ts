@@ -1,18 +1,13 @@
 // Bearers: who has which traits. A bearer is the player or an entity whose tree holds a trait, directly or
-// through a link. This module expands every link to its original's live subtree and is the one place that
-// does so; the editor tree, enter-world, play, the pin collector, the AI context and the Test Bench read
-// bearer trees from here.
+// through a link. This module is the one place that expands a link to its original's live subtree.
 
-import type { CustomPersonaNode, Entity, PersonaRef, Trait, TraitGroup, TraitLink } from '@/types';
+import type { CustomPersonaNode, Entity, PersonaRef, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
-import { effectivePlacement, ownsTraits, placeableGroupIds, templatesSubtreeIds } from './traitTree';
+import { effectivePlacement, groupsBelow, ownsTraits, placeableGroupIds, templatesSubtreeIds } from './traitTree';
 
 /** The player bearer's id: the world's root traits, plus Custom Persona's links when they apply. It is the
  *  player's world key, so None and a library persona share the same state. */
 export const PLAYER_BEARER = WORLD_OWNER;
-
-/** The Custom Persona node's id in the Traits tree. No world item takes it. */
-export const CUSTOM_PERSONA_NODE = 'custom-persona';
 
 /** What bearer resolution reads from a world. */
 export interface BearerWorld {
@@ -76,21 +71,17 @@ export function originalOf(
 }
 
 /** A link to `originalId` at `place`, or null when the id is not an original. */
-export function makeLink(
-  world: BearerWorld, originalId: string, id: string, place: { groupId: string | null; order: number },
-): TraitLink | null {
+export function makeLink(world: BearerWorld, originalId: string, id: string, place: TraitPlacement): TraitLink | null {
   const original = originalOf(world, originalId);
   return original && { id, originalId, kind: original.kind, originalName: original.item.name, ...place };
 }
 
-/** Every world group below `groupId`, depth-first. Entity nodes are not world groups, so they never appear. */
-function worldGroupsBelow(world: BearerWorld, groupId: string): TraitGroup[] {
-  const out: TraitGroup[] = [];
-  const walk = (parentId: string) => {
-    for (const g of world.traitGroups) if (g.parentId === parentId) { out.push(g); walk(g.id); }
-  };
-  walk(groupId);
-  return out;
+/** A world group's live subtree: the groups below it and every world trait in it or below it. Entity nodes
+ *  are not world groups, so they never appear. */
+function subtreeOf(world: BearerWorld, group: TraitGroup): { groups: TraitGroup[]; traits: Trait[] } {
+  const groups = groupsBelow(world.traitGroups, group.id);
+  const ids = new Set([group.id, ...groups.map((g) => g.id)]);
+  return { groups, traits: world.traits.filter((t) => t.groupId != null && ids.has(t.groupId)) };
 }
 
 /** The world node ids a link to `originalId` brings: the original and, for a group, its live subtree. */
@@ -98,38 +89,34 @@ function broughtIds(world: BearerWorld, originalId: string): string[] {
   const original = originalOf(world, originalId);
   if (!original) return [];
   if (original.kind === 'trait') return [originalId];
-  const groupIds = [originalId, ...worldGroupsBelow(world, originalId).map((g) => g.id)];
-  return [...groupIds, ...world.traits.filter((t) => t.groupId != null && groupIds.includes(t.groupId)).map((t) => t.id)];
+  const { groups, traits } = subtreeOf(world, original.item);
+  return [originalId, ...groups.map((g) => g.id), ...traits.map((t) => t.id)];
 }
 
-const withDefault = (trait: Trait, link: TraitLink): Trait => {
+/** The trait with the link's own default-on when the link stores one; otherwise the original's, live. */
+const withLinkDefault = (trait: Trait, link: TraitLink): Trait => {
   const on = link.defaults?.[trait.id];
   return on === undefined ? trait : { ...trait, isDefault: on };
 };
 
 /** Each link's expansion: the original moved to the link's place, with its subtree, or nothing. */
-function expandLinks(world: BearerWorld, links: readonly TraitLink[], place?: (link: TraitLink) => { groupId: string | null; order: number }) {
+function expandLinks(world: BearerWorld, links: readonly TraitLink[], place?: (link: TraitLink) => TraitPlacement) {
   const traits: Trait[] = [];
   const groups: TraitGroup[] = [];
   const linkOf = new Map<string, TraitLink>();
   for (const link of links) {
     const original = originalOf(world, link.originalId);
     if (!original) continue;
-    const at = place ? place(link) : { groupId: link.groupId, order: link.order };
+    const at = place ? place(link) : { groupId: link.groupId, order: link.order ?? 0 };
     if (original.kind === 'trait') {
-      traits.push(withDefault({ ...original.item, ...at }, link));
+      traits.push(withLinkDefault({ ...original.item, ...at }, link));
       linkOf.set(original.item.id, link);
       continue;
     }
-    const group = original.item;
-    groups.push({ ...group, parentId: at.groupId, order: at.order });
-    linkOf.set(group.id, link);
-    const below = worldGroupsBelow(world, group.id);
-    for (const g of below) { groups.push(g); linkOf.set(g.id, link); }
-    const groupIds = new Set([group.id, ...below.map((g) => g.id)]);
-    for (const t of world.traits) {
-      if (t.groupId != null && groupIds.has(t.groupId)) { traits.push(withDefault(t, link)); linkOf.set(t.id, link); }
-    }
+    const subtree = subtreeOf(world, original.item);
+    groups.push({ ...original.item, parentId: at.groupId, order: at.order }, ...subtree.groups);
+    traits.push(...subtree.traits.map((t) => withLinkDefault(t, link)));
+    for (const item of [original.item, ...subtree.groups, ...subtree.traits]) linkOf.set(item.id, link);
   }
   return { traits, groups, linkOf };
 }
@@ -145,21 +132,32 @@ function entityBearer(world: BearerWorld, entity: Entity, isPlayer: boolean, pre
   };
 }
 
-/** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library
- *  persona. Those expand at the root, after every root item. */
-function playerBearer(world: BearerWorld, persona: PersonaRef | undefined): Bearer {
+/** The player's root: every world group and trait outside Templates. */
+function playerRoot(world: BearerWorld): { groups: TraitGroup[]; traits: Trait[] } {
   const inTemplates = templatesSubtreeIds(world.traitGroups);
-  const groups = world.traitGroups.filter((g) => !inTemplates.has(g.id));
-  const traits = world.traits.filter((t) => t.groupId == null || !inTemplates.has(t.groupId));
-  const rootOrders = [...groups.filter((g) => g.parentId === null), ...traits.filter((t) => (t.groupId ?? null) === null)]
+  return {
+    groups: world.traitGroups.filter((g) => !inTemplates.has(g.id)),
+    traits: world.traits.filter((t) => t.groupId == null || !inTemplates.has(t.groupId)),
+  };
+}
+
+/** Custom Persona's links expanded at the player's root, after every root item. */
+function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof playerRoot>) {
+  const links = world.customPersona?.traitLinks ?? [];
+  const rootOrders = [...root.groups.filter((g) => g.parentId === null), ...root.traits.filter((t) => (t.groupId ?? null) === null)]
     .map((item, i) => item.order ?? i);
   const afterRoot = Math.max(-1, ...rootOrders) + 1;
-  const links = persona?.source === 'world' ? [] : world.customPersona?.traitLinks ?? [];
-  const expanded = expandLinks(world, links, (link) => ({ groupId: null, order: afterRoot + (link.order ?? links.indexOf(link)) }));
+  return expandLinks(world, links, (link) => ({ groupId: null, order: afterRoot + (link.order ?? links.indexOf(link)) }));
+}
+
+/** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library persona. */
+function playerBearer(world: BearerWorld, persona: PersonaRef | undefined): Bearer {
+  const root = playerRoot(world);
+  const expanded = persona?.source === 'world' ? expandLinks(world, []) : customPersonaExpansion(world, root);
   return {
     id: PLAYER_BEARER, name: '', entity: null, isPlayer: true, present: true,
-    traits: [...traits, ...expanded.traits],
-    groups: [...groups, ...expanded.groups],
+    traits: [...root.traits, ...expanded.traits],
+    groups: [...root.groups, ...expanded.groups],
     linkOf: expanded.linkOf,
   };
 }
@@ -194,10 +192,18 @@ export function resolveBearers(
   };
 }
 
-/** Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. The player
- *  bearer holds every root item outside Templates, so Custom Persona cannot link what the root already offers. */
+/**
+ * Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. The player
+ * bearer holds every root item outside Templates and every Custom Persona link, whatever the persona the
+ * bearer was resolved under, so Custom Persona cannot link what the root already offers and the check reads
+ * the same in the editor and in play.
+ */
 export function holdsOriginal(world: BearerWorld, bearer: Bearer, originalId: string): boolean {
   const held = new Set(bearer.linkOf.keys());
-  if (bearer.entity === null) for (const item of [...bearer.traits, ...bearer.groups]) held.add(item.id);
+  if (bearer.entity === null) {
+    const root = playerRoot(world);
+    for (const item of [...root.traits, ...root.groups]) held.add(item.id);
+    for (const id of customPersonaExpansion(world, root).linkOf.keys()) held.add(id);
+  }
   return broughtIds(world, originalId).some((id) => held.has(id));
 }

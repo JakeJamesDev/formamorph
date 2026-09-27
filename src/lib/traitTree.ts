@@ -69,17 +69,20 @@ export interface OwnedTraitTree {
 export const templatesGroup = (groups: readonly TraitGroup[]): TraitGroup | undefined =>
   groups.find((g) => g.system === 'templates');
 
+/** Every group below `groupId`, depth-first. */
+export function groupsBelow(groups: readonly TraitGroup[], groupId: string): TraitGroup[] {
+  const out: TraitGroup[] = [];
+  const walk = (parentId: string) => {
+    for (const g of groups) if (g.parentId === parentId) { out.push(g); walk(g.id); }
+  };
+  walk(groupId);
+  return out;
+}
+
 /** Templates and every world group below it. Empty when the world has no Templates group. */
 export function templatesSubtreeIds(groups: readonly TraitGroup[]): Set<string> {
-  const ids = new Set<string>();
   const templates = templatesGroup(groups);
-  if (!templates) return ids;
-  ids.add(templates.id);
-  for (let grew = true; grew;) {
-    grew = false;
-    for (const g of groups) if (g.parentId && ids.has(g.parentId) && !ids.has(g.id)) { ids.add(g.id); grew = true; }
-  }
-  return ids;
+  return new Set(templates ? [templates.id, ...groupsBelow(groups, templates.id).map((g) => g.id)] : []);
 }
 
 /** The world groups an entity node can sit in: every one outside Templates. */
