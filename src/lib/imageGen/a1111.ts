@@ -1,7 +1,8 @@
 // Automatic1111 / Forge txt2img provider. The user launches the WebUI with
 // `--api --cors-allow-origins=<origin>`; we POST to `${endpointUrl}/sdapi/v1/txt2img`.
 import type { ImageGenOpts, ImageGenParams, ImageProgress, ImageProvider } from './types';
-import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS } from './http';
+import { trimUrl, authHeaders, toPngDataUrl, POLL_INTERVAL_MS, readBody, refusalDetails } from './http';
+import { DetailedError } from '../errorDetails';
 
 interface A1111Body {
   prompt: string;
@@ -93,13 +94,14 @@ export const a1111Provider: ImageProvider = async (params: ImageGenParams, opts:
   const base = trimUrl(opts.endpointUrl);
   const poller = opts.onProgress ? startProgressPoller(base, opts) : undefined;
   try {
-    const res = await fetch(`${base}/sdapi/v1/txt2img`, {
+    const url = `${base}/sdapi/v1/txt2img`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders(opts.apiToken, 'Basic') },
       body: JSON.stringify(buildA1111Body(params)),
       signal: opts.signal,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new DetailedError(`HTTP ${res.status}`, refusalDetails('POST', url, res, await readBody(res)));
     return parseA1111Response(await res.json());
   } finally {
     poller?.stop();
