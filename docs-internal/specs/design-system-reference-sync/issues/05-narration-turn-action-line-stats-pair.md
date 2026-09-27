@@ -1,6 +1,6 @@
 # 05: Narration Turn shows the Pages action line and the Stats panel pair
 
-Status: in-progress
+Status: ready-for-human
 Base: dce417d8
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -18,12 +18,12 @@ Recommended model rationale: extracts from the game's largest panel file under c
 
 ## Acceptance criteria
 
-- [ ] The game renders the action line and the Stats pair through the new components with no behavior change
-- [ ] The existing Pages parity test and the Pages and Chat game tests pass unchanged
-- [ ] The reference's latest page shows the action line; its menu lists the production player actions
-- [ ] A right-click on the action line does not open the card's menu, asserted by test
-- [ ] Re-generate Stats is enabled on the latest turn and disabled on the past turn, asserted by test
-- [ ] Both tooltips show on the pair
-- [ ] The guide's Narration Turn section describes the action line and the pair; new copy has a Writing review entry
-- [ ] The showcase registry test passes
-- [ ] Four gates green; verified in the showcase at desktop and 375px, both themes
+- [x] The game renders the action line and the Stats pair through the new components with no behavior change
+- [x] The existing Pages parity test and the Pages and Chat game tests pass unchanged
+- [x] The reference's latest page shows the action line; its menu lists the production player actions
+- [x] A right-click on the action line does not open the card's menu, asserted by test
+- [x] Re-generate Stats is enabled on the latest turn and disabled on the past turn, asserted by test
+- [x] Both tooltips show on the pair
+- [x] The guide's Narration Turn section describes the action line and the pair; new copy has a Writing review entry
+- [x] The showcase registry test passes
+- [x] Four gates green; verified in the showcase at desktop and 375px, both themes

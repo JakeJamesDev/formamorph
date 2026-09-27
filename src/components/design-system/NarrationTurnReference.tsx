@@ -124,7 +124,7 @@ export function NarrationTurnReference() {
         <section aria-labelledby="narration-turn-past" className="grid content-start gap-3">
           <div className="space-y-1">
             <h3 id="narration-turn-past" className="text-label font-semibold">Past Page</h3>
-            <Meta>No image, so no plate. The row has Rewind to Here, and the rows show the choice taken. The Stats panel actions are off.</Meta>
+            <Meta>No image, so no plate. The row has Rewind to Here, and the rows show the choice taken. The Stats panel actions are disabled.</Meta>
           </div>
           <div>
             <TurnCard actions={pastActions} turnNumber={4}>
@@ -166,7 +166,7 @@ export function NarrationTurnReference() {
 function StatsPair({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/80 py-1 pl-3 pr-1">
-      <Meta>Stats panel</Meta>
+      <Meta>Stats Panel</Meta>
       {children}
     </div>
   );
