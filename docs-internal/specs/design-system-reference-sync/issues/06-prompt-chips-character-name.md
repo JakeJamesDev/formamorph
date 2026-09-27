@@ -1,6 +1,7 @@
 # 06: Prompt Chips reference shows Character Name with its owner-name Preview
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 66d76f24
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: medium
@@ -15,8 +16,8 @@ Recommended model rationale: a fixture, a palette entry, and a guide paragraph a
 
 ## Acceptance criteria
 
-- [ ] The palette lists Player Name and Character Name under Built-in, asserted by test
-- [ ] Preview shows the sample owner's name for Character Name, asserted by test
-- [ ] The guide states the owner-name rule and both fallbacks; new copy has a Writing review entry
-- [ ] The showcase registry test passes
-- [ ] Four gates green; verified in the showcase at desktop and 375px, both themes
+- [x] The palette lists Player Name and Character Name under Built-in, asserted by test
+- [x] Preview shows the sample owner's name for Character Name, asserted by test
+- [x] The guide states the owner-name rule and both fallbacks; new copy has a Writing review entry
+- [x] The showcase registry test passes
+- [x] Four gates green; verified in the showcase at desktop and 375px, both themes
