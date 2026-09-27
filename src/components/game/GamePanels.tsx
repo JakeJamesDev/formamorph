@@ -21,7 +21,8 @@ import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatN
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
-import { BubbleMenu } from './BubbleMenu';
+import { ActionLine } from './ActionLine';
+import { StatsActions } from './StatsActions';
 import { bubbleActions, choicesActions, playerBubbleActions } from '@/lib/bubbleActions';
 import { rewriteTurnAction } from '@/lib/turnHistory';
 import { copyWithToast } from '@/lib/clipboard';
@@ -30,7 +31,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TokenAutocomplete } from "@/components/TokenAutocomplete";
 import { COMMON_LANGUAGES } from "@/lib/languages";
-import { Send, RefreshCw, Pencil, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
+import { Send, RefreshCw, Languages, Loader2, Headphones, Square, ChevronUp, ChevronDown, X, MoreHorizontal, User, Users, NotebookPen, Brain, ScrollText, ChartColumn, Sparkles, MapPin, type LucideIcon } from "lucide-react";
 import { ActionIcon } from "@/lib/actionIcons";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CONTINUE_CHOICE } from "@/lib/choices";
@@ -844,19 +845,7 @@ export const MiddlePanel = ({
                     className="mb-3"
                   />
                 )}
-                {actionLine !== undefined && (
-                  // Upright, so the player's own italics and quote styling show.
-                  <BubbleMenu actions={actionLineActions}>
-                    {/* The line has its own menu: a right-click here never reaches the card's. */}
-                    <div
-                      data-testid="action-line"
-                      className="mb-3 border-l-2 border-primary pl-3 text-label text-muted-foreground"
-                      onContextMenu={(event) => event.stopPropagation()}
-                    >
-                      <MarkdownRenderer text={actionLine} dialogue />
-                    </div>
-                  </BubbleMenu>
-                )}
+                {actionLine !== undefined && <ActionLine text={actionLine} actions={actionLineActions} />}
                 {showReasoning && pageReasoning?.text && (
                   <ReasoningBlock text={pageReasoning.text} ms={pageReasoning.ms} active={pageReasoningLive && liveReasoning.active} />
                 )}
@@ -1249,35 +1238,14 @@ export const RightPanel = ({
                 />
               );
             })}
-            <div className="absolute bottom-2 right-2 flex items-center gap-0.5">
-              <Tip tip="Edit Stats">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsEditMode(!isEditMode)}
-                  disabled={isViewingPast}
-                  aria-label="Edit Stats"
-                  aria-pressed={isEditMode}
-                  className="h-8 w-8"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </Tip>
-              {statUpdatesEnabled && playerStats.length > 0 && (
-                <Tip tip="Re-generate Stats">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onRegenerateStats(currentPage)}
-                    disabled={isViewingPast || totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
-                    aria-label="Re-generate Stats"
-                    className="h-8 w-8"
-                  >
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
-                </Tip>
-              )}
-            </div>
+            <StatsActions
+              className="absolute bottom-2 right-2"
+              past={isViewingPast}
+              busy={totalPages === 0 || isWaitingForAI || isRevealingNarration || sceneImageJob !== null}
+              editing={isEditMode}
+              onEditingChange={setIsEditMode}
+              onRegenerate={statUpdatesEnabled && playerStats.length > 0 ? () => onRegenerateStats(currentPage) : undefined}
+            />
           </ScrollArea>
         </TabsContent>
         <TabsContent value="traits" className="flex-grow overflow-hidden">

@@ -695,7 +695,9 @@ The three parts, in reading order for Pages:
 | Scene image with zoom, browse, and delete | `ScenePlate` in [`ScenePlate.tsx`](../src/components/game/ScenePlate.tsx) |
 | Choice rows | `ChoiceRows` in [`ChoiceRows.tsx`](../src/components/game/ChoiceRows.tsx) |
 | Chat's bubble choices and the shared choice text | `ChatChoices` and `ChoiceText` in [`ChatChoices.tsx`](../src/components/game/ChatChoices.tsx) |
-| Pages host, with the action line | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
+| Pages action line with its own menu | `ActionLine` in [`ActionLine.tsx`](../src/components/game/ActionLine.tsx) |
+| Stats panel's **Edit Stats** and **Re-generate Stats** pair | `StatsActions` in [`StatsActions.tsx`](../src/components/game/StatsActions.tsx) |
+| Pages host | [`GamePanels.tsx`](../src/components/game/GamePanels.tsx) |
 | Chat host | [`ChatNarration.tsx`](../src/components/game/ChatNarration.tsx) |
 | Layout parity guard | [`GamePanels.pagesCard.test.tsx`](../src/components/game/GamePanels.pagesCard.test.tsx) |
 | Isolated reference | [`NarrationTurnReference.tsx`](../src/components/design-system/NarrationTurnReference.tsx) |
@@ -720,12 +722,14 @@ On a touch screen, a long press opens the card's menu, and a long press on a cho
 | Empty | No image: no plate. No actions: no row. No choices and no choices action: no block. |
 | Destructive | **Rewind to Here** is the last menu section and opens the existing confirm. |
 
-The live reference renders the production card, plate, and rows with the production action lists. Its handlers write to a local status line. It never calls an endpoint, draws an image, or reads or writes a save.
+The live reference renders the production card, plate, action line, rows, and Stats panel pair with the production action lists. The latest page shows the action line above the narration, with its own menu. The pair appears on both pages: both actions work on the latest turn, and both are disabled on the past turn. Its handlers write to a local status line. It never calls an endpoint, draws an image, or reads or writes a save.
 
 ### Writing review
 
 - Action labels come from the action builders, and the plate's names come from `ScenePlate`, so the reference and the game cannot drift. Reuse does not certify those labels as fully ASD-STE100 compliant.
 - **Unverified:** the headings "Latest Page" and "Past Page", their two `Meta` lines, the status line, and **Restore Images** have terminology review only; vocabulary and grammar evidence is not recorded.
+- The pair's labels and tooltips come from `StatsActions`, and the action line's menu from `playerBubbleActions`, so the reference and the game cannot drift.
+- **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are off", and the "Stats panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
 
 ## Pattern: Nested Prompt Navigation
 
