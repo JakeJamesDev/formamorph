@@ -33,3 +33,7 @@ In Advanced mode an author drags a world trait or group under an entity and gets
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**From ticket 01 (2026-09-27, commit 72f20e90).** The bearer module is `src/lib/bearers.ts`. The tree builder's `ownsTraits` in `traitTree.ts` still ignores links; switch it to `bearsTraits` from the bearer module so an entity with links only still gets its node.
