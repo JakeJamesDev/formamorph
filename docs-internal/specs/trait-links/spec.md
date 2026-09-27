@@ -164,11 +164,11 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ### Editor
 
-- Drags go through the shared drag layer (ADR-0007). Dropping a node from outside an entity onto that entity creates a link. It no longer moves the node across owners. Moving an owned trait between entities becomes Detach plus delete, or a link. **Needs a ruling at ticket time: see Further Notes.**
+- Drags go through the shared drag layer (ADR-0007). A world row (root, world group, or Templates) dropped into an entity creates a link and the original stays put. A drag that starts from an owned row is still a move that keeps its id, with the stat-effects refusal (Q60). A link row dropped into another entity moves with its per-link data, refused when the target already holds the original; a link row is never droppable at the root or in a world group (Q61). A refused drop does nothing and shows a toast that names the reason, the stat-effects refusal's shape (Q62).
 - The drop projection lets links sit anywhere in a bearer's subtree. It never offers a link inside Templates or at the root.
 - The link row shows a link icon in the trait icon's slot. Its row action menu shows **Detach** where an owned row shows **Duplicate**. Detach of an original with stat changes or stat toggles confirms first and makes the copy without them (Q53).
 - Selecting a link shows the original's Details, editable, under "Linked from **<location>**. Edits change every link." Below that is a **This Link** section with default-on and one row per bearer-relative pin: "<Placeholder> →" and a value select over the bearer's own values, or the world placeholder's values on fallback.
-- A linked trait with stat effects under an NPC shows a note in the link section, like "Stat changes apply only when you play as them".
+- A linked trait with stat effects under an entity shows a note in the link section: under a Persona-marked entity, "Stat changes apply only when you play as them"; under any other entity, "Stat changes don't apply to entities" (Q63).
 - **+ menu:** Add Templates Group and Add Custom Persona (Advanced, hidden once present), Add Trait To Entity → (Basic), Add Group To Entity → (Advanced).
 - **Link button:** on every linkable node's Details header, in Advanced only. Its flyout lists Custom Persona first when it exists, then entities nested by entity group. Bearers that already have the link show checked and disabled.
 - Removal confirmations name the count of links they remove.
@@ -258,7 +258,11 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q57 | A link with no stored default-on reads the original's `isDefault` live. Written only when touched. |
   | Q58 | The player bearer's "already holds" counts root traits and groups outside Templates. |
   | Q59 | No entity node under Templates. A placement naming it reads as top level. |
+  | Q60 | A drag from an owned row is a move, as today. Only a world row dropped into an entity makes a link. |
+  | Q61 | A link row moves between bearers with its per-link data. Never at the root or in a world group. |
+  | Q62 | A refused drop shows a toast naming the reason. |
+  | Q63 | The stat note reads "play as them" under a Persona; "don't apply to entities" otherwise. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
-- **Open at ticket time:** a cross-owner drop is a move in the trait-gates spec and a link here. The ticket that owns drags should ask the spec session whether a move gesture survives, for example a modifier key or a drag that starts from an owned row.
+- **Closed at ticket time (Q60–Q62):** the move gesture survives as a drag that starts from an owned row; a world row dropped into an entity links.
