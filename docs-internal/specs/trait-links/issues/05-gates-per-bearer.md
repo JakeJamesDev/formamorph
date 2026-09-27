@@ -21,7 +21,7 @@ Parent: [Trait Links spec](../spec.md)
 - [ ] The Requires picker's Add Requirement rows gain a bearer choice: same bearer by default, or a named bearer from a list of You plus every entity that bears the target. A chip reads "Albus: Paladin" or "You: Paladin".
 - [ ] Enter-world and in-play settle, cascade banners, return and the cascade-off list all work per bearer, with the existing wording.
 - [ ] Never-unlockable analysis runs per bearer.
-- [ ] Gate tests cover: a same-bearer requirement that fails through another bearer, a named requirement on an NPC and on You, a persona switch that changes You, and never-unlockable per bearer. Component tests cover the bearer choice in the picker.
+- [ ] Gate tests cover: a same-bearer requirement that fails through another bearer, a named requirement on a cast entity and on You, a persona switch that changes You, and never-unlockable per bearer. Component tests cover the bearer choice in the picker.
 - [ ] Verify the changed UI in the live preview with static DOM or frame evidence, both themes, at a realistic viewport.
 
 ## Completion checks

@@ -20,7 +20,7 @@ In Advanced mode an author drags a world trait or group under an entity and gets
 - [ ] Dropping a node from outside an entity onto that entity creates a link through the shared drag layer. The drop projection lets links sit anywhere in a bearer's subtree and never offers a link inside Templates or at the root. A second link to an original the bearer's tree already holds is refused.
 - [ ] The link row shows a link icon in the trait icon's slot. A linked group shows the original's live subtree and keeps its exclusivity.
 - [ ] Selecting a link shows the original's Details, editable, under "Linked from **<location>**. Edits change every link." Below is a This Link section with default-on. Pin rows arrive in ticket 06.
-- [ ] A linked trait with stat effects under an NPC shows the note "Stat changes apply only when you play as them" in the link section.
+- [ ] A linked trait with stat effects under a cast entity shows the note "Stat changes apply only when you play as them" in the link section.
 - [ ] The row action reads **Detach** where an owned row reads **Duplicate**. Detach gives the copy a new id and drops the link. When the original has stat changes or stat toggles, a confirmation says the copy is made without them.
 - [ ] Deleting an original deletes its links after a confirmation that names the count. Deleting an entity takes its owned traits and its links with it. Removing a link leaves the original untouched.
 - [ ] With Advanced off, existing links still show and stay editable; creating them stays Advanced-only.
