@@ -1310,12 +1310,14 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // A record rules reasoning out when the model is known not to reason, or when the endpoint accepts no
   // reasoning_effort literal at all (not even `none`). An unanswered record keeps the controls showing.
   const noNativeReasoning = reasoningRuledOut(promptReasoningCapability);
+  // The Output row reads the ACTIVE endpoint's record, not the selected prompt's routed target. It is the
+  // endpoint-wide strength every Global prompt follows, routed ones included, so it gives way only where
+  // the active model is ruled out entirely.
+  const activeNoNativeReasoning = reasoningRuledOut(reasoningCapability);
   const activeToolsSupported = toolsSupported(reasoningCapability);
   // A dialect that publishes nothing about its own reasoning, such as a vLLM server, has no per-prompt
   // control worth drawing until one reply proves it separates its reasoning: no budget to send, and no
-  // literal the wire guard would pass. The Output row is not gated on this. It is the endpoint-wide
-  // strength every Global prompt follows, routed ones included, and a prompt pinned elsewhere still needs
-  // it; it gives way only where the active model is ruled out entirely.
+  // literal the wire guard would pass. The Output row is not gated on this.
   const promptAwaitingProof = reasoningAwaitingProof(promptReasoningCapability);
   const reasoningApplicable = !nativeReasoningSuppressed(thinkingMode, activeKind)
     && (promptLocalEngine || (!noNativeReasoning && !promptAwaitingProof));
@@ -1346,7 +1348,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // reach, so a stored level there is left out rather than promising one.
   const hasHiddenValues = !advanced && settingsUseAdvancedValues({
     paragraphLimit, markdownOutput, limitActiveCharacters, activeCharacterLimit,
-    ...(noNativeReasoning ? {} : { reasoningEffort }),
+    ...(activeNoNativeReasoning ? {} : { reasoningEffort }),
     memoryDigests, semanticMemory, semanticBandCap, semanticRehydration, timeContext, aiClock,
     semanticLore, describeCharacters, characterDiaries, semanticDiaries,
     concurrentTurnRequests, showReasoning, showSilentRequests, maxTokens,
@@ -1437,7 +1439,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
 
           <TabsContent value="output" className="px-2 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <ScrollArea className="flex-1 min-h-0">
-              <OutputSettingsSection source={settingsSource} mode={mode} nativeReasoningRuledOut={noNativeReasoning} />
+              <OutputSettingsSection source={settingsSource} mode={mode} nativeReasoningRuledOut={activeNoNativeReasoning} />
             </ScrollArea>
           </TabsContent>
 
