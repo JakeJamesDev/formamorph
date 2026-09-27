@@ -338,6 +338,9 @@ The reference preserves production density and panel placement. Dense labels can
 - A title is the flyout handle. A titled set can fold into a flyout. The title becomes the flyout label.
 - Action rows never fold. They carry an icon to stay apart from set rows.
 - Separators divide kinds, not topics.
+- Arranging sections, such as Tile Size and grouping, come first.
+- The item's own actions form the final section. Check for Updates, Publish, and the default-persona action are item actions.
+- Each item action carries an icon. Delete is last in the final section.
 - A context-dependent action section sits where the fixed action section sits. It keeps its icons.
 
 **Density:** Compact. Menu rows use the production label size and padding; section labels use the smaller meta role. The group shortcuts are bounded, so ordinary menus do not need scrolling.
@@ -348,8 +351,17 @@ The reference preserves production density and panel placement. Dense labels can
 - Align destination text with the action-label column, without repeating folder icons. Keep full accessible names and truncate shortcuts on one line; the picker exposes their full text.
 - Label the grouping section Add To Group. Show the first three eligible Groups in existing order, excluding the current Group before taking three.
 - Follow shortcuts with FolderPlus + Create New Group… and FolderSearch + Add To Group…. The full chooser is last in this section. Keep explanations in the dialog or help.
-- Separate meaning changes with semantic separators: preference, grouping, and the final destructive action.
-- Put Delete alone in the final section. Keep its production trash icon and destructive color.
+- Separate meaning changes with semantic separators: preference, grouping, and the item's own actions.
+- End with the item's own actions. Each tab offers only the actions that apply to its items:
+
+  | Tab | Item actions before Delete |
+  | --- | --- |
+  | Entities | Check for Updates, then Set as Default Persona or Clear Default Persona on a persona |
+  | Dictionaries | Check for Updates |
+  | Avatars | Publish, when signed in |
+  | Worlds | None |
+
+- Put Delete last in that section. Keep its production trash icon and destructive color. Delete opens the existing confirmation.
 - Keep Group names in their authored voice. Group tiles retain Open Group and Delete Group; assigned items retain Remove From Group in a separate section.
 
 ### Production mapping
@@ -358,6 +370,7 @@ The reference preserves production density and panel placement. Dense labels can
 | --- | --- |
 | Full tile-triggered composition | `LibraryTileContextMenu` in [`LibraryTileContextMenu.tsx`](../src/components/library/LibraryTileContextMenu.tsx) |
 | Main Menu host, Group membership, and tile preferences | `LibraryTileGrid` in [`LibraryTileGrid.tsx`](../src/components/library/LibraryTileGrid.tsx) and `useLibraryTiles` in [`useLibraryTiles.ts`](../src/lib/useLibraryTiles.ts) |
+| Default-persona action and its card badge | `DefaultPersonaMenuItem` and `DefaultPersonaBadge` in [`DefaultPersona.tsx`](../src/components/library/DefaultPersona.tsx) |
 | Menu primitives, checkmarks, focus, dismissal, and touch hold | [`context-menu.tsx`](../src/components/ui/context-menu.tsx) |
 | Destructive confirmation and cancellation | `ConfirmDialog` in [`ConfirmDialog.tsx`](../src/components/ConfirmDialog.tsx), controlled by [`MainMenu.tsx`](../src/views/MainMenu.tsx) |
 | Isolated reference | [`MainMenuContextMenuReference.tsx`](../src/components/design-system/MainMenuContextMenuReference.tsx) |
@@ -373,23 +386,23 @@ On a touch screen, press and hold the tile. Moving the held finger far enough to
 
 | State | Treatment |
 | --- | --- |
-| Default | The menu is closed and the tile keeps the normal Main Menu card treatment. |
+| Default | The menu is closed and the tile keeps the Main Menu entity card treatment. |
 | Checked | The selected Tile Size row has `aria-checked="true"` and the production checkmark. |
 | Disabled | No current action uses a disabled row. While a world tile loads, production omits Delete instead of presenting an unavailable destructive action. |
 | Focus | Keyboard opening focuses the first action; arrow navigation uses the shared focus fill and text treatment. Closing with Escape restores focus to the trigger. |
 | Overflow | Long Group names truncate without losing their accessible names. Group count cannot grow the menu beyond three shortcuts. Exceptional-height overflow uses ScrollArea. |
-| Destructive | Delete remains in its own final section and opens the existing confirmation. Cancel keeps the item; Confirm removes it. |
+| Destructive | Delete is last in the item-action section and opens the existing confirmation. Cancel keeps the item; Confirm removes it. |
 
-The live reference uses the production menu against a production card shell. Tile size, Group selection, Group creation, removal, deletion, and restoration stay in mounted React state. The sample never reads or writes Main Menu preferences, library records, storage, account data, or authored worlds.
+The live reference uses the production menu against the production entity card face. The sample is a persona entity, so its final section shows Check for Updates, the default-persona action, and Delete. Tile size, Group selection, Group creation, removal, update checks, the default persona, deletion, and restoration stay in mounted React state. The sample never reads or writes Main Menu preferences, library records, storage, account data, or authored worlds.
 
 ### Writing review
 
-- **Unverified:** “Right-click the sample world. On a touch screen, press and hold the sample world. For keyboard access, focus the sample world. Press Shift+F10 or the Context Menu key.” gives one action per sentence and names its target, but complete technical-term admission for “Right-click,” “touch screen,” “keyboard,” Shift+F10, and Context Menu is not recorded.
-- **Unverified:** “A controlled library sample for the production tile menu.” identifies the sample in one sentence. “Restore the local sample to continue.” states the next local step, and “Restore Sample” names its action. “Grouped library tile actions” is a compact selector phrase. Vocabulary and grammar evidence is not recorded.
-- **Unverified:** status cases are “The tile size is small/medium/large.”, “The sample group is {Group name}.” or “The sample is not in a group.”, and “The local sample is available/deleted.” Vocabulary and grammar evidence is not recorded; interpolated Group names are user-authored fixtures and retain their own voice.
-- **Unverified:** the accessible label “Sample world: The Lantern District” has terminology and formatting review only; standalone label-fragment grammar is outside the listed evidence.
+- **Unverified:** “Right-click the sample entity. On a touch screen, press and hold the sample entity. For keyboard access, focus the sample entity. Press Shift+F10 or the Context Menu key.” gives one action per sentence and names its target, but complete technical-term admission for “Right-click,” “touch screen,” “keyboard,” Shift+F10, and Context Menu is not recorded.
+- **Unverified:** “Restore the local sample to continue.” states the next local step, and “Restore Sample” names its action. “Grouped library tile actions” is a compact selector phrase. Vocabulary and grammar evidence is not recorded.
+- **Unverified:** status cases are “The tile size is small/medium/large.”, “The sample group is {Group name}.” or “The sample is not in a group.”, “Check for Updates has not run.” or “Check for Updates ran on the local sample.”, “The sample is/is not the default persona.”, and “The local sample is available/deleted.” Each is one statement in the present or past simple tense. Vocabulary and grammar evidence is not recorded; interpolated Group names are user-authored fixtures and retain their own voice.
+- **Unverified:** the accessible label “Sample entity: Mara Venn” has terminology and formatting review only; standalone label-fragment grammar is outside the listed evidence. “Mara Venn” is a fixture name and keeps its own voice.
 
-Tile Size, Add To Group, Create New Group, Remove From Group, Delete, Delete World, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
+Tile Size, Add To Group, Create New Group, Remove From Group, Check for Updates, Set as Default Persona, Clear Default Persona, Default, Delete, Delete Character, Cancel, and Confirm reuse production copy so the reference and Main Menu cannot drift. The confirmation says “character” where the terminology rule says “entity”; the reference keeps it for parity. Reuse does not certify those labels or the confirmation as fully ASD-STE100 compliant. In particular, the existing Delete label remains unchanged for production parity; this ticket does not perform the app-wide terminology decision that would be required before replacing it.
 
 ## Pattern: Compact Selection Lists
 

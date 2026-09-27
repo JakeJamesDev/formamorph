@@ -160,7 +160,7 @@ describe('main menu context menu reference', () => {
     await user.click(screen.getByRole('tab', { name: 'Context Menu' }));
 
     expect(screen.getByRole('heading', { name: 'Grouped Context Actions' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sample world/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sample entity/i })).toBeInTheDocument();
   });
 });
 

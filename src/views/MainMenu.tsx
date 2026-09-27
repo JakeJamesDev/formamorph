@@ -22,8 +22,8 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, TooltipPopup } from "@/components/ui/tooltip";
 import {ConfirmDialog} from "@/components/ConfirmDialog";
-import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, UserCheck, UserX, type LucideIcon } from "lucide-react";
-import { ContextMenuItem } from '@/components/ui/context-menu';
+import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
+import { DefaultPersonaBadge, DefaultPersonaMenuItem } from '@/components/library/DefaultPersona';
 import { ActionIcon } from '@/lib/actionIcons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
@@ -2348,23 +2348,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               compact={compact}
               placeholder={<EntityPlaceholderArt id={entity.id} sourceId={entity.sourceId} name={entity.name} />}
               onSelect={setEditingEntityId}
-              badge={entity.id === defaultPersona && entity.persona ? (
-                <span className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">Default</span>
-              ) : undefined}
+              badge={entity.id === defaultPersona && entity.persona ? <DefaultPersonaBadge /> : undefined}
               note={entity.id === defaultPersona && entity.persona ? 'Default persona' : undefined}
             />
           )}
           onCheckUpdates={(id) => { void checkForUpdates('entity', id); }}
           itemActions={(id) => {
             if (!entities.some((entity) => entity.id === id && entity.persona)) return null;
-            return id === defaultPersona ? (
-              <ContextMenuItem onSelect={() => { clearDefaultPersona(); setDefaultPersonaId(undefined); }}>
-                <UserX className="h-4 w-4 shrink-0" /> Clear Default Persona
-              </ContextMenuItem>
-            ) : (
-              <ContextMenuItem onSelect={() => { setDefaultPersona(id); setDefaultPersonaId(id); }}>
-                <UserCheck className="h-4 w-4 shrink-0" /> Set as Default Persona
-              </ContextMenuItem>
+            return (
+              <DefaultPersonaMenuItem
+                isDefault={id === defaultPersona}
+                onSet={() => { setDefaultPersona(id); setDefaultPersonaId(id); }}
+                onClear={() => { clearDefaultPersona(); setDefaultPersonaId(undefined); }}
+              />
             );
           }}
           onDelete={setEntityToDelete}
