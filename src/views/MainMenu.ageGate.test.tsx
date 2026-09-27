@@ -455,6 +455,17 @@ describe('the age gate in front of signing in', () => {
     expect(gate()).not.toBeInTheDocument();
   });
 
+  it('shows the account in the footer once the shared sign-in dialog succeeds', async () => {
+    acceptAgeGate();
+    accountAccepted = true;
+    renderMainMenu();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    submitLogin();
+
+    expect(await screen.findByRole('button', { name: 'User Profile' })).toBeInTheDocument();
+  });
+
   it('records the answer made for this login and continues without asking twice', async () => {
     renderMainMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Login' }));

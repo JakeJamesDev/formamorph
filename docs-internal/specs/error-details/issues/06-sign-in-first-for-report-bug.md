@@ -1,6 +1,6 @@
 # 06: Sign-in first for signed-out Report Bug
 
-Status: in-progress
+Status: ready-for-human
 Base: f433534b
 Blocked by: 05 — Report Bug from Error Details
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
