@@ -58,7 +58,7 @@ import { MenuModal } from "../components/modals/MenuModal";
 import LlmSetupGuide from "../components/modals/LlmSetupGuide";
 import { isLikelyConnectionError } from "../lib/connectionError";
 import WorldEditor from "./WorldEditor";
-import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef } from "@/types";
+import type { CharacterData, ChatMessage, ChatRole, AIRequestType, AITurnResult, GameLocation, GameState, MediaAsset, Dictionary, Entity, SaveRecord, World, PlayerStat, Trait, PersonaRef, OwnedTraitPicks } from "@/types";
 import { UnsavedChangesDialog } from "../components/UnsavedChangesDialog";
 import { estimateHistoryChars, estimateTokens } from "../lib/memoryUtils";
 import { parseNarration, stripReasoning, stripReasoningLive, extractReasoning, extractReasoningLive } from "../lib/aiResponse";
@@ -190,7 +190,7 @@ type DemoAIEntryState = 'waiting' | 'open' | 'done';
 interface GameViewerProps {
   initialTraits?: string[];
   /** Entity id → the owned traits picked at the entry step. */
-  initialOwnedTraits?: Record<string, string[]>;
+  initialOwnedTraits?: OwnedTraitPicks;
   initialCharacterData: CharacterData | null;
   initialLocationId?: string | null;
   /** Per-playthrough dictionary set chosen at the entry step; null when the step was skipped (falls back
@@ -376,7 +376,7 @@ const revealedSentences = (text: string): string => {
   return text.slice(0, text.length - segments[segments.length - 1].length).replace(/\s+$/, '');
 };
 
-const NO_OWNED_TRAITS: Record<string, string[]> = {};
+const NO_OWNED_TRAITS: OwnedTraitPicks = {};
 
 const GameViewer = ({
   initialTraits = [],

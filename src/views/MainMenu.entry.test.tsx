@@ -808,4 +808,34 @@ describe("an entity's owned traits at world entry", () => {
     await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
     expect(onStartGame.mock.calls[0][7]).toEqual({ wolf: ['tamed'] });
   });
+
+  it('brings back a "playing as" pick when the player switches persona away and back', async () => {
+    const record = world();
+    record.data.entities = [
+      {
+        id: 'ash', name: 'Ash', playerDescription: '', aiDescription: '', aiSummary: '', persona: true,
+        traits: [{ id: 'guard', name: 'Royal Guard', statChanges: [], requires: [{ kind: 'playingAs', id: 'ash' }] }],
+      },
+      { id: 'bob', name: 'Bob', playerDescription: '', aiDescription: '', aiSummary: '', persona: true },
+    ];
+    await WorldStorageService.storeWorld(record);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    const nav = () => within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Ash' }));
+    fireEvent.click(nav().getByRole('button', { name: /^Ash/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Royal Guard' }));
+    fireEvent.click(nav().getByRole('button', { name: 'Persona' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Bob' }));
+    expect(within(screen.getByRole('main')).getByText(/^Turned off/)).toHaveTextContent('Turned off Royal Guard, because of Bob.');
+    // A pick in between keeps the waiting trait waiting.
+    fireEvent.click(nav().getByRole('button', { name: /^Other traits/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Extra trait' }));
+    fireEvent.click(nav().getByRole('button', { name: 'Persona' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Ash' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    expect(onStartGame.mock.calls[0][7]).toEqual({ ash: ['guard'] });
+  });
 });

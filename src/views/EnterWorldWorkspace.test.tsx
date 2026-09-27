@@ -8,7 +8,8 @@ import {
   emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
   type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { gateStates, settle, switchTrait } from '@/lib/traitGates';
+import { gateStates, settle, switchTrait, type SettleResult } from '@/lib/traitGates';
+import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { namedStartLocation, offeredStartLocations, withoutPersona } from '@/lib/personaPick';
 import type { Entity, EntityMetadata, GameLocation, PersonaRef, Trait } from '@/types';
 
@@ -940,21 +941,32 @@ describe('EnterWorldWorkspace cast pages', () => {
       ...emptyEntryDraft(), ...entryDefaults(cast, initialPersona), persona: initialPersona,
     }));
     const [categoryIndex, setCategoryIndex] = useState(0);
+    const [cascade, setCascade] = useState<TraitCascade | null>(null);
     const input = entryGateInput(cast, draft);
-    const ownerOf = (id: string) => input.owners.find((o) => o.traits.some((t) => t.id === id))!.id;
+    const ownerOf = (id: string) => input.owners.find((o) => o.traits.some((t) => t.id === id))!;
+    const settled = (base: EntryDraft, result: SettleResult, because: string) => {
+      setDraft(withSettledTraits(base, result));
+      const off = result.turnedOff.map((r) => ownerOf(r.traitId).traits.find((t) => t.id === r.traitId)!.name);
+      setCascade(off.length ? { off, because } : null);
+    };
     return (
       <Harness
         traitEntities={cast.entities}
         resolveEntityText={(_entity, text) => text}
         selectedTraits={[...draft.traitIds, ...Object.values(draft.ownedTraitIds).flat()]}
         onTraitSelect={(id) => {
-          const result = switchTrait(input, ownerOf(id), id);
-          if (result) setDraft((d) => withSettledTraits(d, result.active));
+          const result = switchTrait(input, ownerOf(id).id, id, draft.cascadeOffTraitIds);
+          if (result) settled(draft, result, id);
         }}
         traitGates={gateStates(input)}
+        traitCascade={cascade}
+        onDismissTraitCascade={() => setCascade(null)}
         worldPersonas={cast.entities.map(optionOf)}
         persona={draft.persona}
-        onPersonaChange={(ref) => setDraft((d) => withSettledTraits({ ...d, persona: ref }, settle(entryGateInput(cast, { ...d, persona: ref })).active))}
+        onPersonaChange={(ref) => {
+          const next = { ...draft, persona: ref };
+          settled(next, settle(entryGateInput(cast, next), next.cascadeOffTraitIds), ref.source === 'none' ? 'None' : ref.entityId);
+        }}
         categoryIndex={categoryIndex}
         onCategoryChange={setCategoryIndex}
       />
@@ -1002,7 +1014,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
   });
 
-  it('locks a "playing as" owned trait after a switch away, and keeps the other picks when the player switches back', async () => {
+  it('locks a "playing as" owned trait after a switch away, with the banner on its page, and brings it back on the return', async () => {
     const user = userEvent.setup();
     render(<CastHarness />);
     await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
@@ -1014,11 +1026,12 @@ describe('EnterWorldWorkspace cast pages', () => {
     await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
     expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeDisabled();
     expect(screen.getByText('Requires playing as Ash')).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByRole('status')).toHaveTextContent('Turned off Guard, because of bob.');
 
     await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
     await user.click(screen.getByRole('radio', { name: 'Ash' }));
     await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
     expect(screen.getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Guard' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeChecked();
   });
 });

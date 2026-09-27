@@ -3,7 +3,7 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
   type EntryDraft, type EntryTraitWorld,
 } from './entryDraft';
-import { settle } from './traitGates';
+import { settle, switchTrait } from './traitGates';
 import type { PersonaPickContext } from './personaPick';
 import type { Entity, GameLocation, PersonaRef, Trait } from '@/types';
 
@@ -77,7 +77,9 @@ describe('owned trait picks in the draft', () => {
     traits: [trait('paladin', { isDefault: true })], traitGroups: [], entities: [ash, bob], library,
   });
   const repick = (draft: EntryDraft, ref: PersonaRef, w = castWorld()) =>
-    withSettledTraits(draft, settle(entryGateInput(w, { ...draft, persona: ref })).active);
+    withSettledTraits({ ...draft, persona: ref }, settle(entryGateInput(w, { ...draft, persona: ref }), draft.cascadeOffTraitIds));
+  const toggle = (draft: EntryDraft, ownerId: string, traitId: string) =>
+    withSettledTraits(draft, switchTrait(entryGateInput(castWorld(), draft), ownerId, traitId, draft.cascadeOffTraitIds)!);
 
   it("preselects every owner's defaults, the world's and each entity's, settled under the persona", () => {
     const asAsh = entryDefaults(castWorld([wren]), world('ash'));
@@ -86,18 +88,29 @@ describe('owned trait picks in the draft', () => {
     expect(entryDefaults(castWorld([wren]), world('bob')).ownedTraitIds.ash).toEqual(['tamed']);
   });
 
-  it("keeps an entity's picks when the player switches persona and back", () => {
-    let draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'scarred'] } };
+  it("keeps an entity's picks when the player switches persona and back, a gated pick included", () => {
+    let draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'scarred', 'guard'] } };
     draft = repick(draft, world('bob'));
-    draft = repick(draft, world('ash'));
     expect(draft.ownedTraitIds.ash).toEqual(['tamed', 'scarred']);
+    draft = repick(draft, world('ash'));
+    expect(draft.ownedTraitIds.ash).toEqual(['tamed', 'scarred', 'guard']);
+    expect(draft.cascadeOffTraitIds.ash).toEqual([]);
   });
 
-  it('turns a "playing as" owned trait off when the persona changes', () => {
+  it('turns a "playing as" owned trait off when the persona changes, and keeps it to return', () => {
     const draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'guard'] } };
     const result = settle(entryGateInput(castWorld(), { ...draft, persona: world('bob') }));
     expect(result.turnedOff).toEqual([{ ownerId: 'ash', traitId: 'guard' }]);
-    expect(withSettledTraits(draft, result.active).ownedTraitIds.ash).toEqual(['tamed']);
+    const next = withSettledTraits(draft, result);
+    expect(next.ownedTraitIds.ash).toEqual(['tamed']);
+    expect(next.cascadeOffTraitIds.ash).toEqual(['guard']);
+  });
+
+  it('never brings back a trait the player switched off by hand', () => {
+    let draft: EntryDraft = { ...emptyEntryDraft(), persona: world('ash'), ownedTraitIds: { ash: ['tamed', 'guard'] } };
+    draft = toggle(draft, 'ash', 'guard');
+    draft = repick(repick(draft, world('bob')), world('ash'));
+    expect(draft.ownedTraitIds.ash).toEqual(['tamed']);
   });
 
   it('keeps the picks of a library persona that left the cast, and starts the game without them', () => {
