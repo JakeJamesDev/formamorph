@@ -160,22 +160,30 @@ export function buildRequestBody(snapshot: AiSettingsSnapshot, call: AiCall): Ai
   return bodyForTarget(snapshot, call, snapshot.resolveTarget(call.requestType));
 }
 
+/** The parts of a call its output caps depend on. */
+type CapCall = Pick<AiCall, 'requestType' | 'maxTokensOverride'>;
+
 /** The answer cap one call resolves to: the prompt's custom row, the call's own cap, or the target's. */
-function capFor(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): number | undefined {
+function capFor(snapshot: AiSettingsSnapshot, call: CapCall, target: AiEndpointTarget): number | undefined {
   return internalCapFor(snapshot, call) ?? target.maxTokens;
 }
 
 /** The cap Formamorph sets for this call, or `null` where the call follows the endpoint's own. */
-function internalCapFor(snapshot: AiSettingsSnapshot, call: AiCall): number | null {
+function internalCapFor(snapshot: AiSettingsSnapshot, call: CapCall): number | null {
   return customMaxOutput(snapshot.promptMaxOutput, call.requestType) ?? call.maxTokensOverride ?? null;
 }
 
-/** One call's reasoning slice, in the target's spelling, and the output cap that goes with it. */
-interface ResolvedReasoning {
+/** One call's output room: the answer's cap, and the request cap that adds the thinking where it applies. */
+export interface OutputCaps {
+  answerCap: number | undefined;
+  maxTokens: number | undefined;
+}
+
+/** One call's reasoning slice, in the target's spelling, and the output caps that go with it. */
+interface ResolvedReasoning extends OutputCaps {
   fields: ReasoningBodyFields;
   /** The effort literal the slice carries, whichever field spelled it. */
   level: ReasoningEffortField | null;
-  maxTokens: number | undefined;
 }
 
 /**
@@ -183,7 +191,7 @@ interface ResolvedReasoning {
  * engaged nowhere, and a record that rules the model out licenses no off signal. The budget rides on top of
  * the answer cap where the slice carries a reasoning field or the record knows the model reasons.
  */
-function resolveReasoning(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): ResolvedReasoning {
+function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: AiEndpointTarget): ResolvedReasoning {
   const effort = resolveRequestReasoning(
     call.requestType, snapshot.promptReasoning, snapshot.reasoningEffort, snapshot.thinkingMode,
     target.reasoning, snapshot.keptReasoning,
@@ -203,7 +211,13 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: AiCall, target: Ai
     unbounded: target.maxTokens === undefined,
   });
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
-  return { fields, level, maxTokens: carriesReasoning ? planned.maxTokens : answerCap };
+  return { fields, level, answerCap, maxTokens: carriesReasoning ? planned.maxTokens : answerCap };
+}
+
+/** The caps one call's request sends, for the context reserve and the length guidance to read. */
+export function outputCaps(snapshot: AiSettingsSnapshot, call: CapCall): OutputCaps {
+  const { answerCap, maxTokens } = resolveReasoning(snapshot, call, snapshot.resolveTarget(call.requestType));
+  return { answerCap, maxTokens };
 }
 
 function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): AiRequestBody {

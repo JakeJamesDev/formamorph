@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildAiRequestSpec, buildRequestBody,
+  buildAiRequestSpec, buildRequestBody, outputCaps,
   type AiCall, type AiEndpointTarget, type AiRequestBody, type AiSettingsSnapshot,
 } from './aiRequestSpec';
 import type { ReasoningDialect } from '@/lib/reasoningDialect';
@@ -12,6 +12,7 @@ import {
 import { resolvePromptEndpoint, type ActiveEndpointState } from '@/lib/promptEndpoints';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, type TextEndpointPresetStore } from '@/lib/textEndpointPresets';
 import { toolSchema } from '@/lib/tools/toolSchema';
+import { lengthGuidance, outputReserve } from '@/lib/outputLength';
 import type { Tool } from '@/types';
 
 /** A capability record answering the levels question only, as a probe leaves it. */
@@ -985,5 +986,36 @@ describe('tools — sent only where the record says the target takes them', () =
     expect(spec.body).not.toHaveProperty('tools');
     expect(spec.body).not.toHaveProperty('tool_choice');
     expect(spec).not.toHaveProperty('tools');
+  });
+});
+
+/** Narration's context reserve and length guidance read the same caps the request sends. */
+describe('narration output caps — the reserve and the length guidance', () => {
+  const narration = { requestType: 'narration' } as const;
+  const reserveFor = (snap: AiSettingsSnapshot) => outputReserve(outputCaps(snap, narration).maxTokens);
+
+  it('reserves the answer plus the thinking with reasoning on, and the answer alone with it off', () => {
+    const on = snapshot(lmStudioReasoning({ maxTokens: 512 }), { promptReasoningBudget: { narration: 150 } });
+    expect(reserveFor(on)).toBe(1280);
+    expect(reserveFor(on)).toBe(buildRequestBody(on, call()).max_tokens);
+    const off = snapshot(lmStudioReasoning({ maxTokens: 512 }), {
+      reasoningEngaged: true, promptReasoning: { narration: 'none' }, promptReasoningBudget: { narration: 150 },
+    });
+    expect(reserveFor(off)).toBe(512);
+    expect(reserveFor(off)).toBe(buildRequestBody(off, call()).max_tokens);
+    // Override off: no reserve and no guidance.
+    const unbounded = snapshot(lmStudioReasoning({ maxTokens: undefined }));
+    expect(reserveFor(unbounded)).toBe(0);
+    expect(lengthGuidance('auto', outputCaps(unbounded, narration).answerCap)).toBe('');
+  });
+
+  it('moves both the reserve and the length guidance with the endpoint Max Output', () => {
+    const at = (maxTokens: number) =>
+      snapshot(lmStudioReasoning({ maxTokens }), { promptReasoningBudget: { narration: 150 } });
+    // The guidance describes the answer alone, so the thinking never inflates the paragraph count.
+    expect(lengthGuidance('auto', outputCaps(at(512), narration).answerCap)).toMatch(/at most 6 /);
+    expect(lengthGuidance('auto', outputCaps(at(1024), narration).answerCap)).toMatch(/at most 12 /);
+    expect(reserveFor(at(512))).toBe(1280);
+    expect(reserveFor(at(1024))).toBe(2560);
   });
 });
