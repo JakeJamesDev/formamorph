@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ChevronDown, Megaphone, Pencil, Pin, Undo2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,7 +79,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
       setMessages(result.messages);
       setTotal(result.total);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load sent messages');
+      toastError(error, 'Failed to load sent messages');
       setMessages([]);
     } finally {
       setIsLoading(false);
@@ -98,7 +99,7 @@ export function SentMessageList({ audience, userId, refreshNonce = 0, emptyLabel
       )));
       toast.success('Message recalled');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to recall the message');
+      toastError(error, 'Failed to recall the message');
     }
   };
 

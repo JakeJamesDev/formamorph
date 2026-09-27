@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ChevronDown, ChevronRight, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +58,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
       // The read has already landed by the time this resolves, so the badge outside is now stale.
       onReadRef.current?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load your notifications');
+      toastError(error, 'Failed to load your notifications');
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +76,7 @@ export function NotificationsTab({ active, onRead, onOpenListing }: Notification
       setItems((prev) => prev.filter((item) => item.author.id !== user.id));
       toast.success(`You no longer follow ${user.username}`);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to unfollow them');
+      toastError(error, 'Failed to unfollow them');
     }
   };
 

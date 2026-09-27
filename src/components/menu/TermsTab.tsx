@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,7 +34,7 @@ export function TermsTab({ active, onAnswered }: TermsTabProps) {
       const state = await PolicyService.fetchPolicies();
       setGate(state.uploadGate);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load the terms');
+      toastError(error, 'Failed to load the terms');
       setGate(null);
     } finally {
       setIsLoading(false);
@@ -63,7 +63,7 @@ export function TermsTab({ active, onAnswered }: TermsTabProps) {
       setUploadTermsDeclined(!accepted);
       onAnswered?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to record your answer');
+      toastError(error, 'Failed to record your answer');
     } finally {
       setIsSaving(false);
     }

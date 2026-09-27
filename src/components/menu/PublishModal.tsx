@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import {
   Dialog,
   DialogContent,
@@ -246,9 +247,9 @@ export function PublishModal({
         try {
           await WorldStorageService.createChangelogEntry(targetId, draft);
         } catch (error) {
-          toast.error(
-            `${KIND_LABELS[kind].one} updated, but the changelog entry did not save. Add it from the listing's Changelog.`,
-          );
+          toastError(error, {
+            headline: `${KIND_LABELS[kind].one} updated, but the changelog entry did not save. Add it from the listing's Changelog.`,
+          });
           console.error('Failed to attach the changelog entry:', error);
         }
       }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Flag, FileWarning, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -84,7 +85,7 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
     try {
       setGroups(sortReportGroups(await ReportService.fetchQueue()));
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load the report queue');
+      toastError(error, 'Failed to load the report queue');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +114,7 @@ export function ReportsTab({ active, onOpenListing, onResolved }: ReportsTabProp
         : `Resolved — ${result.notified} reporters have been told.`);
       onResolved?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to resolve these reports');
+      toastError(error, 'Failed to resolve these reports');
     } finally {
       setBusy(null);
     }

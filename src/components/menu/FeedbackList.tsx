@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ChevronUp, Lock, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,7 +87,7 @@ export function FeedbackList({
       setTruncated(result.truncated ?? false);
     } catch (error) {
       if (!isCurrent()) return;
-      toast.error((error as Error).message || 'Failed to load these');
+      toastError(error, 'Failed to load these');
       setThreads([]);
     } finally {
       if (isCurrent()) setIsLoading(false);
@@ -122,7 +122,7 @@ export function FeedbackList({
       setThreads((prev) => prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row)));
     } catch (error) {
       // Still said after an unmount: the vote failed whether or not the list is there to show it.
-      toast.error((error as Error).message || 'Failed to record your vote');
+      toastError(error, 'Failed to record your vote');
     } finally {
       if (mountedRef.current) setVoting((prev) => {
         const next = new Set(prev);

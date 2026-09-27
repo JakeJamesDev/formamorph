@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Heart, Loader2, Trophy, X } from "lucide-react";
 import {
   Dialog,
@@ -221,8 +222,7 @@ export function PodiumDialog({ open, onOpenChange, contest, onSaved }: PodiumDia
       onSaved?.();
       onOpenChange(false);
     } catch (error) {
-      toast.error((error as Error).message
-        || (editing ? 'Failed to update the podium' : 'Failed to announce the results'));
+      toastError(error, editing ? 'Failed to update the podium' : 'Failed to announce the results');
     } finally {
       setSaving(false);
     }

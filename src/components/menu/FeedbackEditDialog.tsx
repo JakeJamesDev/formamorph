@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Pencil } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -74,7 +75,7 @@ export function FeedbackEditDialog({
       onOpenChange(false);
       toast.success('Saved');
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save the changes');
+      toastError(error, 'Failed to save the changes');
     } finally {
       setSaving(false);
     }

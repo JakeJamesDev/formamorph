@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { Ban, Calendar, CheckCircle2, Clock, Loader2, Megaphone, Pencil, Plus, Trophy, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,7 +126,7 @@ export function EventsTab({ active }: EventsTabProps) {
       .then((list) => { if (current) setEvents(list); })
       .catch((error) => {
         console.error('Failed to load events:', error);
-        if (current) toast.error((error as Error).message || 'Failed to load events');
+        if (current) toastError(error, 'Failed to load events');
       })
       .finally(() => { if (current) setLoading(false); });
 
@@ -151,7 +152,7 @@ export function EventsTab({ active }: EventsTabProps) {
       setCanceling(null);
       refresh();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to cancel the event');
+      toastError(error, 'Failed to cancel the event');
     } finally {
       setBusy(false);
     }
@@ -166,7 +167,7 @@ export function EventsTab({ active }: EventsTabProps) {
       setRemoving(null);
       refresh();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete the event');
+      toastError(error, 'Failed to delete the event');
     } finally {
       setBusy(false);
     }

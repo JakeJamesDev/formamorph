@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ChevronDown, Inbox, Megaphone, Pin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -107,7 +107,7 @@ export function MessagesTab({ active, onUnreadChange }: MessagesTabProps) {
       });
       setTotal((prev) => Math.max(prev - 1, 0));
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to dismiss the message');
+      toastError(error, 'Failed to dismiss the message');
     }
   };
 

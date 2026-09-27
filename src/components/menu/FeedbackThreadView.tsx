@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { toastError } from "@/lib/linkToast";
 import { ArrowLeft, ChevronUp, Lock, LockOpen, Pencil, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,7 +96,7 @@ export function FeedbackThreadView({
       // Reading clears this thread's share of the badge, so the count outside has to be re-read.
       onChanged?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to load this');
+      toastError(error, 'Failed to load this');
       setDetail(null);
     } finally {
       setIsLoading(false);
@@ -116,7 +117,7 @@ export function FeedbackThreadView({
       setReply('');
       onChanged?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to post the comment');
+      toastError(error, 'Failed to post the comment');
     } finally {
       setIsSending(false);
     }
@@ -134,7 +135,7 @@ export function FeedbackThreadView({
         : prev));
       setEditingId(null);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to save the comment');
+      toastError(error, 'Failed to save the comment');
     } finally {
       setIsSavingEdit(false);
     }
@@ -149,7 +150,7 @@ export function FeedbackThreadView({
       // The edit box would otherwise stay open over a comment that no longer exists.
       if (editingId === commentId) setEditingId(null);
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete the comment');
+      toastError(error, 'Failed to delete the comment');
     }
   };
 
@@ -159,7 +160,7 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to update the status');
+      toastError(error, 'Failed to update the status');
     }
   };
 
@@ -169,7 +170,7 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to lock the thread');
+      toastError(error, 'Failed to lock the thread');
     }
   };
 
@@ -182,7 +183,7 @@ export function FeedbackThreadView({
       setDetail((prev) => (prev ? { ...prev, thread: updated } : prev));
       onChanged?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to record your vote');
+      toastError(error, 'Failed to record your vote');
     } finally {
       setIsVoting(false);
     }
@@ -195,7 +196,7 @@ export function FeedbackThreadView({
       onChanged?.();
       onDeleted?.();
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to delete this');
+      toastError(error, 'Failed to delete this');
     }
   };
 
