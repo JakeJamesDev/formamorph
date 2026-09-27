@@ -3981,7 +3981,8 @@ const GameViewer = ({
       const openingPins = collectPins({
         traits: pinTraitsInOrder(
           { traits: authoredTraits, traitGroups, entities: traitEntities }, chosenList, initialOwnedTraits,
-          playedEntityId(initialPersona?.ref), inPlayLibrary(initialPersona?.libraryEntity),
+          playedEntityId(initialPersona?.ref),
+          inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []),
         ),
         location: authoredLocation, stats: seedState.stats, placeholders, rolls: sessionRolls,
       });

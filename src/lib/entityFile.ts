@@ -1,5 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
-import type { Entity, Opening, Placeholder, LibraryDetails } from '@/types';
+import type {
+  Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, Trait, TraitGroup, TraitRequirement,
+} from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
 import { APP_VERSION, WORLD_FILE_KIND, SAVE_FILE_KIND, migrateCarriedPlaceholders } from './version';
@@ -16,6 +18,7 @@ import { IMAGE_CAPS, bytesToDataUrl, dataUrlMime, measureDataUrl, optimizeImageD
 import { entityImages, primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
+import { portableOwnedTraits, type TraitWorld } from './portableTraits';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -48,6 +51,10 @@ export interface EntityCardData {
   /** The entity's own openings and their weights (see lib/openings). Import mints fresh ids for both. */
   openings?: Opening[];
   openingWeights?: Record<string, number>;
+  /** The entity's owned traits and groups (see lib/portableTraits). A requirement out of the entity also
+   *  stores its target's name, so a receiving world can bind it. */
+  traits?: Trait[];
+  traitGroups?: TraitGroup[];
   /** Where this character came from, so an importer can reconnect it (see lib/componentFileLinks). */
   source?: ComponentFileSource;
   /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
@@ -58,12 +65,14 @@ export interface EntityCardData {
  *  of the gallery only the slots past the primary are carried, the primary being the card's own pixels.
  *  `available` is the placeholder pool to resolve the entity's used chips from — the world's combined list
  *  for a world entity, or the entity's own carried pool for a library one. `links` is what the card says
- *  about its source and the worlds it suits; a card written without it says nothing about either. */
+ *  about its source and the worlds it suits; a card written without it says nothing about either. `world` is
+ *  the world a world entity's requirements point into, for their names. */
 export function buildEntityCardData(
   entity: Entity,
   available: Placeholder[] = carriedPlaceholders(entity),
   links: ComponentFileLinks = {},
   libraryDetails?: LibraryDetails,
+  world?: TraitWorld,
 ): EntityCardData {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(entity.placeholders ?? []);
@@ -89,6 +98,7 @@ export function buildEntityCardData(
     ...(entity.openings?.length ? { openings: entity.openings } : {}),
     ...(entity.openings?.length && entity.openingWeights && Object.keys(entity.openingWeights).length
       ? { openingWeights: entity.openingWeights } : {}),
+    ...portableOwnedTraits(entity, world),
     ...(links.source ? { source: links.source } : {}),
     ...(links.associations?.length ? { associations: links.associations } : {}),
   };
@@ -141,7 +151,52 @@ export function parseEntityCardData(raw: unknown): Entity {
     ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),
     ...(carried.openings ? { openings: carried.openings } : {}),
     ...(carried.openingWeights ? { openingWeights: carried.openingWeights } : {}),
+    ...cardOwnedTraits(obj),
   };
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const hasIdAndName = (v: unknown): v is Record<string, unknown> & { id: string; name: string } =>
+  isRecord(v) && typeof v.id === 'string' && !!v.id && typeof v.name === 'string';
+
+function cardRequirement(raw: unknown): TraitRequirement[] {
+  if (!isRecord(raw) || typeof raw.id !== 'string') return [];
+  if (raw.kind !== 'trait' && raw.kind !== 'group' && raw.kind !== 'playingAs') return [];
+  return [{ kind: raw.kind, id: raw.id, ...(typeof raw.name === 'string' && raw.name ? { name: raw.name } : {}) }];
+}
+
+/** The card's owned traits and groups. An owned trait carries no stat effects, so none are read. */
+function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups'> {
+  const traits: Trait[] = (Array.isArray(obj.traits) ? obj.traits : []).filter(hasIdAndName).map((t) => {
+    const requires = Array.isArray(t.requires) ? t.requires.flatMap(cardRequirement) : [];
+    const pins = (Array.isArray(t.placeholderPins) ? t.placeholderPins : []).flatMap((p): PlaceholderPin[] =>
+      (isRecord(p) && typeof p.placeholderId === 'string' && typeof p.value === 'string'
+        ? [{ placeholderId: p.placeholderId, value: p.value, ...(typeof p.valueId === 'string' ? { valueId: p.valueId } : {}) }]
+        : []));
+    return {
+      id: t.id,
+      name: t.name,
+      statChanges: [],
+      ...(typeof t.playerDescription === 'string' ? { playerDescription: t.playerDescription } : {}),
+      ...(typeof t.aiDescription === 'string' ? { aiDescription: t.aiDescription } : {}),
+      ...(typeof t.groupId === 'string' ? { groupId: t.groupId } : {}),
+      ...(typeof t.order === 'number' ? { order: t.order } : {}),
+      ...(t.isDefault === true ? { isDefault: true } : {}),
+      ...(t.playerToggle === true ? { playerToggle: true } : {}),
+      ...(pins.length ? { placeholderPins: pins } : {}),
+      ...(requires.length ? { requires } : {}),
+    };
+  });
+  const traitGroups: TraitGroup[] = (Array.isArray(obj.traitGroups) ? obj.traitGroups : []).filter(hasIdAndName).map((g) => ({
+    id: g.id,
+    name: g.name,
+    parentId: typeof g.parentId === 'string' ? g.parentId : null,
+    ...(typeof g.playerDescription === 'string' ? { playerDescription: g.playerDescription } : {}),
+    ...(typeof g.aiDescription === 'string' ? { aiDescription: g.aiDescription } : {}),
+    ...(typeof g.order === 'number' ? { order: g.order } : {}),
+    ...(g.exclusive === true ? { exclusive: true } : {}),
+  }));
+  return { ...(traits.length ? { traits } : {}), ...(traitGroups.length ? { traitGroups } : {}) };
 }
 
 /** One card row as an opening, or nothing when it is not one. An unknown kind reads as a Player Action. The
@@ -162,7 +217,7 @@ function cardOpening(raw: unknown): Opening[] {
  * Entities without a portrait get Morph art so export always yields a valid image.
  */
 export async function exportEntityCard(
-  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails,
+  entity: Entity, available?: Placeholder[], links: ComponentFileLinks = {}, libraryDetails?: LibraryDetails, world?: TraitWorld,
 ): Promise<Blob> {
   // The art follows the listing, else the library item, so a card matches the tile it came from.
   let imageUrl = primaryImage(entity) || await morphCardImage(
@@ -179,7 +234,7 @@ export async function exportEntityCard(
   if (dataUrlMime(imageUrl) !== 'image/webp') throw new Error('Could not encode the portrait as WebP.');
   const { w, h } = await measureDataUrl(imageUrl);
   const bytes = new Uint8Array(await (await fetch(imageUrl)).arrayBuffer());
-  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links, libraryDetails)), { w, h });
+  const card = embedEntityCard(bytes, JSON.stringify(buildEntityCardData(entity, available, links, libraryDetails, world)), { w, h });
   return new Blob([card], { type: 'image/webp' });
 }
 

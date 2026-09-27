@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
-import { activeOwnedTraitIds, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { collectPins, traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
 import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
@@ -219,14 +219,19 @@ export function useResolvedWorld(): ResolvedWorld {
   const {
     playerStats: rawPlayerStats, viewStats: rawViewStats, runtimeDictionary: rawDictionary,
     currentLocation: storedLocation, playerTraits, disabledTraitIds, ownedTraits, codePins,
-    personaRef, libraryPersona, personaPending,
+    personaRef, libraryPersona, personaPending, discoveredEntities,
   } = useGameplay();
 
   const traitOrder = useMemo(() => traitOrderIndex(rawTraits, rawTraitGroups), [rawTraits, rawTraitGroups]);
   // The location by id and the stats by number: both are state, so a move or a stat crossing a band
   // re-collects here and every name below follows.
   const storedLocationId = storedLocation?.id;
-  const rawLibrary = useMemo(() => inPlayLibrary(libraryPersona), [libraryPersona]);
+  const rawLibrary = useMemo(
+    () => inPlayLibrary(
+      { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities }, libraryPersona, addedCharacters(discoveredEntities),
+    ),
+    [rawTraits, rawTraitGroups, rawEntities, libraryPersona, discoveredEntities],
+  );
   const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => collectPins({
     traits: pinTraitsInOrder(
       { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities },

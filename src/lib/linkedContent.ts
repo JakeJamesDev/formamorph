@@ -1,4 +1,5 @@
 import { adoptBookPlaceholders, adoptEntityPlaceholders } from '@/lib/placeholderHomes';
+import { SELF_ENTITY, adoptOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
 import { followedLibraryId } from '@/lib/publishLinks';
 import { entityTexts } from '@/lib/entityTexts';
 import { randomUUID } from '@/lib/uuid';
@@ -33,7 +34,7 @@ export interface LibrarySource<T extends LinkableContent = LinkableContent> {
  * nothing in this world. Bringing a source's new references across is the Connect World References step.
  */
 const WORLD_OWNED_FIELDS = [
-  'id', 'link', 'groupId', 'order', 'locations', 'placeholders', 'sharedPlaceholders',
+  'id', 'link', 'groupId', 'order', 'traitPlacement', 'locations', 'placeholders', 'sharedPlaceholders',
 ] as const;
 
 /** The library record fields that stamp a revision, newest meaning first. */
@@ -147,6 +148,13 @@ export function chipTexts(item: LinkableContent): string[] {
  *  own, so two identical books never share them. */
 function authoredContent(item: LinkableContent): unknown {
   const shed: Record<string, unknown> = withoutWorldFields(item);
+  // A requirement's stored name and a self "playing as" differ between a world copy and its library form.
+  if (!('entries' in item) && item.traits) {
+    shed.traits = item.traits.map((t) => (t.requires ? {
+      ...t,
+      requires: t.requires.map(({ name: _name, ...r }) => (r.kind === 'playingAs' && r.id === item.id ? { ...r, id: SELF_ENTITY } : r)),
+    } : t));
+  }
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }
@@ -190,9 +198,12 @@ function carriedConnections(copy: LinkableContent, sourceData: LinkableContent):
  *
  * A book's entries take the copy's own ids in order, so the entry open in the editor is still the entry
  * open in the editor after the update.
+ *
+ * `traitWorld` binds an entity's owned trait requirements to this world, as an add does. Without it they stay
+ * as the source wrote them.
  */
 export function applyLibraryUpdate<T extends LinkableContent>(
-  copy: T, sourceData: T, source: LibrarySource, worldShared: readonly Placeholder[],
+  copy: T, sourceData: T, source: LibrarySource, worldShared: readonly Placeholder[], traitWorld?: TraitWorld,
 ): { item: T; toAdd: Placeholder[] } {
   const kept: Record<string, unknown> = {};
   const held: Record<string, unknown> = { ...copy };
@@ -205,7 +216,8 @@ export function applyLibraryUpdate<T extends LinkableContent>(
   const resolved = 'entries' in incoming
     ? adoptBookPlaceholders(incoming as Dictionary, worldShared, copy.link?.connections)
     : adoptEntityPlaceholders(incoming as Entity, worldShared, copy.link?.connections);
-  const adopted = 'book' in resolved ? resolved.book : resolved.entity;
+  const adopted = 'book' in resolved ? resolved.book
+    : traitWorld ? adoptOwnedTraits(resolved.entity, traitWorld) : resolved.entity;
   const connections = { ...carriedConnections(copy, sourceData), ...resolved.connections };
   const link: ContentLink = {
     ...linkToSource(source),
@@ -265,7 +277,7 @@ export interface UnlinkedCopy {
 }
 
 function syncList<T extends LinkableContent>(
-  items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[],
+  items: T[], sources: Map<string, LibrarySource>, shared: Placeholder[], traitWorld?: TraitWorld,
 ): { items: T[]; updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   let updated = 0;
   const unlinkedCopies: UnlinkedCopy[] = [];
@@ -288,7 +300,7 @@ function syncList<T extends LinkableContent>(
     updated += 1;
     // Each copy resolves against the world plus whatever the copies before it already brought in, so two
     // copies expecting the same new reference land on one placeholder rather than two.
-    const applied = applyLibraryUpdate(item, source.data as T, source, [...shared, ...toAdd]);
+    const applied = applyLibraryUpdate(item, source.data as T, source, [...shared, ...toAdd], traitWorld);
     toAdd.push(...applied.toAdd);
     return applied.item;
   });
@@ -310,13 +322,18 @@ function syncList<T extends LinkableContent>(
  *
  * `placeholders` is the world's shared list, which the updated content resolves its references against;
  * `toAdd` is what the world gains for references no copy had a connection for. `unlinkedCopies` names each
- * let-go copy as this world holds it, entities first.
+ * let-go copy as this world holds it, entities first. The world's `traits` and `traitGroups`, when given, bind
+ * an updated entity's owned trait requirements.
  */
 export function syncWorldContent(
-  world: WorldContent & { placeholders: Placeholder[] }, sources: LibrarySource[],
+  world: WorldContent & { placeholders: Placeholder[]; traits?: TraitWorld['traits']; traitGroups?: TraitWorld['traitGroups'] },
+  sources: LibrarySource[],
 ): WorldContent & { updated: number; unlinked: number; unlinkedCopies: UnlinkedCopy[]; toAdd: Placeholder[] } {
   const byId = new Map(sources.map((source) => [source.id, source]));
-  const entities = syncList(world.entities, byId, world.placeholders);
+  const traitWorld = world.traits && world.traitGroups
+    ? { traits: world.traits, traitGroups: world.traitGroups, entities: world.entities }
+    : undefined;
+  const entities = syncList(world.entities, byId, world.placeholders, traitWorld);
   const dictionaries = syncList(world.dictionaries, byId, [...world.placeholders, ...entities.toAdd]);
   return {
     entities: entities.items,

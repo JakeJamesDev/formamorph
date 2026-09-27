@@ -1,6 +1,7 @@
 # 11: Owned traits across library and import
 
-Status: ready-for-agent
+Status: in-progress
+Base: d18020f0
 Blocked by: 08 — Enter-world cast pages
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: high

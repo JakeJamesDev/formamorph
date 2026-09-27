@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
-import { activeOwnedTraitIds, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { activeOwnedTraitIds, addedCharacters, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
@@ -37,13 +37,14 @@ function useViewResolveOptions(): ResolveOptions {
   // force on that turn, not whatever the player has toggled or walked into since.
   const {
     placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
-    personaRef, libraryPersona,
+    personaRef, libraryPersona, discoveredEntities,
   } = useGameplay();
   const pins = useMemo(() => collectPins({
     traits: pinTraitsInOrder(
       { traits, traitGroups, entities },
       inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
-      activeOwnedTraitIds(viewOwnedTraits), playedEntityId(personaRef), inPlayLibrary(libraryPersona),
+      activeOwnedTraitIds(viewOwnedTraits), playedEntityId(personaRef),
+      inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities)),
     ),
     disabledTraitIds: viewDisabledTraitIds,
     location: locations.find((l) => l.id === viewLocationId),
@@ -52,7 +53,7 @@ function useViewResolveOptions(): ResolveOptions {
     rolls: placeholderRolls,
     codePins: viewCodePins,
   }), [
-    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, personaRef, libraryPersona, locations,
+    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, personaRef, libraryPersona, discoveredEntities, locations,
     viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
   ]);
   const name = usePersonaName(placeholderRolls, pins);

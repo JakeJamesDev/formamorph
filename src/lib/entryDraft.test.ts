@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, withLocationPick, withPersonaPick, withSettledTraits,
-  type EntryDraft, type EntryTraitWorld,
+  castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, libraryCastIds, rekeyOwnedPicks, withLibraryDefaults,
+  withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from './entryDraft';
 import { settle, switchTrait } from './traitGates';
 import type { PersonaPickContext } from './personaPick';
@@ -124,5 +124,45 @@ describe('owned trait picks in the draft', () => {
   it('starts the game with no entry for an owner with nothing picked', () => {
     const draft: EntryDraft = { ...emptyEntryDraft(), ownedTraitIds: { ash: [] } };
     expect(castOwnedTraits(draft, castWorld())).toEqual({});
+  });
+});
+
+describe('library entities in the cast', () => {
+  const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
+  const wren: Entity = { id: 'wren', name: 'Wren', traits: [trait('brave', { isDefault: true }), trait('shy')] };
+  const moss: Entity = { id: 'moss', name: 'Moss', traits: [trait('calm', { isDefault: true })] };
+  const castWorld = (library: Entity[]): EntryTraitWorld => ({ traits: [], traitGroups: [], entities: [], library });
+
+  it('lists the library persona first, then the added characters in the order picked', () => {
+    const draft = { ...emptyEntryDraft(), persona: library('wren'), entityIds: new Set(['moss', 'wren', 'fern']) };
+    expect(libraryCastIds(draft)).toEqual(['wren', 'moss', 'fern']);
+    expect(libraryCastIds({ ...draft, persona: world('ash') })).toEqual(['moss', 'wren', 'fern']);
+  });
+
+  it('preselects the defaults of a library entity once it joins the cast', () => {
+    const draft = withLibraryDefaults({ ...emptyEntryDraft(), ownedTraitIds: { wren: ['shy'] } }, castWorld([wren, moss]));
+    expect(draft.ownedTraitIds).toEqual({ wren: ['shy'], moss: ['calm'] });
+  });
+
+  it("leaves a library default off when the world trait it requires is not picked", () => {
+    const knight: Entity = {
+      id: 'knight', name: 'Knight',
+      traits: [trait('crest', { isDefault: true, requires: [{ kind: 'trait', id: 'paladin' }] })],
+    };
+    const w: EntryTraitWorld = { traits: [trait('paladin', { isDefault: true })], traitGroups: [], entities: [], library: [knight] };
+    expect(withLibraryDefaults({ ...emptyEntryDraft(), traitIds: ['paladin'] }, w).ownedTraitIds.knight).toEqual(['crest']);
+    const unpicked = withLibraryDefaults(emptyEntryDraft(), w);
+    expect(unpicked.ownedTraitIds.knight).toEqual([]);
+    expect(unpicked.cascadeOffTraitIds.knight).toEqual(['crest']);
+  });
+
+  it('changes nothing when every library entity already has picks', () => {
+    const draft = { ...emptyEntryDraft(), ownedTraitIds: { wren: [] } };
+    expect(withLibraryDefaults(draft, castWorld([wren]))).toBe(draft);
+  });
+
+  it("re-keys an added character's picks to its copy's id", () => {
+    expect(rekeyOwnedPicks({ wren: ['brave'], ash: ['tamed'] }, new Map([['wren', 'copy-1']])))
+      .toEqual({ 'copy-1': ['brave'], ash: ['tamed'] });
   });
 });

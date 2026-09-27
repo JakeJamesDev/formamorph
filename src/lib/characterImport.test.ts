@@ -8,6 +8,7 @@ import { libraryLines, saveCopyToLibrary } from './librarySources';
 import EntityStorageService from '@/services/EntityStorageService';
 import WorldStorageService from '@/services/WorldStorageService';
 import { addCopyToStoredWorld } from './addToStoredWorld';
+import { SELF_ENTITY } from './portableTraits';
 import type { Entity } from '@/types';
 
 const card = {
@@ -103,5 +104,28 @@ describe('SillyTavern JSON import', () => {
     expect((await EntityStorageService.getEntityMetadata())[0].libraryDetails).toEqual(libraryDetails);
     await EntityStorageService.storeEntity({ id: source.id, name: 'Edited', data: worldEntity, libraryDetails: { ...libraryDetails, tags: [] } });
     expect((await EntityStorageService.getEntityMetadata())[0].tags).toEqual([]);
+  });
+});
+
+describe('Save to Library with owned traits', () => {
+  it('names outward requirements, keeps inward ids, and leaves the tree placement behind', async () => {
+    const ash: Entity = {
+      id: 'ash', name: 'Ash', persona: true, traitPlacement: { groupId: 'g-cast', order: 1 },
+      traits: [
+        { id: 't-tamed', name: 'Tamed', statChanges: [] },
+        { id: 't-oath', name: 'Oath', statChanges: [], requires: [
+          { kind: 'trait', id: 't-tamed' }, { kind: 'group', id: 'g-class' }, { kind: 'playingAs', id: 'ash' },
+        ] },
+      ],
+    };
+    const world = { traits: [], traitGroups: [{ id: 'g-class', name: 'Class', parentId: null }], entities: [ash] };
+    const source = await saveCopyToLibrary(ash, [], [], undefined, world);
+    const stored = await EntityStorageService.getEntityData(source.id);
+    expect(stored).not.toHaveProperty('traitPlacement');
+    expect(stored.traits![1].requires).toEqual([
+      { kind: 'trait', id: 't-tamed' },
+      { kind: 'group', id: 'g-class', name: 'Class' },
+      { kind: 'playingAs', id: SELF_ENTITY, name: 'Ash' },
+    ]);
   });
 });

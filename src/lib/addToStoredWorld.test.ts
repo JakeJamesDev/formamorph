@@ -6,7 +6,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import type { LibrarySource } from './linkedContent';
 import type { ConnectionPlan } from './worldReferences';
 import { openingsEnabled } from './openings';
-import type { Dictionary, Entity, GameLocation, Placeholder, WorldOverview } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, Trait, WorldOverview } from '@/types';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: () => null } }));
 
@@ -17,7 +17,7 @@ const empty: ConnectionPlan = { placeholders: {}, locations: {}, newLocations: [
 /** Store one world with the sections `storeWorld` insists on, plus whatever the case needs. */
 async function storeWorld(over: {
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
-  openingsEnabled?: boolean;
+  openingsEnabled?: boolean; traits?: Trait[];
 } = {}) {
   await WorldStorageService.storeWorld({
     id: 'w-1',
@@ -28,7 +28,7 @@ async function storeWorld(over: {
         name: 'Sedge Landing',
         ...(over.openingsEnabled === false ? { openingsEnabled: false } : {}),
       },
-      stats: [], traits: [], statUpdates: [],
+      stats: [], traits: (over.traits ?? []) as unknown as unknown[], statUpdates: [],
       entities: (over.entities ?? []) as unknown as unknown[],
       dictionaries: (over.dictionaries ?? []) as unknown as unknown[],
       placeholders: (over.placeholders ?? []) as unknown as unknown[],
@@ -83,6 +83,22 @@ describe('addCopyToStoredWorld', () => {
 
     expect(data.entities).toHaveLength(1);
     expect(data.entities?.[0].link).toMatchObject({ libraryId: 'lib-1', sourceName: 'Wren', sourceRevision: 'r1' });
+  });
+
+  it("binds the copy's owned trait requirements to the world, and a second copy's owned ids are its own", async () => {
+    await storeWorld({ traits: [{ id: 'n-paladin', name: 'Paladin', statChanges: [] }] });
+    const content: Entity = {
+      id: 'lib-content', name: 'Ash',
+      traits: [{ id: 't-oath', name: 'Oath', statChanges: [], requires: [{ kind: 'trait', id: 'w-paladin', name: 'Paladin' }] }],
+    };
+
+    await addCopyToStoredWorld('w-1', content, source, empty);
+    await addCopyToStoredWorld('w-1', content, source, empty);
+    const [first, second] = (await storedWorld()).entities!;
+
+    expect(first.traits![0]).toMatchObject({ id: 't-oath', requires: [{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }] });
+    expect(second.traits![0].id).not.toBe('t-oath');
+    expect(second.traits![0].requires).toEqual([{ kind: 'trait', id: 'n-paladin', name: 'Paladin' }]);
   });
 
   it('gives the copy its own id, so importing the same component twice leaves two copies', async () => {

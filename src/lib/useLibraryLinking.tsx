@@ -31,7 +31,8 @@ import {
   planConnections, suggestedChoices, unresolvedReferences,
   type ConnectionPlan, type ReferenceChoices, type ReferenceRow,
 } from '@/lib/worldReferences';
-import type { Dictionary, Entity, GameLocation, Placeholder } from '@/types';
+import { adoptOwnedTraits } from '@/lib/portableTraits';
+import type { Dictionary, Entity, GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
 
 const HELP_TOPIC = 'library.linkedContent';
 
@@ -61,6 +62,9 @@ interface LibraryLinkingOptions {
   /** The world's shared list on its own — what an arriving copy's world-owned references resolve against. */
   worldPlaceholders: Placeholder[];
   locations: GameLocation[];
+  /** The world's own traits and groups, which an entity's owned trait requirements name or bind to. */
+  traits: Trait[];
+  traitGroups: TraitGroup[];
   updateEntity: (entity: Entity) => void;
   updateDictionary: (book: Dictionary) => void;
   setEntities: (entities: Entity[]) => void;
@@ -163,6 +167,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     current.setOwnedLibraryIds(sources.filter((source) => source.owned).map((source) => source.id));
     const next = syncWorldContent({
       entities: current.entities, dictionaries: current.dictionaries, placeholders: current.worldPlaceholders,
+      traits: current.traits, traitGroups: current.traitGroups,
     }, sources);
     if (!next.updated && !next.unlinked) return;
     if (next.entities !== current.entities) current.setEntities(next.entities);
@@ -219,7 +224,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
 
   const saveToLibrary = useCallback(async (item: LinkableContent) => {
     try {
-      const source = await saveCopyToLibrary(item, placeholders, locations);
+      const { traits, traitGroups, entities } = latest.current;
+      const source = await saveCopyToLibrary(item, placeholders, locations, undefined, { traits, traitGroups, entities });
       applyLink(item, source, false);
       toast.success(`“${source.name}” saved to your library.`);
     } catch (error) {
@@ -246,6 +252,8 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     // Each copy resolves against the world plus what the copies before it brought in, so two copies
     // expecting the same new reference land on one placeholder rather than two.
     const gained: Placeholder[] = [];
+    // Two copies added together must not share owned trait ids, so each sees the ones before it.
+    const added: Entity[] = [];
     for (const entry of pending) {
       const shared = [...current.worldPlaceholders, ...gained];
       if (entry.kind === 'dictionary') {
@@ -260,7 +268,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
           const id = plan.locations[ref.id] ?? ref.id;
           return placeIds.has(id) ? [[ref.id, id]] : [];
         }));
-        const placed = withEntityLocations(rest as Entity, Object.values(used));
+        const placed = adoptOwnedTraits(withEntityLocations(rest as Entity, Object.values(used)), {
+          traits: current.traits, traitGroups: current.traitGroups, entities: [...current.entities, ...added],
+        });
+        added.push(placed);
         current.addEntityToWorld(withConnections(placed, { ...adopted.connections, ...used }));
       }
       if (entry.source) notePendingLink(entry.source.id);
@@ -446,7 +457,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     let entry: PendingAdd = { kind, item };
     if (link) {
       try {
-        const source = await saveCopyToLibrary(item, placeholders, locations, libraryDetails);
+        const source = await saveCopyToLibrary(item, placeholders, locations, libraryDetails, latest.current);
         entry = { kind, item: { ...item, link: linkToSource(source) }, source };
       } catch (error) {
         toast.error((error as Error).message || 'Could not save to your library.');

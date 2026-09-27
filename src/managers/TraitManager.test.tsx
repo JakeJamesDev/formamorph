@@ -38,8 +38,8 @@ const WORLD: Placeholder[] = [
 const store: { trait: Trait; rival: Trait; locations: GameLocation[]; writes: Trait[]; rerender: () => void } =
   { trait: sedgeBorn, rival: marshWed, locations: [], writes: [], rerender: () => {} };
 
-vi.mock('@/contexts/GameDataContext', () => ({
-  useGameData: () => ({
+vi.mock('@/contexts/GameDataContext', () => {
+  const world = () => ({
     stats: [],
     traits: [store.trait, store.rival],
     traitGroups: [],
@@ -51,8 +51,10 @@ vi.mock('@/contexts/GameDataContext', () => ({
       store.trait = next;
       store.rerender();
     },
-  }),
-}));
+  });
+  // Both readers of the one context, as the real module has.
+  return { useGameData: world, useGameDataOptional: world };
+});
 // The chip fields are Lexical editors this test has no use for; the pin row is what is under test.
 vi.mock('@/components/prompt/PlaceholderField', () => ({
   default: (props: { label: string; value: string }) => <input readOnly aria-label={props.label} value={props.value} />,

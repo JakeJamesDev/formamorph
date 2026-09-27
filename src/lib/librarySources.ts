@@ -2,6 +2,7 @@ import { randomUUID } from '@/lib/uuid';
 import { splitLibraryContent } from './contentAuthor';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
 import { buildEntityCardData } from '@/lib/entityFile';
+import type { TraitWorld } from '@/lib/portableTraits';
 import {
   libraryOwned, libraryRevision, withoutWorldFields,
   type LibrarySource, type LinkableContent,
@@ -161,20 +162,23 @@ function carriedLocations(entity: Entity, worldLocations: readonly GameLocation[
  *
  * `available` is the world's combined placeholder pool, which is what those chips currently point at.
  * `worldLocations` names the places an entity stood in; the entity keeps the references, and the world
- * receiving it decides which of its own locations each one means.
+ * receiving it decides which of its own locations each one means. `traitWorld` names what an entity's owned
+ * trait requirements point at outside it (see lib/portableTraits).
  */
 export function toLibraryItem<T extends LinkableContent>(
-  item: T, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
+  item: T, available: Placeholder[], worldLocations: readonly GameLocation[] = [], traitWorld?: TraitWorld,
 ): T {
   const carried = kindOf(item) === 'dictionary'
     ? buildDictionaryFile(item as Dictionary, available)
-    : buildEntityCardData(item as Entity, available);
+    : buildEntityCardData(item as Entity, available, {}, undefined, traitWorld);
   const locationRefs = kindOf(item) === 'entity' ? carriedLocations(item as Entity, worldLocations) : [];
+  const traits = 'traits' in carried ? carried.traits : undefined;
   // The world's own fields go, including its id: the caller stamps the library record's own.
   return {
     ...withoutWorldFields(item),
     ...(carried.placeholders?.length ? { placeholders: carried.placeholders } : {}),
     ...(carried.sharedPlaceholders?.length ? { sharedPlaceholders: carried.sharedPlaceholders } : {}),
+    ...(traits?.length ? { traits } : {}),
     ...(locationRefs.length ? { locationRefs } : {}),
   } as T;
 }
@@ -185,10 +189,10 @@ export function toLibraryItem<T extends LinkableContent>(
  */
 export async function saveCopyToLibrary(
   item: LinkableContent, available: Placeholder[], worldLocations: readonly GameLocation[] = [],
-  libraryDetails?: LibraryDetails,
+  libraryDetails?: LibraryDetails, traitWorld?: TraitWorld,
 ): Promise<LibrarySource> {
   const id = randomUUID();
-  const data = { ...toLibraryItem(item, available, worldLocations), id };
+  const data = { ...toLibraryItem(item, available, worldLocations, traitWorld), id };
   const now = new Date().toISOString();
   await LIBRARIES[kindOf(item)].store({ id, name: data.name, createdAt: now, data, libraryDetails });
   // `store` stamps `lastAccessed` itself and leaves `editedAt` unset, so the revision this link holds is

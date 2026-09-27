@@ -545,6 +545,7 @@ function useProvideGameData() {
       const data = getWorldData();
       const stamps = await writeBackOwnedCopies({
         entities: data.entities, dictionaries: data.dictionaries, placeholders, locations,
+        traits: data.traits, traitGroups: data.traitGroups ?? [],
       });
       const world = stamps.length
         ? { ...data, entities: stampLinks(data.entities, stamps), dictionaries: stampLinks(data.dictionaries, stamps) }
