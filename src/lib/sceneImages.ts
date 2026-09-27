@@ -71,3 +71,9 @@ export function setSceneTags(history: ChatMessage[], turnId: string, tags: strin
   });
   return found ? next : null;
 }
+
+/** The line a manual draw renders: an explicit line, else the turn's stored one, so a redraw keeps the
+ *  player's edits. Undefined runs the tag pass, which a re-roll always does. */
+export function sceneDrawTags(opts: { tags?: string; tagsOnly?: boolean }, stored?: string): string | undefined {
+  return opts.tagsOnly ? undefined : opts.tags ?? stored;
+}
