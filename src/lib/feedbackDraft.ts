@@ -2,6 +2,10 @@ import { FEEDBACK_TYPES, type FeedbackCategory, type FeedbackType } from '@/type
 
 const DRAFT_KEY = 'FORMAMORPH_feedbackDraft';
 
+/** Mirror the server's caps so the field limits agree with what it will accept. */
+export const FEEDBACK_TITLE_MAX = 120;
+export const FEEDBACK_BODY_MAX = 4000;
+
 /** An unsent report, kept so closing the dialog to check something in game doesn't cost the writing. */
 export interface FeedbackDraft {
   type: FeedbackType;

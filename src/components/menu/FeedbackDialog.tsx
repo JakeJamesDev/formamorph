@@ -12,16 +12,13 @@ import PromptField from "@/components/prompt/PromptField";
 import { plainVocabulary } from "@/lib/chipVocabulary";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import {
-  clearFeedbackDraft, hasDraftContent, loadFeedbackDraft, saveFeedbackDraft,
+  clearFeedbackDraft, FEEDBACK_BODY_MAX as BODY_MAX, FEEDBACK_TITLE_MAX as TITLE_MAX, hasDraftContent,
+  loadFeedbackDraft, saveFeedbackDraft,
 } from "@/lib/feedbackDraft";
 import { collectDiagnostics, DIAGNOSTIC_LABELS } from "@/lib/bugDiagnostics";
 import { CATEGORY_OPTIONS, DEFAULT_CATEGORY, FEEDBACK_TYPE_LABELS } from "@/lib/feedbackPresentation";
 import FeedbackService from "@/services/FeedbackService";
 import { FEEDBACK_TYPES, type BugDiagnostics, type FeedbackCategory, type FeedbackType } from "@/types";
-
-/** Mirrors the server's caps so the field limits agree with what it will accept. */
-const TITLE_MAX = 120;
-const BODY_MAX = 4000;
 
 /** What each branch asks for, in its own words. */
 const COPY: Record<FeedbackType, {
@@ -57,6 +54,9 @@ interface FeedbackDialogProps {
   initialType?: FeedbackType;
   /** Called after something is filed, so a list showing the caller's own can pick it up. */
   onFiled?: () => void;
+  /** Filled-in fields that replace any unsent draft; the fill then becomes the draft. */
+  initialTitle?: string;
+  initialBody?: string;
 }
 
 /** The reporter's diagnostics, shown before sending — nothing about them leaves silently. */
@@ -88,7 +88,9 @@ function DiagnosticsPanel({ diagnostics }: { diagnostics: BugDiagnostics }) {
  * One dialog with a tab rather than two: the forms differ by a dropdown's contents and whether anything
  * about the machine goes with it, which is not two dialogs' worth of difference.
  */
-export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFiled }: FeedbackDialogProps) {
+export function FeedbackDialog({
+  open, onOpenChange, initialType = 'bug', onFiled, initialTitle, initialBody,
+}: FeedbackDialogProps) {
   const [type, setType] = useState<FeedbackType>(initialType);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<FeedbackCategory>(DEFAULT_CATEGORY[initialType]);
@@ -106,17 +108,20 @@ export function FeedbackDialog({ open, onOpenChange, initialType = 'bug', onFile
   const filedRef = useRef(false);
 
   // An unsent report outranks the caller's requested branch: it opens on whatever was being written,
-  // announced and one click from gone, rather than the writing being silently dropped.
+  // announced and one click from gone, rather than the writing being silently dropped. A fill outranks
+  // the draft: the player chose to report this, and the mirror below saves the fill in its place.
   useResetOnOpen(open, () => {
-    const draft = loadFeedbackDraft();
+    const filled = initialTitle !== undefined || initialBody !== undefined;
+    if (filled) clearFeedbackDraft();
+    const draft = filled ? null : loadFeedbackDraft();
     const startType = draft?.type ?? initialType;
     setType(startType);
-    setTitle(draft?.title ?? '');
+    setTitle(draft?.title ?? initialTitle ?? '');
     // A stored category from an older build's list would be refused by the server, so it's only taken
     // when the live options still offer it.
     const known = CATEGORY_OPTIONS[startType].some((option) => option.value === draft?.category);
     setCategory(known && draft ? draft.category : DEFAULT_CATEGORY[startType]);
-    setBody(draft?.body ?? '');
+    setBody(draft?.body ?? initialBody ?? '');
     setIsSending(false);
     setRestored(draft !== null);
     filedRef.current = false;
