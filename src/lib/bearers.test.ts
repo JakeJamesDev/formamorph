@@ -229,6 +229,12 @@ describe('holdsOriginal', () => {
   ])('%s holds %s → %s (%s)', (bearerId, originalId, held) => {
     expect(holdsOriginal(w, bearer(w, bearerId), originalId)).toBe(held);
   });
+
+  it('counts Custom Persona’s links for the player under a world persona too, so the editor check never drifts', () => {
+    const player = bearer(w, PLAYER_BEARER, AS_ALBUS);
+    expect(player.linkOf.size).toBe(0);
+    expect(holdsOriginal(w, player, 'smite')).toBe(true);
+  });
 });
 
 describe('makeLink', () => {
