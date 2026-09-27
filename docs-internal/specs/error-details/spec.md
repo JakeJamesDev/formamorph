@@ -103,6 +103,8 @@ The toast and the window look and behave the same everywhere: in the main menu, 
 
 **Report Bug.** Report Bug opens the existing bug report with a title and a description filled in. The title is the toast's message. The description is the details, without the diagnostics block, because the bug report attaches its own. The bug report takes new optional initial-title and initial-body props. Details longer than the bug report's body limit are cut, with a line that says Copy has the full text.
 
+**Report Bug hands off, it does not stack.** Pressing Report Bug closes Error Details and opens the filled-in report. The two dialogs never stack. The details live on in the report's description, so the text is not lost when the toast has already gone. A title longer than the report's title limit is cut the same way the description is. Until sign-in-first lands, a signed-out player does not see Report Bug, the same way play hides its own button today; the sign-in-first ticket shows it and adds the sign-in path.
+
 **Where the bug report mounts.** Today the bug report is mounted only in play and in the main menu's feedback hub; the World Editor has none. This effort mounts one bug report beside the Error Details host, next to the toast container, so all three views share it. It opens through the same store pattern Error Details uses. The existing mounts in play and the feedback hub stay for their own buttons.
 
 **Report Bug and the community flag.** Bug reports are a community feature. When the community flag is off, Error Details shows Copy only, the same way play hides its own Report Bug button today.
