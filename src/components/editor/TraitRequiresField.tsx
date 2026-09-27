@@ -8,7 +8,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { gateStates, requirementOptions, worldGateInput, type RequirementOption } from '@/lib/traitGates';
+import { gateStates, requirementOptions, type RequirementOption } from '@/lib/traitGates';
+import { editorGateInput } from '@/lib/ownedTraits';
 import { cn } from '@/lib/utils';
 import type { Trait, TraitRequirement } from '@/types';
 
@@ -32,7 +33,7 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
   const requires = trait.requires ?? [];
 
   const { states, options } = useMemo(() => {
-    const input = worldGateInput({ traits, groups: traitGroups, entities }, { source: 'none' });
+    const input = editorGateInput({ traits, traitGroups, entities });
     return {
       states: gateStates(input).get(trait.id)?.requirements ?? [],
       options: requirementOptions(input, trait.id),

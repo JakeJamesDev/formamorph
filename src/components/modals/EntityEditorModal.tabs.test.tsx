@@ -95,7 +95,7 @@ async function fieldsByTab(skip: string[] = []) {
 }
 
 describe('the two entity editors', () => {
-  it('show the same field tabs, with Placeholders on the library top strip after Entity', () => {
+  it('show the same field tabs, with Placeholders on the library top strip and Traits only in the World Editor', () => {
     renderLibrary();
     const libraryTop = topTabNames();
     const librarySub = fieldTabNames();
@@ -105,7 +105,7 @@ describe('the two entity editors', () => {
 
     expect(libraryTop).toEqual(['Entity', 'Placeholders']);
     expect(librarySub).toEqual(['Profile', 'Descriptions', 'Openings']);
-    expect(worldTabs).toEqual([...librarySub, 'Placeholders']);
+    expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Openings', 'Placeholders']);
   });
 
   it('drop Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
@@ -115,7 +115,7 @@ describe('the two entity editors', () => {
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Traits']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(topTabNames()).toEqual(['Entity', 'Placeholders']);
@@ -157,7 +157,8 @@ describe('the two entity editors', () => {
     const library = await fieldsByTab(['Openings']);
     cleanup();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    const worldFields = await fieldsByTab(['Openings', 'Placeholders']);
+    // Traits holds a list of the entity's own traits, not fields.
+    const worldFields = await fieldsByTab(['Traits', 'Openings', 'Placeholders']);
 
     expect(library).toEqual({
       Profile: ['Image', 'Name', 'Aliases', 'Pronouns', 'Persona', 'Type', 'Image Tags', '3D Model'],

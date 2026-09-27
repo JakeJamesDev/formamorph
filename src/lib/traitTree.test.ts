@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
-  duplicateTraitNode,
+  duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop,
 } from './traitTree';
-import type { Trait, TraitGroup } from '@/types';
+import type { Entity, Trait, TraitGroup } from '@/types';
 
 const group = (id: string, parentId: string | null, order: number): TraitGroup =>
   ({ id, name: id, parentId, order });
@@ -224,5 +224,82 @@ describe('buildTraitContext', () => {
 
   it('returns an empty string when nothing is selected', () => {
     expect(buildTraitContext([], traits, groups)).toBe('');
+  });
+});
+
+describe('ownedTraitTree', () => {
+  const worldTraits = { traits: [trait('paladin', 'class', 0), trait('loner', null, 1)], traitGroups: [group('class', null, 0)] };
+  const ash: Entity = {
+    id: 'ash', name: 'Ash',
+    traitGroups: [group('bond', null, 1)],
+    traits: [trait('tamed', 'bond', 0), trait('pack', null, 0)],
+  };
+  const entities: Entity[] = [{ id: 'npc', name: 'Npc' }, ash, { id: 'shell', name: 'Shell', traitGroups: [group('empty', null, 0)] }];
+  const rows = (ents: Entity[] = entities) =>
+    flattenTraitTree(buildTraitTree(...(({ groups, traits }) => [groups, traits] as const)(ownedTraitTree(worldTraits, ents))))
+      .map((n) => `${'-'.repeat(n.depth)}${n.id}`);
+
+  it('puts a node for each entity that owns a trait after the world items, holding its own tree', () => {
+    expect(rows()).toEqual(['class', '-paladin', 'loner', 'ash', '-pack', '-bond', '--tamed']);
+    expect(ownedTraitTree(worldTraits, entities).entityNodes.get('ash')?.name).toBe('Ash');
+  });
+
+  it('shows no node for an entity that owns no trait, even one holding an empty group', () => {
+    expect(rows([{ id: 'npc', name: 'Npc' }])).toEqual(['class', '-paladin', 'loner']);
+    expect(rows([entities[2]])).not.toContain('shell');
+  });
+
+  it('drops the node when its last trait goes', () => {
+    const emptied = { ...ash, traits: undefined };
+    expect(rows([emptied])).toEqual(['class', '-paladin', 'loner']);
+  });
+
+  it('reads an owned item whose group is gone as sitting at its entity root', () => {
+    const stray = { ...ash, traits: [trait('stray', 'ghost', 0)] };
+    expect(rows([stray])).toEqual(['class', '-paladin', 'loner', 'ash', '-stray', '-bond']);
+  });
+
+  it('reports which entity owns each item', () => {
+    const tree = ownedTraitTree(worldTraits, entities);
+    expect(tree.ownerOf.get('tamed')).toBe('ash');
+    expect(tree.ownerOf.get('bond')).toBe('ash');
+    expect(tree.ownerOf.has('paladin')).toBe(false);
+  });
+});
+
+describe('applyOwnedTraitDrop', () => {
+  const worldTraits = { traits: [trait('paladin', 'class', 0), trait('loner', null, 1)], traitGroups: [group('class', null, 0)] };
+  const ash: Entity = {
+    id: 'ash', name: 'Ash',
+    traitGroups: [group('bond', null, 0)],
+    traits: [trait('tamed', 'bond', 0), trait('pack', null, 1)],
+  };
+
+  it('reorders items inside one entity and writes them back to it', () => {
+    // Rows: class, paladin, loner, ash, bond, tamed, pack. Pack moves above Bond, at Ash's root.
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'pack', 'bond', 0, 24);
+    expect(out?.kind).toBe('entity');
+    const entity = out?.kind === 'entity' ? out.entity : null;
+    expect(entity?.traits?.find((t) => t.id === 'pack')).toMatchObject({ groupId: null, order: 0 });
+    expect(entity?.traitGroups?.find((g) => g.id === 'bond')).toMatchObject({ parentId: null, order: 1 });
+  });
+
+  it('still moves world items among themselves', () => {
+    const out = applyOwnedTraitDrop(worldTraits, [ash], [], 'loner', 'paladin', 0, 24);
+    expect(out?.kind).toBe('world');
+    const traits = out?.kind === 'world' ? out.traits : [];
+    expect(traits.map((t) => t.id).sort()).toEqual(['loner', 'paladin']);
+    expect(traits.find((t) => t.id === 'loner')?.groupId).toBe('class');
+  });
+
+  it('refuses a drop that would move a trait to another owner', () => {
+    // Paladin dropped below Pack lands at Ash's root.
+    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'paladin', 'pack', 0, 24)).toBeNull();
+    // Tamed dropped at the top level lands in the world.
+    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'tamed', 'class', -48, 24)).toBeNull();
+  });
+
+  it('never moves an entity node', () => {
+    expect(applyOwnedTraitDrop(worldTraits, [ash], [], 'ash', 'class', 0, 24)).toBeNull();
   });
 });

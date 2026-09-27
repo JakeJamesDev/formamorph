@@ -4,6 +4,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
+import EntityTraitsSection from './EntityTraitsSection';
 import { EntityOpenings } from './OpeningsPanel';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
@@ -16,16 +17,17 @@ import { useEditorMode } from '@/lib/editorMode';
 import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
- * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Openings and
- * Placeholders.
+ * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Traits, Openings
+ * and Placeholders. A trait row opens on the Traits tab through `onOpenTrait`.
  *
  * The panel remounts per entity, so the chosen tab is the editor's to hold and arrives as a prop.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the Overview panel takes for its own pair.
  */
-const EntityManager = ({ entity, tab, onTabChange, focusField }: {
+const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
   entity: Entity;
+  onOpenTrait?: (id: string) => void;
   tab: EntityPanelTab;
   onTabChange: (tab: EntityPanelTab) => void;
   focusField?: FocusFieldHint | null;
@@ -107,6 +109,10 @@ const EntityManager = ({ entity, tab, onTabChange, focusField }: {
 
         <TabsContent value="descriptions" className="space-y-4">
           <EntityDescriptionFields {...groupProps} />
+        </TabsContent>
+
+        <TabsContent value="traits">
+          <EntityTraitsSection entity={entity} onOpen={(id) => onOpenTrait?.(id)} />
         </TabsContent>
 
         {advanced && (

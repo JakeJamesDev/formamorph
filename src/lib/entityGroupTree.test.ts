@@ -199,3 +199,19 @@ describe('duplicating an entity with placeholders of its own', () => {
     expect(original.name).toContain('{{ph:eyes:');
   });
 });
+
+describe('duplicateEntityNode with owned traits', () => {
+  it('gives the copy fresh ids for what it owns, so no trait id is shared across owners', () => {
+    const owner: Entity = {
+      id: 'ash', name: 'Ash',
+      traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null }],
+      traits: [{ id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [] }],
+    };
+    const { entities, newId } = duplicateEntityNode([], [owner], 'ash');
+    const copy = entities.find((e) => e.id === newId)!;
+    expect(copy.traits![0].id).not.toBe('t-tamed');
+    expect(copy.traitGroups![0].id).not.toBe('g-bond');
+    expect(copy.traits![0].groupId).toBe(copy.traitGroups![0].id);
+    expect(entities.find((e) => e.id === 'ash')?.traits).toEqual(owner.traits);
+  });
+});

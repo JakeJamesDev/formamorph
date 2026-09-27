@@ -34,7 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, User, ExternalLink } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -77,7 +77,10 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { duplicateTraitNode } from '@/lib/traitTree';
+import { duplicateTraitNode, ownsTraits } from '@/lib/traitTree';
+import { findOwnedItem } from '@/lib/ownedTraits';
+import { duplicateEntityNode } from '@/lib/entityGroupTree';
+import EntityTraitsSection from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -770,10 +773,13 @@ const WorldEditorInner = ({
   );
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
-  // Traits tab can select either a trait or a group (the right panel branches on which).
-  const selectedTrait = traits.find(t => t.id === selectedItemId);
-  const selectedGroup = traitGroups.find(g => g.id === selectedItemId);
+  // Traits tab can select a trait, a group, or an entity node (the right panel branches on which). A trait
+  // or group may be the world's or an entity's own.
+  const selectedOwned = activeTab === 'traits' && selectedItemId ? findOwnedItem(entities, selectedItemId) : null;
+  const selectedTrait = traits.find(t => t.id === selectedItemId) ?? selectedOwned?.trait;
+  const selectedGroup = traitGroups.find(g => g.id === selectedItemId) ?? selectedOwned?.group;
   const selectedEntity = entities.find(e => e.id === selectedItemId);
+  const selectedTraitNode = activeTab === 'traits' && selectedEntity && ownsTraits(selectedEntity) ? selectedEntity : undefined;
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
@@ -845,6 +851,13 @@ const WorldEditorInner = ({
       const res = duplicateTraitNode(traitGroups, traits, id);
       setTraitGroups(res.groups);
       setTraits(res.traits);
+      setSelectedItemId(res.newId);
+      return;
+    }
+    // An entity copy needs fresh ids for what it owns, which the entity tree's duplicate gives it.
+    if (activeTab === "entities") {
+      const res = duplicateEntityNode(entityGroups, entities, id);
+      setEntities(res.entities);
       setSelectedItemId(res.newId);
       return;
     }
@@ -959,6 +972,7 @@ const WorldEditorInner = ({
           entity={selectedEntity}
           tab={shownEntityTab}
           onTabChange={setEntityTab}
+          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           focusField={focusFieldForItem(findField, selectedEntity.id)}
         />
       )}
@@ -972,12 +986,26 @@ const WorldEditorInner = ({
         />
       )}
       {activeTab === "traits" && selectedGroup && (
-        <GroupManager key={selectedGroup.id} group={selectedGroup} />
+        <GroupManager key={selectedGroup.id} group={selectedGroup} ownerId={selectedOwned?.entity.id} />
+      )}
+      {selectedTraitNode && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-label font-medium">
+            <User className="h-4 w-4 shrink-0" aria-hidden />
+            <PlaceholderText text={selectedTraitNode.name} placeholders={placeholders} />
+          </div>
+          <Button variant="outline" size="sm" onClick={() => navigateToBenchItem('entities', selectedTraitNode.id, 'traits')}>
+            <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+            Open Entity
+          </Button>
+          <EntityTraitsSection entity={selectedTraitNode} onOpen={setSelectedItemId} />
+        </div>
       )}
       {activeTab === "traits" && !selectedGroup && selectedTrait && (
         <TraitManager
           key={selectedTrait.id}
           trait={selectedTrait}
+          owner={selectedOwned?.entity}
           // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}

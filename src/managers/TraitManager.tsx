@@ -1,11 +1,11 @@
-import { useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2 } from "lucide-react";
+import { Trash2, User } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { PanelTabsList } from "@/components/ui/panel-tabs";
@@ -17,11 +17,12 @@ import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { Hint, Meta } from '@/components/ui/typography';
 import { traitPanelTabsFor, traitTabForField, type TraitPanelTab } from '@/views/traitPanelTabs';
-import type { FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitRequirement, TraitStatToggle } from '@/types';
+import type { Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitRequirement, TraitStatToggle } from '@/types';
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -62,9 +63,12 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  * field to mark, so the panel opens the owning tab; the same hint the other three panels take.
  *
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
+ *
+ * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone.
  */
-const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
+const TraitManager = ({ trait, owner, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
   trait: Trait;
+  owner?: Entity;
   onOpenTrait: (id: string) => void;
   onOpenEntity?: (id: string) => void;
   tab: TraitPanelTab;
@@ -72,8 +76,13 @@ const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focu
   focusField?: FocusFieldHint | null;
 }) => {
   const world = useGameData();
-  const { updateTrait, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
-  const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, updateTrait);
+  const { updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups } = world;
+  const ownerId = owner?.id;
+  const write = useCallback(
+    (next: Trait) => (ownerId ? editEntity(ownerId, (e) => updateOwnedTrait(e, next)) : updateTrait(next)),
+    [ownerId, editEntity, updateTrait],
+  );
+  const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, write);
   // Code reaches a trait by its code name, so the rename offer compares the two names the way code reads them.
   const rename = useRenameField({
     root: 'traits',
@@ -128,10 +137,30 @@ const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focu
 
   if (!editingTrait) return null;
 
-  const tabs = traitPanelTabsFor(advanced);
+  // An owned trait carries no stat effects, so it has no Stats tab.
+  const tabs = traitPanelTabsFor(advanced).filter((t) => !owner || t.value !== 'stats');
+  const shownTab = tabs.some((t) => t.value === tab) ? tab : 'details';
 
   const detailsPanel = (
     <>
+      {owner && (
+        <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
+          <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-label">
+              Owned by{' '}
+              <button
+                type="button"
+                className="font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                onClick={() => onOpenEntity?.(owner.id)}
+              >
+                <PlaceholderText text={owner.name} placeholders={placeholders} />
+              </button>
+            </p>
+            <Hint>Describes them to the AI, and joins your traits when you play as them</Hint>
+          </div>
+        </div>
+      )}
       <div data-tour-anchor="trait-name" className="space-y-2">
         <Label>Name</Label>
         <PlaceholderNameField
@@ -139,9 +168,8 @@ const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focu
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
           ariaLabel="Name"
-          onFocus={rename.onFocus}
-          onBlur={rename.onBlur}
-          onSubmit={rename.onSubmit}
+          // Code reaches world traits only, so an owned trait's rename has nothing to rewrite.
+          {...(owner ? {} : { onFocus: rename.onFocus, onBlur: rename.onBlur, onSubmit: rename.onSubmit })}
         />
       </div>
       <PlaceholderField
@@ -302,7 +330,7 @@ const TraitManager = ({ trait, onOpenTrait, onOpenEntity, tab, onTabChange, focu
   const panels: Record<TraitPanelTab, ReactNode> = { details: detailsPanel, stats: statsPanel, pins: pinsPanel };
 
   return (
-    <Tabs value={tab} onValueChange={(v) => onTabChange(v as TraitPanelTab)} className="space-y-4">
+    <Tabs value={shownTab} onValueChange={(v) => onTabChange(v as TraitPanelTab)} className="space-y-4">
       <PanelTabsList tabs={tabs} stripLabel="Trait Fields" />
       {tabs.map((t) => (
         <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>

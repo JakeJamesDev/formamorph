@@ -2,7 +2,7 @@
  *  `EntityEditorModal` render from these, and the dev-router ledgers (`DEV_MODAL_TABS.worldEditorEntity`,
  *  `DEV_MODAL_TABS.entityEditor`, `DEV_MODAL_TABS.entityEditorEntity`) are guarded against them in
  *  `devRouter.test.ts`. */
-import { AlignLeft, Braces, Play, SquareUser, User } from 'lucide-react';
+import { AlignLeft, Braces, Play, Sparkles, SquareUser, User } from 'lucide-react';
 
 import { isOpeningFieldKey } from '@/lib/openings';
 import { tabForField } from './findFocus';
@@ -10,6 +10,7 @@ import { tabForField } from './findFocus';
 export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: User },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
+  { value: 'traits', label: 'Traits', icon: Sparkles, worldOnly: true },
   { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: Braces, advancedOnly: true },
 ] as const;
@@ -25,9 +26,10 @@ export function entityPanelTabsFor(advanced: boolean) {
 const LIBRARY_TOP_TAB = 'placeholders' satisfies EntityPanelTab;
 
 /** The library entity editor's sub-tabs, inside its Entity tab. It sits outside Simple and Advanced mode, so it
- *  shows every one. */
+ *  shows every one but the World Editor's own. */
 export const ENTITY_EDITOR_SUBTABS = ENTITY_PANEL_TABS.filter(
-  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB }> => t.value !== LIBRARY_TOP_TAB,
+  (t): t is Exclude<(typeof ENTITY_PANEL_TABS)[number], { value: typeof LIBRARY_TOP_TAB } | { worldOnly: true }> =>
+    t.value !== LIBRARY_TOP_TAB && !('worldOnly' in t && t.worldOnly),
 );
 
 export type EntityEditorSubTab = (typeof ENTITY_EDITOR_SUBTABS)[number]['value'];
@@ -64,6 +66,6 @@ export function entityTabForField(fieldKey: string): EntityPanelTab | null {
 
 /** Where the library entity editor shows `fieldKey`: always the Entity tab, on the sub-tab that holds it. */
 export function entityEditorTabForField(fieldKey: string): { tab: 'entity'; subTab: EntityEditorSubTab } | null {
-  const owning = entityTabForField(fieldKey);
-  return owning && owning !== LIBRARY_TOP_TAB ? { tab: 'entity', subTab: owning } : null;
+  const owning = ENTITY_EDITOR_SUBTABS.find((t) => t.value === entityTabForField(fieldKey));
+  return owning ? { tab: 'entity', subTab: owning.value } : null;
 }
