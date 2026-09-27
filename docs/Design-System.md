@@ -729,7 +729,7 @@ The live reference renders the production card, plate, action line, rows, and St
 - Action labels come from the action builders, and the plate's names come from `ScenePlate`, so the reference and the game cannot drift. Reuse does not certify those labels as fully ASD-STE100 compliant.
 - **Unverified:** the headings "Latest Page" and "Past Page", their two `Meta` lines, the status line, and **Restore Images** have terminology review only; vocabulary and grammar evidence is not recorded.
 - The pair's labels and tooltips come from `StatsActions`, and the action line's menu from `playerBubbleActions`, so the reference and the game cannot drift.
-- **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are off", and the "Stats panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
+- **Unverified:** the description's "Right-click a card or the action line for its menu", the past page's "The Stats panel actions are disabled", and the "Stats Panel" label have terminology review only; vocabulary and grammar evidence is not recorded. The sample action text is creative prose and exempt.
 
 ## Pattern: Nested Prompt Navigation
 
