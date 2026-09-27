@@ -171,7 +171,9 @@ Owned traits carry no stat effects yet. Entities will get stats of their own lat
 - Tree rows: an entity node shows a user icon in the folder icon's slot, with "Entity" or "Playable" as meta. A gated trait row shows a lock and the requirement count, and the full rule as a tooltip. An unresolved requirement tints it red.
 - Trait panel, Details tab: a **Requires** field. Its hint reads "Available when any one of these holds". Chips join with "or", and each has a remove button. **Add Requirement** opens a searchable picker in three sections: Traits, Any Trait in a Group, Playing As. Each row shows where its target lives.
 - An owned trait shows its owner at the top of Details and has no Stats tab.
-- The entity editor gains a Traits section that lists the entity's owned traits and adds new ones. A world persona gains a Starting Location select, with Automatic first and then every location.
+- The entity editor gains a Traits panel tab, after Descriptions, that lists the entity's owned traits and groups, opens each in the Traits tab, and adds new ones (groups in Advanced only). The first add creates the entity node. Selecting an entity node in the Traits tab shows this same section in the right panel. The Traits-tab toolbar's Add buttons keep adding to the world root. The World Editor gets the tab first; the library entity editor gets it with the library ticket, where requirements can point only inside the entity.
+- The owner line reads "Owned by **Ash**", the name a link to the entity, with the hint "Describes them to the AI, and joins your traits when you play as them".
+- Duplicating an entity re-ids its owned traits and groups and remaps the requirements that point inside it. Requirements that point out of it keep their ids. A world persona gains a Starting Location select, with Automatic first and then every location.
 
 ### Enter-world and in play (prototype variant A)
 
