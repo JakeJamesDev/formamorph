@@ -179,12 +179,9 @@ interface ResolvedReasoning {
 }
 
 /**
- * What one call says about reasoning, and the cap that holds it. One resolved choice drives the effort
- * literal, the token budget and the headroom. The literal is withheld while reasoning is engaged nowhere, so
- * an endpoint that never had a reasoning user is sent nothing at all, and a record that rules the model out
- * licenses no off signal either. Where the target refuses off, a switched-off prompt carries the strength it
- * kept, which is what its locked switch reads. The budget rides on top of the answer cap only when the slice
- * carries a reasoning field; a request that says nothing about reasoning keeps its answer cap.
+ * What one call says about reasoning, and the cap that holds it. The literal is withheld while reasoning is
+ * engaged nowhere, and a record that rules the model out licenses no off signal. The budget rides on top of
+ * the answer cap where the slice carries a reasoning field or the record knows the model reasons.
  */
 function resolveReasoning(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): ResolvedReasoning {
   const effort = resolveRequestReasoning(
@@ -203,8 +200,10 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: AiCall, target: Ai
   const level = snapshot.reasoningEngaged ? reasoningEffortValue(effort, target.reasoning) : null;
   const fields = reasoningDialectBody(target.reasoning.dialect, {
     budget: takesBudget ? planned.budget : null, level, off: eligible && effort === 'none', eligible,
+    unbounded: target.maxTokens === undefined,
   });
-  return { fields, level, maxTokens: Object.keys(fields).length > 0 ? planned.maxTokens : answerCap };
+  const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
+  return { fields, level, maxTokens: carriesReasoning ? planned.maxTokens : answerCap };
 }
 
 function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): AiRequestBody {

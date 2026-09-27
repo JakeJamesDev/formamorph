@@ -223,7 +223,7 @@ function sanitizeVerbatim(raw: unknown): VerbatimMap | undefined {
   return Object.keys(out).length ? (out as VerbatimMap) : undefined;
 }
 
-/** Keep only finite-number reasoning-budget entries, clamped to the slider's top percent. */
+/** Keep only finite-number reasoning-budget entries, clamped to the highest budget percent. */
 function sanitizeReasoningBudget(raw: unknown): ReasoningBudgetMap | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const out: Record<string, number> = {};
