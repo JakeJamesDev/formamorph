@@ -42,6 +42,7 @@ When the endpoint's Max Output override is off, no budget applies. The request s
 - **Q13 Off signal always goes out.** A prompt with effort `none` sends the dialect's 0 budget even when the override is off. Only an ON prompt with no base sends no budget field.
 - **Q14 Floor headroom with no base.** A dialect with a budget floor, such as Anthropic's 1024, sends the floor when the override is off, and `max_tokens` = answer cap + floor. The rule keys off the dialect's floor, not a model name.
 - **Q15 Guidance reads the answer cap.** The narration length guidance and the reserve both read the answer cap (the prompt's row, else the endpoint's Max Output).
+- **Q16 Headroom rides a signal.** Headroom is added only when the request carries a reasoning signal: a budget field, an effort level, or a dialect's own on field. An unprobed or plain endpoint that is sent no reasoning field keeps today's body. This matches the Settings panel, which draws no budget control for such a record.
 
 ## User Stories
 
