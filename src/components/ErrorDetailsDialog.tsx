@@ -4,12 +4,11 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { openBugReport } from '@/lib/bugReportStore';
+import { bugReportFromError, openBugReport } from '@/lib/bugReportStore';
 import { copyWithToast } from '@/lib/clipboard';
 import { useDevRoute } from '@/lib/devRouter';
 import {
-  bugReportFromError, closeErrorDetails, detailsWithDiagnostics, errorDetailsText, getErrorDetailsState,
-  subscribeErrorDetails,
+  closeErrorDetails, detailsWithDiagnostics, errorDetailsText, getErrorDetailsState, subscribeErrorDetails,
 } from '@/lib/errorDetails';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { toastError } from '@/lib/linkToast';

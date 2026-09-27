@@ -1,6 +1,6 @@
 # 05: Report Bug from Error Details
 
-Status: in-progress
+Status: ready-for-human
 Base: b88ff1cc
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
