@@ -39,7 +39,7 @@ export async function fetchCatalogContent(
       signal: controller.signal,
     });
 
-    if (!response.ok) throw await responseError(response, 'Failed to download');
+    if (!response.ok) throw await responseError(response, 'Failed to download', ['message', 'error']);
 
     const total = Number(response.headers.get('Content-Length')) || 0;
     const reader = response.body?.getReader();

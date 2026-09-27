@@ -184,7 +184,7 @@ export function ManageUsersTab({ active }: ManageUsersTabProps) {
         }
       });
 
-      if (!response.ok) throw await responseError(response, 'Failed to fetch users');
+      if (!response.ok) throw await responseError(response, 'Failed to fetch users', ['message']);
 
       const result = await response.json();
       if (!mountedRef.current || reqId !== fetchReqRef.current) return; // superseded by a newer fetch (page change / re-search)

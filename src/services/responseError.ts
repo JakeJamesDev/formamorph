@@ -8,6 +8,18 @@ export interface ErrorBody {
   code?: unknown;
 }
 
+/** The body fields a call site reads its message from, in order. */
+export type ReasonFields = readonly ('error' | 'message')[];
+
+const ERROR_FIRST: ReasonFields = ['error', 'message'];
+
+interface Failure {
+  body: ErrorBody;
+  message: string;
+  details: string;
+}
+
+/** The body as text, or '' when it can't be read. Read once, so the raw text and any parse agree. */
 async function readText(response: Response): Promise<string> {
   try {
     return await response.text();
@@ -36,25 +48,27 @@ function responseDetails(response: Response, text: string): string {
   ].join('\n');
 }
 
-/**
- * Reads a failed response once. `message` is the server's own reason, or `fallback` when the body has
- * none; `details` is what Error Details shows.
- */
-export async function readFailure(response: Response, fallback: string): Promise<{ body: ErrorBody; message: string; details: string }> {
-  const text = await readText(response);
+/** A failed response whose body was already read as `text`: the parsed body, the reason from `fields` or `fallback`, and the details. */
+export function failureFromText(response: Response, text: string, fallback: string, fields = ERROR_FIRST): Failure {
   const body = parseErrorBody(text);
-  return { body, message: body.error || body.message || fallback, details: responseDetails(response, text) };
+  const reason = fields.map((field) => body[field]).find((value) => typeof value === 'string' && value);
+  return { body, message: reason || fallback, details: responseDetails(response, text) };
+}
+
+/** Reads a failed response once; see {@link failureFromText}. */
+export async function readFailure(response: Response, fallback: string, fields = ERROR_FIRST): Promise<Failure> {
+  return failureFromText(response, await readText(response), fallback, fields);
 }
 
 /** The error a community call throws on a failed response. */
-export async function responseError(response: Response, fallback: string): Promise<DetailedError> {
-  const { message, details } = await readFailure(response, fallback);
+export async function responseError(response: Response, fallback: string, fields = ERROR_FIRST): Promise<DetailedError> {
+  const { message, details } = await readFailure(response, fallback, fields);
   return new DetailedError(message, details);
 }
 
 /** A {@link responseError} that also carries the server's refusal `code`, for callers that branch on it. */
-export async function codedFailure(response: Response, fallback: string): Promise<DetailedError & { code?: string }> {
-  const { body, message, details } = await readFailure(response, fallback);
+export async function codedResponseError(response: Response, fallback: string, fields = ERROR_FIRST): Promise<DetailedError & { code?: string }> {
+  const { body, message, details } = await readFailure(response, fallback, fields);
   const failure: DetailedError & { code?: string } = new DetailedError(message, details);
   if (typeof body.code === 'string' && body.code) failure.code = body.code;
   return failure;

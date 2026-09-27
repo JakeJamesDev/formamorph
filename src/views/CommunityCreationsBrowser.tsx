@@ -570,7 +570,7 @@ const CommunityCreationsBrowser = ({
         }
       });
 
-      if (!response.ok) throw await responseError(response, `Failed to delete ${noun.toLowerCase()}`);
+      if (!response.ok) throw await responseError(response, `Failed to delete ${noun.toLowerCase()}`, ['message']);
 
       setRemoteWorlds(prev => prev.filter(w => (w._id || w.id) !== worldId));
       setRemoteWorldToDelete(null);

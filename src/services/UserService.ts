@@ -2,7 +2,8 @@ import type { FeedItem, FollowedUser, LikeGiven, LinkedAccount, ProfileCreation,
 import { kindOf } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import AuthService from '@/services/AuthService';
-import { responseError } from '@/services/responseError';
+import { failureFromText, responseError } from '@/services/responseError';
+import { DetailedError } from '@/lib/errorDetails';
 
 /**
  * A catalog row as the server sends it, narrowed to the fields a profile listing reads.
@@ -147,9 +148,13 @@ class UserService {
 
   /** Read a JSON body, throwing the server's own wording on a refusal. */
   private async unwrap<T>(response: Response, fallback: string): Promise<T> {
-    if (!response.ok) throw await responseError(response, fallback);
+    if (!response.ok) throw await responseError(response, fallback, ['error']);
     const body = await response.json().catch(() => ({}));
-    if (!body?.success) throw new Error(body?.error || fallback);
+    if (!body?.success) {
+      // The body is already parsed here, so the details show it re-serialized.
+      const { message, details } = failureFromText(response, JSON.stringify(body), fallback, ['error']);
+      throw new DetailedError(message, details);
+    }
 
     return body as T;
   }

@@ -86,17 +86,18 @@ afterEach(() => {
 });
 
 describe('a refused delete in Community Creations', () => {
-  it('keeps the server reason in the toast and names the route and status in Error Details', async () => {
+  it('keeps the toast words and names the route, status and server reason in Error Details', async () => {
     renderBrowser();
     fireEvent.click(await screen.findByLabelText('Delete world'));
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm' }));
 
-    await screen.findByText('Not authorized to delete this');
+    await screen.findByText('Failed to delete world');
     fireEvent.click(await screen.findByRole('button', { name: 'View Details →' }));
     const details = (await screen.findByRole('dialog', { name: 'Error Details' })).textContent ?? '';
 
     expect(details).toContain('Route: https://example.test/api/worlds/w1');
     expect(details).toContain('Status: 403 Forbidden');
+    expect(details).toContain('Not authorized to delete this');
     expect(details).not.toContain('secret-bearer-token');
   });
 });

@@ -1,5 +1,5 @@
 import AuthService from './AuthService';
-import { codedFailure, readFailure, responseError } from './responseError';
+import { codedResponseError, readFailure, responseError } from './responseError';
 import type { CatalogKindQuery } from '@/lib/catalogKinds';
 import { API_BASE_URL } from '@/lib/apiBase';
 import type { PublishPayload } from '@/lib/publishPayload';
@@ -954,7 +954,7 @@ class WorldStorageService {
       },
       body: JSON.stringify({ content }),
     });
-    if (!response.ok) throw await responseError(response, 'Failed to post comment');
+    if (!response.ok) throw await responseError(response, 'Failed to post comment', ['message']);
     const responseData = await response.json();
     return responseData.data || responseData;
   }
@@ -1304,7 +1304,7 @@ class WorldStorageService {
       if (!response.ok) {
         // The refusal carries a `code` when a policy blocked it; attach it so the caller can open the
         // right dialog instead of matching on error text.
-        throw await codedFailure(response, 'Failed to publish');
+        throw await codedResponseError(response, 'Failed to publish', ['message', 'error']);
       }
 
       // The listing itself, not the envelope around it: what the caller wants is its id and its fresh
@@ -1336,7 +1336,7 @@ class WorldStorageService {
       headers: { Authorization: `Bearer ${AuthService.token}` },
     });
 
-    if (!response.ok) throw await codedFailure(response, 'Failed to withdraw the entry');
+    if (!response.ok) throw await codedResponseError(response, 'Failed to withdraw the entry');
   }
 
   /**
