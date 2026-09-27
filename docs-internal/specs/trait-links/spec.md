@@ -13,7 +13,7 @@ Three more problems follow from this:
 
 - **Pins are global.** Every active trait on every owner lays its pins into one set, and the player's picks win. If Albus is a Paladin and the player is a Wizard, Albus's description reads the Wizard's garb.
 - **Gates are not per bearer.** "Smite requires Paladin" has no way to mean "Paladin on the same entity that has Smite".
-- **A world persona joins the cast when not picked.** A "Custom Character" persona that exists only as a player slot shows up as an NPC while the player plays someone else.
+- **A world persona joins the cast when not picked.** A "Custom Character" persona that exists only as a player slot joins the cast while the player plays someone else.
 
 ## Solution
 
@@ -22,7 +22,7 @@ Three more problems follow from this:
 - **Templates.** A system group that holds originals only. Traits under it are never offered directly. They reach play only through links.
 - **Custom Persona.** A system node whose links apply when the persona is None or a library persona.
 - **Persona-only entities.** An entity mark: the entity exists only while it is the picked persona, and it never joins the cast.
-- **Per-bearer gates and pins.** A requirement means the same bearer by default, and can name a bearer instead. A pin can target the bearer's own placeholder by name. An NPC's pins apply only in that NPC's own text.
+- **Per-bearer gates and pins.** A requirement means the same bearer by default, and can name a bearer instead. A pin can target the bearer's own placeholder by name. A cast entity's own pins apply only in its own text.
 - **Faster authoring.** The Traits tab's **+** menu adds a trait or group straight onto an entity. A link button on any linkable node links it to a bearer from a flyout.
 
 ## User Stories
@@ -62,23 +62,23 @@ Three more problems follow from this:
 ### Persona-only entities
 
 27. As an author, I want to mark a persona as persona-only, so that Custom Character exists only when the player picks it.
-28. As a player who picks Albus, I want Custom Character absent from the world, so that I never meet an empty player slot as an NPC.
+28. As a player who picks Albus, I want Custom Character absent from the world, so that I never meet an empty player slot in the cast.
 29. As a player, I want a persona-only entity's openings to count only while it is picked, so that its openings never run for someone else.
 
 ### Bearers in play
 
 30. As a player, I want my picked persona's links and owned traits to be my traits, marked "You", so that playing Albus means playing his tree.
-31. As a player, I want to change an NPC's link defaults at enter-world under the owned-trait rules, so that I can make Albus a Cleric if the author allows it.
-32. As a player, I want an NPC's linked traits described to the AI like owned traits, so that the narrator knows Albus is a Paladin.
+31. As a player, I want to change a cast entity's link defaults at enter-world under the owned-trait rules, so that I can make Albus a Cleric if the author allows it.
+32. As a player, I want a cast entity's linked traits described to the AI like owned traits, so that the narrator knows Albus is a Paladin.
 33. As an author, I want `{{char}}` in a trait's text to read as the bearer, so that one Paladin text names Albus on Albus and the persona on me.
-34. As an author, I want a linked trait's stat effects to do nothing on an NPC for now, with a note in the editor, so that I can share Paladin (+Faith) and it works once entities have stats.
+34. As an author, I want a linked trait's stat effects to do nothing on a cast entity for now, with a note in the editor, so that I can share Paladin (+Faith) and it works once entities have stats.
 35. As a player, I want a linked trait's stat effects to apply when I bear it, so that my Paladin gets its Faith.
 
 ### Gates per bearer
 
 36. As an author, I want "Smite requires Paladin" to mean Paladin on the same bearer, so that the player's Wizard never unlocks Smite through Albus.
 37. As an author, I want a requirement that names a bearer, such as "requires Albus: Paladin", so that I can write cross-entity gates.
-38. As an author, I want to name **You** in a requirement, so that "Squire requires You: Paladin" gates an NPC on the player's class.
+38. As an author, I want to name **You** in a requirement, so that "Squire requires You: Paladin" gates a cast entity on the player's class.
 39. As an author, I want the named-bearer picker to list You plus every entity that bears the trait, so that I only pick bearers that can hold it.
 40. As an author, I want the Test Bench to warn when a linked trait can never unlock for its bearer, so that I find "Albus links Smite but has no Faithful".
 
@@ -88,7 +88,7 @@ Three more problems follow from this:
 42. As an author, I want a bearer-relative pin to fall back to the world placeholder of that name, so that a library persona with no Class Garb still gets a description.
 43. As an author, I want each link to pick the pinned value from that bearer's own values, so that Albus's Paladin garb reads differently from Custom Character's.
 44. As an author, I want the Test Bench to warn when a link has no value for a bearer-relative pin, with a jump to the link, so that I don't ship an unset description.
-45. As a player, I want an NPC's pins to apply only in that NPC's own text, so that Albus's class never changes my description.
+45. As a player, I want a cast entity's own pins to apply only in its own text, so that Albus's class never changes my description.
 46. As a player, I want world-level text to resolve with the world pins plus mine, so that locations and narration follow my picks.
 
 ### Faster authoring
@@ -118,6 +118,7 @@ Three more problems follow from this:
 
 - **Link:** a tree node under a bearer that points at an original trait or group. It is not a trait.
 - **Bearer:** an entity (or Custom Persona) whose tree holds a trait, directly or through a link. The played persona is the bearer "You".
+- **Cast entity:** a world entity that is not the played Persona (the glossary's cast). Never "NPC".
 - **Original:** the world trait or group a link points at, at the root or under Templates. An owned trait is never an original (Q50).
 - These terms should join `CONTEXT.md` when this effort lands (see the domain-modeling skill).
 
@@ -158,11 +159,11 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ### Pins (existing collector)
 
-- The pin collector takes a bearer context. An entity's text, and its traits' text, resolve with that bearer's active pins laid over the world pins.
+- The pin collector takes a bearer context. An entity's text, and its traits' text, resolve with that bearer's active pins laid over the world pins and, for a cast entity, over the player bearer's pins (Q79).
 - World-level text (locations, the world prompt, narration context) resolves with the world pins plus the player bearer's.
 - This replaces the trait-gates ruling that every owner's pins lay into one set with the player's last.
 - Bearer-relative targets resolve per bearer, and their value comes from the link's per-link data. A link with no value lays no pin.
-- "World pins" are the non-trait sources: location, stat bands, value pins, Code Pins. Kind precedence is unchanged; the bearer context only swaps which trait set lays. The played persona's own text uses the player bearer's set (Q75).
+- "World pins" are the non-trait sources: location, stat bands, value pins, Code Pins. Kind precedence is unchanged; the bearer context only swaps which trait set lays. The played persona's own text uses the player bearer's set (Q75). A cast entity's text resolves as world pins, then the player bearer's trait pins, then that entity's own trait pins on top, so a world-wide fact the player pins reads the same everywhere and the entity still wins a contested placeholder in its own text (Q79).
 - A bearer-relative pin on a trait the bearer holds directly, with no link, applies the pin's own value, bound by name to the bearer's own placeholder, else the world's (Q76).
 - The player bearer's own placeholders: the world persona's, or the library persona's, or under None the world's. Custom Persona links under a library persona bind to that persona's placeholder first (Q77).
 - In a placeholder's Pins list, a link pin is a trait row named "Albus's Paladin" with the link's value. Edits write the link's value; Remove clears it; the source select is fixed. The conflict note treats two trait pins as rivals only when one bearer can hold both (Q78).
@@ -185,13 +186,13 @@ All items are additive export-shape changes to the world, entity, card and save 
 ### Enter-world and play
 
 - Entity pages and the in-game Traits tab show the bearer tree in author order, with links and owned traits together.
-- The player picks an NPC's link defaults under the existing owned-trait rules. Toggling in play follows the original's Player Can Toggle for every bearer (Q52).
+- The player picks a cast entity's link defaults under the existing owned-trait rules. Toggling in play follows the original's Player Can Toggle for every bearer (Q52).
 - A persona switch in play applies the new persona's active linked stat traits and reverses the old one's, through the honest reversal path, like traits turning on and off (Q53).
 - The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool.
 
 ### AI context
 
-- An NPC's active linked traits join its entity context the same way as owned traits: the full context gets full text, and the summary gets names.
+- A cast entity's active linked traits join its entity context the same way as owned traits: the full context gets full text, and the summary gets names.
 - `{{char}}` in any trait's text reads as the bearer's name. On the Custom Persona bearer under None it reads as the player name, as `{{user}}` does (Q56).
 - These are prompt-text changes and need probe numbers (probe skill).
 
@@ -210,8 +211,8 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 - A good test drives a public seam with a small world. It asserts what the author or player would see: which traits a bearer has, what is unlocked, what text resolves to, and what a round-trip keeps. It does not assert internal order or private helpers.
 - **Bearer resolution (main seam).** Table-driven cases: link to a trait, link to a group with a later-added child, a refused duplicate link, a linked group with an entity node placed inside it, Templates hidden at root, Custom Persona under None and under a library persona, a world persona's tree, a persona-only entity in and out of the cast, and a link to a missing original.
-- **Gate module.** Extend its tests: a same-bearer requirement that fails through another bearer, a named-scope requirement on an NPC and on You, a persona switch that changes You, and never-unlockable per bearer. Trait runtime: a persona switch that applies and reverses linked stats.
-- **Pin collector.** Extend its tests: a bearer-relative pin on a bearer with its own placeholder, fallback to the world placeholder, a link with no value, an NPC pin absent from world-level text, and a player pin present in world-level text.
+- **Gate module.** Extend its tests: a same-bearer requirement that fails through another bearer, a named-scope requirement on a cast entity and on You, a persona switch that changes You, and never-unlockable per bearer. Trait runtime: a persona switch that applies and reverses linked stats.
+- **Pin collector.** Extend its tests: a bearer-relative pin on a bearer with its own placeholder, fallback to the world placeholder, a link with no value, a cast entity's pin absent from world-level text, a player pin present in world-level text and in a cast entity's text under that entity's own.
 - **Round-trips.** Extend the portable-traits and save tests: links by name, rebinds by id then unique name, a dropped link, per-bearer state, Custom Persona state shared by None and a library persona, and pruning of a removed bearer.
 - **Test Bench.** New rules with the existing pin rules as prior art.
 - **UI wiring only.** Component tests for the link row, the This Link section, the **+** menu entries and the link flyout. Logic stays in the pure modules.
@@ -219,7 +220,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 ## Out of Scope
 
-- Entity stat blocks. Linked stat effects on an NPC stay inert until they exist.
+- Entity stat blocks. Linked stat effects on a cast entity stay inert until they exist.
 - All-of requirements.
 - Overriding any field of a link other than default-on and bearer-relative pin values. Detach covers deeper changes.
 - Links to another entity's owned traits or groups (Q50).
@@ -235,13 +236,13 @@ All items are additive export-shape changes to the world, entity, card and save 
   | # | Ruling |
   |---|---|
   | Q2, Q21 | A requirement means the same bearer by default. It can name You or an entity that bears the trait. |
-  | Q3, Q7 | Pins resolve per bearer. An NPC's pins apply only in its own text. |
+  | Q3, Q7 | Pins resolve per bearer. A cast entity's own pins apply only in its own text. Amended by Q79. |
   | Q4 | Owned traits stay a separate kind. |
   | Q6 | The player is one bearer, the picked persona. |
-  | Q8 | Linked stat effects do nothing on an NPC for now, with a note. |
-  | Q9 | The player can change an NPC's link defaults under the owned-trait rules. |
+  | Q8 | Linked stat effects do nothing on a cast entity for now, with a note. |
+  | Q9 | The player can change a cast entity's link defaults under the owned-trait rules. |
   | Q13 | Links travel off-world by name and rebind by id, then by unique name. |
-  | Q18 | NPC links reach the AI like owned traits. `{{char}}` reads as the bearer. |
+  | Q18 | A cast entity's links reach the AI like owned traits. `{{char}}` reads as the bearer. |
   | Q20 | The Test Bench warns about never-unlockable traits per bearer. |
   | Q23 | Per-link data is default-on and bearer-relative pin values. Locked dropped in Q52. |
   | Q24 | A linked group brings its live subtree and keeps its exclusivity. |
@@ -281,10 +282,11 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q72 | Checked-and-disabled follows the drag path's refusal rule. |
   | Q73 | Link pick: append, flyout stays open, selection stays. Add pick: append, close, expand, select the new row. |
   | Q74 | The player bearer's gate set is the union of the world root owner and the played entity's owner. |
-  | Q75 | World pins are the non-trait sources; the bearer context swaps only the trait set. |
+  | Q75 | World pins are the non-trait sources; the bearer context swaps only the trait set. Amended by Q79. |
   | Q76 | A direct bearer with no link applies the pin's own value, bound by name. |
   | Q77 | The player's own placeholders follow the persona; None means the world's. |
   | Q78 | Pins list: link rows edit the link's value; conflicts only between pins one bearer can hold. |
+  | Q79 | A cast entity's text: world pins, then the player's trait pins, then its own on top. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
