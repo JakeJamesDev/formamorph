@@ -1,6 +1,6 @@
 # 03: Image provider errors carry status and body
 
-Status: in-progress
+Status: ready-for-human
 Base: 476f427e
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -16,9 +16,9 @@ Recommended model rationale: three parallel, well-bounded changes with a shipped
 
 ## Acceptance criteria
 
-- [ ] Each of the three providers, given a stubbed non-OK response, throws an error whose `details` names the status and the body
-- [ ] The InvokeAI HTTP error is still an instance of its class
-- [ ] The generate-image toast for each provider offers **View Details →** and the window shows the body
-- [ ] A provider endpoint with a key in its query string is masked in the details
-- [ ] Mutation check: dropping the body from any provider's details fails its test
-- [ ] Four gates green
+- [x] Each of the three providers, given a stubbed non-OK response, throws an error whose `details` names the status and the body
+- [x] The InvokeAI HTTP error is still an instance of its class
+- [x] The generate-image toast for each provider offers **View Details →** and the window shows the body
+- [x] A provider endpoint with a key in its query string is masked in the details
+- [x] Mutation check: dropping the body from any provider's details fails its test
+- [x] Four gates green

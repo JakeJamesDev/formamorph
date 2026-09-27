@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { toast } from 'react-toastify';
 import { GenerateImageButton } from './GenerateImageButton';
+import { ThemedToastContainer } from '@/components/ThemedToastContainer';
+import { closeErrorDetails } from '@/lib/errorDetails';
+
+vi.mock('@/components/theme-provider', () => ({ useTheme: () => ({ resolvedTheme: 'dark' }) }));
 
 // The dialog reads the whole image-gen settings block; only the endpoint/provider fields matter here.
 vi.mock('@/contexts/SettingsContext', () => ({
@@ -126,5 +131,27 @@ describe('GenerateImageButton preview pane', () => {
       expect.arrayContaining(['absolute', 'inset-0', 'h-full', 'w-full', 'object-contain']),
     );
     expect(screen.queryByText('The image appears here.')).toBeNull();
+  });
+});
+
+describe('GenerateImageButton error toast', () => {
+  beforeEach(() => { generateImage.mockReset(); });
+
+  it("offers View Details on a provider refusal, and the window shows the provider's reply", async () => {
+    const { generateImage: realGenerate } = await vi.importActual<typeof import('@/lib/imageGen')>('@/lib/imageGen');
+    generateImage.mockImplementation(realGenerate);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"detail":"Sampler not found: Euler z"}', { status: 422 })));
+    try {
+      render(<><ThemedToastContainer /><GenerateImageButton {...props} tags="1girl" /></>);
+      openDialog();
+      fireEvent.click(screen.getByRole('button', { name: /^Generate$/ }));
+
+      fireEvent.click(await screen.findByRole('button', { name: 'View Details →' }));
+      const details = await screen.findByRole('dialog', { name: 'Error Details' });
+      expect(details.textContent).toContain('Response:\n{"detail":"Sampler not found: Euler z"}');
+    } finally {
+      vi.unstubAllGlobals();
+      act(() => { toast.dismiss(); closeErrorDetails(); });
+    }
   });
 });
