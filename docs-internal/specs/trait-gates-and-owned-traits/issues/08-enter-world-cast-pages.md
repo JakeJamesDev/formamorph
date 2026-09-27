@@ -1,6 +1,7 @@
 # 08: Enter-world cast pages
 
-Status: ready-for-agent
+Status: in-progress
+Base: d740336b
 Blocked by: 03 — Gates in play, 07 — Entity nodes in the tree: placement and drags
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
