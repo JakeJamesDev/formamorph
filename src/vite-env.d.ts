@@ -18,4 +18,6 @@ declare const __BUILD_TARGET__: string;
 interface ImportMetaEnv {
   readonly VITE_API_URL_DEV: string;
   readonly VITE_API_URL_PROD: string;
+  /** DEV only: the `#dev?…` query a launch entry lands on (see `devRouter.ts`). */
+  readonly VITE_DEV_ROUTE?: string;
 }

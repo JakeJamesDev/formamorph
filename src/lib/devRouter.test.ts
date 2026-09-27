@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { DEV_MODAL_TABS, DEV_MODALS } from './devRoutes';
+import { seedDevRouteFromEnv } from './devRouter';
 import { DEV_PUBLISH_SAMPLES } from './devPublishSample';
 import { BROWSE_TABS } from './browseTabs';
 import { DEV_FIXTURES, PICKED_OPENING_TEXT, WORLD_OPENING_TEXT, WRITTEN_OPENING_TEXT, loadDevFixture } from './devFixtures';
@@ -98,6 +99,28 @@ describe('dev-router hash parsing', () => {
       tab: 'prompts',
       subtab: 'thinking',
     });
+  });
+});
+
+describe('dev-router env seed', () => {
+  afterEach(() => { window.location.hash = ''; });
+  it('lands on the route a launch entry names when the URL has no hash', () => {
+    seedDevRouteFromEnv('modal=designSystem');
+    expect(window.location.hash).toBe('#dev?modal=designSystem');
+    expect(parseHash(window.location.hash)).toEqual({ modal: 'designSystem' });
+  });
+  it('accepts the full hash form too', () => {
+    seedDevRouteFromEnv('#dev?view=gameViewer&modal=settings');
+    expect(window.location.hash).toBe('#dev?view=gameViewer&modal=settings');
+  });
+  it('never overrides a hash already in the URL', () => {
+    window.location.hash = '#dev?modal=intro';
+    seedDevRouteFromEnv('modal=designSystem');
+    expect(window.location.hash).toBe('#dev?modal=intro');
+  });
+  it('does nothing when the variable is unset', () => {
+    seedDevRouteFromEnv(undefined);
+    expect(window.location.hash).toBe('');
   });
 });
 
