@@ -17,6 +17,7 @@ A library entity's traits come with it into any world. Its requirements on that 
 
 - [ ] An exported entity (entity file, library, character card) keeps a requirement into itself by id, and stores the target's name on a requirement that points out of it, including playing-as. This is an additive entity export change.
 - [ ] Import rebinds an outward requirement only when exactly one trait, group, or persona in the new world carries that name. No match or two matches leaves it unresolved, locked, showing the stored name.
+- [ ] The library entity editor gains the same Traits tab as the World Editor's, where requirements can point only inside the entity.
 - [ ] A library persona's or added character's owned traits appear on its node at enter-world and in play.
 - [ ] A world or save made before this change loads with every trait behaving as before.
 - [ ] Entity file and adoption tests cover: self-owned ids kept, outward names kept, unique rebind, no match, two matches, playing-as rebind, legacy load.

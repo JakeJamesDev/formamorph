@@ -1,6 +1,7 @@
 # 07: Entity nodes in the tree: placement and drags
 
-Status: ready-for-agent
+Status: in-progress
+Base: 8c74e005
 Blocked by: 06 — Owned traits in the editor
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
