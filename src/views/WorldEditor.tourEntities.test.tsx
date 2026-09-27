@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
-import { reloadTourProgress } from '@/lib/authoringTour/progress';
-import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
+import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
 import { NEW_ENTITY_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
@@ -42,8 +42,8 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// Each case walks about fifteen saved steps, which outlasts the default window under the whole suite's load.
-vi.setConfig({ testTimeout: 20_000 });
+// A case walks up to seven saved steps, which outlasts the default window under the whole suite's load.
+vi.setConfig({ testTimeout: 15_000 });
 
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
 
@@ -77,11 +77,15 @@ const row = (name: string) => screen.getAllByText(name)
   .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
   .find(Boolean)!;
 
-const openTour = async () => {
-  const view = renderWorldEditorBench(WORLD, 'simple', { newWorld: true });
-  const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
-  fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
-  await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
+/**
+ * Reopens the world as an author who took every step before `stepId` left it: each earlier Add and Use
+ * Example taken, and the tour record pointing at `stepId`.
+ */
+const resumeAt = async (stepId: string) => {
+  const { world, items } = await replayTourSteps(WORLD, indexOf(stepId));
+  writeTourRecord(WORLD.id, { step: stepId, items });
+  const view = renderWorldEditorBench({ ...WORLD, ...world }, 'simple');
+  await screen.findByRole('dialog', { name: TOUR_STEPS[indexOf(stepId)].title });
   return view;
 };
 
@@ -133,8 +137,7 @@ beforeEach(() => {
 
 describe('Authoring Tour — Entities steps', () => {
   it('runs the six steps after Locations in order, saving each one', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-entity');
+    const { ctx } = await resumeAt('add-entity');
     expect(TOUR_STEPS[indexOf('add-entity') - 1].id).toBe('location-connection');
     const saved = storeWorld.mock.calls.length;
 
@@ -160,8 +163,7 @@ describe('Authoring Tour — Entities steps', () => {
   });
 
   it('waits for a new entity, then records and selects it', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-entity');
+    const { ctx } = await resumeAt('add-entity');
     // The harness world's own entity was there before the step, so it is not the tour's.
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
@@ -178,8 +180,7 @@ describe('Authoring Tour — Entities steps', () => {
   });
 
   it('keeps Next disabled on the name Add gives until the author changes it', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-entity');
+    const { ctx } = await resumeAt('add-entity');
     fireEvent.click(addButton());
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
@@ -196,8 +197,7 @@ describe('Authoring Tour — Entities steps', () => {
   });
 
   it('makes the add step current again when its entity is deleted', async () => {
-    const { ctx } = await openTour();
-    await walkTo('entity-ai-description');
+    const { ctx } = await resumeAt('entity-ai-description');
 
     fireEvent.click(within(row('Maren')).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(stepNumber()).toBe(indexOf('add-entity') + 1));
@@ -206,8 +206,7 @@ describe('Authoring Tour — Entities steps', () => {
   });
 
   it('completes Locations only when the entity is in a tour location', async () => {
-    const { ctx } = await openTour();
-    await walkTo('entity-locations');
+    const { ctx } = await resumeAt('entity-locations');
     expect(noteButton('Next')).toBeDisabled();
 
     // A location outside the tour does not count, though the AI then reads the entity there.
@@ -226,8 +225,7 @@ describe('Authoring Tour — Entities steps', () => {
 
 describe('In Play — Entities', () => {
   it('Image: the picture lands on the entity card', async () => {
-    const { ctx } = await openTour();
-    await walkTo('entity-image');
+    const { ctx } = await resumeAt('entity-image');
     expect(noteButton('Next')).toBeDisabled();
     expect(within(playerSees()).queryByRole('img', { name: 'Maren' })).toBeNull();
 
@@ -242,8 +240,7 @@ describe('In Play — Entities', () => {
   });
 
   it('Name: shows the list row and the card, and the AI does not read the entity yet', async () => {
-    await openTour();
-    await walkTo('entity-name');
+    await resumeAt('entity-name');
     useExample();
 
     await waitFor(() => expect(within(playerSees()).getAllByText('Maren')).toHaveLength(2));
@@ -252,8 +249,7 @@ describe('In Play — Entities', () => {
   });
 
   it('Locations: placing the entity puts it in that location’s roster', async () => {
-    await openTour();
-    await walkTo('entity-locations');
+    await resumeAt('entity-locations');
     expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
     expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
 
@@ -269,8 +265,7 @@ describe('In Play — Entities', () => {
   });
 
   it('Pronouns: the card stays with a caption, and the roster marks them', async () => {
-    await openTour();
-    await walkTo('entity-pronouns');
+    await resumeAt('entity-pronouns');
     useExample();
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Pronouns' })).toHaveValue('she/her'));
@@ -281,8 +276,7 @@ describe('In Play — Entities', () => {
   });
 
   it('Player-Facing Description: shows it on the card, and the roster stays with a caption', async () => {
-    await openTour();
-    await walkTo('entity-player-description');
+    await resumeAt('entity-player-description');
     useExample();
 
     await waitFor(() => expect(within(playerSees())
@@ -296,8 +290,7 @@ describe('In Play — Entities', () => {
   });
 
   it('AI-Facing Description: the card stays with a caption, and the roster marks it', async () => {
-    await openTour();
-    await walkTo('entity-ai-description');
+    await resumeAt('entity-ai-description');
     useExample();
 
     expect(within(playerSees()).getByRole('heading', { name: 'Maren' })).toBeInTheDocument();
@@ -307,8 +300,7 @@ describe('In Play — Entities', () => {
   });
 
   it('keeps the roster marks on each step when the author goes back', async () => {
-    await openTour();
-    await walkTo('entity-ai-description');
+    await resumeAt('entity-ai-description');
     useExample();
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
 
@@ -321,8 +313,7 @@ describe('In Play — Entities', () => {
   });
 
   it('captions the row and card only until the entity has a location', async () => {
-    await openTour();
-    await walkTo('entity-name');
+    await resumeAt('entity-name');
     expect(within(playerSees()).getByText(MEET_ONCE_PLACED)).toBeInTheDocument();
     expect(within(narration()).getByText(NOT_IN_SCENE)).toBeInTheDocument();
 

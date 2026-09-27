@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@/lib/tutorials';
-import { reloadTourProgress } from '@/lib/authoringTour/progress';
-import { TOUR_STEPS } from '@/lib/authoringTour/steps';
+import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
+import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
 import { NEW_LOCATION_NAME } from '@/lib/blankWorld';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
@@ -42,7 +42,7 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// Each case walks up to ten saved steps, which outlasts the default window under the whole suite's load.
+// The ordered case walks the tour from its first step, which outlasts the default window under the whole suite's load.
 vi.setConfig({ testTimeout: 15_000 });
 
 const storeWorld = vi.mocked(WorldStorageService.storeWorld);
@@ -82,11 +82,23 @@ const row = (name: string) => screen.getAllByText(name)
   .map((el) => el.closest<HTMLElement>('[class*="cursor-pointer"]'))
   .find(Boolean)!;
 
-const openTour = async (world: World = WORLD) => {
-  const view = renderWorldEditorBench(world, 'simple', { newWorld: true });
+const openTour = async () => {
+  const view = renderWorldEditorBench(WORLD, 'simple', { newWorld: true });
   const offer = await screen.findByRole('dialog', { name: 'Take the Authoring Tour?' }, { timeout: 2000 });
   fireEvent.click(within(offer).getByRole('button', { name: 'Start Tour' }));
   await screen.findByRole('dialog', { name: TOUR_STEPS[0].title });
+  return view;
+};
+
+/**
+ * Reopens the world as an author who took every step before `stepId` left it: each earlier Add and Use
+ * Example taken, and the tour record pointing at `stepId`.
+ */
+const resumeAt = async (stepId: string) => {
+  const { world, items } = await replayTourSteps(WORLD, indexOf(stepId));
+  writeTourRecord(WORLD.id, { step: stepId, items });
+  const view = renderWorldEditorBench({ ...WORLD, ...world }, 'simple');
+  await screen.findByRole('dialog', { name: TOUR_STEPS[indexOf(stepId)].title });
   return view;
 };
 
@@ -161,8 +173,7 @@ describe('Authoring Tour — Locations steps', () => {
 
 describe('Authoring Tour — add steps', () => {
   it('waits for a new location, then records and selects it', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-location');
+    const { ctx } = await resumeAt('add-location');
     // The harness world's own location was there before the step, so it is not the tour's.
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
@@ -179,8 +190,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('keeps Next disabled on the name Add gives until the author changes it', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-location');
+    const { ctx } = await resumeAt('add-location');
     fireEvent.click(addButton());
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
     await next();
@@ -197,8 +207,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('asks only for the + press on the second add step, before and after the press', async () => {
-    const { ctx } = await openTour();
-    await walkTo('add-second-location');
+    const { ctx } = await resumeAt('add-second-location');
     expect(noteButton('Next')).toBeDisabled();
     expect(noteButton('Use Example')).toBeNull();
 
@@ -209,8 +218,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('Second Location Name waits for a chosen name, and its example fills the whole place', async () => {
-    const { ctx } = await openTour();
-    await walkTo('second-location-name');
+    const { ctx } = await resumeAt('second-location-name');
     expect(noteButton('Next')).toBeDisabled();
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('New Location');
 
@@ -230,8 +238,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('Back to Tour selects the step’s location again', async () => {
-    await openTour();
-    await walkTo('location-name');
+    await resumeAt('location-name');
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Name' })).toHaveTextContent('The Tidewell'));
 
@@ -242,8 +249,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('makes the add step current again when its location is deleted', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-connection');
+    const { ctx } = await resumeAt('location-connection');
 
     fireEvent.click(within(row('The Tidewell')).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(stepNumber()).toBe(indexOf('add-location') + 1));
@@ -260,8 +266,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('makes the second add step current when the second location is deleted, and keeps the first', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-connection');
+    const { ctx } = await resumeAt('location-connection');
     const first = ctx().locations.find((l) => l.name === 'The Tidewell')!;
 
     fireEvent.click(within(row('The Salt Lantern')).getByRole('button', { name: 'Delete' }));
@@ -278,7 +283,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('resumes a Locations step with its location selected', async () => {
-    const first = await openTour();
+    const first = await resumeAt('location-player-description');
     await walkTo('location-ai-description');
     first.unmount();
 
@@ -288,7 +293,7 @@ describe('Authoring Tour — add steps', () => {
   });
 
   it('reopens at the add step when the saved world no longer holds the tour location', async () => {
-    const first = await openTour();
+    const first = await resumeAt('location-player-description');
     await walkTo('location-ai-description');
     first.unmount();
 
@@ -302,8 +307,7 @@ describe('Authoring Tour — add steps', () => {
 
 describe('Authoring Tour — completion', () => {
   it('completes Starting Location only when the tour’s own location starts a game', async () => {
-    await openTour();
-    await walkTo('location-starting');
+    await resumeAt('location-starting');
     // The harness world's location already starts a game. The tour's own location does not yet.
     expect(noteButton('Next')).toBeDisabled();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Starting Location' }));
@@ -311,8 +315,7 @@ describe('Authoring Tour — completion', () => {
   });
 
   it('completes the Connection step on a Connection between the tour locations, hint or not', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-connection');
+    const { ctx } = await resumeAt('location-connection');
     expect(noteButton('Next')).toBeDisabled();
     const [tidewell] = ctx().locations.filter((l) => l.name === 'The Tidewell');
     const lantern = ctx().locations.find((l) => l.name === 'The Salt Lantern')!;
@@ -329,8 +332,7 @@ describe('Authoring Tour — completion', () => {
 
 describe('In Play — Locations', () => {
   it('Background Image: opens the Media tab, and the picture sits behind the Location tab', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-image');
+    const { ctx } = await resumeAt('location-image');
     expect(screen.getByRole('tab', { name: 'Media' })).toHaveAttribute('aria-selected', 'true');
     expect(noteButton('Next')).toBeDisabled();
     expect(within(playerSees()).queryByTestId('location-backdrop-image')).toBeNull();
@@ -347,8 +349,7 @@ describe('In Play — Locations', () => {
   });
 
   it('Name: shows the Location tab and the location block with the name marked', async () => {
-    await openTour();
-    await walkTo('location-name');
+    await resumeAt('location-name');
     fireEvent.click(noteButton('Use Example')!);
 
     await waitFor(() => expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Tidewell' }))
@@ -358,8 +359,7 @@ describe('In Play — Locations', () => {
   });
 
   it('Player-Facing Description: shows it in the Location tab, and the AI never reads it', async () => {
-    await openTour();
-    await walkTo('location-player-description');
+    await resumeAt('location-player-description');
     fireEvent.click(noteButton('Use Example')!);
 
     await waitFor(() => expect(within(playerSees())
@@ -373,8 +373,7 @@ describe('In Play — Locations', () => {
   });
 
   it('AI-Facing Description: the Location tab stays with a caption, and the location block marks it', async () => {
-    await openTour();
-    await walkTo('location-ai-description');
+    await resumeAt('location-ai-description');
     expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Tidewell' })).toBeInTheDocument();
     expect(within(playerSees()).getByText('Players never see the AI-Facing Description')).toBeInTheDocument();
 
@@ -385,8 +384,7 @@ describe('In Play — Locations', () => {
   });
 
   it('Starting Location: offers no example, and says where a new game starts under the Location tab', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-starting');
+    const { ctx } = await resumeAt('location-starting');
     expect(noteButton('Use Example')).toBeNull();
     expect(noteButton('Next')).toBeDisabled();
     expect(within(playerSees()).getByRole('button', { name: 'Current Location: The Tidewell' })).toBeInTheDocument();
@@ -401,8 +399,7 @@ describe('In Play — Locations', () => {
   });
 
   it('Connection: shows Connected Locations and the destinations list with the hint marked', async () => {
-    await openTour();
-    await walkTo('location-connection');
+    await resumeAt('location-connection');
     fireEvent.click(noteButton('Use Example')!);
 
     await waitFor(() => expect(within(playerSees()).getByText('Connected Locations:')).toBeInTheDocument());
@@ -416,8 +413,7 @@ describe('In Play — Locations', () => {
   });
 
   it('Connection: stands where the Connection leaves from, and follows a change of direction', async () => {
-    const { ctx } = await openTour();
-    await walkTo('location-connection');
+    const { ctx } = await resumeAt('location-connection');
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(ctx().connections).toHaveLength(1));
     const [tidewell, lantern] = ['The Tidewell', 'The Salt Lantern'].map((n) => ctx().locations.find((l) => l.name === n)!.id);
