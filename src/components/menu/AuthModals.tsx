@@ -18,9 +18,6 @@ import { ProfileAvatarEditor } from "@/components/menu/ProfileAvatarEditor";
 import { type ProfileTab } from "@/components/menu/profileTabs";
 import { NotificationsTab } from "@/components/menu/NotificationsTab";
 import { TermsTab } from "@/components/menu/TermsTab";
-import { PolicyDialog } from "@/components/menu/PolicyDialog";
-import { usePrivacyPolicy } from "@/contexts/PrivacyPolicyContext";
-import { useAgeGate } from "@/contexts/AgeGateContext";
 import { useAccountDeletion } from "@/contexts/AccountDeletionContext";
 import PolicyService from "@/services/PolicyService";
 import AuthService from "@/services/AuthService";
@@ -28,17 +25,13 @@ import UserService from "@/services/UserService";
 import { useResetOnOpen } from "@/lib/useResetOnOpen";
 import { parseServerDate } from "@/lib/serverDate";
 import { type WorldRecord } from "@/components/WorldDetails";
-import type { PublicProfile, PublicPrivacyPolicy } from "@/types";
+import type { PublicProfile } from "@/types";
 import { ProfileStats } from "@/components/community/ProfileStats";
 
 interface AuthModalsProps {
-  showAuthDialog: boolean;
-  setShowAuthDialog: (open: boolean) => void;
   showProfileDialog: boolean;
   setShowProfileDialog: (open: boolean) => void;
   currentUser: WorldRecord | null;
-  /** Called after a successful login/register so the parent can refresh its auth identity. */
-  onAuthenticated: () => void;
   /** Full logout (clears the parent's auth state); the header uses the same handler. */
   onLogout: () => void;
   /** Reports the reader's unread count so the footer badge stays in step with the inbox. */
@@ -53,12 +46,12 @@ interface AuthModalsProps {
   onOpenListing?: (listing: { id: string; kind: string }) => void;
 }
 
-/** The login/register dialog and the user-profile (change password / logout) dialog. Owns all auth
- *  form state; the parent controls open/close and holds the shared auth identity (via callbacks). */
+/** The user-profile dialog and its change-password popup. Owns the password form state; the parent
+ *  controls open/close and holds the shared auth identity. Sign-in is `SignInDialog`, raised through the
+ *  sign-in store. */
 export function AuthModals({
-  showAuthDialog, setShowAuthDialog,
   showProfileDialog, setShowProfileDialog,
-  currentUser, onAuthenticated, onLogout,
+  currentUser, onLogout,
   onUnreadChange, onAvatarChanged, onNotificationsRead, onOpenListing,
   initialTab = 'messages',
 }: AuthModalsProps) {
@@ -74,7 +67,6 @@ export function AuthModals({
   useEffect(() => {
     setAvatarUrl((currentUser?.avatarUrl as string | null) ?? null);
   }, [currentUser]);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
   const [profileTab, setProfileTab] = useState<ProfileTab>(initialTab);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   // Whether an admin has authored a gate at all. Until one exists there is nothing to show or agree to,
@@ -128,42 +120,21 @@ export function AuthModals({
     String(profileStats?.createdAt ?? currentUser?.createdAt ?? ''),
   )?.toLocaleDateString();
   const [authError, setAuthError] = useState('');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  // Optional at signup, and never asked for at sign-in. It is what password reset runs on.
-  const [email, setEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  // The Privacy Policy shown before an account is created, and null whenever there is nothing to show:
-  // no policy switched on, or the reader has not reached that step. Read without a token, because at
-  // this point there is no account to hold one.
-  const [signupPolicy, setSignupPolicy] = useState<PublicPrivacyPolicy | null>(null);
-  const [signupBusy, setSignupBusy] = useState(false);
-
-  // The signed-in prompt. Registration answers the policy on its own, but a sign-in has to ask the
-  // server whether this account already has.
-  const { checkNow: checkPrivacyPolicy } = usePrivacyPolicy();
-  const { authenticationSucceeded, authenticationAbandoned } = useAgeGate();
-
-  // Ending the account, and the notice that signing in has just called such an ending off. Both live
-  // above the menu, because the privacy prompt raises the same flow from over the top of every screen.
-  const { startDeletion, noticeCancelled } = useAccountDeletion();
+  // Ending the account. It lives above the menu, because the privacy prompt raises the same flow from
+  // over the top of every screen.
+  const { startDeletion } = useAccountDeletion();
 
   const resetAuthForms = () => {
-    setUsername('');
-    setPassword('');
-    setConfirmPassword('');
-    setEmail('');
     setCurrentPassword('');
     setNewPassword('');
     setAuthError('');
   };
 
-  // Reset the forms when a dialog opens, not when it closes — clearing on close blanks the still-visible
+  // Reset the forms when the dialog opens, not when it closes — clearing on close blanks the still-visible
   // fields for a frame or two during the fade-out.
-  useResetOnOpen(showAuthDialog, resetAuthForms);
   useResetOnOpen(showProfileDialog, () => {
     resetAuthForms();
     setProfileTab(initialTab);
@@ -172,152 +143,6 @@ export function AuthModals({
   // Also honor a *change* of `initialTab` while the dialog is already open — the dev-router points at a
   // tab by changing this prop, and without it a second `goto` at an open dialog is silently ignored.
   useEffect(() => { setProfileTab(initialTab); }, [initialTab]);
-
-  const handleLogin = async () => {
-    setAuthError('');
-
-    if (!username || !password) {
-      setAuthError('Username and password are required');
-      return;
-    }
-
-    try {
-      const { deletionCancelled } = await AuthService.login(username, password);
-      onAuthenticated();
-      authenticationSucceeded(() => { void checkPrivacyPolicy(); });
-      setShowAuthDialog(false);
-      resetAuthForms();
-      toast.success('Logged in successfully');
-      // Signing in is what cancels a pending deletion, and the server does it without being asked. The
-      // account may not remember asking, so it is said out loud rather than left to be noticed.
-      if (deletionCancelled) noticeCancelled();
-    } catch (error) {
-      setAuthError((error as Error).message || 'Login failed');
-    }
-  };
-
-  const handleRegister = async () => {
-    setAuthError('');
-
-    // Validate username and password according to server requirements
-    if (!username) {
-      setAuthError('Username is required');
-      return;
-    }
-
-    if (username.length < 3 || username.length > 20) {
-      setAuthError('Username must be between 3 and 20 characters');
-      return;
-    }
-
-    if (!password) {
-      setAuthError('Password is required');
-      return;
-    }
-
-    if (password.length < 6) {
-      setAuthError('Password must be at least 6 characters long');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setAuthError('Passwords do not match');
-      return;
-    }
-
-    // Checked here as well as in AuthService, because the policy step runs between the two. Left to the
-    // service, a mistyped address would be found only after the reader had read and accepted a policy.
-    if (email.trim() && !AuthService.isValidEmail(email.trim())) {
-      setAuthError('Invalid email format');
-      return;
-    }
-
-    // The policy is read and answered before the account exists, so declining leaves nothing behind.
-    // A read that fails is not a reason to refuse a signup: the account is created, and the signed-in
-    // prompt asks at the first refused request instead.
-    setSignupBusy(true);
-    let policy: PublicPrivacyPolicy | null = null;
-    try {
-      policy = await PolicyService.fetchPublicPrivacyPolicy();
-    } catch (error) {
-      console.error('Failed to read the privacy policy before signup:', error);
-    } finally {
-      setSignupBusy(false);
-    }
-
-    if (policy) {
-      setSignupPolicy(policy);
-      return;
-    }
-
-    // No policy to answer, so the account is made here and reported exactly as the answered path
-    // reports it.
-    if (await createAccount()) finishSignup();
-  };
-
-  /** Register, and report a refusal the same way whichever path arrived here. */
-  const createAccount = async (): Promise<boolean> => {
-    try {
-      await AuthService.register(username, password, email.trim());
-      authenticationSucceeded();
-      return true;
-    } catch (error) {
-      setAuthError((error as Error).message || 'Registration failed');
-      return false;
-    }
-  };
-
-  /** Hand the new session to the parent and close up. Both signup paths end here, so neither can
-   *  quietly skip a step the other takes. */
-  const finishSignup = (resolveAgeGate = true) => {
-    setSignupPolicy(null);
-    onAuthenticated();
-    if (resolveAgeGate) authenticationSucceeded(() => { void checkPrivacyPolicy(); });
-    setShowAuthDialog(false);
-    resetAuthForms();
-    toast.success('Registered successfully');
-  };
-
-  /**
-   * Accepting the policy at signup: create the account, then record the acceptance against it.
-   *
-   * The two cannot be one request — the acceptance needs the token registration issues — so the second
-   * one is retried once. A second failure leaves a real account that has answered nothing, which is a
-   * state the server already knows how to handle: it refuses, and the signed-in prompt asks again. What
-   * it must never do is pass silently.
-   */
-  const acceptAtSignup = async () => {
-    setSignupBusy(true);
-    let privacyAccepted = true;
-    try {
-      if (!await createAccount()) {
-        setSignupPolicy(null);
-        return;
-      }
-
-      try {
-        await PolicyService.acceptPrivacyPolicy();
-      } catch {
-        try {
-          await PolicyService.acceptPrivacyPolicy();
-        } catch (error) {
-          console.error('Failed to record the privacy acceptance after signup:', error);
-          toast.warn('Your account was created, but recording your acceptance failed. You will be asked again.');
-          privacyAccepted = false;
-          void checkPrivacyPolicy();
-        }
-      }
-
-      finishSignup(privacyAccepted);
-    } finally {
-      setSignupBusy(false);
-    }
-  };
-
-  /** Declining at signup. Nothing has been sent, and nothing is: the account is never created. */
-  const declineAtSignup = () => {
-    setSignupPolicy(null);
-  };
 
   const handleChangePassword = async () => {
     setAuthError('');
@@ -339,117 +164,6 @@ export function AuthModals({
 
   return (
     <>
-      <Dialog
-        open={showAuthDialog}
-        onOpenChange={(open) => {
-          if (!open) authenticationAbandoned();
-          setShowAuthDialog(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>{authMode === 'login' ? 'Login' : 'Register'}</DialogTitle>
-            <DialogDescription>
-              {authMode === 'login'
-                ? 'Enter your credentials to access your account.'
-                : 'Create a new account to save and share your worlds.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {authError && (
-              <div className="text-label text-destructive p-2 bg-destructive/10 rounded-md">
-                {authError}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label htmlFor="username" className="text-label font-medium">Username</label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-label font-medium">Password</label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-              />
-            </div>
-
-            {authMode === 'login' && (
-              <p className="text-right text-helper">
-                <a
-                  href="https://formamorph.ai/reset-password"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </p>
-            )}
-
-            {authMode === 'register' && (
-              <>
-                <div className="space-y-2">
-                  <label htmlFor="confirmPassword" className="text-label font-medium">Confirm Password</label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm your password"
-                  />
-                </div>
-
-                {/* Last, and only in register mode, so switching between the two modes never moves a
-                    box the reader is already typing in. */}
-                <div className="space-y-2">
-                  <label htmlFor="email" className="text-label font-medium">Email (Optional)</label>
-                  <Input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                  />
-                  <p className="text-meta text-muted-foreground">
-                    Lets you reset your password. We send one message to confirm it.
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-              className="sm:order-1"
-            >
-              {authMode === 'login' ? 'Create Account' : 'Back to Login'}
-            </Button>
-
-            <Button
-              onClick={authMode === 'login' ? handleLogin : handleRegister}
-              disabled={signupBusy}
-              className="sm:order-2"
-            >
-              {authMode === 'login' ? 'Login' : 'Register'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Profile Dialog */}
       <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
         <DialogContent aria-describedby={undefined} className="sm:max-w-[900px] h-[90dvh] flex flex-col overflow-hidden">
@@ -605,21 +319,6 @@ export function AuthModals({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Shown before the account exists. Declining closes it and creates nothing — the reader is still
-          signed out, with the form behind this untouched. */}
-      {signupPolicy && (
-        <PolicyDialog
-          open
-          title={signupPolicy.title}
-          body={signupPolicy.body}
-          confirmLabel="Accept and Create Account"
-          cancelLabel="Decline"
-          onConfirm={() => { void acceptAtSignup(); }}
-          onCancel={declineAtSignup}
-          busy={signupBusy}
-        />
-      )}
     </>
   );
 }

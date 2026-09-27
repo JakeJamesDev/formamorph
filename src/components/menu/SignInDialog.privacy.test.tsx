@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { AuthModals } from './AuthModals';
+import { SignInDialog } from './SignInDialog';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
@@ -15,10 +15,6 @@ import { toast } from 'react-toastify';
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
-vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div /> }));
-vi.mock('./TermsTab', () => ({ TermsTab: () => <div /> }));
-vi.mock('./NotificationsTab', () => ({ NotificationsTab: () => <div /> }));
-vi.mock('@/services/UserService', () => ({ default: { fetchProfile: vi.fn(async () => null) } }));
 
 const POLICY = { title: 'Privacy Policy', body: 'A salted hash of your address, kept 90 days.' };
 
@@ -29,14 +25,10 @@ const renderAuth = (over: Record<string, unknown> = {}) =>
     <AgeGateProvider>
     <AccountDeletionProvider>
     <PrivacyPolicyProvider>
-      <AuthModals
-        showAuthDialog
-        setShowAuthDialog={() => {}}
-        showProfileDialog={false}
-        setShowProfileDialog={() => {}}
-        currentUser={null}
+      <SignInDialog
+        open
+        onOpenChange={() => {}}
         onAuthenticated={() => {}}
-        onLogout={() => {}}
         {...over}
       />
     </PrivacyPolicyProvider>
@@ -151,9 +143,9 @@ describe('the Privacy Policy at signup', () => {
     const register = vi.spyOn(AuthService, 'register').mockResolvedValue(true);
     const accept = vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
     const onAuthenticated = vi.fn();
-    const setShowAuthDialog = vi.fn();
+    const onOpenChange = vi.fn();
 
-    renderAuth({ onAuthenticated, setShowAuthDialog });
+    renderAuth({ onAuthenticated, onOpenChange });
     await submitRegistration();
 
     await waitFor(() => expect(register).toHaveBeenCalledTimes(1));
@@ -164,7 +156,7 @@ describe('the Privacy Policy at signup', () => {
     // session exactly as the answered path does, or the account exists behind a dialog that never
     // closed and a header that still offers Login.
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
-    expect(setShowAuthDialog).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(toast.success).toHaveBeenCalledWith('Registered successfully');
   });
 
@@ -173,15 +165,15 @@ describe('the Privacy Policy at signup', () => {
     vi.spyOn(AuthService, 'register').mockResolvedValue(true);
     vi.spyOn(PolicyService, 'acceptPrivacyPolicy').mockResolvedValue();
     const onAuthenticated = vi.fn();
-    const setShowAuthDialog = vi.fn();
+    const onOpenChange = vi.fn();
 
-    renderAuth({ onAuthenticated, setShowAuthDialog });
+    renderAuth({ onAuthenticated, onOpenChange });
     await submitRegistration();
     fireEvent.click(await screen.findByRole('button', { name: 'Accept and Create Account' }));
 
     // The pair of these two cases is the point: neither route may quietly skip a step the other takes.
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledTimes(1));
-    expect(setShowAuthDialog).toHaveBeenCalledWith(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(toast.success).toHaveBeenCalledWith('Registered successfully');
   });
 

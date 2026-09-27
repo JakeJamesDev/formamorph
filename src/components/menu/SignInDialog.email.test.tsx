@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { AuthModals } from './AuthModals';
+import { SignInDialog } from './SignInDialog';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
@@ -12,10 +12,6 @@ import type { PolicyState } from '@/types';
 vi.mock('react-toastify', () => ({
   toast: { error: vi.fn(), success: vi.fn(), warn: vi.fn(), info: vi.fn() },
 }));
-vi.mock('./MessagesTab', () => ({ MessagesTab: () => <div /> }));
-vi.mock('./TermsTab', () => ({ TermsTab: () => <div /> }));
-vi.mock('./NotificationsTab', () => ({ NotificationsTab: () => <div /> }));
-vi.mock('@/services/UserService', () => ({ default: { fetchProfile: vi.fn(async () => null) } }));
 
 const NOTHING: PolicyState = { uploadGate: null, tagNotice: null, privacyPolicy: null };
 
@@ -23,15 +19,7 @@ const modals = (open: boolean) => (
   <AgeGateProvider>
   <AccountDeletionProvider>
   <PrivacyPolicyProvider>
-    <AuthModals
-      showAuthDialog={open}
-      setShowAuthDialog={() => {}}
-      showProfileDialog={false}
-      setShowProfileDialog={() => {}}
-      currentUser={null}
-      onAuthenticated={() => {}}
-      onLogout={() => {}}
-    />
+    <SignInDialog open={open} onOpenChange={() => {}} onAuthenticated={() => {}} />
   </PrivacyPolicyProvider>
   </AccountDeletionProvider>
   </AgeGateProvider>

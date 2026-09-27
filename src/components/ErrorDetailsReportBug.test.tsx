@@ -118,12 +118,4 @@ describe('Report Bug in Error Details', () => {
     expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Report Bug' })).toBeNull();
   });
-
-  it('shows Copy only when signed out', async () => {
-    AuthService.token = null;
-    await openDetails();
-
-    expect(screen.getByRole('button', { name: 'Copy' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Report Bug' })).toBeNull();
-  });
 });

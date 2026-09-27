@@ -12,13 +12,12 @@ import {
 } from '@/lib/errorDetails';
 import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import { toastError } from '@/lib/linkToast';
+import { requestSignIn } from '@/lib/signInStore';
 import AuthService from '@/services/AuthService';
 
 /** The dialog a toast's View Details link opens; mounted once, beside the toast container. */
 export function ErrorDetailsHost() {
   const { open, entry } = useSyncExternalStore(subscribeErrorDetails, getErrorDetailsState);
-  // Bug reports are filed against an account, on the community server.
-  const canReportBug = COMMUNITY_ENABLED && Boolean(AuthService.token);
 
   // DEV: `#dev?modal=errorDetails` raises a canned ComfyUI rejection toast.
   const devRoute = useDevRoute();
@@ -31,8 +30,14 @@ export function ErrorDetailsHost() {
   // Hands off rather than stacking: the report's description keeps the details.
   const reportBug = () => {
     if (!entry) return;
-    closeErrorDetails();
-    openBugReport(bugReportFromError(entry));
+    const fill = bugReportFromError(entry);
+    const handOff = () => {
+      closeErrorDetails();
+      openBugReport(fill);
+    };
+    // Bug reports are filed against an account. A canceled sign-in leaves this dialog open underneath.
+    if (AuthService.token) handOff();
+    else requestSignIn({ onSignedIn: handOff });
   };
 
   return (
@@ -46,7 +51,8 @@ export function ErrorDetailsHost() {
           {entry && detailsWithDiagnostics(entry)}
         </pre>
         <DialogFooter>
-          {canReportBug && (
+          {/* Bug reports live on the community server. */}
+          {COMMUNITY_ENABLED && (
             <Button variant="outline" onClick={reportBug}>
               <Bug className="mr-2 h-4 w-4" />
               Report Bug

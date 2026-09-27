@@ -11,6 +11,8 @@ import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import { AgeGateProvider } from '@/contexts/AgeGateContext';
 import { PrivacyPolicyProvider } from '@/contexts/PrivacyPolicyContext';
 import { AccountDeletionProvider } from '@/contexts/AccountDeletionContext';
+import { SignInHost } from '@/components/SignInHost';
+import { COMMUNITY_ENABLED } from '@/lib/featureFlags';
 import MainMenu from '@/views/MainMenu';
 
 /**
@@ -31,6 +33,7 @@ export function renderMainMenu(props: Partial<React.ComponentProps<typeof MainMe
                 <AgeGateProvider>
                   <AccountDeletionProvider>
                   <PrivacyPolicyProvider>
+                  {COMMUNITY_ENABLED && <SignInHost />}
                   <MainMenu
                     onStartGame={() => {}}
                     onLoadSaveGame={() => {}}
