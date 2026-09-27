@@ -66,14 +66,14 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeChecked();
     // Clicking the chosen one clears it, so "none of these" stays reachable.
     fireEvent.click(screen.getByRole('radio', { name: 'Dockhand' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('dockhand');
+    expect(onTraitSelect).toHaveBeenCalledWith('dockhand', 'world');
   });
 
   it('offers a non-exclusive group as checkboxes', () => {
     const onTraitSelect = view({ exclusive: false });
     expect(screen.queryByRole('radio')).toBeNull();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Scholar' }));
-    expect(onTraitSelect).toHaveBeenCalledWith('scholar');
+    expect(onTraitSelect).toHaveBeenCalledWith('scholar', 'world');
   });
 });
 

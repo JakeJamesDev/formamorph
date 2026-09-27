@@ -132,7 +132,7 @@ function Harness({ initialDictionaryItems = dictionaryItems, ...props }: Partial
       locations={[]}
       resolveText={identity}
       resolveTraitText={traitIdentity}
-      selectedTraits={selectedTraits}
+      selectedTraits={{ world: selectedTraits }}
       selectedLocationId={selectedLocationId}
       libraryEntities={libraryEntities}
       selectedEntityIds={selectedEntityIds}
@@ -249,29 +249,29 @@ describe('EnterWorldWorkspace', () => {
     render(<Harness onTraitSelect={onTraitSelect} />);
 
     expect(fireEvent.click(screen.getByText('Local'))).toBe(true);
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     fireEvent.click(screen.getByRole('radio', { name: 'Local' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('local');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('local', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('radio', { name: 'Outsider' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('outsider', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole('button', { name: /Practice/ }));
     expect(screen.getByRole('checkbox', { name: 'Artisan' })).not.toBeChecked();
     onTraitSelect.mockClear();
     await user.click(screen.getByText('Artisan'));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
 
     onTraitSelect.mockClear();
     await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
-    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan');
+    expect(onTraitSelect).toHaveBeenLastCalledWith('artisan', 'world');
     expect(onTraitSelect).toHaveBeenCalledTimes(1);
   });
 
@@ -933,29 +933,36 @@ describe('EnterWorldWorkspace cast pages', () => {
     traits: [owned('tamed', { isDefault: true }), owned('guard', { requires: [{ kind: 'playingAs', id: 'ash' }] })],
   };
   const bob: Entity = { id: 'bob', name: 'Bob', persona: true, traits: [owned('gruff')] };
-  const cast: EntryTraitWorld = { traits, traitGroups: groups, entities: [ash, bob], library: [] };
+  const castWorld: EntryTraitWorld = { traits, traitGroups: groups, entities: [ash, bob], library: [] };
   const optionOf = (e: Entity) => ({ id: e.id, name: e.name });
 
-  function CastHarness({ persona: initialPersona = { source: 'world', entityId: 'ash' } as PersonaRef }) {
+  function CastHarness({ persona: initialPersona = { source: 'world', entityId: 'ash' } as PersonaRef, cast = castWorld }: {
+    persona?: PersonaRef; cast?: EntryTraitWorld;
+  }) {
     const [draft, setDraft] = useState<EntryDraft>(() => ({
       ...emptyEntryDraft(), ...entryDefaults(cast, initialPersona), persona: initialPersona,
     }));
     const [categoryIndex, setCategoryIndex] = useState(0);
     const [cascade, setCascade] = useState<TraitCascade | null>(null);
     const input = entryGateInput(cast, draft);
-    const ownerOf = (id: string) => input.owners.find((o) => o.traits.some((t) => t.id === id))!;
+    const ownerOf = (id: string) => input.owners.find((o) => o.id === id)!;
     const settled = (base: EntryDraft, result: SettleResult, because: string) => {
       setDraft(withSettledTraits(base, result));
-      const off = result.turnedOff.map((r) => ownerOf(r.traitId).traits.find((t) => t.id === r.traitId)!.name);
+      const off = result.turnedOff.map((r) => ownerOf(r.ownerId).traits.find((t) => t.id === r.traitId)!.name);
       setCascade(off.length ? { off, because } : null);
     };
     return (
       <Harness
+        traits={[...cast.traits]}
+        traitGroups={[...cast.traitGroups]}
         traitEntities={cast.entities}
+        customPersona={cast.customPersona}
         resolveEntityText={(_entity, text) => text}
-        selectedTraits={[...draft.traitIds, ...Object.values(draft.ownedTraitIds).flat()]}
-        onTraitSelect={(id) => {
-          const result = switchTrait(input, ownerOf(id).id, id, draft.cascadeOffTraitIds);
+        // The bearer the workspace hands over is the Character Name in a trait's own text.
+        resolveTraitText={(_trait, text, bearer) => text.replace('{{char}}', bearer?.name ?? 'you')}
+        selectedTraits={{ ...draft.ownedTraitIds, world: draft.traitIds }}
+        onTraitSelect={(id, ownerId) => {
+          const result = switchTrait(input, ownerId, id, draft.cascadeOffTraitIds);
           if (result) settled(draft, result, id);
         }}
         traitGates={gateStates(input)}
@@ -1033,5 +1040,67 @@ describe('EnterWorldWorkspace cast pages', () => {
     await user.click(within(nav()).getByRole('button', { name: /^Ash/ }));
     expect(screen.getByRole('checkbox', { name: 'Tamed' })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'Guard' })).toBeChecked();
+  });
+
+  describe('with links', () => {
+    // Templates › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and Custom
+    // Persona links Wizard for a player with no world persona.
+    const templates = { id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const };
+    const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true };
+    const link = (id: string, originalId: string, kind: 'trait' | 'group') =>
+      ({ id, originalId, kind, originalName: originalId, groupId: null, order: 5 });
+    const linked: EntryTraitWorld = {
+      traits: [
+        ...traits,
+        owned('paladin', { groupId: 'classes', order: 0, isDefault: true, playerDescription: '{{char}} keeps an oath.' }),
+        owned('wizard', { groupId: 'classes', order: 1 }),
+      ],
+      traitGroups: [...groups, templates, classes],
+      entities: [{ ...ash, traitLinks: [link('l-ash', 'classes', 'group')] }, { ...bob, traitLinks: [link('l-bob', 'paladin', 'trait')] }],
+      customPersona: { traitLinks: [link('l-you', 'wizard', 'trait')] },
+      library: [],
+    };
+    const NONE: PersonaRef = { source: 'none' };
+
+    it("shows a bearer's linked group as its own page under the bearer, defaults picked, and never at the top level", async () => {
+      const user = userEvent.setup();
+      render(<CastHarness cast={linked} persona={NONE} />);
+      const names = within(nav()).getAllByRole('button').map((b) => b.textContent ?? '');
+      expect(names.filter((n) => n.startsWith('Classes'))).toHaveLength(1);
+      expect(names.some((n) => n.startsWith('Templates'))).toBe(false);
+      expect(names.indexOf(names.find((n) => n.startsWith('Ash'))!)).toBeLessThan(names.indexOf(names.find((n) => n.startsWith('Classes'))!));
+      await user.click(within(nav()).getByRole('button', { name: /^Classes/ }));
+      const main = screen.getByRole('main');
+      expect(within(main).getByRole('radio', { name: 'Paladin' })).toBeChecked();
+      expect(within(main).getByRole('radio', { name: 'Wizard' })).not.toBeChecked();
+      expect(within(main).getByText('Ash keeps an oath.')).toBeInTheDocument();
+      // Bob's link to Paladin lands on Bob's own page, as a second row of the one original.
+      await user.click(within(nav()).getByRole('button', { name: /^Bob/ }));
+      expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Paladin' })).toBeChecked();
+      expect(within(screen.getByRole('main')).getByText('Bob keeps an oath.')).toBeInTheDocument();
+    });
+
+    it("changes one bearer's pick without touching another bearer's row of the same original", async () => {
+      const user = userEvent.setup();
+      render(<CastHarness cast={linked} persona={NONE} />);
+      await user.click(within(nav()).getByRole('button', { name: /^Classes/ }));
+      await user.click(screen.getByRole('radio', { name: 'Wizard' }));
+      expect(screen.getByRole('radio', { name: 'Wizard' })).toBeChecked();
+      expect(screen.getByRole('radio', { name: 'Paladin' })).not.toBeChecked();
+      await user.click(within(nav()).getByRole('button', { name: /^Bob/ }));
+      expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Paladin' })).toBeChecked();
+    });
+
+    it("lists Custom Persona's links among the player's own categories under None, and drops them under a world persona", async () => {
+      const user = userEvent.setup();
+      render(<CastHarness cast={linked} persona={NONE} />);
+      await user.click(within(nav()).getByRole('button', { name: /^General/ }));
+      expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Wizard' })).toBeInTheDocument();
+      expect(within(nav()).queryByRole('button', { name: /Custom Persona/ })).toBeNull();
+      await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
+      await user.click(screen.getByRole('radio', { name: 'Ash' }));
+      expect(within(nav()).queryByRole('button', { name: /^General/ })).toBeNull();
+      expect(within(nav()).getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
+    });
   });
 });

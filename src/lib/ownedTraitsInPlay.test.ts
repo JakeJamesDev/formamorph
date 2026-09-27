@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import type { PinnableStat } from './placeholderPins';
-import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type BearerPinState } from './ownedTraitsInPlay';
+import {
+  activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerTraitTree, inPlayLibrary, rowBearer, type BearerPinState,
+} from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 
 const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
@@ -114,6 +116,66 @@ describe('bearerPins — each bearer lays its own pins', () => {
 
   it('lays nothing for a bearer the playthrough does not hold', () => {
     expect(pinsUnder(NONE, []).of('ghost')).toEqual({});
+  });
+
+  it("lays a Custom Persona pick's pin under None, and nothing from it under a world persona, where it lies dormant", () => {
+    // Custom Persona links Paladin, whose Class Garb pin falls back to the world's; the pick stays chosen.
+    expect(pinsUnder(NONE, [paladin]).world.garb).toBe('Robe');
+    expect(pinsUnder({ source: 'world', entityId: 'albus' }, [paladin]).world.garb).toBeUndefined();
+  });
+});
+
+describe('bearerTraitTree — the player-facing tree', () => {
+  const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true };
+  const wizard = trait('wizard', [], { groupId: 'classes', order: 1 });
+  const linkedWorld = {
+    ...world,
+    traits: [brave, cloak, { ...paladin, groupId: 'classes', order: 0 }, wizard],
+    traitGroups: [...world.traitGroups, classes],
+    entities: [
+      { ...albus, traitLinks: [link('l-albus', 'classes')], traitPlacement: { groupId: null, order: 5 } },
+      { ...mira, traitGroups: [{ id: 'g-mira', name: 'Bond', parentId: null, order: 0 }], traitLinks: [{ ...link('l-mira', 'classes'), groupId: 'g-mira' }] },
+    ],
+    customPersona: { traitLinks: [link('l-you', 'wizard')] },
+  };
+  const rows = (t: { id: string; groupId?: string | null }[]) => t.map((x) => [x.id, x.groupId ?? null]);
+
+  it('gives each entity bearer a node holding its links expanded, with group rows keyed by bearer', () => {
+    const tree = bearerTraitTree(linkedWorld, NONE);
+    expect(tree.groups.map((g) => [g.id, g.parentId])).toEqual([
+      ['albus', null], [bearerGroupId('albus', 'classes'), 'albus'],
+      ['mira', null], [bearerGroupId('mira', 'g-mira'), 'mira'], [bearerGroupId('mira', 'classes'), bearerGroupId('mira', 'g-mira')],
+    ]);
+    expect(rows(tree.traits)).toEqual([
+      ['brave', null], ['cloak', null], ['wizard', null],
+      ['t-stern', 'albus'], ['paladin', bearerGroupId('albus', 'classes')], ['wizard', bearerGroupId('albus', 'classes')],
+      ['paladin', bearerGroupId('mira', 'classes')], ['wizard', bearerGroupId('mira', 'classes')],
+    ]);
+    expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira']);
+    expect(tree.groups.find((g) => g.id === bearerGroupId('albus', 'classes'))?.exclusive).toBe(true);
+    expect(tree.traits.map((t) => rowBearer(tree, t))).toEqual(['world', 'world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira']);
+  });
+
+  it("merges Custom Persona's links into the player's top level under None, and drops them under a world persona", () => {
+    expect(rows(bearerTraitTree(linkedWorld, NONE).traits).slice(0, 3)).toEqual([['brave', null], ['cloak', null], ['wizard', null]]);
+    expect(rows(bearerTraitTree(linkedWorld, { source: 'world', entityId: 'albus' }).traits).slice(0, 2)).toEqual([['brave', null], ['cloak', null]]);
+  });
+
+  it('places a node where the author put it, ends the top level with the unplaced ones, and puts the library last', () => {
+    const wolf: Entity = { id: 'wolf', name: 'Wolf', traits: [trait('t-wild')] };
+    const tree = bearerTraitTree(linkedWorld, { source: 'library', entityId: 'lib' }, [{ ...lib, traits: [trait('t-lib')] }, wolf]);
+    const nodes = tree.groups.filter((g) => tree.entityNodes.has(g.id)).map((g) => [g.id, g.order] as const);
+    expect(nodes.map(([id]) => id)).toEqual(['albus', 'mira', 'lib', 'wolf']);
+    expect(nodes.find(([id]) => id === 'albus')?.[1]).toBe(5);
+    const rootMax = Math.max(...tree.traits.filter((t) => t.groupId == null).map((t) => t.order ?? 0));
+    const unplaced = nodes.filter(([id]) => id !== 'albus').map(([, order]) => order ?? -1);
+    expect(unplaced).toEqual([rootMax + 1, rootMax + 2, rootMax + 3]);
+  });
+
+  it('leaves out a bearer the playthrough does not hold', () => {
+    const ghost: Entity = { id: 'ghost', name: 'Ghost', persona: true, personaOnly: true, traits: [trait('t-ghost')] };
+    expect(bearerTraitTree({ ...linkedWorld, entities: [...linkedWorld.entities, ghost] }, NONE).entityNodes.has('ghost')).toBe(false);
+    expect(bearerTraitTree({ ...linkedWorld, entities: [...linkedWorld.entities, ghost] }, { source: 'world', entityId: 'ghost' }).entityNodes.has('ghost')).toBe(true);
   });
 });
 

@@ -46,10 +46,12 @@ export function SetupTraitList({
   traits: Trait[];
   exclusive?: boolean;
   stats: Stat[];
-  selectedTraits: string[];
+  /** The bearer's picks. */
+  selectedTraits: readonly string[];
   resolveText: (text: string) => string;
   resolveTraitText: (trait: Trait, text: string) => string;
-  onTraitSelect: (traitId: string) => void;
+  /** The player's pick of one of this bearer's traits. */
+  onTraitSelect: (traitId: string, ownerId: string) => void;
   /** The bearer whose traits these are; the world's by default. */
   ownerId?: string;
   /** Each bearer's gates; absent shows every trait open. */
@@ -83,7 +85,7 @@ export function SetupTraitList({
             onClick={(event) => {
               if (selected) {
                 event.preventDefault();
-                onTraitSelect(trait.id);
+                onTraitSelect(trait.id, ownerId);
               }
             }}
           />
@@ -94,7 +96,7 @@ export function SetupTraitList({
             disabled={locked}
             aria-label={trait.name}
             className="mt-0.5 shrink-0"
-            onCheckedChange={() => onTraitSelect(trait.id)}
+            onCheckedChange={() => onTraitSelect(trait.id, ownerId)}
           />
         )}
         <label
@@ -146,7 +148,7 @@ export function SetupTraitList({
         {exclusive ? (
           <RadioGroup
             value={selectedExclusive ?? ''}
-            onValueChange={onTraitSelect}
+            onValueChange={(traitId) => onTraitSelect(traitId, ownerId)}
             className="grid min-w-0 gap-3 xl:grid-cols-2"
           >
             {rows}

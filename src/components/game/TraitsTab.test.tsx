@@ -358,10 +358,10 @@ describe('entity nodes in the traits tab', () => {
     expect(within(ashSection).queryByText('Gruff')).toBeNull();
   });
 
-  it('hands an owned trait’s switch to the runtime by id', () => {
+  it('hands an owned trait’s switch to the runtime by id and bearer', () => {
     const view = withAsh();
     fireEvent.click(screen.getByRole('checkbox', { name: 'Switch off Tamed' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false, 'e-ash');
   });
 
   it('locks an owned trait whose requirement the player lacks', () => {
@@ -385,6 +385,74 @@ describe('entity nodes in the traits tab', () => {
   });
 });
 
+describe('linked traits in the traits tab', () => {
+  // Templates › Classes holds Paladin and Wizard. Ash links Classes, Bo links Paladin, and Custom Persona
+  // links Wizard for a player with no persona.
+  const GROUPS = [
+    G('g-templates', 'Templates', { system: 'templates', order: 0 }),
+    G('g-classes', 'Classes', { parentId: 'g-templates', exclusive: true }),
+  ];
+  const PALADIN = T('t-paladin', 'Paladin', { groupId: 'g-classes', order: 0, isDefault: true });
+  const WIZARD = T('t-wizard', 'Wizard', { groupId: 'g-classes', order: 1, playerDescription: '{{char}} studies.' });
+  const link = (id: string, originalId: string, kind: 'trait' | 'group') =>
+    ({ id, originalId, kind, originalName: originalId, groupId: null, order: 0 });
+  const ash = { id: 'e-ash', name: 'Ash', persona: true, traitLinks: [link('l-ash', 'g-classes', 'group')] };
+  const bo = { id: 'e-bo', name: 'Bo', traitLinks: [link('l-bo', 't-paladin', 'trait')] };
+  const withLinks = (options: PanelHarnessOptions = {}) => renderTraits([PALADIN, WIZARD], GROUPS, [], {
+    ...options,
+    world: { entities: [ash, bo], customPersona: { traitLinks: [link('l-you', 't-wizard', 'trait')] }, ...options.world },
+    seed: (gameplay) => {
+      gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-paladin'] } });
+      options.seed?.(gameplay);
+    },
+  });
+
+  // A section with nothing switched on starts folded, so its rows need the header and the Disabled fold opened.
+  const unfold = (name: string) => {
+    fireEvent.click(within(section(name)).getByRole('button', { name: new RegExp(`^${name},`) }));
+    openDisabled(name);
+  };
+
+  it('lists a linked original once per bearer, under each bearer’s node, and never at the top level', () => {
+    withLinks();
+    expect(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' })).toBeEnabled();
+    unfold('Bo');
+    expect(within(section('Bo')).getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
+    expect(screen.getAllByText('Paladin')).toHaveLength(2);
+    expect(screen.queryByRole('group', { name: 'Templates' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
+  });
+
+  it('hands a linked trait’s switch to the runtime with the bearer whose row it is', () => {
+    const view = withLinks();
+    fireEvent.click(within(section('Ash')).getByRole('radio', { name: 'Switch off Paladin' }));
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
+  });
+
+  it("merges Custom Persona's links into the player's own rows under None", () => {
+    withLinks();
+    unfold('General');
+    expect(within(section('General')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
+    // The player's own card: the Character Name chip resolves, and never to a bearer entity.
+    const card = within(section('General')).getByText(/studies\.$/);
+    expect(card.textContent).not.toMatch(/\{\{|Ash|Bo/);
+    expect(screen.getByText("Ash's Paladin")).toBeTruthy();
+  });
+
+  it("drops Custom Persona's links under a world persona, and marks that persona You on its node of links", () => {
+    withLinks({ seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
+    expect(screen.queryByRole('group', { name: 'General' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
+    expect(screen.getByText(/1 active:/).parentElement).toHaveTextContent('Paladin');
+    expect(screen.queryByText("Ash's Paladin")).toBeNull();
+  });
+
+  it("reads a linked trait's Character Name as its bearer", () => {
+    withLinks({ seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-wizard'] } }) });
+    expect(within(section('Ash')).getByText('Ash studies.')).toBeTruthy();
+  });
+});
+
 describe('an exclusive trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { exclusive: true })];
   const TRAITS = [
@@ -402,13 +470,13 @@ describe('an exclusive trait group reads as a set of alternatives', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     openDisabled('Background');
     fireEvent.click(screen.getByRole('radio', { name: 'Switch on Scholar' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-book', true, 'world');
   });
 
   it('clears the selected alternative when it is clicked again, so none is a legal answer', () => {
     const view = renderTraits(TRAITS, GROUPS, ['t-farm']);
     fireEvent.click(screen.getByRole('radio', { name: 'Switch off Farmhand' }));
-    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false);
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-farm', false, 'world');
   });
 
   it('marks the radios by what is actually held', () => {

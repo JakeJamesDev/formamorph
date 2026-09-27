@@ -7,7 +7,7 @@ import { useLingeringMount } from '@/lib/useLingeringMount';
 import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
-import { bearerPins } from '@/lib/ownedTraitsInPlay';
+import { bearerPins, inPlayBearers, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { useUserProfile } from '../contexts/userProfileStore';
 import { useDevRoute, registerDevHook } from '../lib/devRouter';
@@ -63,7 +63,7 @@ import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  WORLD_OWNER, gateStates, ownerHolding, settle, switchTrait, type SettleResult,
+  WORLD_OWNER, gateStates, settle, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
@@ -449,9 +449,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const chosen = inAuthoredOrder(
       rawTraits.filter((t) => selectedTraits.includes(t.id)), traitOrderIndex(rawTraits, rawTraitGroups),
     );
-    const starting = startingStatsWith(rawStats, chosen, { traits: rawTraits, groups: rawTraitGroups });
+    const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona };
+    // The persona's linked stat traits apply after the world picks, as the game's seed does.
+    const starting = startingStatsWith(rawStats, chosen, {
+      traits: rawTraits, groups: rawTraitGroups, persona: draftPersona, bearers: inPlayBearers(world, draftPersona, libraryCast),
+    }, ownedTraitPicks);
     return bearerPins({
-      world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona },
+      world,
       persona: draftPersona,
       library: libraryCast,
       playerTraits: chosen,
@@ -1395,26 +1399,28 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [entryWorld]);
   const castOwners = useMemo(() => entryOwners(entryWorld, entryDraft.persona), [entryWorld, entryDraft.persona]);
   const traitGates = useMemo(() => gateStates(entryGateInput(entryWorld, entryDraft)), [entryWorld, entryDraft]);
-  const ownerOfTrait = (traitId: string) => ownerHolding(castOwners, traitId);
-  const traitName = (traitId: string) => ownerOfTrait(traitId)?.traits.find((t) => t.id === traitId)?.name ?? traitId;
-  // Every owner's picks in one list: trait ids are unique across owners.
+  // A cast entity's trait carries its bearer's name; the player's own, and the played persona's, read bare.
+  const traitName = (ownerId: string, traitId: string) => {
+    const owner = castOwners.find((o) => o.id === ownerId);
+    const name = owner?.traits.find((t) => t.id === traitId)?.name ?? traitId;
+    return owner && ownerId !== WORLD_OWNER && ownerId !== playedEntityId(entryDraft.persona) ? `${owner.name}'s ${name}` : name;
+  };
+  // Every bearer's picks by owner id, the player's under the world's.
   const entrySelectedTraits = useMemo(
-    () => [...entryDraft.traitIds, ...Object.values(entryDraft.ownedTraitIds).flat()],
+    () => ({ ...entryDraft.ownedTraitIds, [WORLD_OWNER]: entryDraft.traitIds }),
     [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
-    const names = result.turnedOff.map((ref) => traitName(ref.traitId));
+    const names = result.turnedOff.map((ref) => traitName(ref.ownerId, ref.traitId));
     return names.length ? { off: names, because } : null;
   };
 
-  // Toggle a trait in the starting selection; a cascade shows in the banner.
-  const handleTraitSelection = (traitId: string) => {
-    const result = switchTrait(
-      entryGateInput(entryWorld, entryDraft), ownerOfTrait(traitId)?.id ?? WORLD_OWNER, traitId, entryDraft.cascadeOffTraitIds,
-    );
+  // Toggle a bearer's trait in the starting selection; a cascade shows in the banner.
+  const handleTraitSelection = (traitId: string, ownerId: string) => {
+    const result = switchTrait(entryGateInput(entryWorld, entryDraft), ownerId, traitId, entryDraft.cascadeOffTraitIds);
     if (!result) return;
     reviseDraft((draft) => withSettledTraits(draft, result));
-    setTraitCascade(cascadeFrom(result, traitName(traitId)));
+    setTraitCascade(cascadeFrom(result, traitName(ownerId, traitId)));
   };
 
   // A persona pick can open or close "playing as" gates, so the traits settle against the new persona.
@@ -3207,6 +3213,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           traitGroups={traitGroups}
           traitEntities={entryWorld.entities}
           traitLibrary={entryWorld.library}
+          customPersona={customPersona}
           resolveEntityText={resolveEntityText}
           stats={rawStats}
           locations={offeredStartLocations(entryDraft.persona, personaPickContext)}

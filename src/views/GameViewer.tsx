@@ -162,7 +162,8 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, seedNewGameStats, settleTraits, switchPlayerTrait, traitNameIn,
+  acquireTrait, activeTraits as traitsInForce, applyPlayedStatTraits, heldPlayerTraits, playedStatTraits, seedNewGameStats,
+  settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
 import type { TraitCascade } from "../components/game/SetupTraitList";
@@ -291,9 +292,11 @@ const activeUnderTraits = (
   acquired: readonly Trait[],
   disabledTraitIds: readonly string[],
   traitOrder: Parameters<typeof inAuthoredOrder>[1],
+  /** The played persona's linked stat traits in force on that slice, which switch stats with the rest. */
+  played: readonly Trait[] = [],
 ): Pick<SceneWrites, 'activeStats' | 'activeTraits'> => {
   const inForce = inAuthoredOrder(traitsInForce(acquired, disabledTraitIds), traitOrder);
-  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, inForce)) };
+  return { activeTraits: inForce, activeStats: enabledStats(stats, activeStatEnabled(stats, [...inForce, ...played])) };
 };
 
 // Each completed turn is digested as soon as it commits (same-turn), so a summary is always ready for
@@ -613,6 +616,7 @@ const GameViewer = ({
     isViewingPast,
     viewTraits,
     viewDisabledTraitIds,
+    viewOwnedTraits,
     viewLocationId,
     gameStates,
     setGameStates,
@@ -666,10 +670,37 @@ const GameViewer = ({
   // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
   // back before anything derives from it.
   const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
+  /** What the bearer resolver reads: the authored world with Custom Persona. */
+  const bearerWorld = useMemo(
+    () => ({ traits: authoredTraits, traitGroups, entities: traitEntities, customPersona }),
+    [authoredTraits, traitGroups, traitEntities, customPersona],
+  );
+  /** The authored world every bearer's trait gates read: the traits, the groups, who the player is, and each
+   *  present bearer's tree under that persona. */
+  const gatedWorld = useCallback(
+    (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
+      traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
+      bearers: inPlayBearers(bearerWorld, ref, traitLibrary),
+    }),
+    [authoredTraits, traitGroups, entities, persona, personaRef, bearerWorld, traitLibrary],
+  );
+  // A Custom Persona pick lies dormant under a world persona, so only the held picks are active.
   const activeTraits = useMemo(() => {
     const off = new Set(disabledTraitIds);
-    return inAuthoredOrder(chosenTraits.filter((t) => !off.has(t.id)), traitOrder);
-  }, [chosenTraits, disabledTraitIds, traitOrder]);
+    return inAuthoredOrder(heldPlayerTraits(chosenTraits, gatedWorld()).filter((t) => !off.has(t.id)), traitOrder);
+  }, [chosenTraits, disabledTraitIds, traitOrder, gatedWorld]);
+  // The traits whose stat effects are in force: the active world traits, then the played persona's linked
+  // stat traits. Bounds, stat toggles and stat code all read this set; the AI text reads `activeTraits`.
+  const statTraits = useMemo(
+    () => statTraitsInForce({ traits: chosenTraits, disabledTraitIds, ownedTraits }, gatedWorld()),
+    [chosenTraits, disabledTraitIds, ownedTraits, gatedWorld],
+  );
+  /** The stat traits in force on a saved slice, under the current persona. */
+  const inForceOn = useCallback(
+    (held: Pick<TraitRuntimeState, 'ownedTraits'> & { acquired: readonly Trait[]; disabledTraitIds: readonly string[] }) =>
+      statTraitsInForce({ traits: held.acquired, disabledTraitIds: held.disabledTraitIds, ownedTraits: held.ownedTraits }, gatedWorld()),
+    [gatedWorld],
+  );
 
   // Runtime characters (Slice 2): director-invented characters promoted to persisted entities this
   // playthrough behave like authored ones — union them into the AI-pipeline roster, each carrying the
@@ -1605,14 +1636,17 @@ const GameViewer = ({
   // A stat is live unless its author started it off or an active trait switched it off. Disabled stats keep
   // their value in `playerStats` — they are filtered out of everything that reads or moves them instead, so
   // switching the trait back on resumes exactly where the stat left off.
-  const statEnabled = useMemo(() => activeStatEnabled(playerStats, activeTraits), [playerStats, activeTraits]);
+  const statEnabled = useMemo(() => activeStatEnabled(playerStats, statTraits), [playerStats, statTraits]);
   const activeStats = useMemo(() => enabledStats(playerStats, statEnabled), [playerStats, statEnabled]);
   statEnabledRef.current = statEnabled;
 
   // The same derivation for a paged-back turn, so history shows the stats that were live on that turn.
   const viewActiveStats = useMemo(
-    () => activeUnderTraits(viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder).activeStats,
-    [viewStats, viewTraits, viewDisabledTraitIds, traitOrder, traits],
+    () => activeUnderTraits(
+      viewStats, refreshChosenTraits(viewTraits, traits), viewDisabledTraitIds, traitOrder,
+      playedStatTraits({ ownedTraits: viewOwnedTraits }, gatedWorld()),
+    ).activeStats,
+    [viewStats, viewTraits, viewDisabledTraitIds, viewOwnedTraits, traitOrder, traits, gatedWorld],
   );
 
   useEffect(() => {
@@ -1711,13 +1745,16 @@ const GameViewer = ({
     const resolve = (text: string) => resolveFor(overPins.world, text);
     const held = savedTraits(over, traits);
     return {
-      ...activeUnderTraits(resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder),
+      ...activeUnderTraits(
+        resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder,
+        playedStatTraits(held, gatedWorld()),
+      ),
       ownedTraits: over.ownedTraits ?? {},
       resolve,
       resolveTrait: (trait, text, owner) => resolveTraitFor(overPins, trait, text, owner),
       resolveEntity: (entity, text) => resolveEntityFor(overPins, entity, text),
     };
-  }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder]);
+  }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder, gatedWorld]);
 
   // The README is authored text shown to the player, so its chips resolve like any other.
   const readmeResolved = useMemo(() => resolvePH(readmeText), [resolvePH, readmeText]);
@@ -2555,20 +2592,11 @@ const GameViewer = ({
   const beforeBoxDeltasRef = useRef<Record<string, number>>({});
   // The pin and trait state a run reads, by ref. A turn's after box runs out of the closure its render
   // minted, which is older than the before box's writes — the same reason the stats ride in on a ref.
-  /** The authored world every bearer's trait gates read: the traits, the groups, who the player is, and each
-   *  present bearer's tree under that persona. */
-  const gatedWorld = useCallback(
-    (ref: PersonaRef | undefined = personaRef): TraitWorld => ({
-      traits: authoredTraits, groups: traitGroups, entities: worldEntitiesOf(entities, persona), persona: ref ?? { source: 'none' },
-      bearers: inPlayBearers({ traits: authoredTraits, traitGroups, entities: traitEntities, customPersona }, ref, traitLibrary),
-    }),
-    [authoredTraits, traitGroups, entities, persona, personaRef, traitEntities, customPersona, traitLibrary],
-  );
   const liveCodeStateRef = useRef({
-    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,
+    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   });
   liveCodeStateRef.current = {
-    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, activeTraits,
+    codePins, pins, chosenTraits, disabledTraitIds, appliedTraitValues, cascadeOffTraitIds, ownedTraits, statTraits,
   };
   // Stats, Code Pins and traits as they stood before this turn's before box, so a turn that never commits
   // puts back exactly what the box moved. The last snapshot holds the same seven fields — nothing else
@@ -2632,7 +2660,7 @@ const GameViewer = ({
             acquired: live.chosenTraits, disabledTraitIds: live.disabledTraitIds, appliedValues: live.appliedTraitValues,
             cascadeOffTraitIds: live.cascadeOffTraitIds, ownedTraits: live.ownedTraits,
           };
-        const inForce = preTurn ? traitsInForce(held.acquired, held.disabledTraitIds) : live.activeTraits;
+        const inForce = preTurn ? inForceOn(held) : live.statTraits;
         const basePins = preTurn ? preTurn.codePins ?? {} : live.codePins;
         const result = await runStatCodeTurn({
           timing,
@@ -2660,9 +2688,7 @@ const GameViewer = ({
         }
         /** What this run left, in the shapes state holds. */
         const stateAfterRun = (): TurnCodeState => ({
-          playerStats: overlayStatCodeResult(afterAsks, result, result.traits
-            ? traitsInForce(result.traits.acquired, result.traits.disabledTraitIds)
-            : inForce),
+          playerStats: overlayStatCodeResult(afterAsks, result, inForce),
           codePins: nextPins,
           playerTraits: [...(result.traits?.acquired ?? held.acquired)],
           disabledTraitIds: [...(result.traits?.disabledTraitIds ?? held.disabledTraitIds)],
@@ -2691,7 +2717,7 @@ const GameViewer = ({
       }
     },
     [setPlayerStats, setRecentStatChanges, setHeldStatChanges, setCodePins, resolvePH, worldPlaceholders, placeholderOwners, sessionRolls, pinsFor,
-      traits, authoredStats, resolveTraitText, gatedWorld,
+      traits, authoredStats, resolveTraitText, gatedWorld, inForceOn,
       setPlayerTraits, setDisabledTraitIds, setAppliedTraitValues, setCascadeOffTraitIds, setOwnedTraits, addLogEntry],
   );
 
@@ -2707,7 +2733,7 @@ const GameViewer = ({
       const baseStats = base?.playerStats ?? rawPlayerStatsRef.current;
       const live = new Set(enabledStats(rawPlayerStatsRef.current, statEnabledRef.current).map((s) => s.id));
       const baseTraits = base ? savedTraits(base, traits) : null;
-      const inForce = baseTraits ? traitsInForce(baseTraits.acquired, baseTraits.disabledTraitIds) : activeTraits;
+      const inForce = baseTraits ? inForceOn(baseTraits) : statTraits;
       const applied = applyStatResponse(baseStats, response, live, inForce);
       const directApplied = applied.stats;
       setDebugTurns((turns) => turns.map((turn) => ({ ...turn, requests: turn.requests.map((request) =>
@@ -2732,7 +2758,7 @@ const GameViewer = ({
       setPlayerStats(directApplied);
       await runStatCode(baseStats, directApplied, response.updates, clock, base ?? undefined);
     },
-    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, activeTraits, traits],
+    [runStatCode, setPlayerStats, setRecentStatChanges, setHeldStatChanges, resolvePH, statTraits, traits, inForceOn],
   );
 
   // Discard a turn's dangling, unpaired user message. The failure exits (empty narration, request error)
@@ -3897,19 +3923,23 @@ const GameViewer = ({
    * trait freezes the world's stat changes as they stand right now, authored and chips intact, as seeding does.
    */
   const toggleTrait = useCallback(
-    (traitId: string, enabled: boolean) => {
+    (traitId: string, enabled: boolean, bearerId: string) => {
       const world = gatedWorld();
-      const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName);
+      const result = switchPlayerTrait(traitState, traitId, enabled, world, traitName, bearerId);
       if (!result) return;
-      commitGatedTraits(result, traitNameIn(world, traitId, traitName) ?? traitId);
+      commitGatedTraits(result, traitNameIn(world, traitId, traitName, bearerId) ?? traitId);
     },
     [traitState, gatedWorld, traitName, commitGatedTraits],
   );
 
-  /** Settle the traits under a new persona, which can open or close "playing as" gates. */
+  /** Move the stats onto a new persona, whose linked stat traits replace the old one's, then settle the traits
+   *  under it, which can open or close "playing as" gates. */
   const settlePersonaTraits = useCallback(
     (ref: PersonaRef, name: string | null) => {
-      commitGatedTraits(settleTraits(traitState, gatedWorld(ref), traitName), name ?? 'the persona change');
+      const to = gatedWorld(ref);
+      const moved = switchPersonaStats(traitState, gatedWorld(), to, traitName);
+      const settled = settleTraits(moved.state, to, traitName);
+      commitGatedTraits({ ...settled, log: [...moved.log, ...settled.log] }, name ?? 'the persona change');
     },
     [traitState, gatedWorld, traitName, commitGatedTraits],
   );
@@ -3957,22 +3987,27 @@ const GameViewer = ({
       // makes two players who picked the same traits end up with the same stats. Authored traits for the
       // same reason as the stats above.
       const chosen = new Set(initialTraits);
-      const chosenList = inAuthoredOrder(authoredTraits.filter((t) => chosen.has(t.id)), traitOrder);
+      const seedLibrary = inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []);
+      const seedWorld: TraitWorld = {
+        traits: authoredTraits, groups: traitGroups, persona: initialPersona?.ref,
+        bearers: inPlayBearers(bearerWorld, initialPersona?.ref, seedLibrary),
+      };
+      // Only the held picks: a Custom Persona pick made before the entry step moved to a world persona is not
+      // the player's under it.
+      const chosenList = inAuthoredOrder(heldPlayerTraits(authoredTraits.filter((t) => chosen.has(t.id)), seedWorld), traitOrder);
       // Folded rather than set one trait at a time: each acquisition reads the whole slice, so the batch has
       // to thread through in one pass instead of racing several queued state updates.
-      let seedState: TraitRuntimeState = {
-        stats: seeded,
-        traits: [],
-        disabledTraitIds: [],
-        appliedValues: {},
-        ownedTraits: ownedTraitStatesFrom(initialOwnedTraits),
-      };
+      let seedState: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
       for (const trait of chosenList) {
         seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
         // Logs are write-time strings shown raw, and `trait` here is authored (chips intact) — resolve now,
         // with the trait's own pins so the entry names what the player picked.
         addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
       }
+      // The persona's linked stat traits apply after the world picks, under the persona's own record keys.
+      const played = applyPlayedStatTraits({ ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits) }, seedWorld);
+      seedState = played.state;
+      for (const trait of played.applied) addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
       commitTraitState(seedState);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
@@ -3982,9 +4017,9 @@ const GameViewer = ({
       // and the bands the post-trait stats fall in. None of it is in state yet, so anything written in this
       // pass resolves against these rather than the (empty) pins still in force.
       const openingPins = bearerPins({
-        world: { traits: authoredTraits, traitGroups, entities: traitEntities, customPersona },
+        world: bearerWorld,
         persona: initialPersona?.ref,
-        library: inPlayLibrary({ traits: authoredTraits, traitGroups, entities: traitEntities }, initialPersona?.libraryEntity, initialCharacters ?? []),
+        library: seedLibrary,
         playerTraits: chosenList,
         owned: initialOwnedTraits,
         sharedPlaceholders: worldPlaceholders,
@@ -4062,7 +4097,7 @@ const GameViewer = ({
     authoredTraits,
     authoredLocations,
     traitGroups,
-    customPersona,
+    bearerWorld,
     worldPlaceholders,
     traitOrder,
     locations,

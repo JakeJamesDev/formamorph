@@ -11,17 +11,20 @@
 //   that trait reverses it, rather than the authored number.
 
 import type {
-  CascadeOffTraitIds, CodeBounds, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait, TraitGroup,
+  CascadeOffTraitIds, CodeBounds, OwnedTraitPicks, OwnedTraitStates, PersonaRef, PlayerStat, Stat, StatChange, Trait,
+  TraitGroup,
 } from '@/types';
 import { clamp } from './utils';
+import { ownedTraitStatesFrom, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds, playedEntityId } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
-import { offeredWorldTraits } from './traitTree';
+import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
   gateOf, gateStates, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
 } from './traitGates';
 
-/** What a trait's last switch actually moved: trait id → stat id → value delta. */
+/** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
+ *  (lib/ownedTraitState) spells it. */
 export type AppliedTraitValues = Record<string, Record<string, number>>;
 
 /** The gameplay slice trait operations read and rewrite. */
@@ -54,6 +57,48 @@ export function activeTraits(traits: readonly Trait[], disabledTraitIds: readonl
   const off = new Set(disabledTraitIds);
   return traits.filter((t) => !off.has(t.id));
 }
+
+/** The slice the traits in force are read from; a saved or viewed copy fits as well as the live state. */
+export interface TraitForceState {
+  traits: readonly Trait[];
+  disabledTraitIds: readonly string[];
+  ownedTraits?: OwnedTraitStates;
+}
+
+/** The player's chosen world traits the player bearer holds right now. A Custom Persona pick lies dormant
+ *  under a world persona: it stays chosen for a return to None, and does nothing until then. Without
+ *  bearers every chosen trait is held. */
+export function heldPlayerTraits(traits: readonly Trait[], world: TraitWorld): Trait[] {
+  const player = world.bearers?.find((o) => o.id === WORLD_OWNER);
+  if (!player) return [...traits];
+  const held = new Set(player.traits.map((t) => t.id));
+  return traits.filter((t) => held.has(t.id));
+}
+
+/** The played persona's active traits that change stats: its links, since an owned trait never carries stat
+ *  effects. Empty with no persona, or under a world with no bearers. */
+export function playedStatTraits(state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): Trait[] {
+  const played = playedEntityId(world.persona);
+  const owner = played ? world.bearers?.find((o) => o.id === played) : undefined;
+  if (!played || !owner) return [];
+  const on = new Set(activeOwnedTraitIds(state.ownedTraits ?? {})[played] ?? []);
+  return owner.traits.filter((t) => on.has(t.id) && hasStatEffects(t));
+}
+
+/** Every trait whose stat effects are in force: the player's active held world traits, then the played
+ *  persona's active linked stat traits. Bounds derive from this set, and so do stat toggles. */
+export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Trait[] {
+  return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
+}
+
+/** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
+const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => {
+  const played = playedEntityId(world.persona);
+  return [
+    ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
+    ...playedStatTraits(state, world).map((t): [string, Trait] => [recordKey(played!, t.id), t]),
+  ];
+};
 
 /** Summed trait contributions to one stat, per axis. */
 function traitContributions(statId: string, traits: readonly Trait[]) {
@@ -126,12 +171,15 @@ export function seedNewGameStats(authored: readonly Stat[]): PlayerStat[] {
   }));
 }
 
-/** The stats a fresh playthrough holds once `chosenInOrder` have applied — the fold Enter World runs,
- *  for a picker that needs the numbers before the game exists. */
-export function startingStatsWith(authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld): PlayerStat[] {
+/** The stats a fresh playthrough holds once the held picks among `chosenInOrder` have applied, then the
+ *  played persona's linked stat traits among `owned` — the fold Enter World runs, for a picker that needs
+ *  the numbers before the game exists. */
+export function startingStatsWith(
+  authored: readonly Stat[], chosenInOrder: readonly Trait[], world: TraitWorld, owned: OwnedTraitPicks = {},
+): PlayerStat[] {
   let state: TraitRuntimeState = { stats: seedNewGameStats(authored), traits: [], disabledTraitIds: [], appliedValues: {} };
-  for (const trait of chosenInOrder) state = acquireTrait(state, trait, world).state;
-  return state.stats;
+  for (const trait of heldPlayerTraits(chosenInOrder, world)) state = acquireTrait(state, trait, world).state;
+  return applyPlayedStatTraits({ ...state, ownedTraits: ownedTraitStatesFrom(owned) }, world).state.stats;
 }
 
 /** Seed a fresh playthrough's bases from the authored bounds. */
@@ -242,22 +290,22 @@ function withDisabled(ids: readonly string[], add: string | null, remove: string
 }
 
 /**
- * Move a trait's switch and settle the stats around it.
+ * Settle the stats around one switch of a bearer's trait, its lists already moved. `active` is every stat
+ * trait in force after the switch, which the bounds derive from.
  *
- * The record for a trait is the movement its *last* switch produced, so every transition is the reverse of
- * the one before it and a trait can go back and forth forever without gaining or losing a point. That is
- * what folds a clamp into the reversal: a switch-off that a shrinking cap forced further down than the
- * record asked records the larger movement, and the switch back on restores all of it.
+ * The record under `key` is the movement the trait's *last* switch produced, so every transition is the
+ * reverse of the one before it and a trait can go back and forth forever without gaining or losing a point.
+ * That is what folds a clamp into the reversal: a switch-off that a shrinking cap forced further down than
+ * the record asked records the larger movement, and the switch back on restores all of it.
  *
  * The exception is the first switch-on, and a trait acquired by a save that carries no record for it. Those have
  * nothing to reverse, so the authored changes apply — for a switch-off that means negating them, which a
  * bound can swallow and ratchet, for that one trait. That switch records properly, so a save without records
  * heals itself the first time the player touches the trait.
  */
-function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean): TraitRuntimeState {
-  const disabledTraitIds = withDisabled(state.disabledTraitIds, on ? null : trait.id, on ? trait.id : null);
-  const derived = deriveEffectiveStats(state.stats, activeTraits(state.traits, disabledTraitIds));
-  const record = state.appliedValues[trait.id];
+function moveStats(state: TraitRuntimeState, trait: Trait, on: boolean, key: string, active: readonly Trait[]): TraitRuntimeState {
+  const derived = deriveEffectiveStats(state.stats, active);
+  const record = state.appliedValues[key];
   const reversing = record !== undefined;
   const deltas = reversing
     ? negated(Object.entries(record))
@@ -267,8 +315,78 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean): Trait
   const stats = settleValues(state.stats, derived, deltas, !reversing && on);
   // Recorded even when nothing moved: an empty record is the statement "this switch moved nothing", which is
   // exactly what stops a bound-swallowed penalty from paying out on the way off. Absent means unrecorded.
-  const appliedValues = { ...state.appliedValues, [trait.id]: movement(state.stats, stats) };
-  return { ...state, stats, disabledTraitIds, appliedValues };
+  const appliedValues = { ...state.appliedValues, [key]: movement(state.stats, stats) };
+  return { ...state, stats, appliedValues };
+}
+
+/** Move a trait's switch in its bearer's lists and settle the stats around it: the player's world traits in
+ *  the disabled list, a played persona's in its owned lists. */
+function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world: TraitWorld, ownerId = WORLD_OWNER): TraitRuntimeState {
+  const listed = ownerId === WORLD_OWNER
+    ? { ...state, disabledTraitIds: withDisabled(state.disabledTraitIds, on ? null : trait.id, on ? trait.id : null) }
+    : withOwnedSwitch(state, ownerId, trait.id, on);
+  return moveStats(listed, trait, on, recordKey(ownerId, trait.id), statTraitsInForce(listed, world));
+}
+
+/** Switch a bearer's trait in its lists, moving stats when the trait has them and the player bears it: the
+ *  world's traits, and the played persona's linked stat traits. A cast entity's trait moves lists only. */
+function flipBearerTrait(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
+  if (ownerId === WORLD_OWNER) return switchTrait(state, trait, on, world);
+  if (ownerId === playedEntityId(world.persona) && hasStatEffects(trait)) return switchTrait(state, trait, on, world, ownerId);
+  return withOwnedSwitch(state, ownerId, trait.id, on);
+}
+
+/**
+ * Apply the played persona's active linked stat traits, in its tree order, as picking them at creation
+ * would. For a new game and the Enter World preview, whose owned picks are already chosen.
+ */
+export function applyPlayedStatTraits(state: TraitRuntimeState, world: TraitWorld): { state: TraitRuntimeState; applied: Trait[] } {
+  const played = playedEntityId(world.persona);
+  const applied = playedStatTraits(state, world);
+  let next = state;
+  const on: Trait[] = [];
+  for (const trait of applied) {
+    on.push(trait);
+    next = moveStats(next, trait, true, recordKey(played!, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
+  }
+  return { state: next, applied };
+}
+
+/**
+ * The stat side of a persona switch in play: every stat trait in force under the old persona and not the
+ * new one reverses through its record, then every one in force only under the new persona applies, each
+ * logged as a switch. That covers the old persona's links and the Custom Persona picks a world persona
+ * leaves dormant. The lists themselves do not move, so a return to a persona the playthrough still holds
+ * finds its picks. Nothing moves when both name the same persona.
+ */
+export function switchPersonaStats(
+  state: TraitRuntimeState,
+  from: TraitWorld,
+  to: TraitWorld,
+  nameOf: (trait: Trait) => string = (trait) => trait.name,
+): { state: TraitRuntimeState; log: string[] } {
+  const before = keyedStatTraits(state, from);
+  const after = keyedStatTraits(state, to);
+  const afterKeys = new Set(after.map(([key]) => key));
+  const beforeKeys = new Set(before.map(([key]) => key));
+  const off = before.filter(([key]) => !afterKeys.has(key));
+  const on = after.filter(([key]) => !beforeKeys.has(key));
+  if (!off.length && !on.length) return { state, log: [] };
+  // The set in force moves one trait at a time, so each record measures its own switch alone.
+  const inForce = new Map(before);
+  let next = state;
+  const log: string[] = [];
+  for (const [key, trait] of off) {
+    inForce.delete(key);
+    next = moveStats(next, trait, false, key, [...inForce.values()]);
+    log.push(...traitSwitchLog(nameOf(trait), 'off', []));
+  }
+  for (const [key, trait] of on) {
+    inForce.set(key, trait);
+    next = moveStats(next, trait, true, key, [...inForce.values()]);
+    log.push(...traitSwitchLog(nameOf(trait), 'on', []));
+  }
+  return { state: next, log };
 }
 
 /**
@@ -301,15 +419,15 @@ export function setTraitEnabled(
 ): { state: TraitRuntimeState; retired: Trait[] } {
   const trait = state.traits.find((t) => t.id === traitId);
   if (!trait) return { state, retired: [] };
-  if (!enabled) return { state: switchTrait(state, trait, false), retired: [] };
+  if (!enabled) return { state: switchTrait(state, trait, false, world), retired: [] };
 
   const siblingIds = new Set(exclusiveSiblings(trait, world.traits, world.groups));
   const retired = activeTraits(state.traits, state.disabledTraitIds).filter(
     (t) => t.id !== traitId && siblingIds.has(t.id),
   );
   let next = state;
-  for (const sibling of retired) next = switchTrait(next, sibling, false);
-  return { state: switchTrait(next, trait, true), retired };
+  for (const sibling of retired) next = switchTrait(next, sibling, false, world);
+  return { state: switchTrait(next, trait, true, world), retired };
 }
 
 /** What one switch did to its trait, for the log. */
@@ -339,7 +457,7 @@ export const traitGateInput = (
   owners: world.bearers ?? [{ id: WORLD_OWNER, name: '', ...offeredWorldTraits(world.traits, world.groups) }],
   active: {
     ...activeOwnedTraitIds(state.ownedTraits ?? {}),
-    [WORLD_OWNER]: activeTraits(state.traits, state.disabledTraitIds).map((t) => t.id),
+    [WORLD_OWNER]: heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t) => t.id),
   },
   entities: world.entities ?? [],
   persona: world.persona ?? { source: 'none' },
@@ -412,9 +530,9 @@ function labeler(world: TraitWorld, nameOf: (trait: Trait) => string) {
   };
 }
 
-/** A world or owned trait as the log and the banner name it, found by id. */
-export function traitNameIn(world: TraitWorld, traitId: string, nameOf: (trait: Trait) => string): string | null {
-  const owned = ownedTrait(world, traitId);
+/** A world or owned trait as the log and the banner name it, found by id, in `ownerId`'s tree when given. */
+export function traitNameIn(world: TraitWorld, traitId: string, nameOf: (trait: Trait) => string, ownerId?: string): string | null {
+  const owned = ownerId === WORLD_OWNER ? null : ownedTrait(world, traitId, ownerId);
   if (owned) return labeler(world, nameOf)(owned.trait, owned.owner.id);
   const trait = world.traits.find((t) => t.id === traitId);
   return trait ? nameOf(trait) : null;
@@ -453,11 +571,9 @@ export function settleTraits(
   if (!off.length && !back.length && sameCascadeOff(cascadeOff, compactCascadeOff(state.cascadeOffTraitIds))) {
     return { state, log: [], cascade: [], cascadeNames: [] };
   }
-  const flip = (s: TraitRuntimeState, { ownerId, trait }: { ownerId: string; trait: Trait }, on: boolean) =>
-    (ownerId === WORLD_OWNER ? switchTrait(s, trait, on) : withOwnedSwitch(s, ownerId, trait.id, on));
   let next = state;
-  for (const ref of off) next = flip(next, ref, false);
-  for (const ref of back) next = flip(next, ref, true);
+  for (const { ownerId, trait } of off) next = flipBearerTrait(next, ownerId, trait, false, world);
+  for (const { ownerId, trait } of back) next = flipBearerTrait(next, ownerId, trait, true, world);
   const label = labeler(world, nameOf);
   const cascadeNames = off.map(({ ownerId, trait }) => label(trait, ownerId));
   return {
@@ -472,8 +588,9 @@ export function settleTraits(
 }
 
 /**
- * The player's switch of an entity's owned trait. Owned traits carry no stat effects, so the switch moves
- * only the entity's own lists. Switching on retires its active exclusive siblings in the entity's groups.
+ * The player's switch of a bearer's trait in that entity's lists. A cast entity's trait moves lists only;
+ * the played persona's linked stat trait moves the stats too. Switching on retires its active exclusive
+ * siblings in the entity's groups.
  */
 function switchOwned(
   state: TraitRuntimeState,
@@ -491,8 +608,8 @@ function switchOwned(
       .flatMap((id) => owner.traits.filter((t) => t.id === id))
     : [];
   let switched = state;
-  for (const sibling of retired) switched = withOwnedSwitch(switched, owner.id, sibling.id, false);
-  switched = withOwnedSwitch(switched, owner.id, trait.id, enabled);
+  for (const sibling of retired) switched = flipBearerTrait(switched, owner.id, sibling, false, world);
+  switched = flipBearerTrait(switched, owner.id, trait, enabled, world);
   const label = labeler(world, nameOf);
   const kind: TraitSwitchKind = !chosen ? 'acquired' : enabled ? 'on' : 'off';
   const settled = settleTraits(switched, world, nameOf);
@@ -505,8 +622,9 @@ function switchOwned(
 /**
  * The player's own switch, then a settle. A switch-on of a trait the player lacks acquires it, and only a
  * trait marked Player Can Toggle can be acquired this way. An entity's owned trait switches the same way,
- * in that entity's lists. Null when the switch does nothing: the trait already holds that state, is locked,
- * or cannot be acquired.
+ * in that entity's lists. `ownerId` names the bearer whose row the player switched; without it, the
+ * player's own trait wins over an entity that links the same original. Null when the switch does nothing:
+ * the trait already holds that state, is locked, or cannot be acquired.
  */
 export function switchPlayerTrait(
   state: TraitRuntimeState,
@@ -514,11 +632,14 @@ export function switchPlayerTrait(
   enabled: boolean,
   world: TraitWorld,
   nameOf: (trait: Trait) => string = (trait) => trait.name,
+  ownerId?: string,
 ): GatedTraitResult | null {
-  // The player's own trait switches in the player's lists, even when an entity links the same original.
   const acquired = state.traits.find((t) => t.id === traitId);
-  const owned = acquired || playerHolds(world, traitId) ? null : ownedTrait(world, traitId);
+  const owned = ownerId !== undefined
+    ? (ownerId === WORLD_OWNER ? null : ownedTrait(world, traitId, ownerId))
+    : acquired || playerHolds(world, traitId) ? null : ownedTrait(world, traitId);
   if (owned) return switchOwned(state, owned, enabled, world, nameOf);
+  if (ownerId !== undefined && ownerId !== WORLD_OWNER) return null;
   const trait = acquired ?? world.traits.find((t) => t.id === traitId);
   if (!trait || (!!acquired && !state.disabledTraitIds.includes(traitId)) === enabled) return null;
   if (enabled && (isLocked(state, world, WORLD_OWNER, traitId) || (!acquired && !trait.playerToggle))) return null;
@@ -555,7 +676,7 @@ export function applyCodeTraitSwitches(
       continue;
     }
     const result = enabled && isLocked(next, world, WORLD_OWNER, traitId)
-      ? { state: switchTrait(acquired ? next : { ...next, traits: [...next.traits, trait] }, trait, true), retired: [] }
+      ? { state: switchTrait(acquired ? next : { ...next, traits: [...next.traits, trait] }, trait, true, world), retired: [] }
       : acquired ? setTraitEnabled(next, traitId, enabled, world) : acquireTrait(next, trait, world);
     const kind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
     log.push(...traitSwitchLog(nameOf(trait), kind, result.retired.map(nameOf), by));

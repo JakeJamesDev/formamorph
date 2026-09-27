@@ -164,6 +164,31 @@ describe('resolveBearers: a world persona’s tree', () => {
     expect(ids(unpicked.traits)).toEqual(ids(picked.traits));
     expect(unpicked.isPlayer).toBe(false);
   });
+
+  it('drops a link to an original the root already offers while the persona is played, and keeps it as a cast entity', () => {
+    // Brave is at the root, and Oaths holds Mira's node; a link to either duplicates what the player holds.
+    const doubled: Entity = {
+      ...albus,
+      traitLinks: [...albus.traitLinks!, link('l-brave', 'brave', 'trait', { order: 2 }), link('l-oaths', 'oaths', 'group', { order: 3 })],
+    };
+    const w = world({ entities: [doubled, mira] });
+    const played = bearer(w, 'albus', AS_ALBUS);
+    expect(ids(played.traits)).toEqual(['oath', 'paladin', 'wizard']);
+    expect(ids(played.groups)).toEqual(['classes']);
+    expect(played.linkOf.has('brave')).toBe(false);
+    const cast = bearer(w, 'albus', NONE);
+    expect(ids(cast.traits)).toEqual(['oath', 'paladin', 'wizard', 'brave']);
+    expect(ids(cast.groups)).toEqual(['classes', 'oaths']);
+    expect(cast.linkOf.get('brave')?.id).toBe('l-brave');
+  });
+
+  it("drops a played library persona's link to what Custom Persona already brings, which the player holds too", () => {
+    const w = world({ customPersona: { traitLinks: [link('cp-wizard', 'wizard', 'trait')] } });
+    const lib: Entity = { id: 'lib', name: 'Lib', persona: true, traitLinks: [link('l-wizard', 'wizard', 'trait'), link('l-smite', 'smite', 'trait', { order: 1 })] };
+    const played = bearer(w, 'lib', AS_LIBRARY, [lib]);
+    expect(ids(played.traits)).toEqual(['smite']);
+    expect(ids(bearer(w, PLAYER_BEARER, AS_LIBRARY, [lib]).traits)).toEqual(['brave', 'wizard']);
+  });
 });
 
 describe('resolveBearers: the cast and persona-only entities', () => {

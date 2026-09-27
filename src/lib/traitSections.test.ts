@@ -125,8 +125,10 @@ describe('entity nodes in the traits panel', () => {
     expect(sections.map((s) => [s.name, s.entityId ?? null])).toEqual([['companions', null], ['ash', 'ash']]);
   });
 
-  it('marks the block an entity node holds directly, inside a world group', () => {
-    expect(sections[0].blocks.map((b) => [b.subheader, b.entityId ?? null])).toEqual([['bo', 'bo'], ['bo › bond', null]]);
+  it('marks every block in an entity node’s subtree with its entity, inside a world group too', () => {
+    expect(sections[0].blocks.map((b) => [b.subheader, b.entityId ?? null, b.entityNode ?? false])).toEqual([['bo', 'bo', true], ['bo › bond', 'bo', false]]);
+    const ashSub = buildTraitSections([...traits, T('bold', { groupId: 'pack' })], [...groups, G('pack', { parentId: 'ash' })], new Set(['ash', 'bo']));
+    expect(ashSub[1].blocks.map((b) => [b.subheader, b.entityId ?? null])).toEqual([[null, 'ash'], ['pack', 'ash']]);
   });
 });
 
