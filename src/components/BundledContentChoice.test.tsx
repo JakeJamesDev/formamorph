@@ -3,7 +3,9 @@ import 'fake-indexeddb/auto';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'react-toastify';
 import { BundledContentChoice } from './BundledContentChoice';
+import { openLatestDetails, toastTexts } from '@/test/toastText';
 import { libraryItems } from '@/lib/librarySources';
 import EntityStorageService from '@/services/EntityStorageService';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -41,6 +43,7 @@ function draw(data: World) {
 
 describe('BundledContentChoice', () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     for (const id of await WorldStorageService.getWorldIds()) await WorldStorageService.deleteWorld(id);
     for (const item of await libraryItems('entity')) await EntityStorageService.deleteEntity(item.id);
   });
@@ -98,5 +101,26 @@ describe('BundledContentChoice', () => {
     await waitFor(() => expect(applied).toHaveLength(1));
     expect(applied[0].entities[0].link).toEqual({ bundledFrom: 'lib-1', sourceName: 'Wren the Guide' });
     expect(applied[0].entities[0].aiDescription).toBe('A marsh guide.');
+  });
+
+  it('reports a write that failed, with the cause behind View Details', async () => {
+    // The world was never stored, so the write-back has nothing to revise.
+    const applied = draw(worldData([entity({ bundledFrom: 'lib-1', libraryId: 'lib-1', sourceRevision: 'r1' })]));
+
+    await userEvent.click(screen.getByRole('checkbox'));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(toastTexts(vi.mocked(toast.error))).toEqual(['World not foundView Details →']);
+    expect(openLatestDetails(vi.mocked(toast.error))?.details).toContain('Error: World not found');
+    expect(applied).toHaveLength(0);
+  });
+
+  it('falls back to its own words when the failure carries no message', async () => {
+    vi.spyOn(WorldStorageService, 'updateWorldContent').mockRejectedValueOnce(new Error(''));
+    draw(worldData([entity({ bundledFrom: 'lib-1', libraryId: 'lib-1', sourceRevision: 'r1' })]));
+
+    await userEvent.click(screen.getByRole('checkbox'));
+
+    await waitFor(() => expect(toastTexts(vi.mocked(toast.error))).toEqual(['Could not change the link.View Details →']));
   });
 });

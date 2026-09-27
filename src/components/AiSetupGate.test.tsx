@@ -7,6 +7,7 @@ import { AiSetupGate } from './AiSetupGate';
 import { LOCAL_MODELS, groupModelsByFit, type LocalModelInfo } from '@/lib/localModels';
 import { downloadLocalModel, type LocalDownloadProgress } from '@/lib/imageGen/desktop';
 import { toast } from 'react-toastify';
+import { openLatestDetails, toastTexts } from '@/test/toastText';
 
 const DISCRETE = 'NVIDIA GeForce RTX 4080';
 
@@ -308,7 +309,8 @@ describe('AiSetupGate — the local setup walk', () => {
 
     // A toast that outlives its download claims work that stopped, and hides the reason it stopped.
     expect(toast.dismiss).toHaveBeenCalledWith('ai-setup-progress');
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('disk full'));
+    expect(toastTexts(vi.mocked(toast.error))).toEqual(['Setup stopped: disk fullView Details →']);
+    expect(openLatestDetails(vi.mocked(toast.error))?.details).toBe('disk full');
   });
 
   it('takes the handoff toast down when the engine fails to load the model', async () => {
@@ -325,7 +327,8 @@ describe('AiSetupGate — the local setup walk', () => {
     await act(async () => { view.set({ open: false }); });
 
     expect(toast.dismiss).toHaveBeenCalledWith('ai-setup-progress');
-    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('not enough VRAM'));
+    expect(toastTexts(vi.mocked(toast.error))).toEqual(['Setup stopped: not enough VRAMView Details →']);
+    expect(openLatestDetails(vi.mocked(toast.error))?.details).toBe('not enough VRAM');
   });
 
   it('sizes the recommendation to a smaller card', () => {

@@ -1,6 +1,7 @@
 # 10: Sweep: shared components and game panels
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 418b140f
 Blocked by: 01 — Details field and headline
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,8 +16,8 @@ Recommended model rationale: the same mechanical sweep as tickets 07 to 09, over
 
 ## Acceptance criteria
 
-- [ ] Every caught-error toast in those four files goes through the shared helper and offers **View Details →**
-- [ ] Every validation or refusal toast in those files stays plain with no link
-- [ ] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
-- [ ] No `toast.error` in a `catch` remains anywhere under `src/` except the recorded exemptions
-- [ ] Four gates green
+- [x] Every caught-error toast in those four files goes through the shared helper and offers **View Details →**
+- [x] Every validation or refusal toast in those files stays plain with no link
+- [x] No toast's visible words changed; a test that asserted a plain string may switch to reading the toast's visible text, with the asserted words identical
+- [x] No `toast.error` in a `catch` remains anywhere under `src/` except the recorded exemptions
+- [x] Four gates green
