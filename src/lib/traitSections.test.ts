@@ -115,6 +115,21 @@ describe('building the traits panel sections', () => {
   });
 });
 
+describe('entity nodes in the traits panel', () => {
+  // Ash's node sits at the top level; Bo's sits inside the world's Companions group, with an owned Bond group.
+  const groups = [G('companions', { order: 0 }), G('ash', { order: 1 }), G('bo', { parentId: 'companions' }), G('bond', { parentId: 'bo' })];
+  const traits = [T('tamed', { groupId: 'ash' }), T('calm', { groupId: 'bo' }), T('loyal', { groupId: 'bond' })];
+  const sections = buildTraitSections(traits, groups, new Set(['ash', 'bo']));
+
+  it('marks a top-level entity node’s section with its entity', () => {
+    expect(sections.map((s) => [s.name, s.entityId ?? null])).toEqual([['companions', null], ['ash', 'ash']]);
+  });
+
+  it('marks the block an entity node holds directly, inside a world group', () => {
+    expect(sections[0].blocks.map((b) => [b.subheader, b.entityId ?? null])).toEqual([['bo', 'bo'], ['bo › bond', null]]);
+  });
+});
+
 describe('viewing one section against the filter and the enabled set', () => {
   const groups = [G('g1'), G('sub', { parentId: 'g1' })];
   const traits = [

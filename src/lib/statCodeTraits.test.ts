@@ -14,16 +14,17 @@ describe('savedTraits', () => {
 
   it('reads a save with no switched-off traits, no records and no cascade-off list as empty', () => {
     expect(savedTraits({ playerTraits: [] }, []))
-      .toEqual({ acquired: [], disabledTraitIds: [], appliedValues: {}, cascadeOffTraitIds: {} });
+      .toEqual({ acquired: [], disabledTraitIds: [], appliedValues: {}, cascadeOffTraitIds: {}, ownedTraits: {} });
   });
 
-  it('carries the switched-off ids, the movement records and the cascade-off list through', () => {
+  it('carries the switched-off ids, the movement records, the cascade-off list and owned state through', () => {
     const out = savedTraits({
       playerTraits: [saved], disabledTraitIds: ['brave'], appliedTraitValues: { brave: { h: 10 } },
-      cascadeOffTraitIds: { world: ['brave'] },
+      cascadeOffTraitIds: { world: ['brave'] }, ownedTraits: { ash: { chosen: ['tamed'] } },
     }, [authored]);
     expect(out).toMatchObject({
       disabledTraitIds: ['brave'], appliedValues: { brave: { h: 10 } }, cascadeOffTraitIds: { world: ['brave'] },
+      ownedTraits: { ash: { chosen: ['tamed'] } },
     });
   });
 });

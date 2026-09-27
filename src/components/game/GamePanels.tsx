@@ -12,7 +12,9 @@ import { usePlayerModelUrl } from '@/lib/usePlayerModelUrl';
 import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, inAuthoredOrder, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
-import { listablePlayerTraits } from '@/lib/traitRuntime';
+import { listablePlayerTraits, traitGateInput } from '@/lib/traitRuntime';
+import { activeOwnedTraitIds, entityTraitOwners, playedEntityId } from '@/lib/ownedTraitsInPlay';
+import { ownedTraitTree } from '@/lib/traitTree';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
@@ -54,7 +56,7 @@ import { ConfirmDialog } from '../ConfirmDialog';
 import { HelpButton } from '../HelpButton';
 import { EditTextModal } from '../modals/EditTextModal';
 import type { Entity, PersonaRef, SceneEntity } from '@/types';
-import { gateStates, worldGateInput } from '@/lib/traitGates';
+import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
 import { formatAbsolute, formatClock } from '@/lib/gameClock';
@@ -1103,6 +1105,7 @@ export const RightPanel = ({
     commitManualStatEdit,
     viewTraits: savedTraits,
     viewDisabledTraitIds,
+    viewOwnedTraits,
     viewStatChanges: recentStatChanges,
     recentStatFading,
     heldStatChanges,
@@ -1111,7 +1114,7 @@ export const RightPanel = ({
   } = useGameplay();
   const {
     locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText,
-    entities: cast, persona,
+    entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
   const snapStats = useStatsSnap({ page: currentPage, totalPages }, useNarrationLayout() === 'chat');
@@ -1132,20 +1135,36 @@ export const RightPanel = ({
   // Every toggleable trait is available at any time, so the list holds the player's traits and the ones they
   // could take, together in authored order — owned and unowned differ only by the checkbox. A past turn shows
   // only what was held then: acquirables can't be acted on there.
-  const listedTraits = React.useMemo(
-    () => (isViewingPast ? playerTraits : listablePlayerTraits(playerTraits, traits, traitOrder)),
-    [isViewingPast, playerTraits, traits, traitOrder],
+  // The one tree: the world's traits, with a node for each entity that owns traits.
+  const traitTree = React.useMemo(
+    () => ownedTraitTree({ traits, traitGroups }, traitEntities, traitLibrary),
+    [traits, traitGroups, traitEntities, traitLibrary],
   );
+  const activeOwnedIds = React.useMemo(
+    () => new Set(Object.values(activeOwnedTraitIds(viewOwnedTraits)).flat()),
+    [viewOwnedTraits],
+  );
+  // An entity's traits list the same way as the player's: those it holds, plus the toggleable ones it doesn't.
+  const listedTraits = React.useMemo(() => {
+    const owned = traitTree.traits.filter((t) => {
+      const owner = traitTree.ownerOf.get(t.id);
+      return !!owner && (!!viewOwnedTraits[owner]?.chosen.includes(t.id) || (!isViewingPast && !!t.playerToggle));
+    });
+    return [...(isViewingPast ? playerTraits : listablePlayerTraits(playerTraits, traits, traitOrder)), ...owned];
+  }, [isViewingPast, playerTraits, traits, traitOrder, traitTree, viewOwnedTraits]);
+  const entityNodeIds = React.useMemo(() => new Set(traitTree.entityNodes.keys()), [traitTree]);
   const statEnabled = React.useMemo(
     () => activeStatEnabled(playerStats, activeTraits),
     [playerStats, activeTraits],
   );
   // The played world entity is out of the cast, and a "playing as" gate has to find it.
-  const traitGates = React.useMemo(() => gateStates(worldGateInput(
-    { traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona) },
-    personaRef ?? { source: 'none' },
-    activeTraits.map((t) => t.id),
-  )), [traits, traitGroups, cast, persona, personaRef, activeTraits]);
+  const traitGates = React.useMemo(() => gateStates(traitGateInput(
+    { traits: playerTraits, disabledTraitIds: viewDisabledTraitIds, ownedTraits: viewOwnedTraits },
+    {
+      traits, groups: traitGroups, entities: worldEntitiesOf(cast, persona), persona: personaRef ?? { source: 'none' },
+      entityOwners: entityTraitOwners({ traits, traitGroups, entities: traitEntities }, traitLibrary),
+    },
+  )), [playerTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, cast, persona, personaRef, traitEntities, traitLibrary]);
   // Filtered for display but carrying each stat's index in the full array, which the edit slider writes back to.
   // Hidden stats stay live for the AI, regen and code — they just never render, which also drops their
   // delta chip, bar band and history deltas (all keyed off the row).
@@ -1258,9 +1277,13 @@ export const RightPanel = ({
               because a trait that can be taken at will makes "owned" a distinction without a difference. */}
           <TraitsTab
             traits={listedTraits}
-            groups={traitGroups}
+            groups={traitTree.groups}
+            entityNodeIds={entityNodeIds}
+            playedEntityId={playedEntityId(personaRef)}
             stats={playerStats}
-            isOff={(id) => disabledTraits.has(id) || !heldTraitIds.has(id)}
+            isOff={(id) => (traitTree.ownerOf.has(id)
+              ? !activeOwnedIds.has(id)
+              : disabledTraits.has(id) || !heldTraitIds.has(id))}
             readOnly={isViewingPast}
             onToggleTrait={onToggleTrait}
             resolveTraitText={resolveTraitText}

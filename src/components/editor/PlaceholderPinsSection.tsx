@@ -11,12 +11,13 @@ import {
   removePinAt, sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
-import type { GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
+import type { Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
 
 /** The world the section reads pins from and writes them back to: the four source lists, and the writer
  *  for each. The world editor's data store is one. */
 export interface PinsWorld extends PinEditorWorld {
   updateTrait: (trait: Trait) => void;
+  updateEntity: (entity: Entity) => void;
   updateLocation: (location: GameLocation) => void;
   updateStat: (stat: Stat) => void;
   updatePlaceholder: (placeholder: Placeholder) => void;

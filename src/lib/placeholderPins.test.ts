@@ -3,7 +3,7 @@ import type { GameLocation, Placeholder, PlaceholderPin, Trait } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import { decodePlaceholderToken } from './placeholders';
 import {
-  activePlaceholderPins, addPinAt, allPinTexts, collectPinLayers, collectPins, pinConflict, pinSourceKey, pinSourcesOfKind,
+  activePlaceholderPins, addPinAt, allPinTexts, collectPinLayers, collectPins, commitPinSource, pinConflict, pinSourceKey, pinSourcesOfKind,
   pinsTargeting, removePinAt, updatePinAt, valuePinRollChips, type PinnableStat,
 } from './placeholderPins';
 
@@ -306,6 +306,11 @@ describe('allPinTexts — every text any source could pin', () => {
     });
     expect(out).toEqual({ town: ['Marrow', 'Fen', 'Moor', 'Ash'] });
   });
+
+  it('walks an entity’s owned trait pins too', () => {
+    const out = allPinTexts({ entities: [{ traits: [trait('t', [pin('town', 'Tame')])] }], placeholders: [P('town', ['Sedge'])] });
+    expect(out).toEqual({ town: ['Tame'] });
+  });
 });
 
 describe('valuePinRollChips — a World chip per placeholder whose values pin', () => {
@@ -530,6 +535,51 @@ describe('pin write-back — add, update and remove on the source a row names', 
     const next = updatePinAt(twice, rows[1].source, rows[1].pin, pin('town', 'Moorside'));
     expect(next.locations![1].placeholderPins).toEqual([pin('town', ''), pin('town', 'Moorside')]);
     expect(removePinAt(next, rows[0].source, rows[0].pin).locations![1].placeholderPins).toEqual([pin('town', 'Moorside')]);
+  });
+});
+
+describe('owned traits as pin sources — every owner’s traits, the cast before the world', () => {
+  const ash = {
+    id: 'ash', name: 'Ash',
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traits: [
+      trait('tamed', [pin('town', 'Tame')], { name: 'Tamed', groupId: 'g-bond' }),
+      trait('wild', [pin('town', 'Wild')], { name: 'Wild', groupId: 'g-bond' }),
+    ],
+  };
+  const world = {
+    traits: [trait('sworn', [pin('town', 'Marrow')], { name: 'Sworn' })],
+    traitGroups: [],
+    entities: [ash],
+    placeholders: [P('town', ['Marrow'])],
+  } as unknown as EditorWorld;
+
+  it('lists an owned trait’s pin under its owner’s name, before the world’s traits', () => {
+    expect(pinsTargeting(world, 'town').map((r) => r.label)).toEqual(["Trait: Ash's Tamed", "Trait: Ash's Wild", 'Trait: Sworn']);
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((o) => o.label)).toEqual(["Ash's Tamed", "Ash's Wild", 'Sworn']);
+  });
+
+  it('lets a world trait beat an owned trait on the same placeholder, by order', () => {
+    const fromTamed = pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!;
+    expect(fromTamed.winner?.label).toBe('Trait: Sworn');
+    expect(fromTamed.rule).toBe('order');
+    expect(pinConflict(world, 'town', { kind: 'trait', id: 'sworn' })!.winner).toBeNull();
+  });
+
+  it('never pits an owned trait against its exclusive sibling', () => {
+    const fromTamed = pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!;
+    expect(fromTamed.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
+  });
+
+  it('writes an owned trait’s pin back to its entity and hands the entity to its writer', () => {
+    const next = updatePinAt(world, { kind: 'trait', id: 'wild' }, pin('town', 'Wild'), pin('town', 'Feral'));
+    expect(next.entities![0].traits![1].placeholderPins).toEqual([pin('town', 'Feral')]);
+    expect(next.traits).toBe(world.traits);
+    const updateTrait = vi.fn();
+    const updateEntity = vi.fn();
+    commitPinSource(next, { kind: 'trait', id: 'wild' }, { updateTrait, updateEntity });
+    expect(updateEntity).toHaveBeenCalledWith(next.entities![0]);
+    expect(updateTrait).not.toHaveBeenCalled();
   });
 });
 

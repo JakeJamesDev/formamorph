@@ -1,4 +1,4 @@
-import type { CascadeOffTraitIds, CodeBounds, CodePins, Placeholder, PlayerStat, Trait } from '@/types';
+import type { CascadeOffTraitIds, CodeBounds, CodePins, OwnedTraitStates, Placeholder, PlayerStat, Trait } from '@/types';
 import {
   CODE_BOUND_FIELDS, executeStatCode, type PlaceholderWrite, type StatClock, type StatTurnInputs, type TraitWrite,
   type ValueAndMax,
@@ -20,6 +20,7 @@ export interface StatCodeTraitResult {
   disabledTraitIds: string[];
   appliedValues: AppliedTraitValues;
   cascadeOffTraitIds: CascadeOffTraitIds;
+  ownedTraits: OwnedTraitStates;
   log: string[];
 }
 
@@ -176,6 +177,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     disabledTraitIds: [...turn.traits.disabledTraitIds],
     appliedValues: turn.traits.appliedValues,
     cascadeOffTraitIds: turn.traits.cascadeOffTraitIds,
+    ownedTraits: turn.traits.ownedTraits,
   };
   const switched = applyCodeTraitSwitches(
     before,
@@ -187,6 +189,7 @@ export async function runStatCodeTurn(turn: StatCodeTurn): Promise<StatCodeTurnR
     disabledTraitIds: switched.state.disabledTraitIds,
     appliedValues: switched.state.appliedValues,
     cascadeOffTraitIds: switched.state.cascadeOffTraitIds ?? {},
+    ownedTraits: switched.state.ownedTraits ?? {},
     log: switched.log,
   };
   const active = activeTraits(switched.state.traits, switched.state.disabledTraitIds);

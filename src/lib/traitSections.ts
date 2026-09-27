@@ -14,6 +14,8 @@ export interface TraitBlock {
   subheader: string | null;
   exclusive: boolean;
   traits: Trait[];
+  /** Set when the block's own group is an entity node. */
+  entityId?: string;
 }
 
 /** One collapsible section: a top-level group, "General", or the whole list when the world has no groups. */
@@ -22,6 +24,8 @@ export interface TraitSection {
   /** null = the flat, chrome-less case: no header, no collapsing. */
   name: string | null;
   blocks: TraitBlock[];
+  /** Set when the section's group is an entity node. */
+  entityId?: string;
 }
 
 const leaves = (nodes: TraitTreeNode[]): Trait[] =>
@@ -37,8 +41,12 @@ const holdsTraits = (node: TraitTreeNode): boolean =>
  * Traits sitting outside any group become a "General" section, unless there is no populated group at all —
  * then the whole list is one unnamed section and the panel draws no section chrome. Groups whose subtree
  * holds no listed trait are dropped, so a group full of traits the player can't act on leaves no empty shell.
+ * A group in `entityNodeIds` is an entity node, and its section or block carries that entity's id.
  */
-export function buildTraitSections(traits: Trait[], groups: TraitGroup[]): TraitSection[] {
+export function buildTraitSections(
+  traits: Trait[], groups: TraitGroup[], entityNodeIds: ReadonlySet<string> = new Set(),
+): TraitSection[] {
+  const entity = (id: string) => (entityNodeIds.has(id) ? { entityId: id } : {});
   const tree = buildTraitTree(groups, traits);
   const ungrouped = leaves(tree);
   const tops = subgroups(tree).filter(holdsTraits);
@@ -67,12 +75,13 @@ export function buildTraitSections(traits: Trait[], groups: TraitGroup[]): Trait
           subheader: path.length > 0 ? path.join(' › ') : null,
           exclusive: node.group.exclusive === true,
           traits: own,
+          ...entity(node.id),
         });
       }
       for (const child of subgroups(node.children).filter(holdsTraits)) walk(child, [...path, child.group.name]);
     };
     walk(top, []);
-    sections.push({ key: `g:${top.id}`, name: top.group.name, blocks });
+    sections.push({ key: `g:${top.id}`, name: top.group.name, blocks, ...entity(top.id) });
   }
   return sections;
 }

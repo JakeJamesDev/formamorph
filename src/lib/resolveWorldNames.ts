@@ -103,6 +103,17 @@ export function resolveTraitGroupNames(groups: TraitGroup[], resolve: ResolveTex
   });
 }
 
+/** Each entity with its owned trait and group names resolved. */
+export function resolveOwnedTraitNames(
+  entities: Entity[], resolveFor: (trait: Trait) => ResolveText, resolve: ResolveText,
+): Entity[] {
+  return mapPreservingIdentity(entities, (e) => {
+    const traits = e.traits && resolveTraitNames(e.traits, resolveFor);
+    const traitGroups = e.traitGroups && resolveTraitGroupNames(e.traitGroups, resolve);
+    return traits === e.traits && traitGroups === e.traitGroups ? e : { ...e, traits, traitGroups };
+  });
+}
+
 /** An entry's display name and both keyword arrays. Keywords resolve because activation matches them
  *  against context text that has already been resolved — an unresolved key could never hit. */
 export function resolveDictionaryEntryNames(entries: DictionaryEntry[], resolve: ResolveText): DictionaryEntry[] {

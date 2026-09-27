@@ -7,6 +7,7 @@ import { useLingeringMount } from '@/lib/useLingeringMount';
 import { usePlaceholderSession } from '../contexts/PlaceholderSessionContext';
 import { useResolvedAuthoredWorld } from '@/lib/useResolvedWorld';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { collectPins } from '@/lib/placeholderPins';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { useUserProfile } from '../contexts/userProfileStore';
@@ -385,7 +386,9 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // player closes it. A world with nothing to choose would otherwise flash the overlay and enter anyway.
   const [enterAfterIntro, setEnterAfterIntro] = useState<EntryDraft | null>(null);
   const [entryDraft, setEntryDraft] = useState<EntryDraft>(emptyEntryDraft);
-  const { traitIds: selectedTraits, locationId: selectedLocationId } = entryDraft;
+  const {
+    traitIds: selectedTraits, ownedTraitIds: ownedTraitPicks, persona: draftPersona, locationId: selectedLocationId,
+  } = entryDraft;
   const [resolvingEntry, setResolvingEntry] = useState(false);
   const entryRequest = useRef<object | null>(null);
   const entryStarted = useRef(false);
@@ -420,13 +423,19 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     );
     const starting = startingStatsWith(rawStats, chosen, { traits: rawTraits, groups: rawTraitGroups });
     return collectPins({
-      traits: chosen,
+      traits: pinTraitsInOrder(
+        { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities }, chosen, ownedTraitPicks,
+        playedEntityId(draftPersona),
+      ),
       location: rawLocations.find((l) => l.id === selectedLocationId),
       stats: starting,
       placeholders,
       rolls,
     });
-  }, [selectedTraits, selectedLocationId, rawTraits, rawTraitGroups, rawStats, rawLocations, placeholders, rolls]);
+  }, [
+    selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities, rawStats,
+    rawLocations, placeholders, rolls,
+  ]);
   const {
     traits, traitGroups, stats, locations, entities: resolvedWorldEntities, resolvePH, resolveTraitText,
     resolveEntityText,

@@ -3,6 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveEntityText, resolvePlaceholders, type ResolveOptions } from '@/lib/placeholders';
+import { activeOwnedTraitIds, inPlayLibrary, pinTraitsInOrder, playedEntityId } from '@/lib/ownedTraitsInPlay';
 import { collectPins } from '@/lib/placeholderPins';
 import { inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { usePersonaName } from '@/lib/useResolvedWorld';
@@ -14,7 +15,7 @@ import type { ResolveEntityText } from '@/lib/resolveWorldNames';
  * activates, so this is a pure lookup — safe to call during render (no `setRoll`). Use at every boundary that
  * emits authored text to the player or the AI.
  *
- * Every pin in force is layered on top — the active traits', the location's, the stat bands', the Code
+ * Every pin in force is layered on top — every owner's active traits', the location's, the stat bands', the Code
  * Pins, and the value pins under them — so a pinned value reads the same here as it does in the AI's context. The
  * underlying roll is untouched — leaving the source's condition brings it back.
  */
@@ -30,13 +31,20 @@ export function useEntityTextResolver(): ResolveEntityText {
 }
 
 function useViewResolveOptions(): ResolveOptions {
-  const { traits, traitGroups, locations } = useGameData();
+  const { traits, traitGroups, locations, entities } = useGameData();
   const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
   // force on that turn, not whatever the player has toggled or walked into since.
-  const { placeholderRolls, viewTraits, viewDisabledTraitIds, viewStats, viewLocationId, viewCodePins } = useGameplay();
+  const {
+    placeholderRolls, viewTraits, viewDisabledTraitIds, viewOwnedTraits, viewStats, viewLocationId, viewCodePins,
+    personaRef, libraryPersona,
+  } = useGameplay();
   const pins = useMemo(() => collectPins({
-    traits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
+    traits: pinTraitsInOrder(
+      { traits, traitGroups, entities },
+      inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
+      activeOwnedTraitIds(viewOwnedTraits), playedEntityId(personaRef), inPlayLibrary(libraryPersona),
+    ),
     disabledTraitIds: viewDisabledTraitIds,
     location: locations.find((l) => l.id === viewLocationId),
     stats: viewStats,
@@ -44,8 +52,8 @@ function useViewResolveOptions(): ResolveOptions {
     rolls: placeholderRolls,
     codePins: viewCodePins,
   }), [
-    viewTraits, viewDisabledTraitIds, traits, traitGroups, locations, viewLocationId, viewStats, placeholders,
-    placeholderRolls, viewCodePins,
+    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, personaRef, libraryPersona, locations,
+    viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
   ]);
   const name = usePersonaName(placeholderRolls, pins);
   return useMemo(

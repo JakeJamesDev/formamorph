@@ -36,7 +36,7 @@ import { startingLocations } from '@/lib/startingLocation';
 import type {
   Entity, GameLocation, Opening, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
-import { lensActiveTraits, resolveLensText, type BenchLens } from './lens';
+import { lensActiveTraits, lensPinTraits, resolveLensText, type BenchLens } from './lens';
 import { chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
@@ -175,16 +175,19 @@ function openingStart(world: OpeningWorld, lens: BenchLens, startLocationId?: st
 }
 
 /** The pins the fresh game opens under, from every source — the active traits (a default trait's pin binds
- *  every playthrough, not just the lens PC's), the starting location, the band each settled stat lands in,
+ *  every playthrough, not just the lens PC's) and the cast's owned defaults, the starting location, the band each settled stat lands in,
  *  and the value pins those and `rolls` settle — through the same collector Enter World runs. */
 const openingPins = (world: OpeningWorld, start: OpeningStart, rolls: PlaceholderRolls): Record<string, string> =>
   collectPins({
-    traits: start.active, location: start.location, stats: start.settled, placeholders: allPlaceholders(world), rolls,
+    traits: lensPinTraits(world, start.active), location: start.location, stats: start.settled,
+    placeholders: allPlaceholders(world), rolls,
   });
 
 /** Every text any source pins a placeholder to — walked beside the rolls, exactly as Enter World walks them. */
 const openingPinTexts = (world: OpeningWorld): Record<string, string[]> =>
-  allPinTexts({ traits: world.traits, locations: world.locations, stats: world.stats, placeholders: allPlaceholders(world) });
+  allPinTexts({
+    traits: world.traits, entities: world.entities, locations: world.locations, stats: world.stats, placeholders: allPlaceholders(world),
+  });
 
 /**
  * Roll every wildcard placement a fresh game would prime, keeping whatever `existing` already holds — the

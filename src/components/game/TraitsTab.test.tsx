@@ -329,6 +329,54 @@ describe('a gated trait in play', () => {
   });
 });
 
+describe('entity nodes in the traits tab', () => {
+  // Ash owns Tamed (held), Wild (toggleable, not held), Gruff (not toggleable, not held), and Loyal, which
+  // needs the player's Paladin.
+  const ash = {
+    id: 'e-ash', name: 'Ash', persona: true,
+    traits: [
+      T('t-tamed', 'Tamed'), T('t-wild', 'Wild'), T('t-gruff', 'Gruff', { playerToggle: false }),
+      T('t-loyal', 'Loyal', { requires: [{ kind: 'trait' as const, id: 't-paladin' }] }),
+    ],
+  };
+  const PALADIN = T('t-paladin', 'Paladin');
+  const withAsh = (options: PanelHarnessOptions = {}) => renderTraits([PALADIN], [], [], {
+    ...options,
+    world: { entities: [ash] },
+    seed: (gameplay) => {
+      gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } });
+      options.seed?.(gameplay);
+    },
+  });
+
+  it('gives an entity that owns traits its own section, listing what it holds and what the player can switch', () => {
+    withAsh();
+    const ashSection = section('Ash');
+    expect(within(ashSection).getByRole('checkbox', { name: 'Switch off Tamed' })).toBeEnabled();
+    fireEvent.click(within(ashSection).getByRole('button', { name: /^Disabled/ }));
+    expect(within(ashSection).getByRole('checkbox', { name: 'Switch on Wild' })).toBeEnabled();
+    expect(within(ashSection).queryByText('Gruff')).toBeNull();
+  });
+
+  it('hands an owned trait’s switch to the runtime by id', () => {
+    const view = withAsh();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Switch off Tamed' }));
+    expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-tamed', false);
+  });
+
+  it('locks an owned trait whose requirement the player lacks', () => {
+    withAsh();
+    fireEvent.click(within(section('Ash')).getByRole('button', { name: /^Disabled/ }));
+    expect(screen.getByRole('checkbox', { name: 'Switch on Loyal' })).toBeDisabled();
+    expect(screen.getByText('Requires Paladin')).toBeTruthy();
+  });
+
+  it('marks the entity the player plays as You', () => {
+    withAsh({ seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
+    expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
+  });
+});
+
 describe('an exclusive trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { exclusive: true })];
   const TRAITS = [

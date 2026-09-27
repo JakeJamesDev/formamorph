@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChevronDown, Lock, Search } from 'lucide-react';
+import { ChevronDown, Lock, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
 import type { GateState } from '@/lib/traitGates';
@@ -26,6 +26,10 @@ export interface TraitsTabProps {
   /** Every trait the panel lists, in authored order: those held plus those still takeable. */
   traits: Trait[];
   groups: TraitGroup[];
+  /** Groups that are entity nodes, each holding that entity's owned traits. */
+  entityNodeIds?: ReadonlySet<string>;
+  /** The entity the player plays, whose node is marked You. */
+  playedEntityId?: string | null;
   stats: TraitTabStat[];
   /** Switched off or never taken — the panel draws no line between the two. */
   isOff: (traitId: string) => boolean;
@@ -57,9 +61,13 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string) => boolean): Rea
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id)))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView, gates, cascade, onDismissCascade,
+  traits, groups, entityNodeIds, playedEntityId = null, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
-  const sections = React.useMemo(() => buildTraitSections(traits, groups), [traits, groups]);
+  const sections = React.useMemo(() => buildTraitSections(traits, groups, entityNodeIds), [traits, groups, entityNodeIds]);
+  // An entity node wears the user glyph, and the played one a You mark, as at Enter World.
+  const entityIcon = <User aria-hidden className="h-3.5 w-3.5 shrink-0" />;
+  const youMark = <span className="ml-1 text-meta font-normal text-primary">You</span>;
   const sectionKeys = sections.map((s) => s.key).join('|');
 
   // Which sections stand open is seeded from what is switched on, then owned by the player. It re-seeds only
@@ -193,7 +201,11 @@ export const TraitsTab = ({
     blocks.map((block) => (
       <div key={block.key}>
         {block.subheader && (
-          <p className="mb-0.5 mt-1.5 pl-1 text-meta font-medium text-muted-foreground">{block.subheader}</p>
+          <p className="mb-0.5 mt-1.5 flex items-center gap-1 pl-1 text-meta font-medium text-muted-foreground">
+            {block.entityId && entityIcon}
+            {block.subheader}
+            {block.entityId === playedEntityId && youMark}
+          </p>
         )}
         {block.traits.map((trait) => row(trait, block, isOff(trait.id)))}
       </div>
@@ -230,6 +242,7 @@ export const TraitsTab = ({
             // A filter that matched inside a collapsed section has to open it, or the result is invisible.
             const isOpen = section.name === null || filtering || open.has(section.key);
             const disabledOpen = filtering || openDisabled.has(section.key);
+            const played = !!section.entityId && section.entityId === playedEntityId;
             return (
               <div
                 key={section.key}
@@ -245,10 +258,11 @@ export const TraitsTab = ({
                     // state nothing on screen reflects — and spring it on the player when they clear it.
                     disabled={filtering}
                     aria-expanded={isOpen}
-                    aria-label={`${section.name}, ${view.enabledCount} enabled`}
+                    aria-label={`${section.name}${played ? ', You' : ''}, ${view.enabledCount} enabled`}
                     className="flex w-full items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-left text-primary"
                   >
-                    <span className="flex-1 font-semibold">{section.name}</span>
+                    {section.entityId && entityIcon}
+                    <span className="flex-1 font-semibold">{section.name}{played && youMark}</span>
                     {view.enabledCount === 0 ? (
                       <Badge variant="outline" className="border-muted-foreground/30 text-muted-foreground">0</Badge>
                     ) : (

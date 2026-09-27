@@ -175,6 +175,37 @@ describe('pins from every source', () => {
   });
 });
 
+describe('pins from owned traits', () => {
+  // Ash's default Tamed pins hair to jet; Wild, its exclusive sibling, is not a default.
+  const ash = (over: Partial<Trait> = {}): LensWorld['entities'] => [{
+    id: 'ash', name: 'Ash',
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traits: [
+      { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], isDefault: true,
+        placeholderPins: [{ placeholderId: 'ph-hair', value: 'jet' }], ...over },
+      { id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], placeholderPins: [{ placeholderId: 'ph-hair', value: 'ash' }] },
+    ],
+  }];
+
+  it('lays an NPC’s owned default trait, labeled with its owner', () => {
+    const lens = buildLens(world({ entities: ash() }), { pcTraitId: null, locationId: null });
+    expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
+    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([["Trait: Ash's Tamed", true]]);
+  });
+
+  it('lets the PC’s own trait win a placeholder an NPC’s trait also pins', () => {
+    const lens = buildLens(world({ entities: ash() }), { pcTraitId: 't-sedge', locationId: null });
+    expect(lens.pins).toEqual({ 'ph-hair': 'copper' });
+    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([["Trait: Ash's Tamed", false], ['Trait: Sedge-Born', true]]);
+  });
+
+  it('leaves out an owned default whose gate the lens does not meet', () => {
+    const gated = ash({ requires: [{ kind: 'trait', id: 't-reach' }] });
+    expect(buildLens(world({ entities: gated }), { pcTraitId: null, locationId: null }).pins).toEqual({});
+    expect(buildLens(world({ entities: gated }), { pcTraitId: 't-reach', locationId: null }).pins).toEqual({ 'ph-hair': 'jet' });
+  });
+});
+
 describe('broken pins', () => {
   const pinning = (value: string, placeholderId = 'ph-hair'): LensWorld => world({
     traits: [{ ...traits[0], placeholderPins: [{ placeholderId, value }] }, ...traits.slice(1)],

@@ -944,6 +944,18 @@ describe('runStatCodeTurn traits', () => {
     expect(out.traits?.log).toEqual(['Trait switched off: BRAVE (by S0)']);
   });
 
+  it('hands back the owned trait a code switch cascaded off', async () => {
+    // Ash's Loyal needs Brave, so switching Brave off in code turns Loyal off too.
+    const loyal: Trait = { id: 'loyal', name: 'Loyal', statChanges: [], requires: [{ kind: 'trait', id: 'brave' }] };
+    const ash = { id: 'ash', name: 'Ash', traits: [loyal], groups: [] };
+    const out = await run(['traits.Brave.enabled = false;'], held({
+      ownedTraits: { ash: { chosen: ['loyal'] } }, world: { ...world, entityOwners: [ash] },
+    }));
+    expect(out.traits?.log).toEqual(['Trait switched off: Brave (by S0)', "Trait switched off: Ash's Loyal (by S0)"]);
+    expect(out.traits?.ownedTraits).toEqual({ ash: { chosen: ['loyal'], disabled: ['loyal'] } });
+    expect(out.traits?.cascadeOffTraitIds).toEqual({ ash: ['loyal'] });
+  });
+
   it('carries a switch onto the latest stats, re-derived under the traits now in force', async () => {
     const result = await run(['traits.Cursed.enabled = true;']);
     // An AI max ask landed on the latest Health while the run was in flight.

@@ -49,6 +49,7 @@ import type {
 // Frozen empties for the `view*` fallbacks: a literal `[]` there is a new identity per render, which
 // leaks into consumers' dependency arrays and can drive a render loop while viewing a past page.
 const EMPTY_IDS: string[] = [];
+const EMPTY_OWNED: OwnedTraitStates = {};
 const EMPTY_CHOICES: Choice[] = [];
 const EMPTY_INDICES: number[] = [];
 const EMPTY_PINS: CodePins = {};
@@ -573,6 +574,7 @@ function useProvideGameplay() {
   // re-renders this provider and mints the next fresh array: an unbreakable render loop that only exists
   // on a past page, since the live branch returns the state values themselves.
   const viewDisabledTraitIds = viewedSnapshot ? (viewedSnapshot.disabledTraitIds ?? EMPTY_IDS) : disabledTraitIds;
+  const viewOwnedTraits = viewedSnapshot ? (viewedSnapshot.ownedTraits ?? EMPTY_OWNED) : ownedTraits;
   const viewCodePins = viewedSnapshot ? (viewedSnapshot.codePins ?? EMPTY_PINS) : codePins;
   const viewCharacterData = viewedSnapshot?.characterData ?? characterData;
   const viewVisibleEntities = useMemo(
@@ -754,6 +756,7 @@ function useProvideGameplay() {
     viewStats,
     viewTraits,
     viewDisabledTraitIds,
+    viewOwnedTraits,
     viewCodePins,
     viewCharacterData,
     viewVisibleEntities,

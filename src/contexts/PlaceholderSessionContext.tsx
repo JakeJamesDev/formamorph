@@ -131,7 +131,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     // without the identity guard those two facts are a render loop.
     // A placeholder whose values pin something reads its own world roll, so it gets one whether or not any
     // text places it.
-    const pinTexts = allPinTexts({ traits, locations, stats, placeholders });
+    const pinTexts = allPinTexts({ traits, entities: persona ? [...entities, persona] : entities, locations, stats, placeholders });
     setRolls((prev) => {
       const next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
       return sameRolls(prev, next) ? prev : next;
