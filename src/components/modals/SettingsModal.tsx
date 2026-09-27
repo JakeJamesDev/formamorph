@@ -19,8 +19,8 @@ import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, budgetReadout, type PromptReasoningSetting } from '@/lib/reasoningEffort';
-import { reasoningDialectTakesBudget } from '@/lib/reasoningDialect';
+import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, reasoningBudget, type PromptReasoningSetting } from '@/lib/reasoningEffort';
+import { reasoningDialectTakesBudget, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
 import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
 import { DisplaySettingsSection } from './DisplaySettingsSection';
 import { OutputSettingsSection } from './OutputSettingsSection';
@@ -62,7 +62,7 @@ import { PROMPT_KIND_VARIABLES, PROMPT_KIND_USER_VARIABLES, NOW_LINE_VARIABLES, 
 import { defaultPromptSampler } from '@/lib/promptSamplers';
 import { useEndpointReachable } from '@/lib/useEndpointReachable';
 import { ReadOnlyNotice } from '@/components/prompt/ReadOnlyNotice';
-import { isMaxOutputKind, passCap, resolvedMaxOutput, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
+import { isMaxOutputKind, shippedMaxOutput, MAX_OUTPUT_MIN, MAX_OUTPUT_MAX, MAX_OUTPUT_STEP } from '@/lib/promptMaxOutput';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { toast } from 'react-toastify';
 import WorldStorageService from '@/services/WorldStorageService';
@@ -307,8 +307,9 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
   setting: PromptReasoningSetting;
   onChange: (v: PromptReasoningSetting) => void;
   options: { value: PromptReasoningSetting['level']; label: string }[];
-  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise. */
-  budget: { value: number; set: (v: number) => void; tokens?: number } | null;
+  /** The budget percent and its setter when the prompt's target takes a token budget; absent otherwise.
+   *  `disabled` while the target has no Max Output to take the percent of. */
+  budget: { value: number; set: (v: number) => void; tokens?: number; disabled: boolean } | null;
   /** Whether the target honors the effort level, so the dropdown is worth showing. */
   level: boolean;
   /** The endpoint refuses to switch reasoning off, so the switch reads checked and locked. */
@@ -320,7 +321,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
     kind: 'level', value: setting.level, options, onChange: (next) => onChange({ ...setting, level: next }),
   };
   const budgetStrength: ReasoningStrength<PromptReasoningSetting['level']> | null = budget
-    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set }
+    ? { kind: 'budget', value: budget.value, tokens: budget.tokens, onChange: budget.set, disabled: budget.disabled }
     : null;
   // The field is named for what it actually offers: the budget where that is the only strength, and the
   // switch's own name where the target takes a level, or takes neither and the switch stands alone.
@@ -345,17 +346,18 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
         <div className="mt-2 flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="text-label">{SETTINGS_COPY.reasoningBudget.label}</span>
+            <HintInfo>{SETTINGS_COPY.reasoningBudget.info}</HintInfo>
           </div>
           <span className="text-helper text-muted-foreground">{SETTINGS_COPY.reasoningBudget.description}</span>
           {/* Same switch as above: the row only carries the slider, flush with every other track. */}
           <div className="flex items-center gap-3 pl-2.5">
             <Slider
-              className={`flex-grow${inert ? ' opacity-60' : ''}`}
+              className={`flex-grow${inert || budgetStrength.disabled ? ' opacity-60' : ''}`}
               value={[budgetStrength.value]}
               min={MIN_REASONING_BUDGET_PCT}
-              max={100}
+              max={MAX_REASONING_BUDGET_PCT}
               step={5}
-              disabled={inert}
+              disabled={inert || budgetStrength.disabled}
               onValueChange={(v) => budgetStrength.onChange(v[0])}
               aria-label={SETTINGS_COPY.reasoningBudget.label}
             />
@@ -363,6 +365,7 @@ function PromptReasoningField({ setting, onChange, options, budget, level, locke
           </div>
         </div>
       )}
+      {budget?.disabled && <p className="text-helper text-muted-foreground">{REASONING_NOTES.noBudgetBase}</p>}
     </div>
   );
 }
@@ -1232,7 +1235,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
       enabled: promptTarget.presetId !== null,
     },
   };
-  // The cap this prompt sends, which the Max Output row and the budget readout both read.
+  // The cap this prompt sends, which the Max Output row reads.
   const maxOutputControl = isMaxOutputKind(activeKind)
     ? {
         custom: promptMaxOutput[activeKind]?.custom ?? false,
@@ -1242,9 +1245,12 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
         onValueChange: (v: number) => setPromptMaxOutputValue(activeKind, v),
       }
     : null;
-  const budgetCap = isMaxOutputKind(activeKind)
-    ? resolvedMaxOutput(promptMaxOutput, activeKind)
-    : passCap(activeKind) ?? promptTarget.maxTokens;
+  // The readout's tokens come from the routed endpoint's Max Output, the same base the request reads.
+  const budgetBase = promptTarget.maxTokens;
+  const budgetTokens = budgetBase === undefined ? undefined : reasoningBudget({
+    effort: 'auto', kind: activeKind, budgets: promptReasoningBudget, base: budgetBase, answerCap: undefined,
+    floor: reasoningDialectBudgetFloor(promptReasoningCapability.dialect),
+  }).budget ?? undefined;
   const budgetPct = promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind);
   const samplerControls: SamplerControlProps[] = [
     {
@@ -1327,7 +1333,8 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
           ? {
               value: budgetPct,
               set: (v: number) => setPromptReasoningBudget(activeKind, v),
-              ...(budgetCap !== undefined && { tokens: Math.round((budgetPct / 100) * budgetCap) }),
+              tokens: budgetTokens,
+              disabled: budgetBase === undefined,
             }
           : null,
         level: reasoningLevelControl(promptReasoningCapability),

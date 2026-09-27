@@ -9,7 +9,8 @@ import { PROMPT_LABELS, SURFACE_LABELS } from '@/lib/promptGroups';
 import { normalizeEndpointUrl } from '@/lib/endpointUrl';
 import { DEFAULT_ENDPOINT, DEFAULT_MODEL_NAME } from '@/contexts/settingsDefaults';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
-import { SETTINGS_COPY } from './settingsCopy';
+import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { SETTINGS_COPY, REASONING_NOTES } from './settingsCopy';
 
 /**
  * A prompt's Options panel tunes that prompt and no other. These cases open the Scene Tags tab, whose
@@ -200,18 +201,47 @@ describe('the Max Output row', () => {
     expect(screen.getByText(/is read-only/)).toBeTruthy();
   });
 
-  it('drives the Reasoning Budget token readout, shipped cap when off and custom when on', () => {
+});
+
+/** A user endpoint preset on the default URL and model, so the seeded reasoning record still applies. */
+const seedEndpointMaxOutput = (maxOutputOverride: { enabled: boolean; value: number }) =>
+  localStorage.setItem('FORMAMORPH_textEndpointPresets', textEndpointPresetCodec.serialize({
+    activeId: 'mine',
+    presets: [{ id: 'mine', name: 'Mine', values: { ...DEFAULT_TEXT_ENDPOINT_VALUES, maxOutputOverride } }],
+  }));
+
+const budgetSlider = () => screen.getByRole('slider', { name: SETTINGS_COPY.reasoningBudget.label });
+
+describe('the Reasoning Budget readout', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('FORMAMORPH_thinkingMode', 'staged');
+    localStorage.setItem('FORMAMORPH_characterDiaries', 'true');
     seedTakesBudget();
+  });
+
+  it('reads its tokens from the endpoint’s Max Output, not the prompt’s row', () => {
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('summary');
-    expect(screen.getByText('25% · 50 tok')).toBeTruthy();
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
 
     makeEditable();
     fireEvent.click(maxOutputRow().box);
     fireEvent.keyDown(maxOutputRow().slider, { key: 'ArrowRight' });
-    expect(screen.getByText('25% · 52 tok')).toBeTruthy();
+    expect(within(maxOutputRow().row).getByText('208 tok')).toBeTruthy();
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+  });
 
-    fireEvent.click(maxOutputRow().box);
-    expect(screen.getByText('25% · 50 tok')).toBeTruthy();
+  it('reads the passes without a row from the same endpoint base, whatever their own cap', () => {
+    localStorage.setItem('FORMAMORPH_aiClock', 'true');
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
+    openOptions('statupdates');
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    switchTo('location');
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    // Time Passed sends a 12-token answer; the budget still comes from the endpoint.
+    switchTo('timepassed');
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
   });
 
   it('shows the token result where the budget is the only strength', () => {
@@ -220,9 +250,48 @@ describe('the Max Output row', () => {
       'FORMAMORPH_reasoningSupport',
       JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [] } }),
     );
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('diary');
     expect(screen.queryByRole('combobox', { name: /Native Reasoning/ })).toBeNull();
-    expect(screen.getByText('25% · 20 tok')).toBeTruthy();
+    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+  });
+
+  it('goes up to 150% in steps of 5', () => {
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
+    openOptions('narration');
+    makeEditable();
+    const slider = budgetSlider();
+    expect(slider.getAttribute('aria-valuemax')).toBe('150');
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(screen.getByText('150% · 1200 tok')).toBeTruthy();
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    expect(screen.getByText('145% · 1160 tok')).toBeTruthy();
+  });
+
+  it('disables the slider, keeps the percent, and names the fix while the endpoint override is off', () => {
+    seedEndpointMaxOutput({ enabled: false, value: 800 });
+    openOptions('narration');
+    makeEditable();
+    // Narration ships switched on, so only the missing base can disable the slider.
+    expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
+    expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
+    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
+    expect(screen.getByText('40%')).toBeTruthy();
+    expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
+  });
+
+  it('disables the budget-only slider and names the fix while the endpoint override is off', () => {
+    localStorage.setItem(
+      'FORMAMORPH_reasoningSupport',
+      JSON.stringify({ [`${normalizeEndpointUrl(DEFAULT_ENDPOINT)}|${DEFAULT_MODEL_NAME}`]: { ...takesBudget, levels: [] } }),
+    );
+    seedEndpointMaxOutput({ enabled: false, value: 800 });
+    openOptions('narration');
+    makeEditable();
+    expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
+    expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
+    expect(screen.getByText('40%')).toBeTruthy();
+    expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
   });
 });
 
