@@ -1,6 +1,6 @@
 import AuthService from './AuthService';
 import { authHeaders, unwrap } from './staffApi';
-import type { ErrorBody } from './responseError';
+import { readFailure } from './responseError';
 import { serverSupportsReports, type ReportGroup } from '@/lib/contentReports';
 
 /** The caps and lists this server will accept, and — by existing at all — that it takes reports. */
@@ -81,8 +81,8 @@ class ReportService {
     });
 
     if (response.status === 409) {
-      const body = (await response.json().catch(() => ({}))) as ErrorBody;
-      throw new AlreadyReportedError(body.error || 'You have already reported this.');
+      const { message } = await readFailure(response, 'You have already reported this.', ['error']);
+      throw new AlreadyReportedError(message);
     }
 
     const body = await unwrap<{ data: FiledReport }>(response, 'Failed to send this report');
