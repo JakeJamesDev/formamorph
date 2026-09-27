@@ -1687,8 +1687,9 @@ const GameViewer = ({
     const held = savedTraits(over, traits);
     return {
       ...activeUnderTraits(resolveStatNames(over.playerStats, resolve), held.acquired, held.disabledTraitIds, traitOrder),
+      ownedTraits: over.ownedTraits ?? {},
       resolve,
-      resolveTrait: (trait, text) => resolveTraitFor(overPins, trait, text),
+      resolveTrait: (trait, text, owner) => resolveTraitFor(overPins, trait, text, owner),
       resolveEntity: (entity, text) => resolveEntityFor(overPins, entity, text),
     };
   }, [pinsFor, resolveFor, resolveTraitFor, resolveEntityFor, traits, traitOrder]);

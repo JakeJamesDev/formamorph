@@ -38,29 +38,41 @@ export function resolveEntityNames(entities: Entity[], resolve: ResolveText): En
 /** Resolves one entity's own text with that entity as the Character Name. */
 export type ResolveEntityText = (entity: Entity, text: string) => string;
 
-/** Each item's AI description under `resolve`, keeping the list when none held a chip. */
-function aiTexts<T extends { aiDescription?: string }>(items: T[] | undefined, resolve: ResolveText): T[] | undefined {
-  if (!items?.length) return items;
-  return mapPreservingIdentity(items, (item) => {
-    const aiDescription = one(item.aiDescription, resolve);
-    return aiDescription === item.aiDescription ? item : { ...item, aiDescription };
-  });
-}
-
-/** Each entity's descriptions, summary, and owned trait and group AI text, resolved with that entity as their
- *  owner. Names stay as they are. */
+/** Each entity's descriptions and summary, resolved with that entity as their owner. Names stay as they are. */
 export function resolveEntityTexts(entities: readonly Entity[], resolve: ResolveEntityText): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
     const own: ResolveText = (text) => resolve(e, text);
     const playerDescription = one(e.playerDescription, own);
     const aiDescription = one(e.aiDescription, own);
     const aiSummary = one(e.aiSummary, own);
-    const traits = aiTexts(e.traits, own);
-    const traitGroups = aiTexts(e.traitGroups, own);
     return playerDescription === e.playerDescription && aiDescription === e.aiDescription && aiSummary === e.aiSummary
-      && traits === e.traits && traitGroups === e.traitGroups
       ? e
-      : { ...e, playerDescription, aiDescription, aiSummary, ...(traits ? { traits } : {}), ...(traitGroups ? { traitGroups } : {}) };
+      : { ...e, playerDescription, aiDescription, aiSummary };
+  });
+}
+
+/** Resolves an owned trait's own text: its own pins, with its owner as the Character Name. */
+export type ResolveOwnedTraitText = (trait: Trait, text: string, owner: Entity) => string;
+
+/** Each item's AI description under `resolve`, keeping the list when none held a chip. */
+function resolveAiDescriptions<T extends { aiDescription?: string }>(
+  items: T[] | undefined, resolve: (item: T) => ResolveText,
+): T[] | undefined {
+  if (!items?.length) return items;
+  return mapPreservingIdentity(items, (item) => {
+    const aiDescription = one(item.aiDescription, resolve(item));
+    return aiDescription === item.aiDescription ? item : { ...item, aiDescription };
+  });
+}
+
+/** Each entity's owned trait and group AI descriptions, with the entity as their Character Name. */
+export function resolveOwnedTraitTexts(
+  entities: readonly Entity[], resolveTrait: ResolveOwnedTraitText, resolveEntity: ResolveEntityText,
+): Entity[] {
+  return mapPreservingIdentity(entities, (e) => {
+    const traits = resolveAiDescriptions(e.traits, (t) => (text) => resolveTrait(t, text, e));
+    const traitGroups = resolveAiDescriptions(e.traitGroups, () => (text) => resolveEntity(e, text));
+    return traits === e.traits && traitGroups === e.traitGroups ? e : { ...e, traits, traitGroups };
   });
 }
 
@@ -116,12 +128,12 @@ export function resolveTraitGroupNames(groups: TraitGroup[], resolve: ResolveTex
   });
 }
 
-/** Each entity with its owned trait and group names resolved. */
+/** Each entity with its owned trait and group names resolved, the entity as each trait's owner. */
 export function resolveOwnedTraitNames(
-  entities: Entity[], resolveFor: (trait: Trait) => ResolveText, resolve: ResolveText,
+  entities: Entity[], resolveFor: (trait: Trait, owner: Entity) => ResolveText, resolve: ResolveText,
 ): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
-    const traits = e.traits && resolveTraitNames(e.traits, resolveFor);
+    const traits = e.traits && resolveTraitNames(e.traits, (t) => resolveFor(t, e));
     const traitGroups = e.traitGroups && resolveTraitGroupNames(e.traitGroups, resolve);
     return traits === e.traits && traitGroups === e.traitGroups ? e : { ...e, traits, traitGroups };
   });

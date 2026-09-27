@@ -2,8 +2,8 @@
 // the chips carry them? Sedge Landing, with a limp owned by the ferryman, a work song owned by the
 // eel-smoker, and a red scarf owned by a world persona the player plays.
 //
-// Arms, paired by run index: `before` (the scene with no owned traits in force, byte-identical to the chips
-// before owned traits existed) and `after` (the same scene with them in force). Every other byte is shared.
+// Arms, paired by run index: `before` (the scene with no owned traits in force) and `after` (the same scene
+// with them in force). Every other byte is shared.
 // Narration cases read the full Entities chip; planning cases read the summary chip's one line of names.
 //
 // Checks:

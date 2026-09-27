@@ -109,12 +109,14 @@ function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => s
   // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
   // belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
+  // Every scope renders each entity with its owned traits in force.
+  const roster = (opts: ContextOpts) => ({ ...opts, ownedTraits });
   return {
-    '': (opts) => renderEntityRoster(presentIds, entities, { ...opts, ownedTraits }),
-    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...opts, ownedTraits, excludeIds: presentIds }),
-    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...opts, ownedTraits, excludeIds: reachableExclude }),
+    '': (opts) => renderEntityRoster(presentIds, entities, roster(opts)),
+    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: presentIds }),
+    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...roster(opts), excludeIds: reachableExclude }),
     inscene: (opts) => {
-      const block = renderEntityRoster(inSceneIds, entities, { ...opts, ownedTraits });
+      const block = renderEntityRoster(inSceneIds, entities, roster(opts));
       if (!opts.nameOnly || !inSceneNames.length) return block;
       return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
     },

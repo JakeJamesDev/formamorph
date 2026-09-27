@@ -375,6 +375,14 @@ describe('entity nodes in the traits tab', () => {
     withAsh({ seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
     expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
   });
+
+  it("reads an owned trait's Character Name as its owner", () => {
+    renderTraits([PALADIN], [], [], {
+      world: { entities: [{ ...ash, traits: [T('t-tamed', 'Tamed', { playerDescription: '{{char}} heels at a word.' })] }] },
+      seed: (gameplay) => gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-tamed'] } }),
+    });
+    expect(within(section('Ash')).getByText('Ash heels at a word.')).toBeTruthy();
+  });
 });
 
 describe('an exclusive trait group reads as a set of alternatives', () => {

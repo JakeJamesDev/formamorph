@@ -75,7 +75,7 @@ export interface ResolvedWorld {
   /** Resolve against a whole pin map of the caller's own, as `pinsFor` builds. */
   resolveFor: (pins: Record<string, string>, text: string) => string;
   /** `resolveTraitText` against a pin map of the caller's own. */
-  resolveTraitFor: (pins: Record<string, string>, trait: Trait, text: string) => string;
+  resolveTraitFor: (pins: Record<string, string>, trait: Trait, text: string, owner?: Entity | null) => string;
   /** Resolve with pins not yet in state — for a string written in the same pass that applies the traits
    *  carrying them, which `resolvePH` would resolve against the pins as they stood before. */
   resolveWith: (extraPins: Record<string, string>, text: string) => string;
@@ -86,8 +86,9 @@ export interface ResolvedWorld {
   /** `resolveEntityText` against a pin map of the caller's own. */
   resolveEntityFor: (pins: Record<string, string>, entity: Entity, text: string) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins over the active ones, so a
-   *  pinning trait reads its own value whatever else is ticked. Trait names in `traits` already use this. */
-  resolveTraitText: (trait: Trait, text: string) => string;
+   *  pinning trait reads its own value whatever else is ticked. An owned trait's owner is its Character
+   *  Name. Trait names in `traits` already use this. */
+  resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
 }
 
 /** What a new game's first draw knows before React renders it into state. */
@@ -170,12 +171,12 @@ export function useResolvedAuthoredWorld(
     [resolveEntityFor, pins],
   );
   const resolveTraitFor = useCallback(
-    (withPins: Record<string, string>, trait: Trait, text: string) =>
-      resolvePlaceholders(text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders), player }),
+    (withPins: Record<string, string>, trait: Trait, text: string, owner: Entity | null = null) =>
+      resolveEntityCore(owner, text, { placeholders, rolls, pins: traitScopedPins(trait, withPins, placeholders), player }),
     [placeholders, rolls, player],
   );
   const resolveTraitText = useCallback(
-    (trait: Trait, text: string) => resolveTraitFor(pins, trait, text),
+    (trait: Trait, text: string, owner: Entity | null = null) => resolveTraitFor(pins, trait, text, owner),
     [resolveTraitFor, pins],
   );
 
@@ -268,7 +269,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
   // The one Traits tree's entities, their owned trait names resolved as the world's are.
   const resolveOwnedNames = useCallback(
-    (list: Entity[]) => resolveOwnedTraitNames(list, (t) => (text) => resolveTraitText(t, text), resolvePH),
+    (list: Entity[]) => resolveOwnedTraitNames(list, (t, owner) => (text) => resolveTraitText(t, text, owner), resolvePH),
     [resolveTraitText, resolvePH],
   );
   const traitEntities = useMemo(() => resolveOwnedNames(worldEntities), [resolveOwnedNames, worldEntities]);
