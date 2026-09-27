@@ -84,7 +84,11 @@ The toast and the window look and behave the same everywhere: in the main menu, 
 
 **One entry point for error toasts.** Every toast raised from a caught error goes through the existing `toastError`. It takes the caught error and a fallback message. It also takes an optional headline. With a headline, the headline becomes the toast text and the error's own message moves into the details. The 60 fixed-message sites use the headline, so their words don't change.
 
-**Which toasts use it.** A toast raised in a `catch`, or from a failed result that carries an error, goes through `toastError`. Form validation, refusals and other toasts with no error behind them stay plain `toast.error`, with no link. Each of the ~150 sites is classified during the sweep; the sweep doesn't change toast wording.
+**Which toasts use it.** A toast raised in a `catch`, or from a failed result that carries an error, goes through `toastError`. Form validation, refusals and other toasts with no error behind them stay plain `toast.error`, with no link. Each of the ~150 sites is classified during the sweep; the sweep doesn't change toast wording. Three classification rulings:
+
+- A toast that summarizes several caught errors, with nothing else showing them, wraps them in one `AggregateError` and goes through `toastError`; the built details list each failure by name with its own details or message. A summary toast whose failures already show inline, one per row, stays plain: the rows are the error, the toast is a count.
+- A toast that fires after another toast already carried View Details for the same error stays plain, so one failure never shows two links. The in-game turn-failure toast converts only when the request did not speak for itself: a silent pass or a pipeline error. The empty-narration toast stays plain; nothing was thrown.
+- A `FileReader` failure counts as a caught error; its `error` field is the error.
 
 **Every error gets details.** `toastError` always offers View Details. An error that carries a string `details` field supplies its own details; `toastError` checks for the field, not for a class, so any error class can carry details without changing its type. `DetailedError` stays as the plain class for throw sites that have no class of their own. Any other error gets built details: its name, its message, its cause chain and the top 10 stack frames. A failed service result that holds only a string is wrapped in an error, so it still gets the link.
 
