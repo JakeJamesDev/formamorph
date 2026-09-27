@@ -20,3 +20,7 @@ Workload rationale: a contained change in the narration context path with two te
 - [ ] A custom narration Max Output row moves both the reserve and the length guidance.
 - [ ] One test for the reserve with reasoning on and off. One test that the row moves both numbers.
 - [ ] Four gates green.
+
+## Comments
+
+**Handoff from ticket 01 (2026-09-27, commits 1d649f2f and 38d31dbc).** The shared function is `reasoningBudget({ effort, kind, budgets, base, answerCap, floor })` in the reasoning-effort module. Get `floor` from `reasoningDialectBudgetFloor(dialect)` where the record takes a budget, else 0. `MAX_REASONING_BUDGET_PCT` is 150. Its `maxTokens` assumes a reasoning signal: the request adds headroom only when a reasoning field goes out or the record answers `reasons: true` (Q16). Apply the same rule where you consume the function.

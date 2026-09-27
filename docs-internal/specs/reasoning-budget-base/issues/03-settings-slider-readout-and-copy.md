@@ -22,3 +22,7 @@ Workload rationale: Settings modal wiring, copy, and readout tests. Sonnet at me
 - [ ] Settings tests: tokens from the endpoint base with a custom row set; disabled slider and hint with the override off; slider max 150.
 - [ ] `verify-ui` on the Settings prompt options panel via the dev-router, both states (override on and off).
 - [ ] Four gates green.
+
+## Comments
+
+**Handoff from ticket 01 (2026-09-27, commits 1d649f2f and 38d31dbc).** The shared function is `reasoningBudget({ effort, kind, budgets, base, answerCap, floor })` in the reasoning-effort module. Get `floor` from `reasoningDialectBudgetFloor(dialect)` where the record takes a budget, else 0. `MAX_REASONING_BUDGET_PCT` is 150. Its `maxTokens` assumes a reasoning signal: the request adds headroom only when a reasoning field goes out or the record answers `reasons: true` (Q16). Apply the same rule where you consume the function.
