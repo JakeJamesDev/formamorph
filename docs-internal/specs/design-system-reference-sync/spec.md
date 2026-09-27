@@ -1,7 +1,7 @@
 # Design System Reference Sync
 
 Status: ready-for-agent
-Spec session: Design System Reference Sync
+Spec session: design-system-reference-sync — spec
 
 ## Problem Statement
 
