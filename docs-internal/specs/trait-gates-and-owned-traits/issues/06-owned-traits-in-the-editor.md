@@ -1,6 +1,7 @@
 # 06: Owned traits in the editor
 
-Status: in-progress
+Status: ready-for-human
+Status note: built in 58160dc6 and ef96d217; notes for later tickets under Comments.
 Base: 8c74e005
 Blocked by: 02 — Requires field in the editor
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -31,3 +32,13 @@ Any entity can own traits and trait groups. An author adds the first one from th
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] State every export-shape change in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+**Hand-over (2026-09-26).** Data: `Entity.traits` / `Entity.traitGroups`. Pure edits and the editor gate input are in `src/lib/ownedTraits.ts`; the one tree is `ownedTraitTree` / `applyOwnedTraitDrop` in `src/lib/traitTree.ts`.
+
+- **Ticket 07 (placement and drags):** an entity node is a synthetic group whose id is the entity's, placed after every world root item in entity order. Owned root items point at it. `applyOwnedTraitDrop` refuses entity-node drags and cross-owner drops; lift those two guards and add the stat-effect refusal. Entity nodes are `fixed` rows today.
+- **Rulings applied (spec session, Q1–Q9):** see the Editor section of the spec. The node shows for a trait or a group (Q8); a duplicated entity's "playing as" itself follows the copy (Q9).
+- **Decided here:** owned traits get no code-rename offer, because code reaches world traits only. The entity-node panel adds a name header and **Open Entity**, matching the Placeholders tab's owner panel.
+- **Tickets 08–09:** Enter World and play still build a world-only gate input, so a world trait that requires an owned trait reads locked there as "a missing trait" until they pass entity owners.
+- **Not changed:** the Traits tab search lists world traits only. Entity-scoped placeholder chips inside owned-trait text are not re-aimed when an entity is duplicated (`remapEntityChips` covers the entity's own fields only). Owned-trait pins join the pin-conflict note in ticket 09.
