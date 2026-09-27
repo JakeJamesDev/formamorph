@@ -113,6 +113,7 @@ Each drifted reference shows what production does today, and the guide says the 
 - **Settings extraction.** The Display and Output tab bodies move out of the Settings dialog into two production section components.
   - Each section reads a settings source with the same member names as the Settings context value. The Settings dialog passes the live context. The reference passes a local in-memory source built from the settings defaults.
   - Effects that leave the page go through that source: theme persistence, embedding-model load and dispose, and any other effect the sections trigger. The reference's source supplies local handlers that write a status line.
+  - The nested dialogs the Display section opens (font tuning, reveal animation, theme preview) take the same source, defaulting to the live context, so a dialog opened from the reference writes no real settings. The extraction ticket threads it; the reference ticket only wires. Embedding download state stays owned by the dialog, because inactive tab bodies unmount, and reaches the Output section through the source.
   - The sections take the Simple/Advanced mode as input. The reference offers the production mode control.
   - The Settings dialog keeps its tabs, mode state, and every behavior. The extraction is a pure move.
 - **Settings reference.** The Display and Output cards render the extracted sections. The Live Sample moves out of the Appearance section into its own block, because the section is now production. The Control States card is unchanged.
