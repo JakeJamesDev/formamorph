@@ -74,6 +74,14 @@ describe('authoredChipScene', () => {
     expect(authoredChipScene(world()).traits).toEqual([saltborn]);
   });
 
+  it("holds each entity's default owned traits in force, as the entry step preselects them", () => {
+    const keen: Trait = { id: 'keen', name: 'Keen-Eyed', isDefault: true, aiDescription: 'Sees the far shore.', statChanges: [] };
+    const idle: Trait = { id: 'idle', name: 'Idle', aiDescription: 'Sits all day.', statChanges: [] };
+    const scene = authoredChipScene(world({ entities: [{ ...wren, traits: [keen, idle] }, harrow] }));
+    expect(scene.ownedTraits).toEqual({ wren: ['keen'] });
+    expect(chipValues(scene)['<ENTITIES>']).toContain('Keen-Eyed: Sees the far shore.');
+  });
+
   it('holds every enabled lore entry with its position, since no keyword has fired yet', () => {
     const scene = authoredChipScene(world());
     expect(scene.lore.map((e) => [e.name, e.position ?? 'after'])).toEqual([['The Sea', 'after'], ['Lamps', 'before']]);

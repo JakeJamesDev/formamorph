@@ -1,6 +1,7 @@
 import type {
   Connection, DictionaryEntry, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup,
 } from '@/types';
+import type { OwnedTraitsInForce } from '../locationContext';
 import type { ResolvedPersona } from '../persona';
 import type { ResolveEntityText } from '../resolveWorldNames';
 import type { WorldCalendar } from '../gameClock';
@@ -24,6 +25,8 @@ export interface ChipScene {
   /** The traits in force. An adapter that holds per-trait pins resolves those before it builds the scene. */
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** Each entity's owned traits in force, the persona's included. None when absent. */
+  ownedTraits?: OwnedTraitsInForce;
   persona: ResolvedPersona | null;
   /** Where the scene is, or nowhere: a world with no locations, or a start not yet resolved. */
   location: GameLocation | null;

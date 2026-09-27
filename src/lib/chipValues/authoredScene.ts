@@ -73,6 +73,11 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
       ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min })),
     traits: traits.filter((trait) => activeIds.has(trait.id)),
     traitGroups,
+    // Each entity holds its default owned traits, as the entry step preselects them.
+    ownedTraits: Object.fromEntries(entities.flatMap((entity) => {
+      const defaults = (entity.traits ?? []).filter((trait) => trait.isDefault).map((trait) => trait.id);
+      return defaults.length ? [[entity.id, defaults]] : [];
+    })),
     persona: null,
     location,
     locations,

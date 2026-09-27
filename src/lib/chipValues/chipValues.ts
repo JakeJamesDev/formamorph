@@ -67,14 +67,20 @@ export function chipValues(scene: ChipScene): Record<string, string> {
   };
 
   const traitIds = scene.traits.map((trait) => trait.id);
+  // The played entity's owned traits are the player's too, after the world's.
+  const played = scene.persona?.entity;
+  const playedIds = (played && scene.ownedTraits?.[played.id]) || [];
   const values: Record<string, string> = {
     [WORLD.token]: scene.overview,
     ...statChipValues(scene.stats),
-    ...familyValues(TRAITS, (sel) => (
-      traitIds.length
-        ? buildTraitContext(traitIds, scene.traits, scene.traitGroups, chipFormat(sel.format))
-        : NONE_PLACEHOLDER
-    )),
+    ...familyValues(TRAITS, (sel) => {
+      const format = chipFormat(sel.format);
+      const blocks = [
+        buildTraitContext(traitIds, scene.traits, scene.traitGroups, format),
+        played ? buildTraitContext(playedIds, played.traits ?? [], played.traitGroups ?? [], format) : '',
+      ].filter(Boolean);
+      return blocks.length ? blocks.join('\n') : NONE_PLACEHOLDER;
+    }),
     ...personaContextValues(scene.persona),
     ...familyValues(DICTIONARY, (sel) => {
       const position = sel.variant === 'before' ? 'before' : 'after';
@@ -98,17 +104,17 @@ function resolveAll(values: Record<string, string>, resolve: (text: string) => s
 
 /** The Entities chip's scope builders over one scene. */
 function entityScopes(scene: ChipScene): Record<string, (opts: ContextOpts) => string> {
-  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [] } = scene;
+  const { location, locations, entities, presentIds, inSceneIds, inSceneNames = [], ownedTraits } = scene;
   const outer = scene.outerScopeEntities ?? entities;
   // Roster precedence: here > sub-location > reachable. A character shows only in the highest scope it
   // belongs to, so the lower scopes drop the ids the higher ones list.
   const reachableExclude = [...presentIds, ...sublocationEntityIds(location, locations, outer)];
   return {
-    '': (opts) => renderEntityRoster(presentIds, entities, opts),
-    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...opts, excludeIds: presentIds }),
-    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...opts, excludeIds: reachableExclude }),
+    '': (opts) => renderEntityRoster(presentIds, entities, { ...opts, ownedTraits }),
+    sublocations: (opts) => buildSublocationEntitiesContext(location, locations, outer, { ...opts, ownedTraits, excludeIds: presentIds }),
+    reachable: (opts) => buildReachableEntitiesContext(location, locations, outer, { ...opts, ownedTraits, excludeIds: reachableExclude }),
     inscene: (opts) => {
-      const block = renderEntityRoster(inSceneIds, entities, opts);
+      const block = renderEntityRoster(inSceneIds, entities, { ...opts, ownedTraits });
       if (!opts.nameOnly || !inSceneNames.length) return block;
       return [...(block === NONE_PLACEHOLDER ? [] : [block]), ...inSceneNames].join(', ');
     },

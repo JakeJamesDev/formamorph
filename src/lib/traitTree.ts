@@ -272,6 +272,18 @@ export function applyOwnedTraitDrop(
   };
 }
 
+/** The selected traits in the order `buildTraitContext` renders them: ungrouped first, then group by group. */
+export function traitsInContextOrder(selectedIds: Iterable<string>, traits: Trait[], groups: TraitGroup[]): Trait[] {
+  const sel = new Set(selectedIds);
+  const selectedIn = (groupId: string | null) =>
+    traits
+      .filter((t) => (t.groupId ?? null) === groupId && sel.has(t.id))
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const walk = (nodes: TraitTreeNode[]): Trait[] =>
+    nodes.flatMap((node) => (node.kind === 'group' ? [...selectedIn(node.id), ...walk(node.children)] : []));
+  return [...selectedIn(null), ...walk(buildTraitTree(groups, traits))];
+}
+
 /**
  * Build the trait block sent to the AI: ungrouped selected traits first, then each group (depth-first) that
  * has ≥1 selected trait, emitting the group name + its AI description (if non-blank) above its selected

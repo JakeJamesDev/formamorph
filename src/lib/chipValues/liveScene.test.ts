@@ -122,6 +122,35 @@ describe('the live adapter', () => {
     expect(chipValues(scene)['<PERSONA>']).toContain('Wren rows the ferry.');
   });
 
+  describe('owned traits', () => {
+    const loyal: Trait = { id: 'loyal', name: 'Loyal', aiDescription: '{{char}} stands by the player.', statChanges: [] };
+    const sullen: Trait = { id: 'sullen', name: 'Sullen', aiDescription: '{{char}} answers in grunts.', statChanges: [] };
+    const owned = entities.map((e) => (e.id === 'harbormaster' ? { ...e, traits: [loyal, sullen] } : e));
+    const cast = sources({ entities: owned, allEntities: [...owned, stray] });
+
+    it("gives an NPC its chosen traits minus the ones switched off, each resolved with its owner", () => {
+      const values = chipValues(liveChipScene({
+        ...cast, ownedTraits: { harbormaster: { chosen: ['loyal', 'sullen'], disabled: ['sullen'] } },
+      }));
+      expect(values['<ENTITIES>']).toContain('Loyal: Harbormaster stands by the player.');
+      expect(values['<ENTITIES>']).not.toContain('Sullen');
+      expect(values['<ENTITIES|summary>']).toContain('traits: Loyal');
+    });
+
+    it('gives an NPC nothing when the playthrough chose none of its traits', () => {
+      expect(chipValues(liveChipScene(cast))['<ENTITIES>']).not.toContain('traits');
+    });
+
+    it("joins the played entity's owned traits to the player's", () => {
+      const scar: Trait = { id: 'scar', name: 'Scarred', aiDescription: '{{char}} carries a scar.', statChanges: [] };
+      const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traits: [scar] };
+      const values = chipValues(liveChipScene({
+        ...cast, persona: { source: 'world', entity: wren }, ownedTraits: { wren: { chosen: ['scar'] } },
+      }));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.\nScarred: Wren carries a scar.');
+    });
+  });
+
   it('carries no lore, since activation is per turn', () => {
     expect(liveChipScene(sources()).lore).toEqual([]);
   });

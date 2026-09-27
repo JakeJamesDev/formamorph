@@ -229,6 +229,47 @@ describe('the Traits chip', () => {
     expect(values['<TRAITS DESCRIPTION>']).toBe(NONE_PLACEHOLDER);
     expect(values['<TRAITS DESCRIPTION|xml>']).toBe(NONE_PLACEHOLDER);
   });
+
+  // The traveler, played as a world persona, owns a scar in force and a vow that is not.
+  const scarred: Trait = { id: 'scarred', name: 'Scarred', aiDescription: 'A pale line across one cheek.', statChanges: [] };
+  const vow: Trait = { id: 'vow', name: 'Vow of Silence', aiDescription: 'Speaks to no one.', statChanges: [] };
+  const played: ResolvedPersona = { source: 'world', entity: { ...traveler, traits: [scarred, vow] } };
+
+  it("adds the played entity's owned traits in force after the world traits", () => {
+    const values = chipValues(scene({ persona: played, ownedTraits: { traveler: ['scarred'] } }));
+    expect(values['<TRAITS DESCRIPTION>']).toBe(
+      'Light Sleeper: Wakes at the smallest sound.\nOrigin:\n  Where you come from.\n  Saltborn: Raised on the coast.\n'
+      + 'Scarred: A pale line across one cheek.',
+    );
+    expect(values['<TRAITS DESCRIPTION>']).not.toContain('Vow of Silence');
+    expect(values['<TRAITS DESCRIPTION|xml>']).toContain('<name>Scarred</name>');
+  });
+
+  it('renders the owned traits alone when no world trait is in force', () => {
+    const values = chipValues(scene({ traits: [], persona: played, ownedTraits: { traveler: ['scarred'] } }));
+    expect(values['<TRAITS DESCRIPTION>']).toBe('Scarred: A pale line across one cheek.');
+  });
+
+  it('keeps the owned traits out of the Persona chip', () => {
+    const values = chipValues(scene({ persona: played, ownedTraits: { traveler: ['scarred'] } }));
+    expect(values['<PERSONA>']).not.toContain('Scarred');
+  });
+});
+
+describe('owned traits in the Entities chip', () => {
+  const oath: Trait = { id: 'oath', name: 'Sworn', aiDescription: 'Bound to the gate captain.', statChanges: [] };
+  const sworn = scene({ entities: [{ ...guard, traits: [oath] }, merchant, watchman, wanderer], ownedTraits: { guard: ['oath'] } });
+
+  it("gives every scope an NPC's owned traits in force", () => {
+    const values = chipValues(sworn);
+    expect(values['<ENTITIES>']).toContain('  traits:\n    Sworn: Bound to the gate captain.');
+    expect(values['<ENTITIES|summary>']).toContain('  traits: Sworn');
+    expect(values['<ENTITIES|inscene>']).toContain('Sworn: Bound to the gate captain.');
+    // From the Market, the Guard is in the reachable scope.
+    expect(chipValues({ ...sworn, location: market, presentIds: ['watchman'] })['<ENTITIES|reachable>'])
+      .toContain('Sworn: Bound to the gate captain.');
+    expect(sceneEntityChipValues(sworn, ['guard'])['<ENTITIES>']).toContain('Sworn: Bound to the gate captain.');
+  });
 });
 
 describe('the Persona chip', () => {

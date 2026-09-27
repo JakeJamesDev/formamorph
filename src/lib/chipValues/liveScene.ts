@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
-import type { Connection, Entity, GameLocation, Placeholder, PlayerStat, Trait, TraitGroup } from '@/types';
+import type {
+  Connection, Entity, GameLocation, OwnedTraitStates, Placeholder, PlayerStat, Trait, TraitGroup,
+} from '@/types';
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere } from '../locationContext';
 import type { ResolvedPersona } from '../persona';
@@ -14,6 +16,8 @@ export interface LiveSceneSources {
   /** The traits in force, in authored order. */
   traits: Trait[];
   traitGroups: TraitGroup[];
+  /** Each entity's owned trait picks and switch-offs. None when absent. */
+  ownedTraits?: OwnedTraitStates;
   resolve: (text: string) => string;
   /** A trait's own text under its own pins. */
   resolveTrait: (trait: Trait, text: string) => string;
@@ -83,6 +87,7 @@ export function liveChipScene(
     stats: box?.activeStats ?? sources.stats,
     traits,
     traitGroups: sources.traitGroups,
+    ownedTraits: ownedTraitsInForce(sources.ownedTraits),
     persona,
     location: loc,
     locations: sources.locations,
@@ -102,19 +107,27 @@ export function liveChipScene(
   };
 }
 
+/** Each entity's chosen owned traits minus the ones switched off. */
+function ownedTraitsInForce(states: OwnedTraitStates | undefined): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(states ?? {}).map(([id, { chosen, disabled = [] }]) => {
+    const off = new Set(disabled);
+    return [id, chosen.filter((traitId) => !off.has(traitId))];
+  }));
+}
+
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+    overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
     connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+      overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
       connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, traits, traitGroups, resolve, resolveTrait, resolveEntity, persona, location, locations,
+      overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
       connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );
