@@ -111,7 +111,7 @@ export function resetLinkOverride(link: TraitLink, traitId: string, field: keyof
 }
 
 /** The link overriding each field where `edited` differs from what the link reads now; the same link when
- *  nothing differs. An editor's whole-trait write lands here, so untouched fields stay live. */
+ *  nothing differs. An editor writes the whole trait, so this keeps untouched fields live. */
 export function setLinkEdits(link: TraitLink, trait: Trait, edited: Trait): TraitLink {
   const current = linkTraitState(trait, link).record;
   const next = linkFieldsOf(edited);

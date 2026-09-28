@@ -9,6 +9,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { BlueprintFooter, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
 import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
 import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasStatEffects } from '@/lib/traitTree';
 import type { LinkRow } from '@/lib/traitTree';
 import type { Entity, Trait, TraitLink } from '@/types';
@@ -110,7 +111,7 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
                 <li key={t.id}>
                   <LabelRow
                     reset={state?.overridden.includes('isDefault') && (
-                      <FieldReset field={`${t.name} Enabled by Default`} stale={state.stale.includes('isDefault')} onReset={() => reset(t.id)} />
+                      <FieldReset field={`${labelPlaceholders(t.name, placeholders)} Enabled by Default`} stale={state.stale.includes('isDefault')} onReset={() => reset(t.id)} />
                     )}
                   >
                     <label className="flex items-center gap-2 cursor-pointer">

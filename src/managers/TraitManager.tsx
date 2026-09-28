@@ -26,8 +26,8 @@ import type {
   Entity, FocusFieldHint, Placeholder, PlaceholderPin, Trait, StatChange, TraitLinkFields, TraitRequirement, TraitStatToggle,
 } from '@/types';
 
-/** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint moved under,
- *  and where a whole-trait write and a field reset go. */
+/** A link's edit of one trait it brings: which fields it overrides, which of those the blueprint changed
+ *  since, and where a whole-trait write and a field reset go. */
 export interface TraitLinkEdit {
   bearerId: string;
   overridden: readonly (keyof TraitLinkFields)[];
@@ -109,7 +109,8 @@ const TraitManager = ({
     (next: Trait) => (linkWrite ? linkWrite(next) : ownerId ? editEntity(ownerId, (e) => updateOwnedTrait(e, next)) : updateTrait(next)),
     [linkWrite, ownerId, editEntity, updateTrait],
   );
-  const reset = (field: keyof TraitLinkFields, label: string) => (link?.overridden.includes(field)
+  const readOnly = !!link;
+  const resetControl = (field: keyof TraitLinkFields, label: string) => (link?.overridden.includes(field)
     ? <FieldReset field={label} stale={link.stale.includes(field)} onReset={() => link.reset(field)} />
     : null);
   const { draft: editingTrait, apply, setField: handleChange } = useEditingDraft<Trait>(trait, write);
@@ -199,7 +200,7 @@ const TraitManager = ({
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
           ariaLabel="Name"
-          readOnly={!!link}
+          readOnly={readOnly}
           // Code reaches world traits only, so an owned trait's rename has nothing to rewrite.
           {...(owner || link ? {} : { onFocus: rename.onFocus, onBlur: rename.onBlur, onSubmit: rename.onSubmit })}
         />
@@ -209,7 +210,7 @@ const TraitManager = ({
         value={editingTrait.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
-        readOnly={!!link}
+        readOnly={readOnly}
         resizable
       />
       <PlaceholderField
@@ -217,7 +218,7 @@ const TraitManager = ({
         value={editingTrait.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
-        readOnly={!!link}
+        readOnly={readOnly}
         resizable
         tourAnchor="trait-ai-description"
       />
@@ -226,7 +227,7 @@ const TraitManager = ({
 
   const availabilityPanel = (
     <>
-      <LabelRow reset={reset('isDefault', 'Enabled by Default')}>
+      <LabelRow reset={resetControl('isDefault', 'Enabled by Default')}>
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={!!editingTrait.isDefault}
@@ -236,7 +237,7 @@ const TraitManager = ({
           <Hint as="span">{link?.defaultHint ?? 'Selected when a new game starts'}</Hint>
         </label>
       </LabelRow>
-      <LabelRow reset={reset('playerToggle', 'Player Can Toggle In-Game')}>
+      <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In-Game')}>
         <label className="flex items-center gap-2 cursor-pointer">
           <Checkbox
             checked={!!editingTrait.playerToggle}
@@ -251,8 +252,8 @@ const TraitManager = ({
         onChange={setRequires}
         onOpen={openRequirement}
         opens={requirementOpens}
-        ownerId={link?.bearerId}
-        labelAside={reset('requires', 'Requires')}
+        bearerId={link?.bearerId}
+        labelAside={resetControl('requires', 'Requires')}
       />
       {availabilityFooter}
     </>
@@ -261,7 +262,7 @@ const TraitManager = ({
   const statsPanel = (
     <>
       <div data-tour-anchor="trait-stat-changes" className="space-y-2">
-        <LabelRow reset={reset('statChanges', 'Stat Changes')}>
+        <LabelRow reset={resetControl('statChanges', 'Stat Changes')}>
           <Label>Stat Changes</Label>
           <HelpButton topicId="worldEditor.statChanges" className="h-6 w-6" />
         </LabelRow>
@@ -322,7 +323,7 @@ const TraitManager = ({
         {statToggles.map((toggle, index) => (
           <div key={index} className="space-y-1">
           <div className="flex space-x-2">
-            <Select value={toggle.statId} onValueChange={(v) => updateStatToggle(index, { statId: v })} disabled={!!link}>
+            <Select value={toggle.statId} onValueChange={(v) => updateStatToggle(index, { statId: v })} disabled={readOnly}>
               <SelectTrigger>
                 <SelectValue placeholder="Select stat" />
               </SelectTrigger>
@@ -335,7 +336,7 @@ const TraitManager = ({
             <Select
               value={toggle.enabled ? 'on' : 'off'}
               onValueChange={(v) => updateStatToggle(index, { enabled: v === 'on' })}
-              disabled={!!link}
+              disabled={readOnly}
             >
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -346,7 +347,7 @@ const TraitManager = ({
             <Button
               variant="ghost"
               size="icon"
-              disabled={!!link}
+              disabled={readOnly}
               onClick={() => setStatToggles(statToggles.filter((_, i) => i !== index))}
             >
               <Trash2 className="h-4 w-4" />
@@ -355,7 +356,7 @@ const TraitManager = ({
           <ConflictNote conflict={conflicts.stats[toggle.statId]} placeholders={placeholders} onOpen={onOpenTrait} />
           </div>
         ))}
-        {!link && (
+        {!readOnly && (
           <Button size="sm" onClick={() => setStatToggles([...statToggles, { statId: '', enabled: true }])}>
             Add Stat Availability
           </Button>
@@ -367,7 +368,7 @@ const TraitManager = ({
 
   const pinsPanel = (
     <div className="space-y-2">
-      <LabelRow reset={reset('placeholderPins', 'Placeholder Pins')}>
+      <LabelRow reset={resetControl('placeholderPins', 'Placeholder Pins')}>
         <Label>Placeholder Pins</Label>
         <HelpButton topicId="worldEditor.placeholderPins" className="h-6 w-6" />
       </LabelRow>

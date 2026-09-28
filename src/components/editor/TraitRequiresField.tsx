@@ -24,15 +24,15 @@ const filterRows = (_value: string, search: string, keywords: string[] = []) =>
  * that adds one. Picking a target opens a second page for the bearer: the same bearer, You, or an entity that
  * bears it. Off-world the target is added for the same bearer at once. A chip opens its target, unless
  * `opens` says the host has nowhere to open it, when it reads as plain text; a chip whose target is gone
- * reads red under its stored name. `ownerId` names the bearer whose gate the chips read, for a link whose
+ * reads red under its stored name. `bearerId` names the bearer whose gate the chips read, for a link whose
  * requirements differ from its original's; without it, the first bearer holding the trait.
  */
-export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, ownerId, labelAside }: {
+export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, bearerId, labelAside }: {
   trait: Trait;
   onChange: (requires: TraitRequirement[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
-  ownerId?: string;
+  bearerId?: string;
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
@@ -44,9 +44,9 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
   const { states, options } = useMemo(() => {
     const gates = gateStates(gateInput);
     const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
-    const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
+    const gate = (bearerId !== undefined ? gateOf(gates, bearerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
     return { states: gate?.requirements ?? [], options: requirementOptions(gateInput, trait.id) };
-  }, [gateInput, trait.id, ownerId]);
+  }, [gateInput, trait.id, bearerId]);
 
   const listed = (requirement: TraitRequirement) => requires.some((r) => sameRequirement(r, requirement));
   const changeOpen = (next: boolean) => {
