@@ -269,3 +269,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q42 | Root-only means the Traits tab tree. A drop of the marked node into a trait group is refused with the inline notice. Entities tab groups are editor folders and stay free. |
   | Q43 | Marking an entity that sits in a trait group clears its placement, so it moves to the end of the root. |
   | Q44 | Unmark counts links, owned traits and copies. Delete counts links, owned traits and owned placeholders. Groups are not counted. Delete confirms for the marked entity only; other entities keep today's delete. |
+  | Q45 | Stat Availability (stat toggles) is read-only on a link, like name and descriptions. Q26's five fields are the whole list. |
+  | Q46 | Reset to Blueprint on a subtree trait row drops that trait's overrides; on the link's own row, a trait link or the group row, it drops every override the link holds. |
+  | Q47 | The linked group's panel keeps its per-trait default-on list as a shortcut, with a Reset on each overridden row. |
+  | Q48 | The entity editor modal's Traits tab gets the full link editor without Edit Blueprint; its "Linked from" line names the original only. Ticket 03 owns the shared Reset and "Blueprint changed" component; 04 reuses it. |
