@@ -828,7 +828,7 @@
     {
       "id": "889d6e62-5641-5102-a184-7e409aa95d60",
       "name": "Human",
-      "playerDescription": "Restless, adaptable, and quick to make a name. +10 starting Renown.",
+      "playerDescription": "Restless, adaptable, and quick to make a name.",
       "aiDescription": "{{char}} is human: adaptable, ambitious, and quick to earn a reputation on the frontier.",
       "statChanges": [
         {
@@ -851,7 +851,7 @@
     {
       "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
       "name": "Elf",
-      "playerDescription": "Long-lived, sharp-eyed, and close to the weave of magic. +10 max Mana.",
+      "playerDescription": "Long-lived, sharp-eyed, and close to the weave of magic.",
       "aiDescription": "{{char}} is an elf: long-lived, graceful, keen of sight and hearing, and naturally close to arcane power.",
       "statChanges": [
         {
@@ -874,7 +874,7 @@
     {
       "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
       "name": "Dwarf",
-      "playerDescription": "Stout, stubborn, and hard to put down. +10 max Health.",
+      "playerDescription": "Stout, stubborn, and hard to put down.",
       "aiDescription": "{{char}} is a dwarf: stout, stubborn, hardy, and slow to forgive a debt or an insult.",
       "statChanges": [
         {
@@ -897,7 +897,7 @@
     {
       "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
       "name": "Halfling",
-      "playerDescription": "Small, lucky, and never quite broke. +15 starting Gold.",
+      "playerDescription": "Small, lucky, and never quite broke.",
       "aiDescription": "{{char}} is a halfling: small, cheerful, light-fingered when it counts, and lucky in small ways.",
       "statChanges": [
         {
@@ -920,7 +920,7 @@
     {
       "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
       "name": "Paladin",
-      "playerDescription": "A sworn warrior of the Ember. Sword, shield and holy light. +30 max Faith.",
+      "playerDescription": "A sworn warrior of the Ember. Sword, shield and holy light.",
       "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith.",
       "statChanges": [
         {
@@ -943,7 +943,7 @@
     {
       "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
       "name": "Wizard",
-      "playerDescription": "A scholar of the arcane. Spells from study, not prayer. +30 max Mana.",
+      "playerDescription": "A scholar of the arcane. Spells from study, not prayer.",
       "aiDescription": "{{char}} is a wizard: a scholar of the arcane who casts spells learned from study, and who guards a spellbook above all other possessions.",
       "statChanges": [
         {
@@ -966,7 +966,7 @@
     {
       "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
       "name": "Rogue",
-      "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits. +40 starting Gold.",
+      "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
       "aiDescription": "{{char}} is a rogue: quick, quiet and practical, skilled with locks, pockets, poisons and quiet exits, and never without a plan to leave.",
       "statChanges": [
         {
@@ -989,7 +989,7 @@
     {
       "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
       "name": "Cleric",
-      "playerDescription": "A healer and priest of the Ember. Mends wounds and turns the dead. +30 max Faith.",
+      "playerDescription": "A healer and priest of the Ember. Mends wounds and turns the dead.",
       "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead.",
       "statChanges": [
         {
