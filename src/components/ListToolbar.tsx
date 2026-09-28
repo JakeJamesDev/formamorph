@@ -23,7 +23,7 @@ export const ListAddButton = forwardRef<HTMLButtonElement, Omit<ButtonProps, 'ch
 ListAddButton.displayName = 'ListAddButton';
 
 /** A row of a + menu. Its action receives the trimmed search text; the box clears and the menu closes after. */
-export function ListMenuRow({ icon, label, onAdd }: { icon?: ReactNode; label: string; onAdd: (typed: string) => void }) {
+export function ListMenuRow({ icon, label, onAdd }: { icon?: ReactNode; label: ReactNode; onAdd: (typed: string) => void }) {
   const { add } = useListAdd();
   return (
     <button type="button" className={MENU_ROW} onClick={() => add(onAdd)}>

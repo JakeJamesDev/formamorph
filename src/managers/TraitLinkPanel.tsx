@@ -65,8 +65,8 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
   const single = rows.length === 1 && rows[0].trait.id === originalId;
   const hasStats = !persona && rows.some(({ trait: t }) => hasStatEffects(t));
   const set = (traitId: string, on: boolean) => editBearer(entity.id, (e) => setLinkDefault(e, link.id, traitId, on));
-  // A library entity's fallback targets are the world's placeholders, not its own carried pool.
-  const pinTargets = store.library?.world ? [...store.library.world.placeholders] : placeholders;
+  // A root entity's fallback targets are its world's placeholders, not its own carried pool.
+  const pinTargets = store.entityRoot?.world ? [...store.entityRoot.world.placeholders] : placeholders;
   const pinRows = linkPinRows({ placeholders: pinTargets, placeholderOwners }, rows.map((r) => r.trait), link, persona ? [] : entity.placeholders ?? []);
   const setPin = (traitId: string, name: string, value: TraitLinkPinValue | null) =>
     editBearer(entity.id, (e) => setLinkPinValue(e, link.id, traitId, name, value));

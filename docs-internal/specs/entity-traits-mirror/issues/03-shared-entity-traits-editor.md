@@ -31,3 +31,7 @@ An author editing a library entity gets the World Editor's search box and **+** 
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] No export-shape change; say so in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+- 2026-09-28 (implementation): The store's one-entity root is now `entityRoot: EntityRoot` (was `library: LibraryLinks`), same shape, separate from `offWorld`; the library store sets both. Rulings Q23 to Q25 came from the spec session mid-ticket. The shared editor's adds write through `setTraits` / `setTraitGroups`, not `editEntity`, so adding a trait in the library never rebinds the entity's links as a side effect. The existing "adds a trait" test now opens the **+** menu, since the **Add Trait** button became the **Add Trait to <entity>** row. The editor's reset of selection on an entity change has no test here: the library modal never swaps entities, so ticket 04's bench test covers it.

@@ -8,18 +8,23 @@ import { cn } from '@/lib/utils';
 /**
  * Master-detail layout that adapts to width. Desktop shows the list and detail side-by-side (two scrolling
  * columns). Mobile shows one panel at a time: the list, and — when `showDetail` is set — the detail slides in
- * over it with a back header, native push-navigation style. The caller owns selection; this only takes the
- * `showDetail` flag and an `onBack` to pop. Slide is skipped under `prefers-reduced-motion`.
+ * over it with a back header, native push-navigation style. `stacked` uses that push at every width, for a
+ * host too narrow to split. The caller owns selection; this only takes the `showDetail` flag and an `onBack`
+ * to pop. Slide is skipped under `prefers-reduced-motion`.
  */
-export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back', className, scrollList = true, scrollDetail = true }: {
+export function ListDetail({
+  list, detail, showDetail, onBack, backLabel = 'Back', className, stacked = false, scrollList = true, scrollDetail = true,
+}: {
   list: ReactNode;
   detail: ReactNode;
-  /** Whether the detail is active (drives the mobile push; ignored on desktop, which shows both). */
+  /** Whether the detail is active (drives the push; ignored side by side, which shows both). */
   showDetail: boolean;
-  /** Pop back to the list on mobile (typically clears the caller's selection). */
+  /** Pop back to the list from the push (typically clears the caller's selection). */
   onBack: () => void;
   backLabel?: string;
   className?: string;
+  /** Push the detail over the list at every width, not only on mobile. */
+  stacked?: boolean;
   /**
    * Set false when the list slot scrolls itself or owns its own pointer handling — a canvas, for
    * instance, whose floating panels are otherwise swallowed by the scroll viewport.
@@ -31,7 +36,7 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
 }) {
   const isMobile = useIsMobile();
 
-  if (!isMobile) {
+  if (!isMobile && !stacked) {
     return (
       <div data-list-detail className={cn('flex-1 min-h-0 flex', className)}>
         {scrollList
