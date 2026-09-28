@@ -27,14 +27,16 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
-import { ListAddButton, ListToolbar } from '@/components/ListToolbar';
+import { ListMenuRow, ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
+import { useListSearch } from '@/components/listToolbarHooks';
+import { matchesListSearch } from '@/lib/listSearch';
+import { TraitsAddMenu, type OwnedKind } from '../managers/TraitsAddMenu';
 import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, ChevronRight, Save, FolderPlus, FilePlus, LayoutTemplate, CircleUserRound, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -84,10 +86,7 @@ import { CustomPersonaPanel } from '../managers/CustomPersonaPanel';
 import { bearsTraits, originalOf } from '@/lib/bearers';
 import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
-import { bearerChoices } from '@/lib/bearerChoices';
-import { BearerList, LinkToBearerButton } from '../managers/BearerPicker';
-import { MENU_ROW } from '@/components/menuRow';
-import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
+import { LinkToBearerButton } from '../managers/BearerPicker';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
@@ -111,10 +110,10 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { describePlaceholders, newPlaceholder } from '@/lib/placeholders';
+import { newPlaceholder } from '@/lib/placeholders';
 import { placeholderOwnerRef } from '@/lib/placeholderHomes';
 import { ownerIdOfNode } from '@/lib/placeholderScopes';
-import { chipPlaceholderNames, labelPlaceholders } from '@/lib/placementLetters';
+import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
 import { placeholderSelection } from '@/lib/placeholderTree';
 import PlaceholderOwnerPanel from '../managers/PlaceholderOwnerPanel';
@@ -135,9 +134,6 @@ import { Tip } from '@/components/ui/tooltip';
 
 /** The fields a reorderable list row needs (every editor item has these). */
 type ListItem = SortableListItem;
-/** What the + menu's drill-in adds to an entity. */
-type OwnedKind = 'trait' | 'group';
-
 const WorldEditorInner = ({
   onClose, embedded = false, backButton, newWorld = false, inGame = false, startTour: startTourOnOpen = false, onPlay,
 }: {
@@ -336,7 +332,8 @@ const WorldEditorInner = ({
       setBookTab(devSubtab as DictionaryBookPanelTab);
     }
   }, [devSubtab]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const search = useListSearch();
+  const { clear: clearSearch } = search;
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // ── Find & replace ────────────────────────────────────────────────────────
@@ -412,7 +409,7 @@ const WorldEditorInner = ({
     if (!match) { setFindField(null); clearEditorMatch(); return; }
     setActiveTab(match.target.tab);
     // Same reason as a Bench finding's Open: the list filter would hide the row the hit lives on.
-    setSearchTerm('');
+    clearSearch();
     setSelectedItemId(match.target.itemId);
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
@@ -437,7 +434,7 @@ const WorldEditorInner = ({
       // stays wherever it was, with the selected row off screen.
       revealSelectedRow(editorRootRef.current);
     });
-  }, [deferReveal]);
+  }, [deferReveal, clearSearch]);
   useEffect(() => () => {
     if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     cancelEditorReveals();
@@ -458,11 +455,6 @@ const WorldEditorInner = ({
   }, [isWorldDirty]);
   const requestClose = useCallback(() => { leaveWorld(onClose); }, [leaveWorld, onClose]);
   useBackStop(requestClose, editorRootRef);
-  const [addMenuOpen, setAddMenuOpen] = useState(false);
-  // The + menu's drill-in: which kind of owned item it adds to the entity picked next.
-  const [addToEntity, setAddToEntity] = useState<OwnedKind | null>(null);
-  const [addMenuFrom, setAddMenuFrom] = useState<SlideFrom>(null);
-  const drillAddMenu = (kind: OwnedKind | null) => { setAddToEntity(kind); setAddMenuFrom(kind ? 'right' : 'left'); };
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
   // Back out of the connection step reopens the picker on the picks already made rather than a clean one.
@@ -475,11 +467,11 @@ const WorldEditorInner = ({
   // node opens the entity where its placeholders are. A finding names none and keeps the author's tab.
   const navigateToBenchItem = useCallback((section: FindingSection, itemId: string, entityTab?: EntityPanelTab) => {
     setActiveTab(section);
-    setSearchTerm('');
+    clearSearch();
     setSelectedItemId(itemId);
     if (entityTab) setEntityTab(entityTab);
     deferReveal(() => revealSelectedRow(editorRootRef.current));
-  }, [deferReveal]);
+  }, [deferReveal, clearSearch]);
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
@@ -573,7 +565,7 @@ const WorldEditorInner = ({
   const showTourStep = useCallback((step: TourStep) => {
     if (step.tab) {
       setActiveTab(step.tab);
-      setSearchTerm('');
+      clearSearch();
     }
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
     if (itemId) setSelectedItemId(itemId);
@@ -589,7 +581,7 @@ const WorldEditorInner = ({
     }
     if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
-  }, [deferReveal, worldId]);
+  }, [deferReveal, worldId, clearSearch]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
@@ -680,9 +672,8 @@ const WorldEditorInner = ({
 
   // Add a new item to the active flat-list tab. Like the other handlers, an empty search box falls
   // back to a default name so the + button always creates something.
-  const addItem = () => {
+  const addItem = (typed: string) => {
     const newId = randomUUID();
-    const typed = searchTerm.trim();
 
     if (activeTab === "stats") {
       addStat(newStat(newId, typed || undefined));
@@ -702,52 +693,46 @@ const WorldEditorInner = ({
       return;
     }
 
-    setSearchTerm('');
     setSelectedItemId(newId);
   };
 
   // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
-  const handleAddBook = () => {
+  const handleAddBook = (typed: string) => {
     const id = randomUUID();
-    addDictionary({ id, name: searchTerm.trim() || 'New Dictionary', enabled: true, entries: [] });
-    setSearchTerm('');
+    addDictionary({ id, name: typed || 'New Dictionary', enabled: true, entries: [] });
     setSelectedItemId(id);
   };
 
-  const handleAddPlaceholder = () => {
-    const p = newPlaceholder(searchTerm.trim() || 'New Placeholder');
+  const handleAddPlaceholder = (typed: string) => {
+    const p = newPlaceholder(typed || 'New Placeholder');
     addPlaceholder(p);
-    setSearchTerm('');
     setSelectedItemId(p.id);
   };
 
   // New placeholder folders append at the root; the author drags shared placeholders into them.
-  const handleAddPlaceholderGroup = () => {
+  const handleAddPlaceholderGroup = (typed: string) => {
     const id = randomUUID();
-    addPlaceholderGroup({ id, name: searchTerm.trim() || 'New Group', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length });
-    setSearchTerm('');
+    addPlaceholderGroup({ id, name: typed || 'New Group', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length });
     setSelectedItemId(id);
   };
 
   // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
-  const handleAddTrait = () => {
+  const handleAddTrait = (typed: string) => {
     const id = randomUUID();
-    addTrait(newTrait(id, traitRootCount({ traits, traitGroups }), searchTerm.trim() || undefined));
-    setSearchTerm('');
+    addTrait(newTrait(id, traitRootCount({ traits, traitGroups }), typed || undefined));
     setSelectedItemId(id);
   };
 
-  const handleAddGroup = () => {
+  const handleAddGroup = (typed: string) => {
     const id = randomUUID();
     addTraitGroup({
       id,
-      name: searchTerm.trim() || 'New Group',
+      name: typed || 'New Group',
       playerDescription: '',
       aiDescription: '',
       parentId: null,
       order: traitRootCount({ traits, traitGroups }),
     });
-    setSearchTerm('');
     setSelectedItemId(id);
   };
 
@@ -766,23 +751,19 @@ const WorldEditorInner = ({
     setSelectedItemId(CUSTOM_PERSONA_ID);
   };
   // The first add to an entity gives it a node in the tree, which reveals the selected row.
-  const handleAddToEntity = (kind: OwnedKind, entityId: string) => {
+  const handleAddToEntity = (kind: OwnedKind, entityId: string, typed: string) => {
     const id = randomUUID();
-    const name = searchTerm.trim() || undefined;
+    const name = typed || undefined;
     editEntity(entityId, (e) => (kind === 'trait' ? addOwnedTrait(e, id, name) : addOwnedGroup(e, id, name)));
-    setSearchTerm('');
     setSelectedItemId(id);
-    setAddMenuOpen(false);
-    setAddToEntity(null);
   };
 
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
-  const handleAddEntityGroup = () => {
+  const handleAddEntityGroup = (typed: string) => {
     const id = randomUUID();
-    addEntityGroup({ id, name: searchTerm.trim() || 'New Group', parentId: null, order: entityRootSiblingCount() });
-    setSearchTerm('');
+    addEntityGroup({ id, name: typed || 'New Group', parentId: null, order: entityRootSiblingCount() });
     setSelectedItemId(id);
   };
 
@@ -955,7 +936,7 @@ const WorldEditorInner = ({
 
   const renderItemList = (items: ListItem[]) => {
     if (items.length === 0) {
-      const q = searchTerm.trim();
+      const q = search.typed;
       // Same empty-state hint the trees show (unified), or a "no matches" note when filtering.
       return q
         ? <p className="text-helper text-muted-foreground p-2">No {activeTab} match &ldquo;{q}&rdquo;.</p>
@@ -994,11 +975,11 @@ const WorldEditorInner = ({
     <>
       {activeTab === "overview" && <WorldOverviewManager />}
       {activeTab === "stats" && renderItemList(filteredItems)}
-      {activeTab === "entities" && (searchTerm.trim() ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "entities" && (search.typed ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "locations" && (canvasView
         ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
-        : searchTerm.trim() ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
-      {activeTab === "traits" && (searchTerm.trim() ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+        : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {activeTab === "traits" && (search.typed ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {removeWorldTraitDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
       {activeTab === "statUpdates" && renderItemList(filteredItems)}
@@ -1256,62 +1237,37 @@ const WorldEditorInner = ({
   const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
   const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const addMenuItem = (icon: ReactNode, label: string, add: () => void) => (
-    <button type="button" className={MENU_ROW} onClick={() => { add(); setAddMenuOpen(false); }}>
-      {icon} {label}
-    </button>
-  );
-  // A drill-in row: its label heads the entity list it opens in place of the menu.
-  const toEntityLabel: Record<OwnedKind, string> = { trait: 'Add Trait to Entity', group: 'Add Group to Entity' };
-  const addToEntityItem = (icon: ReactNode, kind: OwnedKind) => entities.length > 0 && (
-    <button type="button" className={MENU_ROW} onClick={() => drillAddMenu(kind)}>
-      {icon} <span className="flex-1">{toEntityLabel[kind]}</span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
-    </button>
-  );
-  const traitsMenu = addToEntity ? (
-    <BearerList
-      choices={bearerChoices(entityGroups, entities)}
-      label="Entities"
-      onPick={(id) => handleAddToEntity(addToEntity, id)}
-      back={{ label: toEntityLabel[addToEntity], onBack: () => drillAddMenu(null) }}
+  const addMenu = activeTab === "traits" ? (
+    <TraitsAddMenu
+      advanced={advanced}
+      entities={entities}
+      entityGroups={entityGroups}
+      hasTemplates={hasTemplates}
+      hasCustomPersona={!!customPersona}
+      onAddGroup={handleAddGroup}
+      onAddTrait={handleAddTrait}
+      onAddToEntity={handleAddToEntity}
+      onAddTemplates={handleAddTemplates}
+      onAddCustomPersona={handleAddCustomPersona}
     />
   ) : (
     <>
-      {advanced && addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', handleAddGroup)}
-      {addMenuItem(<FilePlus className="h-4 w-4" />, 'Add Trait', handleAddTrait)}
-      {advanced && addToEntityItem(<FolderPlus className="h-4 w-4" />, 'group')}
-      {advanced && addToEntityItem(<FilePlus className="h-4 w-4" />, 'trait')}
-      {advanced && !hasTemplates
-        && addMenuItem(<LayoutTemplate className="h-4 w-4" />, 'Add Templates Group', handleAddTemplates)}
-      {advanced && !customPersona
-        && addMenuItem(<CircleUserRound className="h-4 w-4" />, 'Add Custom Persona', handleAddCustomPersona)}
+      <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={addGroupHere} />
+      <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={addItemLabel} onAdd={addItemHere} />
     </>
   );
+  const addSlot: ListAddSlot = advanced && grouped
+    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "traits" ? "w-56" : undefined }
+    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem };
   const addSearchBar = activeTab !== "overview" && (
-    <ListToolbar className="mt-4">
-      {advanced && grouped ? (
-        <Popover open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); setAddToEntity(null); setAddMenuFrom(null); }}>
-          <PopoverTrigger asChild>
-            <ListAddButton label={addLabel} data-tour-anchor="list-add" />
-          </PopoverTrigger>
-          {/* Inline, so the editor's modal scroll lock lets the wheel reach the entity list. */}
-          <PopoverContent portal={false} side="bottom" align="start" className={cn(activeTab === "traits" ? "w-56" : "w-44", "overflow-hidden p-1")}>
-            {activeTab === "traits" ? <DrillSlide key={addToEntity ?? ''} from={addMenuFrom}>{traitsMenu}</DrillSlide> : (
-              <>
-                {addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', addGroupHere)}
-                {addMenuItem(<FilePlus className="h-4 w-4" />, addItemLabel, addItemHere)}
-              </>
-            )}
-          </PopoverContent>
-        </Popover>
-      ) : (
-        <ListAddButton
-          label={addLabel}
-          data-tour-anchor="list-add"
-          onClick={activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem}
-        />
-      )}
+    <ListSearchToolbar
+      className="mt-4"
+      search={search}
+      add={addSlot}
+      placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
+      // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
+      after={helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
+    >
       {activeTab === "locations" ? (
         <ToggleGroup
           type="single"
@@ -1333,15 +1289,7 @@ const WorldEditorInner = ({
           ))}
         </ToggleGroup>
       ) : null}
-      <Input
-        data-editor-find-skip
-        placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      {/* key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount). */}
-      {helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
-    </ListToolbar>
+    </ListSearchToolbar>
   );
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
