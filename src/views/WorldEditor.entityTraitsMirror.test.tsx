@@ -212,7 +212,7 @@ describe('the entity Traits tab as a mirror', () => {
     expect(within(line).queryByRole('button')).toBeNull();
     expect(screen.getByText('This Link')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ }));
-    expect(entity(ctx, 'ash').traitLinks![0].defaults).toEqual({ 't-tamer': true });
+    expect(entity(ctx, 'ash').traitLinks![0].overrides).toEqual({ 't-tamer': { isDefault: { value: true, blueprint: false } } });
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 

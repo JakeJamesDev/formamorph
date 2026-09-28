@@ -10,7 +10,7 @@ describe('BearerFlyoutReference', () => {
     render(<BearerFlyoutReference />);
     fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add Trait to Entity' }));
-    expect(level('Entities')).toEqual(['Heroes', 'Villains', 'Sam']);
+    expect(level('Entities')).toEqual(['Heroes', 'Villains', 'Sam', 'Newcomer']);
     fireEvent.click(row('Entities', 'Heroes'));
     fireEvent.click(row('Entities', 'City Guard'));
     fireEvent.click(row('Entities', 'Captain Tomas Wexley of the Lower Ward'));
@@ -20,7 +20,9 @@ describe('BearerFlyoutReference', () => {
   it('links a bearer in place, keeping held bearers checked and disabled', () => {
     render(<BearerFlyoutReference />);
     fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
-    expect(level('Link To')).toEqual(['Custom Persona', 'Heroes', 'Villains', 'Sam']);
+    expect(level('Link To')).toEqual(['Heroes', 'Villains', 'Sam', 'Newcomer']);
+    expect(row('Link To', 'Newcomer').querySelector('.lucide-circle-user-round')).not.toBeNull();
+    expect(row('Link To', 'Sam').querySelector('.lucide-circle-user-round')).toBeNull();
     fireEvent.click(row('Link To', 'Heroes'));
     expect(row('Link To', 'Albus')).toBeDisabled();
     fireEvent.click(row('Link To', 'Mira'));

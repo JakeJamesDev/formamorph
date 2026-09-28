@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { bearerChoices } from './bearerChoices';
-import { CUSTOM_PERSONA_ID } from './traitTree';
 import type { Entity, EntityGroup } from '@/types';
 
 const entity = (id: string, groupId: string | null, order: number, extra: Partial<Entity> = {}): Entity =>
@@ -22,9 +21,10 @@ describe('bearerChoices', () => {
       .toEqual(['>#heroes', 'heroes>albus', 'heroes>#guards', 'guards>mira', '>sam', '>#villains', 'villains>vex']);
   });
 
-  it('puts Custom Persona first when it is asked for', () => {
-    const rows = bearerChoices(groups, entities, { customPersona: true });
-    expect(rows[0]).toEqual({ kind: 'bearer', id: CUSTOM_PERSONA_ID, name: 'Custom Persona', parentId: null, customPersona: true });
-    expect(flat(rows).slice(1)).toEqual(flat(bearerChoices(groups, entities)));
+  it("marks the Custom Persona entity's row in its Entities tab place, and no other row", () => {
+    const rows = bearerChoices(groups, [...entities, entity('you', null, 4, { customPersona: true })]);
+    expect(rows.at(-1)).toEqual({ kind: 'bearer', id: 'you', name: 'you', parentId: null, customPersona: true });
+    expect(rows.slice(0, -1)).toEqual(bearerChoices(groups, entities));
+    expect(rows.slice(0, -1).some((r) => 'customPersona' in r)).toBe(false);
   });
 });

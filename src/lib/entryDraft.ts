@@ -2,7 +2,7 @@ import type { DictionarySelectionItem } from './dictionarySelection';
 import { locationForPersonaPick, withoutPersona, type PersonaPickContext } from './personaPick';
 import { resolveBearers } from './bearers';
 import { WORLD_OWNER, settle, settleDefaults, type GateInput, type GateOwner, type SettleResult } from './traitGates';
-import type { CascadeOffTraitIds, CustomPersonaNode, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
+import type { CascadeOffTraitIds, Entity, OwnedTraitPicks, PersonaRef, Trait, TraitGroup } from '@/types';
 
 /** Choices retained for one visit to Enter World. */
 export interface EntryDraft {
@@ -43,7 +43,6 @@ export interface EntryTraitWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
-  customPersona?: CustomPersonaNode;
   /** The library persona and the added library entities, in the order added. */
   library: readonly Entity[];
 }

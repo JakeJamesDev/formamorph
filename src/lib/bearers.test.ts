@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  PLAYER_BEARER, bearsTraits, editorGateInput, holdsOriginal, inCast, makeLink, originalOf, resolveBearers, type BearerWorld,
+  PLAYER_BEARER, bearsTraits, editorGateInput, holdsOriginal, inCast, makeLink, originalOf, playsAs, resolveBearers, type BearerWorld,
 } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
@@ -32,6 +32,11 @@ const mira: Entity = {
 const custom: Entity = {
   id: 'custom', name: 'Custom Character', persona: true, personaOnly: true,
   traitLinks: [link('l-smite', 'smite', 'trait')],
+};
+/** The Custom Persona entity: the player's tree beside the root under None and under a library persona. */
+const newcomer: Entity = {
+  id: 'cp', name: 'Newcomer', customPersona: true,
+  traitLinks: [link('cp-classes', 'classes', 'group')],
 };
 
 const world = (extra: Partial<BearerWorld> = {}): BearerWorld => ({
@@ -78,15 +83,35 @@ describe('resolveBearers: links', () => {
     expect(ids(bearer(grown, 'albus').traits)).toEqual(['oath', 'paladin', 'wizard', 'cleric']);
   });
 
-  it('reads default-on from the link when it stores one, else from the original', () => {
+  it('reads default-on from the link when it overrides it, else from the original', () => {
     const plain = bearer(world(), 'albus');
     expect(plain.traits.find((t) => t.id === 'paladin')?.isDefault).toBe(true);
     expect(plain.traits.find((t) => t.id === 'wizard')?.isDefault).toBeFalsy();
 
-    const overridden: Entity = { ...albus, traitLinks: [{ ...albus.traitLinks![0], defaults: { paladin: false, wizard: true } }] };
+    const overrides = { paladin: { isDefault: { value: false, blueprint: true } }, wizard: { isDefault: { value: true, blueprint: false } } };
+    const overridden: Entity = { ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides }] };
     const b = bearer(world({ entities: [overridden] }), 'albus');
     expect(b.traits.find((t) => t.id === 'paladin')?.isDefault).toBe(false);
     expect(b.traits.find((t) => t.id === 'wizard')?.isDefault).toBe(true);
+  });
+
+  it("carries the link's other overrides on the effective traits: requirements, toggle and stat changes", () => {
+    const overrides = {
+      paladin: {
+        requires: { value: [{ kind: 'trait' as const, id: 'brave' }], blueprint: [] },
+        playerToggle: { value: true, blueprint: false },
+        statChanges: { value: [{ statId: 'zeal', value: 2, type: 'min' as const }], blueprint: [] },
+      },
+    };
+    const b = bearer(world({ entities: [{ ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides }] }] }), 'albus');
+    expect(b.traits.find((t) => t.id === 'paladin')).toMatchObject({
+      name: 'Paladin', groupId: 'classes', isDefault: true,
+      requires: [{ kind: 'trait', id: 'brave' }], playerToggle: true, statChanges: [{ statId: 'zeal', value: 2, type: 'min' }],
+    });
+    const wizard = b.traits.find((t) => t.id === 'wizard')!;
+    expect(wizard.playerToggle).toBeFalsy();
+    expect(wizard.statChanges).toEqual([]);
+    expect(b.linkOf.get('paladin')?.id).toBe('l-classes');
   });
 
   it('skips an entity node placed inside a linked group', () => {
@@ -163,32 +188,37 @@ describe('resolveBearers: the player bearer', () => {
     }
   });
 
-  it('adds Custom Persona’s links under None and under a library persona, not under a world persona', () => {
-    const w = world({ customPersona: { traitLinks: [link('cp-classes', 'classes', 'group')] } });
+  it('expands no links itself; the Custom Persona entity is a player bearer under None and a library persona, absent under a world persona', () => {
+    const w = world({ entities: [albus, mira, custom, newcomer] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     for (const [persona, library] of [[NONE, []], [AS_LIBRARY, [lib]]] as const) {
-      const b = bearer(w, PLAYER_BEARER, persona, [...library]);
-      expect(ids(b.groups)).toEqual(['oaths', 'classes']);
-      expect(ids(b.traits)).toEqual(['brave', 'paladin', 'wizard']);
-      expect(b.linkOf.get('paladin')?.id).toBe('cp-classes');
-      const classes = b.groups.find((g) => g.id === 'classes')!;
-      expect(classes.parentId).toBeNull();
-      expect(classes.order).toBeGreaterThan(1);
+      const root = bearer(w, PLAYER_BEARER, persona, [...library]);
+      expect(ids(root.traits)).toEqual(['brave']);
+      expect(ids(root.groups)).toEqual(['oaths']);
+      expect(root.linkOf.size).toBe(0);
+      const cp = bearer(w, 'cp', persona, [...library]);
+      expect(cp).toMatchObject({ isPlayer: true, present: true, entity: newcomer, name: 'Newcomer' });
+      expect(ids(cp.groups)).toEqual(['classes']);
+      expect(cp.groups[0]).toMatchObject({ parentId: null, order: 0, exclusive: true });
+      expect(ids(cp.traits)).toEqual(['paladin', 'wizard']);
+      expect(cp.linkOf.get('paladin')?.id).toBe('cp-classes');
     }
-    const asAlbus = bearer(w, PLAYER_BEARER, AS_ALBUS);
-    expect(ids(asAlbus.traits)).toEqual(['brave']);
-    expect(asAlbus.linkOf.size).toBe(0);
+    expect(bearer(w, 'cp', AS_ALBUS)).toMatchObject({ isPlayer: false, present: false });
+    expect(ids(bearer(w, PLAYER_BEARER, AS_ALBUS).traits)).toEqual(['brave']);
   });
 
-  it('holds a root trait once when Custom Persona also links it, the root winning', () => {
-    const w = world({ customPersona: { traitLinks: [link('cp-brave', 'brave', 'trait'), link('cp-brave-2', 'brave', 'trait')] } });
-    const b = bearer(w, PLAYER_BEARER);
-    expect(ids(b.traits)).toEqual(['brave']);
-    expect(b.traits[0]).toMatchObject({ groupId: null, order: 0 });
-    expect(b.linkOf.has('brave')).toBe(false);
+  it('holds a root trait once when the Custom Persona entity also links it, the root winning', () => {
+    const doubled: Entity = { ...newcomer, traitLinks: [link('cp-brave', 'brave', 'trait'), link('cp-brave-2', 'brave', 'trait')] };
+    const w = world({ entities: [albus, mira, custom, doubled] });
+    const root = bearer(w, PLAYER_BEARER);
+    expect(ids(root.traits)).toEqual(['brave']);
+    expect(root.traits[0]).toMatchObject({ groupId: null, order: 0 });
+    const cp = bearer(w, 'cp');
+    expect(ids(cp.traits)).toEqual([]);
+    expect(cp.linkOf.has('brave')).toBe(false);
   });
 
-  it('is the only player bearer under None; a persona’s bearer joins it when picked', () => {
+  it('is the only player bearer under None; a persona’s bearer joins it when picked, and the Custom Persona entity’s when the world has one', () => {
     const w = world();
     expect(resolveBearers(w, NONE).playerBearerIds).toEqual([PLAYER_BEARER]);
     expect(resolveBearers(w, AS_ALBUS).playerBearerIds).toEqual([PLAYER_BEARER, 'albus']);
@@ -196,6 +226,10 @@ describe('resolveBearers: the player bearer', () => {
     const r = resolveBearers(w, AS_LIBRARY, [lib]);
     expect(r.playerBearerIds).toEqual([PLAYER_BEARER, 'lib']);
     expect(r.bearers.find((b) => b.id === 'lib')).toMatchObject({ isPlayer: true, present: true, entity: lib });
+    const marked = world({ entities: [albus, mira, custom, newcomer] });
+    expect(resolveBearers(marked, NONE).playerBearerIds).toEqual([PLAYER_BEARER, 'cp']);
+    expect(resolveBearers(marked, AS_LIBRARY, [lib]).playerBearerIds).toEqual([PLAYER_BEARER, 'cp', 'lib']);
+    expect(resolveBearers(marked, AS_ALBUS).playerBearerIds).toEqual([PLAYER_BEARER, 'albus']);
   });
 });
 
@@ -223,16 +257,16 @@ describe('resolveBearers: a requirement never names yourself', () => {
     expect(bearer(own, 'albus', AS_ALBUS).traits.find((t) => t.id === 'oath')?.requires).toEqual([albusPaladin]);
   });
 
-  it('applies to Custom Persona’s links under a library persona, and gates the player’s owner the same way', () => {
+  it('applies to the Custom Persona entity’s links under a library persona, and gates the player’s owner the same way', () => {
     const vow = trait('vow-t', { name: 'Vow', groupId: 'templates', order: 2, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     const linkedVow = world({
       traits: [...world().traits, vow],
-      entities: [albus, mira, { ...custom, traitLinks: [link('l-vow', 'vow-t', 'trait')] }],
-      customPersona: { traitLinks: [link('l-vow', 'vow-t', 'trait')] },
+      entities: [albus, mira, { ...newcomer, traitLinks: [link('l-vow', 'vow-t', 'trait')] }],
     });
-    expect(ids(bearer(linkedVow, PLAYER_BEARER).traits)).toContain('vow-t');
-    expect(ids(bearer(linkedVow, PLAYER_BEARER, AS_LIBRARY, [lib]).traits)).not.toContain('vow-t');
+    // Under None the vow names someone else; under Lib it names the player, so it falls away.
+    expect(ids(bearer(linkedVow, 'cp').traits)).toContain('vow-t');
+    expect(ids(bearer(linkedVow, 'cp', AS_LIBRARY, [lib]).traits)).not.toContain('vow-t');
     const { gate } = resolveBearers(w, AS_ALBUS);
     expect(gate.owners[0].traits.map((t) => t.id)).not.toContain('squire');
   });
@@ -265,12 +299,17 @@ describe('resolveBearers: a world persona’s tree', () => {
     expect(cast.linkOf.get('brave')?.id).toBe('l-brave');
   });
 
-  it("drops a played library persona's link to what Custom Persona already brings, which the player holds too", () => {
-    const w = world({ customPersona: { traitLinks: [link('cp-wizard', 'wizard', 'trait')] } });
-    const lib: Entity = { id: 'lib', name: 'Lib', persona: true, traitLinks: [link('l-wizard', 'wizard', 'trait'), link('l-smite', 'smite', 'trait', { order: 1 })] };
+  it("drops a played library persona's link to what the root offers, and keeps one the Custom Persona entity also links, each in its own tree", () => {
+    const w = world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-wizard', 'wizard', 'trait')] }] });
+    const lib: Entity = {
+      id: 'lib', name: 'Lib', persona: true,
+      traitLinks: [link('l-brave', 'brave', 'trait'), link('l-wizard', 'wizard', 'trait', { order: 1 }), link('l-smite', 'smite', 'trait', { order: 2 })],
+    };
     const played = bearer(w, 'lib', AS_LIBRARY, [lib]);
-    expect(ids(played.traits)).toEqual(['smite']);
-    expect(ids(bearer(w, PLAYER_BEARER, AS_LIBRARY, [lib]).traits)).toEqual(['brave', 'wizard']);
+    expect(ids(played.traits)).toEqual(['wizard', 'smite']);
+    expect(played.linkOf.has('brave')).toBe(false);
+    expect(ids(bearer(w, 'cp', AS_LIBRARY, [lib]).traits)).toEqual(['wizard']);
+    expect(ids(bearer(w, PLAYER_BEARER, AS_LIBRARY, [lib]).traits)).toEqual(['brave']);
   });
 });
 
@@ -298,6 +337,30 @@ describe('resolveBearers: the cast and persona-only entities', () => {
     expect(inCast(albus, AS_ALBUS)).toBe(false);
     expect(inCast(albus, NONE)).toBe(true);
     expect(ids(resolveBearers(world({ entities: [albus, mira, plain] }), NONE).cast)).toEqual(['albus', 'mira', 'custom']);
+  });
+
+  it('leaves the Custom Persona entity out of the cast: the player under None, absent under a world persona', () => {
+    const w = world({ entities: [albus, mira, newcomer] });
+    expect(inCast(newcomer, NONE)).toBe(false);
+    expect(inCast(newcomer, AS_ALBUS)).toBe(false);
+    const none = resolveBearers(w, NONE);
+    expect(ids(none.cast)).toEqual(['albus', 'mira']);
+    expect(none.bearers.find((b) => b.id === 'cp')).toMatchObject({ present: true, isPlayer: true });
+    expect(none.gate.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'cp']);
+    const asAlbus = resolveBearers(w, AS_ALBUS);
+    expect(ids(asAlbus.cast)).toEqual(['mira']);
+    expect(asAlbus.bearers.find((b) => b.id === 'cp')).toMatchObject({ present: false, isPlayer: false });
+    expect(asAlbus.gate.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira']);
+  });
+
+  it('plays as the picked world persona, or as the Custom Persona entity under None and a library persona', () => {
+    expect(playsAs(albus, AS_ALBUS)).toBe(true);
+    expect(playsAs(albus, NONE)).toBe(false);
+    expect(playsAs(albus, AS_LIBRARY)).toBe(false);
+    expect(playsAs(newcomer, NONE)).toBe(true);
+    expect(playsAs(newcomer, undefined)).toBe(true);
+    expect(playsAs(newcomer, AS_LIBRARY)).toBe(true);
+    expect(playsAs(newcomer, AS_ALBUS)).toBe(false);
   });
 });
 
@@ -333,11 +396,12 @@ describe('resolveBearers: the gate input', () => {
 
 describe('editorGateInput', () => {
   it('reads the whole world as the player, Templates included, then each bearer with its links expanded', () => {
-    const input = editorGateInput(world({ customPersona: { traitLinks: [link('cp-smite', 'smite', 'trait')] } }));
-    expect(input.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'custom']);
+    const input = editorGateInput(world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-smite', 'smite', 'trait')] }] }));
+    expect(input.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'custom', 'cp']);
     expect(ids(input.owners[0].traits)).toEqual(['brave', 'paladin', 'wizard', 'smite']);
     expect(ids(input.owners[0].groups)).toEqual(['oaths', 'templates', 'classes']);
     expect(ids(input.owners[1].traits)).toEqual(['oath', 'paladin', 'wizard']);
+    expect(ids(input.owners[4].traits)).toEqual(['smite']);
     expect(input.active).toEqual({});
     expect(input.persona).toEqual(NONE);
     expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
@@ -351,7 +415,7 @@ describe('editorGateInput', () => {
 });
 
 describe('holdsOriginal', () => {
-  const w = world({ customPersona: { traitLinks: [link('cp-smite', 'smite', 'trait')] } });
+  const w = world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-smite', 'smite', 'trait')] }] });
 
   it.each([
     ['albus', 'paladin', true, 'a trait inside a linked group'],
@@ -364,16 +428,22 @@ describe('holdsOriginal', () => {
     ['mira', 'wizard', false, 'a sibling of a directly linked trait'],
     [PLAYER_BEARER, 'brave', true, 'a root trait the player already has'],
     [PLAYER_BEARER, 'oaths', true, 'a root group the player already has'],
-    [PLAYER_BEARER, 'smite', true, 'a Templates trait Custom Persona links'],
+    [PLAYER_BEARER, 'smite', false, 'a Templates trait the Custom Persona entity links, which the root does not expand'],
     [PLAYER_BEARER, 'paladin', false, 'a Templates trait nobody offers the player'],
+    ['cp', 'smite', true, 'a Templates trait the Custom Persona entity links'],
+    ['cp', 'brave', true, 'a root trait the Custom Persona entity holds through the root'],
+    ['cp', 'oaths', true, 'a root group the Custom Persona entity holds through the root'],
+    ['cp', 'paladin', false, 'a Templates trait the Custom Persona entity has no link to'],
   ])('%s holds %s → %s (%s)', (bearerId, originalId, held) => {
     expect(holdsOriginal(w, bearer(w, bearerId), originalId)).toBe(held);
   });
 
-  it('counts Custom Persona’s links for the player under a world persona too, so the editor check never drifts', () => {
-    const player = bearer(w, PLAYER_BEARER, AS_ALBUS);
-    expect(player.linkOf.size).toBe(0);
-    expect(holdsOriginal(w, player, 'smite')).toBe(true);
+  it('counts the root for the Custom Persona entity under a world persona too, so the editor check never drifts', () => {
+    const cp = bearer(w, 'cp', AS_ALBUS);
+    expect(cp.present).toBe(false);
+    expect(holdsOriginal(w, cp, 'brave')).toBe(true);
+    expect(holdsOriginal(w, cp, 'smite')).toBe(true);
+    expect(holdsOriginal(w, bearer(w, PLAYER_BEARER, AS_ALBUS), 'smite')).toBe(false);
   });
 });
 
@@ -397,6 +467,8 @@ describe('bearsTraits', () => {
     expect(bearsTraits({ id: 'e', name: 'E', traits: [trait('t')] })).toBe(true);
     expect(bearsTraits({ id: 'e', name: 'E', traitGroups: [group('g', null, 0)] })).toBe(true);
     expect(bearsTraits(custom)).toBe(true);
+    expect(bearsTraits(newcomer)).toBe(true);
+    expect(bearsTraits({ ...newcomer, traitLinks: undefined })).toBe(false);
   });
 });
 

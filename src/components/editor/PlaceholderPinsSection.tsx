@@ -11,7 +11,7 @@ import {
   removePinAt, sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
-import type { CustomPersonaNode, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
+import type { Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait } from '@/types';
 
 /** The world the section reads pins from and writes them back to: the four source lists, and the writer
  *  for each. The world editor's data store is one. */
@@ -21,15 +21,14 @@ export interface PinsWorld extends PinEditorWorld {
   updateLocation: (location: GameLocation) => void;
   updateStat: (stat: Stat) => void;
   updatePlaceholder: (placeholder: Placeholder) => void;
-  setCustomPersona?: (node: CustomPersonaNode) => void;
 }
 
 /**
  * Every pin aimed at one placeholder, from any source, as one list: strongest kind first, each row naming
  * its source. The pins live on their sources — this section only gathers them — so a value edit, a re-aim
  * or a removal here is written to the trait, location, stat or placeholder that holds the pin. A link's
- * value for a bearer-relative pin lists too, under its bearer: its source is fixed, and removing it clears
- * the value. Add picks the kind of source, then the source, and writes an empty pin there for the row's
+ * overridden pins list lists too, under its bearer: its source is fixed, and an edit rewrites the override.
+ * Add picks the kind of source, then the source, and writes an empty pin there for the row's
  * value field to fill.
  */
 export function PlaceholderPinsSection({ world, placeholder }: {
@@ -46,7 +45,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
    *  source written twice lands the same record twice, which is harmless. */
   const commit = (next: PinEditorWorld, ...sources: PinSourceRef[]) => {
-    for (const source of sources) commitPinSource(next, source, { ...world, updateCustomPersona: world.setCustomPersona });
+    for (const source of sources) commitPinSource(next, source, world);
   };
   const setPin = (row: PinRow, next: PlaceholderPin) => commit(updatePinAt(world, row.source, row.pin, next), row.source);
   const remove = (row: PinRow) => commit(removePinAt(world, row.source, row.pin), row.source);

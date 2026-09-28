@@ -13,7 +13,6 @@ import { randomUUID } from '@/lib/uuid';
 import { cn } from '@/lib/utils';
 import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
-import { useEditBearer } from './useEditBearer';
 
 const NO_PLACEHOLDERS: Placeholder[] = [];
 
@@ -94,14 +93,10 @@ export function BearerList({ choices, label, onPick, held, back }: {
  * bearer does. A bearer that already has it reads checked. The flyout stays open for the next pick.
  */
 export function LinkToBearerButton({ originalId }: { originalId: string }) {
-  const { traits, traitGroups, entities, entityGroups, customPersona } = useGameData();
-  const editBearer = useEditBearer();
+  const { traits, traitGroups, entities, entityGroups, editEntity } = useGameData();
   const [open, setOpen] = useState(false);
-  const world = useMemo(() => ({ traits, traitGroups, customPersona }), [traits, traitGroups, customPersona]);
-  const choices = useMemo(
-    () => bearerChoices(entityGroups, entities, { customPersona: !!customPersona }),
-    [entityGroups, entities, customPersona],
-  );
+  const world = useMemo(() => ({ traits, traitGroups }), [traits, traitGroups]);
+  const choices = useMemo(() => bearerChoices(entityGroups, entities), [entityGroups, entities]);
   const held = useMemo(() => {
     if (!open) return new Set<string>();
     return new Set(choices.filter((c) => c.kind === 'bearer' && linkRefusal(world, entities, c.id, originalId)).map((c) => c.id));
@@ -110,7 +105,7 @@ export function LinkToBearerButton({ originalId }: { originalId: string }) {
   if (!choices.length) return null;
   const pick = (bearerId: string) => {
     if (linkRefusal(world, entities, bearerId, originalId)) return;
-    editBearer(bearerId, (e) => addLink(world, e, originalId, randomUUID()) ?? e);
+    editEntity(bearerId, (e) => addLink(world, e, originalId, randomUUID()) ?? e);
   };
   return (
     <Popover open={open} onOpenChange={setOpen}>

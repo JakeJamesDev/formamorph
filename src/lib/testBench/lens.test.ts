@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { encodePlaceholderToken, resolvePlaceholders } from '@/lib/placeholders';
-import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
-import { phValues } from '@/test/placeholderValues';
+import type { Entity, GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   buildLens, describeBrokenPin, lensActiveTraits, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
   seedLens, type LensWorld,
@@ -194,17 +194,38 @@ describe('pins from owned traits', () => {
       .toEqual([['Trait: Sedge-Born', true]]);
   });
 
-  it('binds the PC’s bearer-relative pin to the world placeholder of that name, labeled with the trait', () => {
-    const relative = { placeholderId: '', value: 'jet', bearerPlaceholder: 'Hair Color' };
-    const w = world({ traits: [{ ...traits[0], placeholderPins: [relative] }, ...traits.slice(1)] });
-    const lens = buildLens(w, { pcTraitId: 't-sedge', locationId: null });
-    expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
-    expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
+  describe('a blueprint pin', () => {
+    // Sedge-Born pins Hair Color, the blueprint, to its "copper" value by id.
+    const byId = { placeholderId: 'ph-hair', valueId: phValueId('copper'), value: 'copper' };
+    const copy: Placeholder = {
+      id: 'cp-hair', name: 'Hair Color', values: [], blueprintId: 'ph-hair',
+      valueOverrides: { [phValueId('copper')]: { text: { value: 'rust', blueprint: 'copper' } } },
+    };
+    const holder = (over: Partial<Entity>): Entity => ({ id: 'cp', name: 'Newcomer', placeholders: [copy], ...over });
+    const w = (entities: Entity[]) => world({ traits: [{ ...traits[0], placeholderPins: [byId] }, ...traits.slice(1)], entities });
+    const lens = (entities: Entity[]) => buildLens(w(entities), { pcTraitId: 't-sedge', locationId: null });
+
+    it('traces to the Custom Persona entity’s copy under None, valued as the copy rewords it, labeled with the trait', () => {
+      const traced = lens([holder({ customPersona: true })]);
+      expect(traced.pins).toEqual({ 'cp-hair': 'rust' });
+      expect(traced.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
+      expect(traced.brokenPins).toEqual([]);
+    });
+
+    it('reads the blueprint itself with no marked entity, whoever else holds a copy', () => {
+      expect(lens([]).pins).toEqual({ 'ph-hair': 'copper' });
+      expect(lens([holder({ persona: true })]).pins).toEqual({ 'ph-hair': 'copper' });
+    });
+
+    it('lays nothing for a value the Custom Persona entity’s copy removed', () => {
+      const removed = { ...copy, valueOverrides: { [phValueId('copper')]: { removed: true as const } } };
+      expect(lens([holder({ customPersona: true, placeholders: [removed] })]).pins).toEqual({});
+    });
   });
 });
 
 describe('the player bearer', () => {
-  // Templates: Classes (Paladin pins Hair Color by name, Wizard) and a default Warded pinning Homeland.
+  // Templates: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
   const templates: TraitGroup[] = [
     { id: 'g-templates', name: 'Templates', parentId: null, system: 'templates' },
     { id: 'g-classes', name: 'Classes', parentId: 'g-templates', exclusive: true },
@@ -212,7 +233,7 @@ describe('the player bearer', () => {
   const templated: Trait[] = [
     {
       id: 't-paladin', name: 'Paladin', groupId: 'g-classes', statChanges: [], order: 0, isDefault: true,
-      placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Hair Color', value: 'ash' }],
+      placeholderPins: [{ placeholderId: 'ph-hair', valueId: phValueId('ash'), value: 'ash' }],
     },
     { id: 't-wizard', name: 'Wizard', groupId: 'g-classes', statChanges: [], order: 1 },
     {
@@ -234,11 +255,14 @@ describe('the player bearer', () => {
     expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({});
   });
 
-  it('adds Custom Persona’s links as the None player: their PCs, defaults and link pin values', () => {
-    const w = withTemplates({ customPersona: { traitLinks: [
-      link('cp-classes', 'g-classes', 'group', { pinValues: { 't-paladin': { 'Hair Color': { value: 'jet' } } } }),
+  it('adds the Custom Persona entity’s links as the None player: their PCs, defaults and pins', () => {
+    const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [
+      link('cp-classes', 'g-classes', 'group', { overrides: { 't-paladin': { placeholderPins: {
+        value: [{ placeholderId: 'ph-hair', value: 'jet' }], blueprint: [],
+      } } } }),
       link('cp-warded', 't-warded', 'trait'),
-    ] } });
+    ] };
+    const w = withTemplates({ entities: [newcomer] });
     expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach', 't-paladin', 't-wizard']);
     expect(active(w)).toEqual(['t-paladin', 't-warded']);
     expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-hair': 'jet', 'ph-home': 'the Reach' });
@@ -246,9 +270,11 @@ describe('the player bearer', () => {
     expect(active(w, 't-wizard')).toEqual(['t-wizard', 't-warded']);
   });
 
-  it('reads a Custom Persona link’s own default-on over the original’s', () => {
-    const w = withTemplates({ customPersona: { traitLinks: [link('cp-warded', 't-warded', 'trait', { defaults: { 't-warded': false } })] } });
-    expect(active(w)).toEqual([]);
+  it('reads a Custom Persona entity link’s own default-on over the original’s', () => {
+    const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [
+      link('cp-warded', 't-warded', 'trait', { overrides: { 't-warded': { isDefault: { value: false, blueprint: true } } } }),
+    ] };
+    expect(active(withTemplates({ entities: [newcomer] }))).toEqual([]);
   });
 });
 

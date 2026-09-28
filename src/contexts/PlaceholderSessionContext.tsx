@@ -64,7 +64,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
   const [rolls, setRolls] = useState<PlaceholderRolls>(NO_ROLLS);
   const [persona, setPersonaState] = useState<Entity | null>(null);
   const {
-    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, customPersona, placeholders: worldPlaceholders,
+    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, placeholders: worldPlaceholders,
   } = useGameData();
   const placeholders = useMemo(() => personaPlaceholderSet(worldPlaceholders, persona), [worldPlaceholders, persona]);
 
@@ -119,7 +119,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
     if (!sessionActive || placeholders.length === 0) return;
     // Each bearer's tree: owned text and linked originals, and pins bound for that bearer.
     const library = persona ? [persona] : [];
-    const perBearer = bearerPriming({ traits, traitGroups, entities, customPersona }, library, worldPlaceholders);
+    const perBearer = bearerPriming({ traits, traitGroups, entities }, library, worldPlaceholders);
     const texts = [
       ...overviewTexts(worldOverview),
       ...entities.flatMap(entityTexts),
@@ -144,7 +144,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       return sameRolls(prev, next) ? prev : next;
     });
   }, [
-    sessionActive, rolls, placeholders, worldPlaceholders, entities, locations, dictionaries, stats, traits, traitGroups, customPersona,
+    sessionActive, rolls, placeholders, worldPlaceholders, entities, locations, dictionaries, stats, traits, traitGroups,
     worldOverview, persona,
   ]);
 

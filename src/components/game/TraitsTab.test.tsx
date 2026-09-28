@@ -386,8 +386,8 @@ describe('entity nodes in the traits tab', () => {
 });
 
 describe('linked traits in the traits tab', () => {
-  // Templates › Classes holds Paladin and Wizard. Ash links Classes, Bo links Paladin, and Custom Persona
-  // links Wizard for a player with no persona.
+  // Templates › Classes holds Paladin and Wizard. Ash links Classes, Bo links Paladin, and the Custom Persona
+  // entity links Wizard for a player with no persona.
   const GROUPS = [
     G('g-templates', 'Templates', { system: 'templates', order: 0 }),
     G('g-classes', 'Classes', { parentId: 'g-templates', exclusive: true }),
@@ -398,9 +398,10 @@ describe('linked traits in the traits tab', () => {
     ({ id, originalId, kind, originalName: originalId, groupId: null, order: 0 });
   const ash = { id: 'e-ash', name: 'Ash', persona: true, traitLinks: [link('l-ash', 'g-classes', 'group')] };
   const bo = { id: 'e-bo', name: 'Bo', traitLinks: [link('l-bo', 't-paladin', 'trait')] };
+  const you = { id: 'e-you', name: 'Wanderer', customPersona: true, traitLinks: [link('l-you', 't-wizard', 'trait')] };
   const withLinks = (options: PanelHarnessOptions = {}) => renderTraits([PALADIN, WIZARD], GROUPS, [], {
     ...options,
-    world: { entities: [ash, bo], customPersona: { traitLinks: [link('l-you', 't-wizard', 'trait')] }, ...options.world },
+    world: { entities: [ash, bo, you], ...options.world },
     seed: (gameplay) => {
       gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-paladin'] } });
       options.seed?.(gameplay);
@@ -429,19 +430,20 @@ describe('linked traits in the traits tab', () => {
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
   });
 
-  it("merges Custom Persona's links into the player's own rows under None", () => {
+  it("lists the Custom Persona entity's links under its own node as the player under None", () => {
     withLinks();
-    unfold('General');
-    expect(within(section('General')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
-    // The player's own card: the Character Name chip resolves, and never to a bearer entity.
-    const card = within(section('General')).getByText(/studies\.$/);
-    expect(card.textContent).not.toMatch(/\{\{|Ash|Bo/);
+    expect(screen.queryByRole('group', { name: 'General' })).toBeNull();
+    unfold('Wanderer');
+    expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
+    // The Character Name chip resolves to the marked entity, never to another bearer.
+    expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
   });
 
-  it("drops Custom Persona's links under a world persona, and marks that persona You on its node of links", () => {
+  it('drops the Custom Persona entity under a world persona, and marks that persona You on its node of links', () => {
     withLinks({ seed: (gameplay) => gameplay.setPersonaRef({ source: 'world', entityId: 'e-ash' }) });
     expect(screen.queryByRole('group', { name: 'General' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Wanderer' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
     expect(screen.getByText(/1 active:/).parentElement).toHaveTextContent('Paladin');
     expect(screen.queryByText("Ash's Paladin")).toBeNull();

@@ -42,7 +42,7 @@ export const PlaceholderRowPath = ({ row }: { row: ChipRow }) => (
  * it and a native `max-h` is all the scrolling it needs.
  */
 export function PlaceholderSectionList({
-  rows, selectedId, onSelect, placeholders, empty = 'Select placeholder', names, footer, trigger, className,
+  rows, selectedId, onSelect, placeholders, empty = 'Select placeholder', footer, trigger, className,
 }: {
   rows: readonly ChipRow[];
   /** The placeholder the picker stands on, or `''` while it stands on none. */
@@ -52,9 +52,6 @@ export function PlaceholderSectionList({
   placeholders?: readonly Placeholder[];
   /** What the trigger reads while nothing is picked. */
   empty?: string;
-  /** A last section of targets named by text rather than id: its heading, the names, the one picked (which
-   *  the trigger then reads as `label(name)`), and the pick. */
-  names?: { heading: string; items: readonly string[]; picked?: string; label: (name: string) => string; onPick: (name: string) => void };
   /** Drawn under the rows, inside the popover — the find bar's Create row. Given the close, so a footer that
    *  settles the pick can shut the list behind it. */
   footer?: (close: () => void) => ReactNode;
@@ -64,9 +61,8 @@ export function PlaceholderSectionList({
 }) {
   const [open, setOpen] = useState(false);
   const selected = rows.find((row) => isPicked(rowId(row), selectedId));
-  const content = names?.picked ? <span className="truncate">{names.label(names.picked)}</span>
-    : selected ? <PlaceholderRowPath row={selected} />
-      : <span className="truncate text-muted-foreground">{empty}</span>;
+  const content = selected ? <PlaceholderRowPath row={selected} />
+    : <span className="truncate text-muted-foreground">{empty}</span>;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -103,24 +99,7 @@ export function PlaceholderSectionList({
               </button>
             </Fragment>
           ))}
-          {names && names.items.length > 0 && (
-            <>
-              <div className="px-2 pb-0.5 pt-1.5"><ChipRowHeading row={{ heading: names.heading }} /></div>
-              {names.items.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  data-testid="placeholder-name-row"
-                  onClick={() => { names.onPick(name); setOpen(false); }}
-                  className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-label hover:bg-accent"
-                >
-                  <span className="min-w-0 flex-1 truncate">{name}</span>
-                  {names.picked === name && <Check className="h-4 w-4 shrink-0" aria-hidden />}
-                </button>
-              ))}
-            </>
-          )}
-          {!rows.length && !names?.items.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
+          {!rows.length && <p className="px-2 py-1.5 text-helper text-muted-foreground">No placeholders</p>}
         </div>
         {footer?.(() => setOpen(false))}
       </PopoverContent>

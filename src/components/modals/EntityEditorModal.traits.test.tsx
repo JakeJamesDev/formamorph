@@ -188,15 +188,15 @@ describe("the library entity Traits tab's links", () => {
     traitLinks: [
       {
         id: 'l-class', originalId: 'w-class', kind: 'group', originalName: 'Class', groupId: null, order: 5,
-        defaults: { 'w-paladin': true }, keyNames: { 'w-paladin': 'Paladin' },
+        overrides: { 'w-paladin': { isDefault: { value: true, blueprint: false } } }, keyNames: { 'w-paladin': 'Paladin' },
       },
       { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Smite', groupId: null, order: 6 },
     ],
   };
-  /** A world with its own Class, where Paladin pins the bearer's Garb and Wizard requires Paladin, and no Smite. */
+  /** A world with its own Class, where Paladin pins Garb and Wizard requires Paladin, and no Smite. */
   const world: LibraryEditorWorld = {
     traits: [
-      { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [], placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Garb', value: 'plate' }] },
+      { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [], placeholderPins: [{ placeholderId: 'p-garb', value: 'plate' }] },
       { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [], requires: [{ kind: 'trait', id: 'n-paladin' }] },
     ],
     traitGroups: [{ id: 'n-class', name: 'Class', parentId: null }],
@@ -232,7 +232,11 @@ describe("the library entity Traits tab's links", () => {
     expect((await saved()).traitLinks).toEqual([
       {
         id: 'l-class', originalId: 'n-class', kind: 'group', originalName: 'Class', groupId: null, order: 5,
-        defaults: { 'n-paladin': true, 'n-wizard': true }, keyNames: { 'n-paladin': 'Paladin', 'n-wizard': 'Wizard' },
+        overrides: {
+          'n-paladin': { isDefault: { value: true, blueprint: false } },
+          'n-wizard': { isDefault: { value: true, blueprint: false } },
+        },
+        keyNames: { 'n-paladin': 'Paladin', 'n-wizard': 'Wizard' },
       },
       linked.traitLinks![1],
     ]);
@@ -253,13 +257,6 @@ describe("the library entity Traits tab's links", () => {
     await userEvent.click(screen.getByText('Wizard'));
     const row = document.querySelector('[data-editor-row-selected]')!;
     expect(row.querySelector('[tabindex="0"]')?.textContent).toBe('1');
-  });
-
-  it("offers the world placeholder's values for a bearer's-own pin the entity doesn't have", async () => {
-    await open(world);
-    await userEvent.click(screen.getByText('Class'));
-    await userEvent.click(screen.getByRole('combobox', { name: 'Garb Value' }));
-    expect(screen.getByRole('option', { name: 'robes' })).toBeInTheDocument();
   });
 
   it("lists a Link's own row in a search, by the name it shows, and never a linked group's inner rows", async () => {

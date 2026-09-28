@@ -3,15 +3,16 @@ import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
 import { characterAsPlayer } from '../builtinPlaceholders';
-import { bindForBearer, borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
+import { readerFor } from '../blueprints';
+import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
 import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
-import { traitScopedPins } from '../placeholderPins';
+import { bindBlueprintPins, traitScopedPins } from '../placeholderPins';
 import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
 import type {
-  Connection, CustomPersonaNode, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
+  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
   TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
@@ -28,7 +29,6 @@ export interface AuthoredWorld {
   traitGroups?: TraitGroup[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
-  customPersona?: CustomPersonaNode;
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -70,11 +70,12 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
   // Every bearer's tree with no persona picked: the player's, and each entity's with its links expanded.
-  const { bearers } = resolveBearers({ traits, traitGroups, entities, customPersona: world.customPersona }, undefined);
+  const { bearers } = resolveBearers({ traits, traitGroups, entities }, undefined);
   const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
   const bearerOf = new Map(bearers.map((b) => [b.id, b]));
+  const blueprints = { placeholders: world.placeholders ?? [], entities };
   const ownPins = (trait: Trait, bearer: Bearer | undefined) => traitScopedPins(
-    bearer ? bindForBearer(trait, bearer, bearer.entity?.placeholders ?? [], world.placeholders ?? []) : trait, {}, placeholders,
+    bearer ? bindBlueprintPins(trait, blueprints, readerFor(undefined, bearer.entity, bearer.isPlayer)) : trait, {}, placeholders,
   );
   // An entity's trait reads its own pins, bound for that entity, with the entity as the Character Name.
   const resolveOwned: ResolveOwnedTraitText = options.resolveEntity

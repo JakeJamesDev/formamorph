@@ -16,7 +16,7 @@
     ],
     "playerSetting": "open",
     "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** starts as a Dwarf Wizard. Change the **Race** and the **Class** to build your own, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Templates.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Bearer's Own pins.** Each Class pins **Class Garb** and each Race pins **Heritage** on the bearer. The pin binds to the bearer's own placeholder of that name, else to the world's. Hesk and Corvin own both placeholders, so their pins fill their own text. The personas fall back to the world placeholders, so the openings read the played persona's garb.\n- **Custom Persona.** Its links apply when you play with no persona or with a persona from your library. It owns no placeholders, so its pin values come from the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Templates.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**. The pin names the world placeholder, and on each bearer it reads that bearer's copy of it when one exists, else the placeholder itself. Hesk and Corvin carry a **Class Garb** and a **Heritage** of their own, and their text places those, so it reads their own words. The personas read the world placeholders, so the openings read the played persona's garb.\n- **Custom Persona.** The entity with the Custom Persona mark. Its links apply when you play with no persona or with a persona from your library. It owns no placeholder copies, so its pins read the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
@@ -312,32 +312,11 @@
           "originalName": "Races",
           "groupId": null,
           "order": 0,
-          "defaults": {
-            "36b77fb2-a867-566e-90b4-6bbd664e19b9": true
-          },
-          "pinValues": {
-            "889d6e62-5641-5102-a184-7e409aa95d60": {
-              "Heritage": {
-                "value": "the weathered, restless look of the human frontier towns",
-                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
-              }
-            },
-            "f16630f6-5baf-5dc6-a114-efd32d326255": {
-              "Heritage": {
-                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
-                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
-              }
-            },
+          "overrides": {
             "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
-              "Heritage": {
-                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
-                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
-              }
-            },
-            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
-              "Heritage": {
-                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
-                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -349,32 +328,11 @@
           "originalName": "Classes",
           "groupId": null,
           "order": 1,
-          "defaults": {
-            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": true
-          },
-          "pinValues": {
-            "6289a54c-9886-5693-a0e2-0ef61f735109": {
-              "Class Garb": {
-                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
-                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
-              }
-            },
+          "overrides": {
             "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
-              "Class Garb": {
-                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
-                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
-              }
-            },
-            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
-              "Class Garb": {
-                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
-                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
-              }
-            },
-            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
-              "Class Garb": {
-                "value": "plain gray vestments and a healer's roll of bandages at the belt",
-                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -419,32 +377,11 @@
           "originalName": "Races",
           "groupId": null,
           "order": 0,
-          "defaults": {
-            "889d6e62-5641-5102-a184-7e409aa95d60": true
-          },
-          "pinValues": {
+          "overrides": {
             "889d6e62-5641-5102-a184-7e409aa95d60": {
-              "Heritage": {
-                "value": "the weathered, restless look of the human frontier towns",
-                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
-              }
-            },
-            "f16630f6-5baf-5dc6-a114-efd32d326255": {
-              "Heritage": {
-                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
-                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
-              }
-            },
-            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
-              "Heritage": {
-                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
-                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
-              }
-            },
-            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
-              "Heritage": {
-                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
-                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -456,32 +393,11 @@
           "originalName": "Classes",
           "groupId": null,
           "order": 1,
-          "defaults": {
-            "6289a54c-9886-5693-a0e2-0ef61f735109": true
-          },
-          "pinValues": {
+          "overrides": {
             "6289a54c-9886-5693-a0e2-0ef61f735109": {
-              "Class Garb": {
-                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
-                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
-              }
-            },
-            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
-              "Class Garb": {
-                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
-                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
-              }
-            },
-            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
-              "Class Garb": {
-                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
-                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
-              }
-            },
-            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
-              "Class Garb": {
-                "value": "plain gray vestments and a healer's roll of bandages at the belt",
-                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -529,32 +445,11 @@
           "originalName": "Races",
           "groupId": null,
           "order": 0,
-          "defaults": {
-            "f16630f6-5baf-5dc6-a114-efd32d326255": true
-          },
-          "pinValues": {
-            "889d6e62-5641-5102-a184-7e409aa95d60": {
-              "Heritage": {
-                "value": "the weathered, restless look of the human frontier towns",
-                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
-              }
-            },
+          "overrides": {
             "f16630f6-5baf-5dc6-a114-efd32d326255": {
-              "Heritage": {
-                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
-                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
-              }
-            },
-            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
-              "Heritage": {
-                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
-                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
-              }
-            },
-            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
-              "Heritage": {
-                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
-                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -566,32 +461,11 @@
           "originalName": "Classes",
           "groupId": null,
           "order": 1,
-          "defaults": {
-            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": true
-          },
-          "pinValues": {
-            "6289a54c-9886-5693-a0e2-0ef61f735109": {
-              "Class Garb": {
-                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
-                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
-              }
-            },
-            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
-              "Class Garb": {
-                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
-                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
-              }
-            },
+          "overrides": {
             "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
-              "Class Garb": {
-                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
-                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
-              }
-            },
-            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
-              "Class Garb": {
-                "value": "plain gray vestments and a healer's roll of bandages at the belt",
-                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -658,14 +532,11 @@
           "originalName": "Dwarf",
           "groupId": null,
           "order": 0,
-          "defaults": {
-            "36b77fb2-a867-566e-90b4-6bbd664e19b9": true
-          },
-          "pinValues": {
+          "overrides": {
             "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
-              "Heritage": {
-                "value": "the iron-gray braids and walnut-cracking hands of the Deepwell dwarves",
-                "valueId": "4b0d497b-c8d3-5b76-90ef-b1797959c1db"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -677,14 +548,11 @@
           "originalName": "Cleric",
           "groupId": null,
           "order": 1,
-          "defaults": {
-            "052f965e-d53d-5d83-90fe-626f4469f9b2": true
-          },
-          "pinValues": {
+          "overrides": {
             "052f965e-d53d-5d83-90fe-626f4469f9b2": {
-              "Class Garb": {
-                "value": "scorched gray vestments under a smith's leather apron, her holy symbol hung on a chain of old nails",
-                "valueId": "a7065270-981a-5e27-ab4c-0306c3ca2ff9"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -737,14 +605,11 @@
           "originalName": "Human",
           "groupId": null,
           "order": 0,
-          "defaults": {
-            "889d6e62-5641-5102-a184-7e409aa95d60": true
-          },
-          "pinValues": {
+          "overrides": {
             "889d6e62-5641-5102-a184-7e409aa95d60": {
-              "Heritage": {
-                "value": "the pale, sharp features of the river-city humans, with a merchant's easy smile",
-                "valueId": "2d33a206-e18f-55bc-90ef-b3e7b3310972"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -756,14 +621,11 @@
           "originalName": "Wizard",
           "groupId": null,
           "order": 1,
-          "defaults": {
-            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": true
-          },
-          "pinValues": {
+          "overrides": {
             "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
-              "Class Garb": {
-                "value": "a tailored blue coat cut like a robe, silver thread at the cuffs and a slim staff that folds into a cane",
-                "valueId": "dbcaf151-f949-55ba-a7d1-f7ce3af4333a"
+              "isDefault": {
+                "value": true,
+                "blueprint": false
               }
             }
           }
@@ -801,6 +663,67 @@
         "Wight"
       ],
       "pronouns": "it"
+    },
+    {
+      "id": "fa0b04dd-ebfe-5674-a222-b23cf4f7bd41",
+      "name": "Custom Persona",
+      "playerDescription": "A newcomer to Emberwatch. Pick a race and a class, and the story is yours.",
+      "aiDescription": "The player's own character, new to Emberwatch. Their race and class come from their traits.",
+      "customPersona": true,
+      "traitLinks": [
+        {
+          "id": "029df56d-06dd-5765-8969-4b63fcc363cb",
+          "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+          "kind": "group",
+          "originalName": "Races",
+          "groupId": null,
+          "order": 0,
+          "overrides": {
+            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
+              "isDefault": {
+                "value": true,
+                "blueprint": false
+              }
+            }
+          }
+        },
+        {
+          "id": "07cc2b0c-1600-5dd3-b27e-d317eb766a83",
+          "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+          "kind": "group",
+          "originalName": "Classes",
+          "groupId": null,
+          "order": 1,
+          "overrides": {
+            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
+              "isDefault": {
+                "value": true,
+                "blueprint": false
+              }
+            }
+          }
+        },
+        {
+          "id": "b60f0d2c-f416-5e8f-83b2-231cd7723539",
+          "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+          "kind": "group",
+          "originalName": "Racial Abilities",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "4bd1acc3-3b3e-533a-a380-77dad4064960",
+          "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+          "kind": "group",
+          "originalName": "Class Abilities",
+          "groupId": null,
+          "order": 3
+        }
+      ],
+      "traitPlacement": {
+        "groupId": null,
+        "order": 2
+      }
     }
   ],
   "traits": [
@@ -841,10 +764,9 @@
       "order": 0,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
           "value": "the weathered, restless look of the human frontier towns",
-          "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5",
-          "bearerPlaceholder": "Heritage"
+          "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
         }
       ]
     },
@@ -864,10 +786,9 @@
       "order": 1,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
           "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
-          "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333",
-          "bearerPlaceholder": "Heritage"
+          "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
         }
       ]
     },
@@ -887,10 +808,9 @@
       "order": 2,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
           "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
-          "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef",
-          "bearerPlaceholder": "Heritage"
+          "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
         }
       ]
     },
@@ -910,10 +830,9 @@
       "order": 3,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
           "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
-          "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f",
-          "bearerPlaceholder": "Heritage"
+          "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
         }
       ]
     },
@@ -933,10 +852,9 @@
       "order": 0,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
           "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
-          "valueId": "02026f25-7360-506c-9a8c-f93444415929",
-          "bearerPlaceholder": "Class Garb"
+          "valueId": "02026f25-7360-506c-9a8c-f93444415929"
         }
       ]
     },
@@ -956,10 +874,9 @@
       "order": 1,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
           "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
-          "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede",
-          "bearerPlaceholder": "Class Garb"
+          "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
         }
       ]
     },
@@ -979,10 +896,9 @@
       "order": 2,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
           "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
-          "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9",
-          "bearerPlaceholder": "Class Garb"
+          "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
         }
       ]
     },
@@ -1002,10 +918,9 @@
       "order": 3,
       "placeholderPins": [
         {
-          "placeholderId": "",
+          "placeholderId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
           "value": "plain gray vestments and a healer's roll of bandages at the belt",
-          "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b",
-          "bearerPlaceholder": "Class Garb"
+          "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
         }
       ]
     },
@@ -1278,104 +1193,6 @@
       "order": 3
     }
   ],
-  "customPersona": {
-    "traitLinks": [
-      {
-        "id": "029df56d-06dd-5765-8969-4b63fcc363cb",
-        "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
-        "kind": "group",
-        "originalName": "Races",
-        "groupId": null,
-        "order": 0,
-        "defaults": {
-          "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": true
-        },
-        "pinValues": {
-          "889d6e62-5641-5102-a184-7e409aa95d60": {
-            "Heritage": {
-              "value": "the weathered, restless look of the human frontier towns",
-              "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
-            }
-          },
-          "f16630f6-5baf-5dc6-a114-efd32d326255": {
-            "Heritage": {
-              "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
-              "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
-            }
-          },
-          "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
-            "Heritage": {
-              "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
-              "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
-            }
-          },
-          "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
-            "Heritage": {
-              "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
-              "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
-            }
-          }
-        }
-      },
-      {
-        "id": "07cc2b0c-1600-5dd3-b27e-d317eb766a83",
-        "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
-        "kind": "group",
-        "originalName": "Classes",
-        "groupId": null,
-        "order": 1,
-        "defaults": {
-          "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": true
-        },
-        "pinValues": {
-          "6289a54c-9886-5693-a0e2-0ef61f735109": {
-            "Class Garb": {
-              "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
-              "valueId": "02026f25-7360-506c-9a8c-f93444415929"
-            }
-          },
-          "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
-            "Class Garb": {
-              "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
-              "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
-            }
-          },
-          "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
-            "Class Garb": {
-              "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
-              "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
-            }
-          },
-          "052f965e-d53d-5d83-90fe-626f4469f9b2": {
-            "Class Garb": {
-              "value": "plain gray vestments and a healer's roll of bandages at the belt",
-              "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
-            }
-          }
-        }
-      },
-      {
-        "id": "b60f0d2c-f416-5e8f-83b2-231cd7723539",
-        "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
-        "kind": "group",
-        "originalName": "Racial Abilities",
-        "groupId": null,
-        "order": 2
-      },
-      {
-        "id": "4bd1acc3-3b3e-533a-a380-77dad4064960",
-        "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
-        "kind": "group",
-        "originalName": "Class Abilities",
-        "groupId": null,
-        "order": 3
-      }
-    ],
-    "traitPlacement": {
-      "groupId": null,
-      "order": 2
-    }
-  },
   "statUpdates": [],
   "dictionaries": [],
   "placeholders": [

@@ -278,7 +278,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
-    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, customPersona, worldPlaceholders,
+    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, worldPlaceholders,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -449,7 +449,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const chosen = inAuthoredOrder(
       rawTraits.filter((t) => selectedTraits.includes(t.id)), traitOrderIndex(rawTraits, rawTraitGroups),
     );
-    const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona };
+    const world = { traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities };
     // The persona's linked stat traits apply after the world picks, as the game's seed does.
     const starting = startingStatsWith(rawStats, chosen, {
       traits: rawTraits, groups: rawTraitGroups, persona: draftPersona, bearers: inPlayBearers(world, draftPersona, libraryCast),
@@ -468,7 +468,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       rolls,
     });
   }, [
-    selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities, customPersona,
+    selectedTraits, ownedTraitPicks, draftPersona, selectedLocationId, rawTraits, rawTraitGroups, worldEntities,
     worldPlaceholders, rawStats, rawLocations, placeholders, rolls, libraryCast,
   ]);
   const {
@@ -1387,11 +1387,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const [traitCascade, setTraitCascade] = useState<TraitCascade | null>(null);
   // Every bearer in the cast: the player, the world's entities, and the library entities.
   const entryWorld = useMemo<EntryTraitWorld>(
-    () => ({ traits, traitGroups, entities: resolvedWorldEntities, customPersona, library: libraryCast }),
-    [traits, traitGroups, resolvedWorldEntities, customPersona, libraryCast],
+    () => ({ traits, traitGroups, entities: resolvedWorldEntities, library: libraryCast }),
+    [traits, traitGroups, resolvedWorldEntities, libraryCast],
   );
   const rawEntryWorld: EntryTraitWorld = {
-    traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, customPersona, library: libraryCast,
+    traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities, library: libraryCast,
   };
   // A library entity that joins the cast starts on its own defaults.
   useEffect(() => {
@@ -3213,7 +3213,6 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           traitGroups={traitGroups}
           traitEntities={entryWorld.entities}
           traitLibrary={entryWorld.library}
-          customPersona={customPersona}
           resolveEntityText={resolveEntityText}
           stats={rawStats}
           locations={offeredStartLocations(entryDraft.persona, personaPickContext)}

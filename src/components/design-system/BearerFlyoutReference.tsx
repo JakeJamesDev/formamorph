@@ -8,7 +8,6 @@ import { MENU_ROW } from '@/components/menuRow';
 import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { BearerList } from '@/managers/BearerPicker';
 import { bearerChoices } from '@/lib/bearerChoices';
-import { CUSTOM_PERSONA_ID } from '@/lib/traitTree';
 import type { Entity, EntityGroup } from '@/types';
 
 const GROUPS: EntityGroup[] = [
@@ -22,8 +21,9 @@ const ENTITIES: Entity[] = [
   { id: 'tomas', name: 'Captain Tomas Wexley of the Lower Ward', groupId: 'guard', order: 0 },
   { id: 'vex', name: 'Vex', groupId: 'villains', order: 0 },
   { id: 'sam', name: 'Sam', groupId: null, order: 3 },
+  { id: 'newcomer', name: 'Newcomer', groupId: null, order: 4, customPersona: true },
 ];
-const nameOf = (id: string) => (id === CUSTOM_PERSONA_ID ? 'Custom Persona' : ENTITIES.find((e) => e.id === id)?.name ?? id);
+const nameOf = (id: string) => ENTITIES.find((e) => e.id === id)?.name ?? id;
 
 /** The Traits tab's two bearer flyouts over sample entities: the + menu's drill-in and the link button's. */
 export function BearerFlyoutReference() {
@@ -64,7 +64,7 @@ export function BearerFlyoutReference() {
           </PopoverTrigger>
           <PopoverContent side="bottom" align="start" className="w-60 overflow-hidden p-1">
             <BearerList
-              choices={bearerChoices(GROUPS, ENTITIES, { customPersona: true })}
+              choices={bearerChoices(GROUPS, ENTITIES)}
               label="Link To"
               held={(id) => linked.has(id)}
               onPick={(id) => setLinked(new Set([...linked, id]))}

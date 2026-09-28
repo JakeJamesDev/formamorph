@@ -2,8 +2,9 @@
 
 import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { PLAYER_BEARER, resolveBearers, type Bearer, type BearerWorld } from './bearers';
+import { readerFor, type CopyReader } from './blueprints';
 import { characterAsPlayer } from './builtinPlaceholders';
-import { bindBearerPins, collectPins, type PinSources } from './placeholderPins';
+import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
@@ -109,13 +110,13 @@ export interface BearerPinState {
   persona: PersonaRef | undefined;
   /** The library entities the playthrough holds, the library persona among them. */
   library?: readonly Entity[];
-  /** The player's chosen world traits as the save holds them: the root's and Custom Persona's originals. */
+  /** The player's chosen world traits as the save holds them: the root's originals. */
   playerTraits: readonly Trait[];
   /** The player's traits switched off. */
   disabledTraitIds?: readonly string[];
   /** Entity id → its active trait ids: owned ones, and originals it links. */
   owned: Readonly<Record<string, readonly string[]>>;
-  /** The world's shared placeholders, which a bearer-relative pin falls back to by name. */
+  /** The world's shared placeholders, the blueprints among them. */
   sharedPlaceholders: readonly Placeholder[];
 }
 
@@ -126,32 +127,31 @@ export interface PinSet {
   /** One bearer's own text. A cast entity's lays its traits over `world`; the played persona, null and the
    *  player bearer read `world`. */
   of: (bearerId: string | null | undefined) => Record<string, string>;
-  /** The trait with its bearer-relative pins bound for that bearer, for its own card. */
+  /** The trait with its blueprint pins traced to that bearer's copies, for its own card. */
   bind: (trait: Trait, bearerId: string | null | undefined) => Trait;
 }
 
 /**
  * The pins in force per bearer, with `sources` supplying the world pins. The player's traits lay first: the
- * world traits and the played entity's, together in one-tree order, then the played entity's links. A cast
- * entity's active traits lay after them in its own tree order, so it wins in its own text. Only the player's
- * traits switch stat bands.
+ * world traits and each played entity's own, together in one-tree order, then the played entities' links. A
+ * played entity is the world persona, or the Custom Persona entity and a library persona. A cast entity's
+ * active traits lay after them in its own tree order, so it wins in its own text. Only the player's traits
+ * switch stat bands.
  */
 export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'traits' | 'disabledTraitIds' | 'statTraits'>): PinSet {
   const { world, persona, library = [], owned, sharedPlaceholders } = state;
   const { bearers } = resolveBearers(world, persona, library);
   const played = playedEntityId(persona);
   const playerBearer = bearers.find((b) => b.id === PLAYER_BEARER);
-  const playedBearer = played ? bearers.find((b) => b.id === played) : undefined;
-  const personaEntity = played ? [...world.entities, ...library].find((e) => e.id === played) : undefined;
-  const isPlayer = (id: string | null | undefined) => !id || id === PLAYER_BEARER || id === played;
+  const playedBearers = bearers.filter((b) => b.isPlayer && b.entity);
+  const personaEntity = played ? [...world.entities, ...library].find((e) => e.id === played) ?? null : null;
+  const isPlayer = (id: string | null | undefined) => !id || id === PLAYER_BEARER || playedBearers.some((b) => b.id === id);
 
-  const ownOf = (id: string | null | undefined) =>
-    (isPlayer(id) ? personaEntity : bearers.find((b) => b.id === id)?.entity)?.placeholders ?? [];
-  const linkOf = (trait: Trait, id: string | null | undefined) => (isPlayer(id)
-    ? playerBearer?.linkOf.get(trait.id) ?? playedBearer?.linkOf.get(trait.id)
-    : bearers.find((b) => b.id === id)?.linkOf.get(trait.id));
-  const bind = (trait: Trait, id: string | null | undefined) =>
-    bindBearerPins(trait, linkOf(trait, id), ownOf(id), sharedPlaceholders);
+  const blueprints = { placeholders: sharedPlaceholders, entities: world.entities };
+  const readerOf = (id: string | null | undefined): CopyReader => (isPlayer(id)
+    ? readerFor(persona, personaEntity, true)
+    : readerFor(persona, bearers.find((b) => b.id === id)?.entity ?? null, false));
+  const bind = (trait: Trait, id: string | null | undefined) => bindBlueprintPins(trait, blueprints, readerOf(id));
   const activeIn = (bearer: Bearer | undefined) => {
     const on = new Set(bearer ? owned[bearer.id] ?? [] : []);
     return bearer ? bearer.traits.filter((t) => on.has(t.id)) : [];
@@ -159,13 +159,11 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
 
   const off = new Set(state.disabledTraitIds ?? []);
   const tree = bearerTraitTree(world, persona, library);
-  const playedOwned = activeIn(playedBearer);
-  // A Custom Persona pick lies dormant under a world persona: it lays nothing until a return to None.
   const heldIds = new Set(playerBearer?.traits.map((t) => t.id));
+  const playedOwned = playedBearers.flatMap((b) => activeIn(b).filter((t) => !b.linkOf.has(t.id)));
   const playerTraits = [
-    ...inAuthoredOrder([...state.playerTraits.filter((t) => heldIds.has(t.id)), ...playedOwned.filter((t) => !playedBearer?.linkOf.has(t.id))],
-      traitOrderIndex(tree.traits, tree.groups)),
-    ...(playedBearer ? inBearerOrder(playedOwned.filter((t) => playedBearer.linkOf.has(t.id)), playedBearer) : []),
+    ...inAuthoredOrder([...state.playerTraits.filter((t) => heldIds.has(t.id)), ...playedOwned], traitOrderIndex(tree.traits, tree.groups)),
+    ...playedBearers.flatMap((b) => inBearerOrder(activeIn(b).filter((t) => b.linkOf.has(t.id)), b)),
   ].filter((t) => !off.has(t.id));
   const playerLaid = playerTraits.map((t) => bind(t, null));
   const collect = (traits: readonly Trait[]) => collectPins({ ...sources, traits, statTraits: playerTraits });
@@ -223,10 +221,6 @@ export const borneByPlayer = <T extends { name: string; aiDescription?: string }
     return name === item.name && aiDescription === item.aiDescription ? item : { ...item, name, aiDescription };
   });
 
-/** The trait with its bearer-relative pins bound for `bearer`, on `own` placeholders or the world's. */
-export const bindForBearer = (
-  trait: Trait, bearer: Pick<Bearer, 'linkOf'>, own: readonly Placeholder[], shared: readonly Placeholder[],
-): Trait => bindBearerPins(trait, bearer.linkOf.get(trait.id), own, shared);
 
 /** The Traits tab tree with each linked row named for its entity bearer. `named` reads an original's authored
  *  text with that entity as the Character Name; the player's rows and owned rows keep their names. */
@@ -261,8 +255,8 @@ export function withBearerNames(
 export interface BearerPriming {
   /** Each entity's own trait and group names and descriptions; linked originals are world text. */
   texts: string[];
-  /** Every bearer's traits that pin, bound for that bearer. The player's bind to the world's placeholders and
-   *  to each persona's, world or library. */
+  /** Every bearer's traits that pin, bound for that bearer. The player's bind under None and under each
+   *  persona, world or library. */
   pinTraits: Trait[];
 }
 
@@ -272,12 +266,20 @@ export function bearerPriming(world: BearerWorld, library: readonly Entity[], sh
     .filter((item) => !bearer.linkOf.has(item.id))
     .flatMap((item) => [item.name, item.playerDescription, item.aiDescription])
     .filter((text): text is string => !!text));
-  const personas = [...world.entities.filter((e) => e.persona), ...library];
+  const blueprints = { placeholders: shared, entities: world.entities };
+  const libraryIds = new Set(library.map((e) => e.id));
+  const playerReaders: CopyReader[] = [
+    readerFor({ source: 'none' }, null, true),
+    ...world.entities.filter((e) => e.persona).map((e) => readerFor({ source: 'world', entityId: e.id }, e, true)),
+    ...library.map((e) => readerFor({ source: 'library', entityId: e.id }, e, true)),
+  ];
   const pinTraits = bearers.flatMap((bearer) => {
-    const owns = bearer.entity ? [bearer.entity.placeholders ?? []] : [[], ...personas.map((e) => e.placeholders ?? [])];
-    return owns.flatMap((own) => bearer.traits
+    const readers = bearer.entity
+      ? [readerFor(libraryIds.has(bearer.id) ? { source: 'library', entityId: bearer.id } : undefined, bearer.entity, bearer.isPlayer)]
+      : playerReaders;
+    return readers.flatMap((reader) => bearer.traits
       .filter((t) => t.placeholderPins?.length)
-      .map((t) => bindForBearer(t, bearer, own, shared)));
+      .map((t) => bindBlueprintPins(t, blueprints, reader)));
   });
   return { texts, pinTraits };
 }

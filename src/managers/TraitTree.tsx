@@ -1,19 +1,18 @@
 import { useMemo, useState } from 'react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
-import { CircleUserRound, Folder, Info, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
+import { Folder, Info, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
-  CUSTOM_PERSONA_ID, CUSTOM_PERSONA_NAME, getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
+  getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
   getEntityRootDropProjection, applyEntityRootDrop,
   ownedTraitRows, ownedTraitTree, type FlatTraitNode, type LinkRow, type TraitDropRefusal,
 } from '@/lib/traitTree';
-import { useEditBearer } from './useEditBearer';
 import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { detachDropsStats, detachLink, removeLink } from '@/lib/traitLinks';
 import { SortableTree, type SortableTreeAdapter, type TreeRowSpec } from './SortableTree';
-import { alsoDeletesLinks, useRemoveWorldTrait } from './useRemoveWorldTrait';
+import { useRemoveWorldTrait } from './useRemoveWorldTrait';
 import { TREE_INDENT } from '@/components/EditorRow';
 import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -79,18 +78,17 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
 /**
  * The Traits tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Each entity
  * that owns a trait or a group has a node holding them, which drags like a group among the world's items.
- * Custom Persona draws as one more node, holding links only. In Basic, an empty system node hides. Over a
- * one entity's root, its links draw among its own items and stay where they are.
+ * In Basic, an empty system node hides. Over a one entity's root, its links draw among its own items and
+ * stay where they are.
  */
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
-    traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput,
-    customPersona, setCustomPersona, entityRoot,
+    traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput, entityRoot,
   } = useTraitStore();
   const originals = useMemo(() => originalsOf({ traits, traitGroups, entityRoot }), [traits, traitGroups, entityRoot]);
   const { advanced } = useEditorMode();
   const gates = useMemo(() => gateStates(gateInput), [gateInput]);
-  const lists = useMemo(() => ({ traits, traitGroups, customPersona }), [traits, traitGroups, customPersona]);
+  const lists = useMemo(() => ({ traits, traitGroups }), [traits, traitGroups]);
   const tree = useMemo(
     () => (entityRoot
       ? entityRootTraitTree(entityRoot.bearer, entityRoot.world)
@@ -100,14 +98,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
   const { ask: askRemoveOriginal, dialog: removeDialog } = useRemoveWorldTrait();
   const [pendingDetach, setPendingDetach] = useState<{ entityId: string; linkId: string; name: string } | null>(null);
-  const [pendingPersonaLinks, setPendingPersonaLinks] = useState<number | null>(null);
-
-  const editBearer = useEditBearer();
-  const removeCustomPersona = () => {
-    const links = customPersona?.traitLinks.length ?? 0;
-    if (links) setPendingPersonaLinks(links);
-    else setCustomPersona?.(undefined);
-  };
 
   const detach = (entityId: string, linkId: string) => {
     const bearer = entityRoot?.bearer.id === entityId ? entityRoot.bearer : entities.find((e) => e.id === entityId);
@@ -139,13 +129,12 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         fixed: true,
         ...(linkRowRemovable(linkRow, entityRoot?.world ?? null) ? {
           removeTitle: 'Remove Link',
-          remove: () => editBearer(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
+          remove: () => editEntity(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
         } : {}),
       };
     }
-    // A link row reads its bearer's gate on the original; Custom Persona's rows are the player's.
-    const bearerId = linkRow.entityId === CUSTOM_PERSONA_ID ? PLAYER_BEARER : linkRow.entityId;
-    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, bearerId, linkRow.originalId), placeholders);
+    // A link row reads its bearer's gate on the original.
+    const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, linkRow.entityId, linkRow.originalId), placeholders);
     const shared = {
       lead: isGroup ? 'chevron' : 'none',
       collapseLabels: ['Expand group', 'Collapse group'],
@@ -172,12 +161,9 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           </button>
         </Tip>
       ),
-      // Custom Persona holds links only, so its links have no owned copy to detach into.
-      actions: linkRow.entityId === CUSTOM_PERSONA_ID
-        ? undefined
-        : [{ icon: <Unlink className="h-4 w-4" />, title: 'Detach', onClick: () => askDetach(linkRow, name) }],
+      actions: [{ icon: <Unlink className="h-4 w-4" />, title: 'Detach', onClick: () => askDetach(linkRow, name) }],
       removeTitle: 'Remove Link',
-      remove: () => editBearer(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
+      remove: () => editEntity(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
     };
   };
 
@@ -208,23 +194,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         setTraits(next.world.traits);
       }
       for (const entity of next.entities) editEntity(entity.id, () => entity);
-      if (next.customPersona) setCustomPersona?.(next.customPersona);
     },
     rowSpec: (node) => {
       const linkRow = tree.linkRows.get(node.id);
       if (linkRow) return linkRowSpec(node, linkRow);
-      if (node.id === CUSTOM_PERSONA_ID) {
-        return {
-          lead: 'chevron',
-          collapseLabels: ['Expand Custom Persona', 'Collapse Custom Persona'],
-          icon: <CircleUserRound className="h-4 w-4 shrink-0" aria-hidden />,
-          label: CUSTOM_PERSONA_NAME,
-          labelClass: 'font-medium',
-          meta: 'Player',
-          removeTitle: 'Remove Custom Persona',
-          remove: removeCustomPersona,
-        };
-      }
       const entity = tree.entityNodes.get(node.id);
       if (entity) {
         return {
@@ -302,16 +275,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         onConfirm={() => {
           if (pendingDetach) detach(pendingDetach.entityId, pendingDetach.linkId);
           setPendingDetach(null);
-        }}
-      />
-      <ConfirmDialog
-        open={pendingPersonaLinks !== null}
-        onOpenChange={(open) => { if (!open) setPendingPersonaLinks(null); }}
-        title="Remove Custom Persona?"
-        description={alsoDeletesLinks(pendingPersonaLinks ?? 0)}
-        onConfirm={() => {
-          setCustomPersona?.(undefined);
-          setPendingPersonaLinks(null);
         }}
       />
     </>

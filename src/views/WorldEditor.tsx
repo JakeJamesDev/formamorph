@@ -81,8 +81,7 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { CUSTOM_PERSONA_ID, customPersonaEntity, duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
-import { CustomPersonaPanel } from '../managers/CustomPersonaPanel';
+import { duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
 import { bearsTraits, originalOf } from '@/lib/bearers';
 import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
@@ -156,7 +155,7 @@ const WorldEditorInner = ({
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
-    worldPlaceholders, placeholderOwners, placeholderGroups, customPersona, setCustomPersona,
+    worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
     addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
@@ -749,10 +748,6 @@ const WorldEditorInner = ({
     });
     setSelectedItemId(id);
   };
-  const handleAddCustomPersona = () => {
-    setCustomPersona({ traitLinks: [] });
-    setSelectedItemId(CUSTOM_PERSONA_ID);
-  };
   // The first add to an entity gives it a node in the tree, which reveals the selected row.
   const handleAddToEntity = (kind: OwnedKind, entityId: string, typed: string) => {
     const id = randomUUID();
@@ -800,12 +795,10 @@ const WorldEditorInner = ({
   // A link's row, or a row of its linked group's subtree, edits the original it reads.
   const selectedLinkRow = useMemo(
     () => (activeTab === 'traits' && selectedItemId
-      ? ownedTraitTree({ traits, traitGroups, customPersona }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
-    [activeTab, selectedItemId, traits, traitGroups, customPersona, entities],
+      ? ownedTraitTree({ traits, traitGroups }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
+    [activeTab, selectedItemId, traits, traitGroups, entities],
   );
-  const selectedLinkBearer = selectedLinkRow && (selectedLinkRow.entityId === CUSTOM_PERSONA_ID
-    ? customPersona && customPersonaEntity(customPersona)
-    : entities.find((e) => e.id === selectedLinkRow.entityId));
+  const selectedLinkBearer = selectedLinkRow && entities.find((e) => e.id === selectedLinkRow.entityId);
   const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
   const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
@@ -1041,7 +1034,6 @@ const WorldEditorInner = ({
           ownerId={selectedOwned?.entity.id}
         />
       )}
-      {activeTab === "traits" && customPersona && selectedItemId === CUSTOM_PERSONA_ID && <CustomPersonaPanel />}
       {selectedTraitNode && (
         <EntityTraitNodePanel
           key={selectedTraitNode.id}
@@ -1242,12 +1234,10 @@ const WorldEditorInner = ({
       entities={entities}
       entityGroups={entityGroups}
       hasTemplates={hasTemplates}
-      hasCustomPersona={!!customPersona}
       onAddGroup={handleAddGroup}
       onAddTrait={handleAddTrait}
       onAddToEntity={handleAddToEntity}
       onAddTemplates={handleAddTemplates}
-      onAddCustomPersona={handleAddCustomPersona}
     />
   ) : (
     <>

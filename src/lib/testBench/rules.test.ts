@@ -1667,9 +1667,12 @@ describe('trait gate rules', () => {
         { id: 'races', name: 'Races', parentId: 'templates', exclusive: true },
         { id: 'abilities', name: 'Racial Abilities', parentId: 'templates' },
       ];
-      const links = (race: string) => [
-        { id: `l-races-${race}`, originalId: 'races', kind: 'group' as const, originalName: 'Races', groupId: null, defaults: { [race]: true } },
-        { id: `l-abilities-${race}`, originalId: 'abilities', kind: 'group' as const, originalName: 'Racial Abilities', groupId: null },
+      const links = (race: string): TraitLink[] => [
+        {
+          id: `l-races-${race}`, originalId: 'races', kind: 'group', originalName: 'Races', groupId: null,
+          overrides: { [race]: { isDefault: { value: true, blueprint: false } } },
+        },
+        { id: `l-abilities-${race}`, originalId: 'abilities', kind: 'group', originalName: 'Racial Abilities', groupId: null },
       ];
       const persona = (id: string, race: string): Entity => ({ ...resident, id, name: id, persona: true, traitLinks: links(race) });
       const albus = (race: string) => persona('albus', race);
@@ -1687,8 +1690,9 @@ describe('trait gate rules', () => {
         expect(found[0].message).toBe('“KEEN” is marked default but starts unselected — no starting default or persona choice meets “Elf”');
       });
 
-      it('counts a default Custom Persona keeps under None', () => {
-        expect(only(linked([albus('human')], { customPersona: { traitLinks: links('elf') } }), rule)).toEqual([]);
+      it('counts a default the Custom Persona entity keeps under None', () => {
+        const newcomer: Entity = { ...resident, id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: links('elf') };
+        expect(only(linked([albus('human'), newcomer]), rule)).toEqual([]);
       });
     });
   });
@@ -1710,6 +1714,8 @@ describe('trait link rules', () => {
     { id: 'classes', name: 'Classes', parentId: 'templates' },
   ];
   const albus = (over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'albus', name: 'Albus', ...over });
+  /** The Custom Persona entity: the player's own under None. */
+  const newcomer = (over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'cp', name: 'Newcomer', customPersona: true, ...over });
   const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
     base({ traits: [faithful, ...templated], traitGroups, entities: [resident, ...entities], ...over });
   const opened = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
@@ -1768,12 +1774,15 @@ describe('trait link rules', () => {
       expect(opened(found)).toEqual([['l-smite']]);
     });
 
-    it('checks Custom Persona as the None player with the root traits', () => {
-      const customPersona = { traitLinks: [link('cp-smite', 'smite', 'trait')] };
-      expect(only(linked([], { customPersona }), rule)).toEqual([]);
+    it('checks the Custom Persona entity as the None player, so the root it joins can meet the requirement', () => {
+      expect(only(linked([newcomer({ traitLinks: [link('cp-smite', 'smite', 'trait')] })]), rule)).toEqual([]);
+    });
+
+    it('names the Custom Persona entity once the root no longer offers what its link requires', () => {
       // Faithful moves into Templates, so the root no longer offers it.
-      const found = only(linked([], { customPersona, traits: [{ ...faithful, groupId: 'templates' }, ...templated] }), rule);
-      expect(found.map((f) => f.message)).toEqual(['“Custom Persona” links “Smite” but can never meet “Faithful”, so it never unlocks']);
+      const cp = newcomer({ traitLinks: [link('cp-smite', 'smite', 'trait')] });
+      const found = only(linked([cp], { traits: [{ ...faithful, groupId: 'templates' }, ...templated] }), rule);
+      expect(found.map((f) => f.message)).toEqual(['“Newcomer” links “Smite” but can never meet “Faithful”, so it never unlocks']);
       expect(opened(found)).toEqual([['cp-smite']]);
     });
 
@@ -1813,9 +1822,9 @@ describe('trait link rules', () => {
       expect(opened(found)).toEqual([['l-1']]);
     });
 
-    it('reports a Custom Persona link to what the top level already offers', () => {
-      const found = only(linked([], { customPersona: { traitLinks: [link('cp-faithful', 'faithful', 'trait')] } }), rule);
-      expect(found.map((f) => f.message)).toEqual(['“Custom Persona” links “Faithful”, which the top level already offers the player']);
+    it('reports a Custom Persona entity’s link to what the top level already offers', () => {
+      const found = only(linked([newcomer({ traitLinks: [link('cp-faithful', 'faithful', 'trait')] })]), rule);
+      expect(found.map((f) => f.message)).toEqual(['“Newcomer” links “Faithful”, which the top level already offers the player']);
       expect(opened(found)).toEqual([['cp-faithful']]);
     });
 
@@ -1834,65 +1843,6 @@ describe('trait link rules', () => {
     });
   });
 
-  describe('bearer-relative pins', () => {
-    const garb: Placeholder = { id: 'ph-garb', name: 'Garb', values: phValues(['mail', 'robes']) };
-    const pinned = (name: string): Trait[] => templated.map((t) => (t.id === 'paladin'
-      ? { ...t, placeholderPins: [{ placeholderId: '', bearerPlaceholder: name, value: 'mail' }] } : t));
-    const pinWorld = (entities: Entity[], name = 'Garb', over: Partial<RuleWorld> = {}) =>
-      linked(entities, { traits: [faithful, ...pinned(name)], placeholders: [garb], ...over });
-
-    it('reports a link with no value for a pin that binds, and opens the link', () => {
-      const found = only(pinWorld([albus({ traitLinks: [link('l-paladin', 'paladin', 'trait')] })]), 'trait-link-pin-no-value');
-      expect(found.map((f) => f.message)).toEqual(['“Albus” links “Paladin” with no value for “Garb”, so the pin is ignored']);
-      expect(opened(found)).toEqual([['l-paladin']]);
-      expect(found[0].severity).toBe('warning');
-    });
-
-    it('passes a link that gives the pin a value, through a linked group too', () => {
-      const pinValues = { paladin: { Garb: { value: 'robes' } } };
-      expect(only(pinWorld([albus({ traitLinks: [link('l-paladin', 'paladin', 'trait', { pinValues })] })]), 'trait-link-pin-no-value')).toEqual([]);
-      const viaGroup = only(pinWorld([albus({ traitLinks: [link('l-classes', 'classes', 'group')] })]), 'trait-link-pin-no-value');
-      expect(opened(viaGroup)).toEqual([['l-classes']]);
-      expect(only(pinWorld([albus({ traitLinks: [link('l-classes', 'classes', 'group', { pinValues })] })]), 'trait-link-pin-no-value')).toEqual([]);
-    });
-
-    it('reports a pin whose name matches no placeholder on each bearer or the world', () => {
-      const w = pinWorld([
-        albus({ traitLinks: [link('l-a', 'paladin', 'trait')] }),
-        albus({ id: 'bree', name: 'Bree', traitLinks: [link('l-b', 'paladin', 'trait')] }),
-      ], 'Crest');
-      const found = only(w, 'trait-bearer-pin-unknown-name');
-      expect(found.map((f) => f.message)).toEqual(['“Paladin” pins “Crest”, an unknown name on “Albus”, “Bree” and in the world, so the pin is ignored']);
-      expect(opened(found)).toEqual([['l-a', 'l-b']]);
-      // A pin that binds nowhere is this rule's, not the no-value rule's.
-      expect(only(w, 'trait-link-pin-no-value')).toEqual([]);
-    });
-
-    it('binds to the bearer’s own placeholder of that name', () => {
-      const crest: Placeholder = { id: 'ph-crest', name: 'Crest', values: phValues(['lion']) };
-      const w = pinWorld([
-        albus({ placeholders: [crest], traitLinks: [link('l-a', 'paladin', 'trait')] }),
-        albus({ id: 'bree', name: 'Bree', traitLinks: [link('l-b', 'paladin', 'trait')] }),
-      ], 'Crest');
-      expect(opened(only(w, 'trait-bearer-pin-unknown-name'))).toEqual([['l-b']]);
-      expect(opened(only(w, 'trait-link-pin-no-value'))).toEqual([['l-a']]);
-    });
-
-    it('binds a root trait’s pin to a world persona’s placeholder, since the root binds to the played persona first', () => {
-      const root = trait({ id: 'sworn', name: 'Sworn', placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Crest', value: 'lion' }] });
-      const crest: Placeholder = { id: 'ph-crest', name: 'Crest', values: phValues(['lion']) };
-      const w = (persona: boolean) => linked([albus({ persona, placeholders: [crest] })], { traits: [faithful, root], placeholders: [garb] });
-      expect(only(w(true), 'trait-bearer-pin-unknown-name')).toEqual([]);
-      expect(opened(only(w(false), 'trait-bearer-pin-unknown-name'))).toEqual([['sworn']]);
-    });
-
-    it('reads a root trait’s pin against the world, opening the trait', () => {
-      const root = trait({ id: 'sworn', name: 'Sworn', placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Crest', value: 'lion' }] });
-      const found = only(linked([], { traits: [faithful, root], placeholders: [garb] }), 'trait-bearer-pin-unknown-name');
-      expect(found.map((f) => f.message)).toEqual(['“Sworn” pins “Crest”, an unknown name in the world, so the pin is ignored']);
-      expect(opened(found)).toEqual([['sworn']]);
-    });
-  });
 });
 
 describe('placeholder pin rules', () => {
@@ -1981,14 +1931,16 @@ describe('placeholder pin rules', () => {
 
     it('stays quiet for two Personas whose links pin one world placeholder to different values', () => {
       // Only one is played; the other wins in its own text. The cast entity's link still rivals the world trait.
-      const garb = { id: 'paladin', name: 'Paladin', groupId: 'templates', placeholderPins: [{ placeholderId: '', value: '', bearerPlaceholder: 'Hue' }] };
-      const link = (id: string, value: string): TraitLink =>
-        ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, pinValues: { paladin: { Hue: { value } } } });
+      const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'templates' });
+      const link = (id: string, value: string): TraitLink => ({
+        id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null,
+        overrides: { paladin: { placeholderPins: { value: [pinTo(value)], blueprint: [] } } },
+      });
       const persona = (id: string, value: string, over: Partial<Entity> = {}): Entity =>
         ({ id, name: id, persona: true, traitLinks: [link(`l-${id}`, value)], ...over });
       const two = contest({
         traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
-        traits: [trait(garb)],
+        traits: [paladin],
         entities: [persona('Albus', 'red'), persona('Sylvie', 'blue')],
       });
       expect(only(two, 'placeholder-pin-conflict')).toEqual([]);
@@ -3319,9 +3271,6 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'trait-requirement-unresolved': 'simple',
   // A link row's menu removes it in both modes.
   'trait-link-redundant': 'simple',
-  // Bearer-relative pins are set where every placeholder pin is: Advanced.
-  'trait-link-pin-no-value': 'advanced',
-  'trait-bearer-pin-unknown-name': 'advanced',
   'world-empty-system-prompt': 'simple',
   'world-no-readme': 'simple',
   'world-oversized-images': 'simple',

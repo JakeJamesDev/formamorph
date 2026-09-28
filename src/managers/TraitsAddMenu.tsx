@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ChevronRight, CircleUserRound, FilePlus, FolderPlus, LayoutTemplate } from 'lucide-react';
+import { ChevronRight, FilePlus, FolderPlus, LayoutTemplate } from 'lucide-react';
 import { ListMenuRow } from '@/components/ListToolbar';
 import { useListAdd } from '@/components/listToolbarHooks';
 import { MENU_ROW } from '@/components/menuRow';
@@ -19,19 +19,17 @@ const TO_ENTITY_LABEL: Record<OwnedKind, string> = { trait: 'Add Trait to Entity
  * level is menu state: closing the menu unmounts it and the next open starts at the top.
  */
 export function TraitsAddMenu({
-  advanced, entities, entityGroups, hasTemplates, hasCustomPersona,
-  onAddGroup, onAddTrait, onAddToEntity, onAddTemplates, onAddCustomPersona,
+  advanced, entities, entityGroups, hasTemplates,
+  onAddGroup, onAddTrait, onAddToEntity, onAddTemplates,
 }: {
   advanced: boolean;
   entities: Entity[];
   entityGroups: EntityGroup[];
   hasTemplates: boolean;
-  hasCustomPersona: boolean;
   onAddGroup: (typed: string) => void;
   onAddTrait: (typed: string) => void;
   onAddToEntity: (kind: OwnedKind, entityId: string, typed: string) => void;
   onAddTemplates: () => void;
-  onAddCustomPersona: () => void;
 }) {
   const { add } = useListAdd();
   const [drilled, setDrilled] = useState<OwnedKind | null>(null);
@@ -61,8 +59,6 @@ export function TraitsAddMenu({
           {advanced && drillRow(<FilePlus className="h-4 w-4" />, 'trait')}
           {advanced && !hasTemplates
             && <ListMenuRow icon={<LayoutTemplate className="h-4 w-4" />} label="Add Templates Group" onAdd={onAddTemplates} />}
-          {advanced && !hasCustomPersona
-            && <ListMenuRow icon={<CircleUserRound className="h-4 w-4" />} label="Add Custom Persona" onAdd={onAddCustomPersona} />}
         </>
       )}
     </DrillSlide>

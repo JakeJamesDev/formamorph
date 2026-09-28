@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
-import { phValues } from '@/test/placeholderValues';
+import { phValueId, phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
   activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerPriming, bearerTraitTree, inPlayLibrary, rowBearer,
@@ -9,62 +9,75 @@ import {
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 
-const pin = (placeholderId: string, value: string): PlaceholderPin => ({ placeholderId, value });
+const pin = (placeholderId: string, value: string, valueId?: string): PlaceholderPin =>
+  ({ placeholderId, value, ...(valueId ? { valueId } : {}) });
 const trait = (id: string, pins: PlaceholderPin[] = [], extra: Partial<Trait> = {}): Trait =>
   ({ id, name: id, statChanges: [], ...(pins.length ? { placeholderPins: pins } : {}), ...extra });
 const NONE: PersonaRef = { source: 'none' };
+const AS_ALBUS: PersonaRef = { source: 'world', entityId: 'albus' };
+const AS_LIB: PersonaRef = { source: 'library', entityId: 'lib' };
+// Class Garb is a blueprint: a trait pin names it, and each bearer reads its own copy of it.
 const shared: Placeholder[] = [
   { id: 'garb', name: 'Class Garb', values: phValues(['Robe', 'Plate', 'Tabard']) },
   { id: 'mood', name: 'Mood', values: phValues(['calm', 'wary', 'fierce']) },
 ];
-const garb = (value: string): PlaceholderPin => ({ placeholderId: '', value, bearerPlaceholder: 'Class Garb' });
-const link = (id: string, originalId: string, pinValues?: TraitLink['pinValues']): TraitLink =>
-  ({ id, originalId, kind: 'trait', originalName: originalId, groupId: null, order: 5, ...(pinValues ? { pinValues } : {}) });
-const worn = (value: string) => ({ paladin: { 'Class Garb': { value } } });
+const TABARD = phValueId('Tabard');
+/** A bearer's copy of Class Garb: Tabard reworded to `text`, or removed when `text` is null. */
+const garbCopy = (id: string, text: string | null): Placeholder => ({
+  id, name: 'Class Garb', values: [], blueprintId: 'garb',
+  valueOverrides: { [TABARD]: text === null ? { removed: true } : { text: { value: text, blueprint: 'Tabard' } } },
+});
+const paladinPins = [pin('garb', 'Tabard', TABARD)];
+/** A link to a trait; `pins` overrides the original's pin list. */
+const link = (id: string, originalId: string, pins?: PlaceholderPin[]): TraitLink => ({
+  id, originalId, kind: 'trait', originalName: originalId, groupId: null, order: 5,
+  ...(pins ? { overrides: { [originalId]: { placeholderPins: { value: pins, blueprint: paladinPins } } } } : {}),
+});
 
-const paladin = trait('paladin', [garb('Tabard')], { groupId: 'templates', statToggles: [{ statId: 'hunger', enabled: false }] });
+const paladin = trait('paladin', paladinPins, { groupId: 'templates', statToggles: [{ statId: 'hunger', enabled: false }] });
 const brave = trait('brave', [pin('mood', 'wary')], { groupId: null, order: 0 });
-const cloak = trait('cloak', [garb('Robe')], { groupId: null, order: 1 });
-// Albus carries his own Class Garb; Mira and Bo fall back to the world's.
+const cloak = trait('cloak', [pin('garb', 'Robe')], { groupId: null, order: 1 });
+// Albus rewords Tabard on his copy; Bo removes it; Mira has no copy and her link pins Plate instead.
 const albus: Entity = {
   id: 'albus', name: 'Albus', persona: true,
-  placeholders: [{ id: 'albus-garb', name: 'Class Garb', values: phValues(['Gilded plate', 'Chain']) }],
+  placeholders: [garbCopy('albus-garb', 'Gilded plate')],
   traits: [trait('t-stern', [pin('mood', 'fierce')], { groupId: null, order: 0 })],
-  traitLinks: [link('l-albus', 'paladin', worn('Gilded plate'))],
+  traitLinks: [link('l-albus', 'paladin')],
 };
-const mira: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l-mira', 'paladin', worn('Plate'))] };
-const bo: Entity = { id: 'bo', name: 'Bo', traitLinks: [link('l-bo', 'paladin')] };
-const lib: Entity = {
-  id: 'lib', name: 'Wren', persona: true,
-  placeholders: [{ id: 'lib-garb', name: 'Class Garb', values: phValues(['Wren cloak']) }],
-};
+const mira: Entity = { id: 'mira', name: 'Mira', traitLinks: [link('l-mira', 'paladin', [pin('garb', 'Plate')])] };
+const bo: Entity = { id: 'bo', name: 'Bo', placeholders: [garbCopy('bo-garb', null)], traitLinks: [link('l-bo', 'paladin')] };
+/** The Custom Persona entity: its Paladin link pins Robe on the blueprint. */
+const you: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l-you', 'paladin', [pin('garb', 'Robe')])] };
+const lib: Entity = { id: 'lib', name: 'Wren', persona: true, placeholders: [garbCopy('lib-garb', 'Wren cloak')] };
 const world = {
   traits: [brave, cloak, paladin],
   traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const }],
-  entities: [albus, mira, bo],
-  customPersona: { traitLinks: [link('l-you', 'paladin', worn('Robe'))] },
+  entities: [albus, mira, bo, you],
 };
 const hunger: PinnableStat = {
   id: 'hunger', value: 10, min: 0, max: 100, enabled: true,
   descriptors: [{ id: 'starving', threshold: 20, description: 'Starving', placeholderPins: [pin('mood', 'calm')] }],
 };
 const owned = { albus: ['t-stern', 'paladin'], mira: ['paladin'], bo: ['paladin'] };
+/** The player picked the Custom Persona entity's Paladin. */
+const picked = { ...owned, cp: ['paladin'] };
+const allPlaceholders = [...shared, ...albus.placeholders!, ...bo.placeholders!, ...lib.placeholders!];
 const pinsUnder = (persona: PersonaRef, playerTraits: Trait[], extra: Partial<BearerPinState> = {}) =>
   bearerPins(
     { world, persona, library: [lib], playerTraits, owned, sharedPlaceholders: shared, ...extra },
-    { placeholders: [...shared, ...albus.placeholders!, ...lib.placeholders!] },
+    { placeholders: allPlaceholders },
   );
 
 describe('bearerPins — each bearer lays its own pins', () => {
-  it("binds a bearer-relative pin to the bearer's own placeholder, valued by the link", () => {
+  it("traces a blueprint pin to the bearer's own copy, with the copy's text", () => {
     expect(pinsUnder(NONE, []).of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
   });
 
-  it('falls back to the world placeholder of that name, valued by the link', () => {
+  it("reads the blueprint itself for a bearer with no copy, valued by the link's own pins", () => {
     expect(pinsUnder(NONE, []).of('mira')).toEqual({ garb: 'Plate' });
   });
 
-  it('lays no pin for a link with no value', () => {
+  it("lays nothing for a pin naming a value the bearer's copy removed", () => {
     expect(pinsUnder(NONE, []).of('bo')).toEqual({});
   });
 
@@ -75,28 +88,40 @@ describe('bearerPins — each bearer lays its own pins', () => {
   });
 
   it("lays the player's pins in world-level text and in a cast entity's, under the entity's own", () => {
-    const pins = pinsUnder(NONE, [brave, paladin]);
+    const pins = pinsUnder(NONE, [brave], { owned: picked });
     expect(pins.world).toEqual({ mood: 'wary', garb: 'Robe' });
     // Mira's Plate beats the player's Robe in her own text; the player's Wary reaches it untouched.
     expect(pins.of('mira')).toEqual({ mood: 'wary', garb: 'Plate' });
     expect(pins.of('bo')).toBe(pins.world);
   });
 
-  it("gives a directly held bearer-relative pin the pin's own value", () => {
+  it("gives a directly held blueprint pin the pin's own text, on the copy of whoever is played", () => {
     expect(pinsUnder(NONE, [cloak]).world).toEqual({ garb: 'Robe' });
-    // Played as Albus, the same root trait binds to his own Class Garb.
-    expect(pinsUnder({ source: 'world', entityId: 'albus' }, [cloak], { owned: { albus: ['t-stern'] } }).world)
-      .toEqual({ 'albus-garb': 'Robe', mood: 'fierce' });
+    // Played as Albus, the same root trait lands on his own copy of Class Garb.
+    expect(pinsUnder(AS_ALBUS, [cloak], { owned: { albus: ['t-stern'] } }).world).toEqual({ 'albus-garb': 'Robe', mood: 'fierce' });
   });
 
   it("reads the played persona's own text with the player's set", () => {
-    const pins = pinsUnder({ source: 'world', entityId: 'albus' }, [brave]);
+    const pins = pinsUnder(AS_ALBUS, [brave]);
     expect(pins.world).toEqual({ mood: 'fierce', 'albus-garb': 'Gilded plate' });
     expect(pins.of('albus')).toBe(pins.world);
   });
 
-  it("binds Custom Persona's links to a library persona's own placeholder first", () => {
-    expect(pinsUnder({ source: 'library', entityId: 'lib' }, [paladin]).world).toEqual({ 'lib-garb': 'Robe' });
+  it("binds the Custom Persona entity's pins to a library persona's own copy first", () => {
+    expect(pinsUnder(AS_LIB, [], { owned: picked }).world).toEqual({ 'lib-garb': 'Robe' });
+  });
+
+  it("reads the Custom Persona entity's copy for the player under None and under a library persona without one, never under a world persona", () => {
+    const youCopy: Entity = { ...you, placeholders: [garbCopy('cp-garb', 'Newcomer robe')], traitLinks: [link('l-you', 'paladin')] };
+    const w = { ...world, entities: [albus, mira, bo, youCopy] };
+    const under = (persona: PersonaRef, library: Entity[]) => bearerPins(
+      { world: w, persona, library, playerTraits: [], owned: picked, sharedPlaceholders: shared },
+      { placeholders: [...allPlaceholders, ...youCopy.placeholders!] },
+    ).world;
+    expect(under(NONE, [])).toEqual({ 'cp-garb': 'Newcomer robe' });
+    expect(under(AS_LIB, [{ ...lib, placeholders: [] }])).toEqual({ 'cp-garb': 'Newcomer robe' });
+    expect(under(AS_LIB, [lib])).toEqual({ 'lib-garb': 'Wren cloak' });
+    expect(under(AS_ALBUS, [])).toEqual({ mood: 'fierce', 'albus-garb': 'Gilded plate' });
   });
 
   it("lets only the player's traits decide which stat bands pin", () => {
@@ -109,10 +134,11 @@ describe('bearerPins — each bearer lays its own pins', () => {
   });
 
   it('drops a disabled player trait, and binds a trait card for its bearer', () => {
-    const pins = pinsUnder(NONE, [brave, paladin], { disabledTraitIds: ['brave'] });
+    const pins = pinsUnder(NONE, [brave], { disabledTraitIds: ['brave'], owned: picked });
     expect(pins.world).toEqual({ garb: 'Robe' });
-    expect(pins.bind(paladin, 'albus').placeholderPins).toEqual([{ placeholderId: 'albus-garb', value: 'Gilded plate' }]);
+    expect(pins.bind(paladin, 'albus').placeholderPins).toEqual([{ placeholderId: 'albus-garb', value: 'Gilded plate', valueId: TABARD }]);
     expect(pins.bind(paladin, 'bo').placeholderPins).toEqual([]);
+    expect(pins.bind(paladin, 'mira').placeholderPins).toEqual(paladinPins);
     expect(pins.bind(brave, 'albus')).toBe(brave);
   });
 
@@ -121,24 +147,26 @@ describe('bearerPins — each bearer lays its own pins', () => {
   });
 
   it("lays a Custom Persona pick's pin under None, and nothing from it under a world persona, where it lies dormant", () => {
-    // Custom Persona links Paladin, whose Class Garb pin falls back to the world's; the pick stays chosen.
-    expect(pinsUnder(NONE, [paladin]).world.garb).toBe('Robe');
-    expect(pinsUnder({ source: 'world', entityId: 'albus' }, [paladin]).world.garb).toBeUndefined();
+    expect(pinsUnder(NONE, [], { owned: picked }).world.garb).toBe('Robe');
+    const asAlbus = pinsUnder(AS_ALBUS, [], { owned: picked }).world;
+    expect(asAlbus.garb).toBeUndefined();
+    expect(asAlbus['albus-garb']).toBe('Gilded plate');
   });
 });
 
 describe('bearerPriming — what roll priming walks per bearer', () => {
-  it("walks each bearer's pin values bound to its own placeholder or the world's, and no unbound pin", () => {
+  it("walks each bearer's pin values traced to its own copy or the blueprint, and nothing for a removed value", () => {
     const texts = allPinTexts({
       traits: [...world.traits, ...bearerPriming(world, [lib], shared).pinTraits],
-      placeholders: [...shared, ...albus.placeholders!, ...lib.placeholders!],
+      placeholders: allPlaceholders,
     });
-    // Albus's link, and the player's cloak, which lays on Albus's own Class Garb while you play him.
+    // Albus's link, and the player's cloak, which lands on Albus's own copy while you play him.
     expect([...texts['albus-garb']].sort()).toEqual(['Gilded plate', 'Robe']);
-    // Mira's link, Custom Persona's link and the directly held cloak; the pin's own Tabard only seeds new links.
-    expect([...texts.garb].sort()).toEqual(['Plate', 'Robe']);
-    // Under the library persona the player's pins bind to its own Class Garb.
+    // Paladin's own pin, Mira's and the Custom Persona entity's link pins, and the directly held cloak.
+    expect([...texts.garb].sort()).toEqual(['Plate', 'Robe', 'Tabard']);
+    // Under the library persona the player's pins land on its own copy.
     expect(texts['lib-garb']).toEqual(['Robe']);
+    expect(texts['bo-garb']).toBeUndefined();
     expect(texts['']).toBeUndefined();
   });
 
@@ -182,8 +210,8 @@ describe('bearerTraitTree — the player-facing tree', () => {
     entities: [
       { ...albus, traitLinks: [link('l-albus', 'classes')], traitPlacement: { groupId: null, order: 5 } },
       { ...mira, traitGroups: [{ id: 'g-mira', name: 'Bond', parentId: null, order: 0 }], traitLinks: [{ ...link('l-mira', 'classes'), groupId: 'g-mira' }] },
+      { ...you, traitLinks: [link('l-you', 'wizard')] },
     ],
-    customPersona: { traitLinks: [link('l-you', 'wizard')] },
   };
   const rows = (t: { id: string; groupId?: string | null }[]) => t.map((x) => [x.id, x.groupId ?? null]);
 
@@ -192,31 +220,39 @@ describe('bearerTraitTree — the player-facing tree', () => {
     expect(tree.groups.map((g) => [g.id, g.parentId])).toEqual([
       ['albus', null], [bearerGroupId('albus', 'classes'), 'albus'],
       ['mira', null], [bearerGroupId('mira', 'g-mira'), 'mira'], [bearerGroupId('mira', 'classes'), bearerGroupId('mira', 'g-mira')],
+      ['cp', null],
     ]);
     expect(rows(tree.traits)).toEqual([
-      ['brave', null], ['cloak', null], ['wizard', null],
+      ['brave', null], ['cloak', null],
       ['t-stern', 'albus'], ['paladin', bearerGroupId('albus', 'classes')], ['wizard', bearerGroupId('albus', 'classes')],
       ['paladin', bearerGroupId('mira', 'classes')], ['wizard', bearerGroupId('mira', 'classes')],
+      ['wizard', 'cp'],
     ]);
-    expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira']);
+    expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira', 'cp']);
     expect(tree.groups.find((g) => g.id === bearerGroupId('albus', 'classes'))?.exclusive).toBe(true);
-    expect(tree.traits.map((t) => rowBearer(tree, t))).toEqual(['world', 'world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira']);
+    expect(tree.traits.map((t) => rowBearer(tree, t))).toEqual(['world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
   });
 
-  it("merges Custom Persona's links into the player's top level under None, and drops them under a world persona", () => {
-    expect(rows(bearerTraitTree(linkedWorld, NONE).traits).slice(0, 3)).toEqual([['brave', null], ['cloak', null], ['wizard', null]]);
-    expect(rows(bearerTraitTree(linkedWorld, { source: 'world', entityId: 'albus' }).traits).slice(0, 2)).toEqual([['brave', null], ['cloak', null]]);
+  it("gives the Custom Persona entity a node beside the player's top level under None, and none under a world persona", () => {
+    const none = bearerTraitTree(linkedWorld, NONE);
+    expect(rows(none.traits).slice(0, 2)).toEqual([['brave', null], ['cloak', null]]);
+    expect(none.traits.filter((t) => rowBearer(none, t) === 'cp').map((t) => t.id)).toEqual(['wizard']);
+    expect(none.bearers.find((b) => b.id === 'cp')?.isPlayer).toBe(true);
+    const asAlbus = bearerTraitTree(linkedWorld, AS_ALBUS);
+    expect(asAlbus.entityNodes.has('cp')).toBe(false);
+    expect(asAlbus.traits.map((t) => rowBearer(asAlbus, t))).not.toContain('cp');
   });
 
   it('places a node where the author put it, ends the top level with the unplaced ones, and puts the library last', () => {
     const wolf: Entity = { id: 'wolf', name: 'Wolf', traits: [trait('t-wild')] };
-    const tree = bearerTraitTree(linkedWorld, { source: 'library', entityId: 'lib' }, [{ ...lib, traits: [trait('t-lib')] }, wolf]);
+    const tree = bearerTraitTree(linkedWorld, AS_LIB, [{ ...lib, traits: [trait('t-lib')] }, wolf]);
     const nodes = tree.groups.filter((g) => tree.entityNodes.has(g.id)).map((g) => [g.id, g.order] as const);
-    expect(nodes.map(([id]) => id)).toEqual(['albus', 'mira', 'lib', 'wolf']);
+    expect(nodes.map(([id]) => id)).toEqual(['albus', 'mira', 'cp', 'lib', 'wolf']);
     expect(nodes.find(([id]) => id === 'albus')?.[1]).toBe(5);
-    const rootMax = Math.max(...tree.traits.filter((t) => t.groupId == null).map((t) => t.order ?? 0));
+    // The unplaced nodes follow the last top-level order, Albus's placed node at 5.
+    const rootMax = Math.max(5, ...tree.traits.filter((t) => t.groupId == null).map((t) => t.order ?? 0));
     const unplaced = nodes.filter(([id]) => id !== 'albus').map(([, order]) => order ?? -1);
-    expect(unplaced).toEqual([rootMax + 1, rootMax + 2, rootMax + 3]);
+    expect(unplaced).toEqual([rootMax + 1, rootMax + 2, rootMax + 3, rootMax + 4]);
   });
 
   it('leaves out a bearer the playthrough does not hold', () => {

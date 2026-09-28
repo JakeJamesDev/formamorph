@@ -414,7 +414,6 @@ const GameViewer = ({
     isWorldDirty,
     saveWorld,
     loadWorldData,
-    customPersona,
   } = useGameData();
 
   // World README popup — shown once on entry (new game or save load) when the world has README text and
@@ -670,10 +669,10 @@ const GameViewer = ({
   // The save froze each chosen trait as the world stood on turn 1; the world owns its authoring, so read it
   // back before anything derives from it.
   const chosenTraits = useMemo(() => refreshChosenTraits(playerTraits, traits), [playerTraits, traits]);
-  /** What the bearer resolver reads: the authored world with Custom Persona. */
+  /** What the bearer resolver reads: the authored world. */
   const bearerWorld = useMemo(
-    () => ({ traits: authoredTraits, traitGroups, entities: traitEntities, customPersona }),
-    [authoredTraits, traitGroups, traitEntities, customPersona],
+    () => ({ traits: authoredTraits, traitGroups, entities: traitEntities }),
+    [authoredTraits, traitGroups, traitEntities],
   );
   /** The authored world every bearer's trait gates read: the traits, the groups, who the player is, and each
    *  present bearer's tree under that persona. */
