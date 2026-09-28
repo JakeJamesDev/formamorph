@@ -310,3 +310,9 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q82 | The trait runtime treats every player entity bearer alike: the marked entity's linked stat traits apply at a new game and on a switch, and reverse on a persona change, keyed `<entity id>/<trait id>`. |
   | Q83 | The persona offer model carries the custom row; a None ref compares by its entered name and description, so Enter World remembers the entry and Change enables on a name change. |
   | Q84 | The marked entity's authored aliases stay when the player enters a name; they are the author's setup, like the description under Q11. Player names = the entered name, then the aliases. |
+  | Q85 | A chip or pin at an unbound blueprint goes to the card's plain copy of it when the card holds one, and is dropped only when no copy exists. A chip in a now-plain copy's values at a blueprint that did bind is rewritten to the entity's copy of it, as Detach does. Refines Q32 and Q78. |
+  | Q86 | Binding by name to another world's blueprint remaps each value override key and pin value id to the destination value with the same text, unique match; the rest are dropped. |
+  | Q87 | A library persona's copies bind at play the way its links do: by id, then by unique name; no match reads as a plain placeholder. In scope for ticket 09. |
+  | Q88 | The missing-copy rule reports every copy the reconcile says a bearer needs but lacks: pins, chips and nested reach. The finding says "needs a copy of X" and names the bearer and the source. Removing the reconcile makes it fire. |
+  | Q89 | The refused-field rule reports blueprint pins in refused sources (a location, a stat band, a world or owned value) beside blueprint chips in refused fields. Both are the same "got through" case. |
+  | Q90 | The unknown-value pin rule reads a copy's effective values; removed values belong to the new rule. |
