@@ -5,7 +5,7 @@
  * live here once.
  */
 import { useEffect, type ComponentProps, type ReactNode } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { vi } from 'vitest';
 import { GameDataProvider, useGameData } from '@/contexts/GameDataContext';
 import { writeEditorMode, type EditorMode } from '@/lib/editorMode';
@@ -109,6 +109,16 @@ export const renderWorldEditorBench = (
   );
   return { ctx: () => ctx, unmount: view.unmount };
 };
+
+/** Open one of the editor's own tabs. The entity panel's Traits tab shares a name with the editor's, so the
+ *  strip is told apart by its label. These tabs switch on mouseDown, not click. */
+export const openEditorTab = (name: RegExp) => fireEvent.mouseDown(
+  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
+);
+
+/** The entity panel's own tab, apart from the editor's tab of the same name. */
+export const entityFieldsTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
 
 /** Click the editor header's flask — whose first stop is the quick-triage popover, not the full panel. */
 export const clickFlask = async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { SortableTreeAdapter } from '@/managers/SortableTree';
 import type { FlatTraitNode } from '@/lib/traitTree';
 import type { World } from '@/types';
@@ -52,7 +52,10 @@ const WORLD: World = benchEditorWorld({
       traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, order: 0 }],
       traits: [
         { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], order: 0 },
-        { id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], order: 1, requires: [{ kind: 'trait', id: 't-paladin' }] },
+        {
+          id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], order: 1,
+          requires: [{ kind: 'trait', id: 't-paladin' }, { kind: 'trait', id: 't-tamed' }, { kind: 'trait', id: 't-tamer' }],
+        },
         { id: 't-pack', name: 'Pack Sense', groupId: null, statChanges: [], order: 2 },
       ],
       traitLinks: [{ id: 'l-tamer', originalId: 't-tamer', kind: 'trait', originalName: 'Beast Tamer', groupId: null, order: 1 }],
@@ -64,12 +67,7 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-/** The editor's own tab strip. The entity panel's Traits tab shares the name, so the strip is told apart. */
-const openTab = (name: RegExp) => fireEvent.mouseDown(
-  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
-);
-const entityFieldsTab = (name: string) =>
-  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
+const openTab = openEditorTab;
 const selectEntity = (name: string) => fireEvent.click(screen.getAllByText(name)[0]);
 const openMirror = (name: string) => {
   openTab(/Entities/);
@@ -94,12 +92,14 @@ describe('the entity Traits tab as a mirror', () => {
   it('draws the entity\'s tree with the Traits tab\'s rows, buttons and gate counts, links among them', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild3', 'Beast Tamer', 'Pack Sense']);
     expect(within(rowNamed('Tamed')!).getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
     expect(within(rowNamed('Tamed')!).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
-    // The link's row sits at the entity's root among its own items, fixed, opening as itself.
+    // The link's row sits at the entity's root among its own items and opens as itself.
     const link = screen.getByRole('button', { name: 'Open Beast Tamer' });
-    expect(within(link.closest('.cursor-pointer') as HTMLElement).getByRole('button', { name: 'Remove Link' })).toBeInTheDocument();
+    const linkRow = link.closest('.cursor-pointer') as HTMLElement;
+    expect(within(linkRow).getByRole('button', { name: 'Remove Link' })).toBeInTheDocument();
+    expect(within(linkRow).getByLabelText('Drag to reorder or nest')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Help/ })).toBeNull();
   });
 
@@ -157,7 +157,7 @@ describe('the entity Traits tab as a mirror', () => {
     expect(screen.getByText(/Add a trait to give this entity a node on the/)).toBeInTheDocument();
     selectEntity('Ash');
     expect(detailsOpen()).toBe(false);
-    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild3', 'Beast Tamer', 'Pack Sense']);
   });
 
   it('reorders inside the entity, counting a link\'s place, and never moves a world trait', () => {
@@ -168,11 +168,35 @@ describe('the entity Traits tab as a mirror', () => {
     const ash = entity(ctx, 'ash');
     expect(ash.traits!.find((t) => t.id === 't-pack')).toMatchObject({ groupId: null, order: 1 });
     expect(ash.traitLinks![0]).toMatchObject({ id: 'l-tamer', order: 2 });
-    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild3', 'Pack Sense', 'Beast Tamer']);
     // Then into Bond, one indent right onto Wild's slot.
     act(() => treeHolding('t-pack').onDrop('t-pack', 't-wild', 24, new Set()));
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-pack')).toMatchObject({ groupId: 'g-bond' });
     expect(ctx().traits.map((t) => t.id)).toEqual(['t-paladin', 't-tamer']);
+  });
+
+  it("drags a link's own row into an own group", () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    act(() => treeHolding('l-tamer').onDrop('l-tamer', 't-wild', 24, new Set()));
+    expect(entity(ctx, 'ash').traitLinks![0]).toMatchObject({ id: 'l-tamer', groupId: 'g-bond' });
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Beast Tamer', 'Wild3', 'Pack Sense']);
+  });
+
+  it('opens a Requires chip the entity holds, and reads one it does not as plain text', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    const field = () => screen.getByText('Requires', { selector: 'label' }).parentElement as HTMLElement;
+    fireEvent.click(rowNamed('Wild')!);
+    // Paladin is a world trait: named, never a button, and the details stay open.
+    expect(within(field()).getByText('Paladin')).toBeInTheDocument();
+    expect(within(field()).queryByRole('button', { name: 'Paladin' })).toBeNull();
+    fireEvent.click(within(field()).getByRole('button', { name: 'Beast Tamer' }));
+    expect(screen.getByText(/^Linked from/)).toBeInTheDocument();
+    fireEvent.click(backRow()!);
+    fireEvent.click(rowNamed('Wild')!);
+    fireEvent.click(within(field()).getByRole('button', { name: 'Tamed' }));
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
   });
 
   it('opens a link on its Linked-from line and This Link, with no way to the Traits tab', () => {

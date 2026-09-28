@@ -30,10 +30,13 @@ export const flattenTraitTree = (tree: TraitTreeNode[]): FlatTraitNode[] => flat
 export const removeChildrenOf = (items: FlatTraitNode[], ids: Iterable<string>): FlatTraitNode[] =>
   removeChildrenOfGeneric(items, ids);
 
+/** Where a dragged row would land: its depth and the group it would sit in. */
+export type DropProjection = { depth: number; parentId: string | null };
+
 /** Projected drop `{depth, parentId}` for the active row, given the pointer's horizontal drag offset. */
 export const getTraitDropProjection = (
   items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-): { depth: number; parentId: string | null } =>
+): DropProjection =>
   getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
 
 /** Deep-duplicate a trait or a whole group subtree, inserting the copy right after the original. */
@@ -340,7 +343,7 @@ function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
 export function getOwnedTraitDropProjection(
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
   { createLinks = true }: OwnedTraitDropOptions = {},
-): { depth: number; parentId: string | null } | null {
+): DropProjection | null {
   const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
   const active = items.find((i) => i.id === activeId);
   if (!active) return null;
@@ -353,7 +356,7 @@ export function getOwnedTraitDropProjection(
     ? (id: string) => inEntity(id) || inTemplates.has(id)
     : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id))
       || (ownedRow && id === CUSTOM_PERSONA_ID);
-  const replayed = projectionOutside(items, active, overId, projection, blocked, indentationWidth);
+  const replayed = projectionPastBlocked(items, active, overId, projection, blocked, indentationWidth);
   if (!replayed) return null;
   if (ownerOfParent(tree, replayed.parentId) === null && linksCarried(tree, activeId).length) return null;
   return replayed;
@@ -361,10 +364,10 @@ export function getOwnedTraitDropProjection(
 
 /** The projection walked up out of every blocked parent, then replayed at that depth so the rows below agree.
  *  Null when they would hold the row where it can't be. */
-function projectionOutside(
-  items: FlatTraitNode[], active: FlatTraitNode, overId: string, projection: { depth: number; parentId: string | null },
+function projectionPastBlocked(
+  items: FlatTraitNode[], active: FlatTraitNode, overId: string, projection: DropProjection,
   blocked: (id: string) => boolean, indentationWidth: number,
-): { depth: number; parentId: string | null } | null {
+): DropProjection | null {
   const parentOf = new Map(items.map((i) => [i.id, i.parentId]));
   let { depth, parentId } = projection;
   while (parentId !== null && blocked(parentId)) {
@@ -380,11 +383,11 @@ function projectionOutside(
 /** Where a drag in a one-entity tree would land. Nothing lands inside a link's rows, which are its original's. */
 export function getEntityRootDropProjection(
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-): { depth: number; parentId: string | null } | null {
+): DropProjection | null {
   const active = items.find((i) => i.id === activeId);
   if (!active) return null;
   const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
-  return projectionOutside(items, active, overId, projection, (id) => tree.linkRows.has(id), indentationWidth);
+  return projectionPastBlocked(items, active, overId, projection, (id) => tree.linkRows.has(id), indentationWidth);
 }
 
 /**
@@ -417,6 +420,11 @@ export function applyEntityRootDrop(
     return { groupId: t?.groupId ?? null, order: t?.order ?? 0 };
   };
   const traitLinks = (entity.traitLinks ?? []).map((l) => ({ ...l, ...placeOf(l.id) }));
+  return withOwnedLists(entity, traits, traitGroups, traitLinks);
+}
+
+/** The entity with its three lists replaced. An empty list is stored as absent. */
+export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: TraitGroup[], traitLinks: TraitLink[]): Entity {
   const { traits: _t, traitGroups: _g, traitLinks: _l, ...rest } = entity;
   return {
     ...rest,
@@ -509,14 +517,8 @@ export function applyOwnedTraitDrop(
     };
     const links = [...tree.linkRows].filter(([id, row]) => row.root && mine(id)).map(([id, row]) => ({ ...row.link, ...placeOf(id) }));
     if (added) links.push({ ...added, ...placeOf(activeId) });
-    const { traits: _t, traitGroups: _g, traitLinks: _l, ...rest } = entity;
-    return {
-      ...rest,
-      ...(traits.length ? { traits } : {}),
-      ...(groups.length ? { traitGroups: groups } : {}),
-      ...(links.length ? { traitLinks: links } : {}),
-      ...(placement ? { traitPlacement: placement } : {}),
-    };
+    const written = withOwnedLists(entity, traits, groups, links);
+    return placement ? { ...written, traitPlacement: placement } : written;
   };
 
   const duplicateIn = (nodeId: string, originalId: string): OwnedTraitDrop | null => {

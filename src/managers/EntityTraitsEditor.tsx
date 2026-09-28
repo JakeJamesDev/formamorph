@@ -10,9 +10,11 @@ import { TraitStoreContext, type EntityRoot, type TraitStore } from '@/contexts/
 import { matchesListSearch } from '@/lib/listSearch';
 import { addOwnedGroup, addOwnedTrait } from '@/lib/ownedTraits';
 import { labelPlaceholders } from '@/lib/placementLetters';
+import { SELF_ENTITY } from '@/lib/portableTraits';
 import { removeLink } from '@/lib/traitLinks';
 import { duplicateTraitNode, entityRootTraitTree, linkRowRemovable, type LinkRow } from '@/lib/traitTree';
 import { randomUUID } from '@/lib/uuid';
+import type { TraitRequirement } from '@/types';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import GroupManager from './GroupManager';
 import { LinkedFromLine, LinkNotice, ThisLinkSection } from './TraitLinkPanel';
@@ -55,6 +57,22 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   const group = traitGroups.find((g) => g.id === selectedId);
   const linkRow = selectedId ? tree.linkRows.get(selectedId) : undefined;
   const entityName = labelPlaceholders(bearer.name, placeholders);
+
+  // The row that shows a trait or group id here: its own row, or the row of the Link that reads it. Null when
+  // the entity doesn't hold it, so a target outside the entity has nowhere to open.
+  const rowOf = (id: string): string | null => {
+    if (traits.some((t) => t.id === id) || traitGroups.some((g) => g.id === id)) return id;
+    const link = [...tree.linkRows.values()].find((row) => row.root && row.originalId === id);
+    return link ? link.link.id : null;
+  };
+  const openHeld = (id: string) => {
+    const row = rowOf(id);
+    if (row) onSelect(row);
+  };
+  // "Playing as" the entity itself opens the entity where a host can; every other persona is outside.
+  const requirementOpens = (r: TraitRequirement) => (r.kind === 'playingAs'
+    ? !!onOpenEntity && (r.id === bearer.id || r.id === SELF_ENTITY)
+    : rowOf(r.id) !== null);
   const nameChips = <PlaceholderText text={bearer.name} placeholders={placeholders} />;
 
   // A selection this entity doesn't hold is another entity's, or a removed item: drop it, on mount included,
@@ -186,8 +204,9 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
                 trait={trait}
                 owner={bearer}
                 ownerLine={ownerLine}
-                onOpenTrait={onSelect}
+                onOpenTrait={openHeld}
                 onOpenEntity={onOpenEntity}
+                requirementOpens={requirementOpens}
                 tab={tab}
                 onTabChange={setTab}
               />

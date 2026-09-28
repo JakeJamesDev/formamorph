@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -43,14 +43,8 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-/** The editor's own tab strip. The entity panel's Traits tab shares the name, so the strip is told apart. */
-const openTab = (name: RegExp) => fireEvent.mouseDown(
-  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
-);
+const openTab = openEditorTab;
 
-/** The entity panel's own tab, apart from the editor's Traits tab of the same name. */
-const entityFieldsTab = (name: string) =>
-  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
 
 /** A tree row found by its drag grip, so the panel's own copy of the name never matches. */
 const treeRow = (name: string) => screen.getAllByLabelText('Drag to reorder or nest')

@@ -2,7 +2,7 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { Hint } from '@/components/ui/typography';
 import type { EntityRoot, TraitStore } from '@/contexts/TraitStoreContext';
 import { editorGateInput } from '@/lib/bearers';
-import { removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits } from '@/lib/ownedTraits';
+import { ownedTraitWrites } from '@/lib/ownedTraits';
 import { bindOwnedTraits, linksBoundTo, linksCarriedFrom, type TraitWorld } from '@/lib/portableTraits';
 import type { Entity, Placeholder } from '@/types';
 import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor';
@@ -30,12 +30,7 @@ function libraryTraitStore(
     entities: [],
     placeholders,
     stats: [],
-    setTraits: (next) => edit((e) => withOwnedTraits(e, next, e.traitGroups ?? [])),
-    setTraitGroups: (next) => edit((e) => withOwnedTraits(e, e.traits ?? [], next)),
-    updateTrait: (trait) => edit((e) => updateOwnedTrait(e, trait)),
-    updateTraitGroup: (group) => edit((e) => updateOwnedGroup(e, group)),
-    removeTrait: (id) => edit((e) => removeOwnedItem(e, id)),
-    removeTraitGroup: (id) => edit((e) => removeOwnedItem(e, id)),
+    ...ownedTraitWrites(edit),
     editEntity: (id, change) => edit((e) => {
       if (e.id !== id) return e;
       return world ? linksCarriedFrom(change(linksBoundTo(e, world)), world) : change(e);

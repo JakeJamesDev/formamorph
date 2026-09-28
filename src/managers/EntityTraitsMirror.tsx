@@ -3,7 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Hint } from '@/components/ui/typography';
 import type { EntityRoot, TraitStore } from '@/contexts/TraitStoreContext';
 import { editorGateInput } from '@/lib/bearers';
-import { removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits } from '@/lib/ownedTraits';
+import { ownedTraitWrites } from '@/lib/ownedTraits';
 import type { Entity } from '@/types';
 import EntityTraitsEditor, { type EntityTraitStore } from './EntityTraitsEditor';
 
@@ -30,12 +30,7 @@ function useWorldEntityTraitStore(entity: Entity): EntityTraitStore {
       stats,
       placementLetters,
       placeholderOwners,
-      setTraits: (next) => edit((e) => withOwnedTraits(e, next, e.traitGroups ?? [])),
-      setTraitGroups: (next) => edit((e) => withOwnedTraits(e, e.traits ?? [], next)),
-      updateTrait: (trait) => edit((e) => updateOwnedTrait(e, trait)),
-      updateTraitGroup: (group) => edit((e) => updateOwnedGroup(e, group)),
-      removeTrait: (id) => edit((e) => removeOwnedItem(e, id)),
-      removeTraitGroup: (id) => edit((e) => removeOwnedItem(e, id)),
+      ...ownedTraitWrites(edit),
       editEntity,
       gateInput,
       pinWorld: world,

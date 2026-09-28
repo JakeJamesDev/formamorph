@@ -812,6 +812,20 @@ describe('a one-entity tree\'s drops', () => {
     expect(drop('pack', 'tamed', 0, ['bond'])).toBeNull();
   });
 
+  it("moves a link's own row among the entity's items, into an own group and back out", () => {
+    // The Brave link onto Wild's slot, one indent right: it lands in Bond between Tamed and Wild.
+    const inBond = drop('l-brave', 'wild', 24)!;
+    expect(inBond.traitLinks![0]).toMatchObject({ id: 'l-brave', groupId: 'bond', order: 1 });
+    expect(order(inBond).filter(([, parent]) => parent === 'bond')).toEqual([['tamed', 'bond', 0], ['l-brave', 'bond', 1], ['wild', 'bond', 2]]);
+    expect(inBond.traits!.map((t) => t.id)).toEqual(['tamed', 'wild', 'pack']);
+    // A linked group moves with its inner rows, which are never written.
+    const first = drop('l-classes', 'bond', 0, ['bond', 'l-classes'])!;
+    expect(order(first).filter(([, parent]) => parent === null)).toEqual([
+      ['l-classes', null, 0], ['bond', null, 1], ['l-brave', null, 2], ['pack', null, 3],
+    ]);
+    expect(first.traitGroups!.map((g) => g.id)).toEqual(['bond']);
+  });
+
   it('draws an unbound link as one row and reorders around it standalone', () => {
     const alone: Entity = { ...ash, traitLinks: [link('l-brave', 'brave', 'trait', null, 1)] };
     const next = applyEntityRootDrop(alone, null, [], 'pack', 'l-brave', 0, 24)!;
