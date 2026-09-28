@@ -1,4 +1,4 @@
-import { User } from 'lucide-react';
+import { MapPin, User } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { THUMB_FRAME, THUMB_INTRINSIC, thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
@@ -76,7 +76,10 @@ export function PersonaPicker({ world = [], library, none = true, value, onChang
             <span className="mt-1 line-clamp-3 text-helper text-muted-foreground">{option.description}</span>
           )}
           {option.startsAt && (
-            <span className="mt-1 block break-words text-helper text-muted-foreground">Starts at {option.startsAt}</span>
+            <span className="mt-1 flex items-center gap-1 break-words text-helper text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Starts at {option.startsAt}
+            </span>
           )}
         </span>
       </>
