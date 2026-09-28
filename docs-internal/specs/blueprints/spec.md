@@ -260,3 +260,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q34 | Stat changes override as a whole list, like requirements and pins. |
   | Q35 | Duplicating the Custom Persona entity drops the mark. |
   | Q36 | Marking an entity Persona or Custom Persona, and adding a chip or pin to a bearing original, create copies. |
+  | Q37 | Ticket 01 removes the Custom Persona node and `bearerPlaceholder` from the types and every reader in one pass; no twin shapes live side by side. The node's UI goes with it; the mark switch, one-per-world rule and confirmations stay in 02; the pin editor's blueprint picker stays in 06. Emberwatch converts its node to a marked entity. |
+  | Q38 | A trait link keeps `originalId`; it is the link's blueprint id. Overrides are keyed by original trait id, each field holding its value and blueprint snapshot. Placeholders gain `blueprintId`. |
+  | Q39 | A pin by blueprint is a plain pin whose placeholder id is the blueprint's; no new pin field. The collector resolves it through the copy lookup. |
+  | Q40 | Under the mark the marked entity is an ordinary entity bearer: the player under None and under a library persona, never in the cast, absent under a world persona. The root player bearer expands no node's links. A link on it that the root already offers is dropped, as a played persona's is today. Active state keys by the entity's id from 01 on; 08 owns the save-key tests and surfaces. |
