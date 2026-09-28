@@ -10,12 +10,14 @@ import { useEditorMode } from '@/lib/editorMode';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ContentLinkIcon } from '@/components/ContentLinkStatus';
+import { useRemoveEntity } from './useRemoveEntity';
 
 /** The Entities tab's folder tree: a flat sortable list where horizontal drag sets nesting depth. Groups are
  *  editor-only folders (never sent to the AI); entities are leaves. Mirrors the Traits tab. */
 const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
-  const { entities, entityGroups, setEntities, setEntityGroups, removeEntity, removeEntityGroup, placeholders } = useGameData();
+  const { entities, entityGroups, setEntities, setEntityGroups, removeEntityGroup, placeholders } = useGameData();
   const { advanced } = useEditorMode();
+  const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
 
   const adapter: SortableTreeAdapter<FlatEntityNode> = {
     getVisible: (collapsed) => removeChildrenOf(flattenEntityTree(buildEntityTree(entityGroups, entities)), collapsed),
@@ -35,7 +37,7 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
         icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : <ContentLinkIcon link={node.leaf?.link} />,
         label: <PlaceholderText text={isGroup ? node.group?.name ?? '' : node.leaf?.name ?? ''} placeholders={placeholders} />,
         labelClass: isGroup ? 'font-medium' : undefined,
-        remove: () => { if (isGroup) removeEntityGroup(node.id); else removeEntity(node.id); },
+        remove: () => { if (isGroup) removeEntityGroup(node.id); else askRemoveEntity(node.id); },
         duplicate: () => {
           const res = duplicateEntityNode(entityGroups, entities, node.id);
           setEntityGroups(res.groups);
@@ -51,7 +53,12 @@ const EntityTree = ({ selectedId, onSelect }: { selectedId: string | null; onSel
     return <EmptyListHint noun="entities" action={advanced ? "add a group or entity" : "add one"} />;
   }
 
-  return <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />;
+  return (
+    <>
+      <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
+      {removeEntityDialog}
+    </>
+  );
 };
 
 export default EntityTree;

@@ -9,6 +9,7 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
 import { useRenameField } from '@/lib/useCodeRename';
 import { withEntityLocations } from '@/lib/entityPresence';
+import { customPersonaHeldElsewhere } from '@/lib/customPersona';
 import type { Entity, FocusFieldHint } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
@@ -89,6 +90,7 @@ const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, foc
             {...groupProps}
             nameHandlers={rename}
             home="world"
+            customPersonaHolder={customPersonaHeldElsewhere(entities, entity.id)?.name}
             // Two columns need ~570px, and the pane holding them is not monotonic in viewport width: below
             // `md` it is the full-width detail sheet, at `md` it becomes half the editor. So the second
             // column comes back only where the pane is wide enough — once in the sheet, again at `xl`.

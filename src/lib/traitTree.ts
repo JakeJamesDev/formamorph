@@ -127,9 +127,10 @@ export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
 }
 
 /** The entity node's placement when its group is a world group outside Templates; a gone, foreign or Templates
- *  group reads as none. */
+ *  group reads as none. The Custom Persona entity's node sits at the top level only. */
 export function effectivePlacement(entity: Entity, placeableIds: ReadonlySet<string>): TraitPlacement | null {
   const p = entity.traitPlacement;
+  if (p && p.groupId !== null && entity.customPersona) return null;
   return p && (p.groupId === null || placeableIds.has(p.groupId)) ? p : null;
 }
 
@@ -146,8 +147,8 @@ const showsSystemNode = (holds: boolean, emptySystemNodes: boolean) => holds || 
  *  placement puts it; an unplaced node goes to the end of the top level, in entity order. Library entities
  *  (a persona or an added entity) come last at the top level, in the order given. Without `links`, the
  *  player's view, Templates and everything in it drop out. With `links`, the editor's view, an entity's links
- *  draw too, and an entity with links only gets a node. `emptySystemNodes` off hides an empty Templates
- *  group. */
+ *  draw too, and an entity with links only gets a node, as does the Custom Persona entity while empty.
+ *  `emptySystemNodes` off hides an empty Templates group and an empty Custom Persona entity. */
 export function ownedTraitTree(
   lists: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
   { links = false, emptySystemNodes = true } = {},
@@ -161,7 +162,7 @@ export function ownedTraitTree(
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
   const placeable = placeableGroupIds(world.traitGroups);
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
-  const hasNode = links ? bearsTraits : ownsTraits;
+  const hasNode = links ? (e: Entity) => bearsTraits(e) || (emptySystemNodes && !!e.customPersona) : ownsTraits;
   const owning = entities.filter(hasNode);
   const rootSorts = [
     ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
@@ -262,8 +263,9 @@ export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists,
   return tree;
 }
 
-/** Why a drop into an entity was refused: `offender`, inside the dragged `name`, has stat effects; the
- *  bearer's tree already holds the original `name`; or the top level already offers it to the player. */
+/** Why a drop was refused: `offender`, inside the dragged `name`, has stat effects; the bearer's tree already
+ *  holds the original `name`; the top level already offers it to the player; or the Custom Persona entity
+ *  `name` left the top level. */
 export type TraitDropRefusal =
   | {
     reason: 'stats';
@@ -274,7 +276,8 @@ export type TraitDropRefusal =
     owner: string | null;
   }
   | { reason: 'duplicate'; name: string; bearer: string }
-  | { reason: 'offered'; name: string };
+  | { reason: 'offered'; name: string }
+  | { reason: 'root'; name: string };
 
 export interface OwnedTraitDropOptions {
   /** Whether a world row dropped into an entity links it. Off, the row stays among the world items. */
@@ -435,8 +438,8 @@ export function linkRefusal(
 /**
  * Resolve a drag in the one tree. A world row dropped into an entity links it there, refused when the
  * entity's tree already holds it. An owned row may change owner and keeps its id, unless a trait it carries
- * into an entity has stat effects. An entity node moves like a group, among world items only.
- * Null = nothing to write.
+ * into an entity has stat effects. An entity node moves like a group, among world items only, and the Custom
+ * Persona entity's node at the top level only. Null = nothing to write.
  */
 export function applyOwnedTraitDrop(
   world: WorldTraitLists, entities: readonly Entity[],
@@ -477,6 +480,10 @@ export function applyOwnedTraitDrop(
   const movedItem = movedGroup ?? dropped.leaves.find((t) => t.id === activeId)!;
   const to = isNode ? null : ownerAt(movedGroup ? movedGroup.parentId : (movedItem as Trait).groupId);
   const ownerBefore = (id: string) => tree.ownerOf.get(id) ?? null;
+  const nodeEntity = isNode ? tree.entityNodes.get(activeId)! : null;
+  if (nodeEntity?.customPersona && movedGroup!.parentId !== null) {
+    return { kind: 'refused', refusal: { reason: 'root', name: nodeEntity.name } };
+  }
 
   /** The entity's lists and links as the drop leaves them. `added` joins its links at the dragged row's place. */
   const writeEntity = (entity: Entity, ownerAfter: (id: string) => string | null, placement?: TraitPlacement, added?: TraitLink): Entity => {

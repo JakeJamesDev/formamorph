@@ -43,8 +43,8 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
   };
 };
 
-/** The line after a refused drop: an entity's trait would gain stat effects, or the entity already has the
- *  trait. The dragged item stays put. */
+/** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
+ *  trait, or the Custom Persona entity left the top level. The dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -60,6 +60,8 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         </span>
       ) : refusal.reason === 'offered' ? (
         <span className="flex-1">The player already has {name} at the top level.</span>
+      ) : refusal.reason === 'root' ? (
+        <span className="flex-1">{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</span>
       ) : (
         <span className="flex-1">
           {name} stays {refusal.owner
@@ -206,7 +208,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           icon: <User className="h-4 w-4 shrink-0" aria-hidden />,
           label: <PlaceholderText text={entity.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
-          meta: entity.persona ? 'Playable' : 'Entity',
+          meta: entity.customPersona ? 'Custom Persona' : entity.persona ? 'Playable' : 'Entity',
         };
       }
       const isGroup = node.kind === 'group';
