@@ -52,6 +52,8 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q25** The shared editor's **+** reads "Add to <entity name>" through the entity's placeholders, and its box reads "Search or add new traits", as on the **Traits** tab. The store's "root is one entity" field is named `entityRoot`; the library store and ticket 04's world store both set it.
 - **Q26** In the one-entity tree, drops land relative to Link rows: a drag past a Link reorders around it, and own items keep an order that counts the Links between them, as on the **Traits** tab. Nesting into a linked group stays blocked. The library editor shares the path and gets the same behavior.
 - **Q27** The mirror hides the "Owned by <entity>" line on a trait's Details; the entity panel's heading already names the entity. The owner still drives everything else. The library editor keeps its line and its Entity-tab switch.
+- **Q28** In a one-entity tree a Link's own row drags among the entity's items, mirror and library editor alike. A linked group's inner rows stay fixed.
+- **Q29** On a trait's Details inside a one-entity editor, a Requires chip whose target the entity holds is a button that selects it. A chip whose target is outside the entity (a world trait, a persona) renders as a plain non-interactive chip: same look, no button role, no hover. Nothing navigates to the **Traits** tab (Q10).
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
