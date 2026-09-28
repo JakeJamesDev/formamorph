@@ -66,13 +66,10 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
   const weighable = placeholderIsChoice(effective);
   const weightOf = (value: PlaceholderValue) => placeholderWeight(effective, value);
 
-  /** A blueprint value's text or weight, written as an override unless it matches the blueprint again. */
-  const setText = (value: PlaceholderValue, text: string) => updatePlaceholder(text === value.text
-    ? resetCopyValue(copy, value.id, 'text')
-    : setCopyValueText(copy, blueprint, value.id, text));
-  const setWeight = (value: PlaceholderValue, weight: number) => updatePlaceholder(weight === placeholderWeight(blueprint, value)
-    ? resetCopyValue(copy, value.id, 'weight')
-    : setCopyValueWeight(copy, blueprint, value.id, weight));
+  // Every edit is an override, even one back to the blueprint's value; Reset is the way back to live.
+  const setText = (value: PlaceholderValue, text: string) => updatePlaceholder(setCopyValueText(copy, blueprint, value.id, text));
+  const setWeight = (value: PlaceholderValue, weight: number) =>
+    updatePlaceholder(setCopyValueWeight(copy, blueprint, value.id, weight));
 
   const setOwn = (values: PlaceholderValue[], weights = copy.weights) => {
     const pruned = prunePlaceholderWeights(weights, values);
@@ -121,7 +118,7 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
                 )}
               </LabelRow>
               {own?.removed || !shown
-                ? <p className="text-helper text-muted-foreground line-through">{value.text}</p>
+                ? <p className="text-helper text-muted-foreground">{value.text}</p>
                 : <ValueText value={shown.text} onChange={(t) => setText(value, t)} placeholders={placeholders} ownerId={copy.id} label={`Value ${n}`} />}
             </div>
           );
