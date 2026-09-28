@@ -273,3 +273,11 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q46 | Reset to Blueprint on a subtree trait row drops that trait's overrides; on the link's own row, a trait link or the group row, it drops every override the link holds. |
   | Q47 | The linked group's panel keeps its per-trait default-on list as a shortcut, with a Reset on each overridden row. |
   | Q48 | The entity editor modal's Traits tab gets the full link editor without Edit Blueprint; its "Linked from" line names the original only. Ticket 03 owns the shared Reset and "Blueprint changed" component; 04 reuses it. |
+  | Q49 | A trait pin counts as a use of a blueprint, beside trait-text chips, blueprint values and copies. |
+  | Q50 | Removing the placeholder Blueprints group is refused with the same notice while any blueprint inside is in use; an unused group removes as today. |
+  | Q51 | Folders are allowed inside Blueprints. Moving a folder out is refused when any blueprint in it is in use. |
+  | Q52 | A copy stays in its owner's list: a drag to another owner, the world list or a folder is refused by the indicator with no notice; Duplicate is hidden on a copy. |
+  | Q53 | Ticket 04 stores the group and the move refusals only. Insert-path refusal and per-bearer resolution are ticket 07's. |
+  | Q54 | Moving a world placeholder into Blueprints is refused with the same notice while any chip or pin outside the allowed places names it: world or owned text, a location, a stat descriptor, a world or owned value. Otherwise it moves. |
+  | Q55 | A removed blueprint value stays in the copy's list, dimmed and labeled Removed, with a Reset that restores it. |
+  | Q56 | A copy's overridden value text and weight show "Blueprint changed" through 03's shared control. |
