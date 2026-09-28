@@ -98,16 +98,18 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
         </div>
       )}
       {pinRows.length > 0 && (
-        // One label column for every row, sized by the longest label, so each select starts on the same x.
-        <ul className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2" aria-label="Pinned Values">
+        // Label, arrow and select each take one column across every row, so the labels stay left-aligned while
+        // the arrows share one edge and the selects the next.
+        <ul className="grid grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2" aria-label="Pinned Values">
           {pinRows.map(({ trait: t, name, target, value }) => {
             const listed = target.values.some((v) => v.text === value?.value);
             return (
               <li key={`${t.id}:${name}`} className="contents">
                 <span className="min-w-0 truncate text-label">
                   {!single && <><PlaceholderText text={t.name} placeholders={placeholders} />: </>}
-                  {name} →
+                  {name}
                 </span>
+                <span className="text-label" aria-hidden>→</span>
                 <Select
                   value={value?.value ?? NO_VALUE}
                   onValueChange={(text) => {

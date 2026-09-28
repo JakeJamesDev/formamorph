@@ -88,10 +88,12 @@ describe('ThisLinkSection — bearer-relative pins', () => {
   it("picks the value from the world placeholder's list on fallback, and stores it on the link", async () => {
     renderSection({ id: 'mira', name: 'Mira', traitLinks: [link('paladin', 'trait')] }, 'paladin');
     const row = screen.getByRole('list', { name: 'Pinned Values' });
-    expect(within(row).getByText(/Class Garb →/)).toBeInTheDocument();
-    // Every row's label and select sit in one two-column grid, so the selects share one left edge.
+    expect(within(row).getByText(/Class Garb$/)).toBeInTheDocument();
+    // Label, arrow and select each take one column of a grid across every row, so the labels stay
+    // left-aligned while the arrows share one edge and the selects the next.
     expect(row).toHaveClass('grid');
-    expect(within(row).getByText(/Class Garb →/).closest('li')).toHaveClass('contents');
+    expect(within(row).getByText(/Class Garb$/).closest('li')).toHaveClass('contents');
+    expect(within(row).getByText(/Class Garb$/).nextElementSibling).toHaveTextContent('→');
     const select = screen.getByRole('combobox', { name: 'Class Garb Value' });
     expect(select).toHaveTextContent('No Value');
     await userEvent.click(select);
