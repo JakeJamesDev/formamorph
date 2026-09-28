@@ -281,3 +281,5 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q54 | Moving a world placeholder into Blueprints is refused with the same notice while any chip or pin outside the allowed places names it: world or owned text, a location, a stat descriptor, a world or owned value. Otherwise it moves. |
   | Q55 | A removed blueprint value stays in the copy's list, dimmed and labeled Removed, with a Reset that restores it. |
   | Q56 | A copy's overridden value text and weight show "Blueprint changed" through 03's shared control. |
+  | Q57 | Unmark and delete confirm only when something goes with the entity; an empty marked entity unmarks or deletes with no dialog, like a trait or placeholder today. |
+  | Q58 | The empty marked entity shows as a bearer in Advanced only, like an empty Blueprints group. Basic cannot link or mark, so it hides it. |
