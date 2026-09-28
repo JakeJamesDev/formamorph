@@ -202,7 +202,7 @@ The pin's own value applies when a bearer has the trait directly, with no link. 
 
 An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
 
-> 💡 **A persona's own placeholder shadows the world's.** When the player plays Albus, his *Paladin* pins his own *Class Garb*, and a world *Class Garb* chip in an opening keeps its roll. When world text should read the played character's garb, give the persona no placeholder of that name and pick its link values from the world list. The bundled world **Emberwatch** does both: its cast owns Class Garb and Heritage, and its personas use the world's.
+> 💡 **A persona's own placeholder takes the pin, not the world's.** When the player plays Albus, his *Paladin* pins his own *Class Garb*, and a world *Class Garb* chip in an opening shows its rolled value. When world text should read the played persona's garb, give the persona no placeholder of that name and pick its link values from the world list. The bundled world **Emberwatch** does both: its cast owns Class Garb and Heritage, and its personas use the world's.
 
 ## Test Bench Checks
 

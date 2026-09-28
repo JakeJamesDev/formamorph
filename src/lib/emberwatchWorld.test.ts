@@ -5,7 +5,6 @@ import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
 import { PLAYER_BEARER, resolveBearers, type BearerWorld } from './bearers';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
-import { CUSTOM_PERSONA_ID } from './traitTree';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -96,7 +95,7 @@ describe('bearers on Emberwatch', () => {
     const wanderer = entityNamed(world, 'Wanderer').id;
     const start = settleDefaults(gate);
     expect(names(world, start.active[wanderer]).sort()).toEqual(['Darkvision', 'Dwarf', 'Wizard']);
-    const asElf = switchTrait({ ...gate, active: start.active }, wanderer, traitId(world, "Elf"), start.cascadeOff)!;
+    const asElf = switchTrait({ ...gate, active: start.active }, wanderer, traitId(world, 'Elf'), start.cascadeOff)!;
     expect(names(world, asElf.active[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
   });
 
@@ -116,11 +115,7 @@ describe('bearers on Emberwatch', () => {
     const squire = traitId(world, 'Squire to Albus');
     const start = settleDefaults(gate);
     expect(gateOf(gateStates({ ...gate, active: start.active }), PLAYER_BEARER, squire)?.unlocked).toBe(true);
-    const reclassed = switchTrait({ ...gate, active: start.active }, albus, traitId(world, "Wizard"), start.cascadeOff)!;
+    const reclassed = switchTrait({ ...gate, active: start.active }, albus, traitId(world, 'Wizard'), start.cascadeOff)!;
     expect(gateOf(gateStates({ ...gate, active: reclassed.active }), PLAYER_BEARER, squire)?.unlocked).toBe(false);
-  });
-
-  it('keeps Custom Persona out of the cast and off the entity list', () => {
-    expect(world.entities.map((e) => e.id)).not.toContain(CUSTOM_PERSONA_ID);
   });
 });

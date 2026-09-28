@@ -1,6 +1,6 @@
 # Emberwatch: an RPG Example World
 
-Status: in-progress
+Status: ready-for-human
 Base: 6d7f05c1
 
 ## Problem Statement
@@ -80,7 +80,7 @@ Ship a new bundled world, **Emberwatch**. It is a small high-fantasy frontier st
 - **Cast.**
   - **Mother Hesk:** Dwarf Cleric of the keep chapel. She links the Dwarf and Cleric traits (single-trait links) and owns her own Class Garb and Heritage values.
   - **Corvin Vale:** Human Wizard and a rival adventurer. He follows the same pattern.
-- **Descriptions.** Every persona and cast description uses its own Class Garb and Heritage chips. Trait text uses `{{char}}` for the bearer.
+- **Descriptions.** Every persona and cast description uses Class Garb and Heritage chips: the cast's own, the personas' from the world (Q26). Trait text uses `{{char}}` for the bearer.
 - **Openings (2, world-level).** One Opening Narration at the keep gate and one Opening Action answering the posted call. Both use `{{user}}` and a Class Garb chip.
 - **Locations (6).** The keep, the town square, the tavern, the chapel, the old watchtower, and the barrow beyond the wall.
 - **Readme.** The intro readme plays straight for players. The readme adds "How this world is built": Templates, group and trait links, per-link defaults and pin values, Custom Persona fallback, the persona-only mark, gates (same-bearer, any-of, named-scope), and racial cascades. Each item names its example in the world.
