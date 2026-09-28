@@ -21,7 +21,7 @@ The entity panel's **Traits** tab is a mirror of the **Traits** tab limited to t
 - [ ] Search matches the entity's traits and Links as a flat list; groups are not listed; no match shows a "no traits match" line. An empty entity shows a hint to add its first trait.
 - [ ] Drags reorder and nest inside the entity only. No cross-owner drop and no drop-to-link.
 - [ ] Selecting a Link shows its Linked-from line and **This Link**. The details have no link to the **Traits** tab.
-- [ ] The World Editor holds the mirror's selected id. Switching to Profile and back keeps the open trait; selecting another entity returns the mirror to its list.
+- [ ] The World Editor holds the mirror's selected id and does not reset it itself; the shared editor clears a selection the entity does not hold. Switching to Profile and back keeps the open trait. A bench test asserts the round trip: open a trait on entity A, select B, select A again, and the list shows rather than the trait.
 - [ ] On mobile the details are a second push inside the pushed entity panel with their own back row.
 - [ ] The **Traits** tab's entity node panel shows the entity's name and **Open Entity** only. The old bare list component is removed. The **Traits** tab's search still matches world traits only.
 - [ ] Basic mode still hides the tab.

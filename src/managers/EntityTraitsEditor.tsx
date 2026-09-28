@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Copy, FilePlus, FolderPlus, Link2, X } from 'lucide-react';
 import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { ListMenuRow, ListSearchToolbar } from '@/components/ListToolbar';
@@ -11,7 +11,7 @@ import { matchesListSearch } from '@/lib/listSearch';
 import { addOwnedGroup, addOwnedTrait } from '@/lib/ownedTraits';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { removeLink } from '@/lib/traitLinks';
-import { duplicateTraitNode, libraryTraitTree, type LinkRow } from '@/lib/traitTree';
+import { duplicateTraitNode, entityRootTraitTree, linkRowRemovable, type LinkRow } from '@/lib/traitTree';
 import { randomUUID } from '@/lib/uuid';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import GroupManager from './GroupManager';
@@ -30,8 +30,8 @@ type SearchRow = { id: string; name: string; linkRow?: LinkRow };
 
 /**
  * One entity's traits: the Traits tab's tree over the entity's own items, the list toolbar above it, and
- * the trait, group or Link panel beside or over the list. The caller holds the selection; this resets it
- * when the entity changes, so one entity's trait never shows under another's name. While a search is typed
+ * the trait, group or Link panel beside or over the list. The caller holds the selection; this clears one
+ * the entity doesn't hold, so one entity's trait never shows under another's name. While a search is typed
  * the list is flat: matching traits and Links, never groups.
  */
 const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, emptyHint }: {
@@ -48,28 +48,27 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   const search = useListSearch();
   const [tab, setTab] = useState<TraitPanelTab>('details');
 
-  const seenId = useRef(bearer.id);
-  useEffect(() => {
-    if (seenId.current === bearer.id) return;
-    seenId.current = bearer.id;
-    onSelect(null);
-  }, [bearer.id, onSelect]);
-
-  const tree = useMemo(() => libraryTraitTree(bearer, world), [bearer, world]);
+  const tree = useMemo(() => entityRootTraitTree(bearer, world), [bearer, world]);
   const trait = traits.find((t) => t.id === selectedId);
   const group = traitGroups.find((g) => g.id === selectedId);
   const linkRow = selectedId ? tree.linkRows.get(selectedId) : undefined;
   const entityName = labelPlaceholders(bearer.name, placeholders);
   const nameChips = <PlaceholderText text={bearer.name} placeholders={placeholders} />;
 
-  const addTrait = (typed: string) => {
+  // A selection this entity doesn't hold is another entity's, or a removed item: drop it, on mount included,
+  // since a host that keys the editor by entity remounts it with the old selection still in hand.
+  const stale = !!selectedId && !trait && !group && !linkRow;
+  useEffect(() => {
+    if (!stale) return;
+    onSelect(null);
+    setTab('details');
+  }, [stale, onSelect]);
+
+  const add = (typed: string, addItem: typeof addOwnedTrait) => {
     const id = randomUUID();
-    store.setTraits(addOwnedTrait(bearer, id, typed || undefined).traits ?? []);
-    onSelect(id);
-  };
-  const addGroup = (typed: string) => {
-    const id = randomUUID();
-    store.setTraitGroups(addOwnedGroup(bearer, id, typed || undefined).traitGroups ?? []);
+    const next = addItem(bearer, id, typed || undefined);
+    store.setTraits(next.traits ?? []);
+    store.setTraitGroups(next.traitGroups ?? []);
     onSelect(id);
   };
   const duplicate = (id: string) => {
@@ -116,8 +115,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
             label={<PlaceholderText text={row.name} placeholders={placeholders} />}
             labelClass={row.linkRow?.unbound ? 'text-muted-foreground' : undefined}
             actions={row.linkRow
-              // The tree's rule: a Link with no Original is removable only inside a world.
-              ? (row.linkRow.unbound && !world ? [] : [{ icon: <X className="h-4 w-4" />, title: 'Remove Link', onClick: () => removeLinkRow(row.linkRow!) }])
+              ? (linkRowRemovable(row.linkRow, world) ? [{ icon: <X className="h-4 w-4" />, title: 'Remove Link', onClick: () => removeLinkRow(row.linkRow!) }] : [])
               : [
                 { icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: () => duplicate(row.id) },
                 { icon: <X className="h-4 w-4" />, title: 'Delete', onClick: () => remove(row.id) },
@@ -149,8 +147,8 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
                 menuClassName: 'w-56',
                 menu: (
                   <>
-                    <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label={<>Add Group to {nameChips}</>} onAdd={addGroup} />
-                    <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={<>Add Trait to {nameChips}</>} onAdd={addTrait} />
+                    <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label={<>Add Group to {nameChips}</>} onAdd={(typed) => add(typed, addOwnedGroup)} />
+                    <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={<>Add Trait to {nameChips}</>} onAdd={(typed) => add(typed, addOwnedTrait)} />
                   </>
                 ),
               }}

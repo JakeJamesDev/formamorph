@@ -14,8 +14,8 @@ export type LibraryEditorWorld = TraitWorld & { placeholders: readonly Placehold
 
 /**
  * A trait store over one library entity: its own traits fill the tree's root, and every write lands on it.
- * Inside `world`, its links read their originals there, and a link edit stores them named from it. Off
- * world, so requirements point only inside the entity and the pin rows have no rivals to read.
+ * Inside `world`, its links read their originals there, and a link edit stores them named from it. It is
+ * off world: requirements point only inside the entity, and the pin rows have no rivals to read.
  */
 function libraryTraitStore(
   entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[], world: LibraryEditorWorld | null,
