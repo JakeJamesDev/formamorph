@@ -1,6 +1,7 @@
 # 03: Shared entity traits editor with the toolbar in the library
 
-Status: ready-for-agent
+Status: in-progress
+Base: 431a4d2e
 Blocked by: 01 — List toolbar widget
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -15,6 +16,7 @@ An author editing a library entity gets the World Editor's search box and **+** 
 
 ## Acceptance criteria
 
+- [ ] `ListDetail` gains a stacked option that uses its mobile push layout at every width, with the same slide and reduced-motion rule. Its test lives beside the mobile push test (Q23).
 - [ ] The library trait editor becomes one entity traits editor that takes a Trait Store, a layout (stacked or side by side), and the selected id with its setter. It owns the details tab and resets selection when the entity changes.
 - [ ] The library editor holds its own selection and renders the editor side by side. Its selection still resets on a tab switch.
 - [ ] The Trait Store's "root is one entity" flag is separate from `offWorld`. The library store sets both; nothing else changes for it.

@@ -15,7 +15,6 @@ The entity panel's **Traits** tab is a mirror of the **Traits** tab limited to t
 
 ## Acceptance criteria
 
-- [ ] `ListDetail` gains a stacked option that uses its mobile push layout at every width, with the same slide and reduced-motion rule. Its test lives beside the mobile push test.
 - [ ] A world Trait Store over one entity: its traits and groups fill the root, writes land through the world's entity edit, Links read their Originals live from the world, gates read the whole world, the requirement picker offers personas, and the pin rows read the world.
 - [ ] The entity **Traits** tab renders the shared editor stacked, filling the pane, with the toolbar in place while the list and the details scroll inside. No **?** help button.
 - [ ] The **+** menu has **Add Trait to <entity>** and **Add Group to <entity>** only. The search text names the new item, the box clears, and the new item's details slide in.
