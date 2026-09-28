@@ -202,6 +202,8 @@ The pin's own value applies when a bearer has the trait directly, with no link. 
 
 An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
 
+> 💡 **A persona's own placeholder shadows the world's.** When the player plays Albus, his *Paladin* pins his own *Class Garb*, and a world *Class Garb* chip in an opening keeps its roll. When world text should read the played character's garb, give the persona no placeholder of that name and pick its link values from the world list. The bundled world **Emberwatch** does both: its cast owns Class Garb and Heritage, and its personas use the world's.
+
 ## Test Bench Checks
 
 The **Test Bench** checks every bearer as if the player picked it. That includes entities with the **Persona** checkbox and Custom Persona.
@@ -224,6 +226,8 @@ A world where the player and some entities have a class.
 4. **Add Custom Persona and link Classes to it.** A player with no world persona now picks a class too.
 
 In play, a player who picks *Wizard* never unlocks Albus's *Smite*, and Albus's garb never changes the player's description.
+
+The bundled world **Emberwatch** is the full version of this example. Open it in the World Editor with Advanced mode on, and read **How this world is built** in its readme.
 
 ## Getting started
 

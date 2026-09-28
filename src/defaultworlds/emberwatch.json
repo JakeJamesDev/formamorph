@@ -1,0 +1,1427 @@
+{
+  "version": "3.0.1",
+  "worldOverview": {
+    "name": "Emberwatch",
+    "description": "A frontier keep at the end of the road, and a barrow past the wall that should have stayed shut. Pick a race and a class, or play a ready-made hero, and go see why the dead are walking.",
+    "author": "Formamorph",
+    "thumbnail": null,
+    "bgm": null,
+    "systemPrompt": "The player has come to Emberwatch Keep, a stone frontier stronghold at the end of the road, in a world of high fantasy: four peoples, four callings, holy light and arcane fire. The barrow beyond the boundary wall has opened, and the keep's captain pays in gold and renown for anyone who goes to see why.\n\nRun the world as a game master runs a table:\n- The Barrow Wight grows bolder every night it goes unchallenged. Raise the stakes over time: lights in the barrow field, then dead things at the wall, then a night the wall does not hold.\n- Every entity acts by its class and race. A cleric heals and prays, a wizard studies and casts, a rogue scouts and steals, a paladin guards and smites. Abilities cost the resource their description names.\n- The keep's people react to Renown: strangers are watched, the known are asked for help, the famed are sung about.\n- Reward preparation. The barrow is deadly to anyone who walks in alone at night, and survivable for those who learn its rites from Mother Hesk and go in with light and allies.\n- Keep the tone earnest and adventurous: danger is real, death is possible, and courage matters.",
+    "use3DModel": false,
+    "tags": [
+      "example",
+      "fantasy",
+      "rpg",
+      "adventure"
+    ],
+    "playerSetting": "open",
+    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** builds a character from scratch: choose a **Race** and a **Class**, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG character system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Templates.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Bearer's Own pins.** Each Class pins **Class Garb** and each Race pins **Heritage** on the bearer. The pin binds to the bearer's own placeholder of that name, else to the world's. Hesk and Corvin own both placeholders, so their pins fill their own text. The personas fall back to the world placeholders, so the openings read the played character's garb.\n- **Custom Persona.** Its links apply when you play with no persona or with a persona from your library. It owns no placeholders, so its pin values come from the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "openings": [
+      {
+        "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
+        "kind": "narration",
+        "text": "The frontier road ends at the gate of Emberwatch Keep. Road dust grays {{user}}'s {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:cbba342a-558c-5df8-91fb-068dc46af2f3}}, and the gate yard beyond the arch smells of horses, tar and cold iron.\n\nNailed to the gate post, a call in the captain's square hand: *The barrow beyond the wall has opened. Hands wanted to go and see why. Gold and the keep's good word for those who come back with answers.*\n\nA guard at the gate looks up from his spear. \"Another one for the roll?\" he asks."
+      },
+      {
+        "id": "5de24ab4-6669-55aa-b683-bccd009a88bf",
+        "kind": "action",
+        "text": "I pull the captain's call off the gate post, brush the road dust from my {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:c30aa5bc-3dbe-541c-82a5-000e7f746c3a}}, and walk in under the arch. The guard asks who answers. {{user}}. The name goes on the roll in wet ink, and I ask where I can find the captain."
+      }
+    ]
+  },
+  "stats": [
+    {
+      "id": "health",
+      "name": "Health",
+      "type": "number",
+      "description": "The body's condition. Wounds, poison and cold take it away; rest and healing return it.",
+      "min": 0,
+      "max": 100,
+      "value": 100,
+      "starting": 100,
+      "regen": 2,
+      "thresholdUnit": "percent",
+      "descriptors": [
+        {
+          "id": "health_0",
+          "threshold": 10,
+          "description": "Dying. Barely conscious, bleeding out, one more blow from the end."
+        },
+        {
+          "id": "health_1",
+          "threshold": 40,
+          "description": "Badly wounded. Every movement costs, and fighting on is a gamble."
+        },
+        {
+          "id": "health_2",
+          "threshold": 70,
+          "description": "Hurt. Cuts and bruises, sore but able."
+        },
+        {
+          "id": "health_3",
+          "threshold": 100,
+          "description": "Hale. Whole and ready."
+        }
+      ]
+    },
+    {
+      "id": "mana",
+      "name": "Mana",
+      "type": "number",
+      "description": "Arcane power for spells. Casting drains it; rest and study restore it.",
+      "min": 0,
+      "max": 100,
+      "value": 50,
+      "starting": 50,
+      "regen": 5,
+      "thresholdUnit": "percent",
+      "descriptors": [
+        {
+          "id": "mana_0",
+          "threshold": 10,
+          "description": "Drained. The weave slips away from every attempt to grasp it."
+        },
+        {
+          "id": "mana_1",
+          "threshold": 40,
+          "description": "Low. A spell or two left before the well runs dry."
+        },
+        {
+          "id": "mana_2",
+          "threshold": 70,
+          "description": "Steady. Enough power for a fight's worth of magic."
+        },
+        {
+          "id": "mana_3",
+          "threshold": 100,
+          "description": "Brimming. Power hums under the skin."
+        }
+      ]
+    },
+    {
+      "id": "faith",
+      "name": "Faith",
+      "type": "number",
+      "description": "Favor with the Ember. Prayer, mercy and courage feed it; cruelty and doubt spend it.",
+      "min": 0,
+      "max": 100,
+      "value": 50,
+      "starting": 50,
+      "regen": 3,
+      "thresholdUnit": "percent",
+      "descriptors": [
+        {
+          "id": "faith_0",
+          "threshold": 10,
+          "description": "Forsaken. Prayers fall into silence."
+        },
+        {
+          "id": "faith_1",
+          "threshold": 40,
+          "description": "Shaken. The light answers slowly and dimly."
+        },
+        {
+          "id": "faith_2",
+          "threshold": 70,
+          "description": "Steady. The Ember listens."
+        },
+        {
+          "id": "faith_3",
+          "threshold": 100,
+          "description": "Radiant. Warmth answers before the prayer is finished."
+        }
+      ]
+    },
+    {
+      "id": "gold",
+      "name": "Gold",
+      "type": "number",
+      "description": "Coin in the purse. Pay for rooms, gear and bribes; earn it from bounties and finds.",
+      "min": 0,
+      "max": 300,
+      "value": 30,
+      "starting": 30,
+      "regen": 0,
+      "thresholdUnit": "percent",
+      "descriptors": [
+        {
+          "id": "gold_0",
+          "threshold": 5,
+          "description": "Broke. Nothing in the purse but lint."
+        },
+        {
+          "id": "gold_1",
+          "threshold": 25,
+          "description": "Scraping by. Enough for bread and a cot."
+        },
+        {
+          "id": "gold_2",
+          "threshold": 60,
+          "description": "Comfortable. A good room, good gear, a round for the table."
+        },
+        {
+          "id": "gold_3",
+          "threshold": 100,
+          "description": "Flush. Heavy pockets and heavier attention."
+        }
+      ]
+    },
+    {
+      "id": "renown",
+      "name": "Renown",
+      "type": "number",
+      "description": "How widely Emberwatch knows the name. Deeds raise it; failures and cruelty lower it.",
+      "min": 0,
+      "max": 100,
+      "value": 5,
+      "starting": 5,
+      "regen": 0,
+      "thresholdUnit": "percent",
+      "descriptors": [
+        {
+          "id": "renown_0",
+          "threshold": 10,
+          "description": "Unknown. One more face on the frontier road."
+        },
+        {
+          "id": "renown_1",
+          "threshold": 35,
+          "description": "Noticed. The keep's people know the name and watch what it does."
+        },
+        {
+          "id": "renown_2",
+          "threshold": 70,
+          "description": "Known. Doors open; favors are asked and owed."
+        },
+        {
+          "id": "renown_3",
+          "threshold": 100,
+          "description": "Famed. Songs at the Cinder and Crown, and a captain's ear on demand."
+        }
+      ]
+    }
+  ],
+  "locations": [
+    {
+      "id": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "name": "Emberwatch Keep",
+      "playerDescription": "A squat stone keep at the end of the frontier road. Its gate yard smells of horses, tar and cold iron, and a call for hands is nailed to the gate post.",
+      "aiDescription": "The last stronghold before the wild hills, a squat square keep with a walled gate yard, stables, a smithy and a barracks. Captain Blackwell commands it. A written call for hands is nailed to the gate post: the barrow beyond the wall has opened, and the keep pays in gold and renown for anyone who will go and see why. Guards drill in the yard, and a bell on the wall rings when riders come up the road.",
+      "aiSummary": "The frontier stronghold and gate yard where the call for hands is posted.",
+      "parentId": null,
+      "isStarting": true
+    },
+    {
+      "id": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "name": "Ashford Square",
+      "playerDescription": "The market square of the town under the keep. Stalls, a well, a notice board and a stone plinth where a statue used to stand.",
+      "aiDescription": "The market square of the small town that grew up under Emberwatch Keep. Timber stalls sell wool, salted fish and tools. A public well stands at the center, a notice board beside it. A stone plinth marks where a statue was pulled down and never replaced. Farmers, traders and off-duty guards cross it all day; rumors travel here faster than riders.",
+      "aiSummary": "The town market under the keep, a well and a notice board at its center.",
+      "parentId": null
+    },
+    {
+      "id": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+      "name": "The Cinder and Crown",
+      "playerDescription": "The town's one tavern. Low beams, a fire that never goes out, and a back table where adventurers compare scars.",
+      "aiDescription": "A low-beamed tavern with a great hearth that has burned since the keep was raised. The taproom serves dark beer and mutton stew. A back table under the stairs belongs by custom to adventurers; maps get drawn on it in spilled beer. Rooms upstairs rent by the night. The tavern keeper hears everything and repeats half of it.",
+      "aiSummary": "The town tavern, its hearth and back table where adventurers gather.",
+      "parentId": null
+    },
+    {
+      "id": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
+      "name": "Chapel of the Ember",
+      "playerDescription": "A small round chapel with a brazier that is never allowed to die. Herbs hang from the rafters, and the sick lie on cots along the wall.",
+      "aiDescription": "A small round stone chapel beside the square. A brazier at its center holds the Ember's flame, tended day and night. Bundled herbs hang from the rafters, and cots line the walls for the sick and wounded. Mother Hesk runs it as a chapel and an infirmary at once. Blessings, healing and honest counsel are found here; so is a lecture for anyone who arrives bleeding from something stupid.",
+      "aiSummary": "The round chapel and infirmary where Mother Hesk keeps the flame.",
+      "parentId": null
+    },
+    {
+      "id": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+      "name": "The Old Watchtower",
+      "playerDescription": "A cracked tower on the ridge above the keep. From its top the whole valley shows, and past the wall, the dark line of the barrow field.",
+      "aiDescription": "A cracked stone tower on the ridge above Emberwatch Keep, older than the keep itself. Its stair is sound but the roof is half gone. From the top the whole valley is visible: the town, the river, the boundary wall, and beyond it the barrow field. A guard post here watches the wall; lately the night watch reports lights moving among the barrows.",
+      "aiSummary": "The ridge tower above the keep with a view over the wall to the barrow field.",
+      "parentId": null
+    },
+    {
+      "id": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+      "name": "The Barrow Beyond the Wall",
+      "playerDescription": "Past the boundary wall, a field of grassy burial mounds. One of them has opened, and cold air breathes out of it.",
+      "aiDescription": "A field of ancient grassy burial mounds a mile past the keep's boundary wall. The largest mound has split open along its side, and a stone passage leads down into it. Cold air breathes out of the opening, and nothing grows near the entrance now. Inside: carved passages, grave goods, and something that has been awake for a month and is growing bolder. The reason the call for hands was posted.",
+      "aiSummary": "The opened burial mound past the boundary wall, source of the trouble.",
+      "parentId": null
+    }
+  ],
+  "connections": [
+    {
+      "id": "412c6e1a-eb4f-506d-9a33-dba2afd46d30",
+      "from": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "to": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "twoWay": true,
+      "aiHint": "down the cobbled ramp from the gate yard"
+    },
+    {
+      "id": "474b5306-776a-563b-89b0-e8becf6b101c",
+      "from": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "to": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+      "twoWay": true,
+      "aiHint": "across the square to the door under the crown sign"
+    },
+    {
+      "id": "eb464aea-a157-5d8e-9593-f490a52fa30b",
+      "from": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "to": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
+      "twoWay": true,
+      "aiHint": "along the lane beside the well"
+    },
+    {
+      "id": "5f141850-57a0-51a3-9849-fe19f144ecff",
+      "from": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "to": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+      "twoWay": true,
+      "aiHint": "up the ridge path behind the barracks"
+    },
+    {
+      "id": "b04741d7-29b6-5414-9825-217c8b4767cd",
+      "from": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+      "to": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+      "twoWay": true,
+      "aiHint": "through the sally gate in the boundary wall and across the field"
+    }
+  ],
+  "entities": [
+    {
+      "id": "a42d21f3-2b05-5192-b6cd-01d453a4dc98",
+      "name": "Wanderer",
+      "type": "Person",
+      "playerDescription": "You came up the frontier road with a name nobody here knows yet. You wear {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:a7c09709-2e76-56cd-a2de-ac68042e30a4}} and have {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:8970f412-ae8f-5d61-ab5b-db9ebfe00b2c}}. Your race and class are yours to pick.",
+      "aiDescription": "{{char}} came up the frontier road alone, with a name nobody in Emberwatch knows yet. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6d704dc4-9f2e-5bcb-b4e2-77aee463591c}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:3a1e2375-3332-5097-8c0e-28666d4400e7}}. Nobody here owes {{char}} anything, and {{char}} owes nobody; every bond is still to be made.",
+      "aiSummary": "A newcomer to Emberwatch with no history here yet.",
+      "locations": [
+        "12fb7d50-05f3-557d-907a-8f1310d89790"
+      ],
+      "persona": true,
+      "personaOnly": true,
+      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "traitLinks": [
+        {
+          "id": "2b9d99e9-06ec-5075-9594-969799b0c2da",
+          "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+          "kind": "group",
+          "originalName": "Races",
+          "groupId": null,
+          "order": 0,
+          "defaults": {
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": true
+          },
+          "pinValues": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": {
+              "Heritage": {
+                "value": "the weathered, restless look of the human frontier towns",
+                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
+              }
+            },
+            "f16630f6-5baf-5dc6-a114-efd32d326255": {
+              "Heritage": {
+                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
+                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
+              }
+            },
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+              "Heritage": {
+                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
+                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
+              }
+            },
+            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
+              "Heritage": {
+                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
+                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              }
+            }
+          }
+        },
+        {
+          "id": "7ed0040a-d112-56a0-98e4-1307cbf304a0",
+          "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+          "kind": "group",
+          "originalName": "Classes",
+          "groupId": null,
+          "order": 1,
+          "defaults": {
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": true
+          },
+          "pinValues": {
+            "6289a54c-9886-5693-a0e2-0ef61f735109": {
+              "Class Garb": {
+                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
+                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
+              }
+            },
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
+              "Class Garb": {
+                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
+                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
+              }
+            },
+            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
+              "Class Garb": {
+                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
+                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
+              }
+            },
+            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
+              "Class Garb": {
+                "value": "plain gray vestments and a healer's roll of bandages at the belt",
+                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              }
+            }
+          }
+        },
+        {
+          "id": "0efae364-12fb-59d4-b3a3-72bd6928e6a7",
+          "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+          "kind": "group",
+          "originalName": "Racial Abilities",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "9c0fcc18-bc84-5e86-93a0-9418119694e4",
+          "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+          "kind": "group",
+          "originalName": "Class Abilities",
+          "groupId": null,
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
+      "name": "Albus",
+      "type": "Person",
+      "playerDescription": "A broad, quiet man with a soldier's bearing and a paladin's patience. He wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6ac3e932-5377-5fa9-9b90-4c5ccb2e2740}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:a7930ec8-b930-5ca5-bcaf-ed69487574c0}}. He came to Emberwatch because the Ember told him to, and he does not expect to leave.",
+      "aiDescription": "A paladin of the Ember in his late thirties, broad-shouldered, quiet, with a scarred jaw and steady gray eyes. He wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:e4f1908f-14b1-5ff8-85f5-1a9f6e789ab2}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:ddf12fce-2a27-5dd2-a9c8-9cce6bf30e0a}}. He speaks little and means all of it. He believes the barrow's opening is a test the Ember set for the keep, and he intends to pass it. He is protective of the weak, hard on the cruel, and slow to trust a rogue. He keeps his shield polished and his oaths simple.",
+      "aiSummary": "The keep's paladin, quiet and steady, sworn to the Ember and to seeing the barrow closed.",
+      "locations": [
+        "12fb7d50-05f3-557d-907a-8f1310d89790",
+        "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4"
+      ],
+      "pronouns": "he/him",
+      "persona": true,
+      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "traitLinks": [
+        {
+          "id": "8554ef4b-05c9-5714-a4a3-e4a34a4f8090",
+          "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+          "kind": "group",
+          "originalName": "Races",
+          "groupId": null,
+          "order": 0,
+          "defaults": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": true
+          },
+          "pinValues": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": {
+              "Heritage": {
+                "value": "the weathered, restless look of the human frontier towns",
+                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
+              }
+            },
+            "f16630f6-5baf-5dc6-a114-efd32d326255": {
+              "Heritage": {
+                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
+                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
+              }
+            },
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+              "Heritage": {
+                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
+                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
+              }
+            },
+            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
+              "Heritage": {
+                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
+                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              }
+            }
+          }
+        },
+        {
+          "id": "898f43ef-98ff-514a-8375-7d883b2f534d",
+          "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+          "kind": "group",
+          "originalName": "Classes",
+          "groupId": null,
+          "order": 1,
+          "defaults": {
+            "6289a54c-9886-5693-a0e2-0ef61f735109": true
+          },
+          "pinValues": {
+            "6289a54c-9886-5693-a0e2-0ef61f735109": {
+              "Class Garb": {
+                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
+                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
+              }
+            },
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
+              "Class Garb": {
+                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
+                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
+              }
+            },
+            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
+              "Class Garb": {
+                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
+                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
+              }
+            },
+            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
+              "Class Garb": {
+                "value": "plain gray vestments and a healer's roll of bandages at the belt",
+                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              }
+            }
+          }
+        },
+        {
+          "id": "63e6b171-e78c-5c64-8a5e-be830cf6ff05",
+          "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+          "kind": "group",
+          "originalName": "Racial Abilities",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "346ada1b-d245-50c2-983d-56085d311456",
+          "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+          "kind": "group",
+          "originalName": "Class Abilities",
+          "groupId": null,
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "8ea42790-83cc-55b0-acdd-4194e878a1cd",
+      "name": "Sylvie Thornwhistle",
+      "type": "Person",
+      "playerDescription": "A slight elf with a crooked grin and a habit of standing where the light is not. She wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6026546d-d48c-5ec5-b62d-e3b20ec4fb9a}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:b247fb83-b8d3-587e-a097-98b3fe7522e6}}. She says she is here for the bounty. She is also here for the barrow's grave goods.",
+      "aiDescription": "An elf rogue of indeterminate age, slight, quick, with a crooked grin and green eyes that miss nothing. She wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:fc46ea18-dc61-592d-92c3-4cbb542be9f3}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:afc59b7e-607e-5681-a9a7-d8d6f58c6363}}. She talks fast, lies well, and pays her debts. She answered the call for the bounty and stayed for the rumor of grave gold in the barrow. She likes Albus more than she admits and needles him constantly. She keeps a room at the Cinder and Crown and an escape route out its window.",
+      "aiSummary": "An elf rogue at the keep for the bounty and the barrow's gold, quick and quick-tongued.",
+      "locations": [
+        "12fb7d50-05f3-557d-907a-8f1310d89790",
+        "926ba2be-4e5d-53be-8b11-cda86f0e4be3"
+      ],
+      "aliases": [
+        "Sylvie"
+      ],
+      "pronouns": "she/her",
+      "persona": true,
+      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "traitLinks": [
+        {
+          "id": "55025f0c-4306-5970-ae19-090dd34704a1",
+          "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+          "kind": "group",
+          "originalName": "Races",
+          "groupId": null,
+          "order": 0,
+          "defaults": {
+            "f16630f6-5baf-5dc6-a114-efd32d326255": true
+          },
+          "pinValues": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": {
+              "Heritage": {
+                "value": "the weathered, restless look of the human frontier towns",
+                "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
+              }
+            },
+            "f16630f6-5baf-5dc6-a114-efd32d326255": {
+              "Heritage": {
+                "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
+                "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
+              }
+            },
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+              "Heritage": {
+                "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
+                "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
+              }
+            },
+            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
+              "Heritage": {
+                "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
+                "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+              }
+            }
+          }
+        },
+        {
+          "id": "f5f7a1f4-20b1-597a-9a77-021623c267eb",
+          "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+          "kind": "group",
+          "originalName": "Classes",
+          "groupId": null,
+          "order": 1,
+          "defaults": {
+            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": true
+          },
+          "pinValues": {
+            "6289a54c-9886-5693-a0e2-0ef61f735109": {
+              "Class Garb": {
+                "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
+                "valueId": "02026f25-7360-506c-9a8c-f93444415929"
+              }
+            },
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
+              "Class Garb": {
+                "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
+                "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
+              }
+            },
+            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
+              "Class Garb": {
+                "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
+                "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
+              }
+            },
+            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
+              "Class Garb": {
+                "value": "plain gray vestments and a healer's roll of bandages at the belt",
+                "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+              }
+            }
+          }
+        },
+        {
+          "id": "e38a3cc3-5bbe-5ae2-9ac9-034dbf987531",
+          "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+          "kind": "group",
+          "originalName": "Racial Abilities",
+          "groupId": null,
+          "order": 2
+        },
+        {
+          "id": "88d82a82-3384-5d67-905d-44ebfa368b7a",
+          "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+          "kind": "group",
+          "originalName": "Class Abilities",
+          "groupId": null,
+          "order": 3
+        }
+      ]
+    },
+    {
+      "id": "5ae466c2-5651-5a51-b218-46ae7e914545",
+      "name": "Mother Hesk",
+      "type": "Person",
+      "playerDescription": "The dwarf priestess who keeps the chapel flame and the infirmary cots. She wears {{ph:ab4d8e95-0627-5bce-bbcd-e00e25a6ce03:world:6172e4cd-3acd-590e-9544-53242d516de6}} and has {{ph:7f918ab1-2ae3-5f65-b4c3-a69a28275d0a:world:bedcc40f-a002-528f-8063-abe47708cd50}}. She heals anyone and scolds everyone.",
+      "aiDescription": "A dwarf cleric of the Ember, sixty years old and built like a forge. She wears {{ph:ab4d8e95-0627-5bce-bbcd-e00e25a6ce03:world:7c8e4778-6c45-58f7-adef-8568626c0fde}} and has {{ph:7f918ab1-2ae3-5f65-b4c3-a69a28275d0a:world:dd56147a-1cd5-55d9-a3a2-b1787fd83e13}}. She runs the Chapel of the Ember as chapel and infirmary. She heals anyone who comes through her door and lectures them while she does it. She has buried three keep captains and expects to bury the fourth. She knows the barrow's old rites better than anyone alive and says so only when asked twice.",
+      "aiSummary": "The dwarf cleric who keeps the chapel flame and heals the keep, blunt and kind.",
+      "locations": [
+        "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4"
+      ],
+      "aliases": [
+        "Hesk"
+      ],
+      "pronouns": "she/her",
+      "placeholders": [
+        {
+          "id": "ab4d8e95-0627-5bce-bbcd-e00e25a6ce03",
+          "name": "Class Garb",
+          "values": [
+            {
+              "id": "a7065270-981a-5e27-ab4c-0306c3ca2ff9",
+              "text": "scorched gray vestments under a smith's leather apron, her holy symbol hung on a chain of old nails"
+            }
+          ]
+        },
+        {
+          "id": "7f918ab1-2ae3-5f65-b4c3-a69a28275d0a",
+          "name": "Heritage",
+          "values": [
+            {
+              "id": "4b0d497b-c8d3-5b76-90ef-b1797959c1db",
+              "text": "the iron-gray braids and walnut-cracking hands of the Deepwell dwarves"
+            }
+          ]
+        }
+      ],
+      "traitLinks": [
+        {
+          "id": "59c9f500-a93d-50cd-807f-ae7c536dff52",
+          "originalId": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
+          "kind": "trait",
+          "originalName": "Dwarf",
+          "groupId": null,
+          "order": 0,
+          "defaults": {
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": true
+          },
+          "pinValues": {
+            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+              "Heritage": {
+                "value": "the iron-gray braids and walnut-cracking hands of the Deepwell dwarves",
+                "valueId": "4b0d497b-c8d3-5b76-90ef-b1797959c1db"
+              }
+            }
+          }
+        },
+        {
+          "id": "08dad06e-cd1b-511d-8543-d816f947214f",
+          "originalId": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+          "kind": "trait",
+          "originalName": "Cleric",
+          "groupId": null,
+          "order": 1,
+          "defaults": {
+            "052f965e-d53d-5d83-90fe-626f4469f9b2": true
+          },
+          "pinValues": {
+            "052f965e-d53d-5d83-90fe-626f4469f9b2": {
+              "Class Garb": {
+                "value": "scorched gray vestments under a smith's leather apron, her holy symbol hung on a chain of old nails",
+                "valueId": "a7065270-981a-5e27-ab4c-0306c3ca2ff9"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "688abc96-f3a5-538e-9f0c-ec5fa6a90a74",
+      "name": "Corvin Vale",
+      "type": "Person",
+      "playerDescription": "A rival adventurer with a river-city accent and a smile that costs money. He wears {{ph:ae3bc751-f4dc-5d39-bb6a-359fd448654b:world:2a11ad43-e63b-5b1b-a070-4023affcb585}} and has {{ph:1c70d45e-827c-5ce1-94b1-f101ca1bf24f:world:119b08b8-3a3c-573c-8b16-e8f3214b4aee}}. He wants the barrow's secrets for himself.",
+      "aiDescription": "A human wizard in his thirties, lean, well-dressed and always slightly amused. He wears {{ph:ae3bc751-f4dc-5d39-bb6a-359fd448654b:world:bd26d50c-69b6-5aa4-92e8-6182153ce18e}} and has {{ph:1c70d45e-827c-5ce1-94b1-f101ca1bf24f:world:11a225b5-ca11-50ed-973f-cf0815daed35}}. He answered the call for hands before anyone else and has been buying drinks at the Cinder and Crown ever since, collecting rumors about the barrow. He believes it holds a lost grimoire and intends to have it. He is charming, competitive and not above a quiet betrayal, but he keeps his word once it is given in front of witnesses.",
+      "aiSummary": "A rival human wizard hunting the barrow's lost grimoire, charming and competitive.",
+      "locations": [
+        "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+        "ceeed07b-7534-547a-9bb1-c80dfffb598b"
+      ],
+      "aliases": [
+        "Corvin",
+        "Vale"
+      ],
+      "pronouns": "he/him",
+      "placeholders": [
+        {
+          "id": "ae3bc751-f4dc-5d39-bb6a-359fd448654b",
+          "name": "Class Garb",
+          "values": [
+            {
+              "id": "dbcaf151-f949-55ba-a7d1-f7ce3af4333a",
+              "text": "a tailored blue coat cut like a robe, silver thread at the cuffs and a slim staff that folds into a cane"
+            }
+          ]
+        },
+        {
+          "id": "1c70d45e-827c-5ce1-94b1-f101ca1bf24f",
+          "name": "Heritage",
+          "values": [
+            {
+              "id": "2d33a206-e18f-55bc-90ef-b3e7b3310972",
+              "text": "the pale, sharp features of the river-city humans, with a merchant's easy smile"
+            }
+          ]
+        }
+      ],
+      "traitLinks": [
+        {
+          "id": "b38be4d9-c84e-523f-b6d4-79e017b120b1",
+          "originalId": "889d6e62-5641-5102-a184-7e409aa95d60",
+          "kind": "trait",
+          "originalName": "Human",
+          "groupId": null,
+          "order": 0,
+          "defaults": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": true
+          },
+          "pinValues": {
+            "889d6e62-5641-5102-a184-7e409aa95d60": {
+              "Heritage": {
+                "value": "the pale, sharp features of the river-city humans, with a merchant's easy smile",
+                "valueId": "2d33a206-e18f-55bc-90ef-b3e7b3310972"
+              }
+            }
+          }
+        },
+        {
+          "id": "7f0a2533-4ddd-5771-ab97-a5b4ec39f93d",
+          "originalId": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+          "kind": "trait",
+          "originalName": "Wizard",
+          "groupId": null,
+          "order": 1,
+          "defaults": {
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": true
+          },
+          "pinValues": {
+            "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
+              "Class Garb": {
+                "value": "a tailored blue coat cut like a robe, silver thread at the cuffs and a slim staff that folds into a cane",
+                "valueId": "dbcaf151-f949-55ba-a7d1-f7ce3af4333a"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "899a31f6-5a3e-5af0-9c38-6cd272038dd2",
+      "name": "Captain Orrin Blackwell",
+      "type": "Person",
+      "playerDescription": "Commander of Emberwatch Keep. Gray at the temples, short on sleep, and shorter on patience. He posted the call and he will pay it.",
+      "aiDescription": "Commander of Emberwatch Keep, a career soldier in his fifties, gray at the temples and lean from worry. He posted the call for hands after the night watch lost a man at the wall. He pays in gold and renown for results and has no time for heroics that bring back nothing. He trusts Mother Hesk, tolerates Albus, watches Sylvie and dislikes Corvin. He wants the barrow closed and his people safe, in that order.",
+      "aiSummary": "The keep's commander, who posted the call and pays for results.",
+      "locations": [
+        "12fb7d50-05f3-557d-907a-8f1310d89790",
+        "6e4d04b1-c137-5019-b976-808c75cd4d7b"
+      ],
+      "aliases": [
+        "Blackwell",
+        "Captain Blackwell"
+      ],
+      "pronouns": "he/him"
+    },
+    {
+      "id": "5269c9cf-d3b5-5b51-a8a8-c2c81e4eb2a9",
+      "name": "The Barrow Wight",
+      "type": "Creature",
+      "playerDescription": "The thing that woke in the barrow. A tall shape in rotted mail, eyes like two coals, and a voice that remembers the old kings.",
+      "aiDescription": "The risen champion of the kings buried in the mound, tall, gaunt, in rotted mail with a corroded iron crown. Its eyes burn like coals and its voice is dry as grave dust. It remembers the old kingdom and thinks the keep is a trespass on it. It commands lesser dead within the barrow and grows stronger each night it goes unchallenged. Holy light pains it, cold iron cannot kill it alone, and it can be laid to rest by returning the broken crown to the king's bier.",
+      "aiSummary": "The risen champion in the mound, growing bolder each night, laid to rest only by the crown's return.",
+      "locations": [
+        "e4f542ae-3045-53c8-9125-d42ed8e5f0a6"
+      ],
+      "aliases": [
+        "Wight"
+      ],
+      "pronouns": "it"
+    }
+  ],
+  "traits": [
+    {
+      "id": "10502266-1aec-53fe-bef2-ca07df05bce8",
+      "name": "Squire to Albus",
+      "playerDescription": "You carry Albus's shield and learn at his side. Needs Albus to be a Paladin.",
+      "aiDescription": "The player serves as squire to Albus the paladin: they carry his shield, tend his gear, and learn the Ember's ways at his side. Albus is protective and demanding of them.",
+      "statChanges": [],
+      "groupId": "d8c779b2-dc6c-5815-8395-18bc4decfa16",
+      "order": 0,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+          "name": "Paladin",
+          "bearer": {
+            "kind": "entity",
+            "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
+            "name": "Albus"
+          }
+        }
+      ]
+    },
+    {
+      "id": "889d6e62-5641-5102-a184-7e409aa95d60",
+      "name": "Human",
+      "playerDescription": "Restless, adaptable, and quick to make a name. +10 starting Renown.",
+      "aiDescription": "{{char}} is human: adaptable, ambitious, and quick to earn a reputation on the frontier.",
+      "statChanges": [
+        {
+          "statId": "renown",
+          "value": 10,
+          "type": "starting"
+        }
+      ],
+      "groupId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+      "order": 0,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "the weathered, restless look of the human frontier towns",
+          "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5",
+          "bearerPlaceholder": "Heritage"
+        }
+      ]
+    },
+    {
+      "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
+      "name": "Elf",
+      "playerDescription": "Long-lived, sharp-eyed, and close to the weave of magic. +10 max Mana.",
+      "aiDescription": "{{char}} is an elf: long-lived, graceful, keen of sight and hearing, and naturally close to arcane power.",
+      "statChanges": [
+        {
+          "statId": "mana",
+          "value": 10,
+          "type": "max"
+        }
+      ],
+      "groupId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+      "order": 1,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
+          "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333",
+          "bearerPlaceholder": "Heritage"
+        }
+      ]
+    },
+    {
+      "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
+      "name": "Dwarf",
+      "playerDescription": "Stout, stubborn, and hard to put down. +10 max Health.",
+      "aiDescription": "{{char}} is a dwarf: stout, stubborn, hardy, and slow to forgive a debt or an insult.",
+      "statChanges": [
+        {
+          "statId": "health",
+          "value": 10,
+          "type": "max"
+        }
+      ],
+      "groupId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+      "order": 2,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
+          "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef",
+          "bearerPlaceholder": "Heritage"
+        }
+      ]
+    },
+    {
+      "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
+      "name": "Halfling",
+      "playerDescription": "Small, lucky, and never quite broke. +15 starting Gold.",
+      "aiDescription": "{{char}} is a halfling: small, cheerful, light-fingered when it counts, and lucky in small ways.",
+      "statChanges": [
+        {
+          "statId": "gold",
+          "value": 15,
+          "type": "starting"
+        }
+      ],
+      "groupId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+      "order": 3,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
+          "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f",
+          "bearerPlaceholder": "Heritage"
+        }
+      ]
+    },
+    {
+      "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+      "name": "Paladin",
+      "playerDescription": "A sworn warrior of the Ember. Sword, shield and holy light. +30 max Faith.",
+      "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith.",
+      "statChanges": [
+        {
+          "statId": "faith",
+          "value": 30,
+          "type": "max"
+        }
+      ],
+      "groupId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+      "order": 0,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
+          "valueId": "02026f25-7360-506c-9a8c-f93444415929",
+          "bearerPlaceholder": "Class Garb"
+        }
+      ]
+    },
+    {
+      "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+      "name": "Wizard",
+      "playerDescription": "A scholar of the arcane. Spells from study, not prayer. +30 max Mana.",
+      "aiDescription": "{{char}} is a wizard: a scholar of the arcane who casts spells learned from study, and who guards a spellbook above all other possessions.",
+      "statChanges": [
+        {
+          "statId": "mana",
+          "value": 30,
+          "type": "max"
+        }
+      ],
+      "groupId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+      "order": 1,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
+          "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede",
+          "bearerPlaceholder": "Class Garb"
+        }
+      ]
+    },
+    {
+      "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
+      "name": "Rogue",
+      "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits. +40 starting Gold.",
+      "aiDescription": "{{char}} is a rogue: quick, quiet and practical, skilled with locks, pockets, poisons and quiet exits, and never without a plan to leave.",
+      "statChanges": [
+        {
+          "statId": "gold",
+          "value": 40,
+          "type": "starting"
+        }
+      ],
+      "groupId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+      "order": 2,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
+          "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9",
+          "bearerPlaceholder": "Class Garb"
+        }
+      ]
+    },
+    {
+      "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+      "name": "Cleric",
+      "playerDescription": "A healer and priest of the Ember. Mends wounds and turns the dead. +30 max Faith.",
+      "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead.",
+      "statChanges": [
+        {
+          "statId": "faith",
+          "value": 30,
+          "type": "max"
+        }
+      ],
+      "groupId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+      "order": 3,
+      "placeholderPins": [
+        {
+          "placeholderId": "",
+          "value": "plain gray vestments and a healer's roll of bandages at the belt",
+          "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b",
+          "bearerPlaceholder": "Class Garb"
+        }
+      ]
+    },
+    {
+      "id": "79604b12-d958-51ef-af08-c5d2e0ded0db",
+      "name": "Stubborn Heart",
+      "playerDescription": "Once a day, shrug off a wound that should have dropped you. Needs Human.",
+      "aiDescription": "Once a day, {{char}} can stay on their feet through a blow that should have dropped them, driven by sheer human stubbornness.",
+      "statChanges": [],
+      "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+      "order": 0,
+      "isDefault": true,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "889d6e62-5641-5102-a184-7e409aa95d60",
+          "name": "Human"
+        }
+      ]
+    },
+    {
+      "id": "257de5e1-c723-5b99-961d-05fac3f3583c",
+      "name": "Keen Senses",
+      "playerDescription": "Hear a whisper across a room and see a trap before it sees you. Needs Elf.",
+      "aiDescription": "{{char}} hears and sees far beyond human range, catching whispers, hidden traps and movement in dim light.",
+      "statChanges": [],
+      "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+      "order": 1,
+      "isDefault": true,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
+          "name": "Elf"
+        }
+      ]
+    },
+    {
+      "id": "49fb8c17-184b-5a21-a738-b583265d56c3",
+      "name": "Darkvision",
+      "playerDescription": "See in the dark as if by dim moonlight. Needs Dwarf.",
+      "aiDescription": "{{char}} sees in total darkness as if by dim moonlight, in shades of gray.",
+      "statChanges": [],
+      "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+      "order": 2,
+      "isDefault": true,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
+          "name": "Dwarf"
+        }
+      ]
+    },
+    {
+      "id": "c60a5a5b-dcaa-5d68-abe5-9fc0c35d0f63",
+      "name": "Lucky Step",
+      "playerDescription": "When it matters most, fortune turns your way. Needs Halfling.",
+      "aiDescription": "When fate hangs on one moment, luck bends toward {{char}}: a slipped grip, a missed arrow, a coin that lands right.",
+      "statChanges": [],
+      "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+      "order": 3,
+      "isDefault": true,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
+          "name": "Halfling"
+        }
+      ]
+    },
+    {
+      "id": "2bbf3e01-0873-5a6d-a913-8c9e7300e596",
+      "name": "Smite",
+      "playerDescription": "Pour holy light into one blow. Costs Faith. Needs Paladin.",
+      "aiDescription": "{{char}} channels the Ember into a single strike that burns the unholy and staggers the living. Each use costs Faith.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 0,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+          "name": "Paladin"
+        }
+      ]
+    },
+    {
+      "id": "1efc667f-eeb9-5336-aea2-01d9c47d037a",
+      "name": "Lay on Hands",
+      "playerDescription": "Close a wound with a touch. Costs Faith. Needs Paladin.",
+      "aiDescription": "{{char}} closes wounds with a touch and a short prayer, spending Faith to restore Health.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 1,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+          "name": "Paladin"
+        }
+      ]
+    },
+    {
+      "id": "14704d22-1e87-5a05-b419-3456e398b4f2",
+      "name": "Firebolt",
+      "playerDescription": "A dart of flame from the fingertip. Costs Mana. Needs Wizard.",
+      "aiDescription": "{{char}} hurls a dart of flame that ignites what it strikes. Each cast costs Mana.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 2,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+          "name": "Wizard"
+        }
+      ]
+    },
+    {
+      "id": "b9a0e391-0b61-5a06-bff1-79949753d8a8",
+      "name": "Arcane Ward",
+      "playerDescription": "A shimmering shield that takes the hit for you. Costs Mana. Needs Wizard.",
+      "aiDescription": "{{char}} raises a shimmering barrier that absorbs one blow or spell before it breaks. Costs Mana to raise.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 3,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
+          "name": "Wizard"
+        }
+      ]
+    },
+    {
+      "id": "0c39ad36-a657-5898-9954-52f4c57c5002",
+      "name": "Sneak Attack",
+      "playerDescription": "Strike from where no one is looking, and strike hard. Needs Rogue.",
+      "aiDescription": "When {{char}} strikes an enemy that has not noticed them, the blow lands with brutal precision.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 4,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
+          "name": "Rogue"
+        }
+      ]
+    },
+    {
+      "id": "c2c41655-7c88-5c24-abbc-6d12e85360c4",
+      "name": "Nimble Fingers",
+      "playerDescription": "Locks open, purses lighten, and nobody notices. Needs Rogue.",
+      "aiDescription": "{{char}} opens locks, lifts purses and palms small objects with practiced ease, and rarely gets caught.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 5,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
+          "name": "Rogue"
+        }
+      ]
+    },
+    {
+      "id": "f84a79bd-0e10-5df8-9659-f8023f61c11f",
+      "name": "Turn Undead",
+      "playerDescription": "Raise the holy symbol and the dead recoil. Costs Faith. Needs Cleric.",
+      "aiDescription": "{{char}} raises their holy symbol and calls on the Ember; lesser undead flee and greater ones hesitate. Costs Faith.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 6,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+          "name": "Cleric"
+        }
+      ]
+    },
+    {
+      "id": "e7ab1aed-79f8-5885-bb7a-1a117c2b44b5",
+      "name": "Mend Wounds",
+      "playerDescription": "A prayer that knits flesh and stops bleeding. Costs Faith. Needs Cleric.",
+      "aiDescription": "{{char}} prays over a wound and it knits closed, restoring Health. Costs Faith.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 7,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+          "name": "Cleric"
+        }
+      ]
+    },
+    {
+      "id": "abbd66f9-c334-51a3-9687-b15d6d9dd220",
+      "name": "Blessed Light",
+      "playerDescription": "A light no shadow can stand in. Costs Faith. Needs Cleric or Paladin.",
+      "aiDescription": "{{char}} calls up a warm holy radiance that reveals hidden things, dispels darkness and pains the undead. Costs Faith.",
+      "statChanges": [],
+      "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "order": 8,
+      "requires": [
+        {
+          "kind": "trait",
+          "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
+          "name": "Cleric"
+        },
+        {
+          "kind": "trait",
+          "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
+          "name": "Paladin"
+        }
+      ]
+    }
+  ],
+  "traitGroups": [
+    {
+      "id": "d8c779b2-dc6c-5815-8395-18bc4decfa16",
+      "name": "Bonds",
+      "playerDescription": "Ties to the people of Emberwatch. Take any.",
+      "aiDescription": "The player's bonds:",
+      "parentId": null,
+      "order": 0
+    },
+    {
+      "id": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
+      "name": "Templates",
+      "parentId": null,
+      "order": 1,
+      "system": "templates"
+    },
+    {
+      "id": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+      "name": "Races",
+      "playerDescription": "Your people. Pick one; it shapes how you look and gives one small edge.",
+      "aiDescription": "Race:",
+      "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
+      "order": 0,
+      "exclusive": true
+    },
+    {
+      "id": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+      "name": "Classes",
+      "playerDescription": "Your calling. Pick one; it sets your garb, raises one resource and unlocks your abilities.",
+      "aiDescription": "Class:",
+      "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
+      "order": 1,
+      "exclusive": true
+    },
+    {
+      "id": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+      "name": "Racial Abilities",
+      "playerDescription": "One ability per race. Each switches on with its race and off without it.",
+      "aiDescription": "Racial abilities:",
+      "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
+      "order": 2
+    },
+    {
+      "id": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+      "name": "Class Abilities",
+      "playerDescription": "Two abilities per class, and one holy spell shared by Clerics and Paladins. Each needs its class.",
+      "aiDescription": "Class abilities:",
+      "parentId": "3253995d-ad44-5d72-ab5b-63207a8a89a8",
+      "order": 3
+    }
+  ],
+  "customPersona": {
+    "traitLinks": [
+      {
+        "id": "029df56d-06dd-5765-8969-4b63fcc363cb",
+        "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
+        "kind": "group",
+        "originalName": "Races",
+        "groupId": null,
+        "order": 0,
+        "defaults": {
+          "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": true
+        },
+        "pinValues": {
+          "889d6e62-5641-5102-a184-7e409aa95d60": {
+            "Heritage": {
+              "value": "the weathered, restless look of the human frontier towns",
+              "valueId": "39d580b8-fb3f-576f-92d6-ca446a324de5"
+            }
+          },
+          "f16630f6-5baf-5dc6-a114-efd32d326255": {
+            "Heritage": {
+              "value": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries",
+              "valueId": "8822cd68-bf26-5943-998a-0bc9f0821333"
+            }
+          },
+          "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+            "Heritage": {
+              "value": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience",
+              "valueId": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef"
+            }
+          },
+          "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
+            "Heritage": {
+              "value": "the small, quick frame of the river halflings, curly hair and a grin that opens doors",
+              "valueId": "f07ed182-2955-5b83-84e2-8c274e023d6f"
+            }
+          }
+        }
+      },
+      {
+        "id": "07cc2b0c-1600-5dd3-b27e-d317eb766a83",
+        "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
+        "kind": "group",
+        "originalName": "Classes",
+        "groupId": null,
+        "order": 1,
+        "defaults": {
+          "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": true
+        },
+        "pinValues": {
+          "6289a54c-9886-5693-a0e2-0ef61f735109": {
+            "Class Garb": {
+              "value": "white tabard and mail, the Ember's sun-disc bright at the throat",
+              "valueId": "02026f25-7360-506c-9a8c-f93444415929"
+            }
+          },
+          "03673bae-78ae-5a1d-a09b-24b1a89ff1f5": {
+            "Class Garb": {
+              "value": "ink-stained blue robes and a satchel heavy with chalk and folded charts",
+              "valueId": "96dff0b6-bbe4-5196-a7d2-534c01da7ede"
+            }
+          },
+          "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
+            "Class Garb": {
+              "value": "dark oiled leathers and a hooded half-cloak, with more knives than pockets",
+              "valueId": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9"
+            }
+          },
+          "052f965e-d53d-5d83-90fe-626f4469f9b2": {
+            "Class Garb": {
+              "value": "plain gray vestments and a healer's roll of bandages at the belt",
+              "valueId": "92ecec6a-f2db-51e9-8540-7e7f9907072b"
+            }
+          }
+        }
+      },
+      {
+        "id": "b60f0d2c-f416-5e8f-83b2-231cd7723539",
+        "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
+        "kind": "group",
+        "originalName": "Racial Abilities",
+        "groupId": null,
+        "order": 2
+      },
+      {
+        "id": "4bd1acc3-3b3e-533a-a380-77dad4064960",
+        "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
+        "kind": "group",
+        "originalName": "Class Abilities",
+        "groupId": null,
+        "order": 3
+      }
+    ],
+    "traitPlacement": {
+      "groupId": null,
+      "order": 2
+    }
+  },
+  "statUpdates": [],
+  "dictionaries": [],
+  "placeholders": [
+    {
+      "id": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
+      "name": "Class Garb",
+      "values": [
+        {
+          "id": "02026f25-7360-506c-9a8c-f93444415929",
+          "text": "white tabard and mail, the Ember's sun-disc bright at the throat"
+        },
+        {
+          "id": "96dff0b6-bbe4-5196-a7d2-534c01da7ede",
+          "text": "ink-stained blue robes and a satchel heavy with chalk and folded charts"
+        },
+        {
+          "id": "267aa2a7-6321-5c74-ae83-a0d9568ff5d9",
+          "text": "dark oiled leathers and a hooded half-cloak, with more knives than pockets"
+        },
+        {
+          "id": "92ecec6a-f2db-51e9-8540-7e7f9907072b",
+          "text": "plain gray vestments and a healer's roll of bandages at the belt"
+        }
+      ]
+    },
+    {
+      "id": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
+      "name": "Heritage",
+      "values": [
+        {
+          "id": "39d580b8-fb3f-576f-92d6-ca446a324de5",
+          "text": "the weathered, restless look of the human frontier towns"
+        },
+        {
+          "id": "8822cd68-bf26-5943-998a-0bc9f0821333",
+          "text": "the fine-boned grace of the elves, long ears and unhurried eyes that count years in centuries"
+        },
+        {
+          "id": "1cac90f4-1a83-52e1-93ab-dc172a21c4ef",
+          "text": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience"
+        },
+        {
+          "id": "f07ed182-2955-5b83-84e2-8c274e023d6f",
+          "text": "the small, quick frame of the river halflings, curly hair and a grin that opens doors"
+        }
+      ]
+    }
+  ]
+}

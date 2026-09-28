@@ -21,6 +21,7 @@ export const DEFAULT_WORLDS: DefaultWorldSeed[] = [
   { id: 'veilwood', defaultName: 'Veilwood' },
   { id: 'sugarscape', defaultName: 'Sugarscape Survival' },
   { id: 'slime', defaultName: 'Slime Outbreak' },
+  { id: 'emberwatch', defaultName: 'Emberwatch' },
   { id: 'open-chat', defaultName: 'Open Chat' },
 ];
 
