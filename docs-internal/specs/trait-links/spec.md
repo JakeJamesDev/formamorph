@@ -200,6 +200,8 @@ All items are additive export-shape changes to the world, entity, card and save 
 
 - Links off-world store the original's name. Import binds by id when the origin id exists in the receiving world, then by unique name, else drops the link. This is the same rule as outward requirements. A link whose original the bearer's tree already holds drops too (Q49).
 - Named-scope requirements travel the same way, by bearer name.
+- A linked group's per-link data is keyed by child id. Off-world the link also stores each keyed child's name. Import binds each key by id within the rebound subtree, then by unique name there, else drops it, so a library persona's picked class survives (Q85). Additive off-world field, stripped at bind.
+- Inside a world, the library entity editor shows the entity's links live against that world with the This Link section, Remove and Detach. It makes no new links; those are made on the world copy in the World Editor. Standalone, links show read-only by stored name (Q86).
 - A library persona's links to world originals bind at enter-world against the world being entered.
 
 ### Test Bench
@@ -292,6 +294,8 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q82 | In the conflict note a Persona-marked entity's traits count as both its own and the player's, so they rival every cast entity's; the cast entity wins in its own text. |
   | Q83 | Under None or a library persona, Custom Persona's links merge into the player's root categories; no separate heading. |
   | Q84 | The player is one bearer, so Q64 applies to the union: an original held at the root and through the played persona's link shows once (root wins), holds one stat record, and the Test Bench reports the redundant link. |
+  | Q85 | A linked group's per-link keys travel off-world with child names and rebind by id, then unique name within the subtree, else drop. |
+  | Q86 | Inside a world the library editor shows links live with This Link, Remove and Detach, and makes no new links. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
