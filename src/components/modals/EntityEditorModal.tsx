@@ -16,7 +16,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import { LibraryAuthorField } from '@/components/LibraryAuthorField';
 import PlaceholderEditor from '@/managers/PlaceholderEditor';
-import LibraryTraitsEditor from '@/managers/LibraryTraitsEditor';
+import LibraryTraitsEditor, { type LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
 import { PlacementLettersProvider } from '@/contexts/PlacementLettersContext';
@@ -32,7 +32,6 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
-import type { TraitWorld } from '@/lib/portableTraits';
 import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
@@ -60,7 +59,7 @@ const EntityEditorModal = ({
   initialTab?: EntityEditorTab;
   initialSubTab?: EntityEditorSubTab;
   focusField?: FocusFieldHint | null;
-  traitWorld?: TraitWorld;
+  traitWorld?: LibraryEditorWorld;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
   const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();

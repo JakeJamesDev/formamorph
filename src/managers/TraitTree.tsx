@@ -84,17 +84,17 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
 const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) => {
   const {
     traits, traitGroups, entities, setTraits, setTraitGroups, editEntity, placeholders, gateInput,
-    customPersona, setCustomPersona, libraryBearer, linkWorld,
+    customPersona, setCustomPersona, library,
   } = useTraitStore();
-  const originals = useMemo(() => originalsOf({ traits, traitGroups, linkWorld }), [traits, traitGroups, linkWorld]);
+  const originals = useMemo(() => originalsOf({ traits, traitGroups, library }), [traits, traitGroups, library]);
   const { advanced } = useEditorMode();
   const gates = useMemo(() => gateStates(gateInput), [gateInput]);
   const lists = useMemo(() => ({ traits, traitGroups, customPersona }), [traits, traitGroups, customPersona]);
   const tree = useMemo(
-    () => (libraryBearer
-      ? libraryTraitTree(libraryBearer, linkWorld ?? null)
+    () => (library
+      ? libraryTraitTree(library.bearer, library.world)
       : ownedTraitTree(lists, entities, [], { links: true, emptySystemNodes: advanced })),
-    [lists, entities, advanced, libraryBearer, linkWorld],
+    [lists, entities, advanced, library],
   );
   const [refusal, setRefusal] = useState<TraitDropRefusal | null>(null);
   const { ask: askRemoveOriginal, dialog: removeDialog } = useRemoveWorldTrait();
@@ -109,7 +109,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   };
 
   const detach = (entityId: string, linkId: string) => {
-    const bearer = libraryBearer?.id === entityId ? libraryBearer : entities.find((e) => e.id === entityId);
+    const bearer = library?.bearer.id === entityId ? library.bearer : entities.find((e) => e.id === entityId);
     const res = bearer && detachLink(originals, bearer, linkId);
     if (!res) return;
     editEntity(entityId, () => res.entity);
@@ -124,7 +124,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const linkRowSpec = (node: FlatTraitNode, linkRow: LinkRow): TreeRowSpec => {
     const isGroup = node.kind === 'group';
     const name = (isGroup ? node.group?.name : node.leaf?.name) ?? '';
-    // No original to read: the stored name, read-only.
+    // No original to read: the stored name, read-only, but removable inside a world.
     if (linkRow.unbound) {
       return {
         lead: 'none',
@@ -136,6 +136,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         label: <PlaceholderText text={name} placeholders={placeholders} />,
         labelClass: 'text-muted-foreground',
         fixed: true,
+        ...(library?.world ? {
+          removeTitle: 'Remove Link',
+          remove: () => editBearer(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
+        } : {}),
       };
     }
     // A link row reads its bearer's gate on the original; Custom Persona's rows are the player's.
@@ -152,10 +156,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     // A linked group's subtree is the original's, so its rows are read here and edited there.
     if (!linkRow.root) return { ...shared, icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined, fixed: true };
     // A library entity's tree holds no original to open, and its drops don't place links.
-    const opens = libraryBearer ? node.id : linkRow.originalId;
+    const opens = library ? node.id : linkRow.originalId;
     return {
       ...shared,
-      fixed: !!libraryBearer,
+      fixed: !!library,
       icon: (
         <Tip tip={`Linked, opens ${labelPlaceholders(name, placeholders)}`} labelsChild={false}>
           <button

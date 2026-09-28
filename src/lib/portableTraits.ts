@@ -1,7 +1,7 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
 import type { Entity, RequirementBearer, Trait, TraitGroup, TraitLink, TraitRequirement } from '@/types';
-import { originalOf } from './bearers';
+import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { groupsBelow } from './traitTree';
 
@@ -116,18 +116,21 @@ function portableLinks(links: readonly TraitLink[], world?: TraitWorld): TraitLi
 }
 
 /**
- * The links bound to `world`: each by its original's id, else by the one original of its kind carrying its
- * name, else dropped. A link that brings anything an earlier link already brings is dropped too. Each data
- * key follows the same rule inside what the bound original brings.
+ * The entity's links bound to `world`: each by its original's id, else by the one original of its kind
+ * carrying its name, else dropped. A link that brings anything a link before it in tree order already brings
+ * is dropped too, as the resolver keeps the first. Each data key follows the same rule inside what the bound
+ * original brings.
  */
-function bindLinks(links: readonly TraitLink[], world: TraitWorld): TraitLink[] {
+function bindLinks(entity: Entity, links: readonly TraitLink[], world: TraitWorld): TraitLink[] {
   const held = new Set<string>();
-  return links.flatMap((link) => {
+  const kept = new Map<string, TraitLink>();
+  for (const link of linksInTreeOrder(entity, links)) {
     const bound = bindLink(link, world);
-    if (!bound || bound.ids.some((id) => held.has(id))) return [];
+    if (!bound || bound.ids.some((id) => held.has(id))) continue;
     bound.ids.forEach((id) => held.add(id));
-    return [bound.link];
-  });
+    kept.set(link.id, bound.link);
+  }
+  return links.flatMap((l) => kept.get(l.id) ?? []);
 }
 
 /** One link bound to `world`, with the ids it brings; null when no original matches. */
@@ -212,7 +215,7 @@ export function bindOwnedTraits(entity: Entity, world: TraitWorld): Entity {
   };
   const traits = withRequires(entity, bind);
   const bound = traits ? { ...entity, traits } : entity;
-  return entity.traitLinks ? withLinks(bound, bindLinks(entity.traitLinks, world)) : bound;
+  return entity.traitLinks ? withLinks(bound, bindLinks(entity, entity.traitLinks, world)) : bound;
 }
 
 /** A named bearer as two copies compare it: the entity itself as {@link SELF_ENTITY}, another by its name. */
@@ -220,7 +223,9 @@ const comparableBearer = (b: EntityBearer, entityId: string): RequirementBearer 
   (isSelfBearer(b, entityId) ? { kind: 'entity', id: SELF_ENTITY } : b.name ? { kind: 'entity', id: '', name: b.name } : { kind: 'entity', id: b.id });
 
 /** A link as two copies compare it: its original and data keys by name, since their ids are each world's own. */
-function comparableLink(link: TraitLink): Record<string, unknown> {
+type ComparableLink = Pick<TraitLink, 'id' | 'kind' | 'originalName' | 'groupId' | 'order' | 'defaults' | 'pinValues'>;
+
+function comparableLink(link: TraitLink): ComparableLink {
   const key = (id: string) => (id === link.originalId ? '' : link.keyNames?.[id] ?? id);
   return {
     id: link.id, kind: link.kind, originalName: link.originalName, groupId: link.groupId ?? null, order: link.order,
@@ -233,7 +238,7 @@ function comparableLink(link: TraitLink): Record<string, unknown> {
  * stores (its id is each world's own), one into it by id, "playing as" itself as {@link SELF_ENTITY}, and a
  * named bearer by its name. Links compare as {@link comparableLink} reads them.
  */
-export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: unknown[] } => {
+export const comparableOwnedTraits = (entity: Entity): { traits?: Trait[]; traitLinks?: ComparableLink[] } => {
   const inside = ownIds(entity);
   const traits = withRequires(entity, (req) => {
     if (isSelf(req, entity.id)) return { kind: req.kind, id: SELF_ENTITY };

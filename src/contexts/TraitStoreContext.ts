@@ -36,18 +36,26 @@ export interface TraitStore {
   pinWorld: PinEditorWorld | null;
   /** Off-world: requirements point only inside the entity, so the picker offers no personas. */
   offWorld?: boolean;
-  /** A library entity whose links draw among its own items at the tree's root. */
-  libraryBearer?: Entity;
-  /** What a library entity's links read their originals from: the world it is opened in, or null standalone.
-   *  Absent in the World Editor, where the originals are `traits` and `traitGroups`. */
-  linkWorld?: Pick<TraitStore, 'traits' | 'traitGroups'> | null;
+  /** A library entity's links, which draw among its own items at the tree's root. Absent in the World Editor. */
+  library?: LibraryLinks;
 }
 
-const NO_ORIGINALS: Pick<TraitStore, 'traits' | 'traitGroups'> = { traits: [], traitGroups: [] };
+/** A library entity's links in its editor. */
+export interface LibraryLinks {
+  /** The entity, its links bound to `world` where they can be. */
+  bearer: Entity;
+  /** The world the editor was opened from, which the links read their originals from; null standalone. */
+  world: LinkOriginals & { placeholders: readonly Placeholder[] } | null;
+}
 
 /** The world lists a link's original is read from. */
-export const originalsOf = (store: Pick<TraitStore, 'traits' | 'traitGroups' | 'linkWorld'>): Pick<TraitStore, 'traits' | 'traitGroups'> =>
-  (store.linkWorld === undefined ? { traits: store.traits, traitGroups: store.traitGroups } : store.linkWorld ?? NO_ORIGINALS);
+export type LinkOriginals = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
+
+const NO_ORIGINALS: LinkOriginals = { traits: [], traitGroups: [] };
+
+/** The world lists a link's original is read from: the World Editor's own, or a library entity's world. */
+export const originalsOf = (store: Pick<TraitStore, 'traits' | 'traitGroups' | 'library'>): LinkOriginals =>
+  (store.library ? store.library.world ?? NO_ORIGINALS : store);
 
 export const TraitStoreContext = createContext<TraitStore | null>(null);
 

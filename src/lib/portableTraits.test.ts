@@ -314,6 +314,13 @@ describe('bindOwnedTraits with links', () => {
     expect(bindOwnedTraits(carried, linkTarget()).traitLinks!.map((l) => l.id)).toEqual(['l-class', 'l-smite']);
   });
 
+  it('keeps the duplicate that comes first in tree order, not in storage order', () => {
+    const paladin = { id: 'l-paladin', originalId: 'w-paladin', kind: 'trait' as const, originalName: 'Paladin', groupId: null, order: 0 };
+    const first: Entity = { ...mira(), traitLinks: [...mira().traitLinks!, paladin] };
+    const carried = { ...first, ...portableOwnedTraits(first, linkOrigin), id: 'copy' };
+    expect(bindOwnedTraits(carried, linkTarget()).traitLinks!.map((l) => l.id)).toEqual(['l-smite', 'l-paladin']);
+  });
+
   it('rebinds a named-scope bearer by id, then unique name, else leaves it unresolved by name', () => {
     expect(vowOf(bindOwnedTraits(carriedMira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.bearer)).toEqual([
       { kind: 'entity', id: 'albus', name: 'Albus' }, { kind: 'you' }, { kind: 'entity', id: 'copy', name: 'Mira' },

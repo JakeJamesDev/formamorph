@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link2 } from 'lucide-react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,9 +22,7 @@ export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onO
   const path = originalPath(originalsOf(store), originalId).join(' › ');
   const text = <PlaceholderText text={path} placeholders={store.placeholders} />;
   return (
-    <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
-      <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <p className="text-label">
+    <LinkNotice>
         Linked from{' '}
         {onOpen ? (
           <>
@@ -37,7 +36,16 @@ export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onO
             . Edits change every link.
           </>
         ) : <><strong>{text}</strong> in this world.</>}
-      </p>
+    </LinkNotice>
+  );
+}
+
+/** The dashed box with a link icon that holds a line about a link. */
+export function LinkNotice({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
+      <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <p className="text-label">{children}</p>
     </div>
   );
 }
@@ -57,7 +65,9 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
   const single = rows.length === 1 && rows[0].trait.id === originalId;
   const hasStats = !persona && rows.some(({ trait: t }) => hasStatEffects(t));
   const set = (traitId: string, on: boolean) => editBearer(entity.id, (e) => setLinkDefault(e, link.id, traitId, on));
-  const pinRows = linkPinRows({ placeholders, placeholderOwners }, rows.map((r) => r.trait), link, persona ? [] : entity.placeholders ?? []);
+  // A library entity's fallback targets are the world's placeholders, not its own carried pool.
+  const pinTargets = store.library?.world ? [...store.library.world.placeholders] : placeholders;
+  const pinRows = linkPinRows({ placeholders: pinTargets, placeholderOwners }, rows.map((r) => r.trait), link, persona ? [] : entity.placeholders ?? []);
   const setPin = (traitId: string, name: string, value: TraitLinkPinValue | null) =>
     editBearer(entity.id, (e) => setLinkPinValue(e, link.id, traitId, name, value));
 

@@ -473,8 +473,10 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
   const clearPendingLinks = useCallback(() => setPendingIds([]), []);
 
-  const { traits, traitGroups, entities } = options;
-  const traitWorld = useMemo(() => ({ traits, traitGroups, entities }), [traits, traitGroups, entities]);
+  const { traits, traitGroups, entities, worldPlaceholders } = options;
+  const traitWorld = useMemo(
+    () => ({ traits, traitGroups, entities, placeholders: worldPlaceholders }), [traits, traitGroups, entities, worldPlaceholders],
+  );
 
   const dialogs: ReactNode = (
     <>

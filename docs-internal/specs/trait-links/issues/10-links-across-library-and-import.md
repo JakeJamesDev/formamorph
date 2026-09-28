@@ -1,6 +1,7 @@
 # 10: Links across library and import
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 93424d0d
 Blocked by: 08 — Bearers at enter-world and in play
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
