@@ -133,7 +133,7 @@ One concept, **Blueprints**, with one behavior everywhere: **live until edited**
 
 - A pure module with two jobs:
   - **Effective record:** blueprint plus overrides gives the record a reader sees. It also reports which fields are overridden and which overrides are stale.
-  - **Copy lookup:** given a bearer and a blueprint id, return the placeholder that bearer reads. Chain: the bearer's own copy; for a library persona, the Custom Persona entity's copy; then the blueprint itself (Q9, Q10).
+  - **Copy lookup:** given a bearer and a blueprint id, return the placeholder that bearer reads. Chain: the bearer's own copy; for a library persona or the player under None, the Custom Persona entity's copy; then the blueprint itself (Q9, Q10).
 - Traits, placeholders, the Test Bench and later stats read blueprints only through it.
 
 ### Trait links
@@ -201,7 +201,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
 - **World transforms.** Automatic copy creation on each trigger, nested copies, root-trait copies on every persona, copies on marking, cleanup of untouched copies only and never while a chip uses one, Detach rewrite, the duplicate that drops the mark, and the refused move out of Blueprints.
 - **Field predicate.** Every insert path refuses a blueprint chip in a normal field.
 - **Round-trips.** Cards carrying blueprints, import with and without the blueprint including the pin rewrite, link overrides with snapshots, the new save key.
-- **Test Bench.** New rules with the existing pin rules as prior art.
+- **Test Bench.** New rules with the existing pin rules as prior art. Two adjustments landed with ticket 01: the entity-nowhere rule skips the marked entity, which stands in no location, and the lens reads the marked entity's tree as part of the None player so its linked classes stay PC choices.
 - **UI wiring only.** Component tests for Reset, Reset to Blueprint, the stale marker, Edit Blueprint and the Custom Persona mark switch. Logic stays in the pure modules.
 - Every guard is proven to fail with its rule removed (test-bar skill).
 
@@ -218,6 +218,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
 
 - **Origin:** discussed and grilled on 2026-09-28. Bearer-relative pins made a World placeholder read per bearer, which breaks the documented World behavior. Reviewed the same day; the review's findings are Q30–Q36.
 - **Amends trait-links:** Q23, Q38, Q40, Q51, Q52 (Player Can Toggle is now overridable), Q57 (generalized), Q66–Q69 and Q83 (Custom Persona node becomes an entity), Q76, and the Out of Scope line on link overrides. The editing model "Edits change every link" is replaced. The trait Templates group is renamed Blueprints (Q33). Ticket 02's open question on cross-owner drags is settled (Q17).
+- **Emberwatch during rollout:** ticket 01 converted its Custom Persona node to a marked entity. Hesk's and Corvin's hand-made placeholders stay plain owned placeholders until ticket 05 creates copies and ticket 07 makes the resolver read them; their text reads their own words through their own chips until then.
 - **Rollout (Q27):** the trait-links review is paused. This spec reworks that code first, and the user reviews the combined result once.
 - **Glossary (Q33):** "template" stays on the *Avoid* lists of Placeholder and Original in CONTEXT.md, and Template stays the Tool Handler kind. This effort adds **Blueprint** (a world trait or placeholder that exists to be linked or copied) and **Copy** (an entity-owned placeholder that reads a Blueprint live until edited). An Original is a Blueprint trait.
 - **Rulings, by grill number:**
