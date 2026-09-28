@@ -706,6 +706,25 @@ describe('linked stat traits follow whoever the player plays', () => {
     expect(switchPersonaStats(toNone.state, linked(), linked(), name).state).toBe(toNone.state);
   });
 
+  it('reverses a root trait the new persona is not offered, because its gate names that persona', () => {
+    // Squire (+4 starting on h) requires Albus: Paladin. Playing Albus, the player bearer no longer holds it.
+    const squire = trait('squire', [{ statId: 'h', value: 4, type: 'starting' }], {
+      name: 'Squire', requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'albus' } }],
+    });
+    const withSquire = (persona: PersonaRef, held: Trait[]): TraitWorld => {
+      const base = linked(persona);
+      return { ...base, traits: [vigil, squire], bearers: [{ id: 'world', name: '', traits: held, groups: [] }, albus, mira] };
+    };
+    const asMiraSquire = withSquire({ source: 'world', entityId: 'mira' }, [vigil, squire]);
+    const asAlbusNoSquire = withSquire({ source: 'world', entityId: 'albus' }, [vigil]);
+    const holding = { ...state({ traits: [squire] }), appliedValues: { squire: { h: 4 } }, stats: [stat('h', { value: 54 })] };
+    const toAlbus = switchPersonaStats(holding, asMiraSquire, asAlbusNoSquire, name);
+    expect(toAlbus.log).toEqual(['Trait switched off: Squire']);
+    expect(valueOf(toAlbus.state)).toBe(50);
+    expect(toAlbus.state.appliedValues).toEqual({ squire: { h: -4 } });
+    expect(switchPersonaStats(toAlbus.state, asAlbusNoSquire, asMiraSquire, name).log).toEqual(['Trait switched on: Squire']);
+  });
+
   it('reverses what actually moved, so a cap the switch clamped gives back only what it gave', () => {
     const nearCap = { ...bothPaladins, stats: [stat('h', { value: 100, max: 100 })] };
     const seeded = applyPlayedStatTraits(nearCap, asAlbus).state;
