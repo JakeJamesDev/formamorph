@@ -17,8 +17,8 @@ import { unresolvedReferences, type ConnectionPlan, type ReferenceRow } from '@/
 import WorldStorageService from '@/services/WorldStorageService';
 import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
-import { blueprintIds, worldBlueprints } from '@/lib/placeholderBlueprints';
-import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
+import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
 import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup, WorldOverview } from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
@@ -99,7 +99,7 @@ export async function addCopyToStoredWorld(
       };
     }
 
-    const bound = bindCarriedBlueprints(withId as Entity, worldBlueprints(data));
+    const bound = bindCarriedBlueprints(withId as Entity, blueprintBindWorld(data));
     const adopted = adoptEntityPlaceholders(bound.entity, shared, plan.placeholders);
     const places = [...locations, ...plan.newLocations];
     const known = new Set(places.map((place) => place.id));

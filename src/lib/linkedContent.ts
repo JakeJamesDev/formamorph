@@ -162,8 +162,8 @@ export function contentMatchesSource(copy: LinkableContent, source: LinkableCont
   return JSON.stringify(authoredContent(copy)) === JSON.stringify(authoredContent(source));
 }
 
-/** The world-owned fields an update keeps from the copy. The two placeholder lists are absent: the source
- *  writes them, and the adopt pass is what turns its ids into this world's. */
+/** The world-owned fields an update keeps from the copy. The placeholder lists and the carried blueprints are
+ *  absent: the source writes them, and the bind and adopt passes turn its ids into this world's. */
 const KEPT_ON_UPDATE = WORLD_OWNED_FIELDS
   .filter((field) => field !== 'placeholders' && field !== 'sharedPlaceholders' && field !== 'blueprints');
 
@@ -211,7 +211,9 @@ export function applyLibraryUpdate<T extends LinkableContent>(
   const resolved = 'entries' in incoming
     ? adoptBookPlaceholders(incoming as Dictionary, worldShared, copy.link?.connections)
     : adoptEntityPlaceholders(
-      traitWorld?.blueprints ? bindCarriedBlueprints(incoming as Entity, traitWorld.blueprints).entity : incoming as Entity,
+      traitWorld?.blueprints
+        ? bindCarriedBlueprints(incoming as Entity, { blueprints: traitWorld.blueprints, placeholders: worldShared }).entity
+        : incoming as Entity,
       worldShared, copy.link?.connections,
     );
   const adopted = 'book' in resolved ? resolved.book

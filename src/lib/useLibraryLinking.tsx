@@ -34,8 +34,8 @@ import {
 } from '@/lib/worldReferences';
 import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { blueprintChipsRemovedNotice, dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
-import { blueprintIds, worldBlueprints } from '@/lib/placeholderBlueprints';
-import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
+import { bindCarriedBlueprints, blueprintBindWorld } from '@/lib/blueprintTravel';
 import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup } from '@/types';
 
 const HELP_TOPIC = 'library.linkedContent';
@@ -265,7 +265,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const added: Entity[] = [];
     const blueprintWorld = { placeholders: current.worldPlaceholders, placeholderGroups: current.placeholderGroups };
     const blueprints = blueprintIds(blueprintWorld);
-    const boundTo = worldBlueprints(blueprintWorld);
+    const bindWorld = blueprintBindWorld(blueprintWorld);
     let dropped = 0;
     for (const entry of pending) {
       const shared = [...current.worldPlaceholders, ...gained];
@@ -276,7 +276,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
         dropped += kept.dropped;
         current.addBookToWorld(withConnections(kept.book, adopted.connections));
       } else {
-        const bound = bindCarriedBlueprints(entry.item as Entity, boundTo);
+        const bound = bindCarriedBlueprints(entry.item as Entity, bindWorld);
         const adopted = adoptEntityPlaceholders(bound.entity, shared, plan.placeholders);
         gained.push(...adopted.toAdd);
         const kept = dropEntityBlueprintChips(adopted.entity, blueprints);
