@@ -1,6 +1,6 @@
 # 10: Test Bench rules
 
-Status: in-progress
+Status: ready-for-human
 Base: bdc06209
 Blocked by: 06 — Pins by blueprint; 07 — Blueprint chips
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -15,7 +15,7 @@ The Test Bench warns when a copy removes the value a pin names, when a blueprint
 
 ## Acceptance criteria
 
-- [ ] Rule tests cover each of the four findings and its clean case.
-- [ ] Each finding's jump target opens the right row.
-- [ ] The bearer-relative pin rules and their tests are gone.
-- [ ] Each guard is proven to fail with its rule removed.
+- [x] Rule tests cover each of the four findings and its clean case.
+- [x] Each finding's jump target opens the right row.
+- [x] The bearer-relative pin rules and their tests are gone.
+- [x] Each guard is proven to fail with its rule removed.
