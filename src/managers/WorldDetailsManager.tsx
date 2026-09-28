@@ -72,7 +72,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
 }) => {
   const {
     worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
-    placeholders,
+    placeholders, customPersona,
   } = useGameData();
   const {
     paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
@@ -87,7 +87,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
     () => {
       // A world has no notes or clock, so the pool's sample turn supplies both, as it does the per-turn chips.
       const { '<NOTES>': _notes, '<TIME>': _time, ...authored } = chipValues(authoredChipScene({
-        worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
+        worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders, customPersona,
       }));
       return composePreviewValues(
         {
@@ -100,7 +100,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
     [
       paragraphLimit, maxTokens, markdownOutput, activeSectionStyle, limitActiveCharacters, activeCharacterLimit,
       language,
-      worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders,
+      worldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries, placeholders, customPersona,
     ],
   );
   const { advanced } = useEditorMode();

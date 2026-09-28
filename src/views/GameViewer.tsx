@@ -1782,6 +1782,8 @@ const GameViewer = ({
     () => worldPlaceholders.filter((p) => !placeholderOwners.has(p.id)),
     [worldPlaceholders, placeholderOwners],
   );
+  // Each present bearer's tree, so a cast entity's links reach the AI like its owned traits.
+  const sceneBearers = useMemo(() => gatedWorld().bearers, [gatedWorld]);
   // The playthrough as a Chip Scene: the live adapter. A turn's location and a before box in flight each
   // yield their own scene.
   const liveScene = useLiveChipScene({
@@ -1790,6 +1792,7 @@ const GameViewer = ({
     traits: activeTraits,
     traitGroups,
     ownedTraits,
+    bearers: sceneBearers,
     resolve: resolvePH,
     resolveTrait: resolveTraitText,
     resolveEntity: resolveEntityText,

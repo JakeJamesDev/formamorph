@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
-import { resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
+import { resolveBearerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
 import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
@@ -88,8 +88,8 @@ export interface ResolvedWorld {
   /** `resolveEntityText` against a pin set of the caller's own. */
   resolveEntityFor: (pins: PinSet, entity: Entity, text: string) => string;
   /** Resolve a TRAIT'S OWN text (description, its card's stat names): its pins, bound for its owner, over
-   *  the owner's, so a pinning trait reads its own value whatever else is ticked. An owned trait's owner is
-   *  its Character Name. Trait names in `traits` already use this. */
+   *  the owner's, so a pinning trait reads its own value whatever else is ticked. The owner is its Character
+   *  Name; with no owner the player is. Trait names in `traits` already use this. */
   resolveTraitText: (trait: Trait, text: string, owner?: Entity | null) => string;
 }
 
@@ -176,7 +176,7 @@ export function useResolvedAuthoredWorld(
   const resolveTraitFor = useCallback(
     (withPins: PinSet, trait: Trait, text: string, owner: Entity | null = null) => {
       const scoped = traitScopedPins(withPins.bind(trait, owner?.id), withPins.of(owner?.id), placeholders);
-      return resolveEntityCore(owner, text, { placeholders, rolls, pins: scoped, player });
+      return resolveBearerText(owner, text, { placeholders, rolls, pins: scoped, player });
     },
     [placeholders, rolls, player],
   );

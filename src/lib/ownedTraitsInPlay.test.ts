@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink } from '@/types';
 import { phValues } from '@/test/placeholderValues';
-import type { PinnableStat } from './placeholderPins';
+import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
-  activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerTraitTree, inPlayLibrary, rowBearer, type BearerPinState,
+  activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerPriming, bearerTraitTree, inPlayLibrary, rowBearer,
+  type BearerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 
@@ -122,6 +123,33 @@ describe('bearerPins — each bearer lays its own pins', () => {
     // Custom Persona links Paladin, whose Class Garb pin falls back to the world's; the pick stays chosen.
     expect(pinsUnder(NONE, [paladin]).world.garb).toBe('Robe');
     expect(pinsUnder({ source: 'world', entityId: 'albus' }, [paladin]).world.garb).toBeUndefined();
+  });
+});
+
+describe('bearerPriming — what roll priming walks per bearer', () => {
+  it("walks each bearer's pin values bound to its own placeholder or the world's, and no unbound pin", () => {
+    const texts = allPinTexts({
+      traits: [...world.traits, ...bearerPriming(world, [lib], shared).pinTraits],
+      placeholders: [...shared, ...albus.placeholders!, ...lib.placeholders!],
+    });
+    expect(texts['albus-garb']).toEqual(['Gilded plate']);
+    // Mira's link, Custom Persona's link and the directly held cloak; the pin's own Tabard only seeds new links.
+    expect([...texts.garb].sort()).toEqual(['Plate', 'Robe']);
+    // Under the library persona the player's pins bind to its own Class Garb.
+    expect(texts['lib-garb']).toEqual(['Robe']);
+    expect(texts['']).toBeUndefined();
+  });
+
+  it("walks every bearer's own trait and group text, which the world's lists leave out", () => {
+    const owner: Entity = {
+      id: 'kit', name: 'Kit',
+      traits: [trait('t-kit', [], { name: 'Kit’s {{ph:mood:world:p1}} streak', aiDescription: 'Kit hums {{ph:mood:world:p2}}.' })],
+      traitGroups: [{ id: 'g-kit', name: 'Habits', aiDescription: 'Kit’s {{ph:mood:world:p3}} habits.', parentId: null }],
+    };
+    const { texts } = bearerPriming({ ...world, entities: [owner] }, [], shared);
+    expect(texts).toEqual(expect.arrayContaining([
+      'Kit’s {{ph:mood:world:p1}} streak', 'Kit hums {{ph:mood:world:p2}}.', 'Kit’s {{ph:mood:world:p3}} habits.',
+    ]));
   });
 });
 

@@ -1,15 +1,18 @@
 import { flattenEnabledBookEntries } from '../dictionaryUtils';
 import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
-import { resolveEntityText, resolvePlaceholders } from '../placeholders';
-import { traitScopedPins } from '../placeholderPins';
+import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
+import { characterAsPlayer } from '../builtinPlaceholders';
+import { withBearerTrees } from '../ownedTraitsInPlay';
+import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
+import { bindBearerPins, traitScopedPins } from '../placeholderPins';
 import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
 import { resolveStartingLocation } from '../startingLocation';
 import type {
-  Connection, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait, TraitGroup,
-  WorldOverview,
+  Connection, CustomPersonaNode, Dictionary, Entity, EntityGroup, GameLocation, Placeholder, PlayerStat, Stat, Trait,
+  TraitGroup, WorldOverview,
 } from '@/types';
 import type { ChipScene } from './chipScene';
 
@@ -25,6 +28,7 @@ export interface AuthoredWorld {
   traitGroups?: TraitGroup[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
+  customPersona?: CustomPersonaNode;
 }
 
 /** Overrides for a scene scoped tighter than "the world's own opening" — the Test Bench's Opening
@@ -65,27 +69,43 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const resolveEntity = options.resolveEntity ?? (options.resolve
     ? undefined
     : (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls: {} }));
-  // An owned trait reads its own pins, with its owner as the Character Name.
+  // Every bearer's tree with no persona picked: the player's, and each entity's with its links expanded.
+  const { bearers } = resolveBearers({ traits, traitGroups, entities, customPersona: world.customPersona }, undefined);
+  const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
+  const bearerOf = new Map(bearers.map((b) => [b.id, b]));
+  const bound = (trait: Trait, bearer: Bearer) =>
+    bindBearerPins(trait, bearer.linkOf.get(trait.id), bearer.entity?.placeholders ?? [], world.placeholders ?? []);
+  const ownPins = (trait: Trait, bearer: Bearer | undefined) =>
+    traitScopedPins(bearer ? bound(trait, bearer) : trait, {}, placeholders);
+  // An entity's trait reads its own pins, bound for that entity, with the entity as the Character Name.
   const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
-    : (trait, text, owner) => resolveEntityText(owner, text, { placeholders, rolls: {}, pins: traitScopedPins(trait, {}, placeholders) });
+    : (trait, text, owner) => resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, bearerOf.get(owner.id)) });
+  const withLinks = withBearerTrees(entities, bearers);
   const cast = resolveEntity
-    ? resolveOwnedTraitTexts(resolveEntityTexts(entities, resolveEntity), resolveOwned, resolveEntity)
-    : entities;
+    ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
+    : withLinks;
   const presentIds = entityIdsAt(location?.id, entities);
-  const activeIds = new Set(options.activeTraitIds ?? traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
+  const activeIds = new Set(options.activeTraitIds ?? player.traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
+  // The player bears its traits, so the Character Name reads as the Player Name. A caller's resolve reads
+  // the rest; otherwise each trait reads its own pins.
+  const playerText = (trait: Trait, text: string) => (options.resolve
+    ? characterAsPlayer(text)
+    : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player) }));
 
   return {
     overview: worldOverview?.systemPrompt || '',
     // Stats read their authored starting value — the same shape a playthrough's stats carry.
     stats: options.stats
       ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min })),
-    traits: traits.filter((trait) => activeIds.has(trait.id)),
-    traitGroups,
-    // Each entity holds its default owned traits, as the entry step preselects them.
-    ownedTraits: Object.fromEntries(entities.flatMap((entity) => {
-      const defaults = (entity.traits ?? []).filter((trait) => trait.isDefault).map((trait) => trait.id);
-      return defaults.length ? [[entity.id, defaults]] : [];
+    // The player bearer's traits, where its tree places them: never Templates, and Custom Persona's at the root.
+    traits: player.traits.filter((trait) => activeIds.has(trait.id))
+      .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait)),
+    traitGroups: player.groups,
+    // Each entity holds its default traits, owned and linked, as the entry step preselects them.
+    ownedTraits: Object.fromEntries(bearers.flatMap((bearer) => {
+      const defaults = bearer.traits.filter((trait) => trait.isDefault).map((trait) => trait.id);
+      return bearer.entity && defaults.length ? [[bearer.id, defaults]] : [];
     })),
     persona: null,
     location,

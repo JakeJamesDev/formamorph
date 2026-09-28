@@ -155,3 +155,23 @@ describe('the Character Name chip in play', () => {
     expect(live().world.resolveOpening('[{{char}}]')).toBe('[]');
   });
 });
+
+describe('the Character Name chip in a trait card', () => {
+  const oath = { id: 't-oath', name: 'Paladin', aiDescription: '{{char}} keeps the oath.', statChanges: [] };
+
+  it('names a cast bearer', async () => {
+    const live = mount();
+    await loadWorld(live);
+    const cast = live().world.entities.find((e) => e.id === vos.id)!;
+    expect(live().world.resolveTraitText(oath, oath.aiDescription, cast)).toBe('Captain Vos keeps the oath.');
+  });
+
+  it('names the player on the player bearer: the persona, or "the player" with none', async () => {
+    const live = mount();
+    await loadWorld(live);
+    await act(async () => { live().gameplay.setPersonaRef({ source: 'none' }); });
+    expect(live().world.resolveTraitText(oath, oath.aiDescription)).toBe('The player keeps the oath.');
+    await act(async () => { live().gameplay.setPersonaRef({ source: 'world', entityId: mira.id }); });
+    expect(live().world.resolveTraitText(oath, oath.aiDescription)).toBe('Mira keeps the oath.');
+  });
+});
