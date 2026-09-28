@@ -193,7 +193,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 ### AI context
 
 - A cast entity's active linked traits join its entity context the same way as owned traits: the full context gets full text, and the summary gets names.
-- `{{char}}` in any trait's text reads as the bearer's name. On the Custom Persona bearer under None it reads as the player name, as `{{user}}` does (Q56).
+- `{{char}}` in any trait's text reads as the bearer's name. On the Custom Persona bearer under None it reads as the player name, as `{{user}}` does (Q56). On the whole player bearer, root traits included, `{{char}}` reads exactly as `{{user}}`: the persona's name, or "the player" under None (Q89). Roll priming walks every bearer's traits with bearer-relative pins bound and skips unbound ones (Q90).
 - These are prompt-text changes and need probe numbers (probe skill).
 
 ### Library and import
@@ -299,6 +299,8 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q86 | Inside a world the library editor shows links live with This Link, Remove and Detach, and makes no new links. |
   | Q87 | "Every bearer as if picked" is the rule pass, once per persona choice. No lens picker change. |
   | Q88 | The redundant-link rule covers the four duplicate shapes; the jump lands on the link inside the other's group. |
+  | Q89 | On the player bearer `{{char}}` reads exactly as `{{user}}`: the persona's name, or "the player" under None, root traits included. |
+  | Q90 | Roll priming walks every bearer's traits with bearer-relative pins bound (link value, else pin value) and skips unbound ones. Nothing more. |
 
 - **Reviewed 2026-09-27 (Q49–Q56).** Eight gaps surfaced; all ruled above. Candidates noted, not ruled: a Test Bench rule for a named-scope requirement whose bearer no longer bears the target; a rename remap or rule for per-link pin values keyed by placeholder name; confirmation copy for removing Templates should say its traits become offered to the player.
 - **Superseded during the grill:** a per-node offer setting (Q1, Q1a, Q5, Q19), per-entity ordering (Q15a), the template visibility mark (Q31), root links (Q33), owned-trait originals (Q28), and per-link locked (Q23). The Templates and Custom Persona nodes replaced the first four.
