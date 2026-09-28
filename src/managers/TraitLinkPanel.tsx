@@ -1,35 +1,26 @@
-import type { ReactNode } from 'react';
-import { Link2 } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import { Link2, Pencil } from 'lucide-react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { linkedTraits, originalPath, setLinkField } from '@/lib/traitLinks';
+import { BlueprintFooter, FieldReset, LabelRow } from '@/components/editor/BlueprintReset';
+import { effectiveLinkTrait, linkTraitState } from '@/lib/blueprints';
+import { editLinkTrait, linkedTraits, originalPath, resetLink, resetLinkField, resetLinkTrait, setLinkField } from '@/lib/traitLinks';
 import { hasStatEffects } from '@/lib/traitTree';
-import type { Entity, TraitLink } from '@/types';
+import type { LinkRow } from '@/lib/traitTree';
+import type { Entity, Trait, TraitLink } from '@/types';
+import TraitManager, { type TraitLinkEdit } from './TraitManager';
 
-/** The line above a link's original: where the original lives, and that an edit reaches every link. Without
- *  `onOpen`, the original can't be edited from here, so the line names it only. */
-export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onOpen?: (id: string) => void }) {
+/** The line above a link's original: where the original lives. */
+export function LinkedFromLine({ originalId }: { originalId: string }) {
   const store = useTraitStore();
   const path = originalPath(originalsOf(store), originalId).join(' › ');
-  const text = <PlaceholderText text={path} placeholders={store.placeholders} />;
   return (
     <LinkNotice>
-        Linked from{' '}
-        {onOpen ? (
-          <>
-            <button
-              type="button"
-              className="font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-              onClick={() => onOpen(originalId)}
-            >
-              {text}
-            </button>
-            . Edits change every link.
-          </>
-        ) : <><strong>{text}</strong> in this world.</>}
+      Linked from <strong><PlaceholderText text={path} placeholders={store.placeholders} /></strong>
     </LinkNotice>
   );
 }
@@ -44,51 +35,129 @@ export function LinkNotice({ children }: { children: ReactNode }) {
   );
 }
 
+/** The Enabled by Default hint on a link: the Custom Persona entity's links are the player's. */
+const defaultHintFor = (bearer: Entity) =>
+  (bearer.customPersona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts');
+
+/** The note on a link whose stat effects apply only while the player plays as the entity, or never. The
+ *  Custom Persona entity's links are the player's, so they get none. */
+function LinkStatNote({ bearer, traits }: { bearer: Entity; traits: readonly Trait[] }) {
+  if (bearer.customPersona || !traits.some(hasStatEffects)) return null;
+  return <Hint>{bearer.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>;
+}
+
 /**
- * The link's own settings below its original's Details: default-on for each trait the row brings, written
- * as this link's override, and a note when its stat effects apply only while the player plays as the
- * entity, or never. The Custom Persona entity's links are the player's, so they get no note.
+ * The trait panel for one trait a link brings, as that link reads it. Edits write the link's overrides on the
+ * bearer; the original is untouched.
+ */
+export function LinkedTraitManager({ bearer, link, original, ...panel }: {
+  bearer: Entity;
+  link: TraitLink;
+  original: Trait;
+} & Omit<Parameters<typeof TraitManager>[0], 'trait' | 'owner' | 'link' | 'detailsHeader' | 'availabilityFooter'>) {
+  const store = useTraitStore();
+  const { editEntity } = store;
+  const originals = originalsOf(store);
+  const trait = useMemo(() => effectiveLinkTrait(original, link), [original, link]);
+  const { overridden, stale } = useMemo(() => linkTraitState(original, link), [original, link]);
+  const edit: TraitLinkEdit = {
+    bearerId: bearer.id,
+    overridden,
+    stale,
+    write: (next) => editEntity(bearer.id, (e) => editLinkTrait(originals, e, link.id, original.id, next)),
+    reset: (field) => editEntity(bearer.id, (e) => resetLinkField(e, link.id, original.id, field)),
+    defaultHint: defaultHintFor(bearer),
+  };
+  return (
+    <TraitManager
+      {...panel}
+      trait={trait}
+      link={edit}
+      detailsHeader={<LinkedFromLine originalId={original.id} />}
+      availabilityFooter={<LinkStatNote bearer={bearer} traits={[trait]} />}
+    />
+  );
+}
+
+/**
+ * A linked group's own settings below its original's Details: default-on for each trait the row brings,
+ * written as this link's override with a Reset while overridden, and the stat note.
  */
 export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; link: TraitLink; originalId: string }) {
   const store = useTraitStore();
   const { placeholders, editEntity } = store;
-  const persona = !!entity.customPersona;
-  const defaultHint = persona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts';
   const originals = originalsOf(store);
   const rows = linkedTraits(originals, link, originalId);
-  const single = rows.length === 1 && rows[0].id === originalId;
-  const hasStats = !persona && rows.some(hasStatEffects);
   const set = (traitId: string, on: boolean) => editEntity(entity.id, (e) => setLinkField(originals, e, link.id, traitId, 'isDefault', on));
+  const reset = (traitId: string) => editEntity(entity.id, (e) => resetLinkField(e, link.id, traitId, 'isDefault'));
+  const stateOf = (traitId: string) => {
+    const original = originals.traits.find((t) => t.id === traitId);
+    return original ? linkTraitState(original, link) : null;
+  };
 
   return (
     <Section title="This Link">
-      {single ? (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox checked={!!rows[0].isDefault} onCheckedChange={(c) => set(originalId, c === true)} />
-          <span>Enabled by Default</span>
-          <Hint as="span">{defaultHint}</Hint>
-        </label>
-      ) : rows.length > 0 && (
+      {rows.length > 0 && (
         <div className="space-y-2">
           <div>
             <p className="text-label">Enabled by Default</p>
-            <Hint>{defaultHint}</Hint>
+            <Hint>{defaultHintFor(entity)}</Hint>
           </div>
           <ul className="space-y-1" aria-label="Enabled by Default">
-            {rows.map((t) => (
-              <li key={t.id}>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={!!t.isDefault} onCheckedChange={(c) => set(t.id, c === true)} />
-                  <PlaceholderText text={t.name} placeholders={placeholders} />
-                </label>
-              </li>
-            ))}
+            {rows.map((t) => {
+              const state = stateOf(t.id);
+              return (
+                <li key={t.id}>
+                  <LabelRow
+                    reset={state?.overridden.includes('isDefault') && (
+                      <FieldReset field={`${t.name} Enabled by Default`} stale={state.stale.includes('isDefault')} onReset={() => reset(t.id)} />
+                    )}
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={!!t.isDefault} onCheckedChange={(c) => set(t.id, c === true)} />
+                      <PlaceholderText text={t.name} placeholders={placeholders} />
+                    </label>
+                  </LabelRow>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
-      {hasStats && (
-        <Hint>{entity.persona ? 'Stat changes apply only when you play as them' : "Stat changes don't apply to entities"}</Hint>
-      )}
+      <LinkStatNote bearer={entity} traits={rows} />
     </Section>
   );
+}
+
+/**
+ * The footer under a selected link row. Reset to Blueprint drops every override the link holds on its own
+ * row, and one trait's on a row of a linked group's subtree; a subgroup row has nothing of its own to reset.
+ * `onEditBlueprint` selects the original, where the host can; `children` sit beside it.
+ */
+export function LinkFooter({ bearer, row, onEditBlueprint, children }: {
+  bearer: Entity;
+  row: LinkRow;
+  onEditBlueprint?: () => void;
+  children?: ReactNode;
+}) {
+  const store = useTraitStore();
+  const { link, originalId } = row;
+  const traitRow = !row.root && originalsOf(store).traits.some((t) => t.id === originalId);
+  const canReset = row.root ? !!link.overrides : traitRow && !!link.overrides?.[originalId];
+  const onReset = () => store.editEntity(bearer.id, (e) => (row.root ? resetLink(e, link.id) : resetLinkTrait(e, link.id, originalId)));
+  const actions = (
+    <>
+      {children}
+      {onEditBlueprint && (
+        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={onEditBlueprint}>
+          <Pencil className="h-4 w-4" aria-hidden />
+          Edit Blueprint
+        </Button>
+      )}
+    </>
+  );
+  if (!row.root && !traitRow) {
+    return onEditBlueprint || children ? <div className="flex items-center justify-end gap-2 border-t p-3">{actions}</div> : null;
+  }
+  return <BlueprintFooter canReset={canReset} onReset={onReset}>{actions}</BlueprintFooter>;
 }

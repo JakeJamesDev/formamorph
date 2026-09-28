@@ -84,7 +84,7 @@ import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
 import { bearsTraits, originalOf } from '@/lib/bearers';
-import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
+import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
 import { LinkToBearerButton } from '../managers/BearerPicker';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
@@ -807,11 +807,16 @@ const WorldEditorInner = ({
   const shownOriginalId = activeTab !== 'traits' ? undefined
     : selectedLinkRow ? (selectedLinkBearer ? selectedLinkRow.originalId : undefined)
     : (selectedGroup ?? selectedTrait)?.id;
-  // In Advanced, its link button sits in the detail pane's frozen footer, below every panel tab.
-  const detailFooter = advanced && shownOriginalId && originalOf({ traits, traitGroups }, shownOriginalId) ? (
-    <div className="p-3 border-t flex justify-end">
-      <LinkToBearerButton originalId={shownOriginalId} />
-    </div>
+  // In Advanced, its link button sits in the detail pane's frozen footer, below every panel tab. A link row's
+  // footer always shows, with Reset to Blueprint and Edit Blueprint.
+  const linkToButton = advanced && shownOriginalId && originalOf({ traits, traitGroups }, shownOriginalId)
+    ? <LinkToBearerButton originalId={shownOriginalId} /> : null;
+  const detailFooter = selectedLinkRow && selectedLinkBearer && shownOriginalId ? (
+    <LinkFooter bearer={selectedLinkBearer} row={selectedLinkRow} onEditBlueprint={() => setSelectedItemId(shownOriginalId)}>
+      {linkToButton}
+    </LinkFooter>
+  ) : linkToButton ? (
+    <div className="p-3 border-t flex justify-end">{linkToButton}</div>
   ) : undefined;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
@@ -1058,11 +1063,11 @@ const WorldEditorInner = ({
         />
       )}
       {selectedLinkRow && selectedLinkBearer && linkedTrait && (
-        <TraitManager
+        <LinkedTraitManager
           key={selectedItemId}
-          trait={linkedTrait}
-          detailsHeader={<LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />}
-          availabilityFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
+          bearer={selectedLinkBearer}
+          link={selectedLinkRow.link}
+          original={linkedTrait}
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
           tab={shownTraitTab}
@@ -1074,7 +1079,8 @@ const WorldEditorInner = ({
         <GroupManager
           key={selectedItemId}
           group={linkedGroup}
-          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />}
+          readOnly
+          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} />}
           detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedGroup.id} />}
         />
       )}

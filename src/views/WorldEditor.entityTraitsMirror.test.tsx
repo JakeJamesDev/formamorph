@@ -188,14 +188,16 @@ describe('the entity Traits tab as a mirror', () => {
   it('opens a Requires chip the entity holds, and reads one it does not as plain text', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
-    const field = () => screen.getByText('Requires', { selector: 'label' }).parentElement as HTMLElement;
+    const field = () => screen.getByRole('group', { name: 'Requires' });
     fireEvent.click(rowNamed('Wild')!);
     openTraitFieldsTab('Availability');
     // Paladin is a world trait: named, never a button, and the details stay open.
     expect(within(field()).getByText('Paladin')).toBeInTheDocument();
     expect(within(field()).queryByRole('button', { name: 'Paladin' })).toBeNull();
     fireEvent.click(within(field()).getByRole('button', { name: 'Beast Tamer' }));
+    openTraitFieldsTab('Details');
     expect(screen.getByText(/^Linked from/)).toBeInTheDocument();
+    openTraitFieldsTab('Availability');
     fireEvent.click(backRow()!);
     fireEvent.click(rowNamed('Wild')!);
     fireEvent.click(within(field()).getByRole('button', { name: 'Tamed' }));
@@ -203,16 +205,19 @@ describe('the entity Traits tab as a mirror', () => {
     expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
   });
 
-  it('opens a link on its Linked-from line and This Link, with no way to the Traits tab', () => {
+  it('edits a link as its own overrides, with Reset to Blueprint and no way to the Traits tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     fireEvent.click(screen.getByRole('button', { name: 'Open Beast Tamer' }));
     const line = screen.getByText(/^Linked from/);
-    expect(line).toHaveTextContent('Linked from Beast Tamer in this world.');
+    expect(line).toHaveTextContent('Linked from Beast Tamer');
     expect(within(line).queryByRole('button')).toBeNull();
-    expect(screen.getByText('This Link')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Blueprint' })).toBeNull();
+    openTraitFieldsTab('Availability');
     fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ }));
     expect(entity(ctx, 'ash').traitLinks![0].overrides).toEqual({ 't-tamer': { isDefault: { value: true, blueprint: false } } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to Blueprint' }));
+    expect(entity(ctx, 'ash').traitLinks![0]).not.toHaveProperty('overrides');
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 

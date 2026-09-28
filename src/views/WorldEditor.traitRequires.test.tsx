@@ -54,7 +54,7 @@ const selectTrait = (name: string) => {
 };
 
 /** The Requires field's body, from its label down. */
-const requiresField = () => screen.getByText('Requires', { selector: 'label' }).parentElement as HTMLElement;
+const requiresField = () => screen.getByRole('group', { name: 'Requires' });
 
 const traitRequires = (ctx: () => { traits: World['traits'] }, id: string) => ctx().traits.find((t) => t.id === id)?.requires;
 

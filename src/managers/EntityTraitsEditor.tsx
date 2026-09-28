@@ -17,7 +17,7 @@ import { randomUUID } from '@/lib/uuid';
 import type { TraitRequirement } from '@/types';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import GroupManager from './GroupManager';
-import { LinkedFromLine, LinkNotice, ThisLinkSection } from './TraitLinkPanel';
+import { LinkedFromLine, LinkedTraitManager, LinkFooter, LinkNotice, ThisLinkSection } from './TraitLinkPanel';
 import TraitManager from './TraitManager';
 import TraitTree from './TraitTree';
 
@@ -56,6 +56,8 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
   const trait = traits.find((t) => t.id === selectedId);
   const group = traitGroups.find((g) => g.id === selectedId);
   const linkRow = selectedId ? tree.linkRows.get(selectedId) : undefined;
+  const linkedTrait = linkRow && world?.traits.find((t) => t.id === linkRow.originalId);
+  const linkedGroup = linkRow && world?.traitGroups.find((g) => g.id === linkRow.originalId);
   const entityName = labelPlaceholders(bearer.name, placeholders);
 
   // The row that shows a trait or group id here: its own row, or the row of the Link that reads it. Null when
@@ -191,9 +193,27 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
                   {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
                 </LinkNotice>
               ) : (
-                <div key={selectedId} className="space-y-4">
-                  <LinkedFromLine originalId={linkRow.originalId} />
-                  <ThisLinkSection entity={bearer} link={linkRow.link} originalId={linkRow.originalId} />
+                <div key={selectedId}>
+                  {linkedTrait ? (
+                    <LinkedTraitManager
+                      bearer={bearer}
+                      link={linkRow.link}
+                      original={linkedTrait}
+                      onOpenTrait={openHeld}
+                      onOpenEntity={onOpenEntity}
+                      requirementOpens={requirementOpens}
+                      tab={tab}
+                      onTabChange={setTab}
+                    />
+                  ) : linkedGroup && (
+                    <GroupManager
+                      group={linkedGroup}
+                      readOnly
+                      detailsHeader={<LinkedFromLine originalId={linkRow.originalId} />}
+                      detailsFooter={<ThisLinkSection entity={bearer} link={linkRow.link} originalId={linkRow.originalId} />}
+                    />
+                  )}
+                  <LinkFooter bearer={bearer} row={linkRow} />
                 </div>
               )
             ) : group ? (

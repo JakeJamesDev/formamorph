@@ -808,6 +808,22 @@ Open `#dev?modal=designSystem&tab=bearer-flyouts`. The reference uses sample ent
 
 The same levels work on desktop and on a phone. Nothing opens to the side, so a narrow panel never clips a level. Each level's Back row takes focus as it opens.
 
+## Pattern: Blueprint Overrides
+
+**Purpose:** Show which fields of a link or copy differ from its blueprint, and return them to it.
+
+- ↺ **Field Reset.** An overridden field ends its label row in a ghost **Reset** button with a rotate icon. A field that reads its blueprint live has no Reset. Each Reset's accessible name adds the field, such as "Reset Requires".
+- ⚠️ **Stale marker.** When the blueprint changed a field after the override was made, a warning-colored "Blueprint changed" line with a warning icon sits just left of that field's Reset. It shows on the details panel only, never in the tree.
+- 🧊 **Frozen footer.** Below every panel tab, **Reset to Blueprint** sits on the left and is unavailable while nothing is overridden. The host's own actions, such as **Link To…** and **Edit Blueprint**, sit on the right.
+- Read-only fields keep their normal look, with editing off.
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Field Reset, stale marker, label row, footer | `FieldReset`, `LabelRow` and `BlueprintFooter` in [`BlueprintReset.tsx`](../src/components/editor/BlueprintReset.tsx) |
+| Trait link panel and footer | `LinkedTraitManager` and `LinkFooter` in [`TraitLinkPanel.tsx`](../src/managers/TraitLinkPanel.tsx) |
+
 ## UI and prototype workflow
 
 The project `design-system` skill routes UI changes and prototypes here. Use the applicable named pattern and its production components, then inspect the result through the live reference. Agents verify established patterns themselves and report desktop/mobile states, theme/font inheritance, interaction results, and static evidence.

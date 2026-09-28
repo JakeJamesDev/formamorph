@@ -4,7 +4,9 @@
 import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkFields } from '@/types';
 import { randomUUID } from './uuid';
 import { makeLink, originalOf, type BearerWorld } from './bearers';
-import { effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, setLinkOverride } from './blueprints';
+import {
+  effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, resetLinkTraitOverrides, setLinkEdits, setLinkOverride,
+} from './blueprints';
 import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 
@@ -70,6 +72,17 @@ export function setLinkField<K extends keyof TraitLinkFields>(
   const trait = world.traits.find((t) => t.id === traitId);
   return trait ? withLink(entity, linkId, (l) => setLinkOverride(l, trait, field, value)) : entity;
 }
+
+/** Write an editor's edit of one trait the link brings as the link's overrides on the fields it changed. The
+ *  entity as it is when the trait is not a world trait. */
+export function editLinkTrait(world: WorldTraitLists, entity: Entity, linkId: string, traitId: string, edited: Trait): Entity {
+  const trait = world.traits.find((t) => t.id === traitId);
+  return trait ? withLink(entity, linkId, (l) => setLinkEdits(l, trait, edited)) : entity;
+}
+
+/** Read one trait of a linked group live again. */
+export const resetLinkTrait = (entity: Entity, linkId: string, traitId: string): Entity =>
+  withLink(entity, linkId, (l) => resetLinkTraitOverrides(l, traitId));
 
 /** Read one field on one trait live again. */
 export const resetLinkField = (entity: Entity, linkId: string, traitId: string, field: keyof TraitLinkFields): Entity =>
