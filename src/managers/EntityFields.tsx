@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Hint } from "@/components/ui/typography";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -92,37 +92,53 @@ export const EntityIdentityFields = ({ value, onChange, placeholders = [], owner
 /** Where an entity lives, which decides what its Persona mark means. */
 export type EntityHome = 'world' | 'library';
 
-const PERSONA_HINT: Record<EntityHome, string> = {
-  world: 'Lets the player play as this entity in this world',
-  library: 'Lets you play as this entity in any world',
+/** The three states the `persona` and `personaOnly` marks can take together. */
+type PersonaRole = 'cast' | 'playable' | 'only';
+
+const PERSONA_ROLES: Record<EntityHome, { value: PersonaRole; label: string; hint: string }[]> = {
+  world: [
+    { value: 'cast', label: 'Cast', hint: 'Appears in the world as a regular entity' },
+    { value: 'playable', label: 'Playable', hint: 'Lets the player play as this entity, or meet it in the world' },
+    { value: 'only', label: 'Persona-Only', hint: 'Appears only when the player picks it as their persona' },
+  ],
+  library: [
+    { value: 'cast', label: 'Cast', hint: 'Joins a world as a regular entity' },
+    { value: 'playable', label: 'Playable', hint: 'Lets you play as this entity in any world' },
+  ],
 };
 
-/** The Persona mark, and under it in a world the Persona-Only mark. Advanced only in the World Editor; the
- *  library editor is always Advanced. */
+const personaRole = (e: Entity): PersonaRole => (!e.persona ? 'cast' : e.personaOnly ? 'only' : 'playable');
+
+/** The Persona role. Advanced only in the World Editor; the library editor is always Advanced. */
 export const EntityPersonaField = ({ value, onChange, home }: EntityFieldGroupProps & { home: EntityHome }) => {
   const { advanced } = useEditorMode();
   if (!advanced) return null;
+  const roles = PERSONA_ROLES[home];
+  const role = personaRole(value);
+  const pick = (next: PersonaRole) => {
+    onChange('persona', next === 'cast' ? undefined : true);
+    onChange('personaOnly', next === 'only' ? true : undefined);
+  };
   return (
-    <>
-      <label className="flex items-center gap-2 text-label cursor-pointer">
-        <Checkbox
-          checked={value.persona === true}
-          onCheckedChange={(c) => onChange('persona', c === true ? true : undefined)}
-        />
-        Persona
-        <Hint as="span">{PERSONA_HINT[home]}</Hint>
-      </label>
-      {home === 'world' && value.persona === true && (
-        <label className="flex items-center gap-2 text-label cursor-pointer">
-          <Checkbox
-            checked={value.personaOnly === true}
-            onCheckedChange={(c) => onChange('personaOnly', c === true ? true : undefined)}
-          />
-          Persona-Only
-          <Hint as="span">{"Keeps this entity out of the world unless it's the player's persona"}</Hint>
-        </label>
-      )}
-    </>
+    <div className="space-y-2">
+      <Label id={`entity-persona-${value.id}`}>Persona</Label>
+      <ToggleGroup
+        type="single"
+        value={role}
+        aria-labelledby={`entity-persona-${value.id}`}
+        // A single ToggleGroup clears its value when the active item is clicked again; a role is always set.
+        onValueChange={(v) => { if (v) pick(v as PersonaRole); }}
+        className={`grid w-full ${roles.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}
+      >
+        {roles.map((r) => <ToggleGroupItem key={r.value} value={r.value}>{r.label}</ToggleGroupItem>)}
+      </ToggleGroup>
+      {/* Hints stacked in one cell so switching roles doesn't reflow the layout. */}
+      <div className="grid">
+        {roles.map((r) => (
+          <Hint key={r.value} className={`col-start-1 row-start-1${r.value === role ? '' : ' invisible'}`}>{r.hint}</Hint>
+        ))}
+      </div>
+    </div>
   );
 };
 

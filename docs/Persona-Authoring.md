@@ -10,8 +10,8 @@ How your world meets the player's persona: playable entities, the **Persona Choi
 
 | You want | Use |
 |---|---|
-| The player to play as one of your entities | The **Persona** checkbox on that entity |
-| An entity that exists only when the player picks it | The **Persona-Only** checkbox under **Persona** |
+| The player to play as one of your entities | **Playable** under **Persona** on that entity |
+| An entity that exists only when the player picks it | **Persona-Only** under **Persona** |
 | Traits for a player with no world persona | The **Custom Persona** node in the **Traits** tab |
 | To decide who the player can be | **Persona Choice** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
@@ -19,7 +19,7 @@ How your world meets the player's persona: playable entities, the **Persona Choi
 
 ## Make an Entity Playable
 
-Open the entity's **Profile** tab and select the **Persona** checkbox. The entity then shows under **From This World** when a player enters your world.
+Open the entity's **Profile** tab and set **Persona** to **Playable**. The entity then shows under **From This World** when a player enters your world.
 
 When a player picks it:
 
@@ -31,15 +31,15 @@ When a player picks it:
 | Starting location | The entity's first location that is a starting location is preselected. The player can change it. |
 | [Entity Openings](World-Editor-Openings#entity-openings) | The entity's own openings leave the draw, so page one never greets the player as themselves |
 
-Only entities you select are playable. The checkbox is your statement that the entity reads correctly from the player's side.
+Only entities you select are playable. The setting is your statement that the entity reads correctly from the player's side.
 
-> ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you select the checkbox. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
+> ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you make the entity playable. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
-A selected **Persona** checkbox turns on the notice beside the mode switch.
+A **Playable** or **Persona-Only** entity turns on the notice beside the mode switch.
 
 ## Persona-Only Entities
 
-Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Select the **Persona-Only** checkbox under **Persona** to keep one out of the world unless the player picks it.
+Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Set **Persona** to **Persona-Only** to keep one out of the world unless the player picks it.
 
 | The player | The entity |
 |---|---|

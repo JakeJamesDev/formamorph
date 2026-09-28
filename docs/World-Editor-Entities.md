@@ -35,7 +35,7 @@ An entity reaches the AI only through a location. An entity in no location never
 | **Type** | Yes, as a plain field |
 | **Player-Facing Description** | **Never** |
 | Image, Image Tags, 3D model, group, order | Never |
-| The **Persona** checkbox | Not as a field. It lets the player play as the entity. See [Personas for Authors](Persona-Authoring#make-an-entity-playable). |
+| The **Persona** control | Not as a field. It lets the player play as the entity. See [Personas for Authors](Persona-Authoring#make-an-entity-playable). |
 
 > 💡 **The player reads only the Player-Facing Description, and the AI reads only the AI-Facing fields.** Put a secret in the **AI-Facing Description**. The narrator can act on it, and the player doesn't see it. The default prompt also asks the narrator not to use a name until the player can know it. That is a request to the AI, and the game doesn't enforce it.
 

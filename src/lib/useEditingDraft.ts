@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Local editing draft for an item selected in an editor list — the pattern shared by the
@@ -15,6 +15,9 @@ export function useEditingDraft<T>(
   normalize?: (item: T) => T,
 ) {
   const [draft, setDraft] = useState<T>(() => (normalize ? normalize(item) : item));
+  // The newest draft, so two writes in one event build on each other instead of the render's copy.
+  const latest = useRef(draft);
+  latest.current = draft;
 
   useEffect(() => {
     setDraft(normalize ? normalize(item) : item);
@@ -23,11 +26,12 @@ export function useEditingDraft<T>(
   /** Merge a patch into the draft and write the merged result through. */
   const apply = useCallback(
     (patch: Partial<T>) => {
-      const next = { ...draft, ...patch };
+      const next = { ...latest.current, ...patch };
+      latest.current = next;
       setDraft(next);
       write(next);
     },
-    [draft, write],
+    [write],
   );
 
   /** Set one named field — the common editor-row case. */
