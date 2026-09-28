@@ -86,6 +86,49 @@ describe('the Custom Persona entity in the world store', () => {
   });
 });
 
+describe('placeholder copies in the world store', () => {
+  const garb = { id: 'garb', name: 'Class Garb', values: [{ id: 'tabard', text: 'a tabard' }], groupId: 'bp' };
+  const pinned = {
+    ...world('w', {}),
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints', placeholderPins: [{ placeholderId: 'garb', value: 'a tabard', valueId: 'tabard' }] }],
+    traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    entities: [{ id: 'ash', name: 'Ash', traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null }] }, { id: 'bob', name: 'Bob' }],
+    placeholders: [garb],
+    placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+  } as unknown as World;
+  const copies = (result: { current: ReturnType<typeof useGameData> }, id: string) =>
+    (result.current.entities.find((e) => e.id === id)?.placeholders ?? []).map((p) => p.blueprintId);
+
+  it('gives a bearer its copies on load, clean, and writes them into the payload', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(pinned); });
+    expect(copies(result, 'ash')).toEqual(['garb']);
+    expect(copies(result, 'bob')).toEqual([]);
+    expect(result.current.getWorldData().entities[0].placeholders?.[0]).toMatchObject({ name: 'Class Garb', blueprintId: 'garb' });
+    expect(result.current.isWorldDirty).toBe(false);
+  });
+
+  it('creates a copy when a link joins an entity and takes it back when the link goes', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    act(() => { result.current.loadWorldData(pinned); });
+    const bob = result.current.entities.find((e) => e.id === 'bob')!;
+    act(() => { result.current.updateEntity({ ...bob, traitLinks: [{ id: 'l2', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null }] }); });
+    expect(copies(result, 'bob')).toEqual(['garb']);
+    const { traitLinks: _l, ...unlinked } = result.current.entities.find((e) => e.id === 'bob')!;
+    act(() => { result.current.updateEntity(unlinked); });
+    expect(copies(result, 'bob')).toEqual([]);
+  });
+
+  it('creates a copy when a pin joins an original that already has a bearer', () => {
+    const { result } = renderHook(() => useGameData(), { wrapper });
+    const { placeholderPins: _p, ...bare } = pinned.traits[0];
+    act(() => { result.current.loadWorldData({ ...pinned, traits: [bare] }); });
+    expect(copies(result, 'ash')).toEqual([]);
+    act(() => { result.current.updateTrait(pinned.traits[0]); });
+    expect(copies(result, 'ash')).toEqual(['garb']);
+  });
+});
+
 describe('trait links when an original goes', () => {
   const linked = {
     ...world('w', {}),

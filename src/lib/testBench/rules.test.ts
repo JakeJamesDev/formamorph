@@ -1046,6 +1046,30 @@ describe('the unused-placeholder rule', () => {
   });
 });
 
+describe('the unused-placeholder rules over blueprints and copies', () => {
+  const garb = { id: 'garb', name: 'Class Garb', values: phValues(['a tabard']), groupId: 'bp' };
+  const groups = [{ id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' as const }];
+  const pins = [{ placeholderId: 'garb', value: 'a tabard' }];
+  const copyOnAlbus = (text?: string): Entity => ({
+    ...resident, id: 'albus', name: 'Albus', ...(text ? { aiDescription: text } : {}),
+    placeholders: [{ id: 'c-garb', name: 'Class Garb', values: [], blueprintId: 'garb' }],
+  });
+
+  it('reads a blueprint as placed wherever a copy of it is, and never lists a copy', () => {
+    const placed = base({ placeholders: [garb], placeholderGroups: groups, entities: [copyOnAlbus('Wears {{ph:c-garb:world:pl1}}.')] });
+    expect(runRules(placed).map((f) => f.ruleId)).toEqual([]);
+    const pinned = base({ ...placed, traits: [trait({ id: 't1', name: 'Paladin', placeholderPins: pins })] });
+    expect(runRules(pinned).map((f) => f.ruleId)).toEqual([]);
+  });
+
+  it('still flags a pinned blueprint whose copies sit in no text', () => {
+    const unplaced = base({ placeholders: [garb], placeholderGroups: groups, entities: [copyOnAlbus()], traits: [trait({ id: 't1', name: 'Paladin', placeholderPins: pins })] });
+    const found = runRules(unplaced);
+    expect(found.map((f) => f.ruleId)).toEqual(['placeholder-pinned-unused']);
+    expect(found[0].items.map((i) => i.id)).toEqual(['garb', 't1']);
+  });
+});
+
 describe('the pinned-but-unplaced rule', () => {
   const pinnedOnly = base({
     placeholders: [{ id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) }],

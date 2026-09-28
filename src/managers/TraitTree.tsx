@@ -44,7 +44,8 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
 };
 
 /** The line after a refused drop: an entity's trait would gain stat effects, the entity already has the
- *  trait, or the Custom Persona entity left the top level. The dragged item stays put. */
+ *  trait, the Custom Persona entity left the top level, or a linked world item would become owned. The
+ *  dragged item stays put. */
 export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
   refusal: TraitDropRefusal;
   placeholders: Placeholder[];
@@ -59,6 +60,8 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
         <>The player already has {name} at the top level.</>
       ) : refusal.reason === 'root' ? (
         <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
+      ) : refusal.reason === 'linked' ? (
+        <>{name} stays a world item, because {refusal.links === 1 ? 'a link points' : `${refusal.links} links point`} at it. Remove the links first.</>
       ) : (
         <>
           {name} stays {refusal.owner
@@ -169,7 +172,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     getVisible: (collapsed) => ownedTraitRows(tree, collapsed),
     projectDepth: (visible, activeId, overId, offsetLeft) => (entityRoot
       ? getEntityRootDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT)
-      : getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced }))?.depth ?? null,
+      : getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT))?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
       // A one-entity tree reorders the entity's own items among its links, and nothing else moves.
       if (entityRoot) {

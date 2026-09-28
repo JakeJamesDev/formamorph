@@ -5,6 +5,8 @@ import { DEFAULT_WORLDS } from './defaultWorlds';
 import { runRules } from './testBench/rules';
 import { PLAYER_BEARER, resolveBearers, type BearerWorld } from './bearers';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
+import { syncBlueprintCopies } from './blueprintCopies';
+import { effectiveCopy } from './blueprints';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -49,6 +51,21 @@ describe('the Emberwatch default world', () => {
 
   it('runs clean on the Test Bench', () => {
     expect(runRules(world).map((f) => `${f.ruleId}: ${f.message}`)).toEqual([]);
+  });
+
+  it('carries every copy its bearers need, so the reconcile has nothing to add or take', () => {
+    expect(syncBlueprintCopies({ ...bearerWorld(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [] }))
+      .toBe(world.entities);
+  });
+
+  it("gives Hesk's copies her own words on the values her class and race pin", () => {
+    const hesk = entityNamed(world, 'Mother Hesk');
+    const garb = world.placeholders!.find((p) => p.name === 'Class Garb')!;
+    const clericPin = world.traits.find((t) => t.name === 'Cleric')!.placeholderPins![0];
+    const copy = hesk.placeholders!.find((p) => p.blueprintId === garb.id)!;
+    expect(copy.values).toEqual([]);
+    expect(effectiveCopy(copy, garb).values.find((v) => v.id === clericPin.valueId)?.text).toMatch(/scorched gray vestments/);
+    expect(hesk.aiDescription).toContain(`{{ph:${copy.id}:`);
   });
 
   it('teaches each feature in the readme by naming its example', () => {

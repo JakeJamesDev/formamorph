@@ -277,10 +277,12 @@ export type TraitDropRefusal =
   }
   | { reason: 'duplicate'; name: string; bearer: string }
   | { reason: 'offered'; name: string }
-  | { reason: 'root'; name: string };
+  | { reason: 'root'; name: string }
+  /** A world item moved into an entity while `links` entities link it or something below it. */
+  | { reason: 'linked'; name: string; links: number };
 
 export interface OwnedTraitDropOptions {
-  /** Whether a world row dropped into an entity links it. Off, the row stays among the world items. */
+  /** Whether a world row dropped into an entity links it. Off, the row moves in as the entity's own item. */
   createLinks?: boolean;
 }
 
@@ -320,23 +322,21 @@ function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
 /**
  * Where a drag in the one tree would land. Blueprints stays at the top level. A row that is or holds an entity
  * node stops at the top level or a world group outside Blueprints. Nothing lands inside a linked group, whose
- * subtree is its original's. A row carrying a link stays in an entity, and without `createLinks` a world row
- * stays among the world items. Null when the rows below would hold the row where it can't be.
+ * subtree is its original's. A row carrying a link stays in an entity. Null when the rows below would hold
+ * the row where it can't be.
  */
 export function getOwnedTraitDropProjection(
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
-  { createLinks = true }: OwnedTraitDropOptions = {},
 ): DropProjection | null {
   const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
   const active = items.find((i) => i.id === activeId);
   if (!active) return null;
   const inEntity = (id: string) => tree.entityNodes.has(id) || tree.ownerOf.has(id);
-  const worldRow = !inEntity(activeId);
   const inBlueprints = blueprintsSubtreeIds(tree.groups);
   const systemNode = active.group?.system === 'blueprints';
   const blocked = systemNode ? () => true : carriesEntityNode(tree, activeId)
     ? (id: string) => inEntity(id) || inBlueprints.has(id)
-    : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id));
+    : (id: string) => tree.linkRows.has(id);
   const replayed = projectionPastBlocked(items, active, overId, projection, blocked, indentationWidth);
   if (!replayed) return null;
   // An entity node's links ride inside it; any other row carrying a link stays in an entity.
@@ -437,9 +437,10 @@ export function linkRefusal(
 
 /**
  * Resolve a drag in the one tree. A world row dropped into an entity links it there, refused when the
- * entity's tree already holds it. An owned row may change owner and keeps its id, unless a trait it carries
- * into an entity has stat effects. An entity node moves like a group, among world items only, and the Custom
- * Persona entity's node at the top level only. Null = nothing to write.
+ * entity's tree already holds it; without `createLinks` it moves in as the entity's own item, refused while
+ * any entity links it. An owned row may change owner and keeps its id, unless a trait it carries into an
+ * entity has stat effects. An entity node moves like a group, among world items only, and the Custom Persona
+ * entity's node at the top level only. Null = nothing to write.
  */
 export function applyOwnedTraitDrop(
   world: WorldTraitLists, entities: readonly Entity[],
@@ -450,7 +451,7 @@ export function applyOwnedTraitDrop(
   const tree = ownedTraitTree(world, entities, [], { links: true, emptySystemNodes });
   const collapsed = [...collapsedIds];
   const rows = ownedTraitRows(tree, [...collapsed, activeId]);
-  const projection = getOwnedTraitDropProjection(tree, rows, activeId, overId, dragOffset, indentationWidth, { createLinks });
+  const projection = getOwnedTraitDropProjection(tree, rows, activeId, overId, dragOffset, indentationWidth);
   const activeRow = rows.find((r) => r.id === activeId);
   if (!projection || !activeRow) return null;
   // The drop replays the projection's depth, which for an entity node may sit left of the pointer.
@@ -513,12 +514,17 @@ export function applyOwnedTraitDrop(
   const moved = (entities: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop =>
     ({ kind: 'moved', ...(worldOut ? { world: worldOut } : {}), entities });
 
-  // A world row dropped into an entity links it there; the original stays where it is.
+  // A world row dropped into an entity links it there; the original stays where it is. With links off it
+  // moves in, and an original some entity links stays, so no link is left pointing at an owned item.
   if (!isNode && from === null && to !== null) {
-    const refused = duplicateIn(to, activeId);
-    if (refused) return refused;
-    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
-    return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
+    if (createLinks) {
+      const refused = duplicateIn(to, activeId);
+      if (refused) return refused;
+      const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
+      return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
+    }
+    const links = entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => subtree.has(l.originalId)).length, 0);
+    if (links) return { kind: 'refused', refusal: { reason: 'linked', name: movedItem.name, links } };
   }
   if (!isNode && from !== to && to !== null) {
     for (const { link } of linksCarried(tree, activeId)) {

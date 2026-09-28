@@ -16,17 +16,17 @@
     ],
     "playerSetting": "open",
     "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** starts as a Dwarf Wizard. Change the **Race** and the **Class** to build your own, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**. The pin names the world placeholder, and on each bearer it reads that bearer's copy of it when one exists, else the placeholder itself. Hesk and Corvin carry a **Class Garb** and a **Heritage** of their own, and their text places those, so it reads their own words. The personas read the world placeholders, so the openings read the played persona's garb.\n- **Custom Persona.** The entity with the Custom Persona mark. Its links apply when you play with no persona or with a persona from your library. It owns no placeholder copies, so its pins read the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Every bearer of a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that bearer's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Custom Persona.** The entity with the Custom Persona mark. Its links apply when you play with no persona or with a persona from your library, and its copies of **Class Garb** and **Heritage** are what those pins read.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
         "kind": "narration",
-        "text": "The frontier road ends at the gate of Emberwatch Keep. Road dust grays {{user}}'s {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:cbba342a-558c-5df8-91fb-068dc46af2f3}}, and the gate yard beyond the arch smells of horses, tar and cold iron.\n\nNailed to the gate post, a call in the captain's square hand: *The barrow beyond the wall has opened. Hands wanted to go and see why. Gold and the keep's good word for those who come back with answers.*\n\nA guard at the gate looks up from his spear. \"Another one for the roll?\" he asks."
+        "text": "The frontier road ends at the gate of Emberwatch Keep. Road dust grays {{user}}'s clothes and boots, and the gate yard beyond the arch smells of horses, tar and cold iron.\n\nNailed to the gate post, a call in the captain's square hand: *The barrow beyond the wall has opened. Hands wanted to go and see why. Gold and the keep's good word for those who come back with answers.*\n\nA guard at the gate looks up from his spear. \"Another one for the roll?\" he asks."
       },
       {
         "id": "5de24ab4-6669-55aa-b683-bccd009a88bf",
         "kind": "action",
-        "text": "I pull the captain's call off the gate post, brush the road dust from my {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:c30aa5bc-3dbe-541c-82a5-000e7f746c3a}}, and walk in under the arch. The guard asks who answers. {{user}}. The name goes on the roll in wet ink, and I ask where I can find the captain."
+        "text": "I pull the captain's call off the gate post, brush the road dust from my clothes, and walk in under the arch. The guard asks who answers. {{user}}. The name goes on the roll in wet ink, and I ask where I can find the captain."
       }
     ]
   },
@@ -295,8 +295,8 @@
       "id": "a42d21f3-2b05-5192-b6cd-01d453a4dc98",
       "name": "Wanderer",
       "type": "Person",
-      "playerDescription": "You came up the frontier road with a name nobody here knows yet. You wear {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:a7c09709-2e76-56cd-a2de-ac68042e30a4}} and have {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:8970f412-ae8f-5d61-ab5b-db9ebfe00b2c}}. Your race and class are yours to pick.",
-      "aiDescription": "{{char}} came up the frontier road alone, with a name nobody in Emberwatch knows yet. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6d704dc4-9f2e-5bcb-b4e2-77aee463591c}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:3a1e2375-3332-5097-8c0e-28666d4400e7}}. Nobody here owes {{char}} anything, and {{char}} owes nobody; every bond is still to be made.",
+      "playerDescription": "You came up the frontier road with a name nobody here knows yet. You wear {{ph:2efd5460-acaf-594a-8231-f7bcf45281ac:world:a7c09709-2e76-56cd-a2de-ac68042e30a4}} and have {{ph:1a1c79e6-c73b-55db-a15e-aa0ff82a0763:world:8970f412-ae8f-5d61-ab5b-db9ebfe00b2c}}. Your race and class are yours to pick.",
+      "aiDescription": "{{char}} came up the frontier road alone, with a name nobody in Emberwatch knows yet. {{char}} wears {{ph:2efd5460-acaf-594a-8231-f7bcf45281ac:world:6d704dc4-9f2e-5bcb-b4e2-77aee463591c}} and has {{ph:1a1c79e6-c73b-55db-a15e-aa0ff82a0763:world:3a1e2375-3332-5097-8c0e-28666d4400e7}}. Nobody here owes {{char}} anything, and {{char}} owes nobody; every bond is still to be made.",
       "aiSummary": "A newcomer to Emberwatch with no history here yet.",
       "locations": [
         "12fb7d50-05f3-557d-907a-8f1310d89790"
@@ -353,14 +353,28 @@
           "groupId": null,
           "order": 3
         }
+      ],
+      "placeholders": [
+        {
+          "id": "2efd5460-acaf-594a-8231-f7bcf45281ac",
+          "name": "Class Garb",
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7"
+        },
+        {
+          "id": "1a1c79e6-c73b-55db-a15e-aa0ff82a0763",
+          "name": "Heritage",
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
+        }
       ]
     },
     {
       "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
       "name": "Albus",
       "type": "Person",
-      "playerDescription": "Broad and quiet, with a soldier's bearing and a patience the Ember taught. He wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6ac3e932-5377-5fa9-9b90-4c5ccb2e2740}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:a7930ec8-b930-5ca5-bcaf-ed69487574c0}}. He came to Emberwatch because the Ember told him to, and he does not expect to leave.",
-      "aiDescription": "Sworn to the Ember, in his late thirties, broad-shouldered, quiet, with a scarred jaw and steady gray eyes. He wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:e4f1908f-14b1-5ff8-85f5-1a9f6e789ab2}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:ddf12fce-2a27-5dd2-a9c8-9cce6bf30e0a}}. He speaks little and means all of it. He believes the barrow's opening is a test the Ember set for the keep, and he intends to pass it. He is protective of the weak, hard on the cruel, and slow to trust a thief. He keeps his shield polished and his oaths simple.",
+      "playerDescription": "Broad and quiet, with a soldier's bearing and a patience the Ember taught. He wears {{ph:bc785559-8f16-565b-a3b7-a54f998f66b5:world:6ac3e932-5377-5fa9-9b90-4c5ccb2e2740}} and has {{ph:207bc548-27df-5a67-be79-191efe6dfda1:world:a7930ec8-b930-5ca5-bcaf-ed69487574c0}}. He came to Emberwatch because the Ember told him to, and he does not expect to leave.",
+      "aiDescription": "Sworn to the Ember, in his late thirties, broad-shouldered, quiet, with a scarred jaw and steady gray eyes. He wears {{ph:bc785559-8f16-565b-a3b7-a54f998f66b5:world:e4f1908f-14b1-5ff8-85f5-1a9f6e789ab2}} and has {{ph:207bc548-27df-5a67-be79-191efe6dfda1:world:ddf12fce-2a27-5dd2-a9c8-9cce6bf30e0a}}. He speaks little and means all of it. He believes the barrow's opening is a test the Ember set for the keep, and he intends to pass it. He is protective of the weak, hard on the cruel, and slow to trust a thief. He keeps his shield polished and his oaths simple.",
       "aiSummary": "The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.",
       "locations": [
         "12fb7d50-05f3-557d-907a-8f1310d89790",
@@ -418,14 +432,28 @@
           "groupId": null,
           "order": 3
         }
+      ],
+      "placeholders": [
+        {
+          "id": "bc785559-8f16-565b-a3b7-a54f998f66b5",
+          "name": "Class Garb",
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7"
+        },
+        {
+          "id": "207bc548-27df-5a67-be79-191efe6dfda1",
+          "name": "Heritage",
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
+        }
       ]
     },
     {
       "id": "8ea42790-83cc-55b0-acdd-4194e878a1cd",
       "name": "Sylvie Thornwhistle",
       "type": "Person",
-      "playerDescription": "Slight, with a crooked grin and a habit of standing where the light is not. She wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:6026546d-d48c-5ec5-b62d-e3b20ec4fb9a}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:b247fb83-b8d3-587e-a097-98b3fe7522e6}}. She says she is here for the bounty. She is also here for the barrow's grave goods.",
-      "aiDescription": "Slight, quick, of indeterminate age, with a crooked grin and green eyes that miss nothing. She wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:fc46ea18-dc61-592d-92c3-4cbb542be9f3}} and has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:afc59b7e-607e-5681-a9a7-d8d6f58c6363}}. She talks fast, lies well, and pays her debts. She answered the call for the bounty and stayed for the rumor of grave gold in the barrow. She likes Albus more than she admits and needles him constantly. She keeps a room at the Cinder and Crown and an escape route out its window.",
+      "playerDescription": "Slight, with a crooked grin and a habit of standing where the light is not. She wears {{ph:a4520beb-279c-56cb-aeb5-cc92135784c1:world:6026546d-d48c-5ec5-b62d-e3b20ec4fb9a}} and has {{ph:36d28f0c-9d34-5bb1-84f0-fe97a603c7f2:world:b247fb83-b8d3-587e-a097-98b3fe7522e6}}. She says she is here for the bounty. She is also here for the barrow's grave goods.",
+      "aiDescription": "Slight, quick, of indeterminate age, with a crooked grin and green eyes that miss nothing. She wears {{ph:a4520beb-279c-56cb-aeb5-cc92135784c1:world:fc46ea18-dc61-592d-92c3-4cbb542be9f3}} and has {{ph:36d28f0c-9d34-5bb1-84f0-fe97a603c7f2:world:afc59b7e-607e-5681-a9a7-d8d6f58c6363}}. She talks fast, lies well, and pays her debts. She answered the call for the bounty and stayed for the rumor of grave gold in the barrow. She likes Albus more than she admits and needles him constantly. She keeps a room at the Cinder and Crown and an escape route out its window.",
       "aiSummary": "At the keep for the bounty and the barrow's gold, quick and quick-tongued.",
       "locations": [
         "12fb7d50-05f3-557d-907a-8f1310d89790",
@@ -486,6 +514,20 @@
           "groupId": null,
           "order": 3
         }
+      ],
+      "placeholders": [
+        {
+          "id": "a4520beb-279c-56cb-aeb5-cc92135784c1",
+          "name": "Class Garb",
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7"
+        },
+        {
+          "id": "36d28f0c-9d34-5bb1-84f0-fe97a603c7f2",
+          "name": "Heritage",
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
+        }
       ]
     },
     {
@@ -506,22 +548,30 @@
         {
           "id": "ab4d8e95-0627-5bce-bbcd-e00e25a6ce03",
           "name": "Class Garb",
-          "values": [
-            {
-              "id": "a7065270-981a-5e27-ab4c-0306c3ca2ff9",
-              "text": "scorched gray vestments under a smith's leather apron, her holy symbol hung on a chain of old nails"
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
+          "valueOverrides": {
+            "92ecec6a-f2db-51e9-8540-7e7f9907072b": {
+              "text": {
+                "value": "scorched gray vestments under a smith's leather apron, her holy symbol hung on a chain of old nails",
+                "blueprint": "plain gray vestments and a healer's roll of bandages at the belt"
+              }
             }
-          ]
+          }
         },
         {
           "id": "7f918ab1-2ae3-5f65-b4c3-a69a28275d0a",
           "name": "Heritage",
-          "values": [
-            {
-              "id": "4b0d497b-c8d3-5b76-90ef-b1797959c1db",
-              "text": "the iron-gray braids and walnut-cracking hands of the Deepwell dwarves"
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
+          "valueOverrides": {
+            "1cac90f4-1a83-52e1-93ab-dc172a21c4ef": {
+              "text": {
+                "value": "the iron-gray braids and walnut-cracking hands of the Deepwell dwarves",
+                "blueprint": "the broad, stone-set build of the mountain dwarves, braided hair and a miner's patience"
+              }
             }
-          ]
+          }
         }
       ],
       "traitLinks": [
@@ -579,22 +629,30 @@
         {
           "id": "ae3bc751-f4dc-5d39-bb6a-359fd448654b",
           "name": "Class Garb",
-          "values": [
-            {
-              "id": "dbcaf151-f949-55ba-a7d1-f7ce3af4333a",
-              "text": "a tailored blue coat cut like a robe, silver thread at the cuffs and a slim staff that folds into a cane"
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7",
+          "valueOverrides": {
+            "96dff0b6-bbe4-5196-a7d2-534c01da7ede": {
+              "text": {
+                "value": "a tailored blue coat cut like a robe, silver thread at the cuffs and a slim staff that folds into a cane",
+                "blueprint": "ink-stained blue robes and a satchel heavy with chalk and folded charts"
+              }
             }
-          ]
+          }
         },
         {
           "id": "1c70d45e-827c-5ce1-94b1-f101ca1bf24f",
           "name": "Heritage",
-          "values": [
-            {
-              "id": "2d33a206-e18f-55bc-90ef-b3e7b3310972",
-              "text": "the pale, sharp features of the river-city humans, with a merchant's easy smile"
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
+          "valueOverrides": {
+            "39d580b8-fb3f-576f-92d6-ca446a324de5": {
+              "text": {
+                "value": "the pale, sharp features of the river-city humans, with a merchant's easy smile",
+                "blueprint": "the weathered, restless look of the human frontier towns"
+              }
             }
-          ]
+          }
         }
       ],
       "traitLinks": [
@@ -723,7 +781,21 @@
       "traitPlacement": {
         "groupId": null,
         "order": 2
-      }
+      },
+      "placeholders": [
+        {
+          "id": "b6234598-16a9-575f-be04-5f54d002ee7c",
+          "name": "Class Garb",
+          "values": [],
+          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7"
+        },
+        {
+          "id": "f5a9fc7a-508a-512a-ab98-7ce7c0bbcae0",
+          "name": "Heritage",
+          "values": [],
+          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
+        }
+      ]
     }
   ],
   "traits": [
@@ -1216,7 +1288,8 @@
           "id": "92ecec6a-f2db-51e9-8540-7e7f9907072b",
           "text": "plain gray vestments and a healer's roll of bandages at the belt"
         }
-      ]
+      ],
+      "groupId": "ca2a7778-edd9-50cb-be3d-9d762e0c89d6"
     },
     {
       "id": "55ffa1d2-deff-50e7-a162-a055d4c38c06",
@@ -1238,7 +1311,17 @@
           "id": "f07ed182-2955-5b83-84e2-8c274e023d6f",
           "text": "the small, quick frame of the river halflings, curly hair and a grin that opens doors"
         }
-      ]
+      ],
+      "groupId": "ca2a7778-edd9-50cb-be3d-9d762e0c89d6"
+    }
+  ],
+  "placeholderGroups": [
+    {
+      "id": "ca2a7778-edd9-50cb-be3d-9d762e0c89d6",
+      "name": "Blueprints",
+      "parentId": null,
+      "order": 0,
+      "system": "blueprints"
     }
   ]
 }

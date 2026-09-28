@@ -35,7 +35,12 @@ const WITH_COPY: World = benchEditorWorld({
   ],
   placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
   traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], aiDescription: `Wears ${chip('garb')}.` }],
-  entities: [{ id: 'e-albus', name: 'Albus', placeholders: [{ id: 'c-garb', name: 'Class Garb', values: [], blueprintId: 'garb' }] }],
+  // Albus links Paladin, whose text places the blueprint, so the store keeps his copy in use.
+  entities: [{
+    id: 'e-albus', name: 'Albus',
+    traitLinks: [{ id: 'l-paladin', originalId: 't-paladin', kind: 'trait', originalName: 'Paladin', groupId: null }],
+    placeholders: [{ id: 'c-garb', name: 'Class Garb', values: [], blueprintId: 'garb' }],
+  }],
 } as Partial<World>);
 
 /** A tree row found by its drag grip, so the panel's own copy of the name never matches. */
