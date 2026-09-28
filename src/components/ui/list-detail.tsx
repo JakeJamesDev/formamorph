@@ -65,10 +65,12 @@ export function ListDetail({
           ? <ScrollArea className="h-full w-full">{list}</ScrollArea>
           : <div className="h-full w-full overflow-hidden">{list}</div>}
       </div>
-      {/* Detail slides in from the right over the list. Opaque, so it fully covers the list when open. */}
+      {/* Detail slides in from the right over the list. Opaque, so it fully covers the list when open. A stacked
+          push sits inside a panel, so it takes the panel's surface; the top-level mobile push is the page's. */}
       <div
         className={cn(
-          'absolute inset-0 flex flex-col bg-background shadow-[-8px_0_20px_rgba(0,0,0,0.12)] transition-transform duration-200 motion-reduce:transition-none',
+          'absolute inset-0 flex flex-col shadow-[-8px_0_20px_rgba(0,0,0,0.12)] transition-transform duration-200 motion-reduce:transition-none',
+          stacked ? 'bg-card' : 'bg-background',
           showDetail ? 'translate-x-0' : 'translate-x-full pointer-events-none',
         )}
         aria-hidden={!showDetail}

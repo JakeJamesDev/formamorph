@@ -98,12 +98,13 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
         </div>
       )}
       {pinRows.length > 0 && (
-        <ul className="space-y-2" aria-label="Pinned Values">
+        // One label column for every row, sized by the longest label, so each select starts on the same x.
+        <ul className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-2" aria-label="Pinned Values">
           {pinRows.map(({ trait: t, name, target, value }) => {
             const listed = target.values.some((v) => v.text === value?.value);
             return (
-              <li key={`${t.id}:${name}`} className="flex items-center gap-2">
-                <span className="min-w-0 shrink truncate text-label">
+              <li key={`${t.id}:${name}`} className="contents">
+                <span className="min-w-0 truncate text-label">
                   {!single && <><PlaceholderText text={t.name} placeholders={placeholders} />: </>}
                   {name} →
                 </span>
@@ -114,7 +115,7 @@ export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; 
                     setPin(t.id, name, text === NO_VALUE ? null : pinValueOf({ value: text, valueId }));
                   }}
                 >
-                  <SelectTrigger className="min-w-0 flex-1" aria-label={`${name} Value`}>
+                  <SelectTrigger className="min-w-0" aria-label={`${name} Value`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

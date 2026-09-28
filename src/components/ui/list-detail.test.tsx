@@ -58,6 +58,18 @@ describe('ListDetail', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it('paints the push with the page color at the top level, and with the panel color when stacked inside one', () => {
+    mockMatchMedia(true);
+    const { unmount } = render(<ListDetail {...base} showDetail backLabel="Back" />);
+    const panel = () => screen.getByText('DETAIL-CONTENT').closest('.absolute') as HTMLElement;
+    expect(panel()).toHaveClass('bg-background');
+    unmount();
+    mockMatchMedia(false);
+    render(<ListDetail {...base} stacked showDetail backLabel="Traits" />);
+    expect(panel()).toHaveClass('bg-card');
+    expect(panel()).not.toHaveClass('bg-background');
+  });
+
   it('stacked: hides the detail panel from assistive tech while the list shows', () => {
     mockMatchMedia(false);
     render(<ListDetail {...base} stacked showDetail={false} backLabel="Traits" />);
