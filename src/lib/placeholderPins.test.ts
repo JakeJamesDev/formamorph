@@ -582,6 +582,15 @@ describe('owned traits as pin sources — the world’s traits, then each cast e
     expect(fromMira.winner?.label).toBe("Trait: Bo's Feral");
   });
 
+  it('never pits two Personas’ traits against each other: only one is played, and each wins in its own text', () => {
+    const mira = { id: 'mira', name: 'Mira', persona: true, traits: [trait('oath', [pin('town', 'Oath')], { name: 'Oath' })] };
+    const nell = { id: 'nell', name: 'Nell', persona: true, traits: [trait('vow', [pin('town', 'Vow')], { name: 'Vow' })] };
+    const both = { ...world, traits: [], entities: [mira, nell] } as unknown as EditorWorld;
+    expect(pinConflict(both, 'town', { kind: 'trait', id: 'oath' })).toBeNull();
+    const withWorld = { ...world, entities: [mira, nell] } as unknown as EditorWorld;
+    expect(pinConflict(withWorld, 'town', { kind: 'trait', id: 'oath' })!.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);
+  });
+
   it('never pits an owned trait against its exclusive sibling', () => {
     const fromTamed = pinConflict(world, 'town', { kind: 'trait', id: 'tamed' })!;
     expect(fromTamed.rivals.map((r) => r.label)).toEqual(['Trait: Sworn']);

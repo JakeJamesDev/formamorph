@@ -43,7 +43,7 @@ import { overviewTexts } from '@/lib/overviewTexts';
 import {
   broughtIds, editorGateInput, linksInTreeOrder, originalOf, resolveBearers, type Bearer, type BearerWorld,
 } from '@/lib/bearers';
-import { WORLD_OWNER, gateOf, gateStates, neverUnlockable, settleDefaults } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, gateStates, neverUnlockable, settleDefaults, type GateInput } from '@/lib/traitGates';
 import { CUSTOM_PERSONA_NAME, customPersonaEntity, offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
@@ -1791,10 +1791,18 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     ...neverUnlockable(input).flat().filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId),
     ...stuck.flat().filter((t) => t.ownerId === WORLD_OWNER && !t.link).map((t) => t.traitId),
   ]);
-  const offUnder = personaChoices(world).map((persona) => new Set(settleDefaults({ ...input, persona }).turnedOff.map((r) => r.traitId)));
-  const offDefaults = traits
-    .filter((t) => !stuckIds.has(t.id) && offUnder.every((off) => off.has(t.id)))
-    .map((t) => t.id);
+  // Each bearer settles its own defaults, so a default is off only when no bearer keeps it under any persona
+  // choice: a race's ability turned off on one bearer says nothing about the bearer whose race it is.
+  const everOff = new Set<string>();
+  const everOn = new Set<string>();
+  const settleInto = (gate: Omit<GateInput, 'active'>) => {
+    const settled = settleDefaults(gate);
+    for (const r of settled.turnedOff) everOff.add(r.traitId);
+    for (const ids of Object.values(settled.active)) for (const id of ids) everOn.add(id);
+  };
+  for (const pass of passes) settleInto(pass.gate);
+  for (const persona of personaChoices(world)) settleInto({ ...input, persona });
+  const offDefaults = traits.filter((t) => !stuckIds.has(t.id) && everOff.has(t.id) && !everOn.has(t.id)).map((t) => t.id);
 
   report = { requirementTexts, unresolved, stuck, offDefaults };
   gateReportsByWorld.set(world, report);
