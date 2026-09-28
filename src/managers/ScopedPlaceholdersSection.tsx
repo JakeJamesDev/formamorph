@@ -21,8 +21,8 @@ const scopedStore = (store: PlaceholderStore, scope: PlaceholderHome): Placehold
 const ScopedPlaceholdersSection = ({ kind, ownerId, fill = false }: {
   kind: 'entity' | 'dictionary';
   ownerId: string;
-  /** The host is a tab that already names this section: the label goes, and the editor takes the panel's
-   *  remaining height instead of sitting in a fixed box. */
+  /** The host is a tab that already names this section and gives it a definite height: the label goes, and
+   *  the editor takes the height left under the helper line instead of sitting in a fixed box. */
   fill?: boolean;
 }) => {
   const { advanced } = useEditorMode();
@@ -31,14 +31,14 @@ const ScopedPlaceholdersSection = ({ kind, ownerId, fill = false }: {
   const scoped = useMemo(() => (store?.lists ? scopedStore(store, home) : null), [store, home]);
   if (!advanced || !scoped) return null;
   return (
-    <div className="space-y-2">
+    <div className={cn(fill ? 'flex min-h-0 flex-1 flex-col gap-2' : 'space-y-2')}>
       {!fill && <Label>Placeholders</Label>}
       <p className="text-helper text-muted-foreground">
         Placeholders of this {kind}&apos;s own. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
       </p>
       <div className={cn(
         'flex flex-col overflow-hidden rounded-md border',
-        fill ? 'h-[calc(100vh-20rem)] min-h-[20rem]' : 'h-[26rem]',
+        fill ? 'min-h-0 flex-1' : 'h-[26rem]',
       )}>
         <PlaceholderStoreProvider value={scoped}>
           <PlaceholderEditor />
