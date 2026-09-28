@@ -809,16 +809,16 @@ const WorldEditorInner = ({
   const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
   const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
-  // In Advanced, a world original's Details open with its link button, beside a link's Linked-from line.
-  const linkHeader = (originalId: string, line?: ReactNode) => {
-    if (!advanced || !originalOf({ traits, traitGroups }, originalId)) return line;
-    return (
-      <div className="flex items-start gap-2">
-        {line ? <div className="min-w-0 flex-1">{line}</div> : <div className="flex-1" />}
-        <LinkToBearerButton originalId={originalId} />
-      </div>
-    );
-  };
+  // The trait or group the Traits tab shows, or the original a link row reads. `originalOf` drops owned ones.
+  const shownOriginalId = activeTab !== 'traits' ? undefined
+    : selectedLinkRow ? (selectedLinkBearer ? selectedLinkRow.originalId : undefined)
+    : (selectedGroup ?? selectedTrait)?.id;
+  // In Advanced, its link button sits in the detail pane's frozen footer, below every panel tab.
+  const detailFooter = advanced && shownOriginalId && originalOf({ traits, traitGroups }, shownOriginalId) ? (
+    <div className="p-3 border-t flex justify-end">
+      <LinkToBearerButton originalId={shownOriginalId} />
+    </div>
+  ) : undefined;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   // These panel tabs scroll inside themselves, so the pane gives them its height instead of its scroll.
@@ -985,7 +985,7 @@ const WorldEditorInner = ({
   );
   const detailContent = (
     <ChipInsertTargetProvider>
-    <div className={cn("p-3", detailFills && "flex flex-1 min-h-0 flex-col")}>
+    <div className={cn("p-3 [--panel-gutter:theme(spacing.3)]", detailFills && "flex flex-1 min-h-0 flex-col")}>
       {/* One palette for the whole panel, the Placeholders tab included: a value is a chip field like any
           other, and the palette leaves out whatever would loop back into the value being edited. Over an
           entity's or book's panel its own scoped placeholders come first and read bare. */}
@@ -1035,7 +1035,6 @@ const WorldEditorInner = ({
           key={selectedGroup.id}
           group={selectedGroup}
           ownerId={selectedOwned?.entity.id}
-          detailsHeader={selectedOwned ? undefined : linkHeader(selectedGroup.id)}
         />
       )}
       {activeTab === "traits" && customPersona && selectedItemId === CUSTOM_PERSONA_ID && <CustomPersonaPanel />}
@@ -1051,7 +1050,6 @@ const WorldEditorInner = ({
           key={selectedTrait.id}
           trait={selectedTrait}
           owner={selectedOwned?.entity}
-          detailsHeader={selectedOwned ? undefined : linkHeader(selectedTrait.id)}
           // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
@@ -1064,7 +1062,7 @@ const WorldEditorInner = ({
         <TraitManager
           key={selectedItemId}
           trait={linkedTrait}
-          detailsHeader={linkHeader(linkedTrait.id, <LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />)}
+          detailsHeader={<LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />}
           detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
@@ -1077,7 +1075,7 @@ const WorldEditorInner = ({
         <GroupManager
           key={selectedItemId}
           group={linkedGroup}
-          detailsHeader={linkHeader(linkedGroup.id, <LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />)}
+          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} onOpen={setSelectedItemId} />}
           detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedGroup.id} />}
         />
       )}
@@ -1416,6 +1414,7 @@ const WorldEditorInner = ({
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
+                      detailFooter={detailFooter}
                     />
                   ))}
                 </Tabs>
@@ -1457,12 +1456,13 @@ const WorldEditorInner = ({
             <PanelResizeHandle className="w-1 bg-secondary cursor-col-resize" />
             <Panel id="editor-detail" order={2} minSize={30}>
               <div className="h-full p-3">
-                <Card className="h-full">
-                  <CardContent className="h-full p-0">
+                <Card className="h-full flex flex-col">
+                  <CardContent className="flex-1 min-h-0 p-0">
                     {detailFills
                       ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
                       : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
+                  {detailFooter}
                 </Card>
               </div>
             </Panel>
