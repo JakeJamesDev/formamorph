@@ -54,6 +54,8 @@ describe('the Placeholders tab Blueprints group', () => {
     openAddMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Add Blueprints Group' }));
     expect(ctx().placeholderGroups).toEqual([expect.objectContaining({ name: 'Blueprints', parentId: null, system: 'blueprints' })]);
+    expect(screen.getByLabelText('Group Name')).toBeDisabled();
+    expect(screen.getByText(/Each entity reads a blueprint through its own copy/)).toBeInTheDocument();
     expect(treeRow('Blueprints')).toBeDefined();
     openAddMenu();
     expect(screen.queryByRole('button', { name: 'Add Blueprints Group' })).toBeNull();

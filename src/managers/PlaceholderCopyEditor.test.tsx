@@ -69,11 +69,12 @@ describe('PlaceholderCopyEditor', () => {
     expect(texts(read().effective)).toEqual(['a tabard', 'plate']);
   });
 
-  it('writes nothing when a value is typed back to the blueprint', () => {
+  it('keeps an override typed back to the blueprint value until Reset', () => {
     const { read } = renderCopy();
     fireEvent.change(screen.getByLabelText('Value 1'), { target: { value: 'x' } });
     fireEvent.change(screen.getByLabelText('Value 1'), { target: { value: 'a tabard' } });
-    expect(read().copy.valueOverrides).toBeUndefined();
+    expect(read().copy.valueOverrides).toEqual({ 'v-tabard': { text: { value: 'a tabard', blueprint: 'a tabard' } } });
+    expect(reset(1)).not.toBeNull();
   });
 
   it('reweights one value and benches it here only', () => {
@@ -82,6 +83,8 @@ describe('PlaceholderCopyEditor', () => {
     expect(read().effective.weights).toEqual({ 'v-plate': 0 });
     expect(reset(2)).not.toBeNull();
     fireEvent.change(screen.getByLabelText('Draw weight for value 2'), { target: { value: '1' } });
+    expect(read().copy.valueOverrides).toEqual({ 'v-plate': { weight: { value: 1, blueprint: 1 } } });
+    fireEvent.click(reset(2)!);
     expect(read().copy.valueOverrides).toBeUndefined();
   });
 

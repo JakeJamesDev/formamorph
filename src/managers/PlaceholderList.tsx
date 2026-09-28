@@ -195,8 +195,9 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         };
       }
       const { placeholder, shared, holderId } = node;
-      const copyOwner = placeholder.blueprintId && node.home.kind !== 'world'
-        ? [...(lists?.entities ?? []), ...(lists?.dictionaries ?? [])].find((o) => o.id === (node.home as { ownerId: string }).ownerId)
+      const home = node.home;
+      const copyOwner = placeholder.blueprintId && home.kind !== 'world'
+        ? [...(lists?.entities ?? []), ...(lists?.dictionaries ?? [])].find((o) => o.id === home.ownerId)
         : undefined;
       const blueprint = copyOwner ? placeholders.find((p) => p.id === placeholder.blueprintId) : undefined;
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the
