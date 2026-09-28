@@ -136,6 +136,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     }
     // A link row reads its bearer's gate on the original.
     const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, linkRow.entityId, linkRow.originalId), placeholders);
+    const overrides = linkRow.link.overrides?.[linkRow.originalId];
+    const modified = overrides && Object.keys(overrides).length ? 'Modified for this link' : undefined;
+    // The glyph's tip names the modification its badge marks.
+    const withModified = (tip: string) => (modified ? `${tip}. ${modified}` : tip);
     const shared = {
       lead: isGroup ? 'chevron' : 'none',
       collapseLabels: ['Expand group', 'Collapse group'],
@@ -143,15 +147,42 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       labelClass: isGroup ? 'font-medium' : unresolved ? UNRESOLVED : undefined,
       meta,
       metaTitle,
+      overridden: modified,
     } satisfies Partial<TreeRowSpec>;
     // A linked group's subtree is the original's, so its rows are read here and edited there.
-    if (!linkRow.root) return { ...shared, icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined, fixed: true };
+    if (!linkRow.root) {
+      const linkName = labelPlaceholders(linkRow.link.originalName, placeholders);
+      const tip = withModified(`Part of the linked ${linkName}, opens ${labelPlaceholders(name, placeholders)}`);
+      const glyph = <Link2 className="h-4 w-4 opacity-50" />;
+      return {
+        ...shared,
+        icon: entityRoot ? (
+          <Tip tip={withModified(`Part of the linked ${linkName}`)} labelsChild={false}>
+            <span className="shrink-0 px-0.5" aria-label="Linked">{glyph}</span>
+          </Tip>
+        ) : (
+          <Tip tip={tip} labelsChild={false}>
+            <button
+              type="button"
+              aria-label={`Open ${labelPlaceholders(name, placeholders)}`}
+              onClick={(e) => { e.stopPropagation(); onSelect(linkRow.originalId); }}
+              className="shrink-0 px-0.5"
+            >
+              {glyph}
+            </button>
+          </Tip>
+        ),
+        fixed: true,
+        removeTitle: 'Remove',
+        removeBlocked: `Detach ${linkName} to remove this ${isGroup ? 'group' : 'trait'}`,
+      };
+    }
     // A root entity's tree holds no original to open, so the icon opens the link's own row.
     const opens = entityRoot ? node.id : linkRow.originalId;
     return {
       ...shared,
       icon: (
-        <Tip tip={`Linked, opens ${labelPlaceholders(name, placeholders)}`} labelsChild={false}>
+        <Tip tip={withModified(`Linked, opens ${labelPlaceholders(name, placeholders)}`)} labelsChild={false}>
           <button
             type="button"
             aria-label={`Open ${labelPlaceholders(name, placeholders)}`}
@@ -223,7 +254,6 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           icon: <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden />,
           label: <PlaceholderText text={node.group.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
-          meta: 'Not offered',
           removeTitle: 'Remove Blueprints',
           remove: () => askRemoveOriginal(node.id, true),
         };

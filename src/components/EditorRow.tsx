@@ -27,6 +27,8 @@ export interface EditorRowAction {
   title: string;
   onClick: () => void;
   disabled?: boolean;
+  /** Shows the action unavailable with this reason as its tip. Unlike `disabled`, the tip still opens. */
+  disabledReason?: string;
   /** The Authoring Tour anchor on the button, when a tour step points at it. */
   tourAnchor?: string;
 }
@@ -68,6 +70,9 @@ export interface EditorRowProps {
   meta?: ReactNode;
   /** Tooltip for {@link EditorRowProps.meta}, which is usually too terse to read on its own. */
   metaTitle?: string;
+  /** A badge on the icon's corner, named by this text: the row overrides what it reads from a blueprint.
+   *  Needs `icon`; the icon's own tip should say it too. */
+  overridden?: string;
   actions?: EditorRowAction[];
 
   /** The row heads a body attached below it, so only its top corners round. */
@@ -101,6 +106,7 @@ export function EditorRow({
   labelClass,
   meta,
   metaTitle,
+  overridden,
   actions,
   attached,
   className,
@@ -166,7 +172,20 @@ export function EditorRow({
           />
         </Tip>
       )}
-      {icon}
+      {icon && overridden ? (
+        // A badge on the glyph's corner, so marking a row never moves its label.
+        <span className="relative inline-flex shrink-0">
+          {icon}
+          <span
+            role="img"
+            aria-label={overridden}
+            className={cn(
+              'pointer-events-none absolute -top-px left-0 h-1.5 w-1.5 rounded-full',
+              selected ? 'bg-primary-foreground' : 'bg-primary',
+            )}
+          />
+        </span>
+      ) : icon}
       {/* Truncates rather than wrapping: a long name must never push the actions off the row. */}
       {selectionLabel ? (
         <button
@@ -196,13 +215,14 @@ export function EditorRow({
         </Tip>
       )}
       {actions?.map((action) => (
-        <Tip key={action.title} tip={action.title}>
+        <Tip key={action.title} tip={action.disabledReason ?? action.title}>
           <Button
             variant="ghost"
             size="icon"
-            className={cn('shrink-0', chrome)}
-            onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+            className={cn('shrink-0', chrome, action.disabledReason && 'cursor-not-allowed opacity-50')}
+            onClick={(e) => { e.stopPropagation(); if (!action.disabledReason) action.onClick(); }}
             disabled={action.disabled}
+            aria-disabled={action.disabledReason ? true : undefined}
             aria-label={action.title}
             data-tour-anchor={action.tourAnchor}
           >

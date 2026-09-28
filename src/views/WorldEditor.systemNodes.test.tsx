@@ -59,7 +59,7 @@ describe('the + menu', () => {
     openAddMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Add Blueprints Group' }));
     expect(ctx().traitGroups).toEqual([expect.objectContaining({ name: 'Blueprints', parentId: null, system: 'blueprints' })]);
-    expect(treeRow('Blueprints')).toHaveTextContent(/Not offered/);
+    expect(treeRow('Blueprints')).toBeInTheDocument();
 
     openAddMenu();
     expect(screen.queryByRole('button', { name: 'Add Blueprints Group' })).toBeNull();

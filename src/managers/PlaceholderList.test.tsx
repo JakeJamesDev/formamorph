@@ -4,7 +4,7 @@ import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { phValues } from '@/test/placeholderValues';
-import type { Placeholder, PlaceholderGroup } from '@/types';
+import type { Entity, Placeholder, PlaceholderGroup } from '@/types';
 import type { PlaceholderSlices } from '@/lib/placeholderHomes';
 import PlaceholderList from './PlaceholderList';
 import type { SortableTreeAdapter } from './SortableTree';
@@ -209,8 +209,12 @@ describe('PlaceholderList — the tree', () => {
 
 /** The list over a whole world's lists, folders included, as the World Editor mounts it. */
 let storedGroups: PlaceholderGroup[] = [];
-function WorldHarness({ initial, groups }: { initial: Placeholder[]; groups: PlaceholderGroup[] }) {
-  const [lists, setLists] = useState<PlaceholderSlices>({ placeholders: initial, entities: [], dictionaries: [], placeholderGroups: groups });
+function WorldHarness({ initial, groups, entities = [], copiesInUse, onRemove }: {
+  initial: Placeholder[]; groups: PlaceholderGroup[]; entities?: Entity[]; copiesInUse?: Map<string, Set<string>>;
+  /** Takes the store's delete, which here reaches only the world list; the app routes it to the owner's. */
+  onRemove?: (id: string) => void;
+}) {
+  const [lists, setLists] = useState<PlaceholderSlices>({ placeholders: initial, entities, dictionaries: [], placeholderGroups: groups });
   stored = lists.placeholders;
   storedGroups = lists.placeholderGroups ?? [];
   const store = useMemo(() => ({
@@ -219,9 +223,11 @@ function WorldHarness({ initial, groups }: { initial: Placeholder[]; groups: Pla
     }))),
     placedIds: () => new Set<string>(),
     lists,
+    copiesInUse,
+    ...(onRemove ? { removePlaceholder: onRemove } : {}),
     // A drop that moved nothing but folders hands the lists back with only the folders changed.
     setLists: (next: PlaceholderSlices) => setLists((prev) => ({ ...next, placeholderGroups: next.placeholderGroups ?? prev.placeholderGroups })),
-  }), [lists]);
+  }), [lists, copiesInUse, onRemove]);
   return (
     <PlaceholderStoreProvider value={store}>
       <PlaceholderList selectedId={null} onSelect={select} />
@@ -268,5 +274,60 @@ describe('PlaceholderList — folders over the shared list', () => {
     act(() => adapter!.onDrop('gear', 'body', 0, new Set()));
     expect(storedGroups.map((g) => [g.id, g.order])).toEqual([['body', 1], ['gear', 0]]);
     expect(stored).toBe(GROUPED);
+  });
+});
+
+describe('PlaceholderList — blueprint copies', () => {
+  const GROUPS: PlaceholderGroup[] = [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }];
+  const BLUEPRINTS: Placeholder[] = [
+    { ...P('garb', 'Class Garb', ['tabard']), groupId: 'bp' },
+    { ...P('heritage', 'Heritage', ['mountain']), groupId: 'bp' },
+  ];
+  const tabard = BLUEPRINTS[0].values[0].id;
+  const albus: Entity = {
+    id: 'albus', name: 'Albus',
+    placeholders: [
+      { id: 'albus-garb', name: 'Class Garb', values: [], blueprintId: 'garb', valueOverrides: { [tabard]: { text: { value: 'plate', blueprint: 'tabard' } } } },
+      { id: 'albus-heritage', name: 'Heritage', values: [], blueprintId: 'heritage' },
+    ],
+  };
+  const copyRow = (name: string) => screen.getByText(name).closest('.cursor-pointer') as HTMLElement;
+
+  it('marks a copy with a glyph that opens its blueprint', () => {
+    render(<WorldHarness initial={BLUEPRINTS} groups={GROUPS} entities={[albus]} />);
+    fireEvent.click(within(copyRow('Albus.Heritage')).getByRole('button', { name: 'Open Heritage' }));
+    expect(select).toHaveBeenCalledWith('heritage');
+  });
+
+  it("keeps an untouched copy's delete unavailable, and an edited copy's live", () => {
+    render(<WorldHarness initial={BLUEPRINTS} groups={GROUPS} entities={[albus]} />);
+    const untouched = within(copyRow('Albus.Heritage')).getByRole('button', { name: 'Delete' });
+    expect(untouched.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(untouched);
+    expect(screen.getByText('Albus.Heritage')).toBeInTheDocument();
+    expect(within(copyRow('Albus.Class Garb')).getByRole('button', { name: 'Delete' }).getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('refuses to delete an edited copy a trait still uses, and deletes one nothing uses', () => {
+    const onRemove = vi.fn();
+    const inUse = new Map([['albus', new Set(['garb', 'heritage'])]]);
+    const { unmount } = render(<WorldHarness initial={BLUEPRINTS} groups={GROUPS} entities={[albus]} copiesInUse={inUse} onRemove={onRemove} />);
+    const edited = within(copyRow('Albus.Class Garb')).getByRole('button', { name: 'Delete' });
+    expect(edited.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(edited);
+    expect(onRemove).not.toHaveBeenCalled();
+    unmount();
+
+    render(<WorldHarness initial={BLUEPRINTS} groups={GROUPS} entities={[albus]} copiesInUse={new Map([['albus', new Set(['heritage'])]])} onRemove={onRemove} />);
+    const unused = within(copyRow('Albus.Class Garb')).getByRole('button', { name: 'Delete' });
+    expect(unused.getAttribute('aria-disabled')).toBeNull();
+    fireEvent.click(unused);
+    expect(onRemove).toHaveBeenCalledWith('albus-garb');
+  });
+
+  it('dots an edited copy only', () => {
+    render(<WorldHarness initial={BLUEPRINTS} groups={GROUPS} entities={[albus]} />);
+    expect(within(copyRow('Albus.Class Garb')).queryByLabelText('Modified for this entity')).not.toBeNull();
+    expect(within(copyRow('Albus.Heritage')).queryByLabelText('Modified for this entity')).toBeNull();
   });
 });
