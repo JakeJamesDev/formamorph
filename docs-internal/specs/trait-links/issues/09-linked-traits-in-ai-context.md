@@ -61,6 +61,6 @@ The narrator knows Albus is a Paladin. A cast entity's active linked traits join
 - Priming binds the player's pins to every persona's placeholders, world ones too (Q77), and walks only entities' own text, not the world text twice.
 - The pin-binding call is one helper, `bindForBearer`.
 
-**Open:** priming owned trait text goes past Q90's wording. The spec session was asked whether it stays in this ticket; no reply yet.
+**User ruling (2026-09-28):** priming owned trait and group text stays in this ticket, past Q90's wording.
 
 **Left for others:** the Test Bench's Opening and AI Context instruments pass their own resolution, so a linked trait there reads the lens pins, and `{{char}}` in a cast entity's trait reads as nothing in AI Context (ticket 11's area).
