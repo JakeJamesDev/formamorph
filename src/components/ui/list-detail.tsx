@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
  * over it with a back header, native push-navigation style. The caller owns selection; this only takes the
  * `showDetail` flag and an `onBack` to pop. Slide is skipped under `prefers-reduced-motion`.
  */
-export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back', className, scrollList = true }: {
+export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back', className, scrollList = true, scrollDetail = true }: {
   list: ReactNode;
   detail: ReactNode;
   /** Whether the detail is active (drives the mobile push; ignored on desktop, which shows both). */
@@ -25,6 +25,9 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
    * instance, whose floating panels are otherwise swallowed by the scroll viewport.
    */
   scrollList?: boolean;
+  /** Set false when the detail fills the panel and scrolls inside itself; it then gets a flex column of
+   *  the panel's height. */
+  scrollDetail?: boolean;
 }) {
   const isMobile = useIsMobile();
 
@@ -34,7 +37,9 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
         {scrollList
           ? <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
           : <div className="w-1/2 min-w-0 border-r overflow-hidden">{list}</div>}
-        <ScrollArea className="w-1/2 min-w-0">{detail}</ScrollArea>
+        {scrollDetail
+          ? <ScrollArea className="w-1/2 min-w-0">{detail}</ScrollArea>
+          : <div data-detail-fill className="w-1/2 min-w-0 flex flex-col">{detail}</div>}
       </div>
     );
   }
@@ -68,7 +73,9 @@ export function ListDetail({ list, detail, showDetail, onBack, backLabel = 'Back
             <ArrowLeft className="h-4 w-4" /> {backLabel}
           </Button>
         </div>
-        <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
+        {scrollDetail
+          ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
+          : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
       </div>
     </div>
   );

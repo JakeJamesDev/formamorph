@@ -14,7 +14,9 @@ import type { Entity, FocusFieldHint } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
-import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
+import { entityPanelTabsFor, entityTabFillsPane, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 /**
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Traits, Openings
@@ -78,10 +80,16 @@ const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
     depth,
   }));
   const tabs = entityPanelTabsFor(advanced);
+  // A filling tab takes the height the host gives it and scrolls inside; the others grow with their fields.
+  const fills = entityTabFillsPane(tab);
 
   return (
-    <div className="space-y-4">
-      <Tabs value={tab} onValueChange={(v) => onTabChange(v as EntityPanelTab)} className="space-y-4">
+    <div className={cn(fills ? 'flex min-h-0 flex-1 flex-col' : 'space-y-4')}>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => onTabChange(v as EntityPanelTab)}
+        className={cn(fills ? 'flex min-h-0 flex-1 flex-col gap-4' : 'space-y-4')}
+      >
         <PanelTabsList tabs={tabs} stripLabel="Entity Fields" />
 
         <TabsContent value="profile" className="space-y-4">
@@ -111,8 +119,10 @@ const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
           <EntityDescriptionFields {...groupProps} />
         </TabsContent>
 
-        <TabsContent value="traits">
-          <EntityTraitsSection entity={entity} onOpen={(id) => onOpenTrait?.(id)} />
+        <TabsContent value="traits" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+          <ScrollArea className="min-h-0 flex-1">
+            <EntityTraitsSection entity={entity} onOpen={(id) => onOpenTrait?.(id)} />
+          </ScrollArea>
         </TabsContent>
 
         {advanced && (
@@ -126,7 +136,7 @@ const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
         )}
 
         {advanced && (
-          <TabsContent value="placeholders">
+          <TabsContent value="placeholders" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
             <ScopedPlaceholdersSection kind="entity" ownerId={entity.id} fill />
           </TabsContent>
         )}

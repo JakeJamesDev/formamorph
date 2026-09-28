@@ -69,7 +69,7 @@ import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
-import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
+import { ENTITY_PANEL_TABS, entityPanelTabsFor, entityTabFillsPane, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
 import { TRAIT_PANEL_TABS, traitPanelTabsFor, type TraitPanelTab } from './traitPanelTabs';
@@ -806,6 +806,9 @@ const WorldEditorInner = ({
 
   // The search results reuse one row for every tab, and entities are the only kind here that follows a
   // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
+  // These entity tabs scroll inside themselves, so the pane gives them its height instead of its scroll.
+  const detailFills = activeTab === "entities" && !selectedEntityGroup && !!selectedEntity
+    && entityTabFillsPane(shownEntityTab);
   // lucide `Map` icon is imported above and shadows the global.
   const entityLinks = useMemo(
     () => Object.fromEntries(entities.map((e) => [e.id, e.link])) as Record<string, ContentLink | undefined>,
@@ -1004,7 +1007,7 @@ const WorldEditorInner = ({
   );
   const detailContent = (
     <ChipInsertTargetProvider>
-    <div className="p-3">
+    <div className={cn("p-3", detailFills && "flex flex-1 min-h-0 flex-col")}>
       {/* One palette for the whole panel, the Placeholders tab included: a value is a chip field like any
           other, and the palette leaves out whatever would loop back into the value being edited. Over an
           entity's or book's panel its own scoped placeholders come first and read bare. */}
@@ -1406,6 +1409,7 @@ const WorldEditorInner = ({
     </div>
   );
 
+                      scrollDetail={!detailFills}
   return (
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -1510,7 +1514,9 @@ const WorldEditorInner = ({
               <div className="h-full p-3">
                 <Card className="h-full">
                   <CardContent className="h-full p-0">
-                    <ScrollArea className="h-full">{detailContent}</ScrollArea>
+                    {detailFills
+                      ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
+                      : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
                 </Card>
               </div>
