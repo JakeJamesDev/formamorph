@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Chip, CHIP_BASE, CHIP_REMOVE_RESERVE, ChipFieldSizer } from "./Chip";
 import { SuggestionList } from "./SuggestionList";
 import ChipInput from "@/components/prompt/ChipInput";
-import { placeholderVocabulary } from "@/lib/chipVocabulary";
+import { placeholderVocabulary, type ChipVocabulary } from "@/lib/chipVocabulary";
 import { hasPlaceholders } from "@/lib/placeholders";
 import { PLACEHOLDER_TRIGGER } from "@/lib/placeholderInsert";
 import type { Placeholder } from "@/types";
@@ -20,7 +20,7 @@ import type { Placeholder } from "@/types";
  * `onActivate` claims the single click/tap for the host (a per-chip popover); text editing then stays on
  * double-click, so the popover must offer its own way to rename on touch. `suffix` trails the label.
  */
-export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, style, placeholders }: {
+export function EditableChip({ value, onCommit, onRemove, sortable = false, getSuggestions, onActivate, suffix, label, style, placeholders, vocabulary }: {
   value: string;
   onCommit: (next: string) => void;
   onRemove: (value: string) => void;
@@ -37,6 +37,8 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
   /** Given these, editing opens a chip editor instead of a text input, so a value holding placeholders can
    *  be edited in place — and its chips keep their World/Unique pop-out while it is open. */
   placeholders?: Placeholder[];
+  /** The host field's vocabulary, so the chip editor refuses what the field refuses. */
+  vocabulary?: ChipVocabulary;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
@@ -103,7 +105,7 @@ export function EditableChip({ value, onCommit, onRemove, sortable = false, getS
         <ChipInput
           value={text}
           onChange={setText}
-          vocabulary={placeholderVocabulary(placeholders ?? [])}
+          vocabulary={vocabulary ?? placeholderVocabulary(placeholders ?? [])}
           trigger={PLACEHOLDER_TRIGGER}
           autoFocus
           onSubmit={() => finish(text)}

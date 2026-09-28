@@ -13,6 +13,7 @@
  */
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues, statChipValues } from '@/lib/chipValues/chipValues';
+import type { CopyLookup } from '@/lib/blueprints';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import {
   contextDelivery, navigableDestinationEntries, reachableEntityIds, scopedChipOpts, sublocationEntityIds,
@@ -204,7 +205,7 @@ export function buildAiContext(world: AiContextWorld, lens: BenchLens): AiContex
   const entities = world.entities ?? [];
   const placeholders = allPlaceholders(world);
   const location = lens.location;
-  const resolve = (text: string) => resolveLensText(text, placeholders, lens.pins);
+  const resolve = (text: string, copies?: CopyLookup) => resolveLensText(text, placeholders, lens.pins, copies);
 
   const scene = authoredChipScene(world, {
     location,

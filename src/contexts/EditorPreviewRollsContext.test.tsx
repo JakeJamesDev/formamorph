@@ -255,3 +255,21 @@ describe('a chosen stop', () => {
     expect(s.read(`${tok('lord', 'l1')} ${tok('eyes', 'e1')}`)[tok('eyes', 'e1')]).toBe('gray');
   });
 });
+
+describe('an original trait’s blueprint chip in the editor', () => {
+  const garb: Placeholder = { id: 'garb', name: 'Garb', values: phValues(['tabard']) };
+  // An entity's copy rewords the one value, so the two readings differ.
+  const copy: Placeholder = {
+    id: 'albus-garb', name: 'Garb', values: [], blueprintId: 'garb',
+    valueOverrides: { [phValueId('tabard')]: { text: { value: 'plate', blueprint: 'tabard' } } },
+  };
+  const text = `Wears ${tok('garb', 'p1')}.`;
+
+  it('previews and opens on the blueprint’s own values, whatever copies exist', () => {
+    let store: EditorPreviewRolls | null = null;
+    const Probe = () => { store = useEditorPreviewRolls(); return null; };
+    render(<EditorPreviewRollsProvider><Probe /></EditorPreviewRollsProvider>);
+    expect(store!.preview(text, [garb, copy])[tok('garb', 'p1')]).toBe('tabard');
+    expect(store!.open(text, [garb, copy])[tok('garb', 'p1')]).toMatchObject({ placeholderId: 'garb', text: 'tabard' });
+  });
+});

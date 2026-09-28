@@ -6,6 +6,7 @@ import { tintMarkStyle, TINT_MARK_CLASS } from '@/lib/previewTint';
 import { Tip } from '@/components/ui/tooltip';
 import type { ChipVocabulary } from '@/lib/chipVocabulary';
 import BuiltinMark from './BuiltinMark';
+import BlueprintMark from './BlueprintMark';
 
 /**
  * One chip token drawn as its pill: the shared chip shape, the vocabulary's accent, and the
@@ -43,6 +44,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
   // Reflect the mode in the chip text so it's readable at a glance, not only in the pop-out.
   const variantLabel = vocab.variantLabel(token);
   const name = vocab.label(token);
+  const shown = vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name);
   // What the chip will become, for the tooltip — the label already says which placeholder it is.
   const hint = vocab.hint?.(token);
   const affixes = showAffixes ? vocab.affixes(token) : null;
@@ -81,7 +83,7 @@ export const TokenChip = forwardRef<HTMLSpanElement, TokenChipProps>(function To
       <Chip
         label={vocab.builtin?.(token)
           ? <><BuiltinMark />{vocab.display?.(token) ?? name}</>
-          : vocab.display?.(token) ?? (variantLabel ? `${name} (${variantLabel})` : name)}
+          : vocab.blueprint?.(token) ? <><BlueprintMark />{shown}</> : shown}
         removeLabel={name}
         tip={tip ?? (hint ? `${name} — ${hint}` : undefined)}
         onRemove={onRemove}

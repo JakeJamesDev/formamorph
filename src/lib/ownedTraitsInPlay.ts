@@ -2,8 +2,9 @@
 
 import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { PLAYER_BEARER, resolveBearers, type Bearer, type BearerWorld } from './bearers';
-import { readerFor, type CopyReader } from './blueprints';
+import { copyLookup, readerFor, type CopyLookup, type CopyReader } from './blueprints';
 import { characterAsPlayer } from './builtinPlaceholders';
+import { entityTexts } from './entityTexts';
 import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
@@ -129,6 +130,8 @@ export interface PinSet {
   of: (bearerId: string | null | undefined) => Record<string, string>;
   /** The trait with its blueprint pins traced to that bearer's copies, for its own card. */
   bind: (trait: Trait, bearerId: string | null | undefined) => Trait;
+  /** The copy lookup a bearer's trait text resolves its blueprint chips through. */
+  copies: (bearerId: string | null | undefined) => CopyLookup;
 }
 
 /**
@@ -152,6 +155,13 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
     ? readerFor(persona, personaEntity, true)
     : readerFor(persona, bearers.find((b) => b.id === id)?.entity ?? null, false));
   const bind = (trait: Trait, id: string | null | undefined) => bindBlueprintPins(trait, blueprints, readerOf(id));
+  const lookups = new Map<string, CopyLookup>();
+  const copies = (id: string | null | undefined) => {
+    const key = isPlayer(id) ? PLAYER_BEARER : id!;
+    let lookup = lookups.get(key);
+    if (!lookup) lookups.set(key, (lookup = copyLookup(blueprints, readerOf(id))));
+    return lookup;
+  };
   const activeIn = (bearer: Bearer | undefined) => {
     const on = new Set(bearer ? owned[bearer.id] ?? [] : []);
     return bearer ? bearer.traits.filter((t) => on.has(t.id)) : [];
@@ -180,7 +190,7 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
     }
     return pins;
   };
-  return { world: worldPins, of, bind };
+  return { world: worldPins, of, bind, copies };
 }
 
 const inBearerOrder = (traits: readonly Trait[], bearer: Bearer): Trait[] =>
@@ -258,6 +268,9 @@ export interface BearerPriming {
   /** Every bearer's traits that pin, bound for that bearer. The player's bind under None and under each
    *  persona, world or library. */
   pinTraits: Trait[];
+  /** Each bearer's trait text with the copy lookup its blueprint chips read through: an entity's whole tree
+   *  and its own text, and the root's once per way the player can be played. */
+  copyTexts: { texts: string[]; copies: CopyLookup }[];
 }
 
 export function bearerPriming(world: BearerWorld, library: readonly Entity[], shared: readonly Placeholder[]): BearerPriming {
@@ -273,13 +286,16 @@ export function bearerPriming(world: BearerWorld, library: readonly Entity[], sh
     ...world.entities.filter((e) => e.persona).map((e) => readerFor({ source: 'world', entityId: e.id }, e, true)),
     ...library.map((e) => readerFor({ source: 'library', entityId: e.id }, e, true)),
   ];
-  const pinTraits = bearers.flatMap((bearer) => {
-    const readers = bearer.entity
-      ? [readerFor(libraryIds.has(bearer.id) ? { source: 'library', entityId: bearer.id } : undefined, bearer.entity, bearer.isPlayer)]
-      : playerReaders;
-    return readers.flatMap((reader) => bearer.traits
-      .filter((t) => t.placeholderPins?.length)
-      .map((t) => bindBlueprintPins(t, blueprints, reader)));
+  const readersOf = (bearer: Bearer) => (bearer.entity
+    ? [readerFor(libraryIds.has(bearer.id) ? { source: 'library', entityId: bearer.id } : undefined, bearer.entity, bearer.isPlayer)]
+    : playerReaders);
+  const pinTraits = bearers.flatMap((bearer) => readersOf(bearer).flatMap((reader) => bearer.traits
+    .filter((t) => t.placeholderPins?.length)
+    .map((t) => bindBlueprintPins(t, blueprints, reader))));
+  const copyTexts = bearers.flatMap((bearer) => {
+    const own = [...bearer.traits, ...bearer.groups].flatMap((item) => [item.name, item.playerDescription, item.aiDescription]);
+    const texts = [...own, ...(bearer.entity ? entityTexts(bearer.entity) : [])].filter((text): text is string => !!text);
+    return texts.length ? readersOf(bearer).map((reader) => ({ texts, copies: copyLookup(blueprints, reader) })) : [];
   });
-  return { texts, pinTraits };
+  return { texts, pinTraits, copyTexts };
 }

@@ -538,7 +538,7 @@ const WorldEditorInner = ({
   const linking = useLibraryLinking({
     worldId: worldId ?? '',
     worldName: worldOverview?.name || 'This world',
-    entities, dictionaries, placeholders, worldPlaceholders, locations, traits, traitGroups,
+    entities, dictionaries, placeholders, worldPlaceholders, placeholderGroups, locations, traits, traitGroups,
     updateEntity, updateDictionary, setEntities, setDictionaries,
     addEntityToWorld, addBookToWorld, addPlaceholder, addLocation, setOwnedLibraryIds,
     reopenPicker: (kind) => {

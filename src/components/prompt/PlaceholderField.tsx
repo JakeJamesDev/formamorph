@@ -36,7 +36,7 @@ const stepIndex = (index: number, direction: StepDirection, count: number): numb
  * text is tinted the chip's own color, like the prompt previews. A Values tab opens each chip in place on
  * the value its Preview drew.
  */
-const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor }: {
+const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, trait, promptChips, markdown = false, resizable = false, placeholder, className, readOnly = false, label, info, labelAside, hint, ariaLabel, tourAnchor }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
@@ -47,6 +47,8 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, p
   ownerId?: string;
   /** The owning entity's authored name, which a Character Name chip previews as. */
   ownerName?: string;
+  /** A trait's or trait group's text; `owned` when an entity holds it. A world one takes blueprint chips. */
+  trait?: { owned: boolean };
   /** Makes this a world custom prompt: the field also holds prompt variables, offered from its own toolbar
    *  and previewed from `previewValues`. `sampleData` badges that preview (see `PromptField`). */
   promptChips?: { variables: PromptVariable[]; previewValues: Record<string, string>; sampleData?: boolean | string };
@@ -71,7 +73,7 @@ const PlaceholderField = ({ value, onChange, placeholders, ownerId, ownerName, p
   tourAnchor?: string;
 }) => {
   // A prompt names the player with its Persona variable, so no Built-in chip is offered there.
-  const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { builtins: !promptChips });
+  const placeholderVocab = usePlaceholderChipVocabulary(placeholders, ownerId, { builtins: !promptChips, trait });
   const variables = promptChips?.variables;
   const vocab = useMemo(
     () => (variables ? worldPromptVocabulary(promptVocabulary(variables), placeholderVocab) : placeholderVocab),
@@ -220,13 +222,15 @@ export default PlaceholderField;
  * and the menu both stay away.
  */
 export const PlaceholderNameField = ({
-  value, onChange, placeholders, ownerId, placeholder, ariaLabel, className, readOnly = false, onFocus, onBlur, onSubmit,
+  value, onChange, placeholders, ownerId, trait, placeholder, ariaLabel, className, readOnly = false, onFocus, onBlur, onSubmit,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholders: Placeholder[];
   /** The entity or book whose field this is — see `ownerId` on `PlaceholderField`. */
   ownerId?: string;
+  /** See `trait` on `PlaceholderField`. */
+  trait?: { owned: boolean };
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
@@ -236,7 +240,7 @@ export const PlaceholderNameField = ({
   onBlur?: () => void;
   onSubmit?: () => void;
 }) => {
-  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
+  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId, { trait });
   const enabled = placeholders.length > 0 && !readOnly;
   return (
     <ChipInput

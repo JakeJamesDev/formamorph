@@ -570,3 +570,53 @@ describe('a pin carrying a Unique chip', () => {
     expect(rerollOpeningRolls(w, lensAt(w), before, pickLast).unique?.['pin-u1']).toBe('knife');
   });
 });
+
+describe('a blueprint chip in the PC’s trait text', () => {
+  const garb = { id: 'garb', name: 'Garb', values: phValues(['tabard', 'robe']) };
+  // The Custom Persona entity's copy rewords tabard.
+  const newcomer: Entity = {
+    id: 'cp', name: 'Newcomer', customPersona: true,
+    placeholders: [{
+      id: 'cp-garb', name: 'Garb', values: [], blueprintId: 'garb',
+      valueOverrides: { [phValueId('tabard')]: { text: { value: 'rags', blueprint: 'tabard' } } },
+    }],
+  };
+  const garbed = () => {
+    const w = world();
+    return world({
+      traits: traits.map((t) => (t.id === 't-sedge' ? { ...t, name: `${chip('garb', 'world', 'pl-garb')} Sedge-Born` } : t)),
+      entities: [...entities, newcomer],
+      placeholders: [...w.placeholders!, garb],
+    });
+  };
+
+  it('primes the player’s copy as Enter World does, beside the blueprint', () => {
+    const rolls = primeOpeningRolls(garbed(), {}, pickFirst);
+    expect(rolls.world?.['cp-garb']).toBe('rags');
+    expect(rolls.world?.garb).toBe('tabard');
+  });
+
+  it('reads a cast entity’s linked trait through that entity’s own copy', () => {
+    const vow: Trait = { id: 't-vow', name: 'Vow', groupId: 'g-bp', isDefault: true, statChanges: [], aiDescription: `Wears ${chip('garb', 'world', 'pl-vow')}.` };
+    const maren: Entity = {
+      ...entities[0],
+      placeholders: [{
+        id: 'maren-garb', name: 'Garb', values: [], blueprintId: 'garb',
+        valueOverrides: { [phValueId('tabard')]: { text: { value: 'mail', blueprint: 'tabard' } }, [phValueId('robe')]: { removed: true } },
+      }],
+      traitLinks: [{ id: 'l-vow', originalId: 't-vow', kind: 'trait', originalName: 'Vow', groupId: null }],
+    };
+    const w = garbed();
+    const linked = world({
+      ...w, traits: [...w.traits, vow], traitGroups: [...groups, { id: 'g-bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+      entities: [maren, entities[1], newcomer],
+    });
+    expect(openingFor(linked).system).toContain('Wears mail.');
+  });
+
+  it('names the PC’s traits through the player’s copy', () => {
+    const opening = openingFor(garbed(), 't-sedge');
+    expect(opening.traits.find((t) => t.id === 't-sedge')?.name).toBe('{rags|robe} Sedge-Born');
+    expect(opening.pcName).toBe('{rags|robe} Sedge-Born');
+  });
+});

@@ -15,6 +15,8 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
+import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
+import { bearerPriming } from '@/lib/ownedTraitsInPlay';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
@@ -37,7 +39,7 @@ import type {
   Entity, GameLocation, Opening, PlaceholderRolls, PlayerStat, Stat, StatDescriptor, ThresholdUnit, Trait,
 } from '@/types';
 import { lensActiveTraits, lensPinTraits, resolveLensText, type BenchLens } from './lens';
-import { chipBearingTexts, type RuleWorld } from './rules';
+import { bearerWorldOf, chipBearingTexts, type RuleWorld } from './rules';
 import { scannedEntries } from './triggers';
 
 /** The instrument reads the whole authored world — the first prompt pulls from every slice. */
@@ -199,9 +201,11 @@ export function primeOpeningRolls(
   pick?: PlaceholderPick,
 ): PlaceholderRolls {
   const placeholders = allPlaceholders(world);
-  return primeRolls(
-    placeholders, [...chipBearingTexts(world), ...valuePinRollChips(placeholders)], existing, pick, openingPinTexts(world),
-  );
+  const pinTexts = openingPinTexts(world);
+  const rolled = primeRolls(placeholders, [...chipBearingTexts(world), ...valuePinRollChips(placeholders)], existing, pick, pinTexts);
+  // Each bearer's trait text again through its copies, as Enter World primes it.
+  return bearerPriming(bearerWorldOf(world), [], world.placeholders ?? []).copyTexts
+    .reduce((rolls, { texts, copies }) => primeRolls(placeholders, texts, rolls, pick, pinTexts, copies), rolled);
 }
 
 /**
@@ -295,8 +299,12 @@ export function buildOpening(
   const start = openingStart(world, lens, choice.startLocationId);
   const { active, settled, seeded, location } = start;
   const pins = openingPins(world, start, rolls);
-  const resolve = (text: string) => resolvePlaceholders(text, { placeholders, rolls, pins });
-  const resolveEntity = (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders, rolls, pins });
+  const resolve = (text: string, copies?: CopyLookup) => resolvePlaceholders(text, { placeholders, rolls, pins, copies });
+  // Each cast entity's trait text reads its own copies.
+  const blueprints = { placeholders: world.placeholders ?? [], entities: world.entities ?? [] };
+  const resolveEntity = (entity: Entity, text: string) => resolveEntityText(entity, text, {
+    placeholders, rolls, pins, copies: copyLookup(blueprints, readerFor(undefined, entity, false)),
+  });
 
   const seededValue = new Map(seeded.map((stat) => [stat.id, stat.value]));
   const enabled = activeStatEnabled(world.stats ?? [], active);
@@ -324,7 +332,7 @@ export function buildOpening(
   const statName = new Map((world.stats ?? []).map((s) => [s.id, s.name || s.id]));
   const traits = active.map((trait): OpeningTrait => ({
     id: trait.id,
-    name: resolveLensText(trait.name, placeholders, pins),
+    name: resolveLensText(trait.name, placeholders, pins, lens.copies),
     isPc: trait.id === lens.pc?.id,
     // A pin's text is chip-capable, so it reads through the same rolls as everything else here.
     pins: (trait.placeholderPins ?? [])
@@ -425,7 +433,7 @@ export function buildOpening(
   const user = narrated ? '' : renderPromptTemplate(defaultNarrationUserPrompt, { '<PLAYER ACTION>': cue });
 
   return {
-    pcName: lens.pc ? resolveLensText(lens.pc.name, placeholders, pins) : null,
+    pcName: lens.pc ? resolveLensText(lens.pc.name, placeholders, pins, lens.copies) : null,
     location,
     locationName: location ? resolve(location.name) : '',
     startPool: start.pool.length,

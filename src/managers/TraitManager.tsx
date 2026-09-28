@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,8 @@ const TraitManager = ({
     updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld,
   } = useTraitStore();
   const ownerId = owner?.id;
+  // A link shows its original's text, which the world holds.
+  const traitField = useMemo(() => ({ owned: !!owner && !link }), [owner, link]);
   const linkWrite = link?.write;
   const write = useCallback(
     (next: Trait) => (linkWrite ? linkWrite(next) : ownerId ? editEntity(ownerId, (e) => updateOwnedTrait(e, next)) : updateTrait(next)),
@@ -199,6 +201,7 @@ const TraitManager = ({
           value={editingTrait.name || ''}
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
+          trait={traitField}
           ariaLabel="Name"
           readOnly={readOnly}
           // Code reaches world traits only, so an owned trait's rename has nothing to rewrite.
@@ -207,6 +210,7 @@ const TraitManager = ({
       </div>
       <PlaceholderField
         label="Player-Facing Description"
+        trait={traitField}
         value={editingTrait.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
@@ -215,6 +219,7 @@ const TraitManager = ({
       />
       <PlaceholderField
         label="AI-Facing Description"
+        trait={traitField}
         value={editingTrait.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}

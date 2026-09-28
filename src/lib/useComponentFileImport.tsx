@@ -4,6 +4,7 @@ import { toastError } from '@/lib/linkToast';
 import ConnectReferencesModal from '@/components/modals/ConnectReferencesModal';
 import { ImportComponentModal } from '@/components/modals/ImportComponentModal';
 import { addCopyToStoredWorld, storedWorldReferences } from '@/lib/addToStoredWorld';
+import { blueprintChipsRemovedNotice } from '@/lib/blueprintChips';
 import { associationRows, heldLibraryItem, type AssociationRow } from '@/lib/componentImport';
 import type { ComponentFileLinks } from '@/lib/componentFileLinks';
 import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
@@ -76,7 +77,8 @@ export function useComponentFileImport({ onFindWorld, onImported }: ComponentFil
     const held = placing.current;
     if (!held) return;
     try {
-      await addCopyToStoredWorld(world.worldId, held.content, held.source, plan);
+      const { blueprintChipsDropped } = await addCopyToStoredWorld(world.worldId, held.content, held.source, plan);
+      if (blueprintChipsDropped) toast.info(blueprintChipsRemovedNotice(blueprintChipsDropped, 'import'));
     } catch (error) {
       console.error('Could not add the imported component to a world:', error);
       toastError(error, { headline: `Could not add "${held.source.name}" to ${world.worldName}.` });

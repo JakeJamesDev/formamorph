@@ -51,7 +51,7 @@ import { buildEditorState, serializeRoot, $applyMarkdownAction } from './promptF
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin, useChipInsertRegistration } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
-import { PromptTokenPastePlugin } from './PromptTokenPastePlugin';
+import { PromptTokenPastePlugin, RefusedChipPastePlugin } from './PromptTokenPastePlugin';
 import { TOOLBAR_BTN } from './toolbarStyles';
 import { anchorAt, applyAnchor, captureAnchor, caretOffset, PROMPT_ANCHORS, type ScrollAnchor } from './previewScrollSync';
 
@@ -1019,6 +1019,7 @@ const PromptField = ({ value, onChange, variables = [], vocabulary, previewValue
         )}
         <SeededHistoryPlugin />
         {vocab.header && <PromptTokenPastePlugin vocab={vocab} />}
+        {vocab.refuses && <RefusedChipPastePlugin vocab={vocab} />}
         <ValueSyncPlugin value={value} onChange={onChange} parse={vocab.parse} onExternalValue={resetScroll} />
         <EditablePlugin readOnly={readOnly} />
         <OpenValuesPlugin active={valuesOpen} values={openValues ?? NO_OPEN_VALUES} parse={vocab.parse} pressed={pressedValue} />

@@ -3,7 +3,7 @@ import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
 import { characterAsPlayer } from '../builtinPlaceholders';
-import { readerFor } from '../blueprints';
+import { copyLookup, readerFor, type CopyLookup } from '../blueprints';
 import { borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
 import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
 import { bindBlueprintPins, traitScopedPins } from '../placeholderPins';
@@ -41,8 +41,8 @@ export interface AuthoredSceneOptions {
   /** The location the scene opens at, in place of a fresh starting-location roll. `null` is a real
    *  choice (nowhere), so only an absent field falls back. */
   location?: GameLocation | null;
-  /** Chip resolution, in place of a fresh unrecorded roll. */
-  resolve?: (text: string) => string;
+  /** Chip resolution, in place of a fresh unrecorded roll. `copies` is the player's, for the player's trait text. */
+  resolve?: (text: string, copies?: CopyLookup) => string;
   /** An entity's own text under `resolve`'s rolls and pins. Absent with `resolve` given, `resolve` alone reads it. */
   resolveEntity?: ResolveEntityText;
 }
@@ -74,23 +74,29 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
   const bearerOf = new Map(bearers.map((b) => [b.id, b]));
   const blueprints = { placeholders: world.placeholders ?? [], entities };
+  const readerOf = (bearer: Bearer) => readerFor(undefined, bearer.entity, bearer.isPlayer);
   const ownPins = (trait: Trait, bearer: Bearer | undefined) => traitScopedPins(
-    bearer ? bindBlueprintPins(trait, blueprints, readerFor(undefined, bearer.entity, bearer.isPlayer)) : trait, {}, placeholders,
+    bearer ? bindBlueprintPins(trait, blueprints, readerOf(bearer)) : trait, {}, placeholders,
   );
-  // An entity's trait reads its own pins, bound for that entity, with the entity as the Character Name.
+  const copiesOf = (bearer: Bearer | undefined) => (bearer ? copyLookup(blueprints, readerOf(bearer)) : undefined);
+  // An entity's trait reads its own pins and copies, bound for that entity, with the entity as the Character Name.
   const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
-    : (trait, text, owner) => resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, bearerOf.get(owner.id)) });
+    : (trait, text, owner) => {
+      const bearer = bearerOf.get(owner.id);
+      return resolveEntityText(owner, text, { placeholders, rolls: {}, pins: ownPins(trait, bearer), copies: copiesOf(bearer) });
+    };
   const withLinks = withBearerTrees(entities, bearers);
   const cast = resolveEntity
     ? resolveOwnedTraitTexts(resolveEntityTexts(withLinks, resolveEntity), resolveOwned, resolveEntity)
     : withLinks;
   const presentIds = entityIdsAt(location?.id, entities);
   const activeIds = new Set(options.activeTraitIds ?? player.traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
+  const playerCopies = copiesOf(player);
   // The player bears its traits: the Character Name reads as the Player Name, under a caller's resolve or own pins.
   const playerText = (trait: Trait, text: string) => (options.resolve
-    ? characterAsPlayer(text)
-    : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player) }));
+    ? options.resolve(characterAsPlayer(text), playerCopies)
+    : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player), copies: playerCopies }));
 
   return {
     overview: worldOverview?.systemPrompt || '',

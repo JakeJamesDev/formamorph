@@ -27,7 +27,7 @@ export function usePlaceholderResolver(): (text: string) => string {
 export function useEntityTextResolver(): ResolveEntityText {
   const { opts, pinSet } = useViewPins();
   return useCallback<ResolveEntityText>(
-    (entity, text) => resolveEntityText(entity, text, { ...opts, pins: pinSet.of(entity.id) }),
+    (entity, text) => resolveEntityText(entity, text, { ...opts, pins: pinSet.of(entity.id), copies: pinSet.copies(entity.id) }),
     [opts, pinSet],
   );
 }

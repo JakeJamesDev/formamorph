@@ -6,7 +6,7 @@ import WorldStorageService from '@/services/WorldStorageService';
 import type { LibrarySource } from './linkedContent';
 import type { ConnectionPlan } from './worldReferences';
 import { openingsEnabled } from './openings';
-import type { Dictionary, Entity, GameLocation, Placeholder, Trait, WorldOverview } from '@/types';
+import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, WorldOverview } from '@/types';
 
 vi.mock('@/services/AuthService', () => ({ default: { getCurrentUser: () => null } }));
 
@@ -17,7 +17,7 @@ const empty: ConnectionPlan = { placeholders: {}, locations: {}, newLocations: [
 /** Store one world with the sections `storeWorld` insists on, plus whatever the case needs. */
 async function storeWorld(over: {
   entities?: Entity[]; dictionaries?: Dictionary[]; placeholders?: Placeholder[]; locations?: GameLocation[];
-  openingsEnabled?: boolean; traits?: Trait[];
+  openingsEnabled?: boolean; traits?: Trait[]; placeholderGroups?: PlaceholderGroup[];
 } = {}) {
   await WorldStorageService.storeWorld({
     id: 'w-1',
@@ -33,6 +33,7 @@ async function storeWorld(over: {
       dictionaries: (over.dictionaries ?? []) as unknown as unknown[],
       placeholders: (over.placeholders ?? []) as unknown as unknown[],
       locations: (over.locations ?? []) as unknown as unknown[],
+      ...(over.placeholderGroups ? { placeholderGroups: over.placeholderGroups as unknown as unknown[] } : {}),
     },
   });
 }
@@ -73,6 +74,16 @@ describe('storedWorldReferences', () => {
 describe('addCopyToStoredWorld', () => {
   beforeEach(async () => {
     for (const id of await WorldStorageService.getWorldIds()) await WorldStorageService.deleteWorld(id);
+  });
+
+  it("drops a chip naming one of the world's blueprints from the copy's own text", async () => {
+    const garb: Placeholder = { id: 'garb', name: 'Garb', groupId: 'bp', values: [{ id: 'v1', text: 'tabard' }] };
+    await storeWorld({ placeholders: [garb], placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }] });
+
+    const added = await addCopyToStoredWorld('w-1', { id: 'lib-content', name: 'Wren', aiDescription: 'Wears {{ph:garb:world:p1}}.' }, source, empty);
+
+    expect((await storedWorld()).entities?.[0].aiDescription).toBe('Wears .');
+    expect(added.blueprintChipsDropped).toBe(1);
   });
 
   it('writes a linked copy that follows the library item', async () => {

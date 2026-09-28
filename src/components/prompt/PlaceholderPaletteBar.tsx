@@ -12,6 +12,7 @@ import { CHIP_PALETTE_ATTR, useChipInsertTarget } from './ChipInsertTarget';
 import { startPaletteChipDrag } from './chipDragSource';
 import ChipRowHeading from './ChipRowHeading';
 import BuiltinMark from './BuiltinMark';
+import BlueprintMark from './BlueprintMark';
 
 /**
  * One palette of the world's placeholders for a whole editor panel, rather than an insert row on every
@@ -30,7 +31,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
 }) => {
   const [collapsed, setCollapsed] = usePaletteCollapsed();
   const { insert, undo, ownerId, accepts } = useChipInsertTarget();
-  const vocab = usePlaceholderChipVocabulary(placeholders, scopeId, { builtins: true });
+  const vocab = usePlaceholderChipVocabulary(placeholders, scopeId, { builtins: true, anyField: true });
   const all = useMemo(() => vocab.palette(), [vocab]);
   // A rename edits the placeholder's own name; the chip may read it under an owner prefix.
   const bareName = (token: string) => placeholders.find((p) => p.id === decodePlaceholderToken(token)?.id)?.name ?? '';
@@ -126,6 +127,7 @@ const PlaceholderPaletteBar = ({ placeholders, scopeId, className }: {
                   style={{ backgroundColor: item.color, color: '#000' }}
                 >
                   {vocab.builtin?.(item.token) && <BuiltinMark />}
+                  {vocab.blueprint?.(item.token) && <BlueprintMark />}
                   {item.label}
                 </button>
               </Tip>

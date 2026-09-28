@@ -16,7 +16,9 @@ import { randomUUID } from '@/lib/uuid';
 import { unresolvedReferences, type ConnectionPlan, type ReferenceRow } from '@/lib/worldReferences';
 import WorldStorageService from '@/services/WorldStorageService';
 import { adoptOwnedTraits } from '@/lib/portableTraits';
-import type { Dictionary, Entity, GameLocation, Placeholder, Trait, TraitGroup, WorldOverview } from '@/types';
+import { dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
+import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup, WorldOverview } from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
 interface StoredContent extends Record<string, unknown> {
@@ -24,6 +26,7 @@ interface StoredContent extends Record<string, unknown> {
   entities?: Entity[];
   dictionaries?: Dictionary[];
   placeholders?: Placeholder[];
+  placeholderGroups?: PlaceholderGroup[];
   locations?: GameLocation[];
   traits?: Trait[];
   traitGroups?: TraitGroup[];
@@ -63,21 +66,26 @@ export async function storedWorldReferences(
  * @param content - The content to copy in
  * @param source - The library item the copy follows
  * @param plan - What each open reference resolves to here
+ * @returns How many blueprint chips the copy's own text lost
  */
 export async function addCopyToStoredWorld(
   worldId: string, content: LinkableContent, source: LibrarySource, plan: ConnectionPlan,
-): Promise<void> {
+): Promise<{ blueprintChipsDropped: number }> {
   const kind = kindOf(content);
+  let dropped = 0;
   await WorldStorageService.updateWorldContent(worldId, (raw) => {
     const data = raw as StoredContent;
     const shared = data.placeholders ?? [];
     const locations = data.locations ?? [];
     const withId = { ...content, id: randomUUID() } as LinkableContent;
+    const blueprints = blueprintIds(data);
 
     if (kind === 'dictionary') {
       const adopted = adoptBookPlaceholders(withId as Dictionary, shared, plan.placeholders);
+      const scrubbed = dropBookBlueprintChips(adopted.book, blueprints);
+      dropped = scrubbed.dropped;
       const book: Dictionary = {
-        ...adopted.book,
+        ...scrubbed.book,
         link: {
           ...linkToSource(source),
           ...(Object.keys(adopted.connections).length ? { connections: adopted.connections } : {}),
@@ -93,7 +101,9 @@ export async function addCopyToStoredWorld(
     const adopted = adoptEntityPlaceholders(withId as Entity, shared, plan.placeholders);
     const places = [...locations, ...plan.newLocations];
     const known = new Set(places.map((place) => place.id));
-    const { locationRefs = [], ...rest } = adopted.entity;
+    const scrubbed = dropEntityBlueprintChips(adopted.entity, blueprints);
+    dropped = scrubbed.dropped;
+    const { locationRefs = [], ...rest } = scrubbed.entity;
     // A membership the world cannot place is dropped rather than left pointing at a location it has not got.
     const used = Object.fromEntries(locationRefs.flatMap((ref) => {
       const id = plan.locations[ref.id] ?? ref.id;
@@ -123,4 +133,5 @@ export async function addCopyToStoredWorld(
       ...(plan.newLocations.length ? { locations: places } : {}),
     };
   });
+  return { blueprintChipsDropped: dropped };
 }

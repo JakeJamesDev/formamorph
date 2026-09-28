@@ -193,6 +193,7 @@ export function KeywordChips({
                   label={chipLabel(kw)}
                   style={chipStyleOf(kw)}
                   placeholders={placeholders}
+                  vocabulary={vocab}
                   suffix={chipSuffix?.(kw)}
                   onActivate={onChipClick}
                   onRemove={removeKeyword}

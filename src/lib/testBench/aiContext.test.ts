@@ -278,3 +278,26 @@ describe('a malformed world', () => {
     expect(roster(data, 'here').entities.map((e) => e.id)).toEqual(['e-both']);
   });
 });
+
+describe('a blueprint chip in the PC’s trait text', () => {
+  const garb: Placeholder = { id: 'garb', name: 'Garb', values: [{ id: 'v-tabard', text: 'tabard' }, { id: 'v-robe', text: 'robe' }] };
+  const worn = traits.map((t) => (t.id === 't-sedge' ? { ...t, aiDescription: 'Wears {{ph:garb:world:p9}}.' } : t));
+  // The Custom Persona entity's copy rewords tabard and removes robe, so it reads one fixed value.
+  const newcomer: Entity = {
+    id: 'cp', name: 'Newcomer', customPersona: true,
+    placeholders: [{
+      id: 'cp-garb', name: 'Garb', values: [], blueprintId: 'garb',
+      valueOverrides: { 'v-tabard': { text: { value: 'rags', blueprint: 'tabard' } }, 'v-robe': { removed: true } },
+    }],
+  };
+
+  it('reads the Custom Persona entity’s copy for the PC', () => {
+    const data = context(at('loc-harbor', 't-sedge'), { traits: worn, placeholders: [hairColor, garb], entities: [...entities, newcomer] });
+    expect(block(data, 'traits').text).toContain('Wears rags.');
+  });
+
+  it('reads the blueprint itself with no Custom Persona entity', () => {
+    const data = context(at('loc-harbor', 't-sedge'), { traits: worn, placeholders: [hairColor, garb] });
+    expect(block(data, 'traits').text).toContain('Wears {tabard|robe}.');
+  });
+});

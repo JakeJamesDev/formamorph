@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { placementLetters } from '@/lib/placementLetters';
 import { isOpeningFieldKey, openingFieldKey } from '@/lib/openings';
-import { collectSearchTargets, findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
+import { collectSearchTargets, findMatches, refusesBlueprintInsert, replaceAll, spliceText } from '@/lib/worldSearch';
 import type { SearchSources, SearchTarget } from '@/lib/worldSearch';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Trait, WorldOverview } from '@/types';
 
@@ -527,5 +527,42 @@ describe('replaceAll', () => {
 describe('spliceText', () => {
   it('replaces the given range only', () => {
     expect(spliceText('a fen here', 2, 5, 'marsh')).toBe('a marsh here');
+  });
+});
+
+describe('replaceAll — blueprint chips', () => {
+  const blueprints = new Set(['garb']);
+  const garbChip = encodePlaceholderToken({ id: 'garb', mode: 'world', placementId: 'place-g' });
+  const townChip = encodePlaceholderToken({ id: 'town', mode: 'world', placementId: 'place-t' });
+  const world = () => sources({
+    traits: [{ id: 't1', name: 'Paladin', aiDescription: 'sworn in the fen', statChanges: [] } as Trait],
+    traitGroups: [{ id: 'g1', name: 'Oaths', aiDescription: 'of the fen', parentId: null }],
+    locations: [{ id: 'l1', name: 'Landing', aiDescription: 'a fen shore' } as GameLocation],
+  });
+  const insert = (text: string) => (target: SearchTarget) => (refusesBlueprintInsert(target, text, blueprints) ? null : text);
+
+  it('puts a blueprint chip only into world trait and group text, and skips the rest', () => {
+    const { src, writes } = world();
+    const summary = replaceAll(findMatches(collectSearchTargets(src), 'fen', LOOSE), insert(garbChip));
+    expect(summary).toMatchObject({ replaced: 2, skipped: 1, skippedFields: ['Landing · AI-Facing Description'] });
+    expect(writes.map(([label]) => label).sort()).toEqual(['trait', 'traitGroup']);
+  });
+
+  it('takes a blueprint chip in a blueprint’s values and refuses it in a world placeholder’s', () => {
+    const { src, writes } = sources({
+      placeholders: [
+        { id: 'garb', name: 'Garb', groupId: 'bp', values: [{ id: 'v1', text: 'fen cloak' }] },
+        { id: 'town', name: 'Town', values: [{ id: 'v2', text: 'fen town' }] },
+      ],
+      placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }],
+    });
+    const summary = replaceAll(findMatches(collectSearchTargets(src), 'fen', LOOSE), insert(garbChip));
+    expect(summary).toMatchObject({ replaced: 1, skipped: 1, skippedFields: ['Town · Values'] });
+    expect(writes).toHaveLength(1);
+  });
+
+  it('puts any other chip everywhere a chip goes', () => {
+    const { src } = world();
+    expect(replaceAll(findMatches(collectSearchTargets(src), 'fen', LOOSE), insert(townChip))).toMatchObject({ replaced: 3, skipped: 0 });
   });
 });

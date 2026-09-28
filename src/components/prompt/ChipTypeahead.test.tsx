@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChipInput from './ChipInput';
+import TagChipField from './TagChipField';
 import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
@@ -524,5 +525,48 @@ describe('ChipTypeahead — owner headings', () => {
     await open();
     expect(within(menu()!).getByText('Looks')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'Entity' })).not.toBeInTheDocument();
+  });
+});
+
+describe('the { menu and blueprint chips', () => {
+  const garb: Placeholder = { id: 'garb', name: 'Garb', groupId: 'bp', values: phValues(['tabard', 'robe']) };
+  const town: Placeholder = { id: 'town', name: 'Town', values: phValues(['Harrow']) };
+  const lists = {
+    placeholders: [garb, town], entities: [], dictionaries: [],
+    placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }],
+  };
+  const worldTrait = { owned: false };
+
+  /** A chip field under the world's store, which says which placeholders are blueprints. */
+  function Inner({ trait, tags }: { trait?: { owned: boolean }; tags: boolean }) {
+    const [value, setValue] = useState('.');
+    const vocabulary = usePlaceholderChipVocabulary(lists.placeholders, undefined, { trait });
+    return tags
+      ? <TagChipField value={value} onChange={setValue} placeholders={lists.placeholders} ariaLabel="Name" />
+      : <ChipInput value={value} onChange={setValue} vocabulary={vocabulary} ariaLabel="Name" />;
+  }
+  function BlueprintField({ trait, tags = false }: { trait?: { owned: boolean }; tags?: boolean }) {
+    return (
+      <PlaceholderStoreProvider value={{ ...placeholderStore(lists.placeholders, () => {}), lists }}>
+        <Inner trait={trait} tags={tags} />
+      </PlaceholderStoreProvider>
+    );
+  }
+
+  it('offers a blueprint in a world trait’s text', async () => {
+    render(<BlueprintField trait={worldTrait} />);
+    await open();
+    expect(offered()).toEqual(expect.arrayContaining(['Garb', 'Town']));
+  });
+
+  it.each([
+    ['an entity-owned trait', { trait: { owned: true } }],
+    ['any other field', {}],
+    ['an image tags field', { tags: true }],
+  ])('leaves blueprints out of %s', async (_name, props) => {
+    render(<BlueprintField {...props} />);
+    await open();
+    expect(offered()).toContain('Town');
+    expect(offered()).not.toContain('Garb');
   });
 });

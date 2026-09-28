@@ -309,3 +309,38 @@ describe('the library entities in play', () => {
     expect(inPlayLibrary(world, null)).toEqual([]);
   });
 });
+
+describe('blueprint chips per bearer — copies and priming', () => {
+  const chipOf = (id: string) => `{{ph:${id}:world:p-${id}}}`;
+  // Paladin's text places Class Garb; each bearer should read and roll its own copy.
+  const texted = { ...world, traits: world.traits.map((t) => (t.id === 'paladin' ? { ...t, aiDescription: `Wears ${chipOf('garb')}.` } : t)) };
+  const withText = (persona: PersonaRef) => bearerPins(
+    { world: texted, persona, library: [lib], playerTraits: [], owned, sharedPlaceholders: shared }, { placeholders: allPlaceholders },
+  );
+
+  it("gives each bearer a copy lookup that reads its own copy, and the player's under the played persona", () => {
+    expect(withText(NONE).copies('albus')('garb')?.id).toBe('albus-garb');
+    expect(withText(NONE).copies('mira')('garb')).toBeUndefined();
+    expect(withText(NONE).copies(null)('garb')).toBeUndefined();
+    expect(withText(AS_ALBUS).copies(null)('garb')?.id).toBe('albus-garb');
+    expect(withText(AS_LIB).copies(null)('garb')?.id).toBe('lib-garb');
+  });
+
+  const readsOf = (text: string) => {
+    const withCloak = { ...texted, traits: texted.traits.map((t) => (t.id === 'cloak' ? { ...t, aiDescription: text } : t)) };
+    return new Set(bearerPriming(withCloak, [lib], shared).copyTexts
+      .filter((g) => g.texts.includes(text)).map((g) => g.copies('garb')?.id ?? 'garb'));
+  };
+
+  it("primes a linked original's text under each linking bearer's copy lookup", () => {
+    // Albus's and Bo's copies; Mira and the Custom Persona entity hold none and read the blueprint.
+    const { copyTexts } = bearerPriming(texted, [lib], shared);
+    const reads = copyTexts.filter((g) => g.texts.includes(`Wears ${chipOf('garb')}.`)).map((g) => g.copies('garb')?.id ?? 'garb');
+    expect(new Set(reads)).toEqual(new Set(['albus-garb', 'bo-garb', 'garb']));
+  });
+
+  it("primes a root trait's text once per way the player can be played", () => {
+    // None, Albus as a world persona, and Wren as the library persona.
+    expect(readsOf(`Cloaked in ${chipOf('garb')}.`)).toEqual(new Set(['garb', 'albus-garb', 'lib-garb']));
+  });
+});

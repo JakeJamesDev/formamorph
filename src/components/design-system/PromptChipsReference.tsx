@@ -9,7 +9,7 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import { PlaceholderStoreProvider, placeholderStore } from '@/contexts/PlaceholderStoreContext';
 import { placeholderOwners } from '@/lib/placeholderHomes';
-import type { Entity, Placeholder } from '@/types';
+import type { Entity, Placeholder, PlaceholderGroup } from '@/types';
 
 const SAMPLE = '<TRAITS DESCRIPTION|markdown|header="traits">'
   + '<PERSONA|markdown|header="player character">'
@@ -77,6 +77,46 @@ export function PromptChipsReference() {
         </PlaceholderStoreProvider>
       </CardContent>
     </Card>
+    <BlueprintChipsReference readOnly={readOnly} />
     </>
+  );
+}
+
+// A world with one blueprint: Garb, in the Blueprints group, beside the world placeholder Town.
+const BLUEPRINTS_GROUP: PlaceholderGroup = { id: 'reference-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' };
+const BLUEPRINT_PLACEHOLDERS: Placeholder[] = [
+  ...PLACEHOLDERS,
+  { id: 'reference-garb', name: 'Garb', groupId: BLUEPRINTS_GROUP.id, values: [
+    { id: 'reference-tabard', text: 'a tabard' }, { id: 'reference-robe', text: 'a robe' },
+  ] },
+];
+
+/** A blueprint chip carries the link glyph. A world trait's text takes one; an entity's field refuses it. */
+function BlueprintChipsReference({ readOnly }: { readOnly: boolean }) {
+  const [trait, setTrait] = useState('Sworn in {{ph:reference-garb:world:reference-p1}} at {{ph:reference-town:world:reference-p2}}.');
+  const [entity, setEntity] = useState('');
+  const [placeholders, setPlaceholders] = useState(BLUEPRINT_PLACEHOLDERS);
+  const store = useMemo(() => {
+    const lists = { placeholders, placeholderGroups: [BLUEPRINTS_GROUP], dictionaries: [], entities: [OWNER] };
+    return { ...placeholderStore(placeholders, setPlaceholders), lists, owners: placeholderOwners(lists) };
+  }, [placeholders]);
+  const worldTrait = useMemo(() => ({ owned: false }), []);
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-heading">Blueprint Chips</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <PlaceholderStoreProvider value={store}>
+        <EditorPreviewRollsProvider>
+          <ChipInsertTargetProvider>
+            <PlaceholderPaletteBar placeholders={placeholders} />
+            <PlaceholderField value={trait} onChange={setTrait} placeholders={placeholders} trait={worldTrait}
+              readOnly={readOnly} label="Trait Description" ariaLabel="Trait Description" />
+            <PlaceholderField value={entity} onChange={setEntity} placeholders={placeholders}
+              ownerId={OWNER.id} ownerName={OWNER.name} readOnly={readOnly} label="Entity Description" ariaLabel="Blueprint Entity Description" />
+          </ChipInsertTargetProvider>
+        </EditorPreviewRollsProvider>
+        </PlaceholderStoreProvider>
+      </CardContent>
+    </Card>
   );
 }

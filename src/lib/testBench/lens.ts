@@ -12,7 +12,7 @@ import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
-import { readerFor } from '@/lib/blueprints';
+import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
@@ -94,6 +94,8 @@ export interface BenchLens {
   brokenPins: BrokenPin[];
   /** Stat id → whether it is live under this PC — the world's defaults with the PC's toggles over them. */
   statEnabled: Record<string, boolean>;
+  /** What the PC's trait text reads a blueprint chip as: the Custom Persona entity's copy, else the blueprint. */
+  copies: CopyLookup;
 }
 
 /**
@@ -216,6 +218,7 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
     pinLayers,
     brokenPins: brokenPinsOf(pinLayers, placeholders),
     statEnabled: activeStatEnabled(world.stats ?? [], active),
+    copies: copyLookup(lensBlueprints(world), LENS_READER),
   };
 }
 
@@ -231,10 +234,13 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
 /** Every trait whose pins world-level text reads in a fresh game under the lens: the player's `active`, with
  *  no persona, so a blueprint pin traces to the Custom Persona entity's copy, else the blueprint. */
 export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
-  const blueprints = { placeholders: world.placeholders ?? [], entities: world.entities ?? [] };
-  const reader = readerFor({ source: 'none' }, null, true);
-  return active.map((t) => bindBlueprintPins(t, blueprints, reader));
+  const blueprints = lensBlueprints(world);
+  return active.map((t) => bindBlueprintPins(t, blueprints, LENS_READER));
 }
+
+/** The lens reads blueprints as the None player. */
+const LENS_READER = readerFor({ source: 'none' }, null, true);
+const lensBlueprints = (world: LensWorld) => ({ placeholders: world.placeholders ?? [], entities: world.entities ?? [] });
 
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {
   const { traits, groups } = lensPlayer(world);
@@ -278,4 +284,6 @@ export const resolveLensText = (
   text: string,
   placeholders: Placeholder[] | undefined,
   pins: Record<string, string>,
-): string => describePlaceholders(text, placeholders ?? [], pins);
+  /** The bearer's copy lookup, for its trait text. */
+  copies?: CopyLookup,
+): string => describePlaceholders(text, placeholders ?? [], pins, copies);
