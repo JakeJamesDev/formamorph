@@ -14,7 +14,9 @@ import { WORLD_EDITOR_TABS } from '@/views/worldEditorTabs';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken, encodePlaceholderToken, newPlaceholder } from '@/lib/placeholders';
 import { randomUUID } from '@/lib/uuid';
-import { findMatches, replaceAll, spliceText } from '@/lib/worldSearch';
+import { findMatches, refusesBlueprintInsert, replaceAll, spliceText } from '@/lib/worldSearch';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
+import { dropBlueprintChips } from '@/lib/blueprintChips';
 import { codeNameReader, codeRenameTarget } from '@/lib/statCodeRename';
 import { useCodeRenameOffer } from '@/lib/useCodeRename';
 import type { SearchMatch, SearchTarget } from '@/lib/worldSearch';
@@ -192,13 +194,22 @@ export default function EditorFindBar({
     : null;
   const canReplace = matches.length > 0 && (!placeholderMode || chip !== null);
 
+  const blueprints = useMemo(
+    () => blueprintIds({ placeholders: [...placeholders], placeholderGroups: [...(placeholderGroups ?? [])] }),
+    [placeholders, placeholderGroups],
+  );
+  // What a skip says the field lacks: a blueprint chip goes only in world trait text.
+  const insertsBlueprint = placeholderMode ? !!chip && blueprints.has(chip.id) : dropBlueprintChips(replaceText, blueprints).dropped > 0;
+  const missingChip = insertsBlueprint ? 'a blueprint chip' : 'a chip';
+
   /** What one occurrence becomes in `target` — null when the field can't hold it. */
   const insertFor = useCallback((target: SearchTarget): string | null => {
-    if (!placeholderMode) return replaceText;
-    if (!chip || !target.chipCapable) return null;
-    // Unique rolls are keyed by placement, so every occurrence gets its own id.
-    return encodePlaceholderToken({ id: chip.id, mode: 'world', placementId: randomUUID() });
-  }, [placeholderMode, replaceText, chip]);
+    const insert = !placeholderMode ? replaceText
+      : !chip || !target.chipCapable ? null
+      // Unique rolls are keyed by placement, so every occurrence gets its own id.
+      : encodePlaceholderToken({ id: chip.id, mode: 'world', placementId: randomUUID() });
+    return insert !== null && refusesBlueprintInsert(target, insert, blueprints) ? null : insert;
+  }, [placeholderMode, replaceText, chip, blueprints]);
 
   /**
    * A replace that rewrote a name is a rename, and the code that named it deserves the same offer a rename
@@ -233,7 +244,7 @@ export default function EditorFindBar({
     const insert = insertFor(current.target);
     if (insert === null) {
       // Stepping past in silence reads as a dead button, and with a single match nothing moves at all.
-      setNotice(`${current.target.fieldLabel} can't hold a chip — skipped.`);
+      setNotice(`${current.target.fieldLabel} can't hold ${missingChip} — skipped.`);
       step(1);
       return;
     }
@@ -247,7 +258,7 @@ export default function EditorFindBar({
     const summary = replaceAll(matches, insertFor, noteRename);
     setConfirmAll(false);
     const skipped = summary.skipped
-      ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold a chip.`
+      ? ` ${summary.skipped} skipped in ${summary.skippedFields.length} field${summary.skippedFields.length === 1 ? '' : 's'} that can't hold ${missingChip}.`
       : '';
     const chips = summary.chips
       ? ` ${summary.chips} chip${summary.chips === 1 ? '' : 's'} left as ${summary.chips === 1 ? 'it is' : 'they are'} — a chip changes from its pop-out.`
@@ -432,11 +443,11 @@ export default function EditorFindBar({
             <AlertDialogTitle>Replace All</AlertDialogTitle>
             <AlertDialogDescription>
               {(() => {
-                const eligible = placeholderMode ? matches.filter((m) => m.target.chipCapable) : matches;
+                const eligible = matches.filter((m) => insertFor(m.target) !== null);
                 const fields = new Set(eligible.map((m) => m.target)).size;
                 const skipped = matches.length - eligible.length;
                 return `Replace ${eligible.length} match${eligible.length === 1 ? '' : 'es'} across ${fields} field${fields === 1 ? '' : 's'}?`
-                  + (skipped ? ` ${skipped} in fields that can't hold a chip will be skipped.` : '')
+                  + (skipped ? ` ${skipped} in fields that can't hold ${missingChip} will be skipped.` : '')
                   + ' Discard Changes is the only way back.';
               })()}
             </AlertDialogDescription>

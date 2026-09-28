@@ -265,3 +265,29 @@ export function lookupCopy(world: BlueprintWorld, blueprintId: string, reader: C
     ?? (reader.viaCustomPersona ? copyOf(customPersonaEntity(world.entities), blueprintId) : undefined);
   return copy ? effectiveCopy(copy, blueprint) : blueprint;
 }
+
+/** Blueprint id → the effective copy one bearer reads in its place; undefined where it reads the blueprint. */
+export type CopyLookup = (blueprintId: string) => Placeholder | undefined;
+
+/** {@link lookupCopy} for one reader, remembered per id, answering only where a copy stands in. */
+export function copyLookup(world: BlueprintWorld, reader: CopyReader): CopyLookup {
+  const found = new Map<string, Placeholder | undefined>();
+  return (id) => {
+    if (!found.has(id)) {
+      const read = lookupCopy(world, id, reader);
+      found.set(id, read && read.id !== id ? read : undefined);
+    }
+    return found.get(id);
+  };
+}
+
+/** The list with each copy whose blueprint it holds read through that blueprint, so a chip aimed at a copy
+ *  reads its effective values. The same list when it holds no copy. */
+export function withEffectiveCopies(placeholders: readonly Placeholder[]): readonly Placeholder[] {
+  if (!placeholders.some(isCopy)) return placeholders;
+  const byId = new Map(placeholders.map((p) => [p.id, p]));
+  return placeholders.map((p) => {
+    const blueprint = p.blueprintId ? byId.get(p.blueprintId) : undefined;
+    return blueprint ? effectiveCopy(p, blueprint) : p;
+  });
+}

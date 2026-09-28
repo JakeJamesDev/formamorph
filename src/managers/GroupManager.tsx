@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
     [ownerId, editEntity, updateTraitGroup],
   );
   const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, write);
+  const traitField = useMemo(() => ({ owned: !!ownerId }), [ownerId]);
 
   if (!editingGroup) return null;
 
@@ -32,6 +33,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
       <div className="space-y-2">
         <Label>Group Name</Label>
         <PlaceholderNameField
+          trait={traitField}
           value={editingGroup.name || ''}
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
@@ -40,6 +42,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         />
       </div>
       <PlaceholderField
+        trait={traitField}
         label="Player-Facing Description"
         value={editingGroup.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
@@ -50,6 +53,7 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         resizable
       />
       <PlaceholderField
+        trait={traitField}
         label="AI-Facing Description"
         value={editingGroup.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}

@@ -15,6 +15,7 @@ import { PLACEHOLDER_PATH_SEPARATOR } from '@/lib/placeholders';
 import { chipRowMatches, chipSectionOpens, type ChipRow, type ChipVocabulary } from '@/lib/chipVocabulary';
 import ChipRowHeading from './ChipRowHeading';
 import BuiltinMark from './BuiltinMark';
+import BlueprintMark from './BlueprintMark';
 import { $createVariableNode } from './VariableNode';
 
 /**
@@ -307,6 +308,7 @@ export function ChipTypeaheadPlugin({ trigger, vocab }: {
             >
               <span className={cn(CHIP_BASE, 'border')} style={{ backgroundColor: item.color, color: '#000' }}>
                 {vocab.builtin?.(item.token) && <BuiltinMark />}
+                {vocab.blueprint?.(item.token) && <BlueprintMark />}
                 {item.label}
               </span>
             </button>

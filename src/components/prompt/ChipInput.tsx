@@ -16,6 +16,7 @@ import { buildEditorState, serializeRoot } from './promptFieldState';
 import { ChipTypeaheadPlugin } from './ChipTypeahead';
 import { ChipInsertTargetPlugin } from './ChipInsertTarget';
 import { ChipDragPlugin } from './ChipDrag';
+import { RefusedChipPastePlugin } from './PromptTokenPastePlugin';
 
 /**
  * A one-line chip editor shaped like an ordinary text input — for name fields, where the full prompt editor's
@@ -281,6 +282,7 @@ const ChipInput = ({ value, onChange, vocabulary, placeholder, ariaLabel, classN
           <Surface placeholder={placeholder} ariaLabel={ariaLabel} className={className} multiline={multiline} />
           <HistoryPlugin />
           <ValueSyncPlugin value={value} onChange={onChange} parse={vocabulary.parse} />
+          {vocabulary.refuses && <RefusedChipPastePlugin vocab={vocabulary} />}
           {!multiline && <SingleLinePlugin onSubmit={onSubmit} />}
           {(onFocus || onBlur) && <FocusPlugin onFocus={onFocus} onBlur={onBlur} />}
           {autoFocus && <AutoFocusPlugin />}

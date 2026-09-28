@@ -33,7 +33,9 @@ import {
   type ConnectionPlan, type ReferenceChoices, type ReferenceRow,
 } from '@/lib/worldReferences';
 import { adoptOwnedTraits } from '@/lib/portableTraits';
-import type { Dictionary, Entity, GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
+import { blueprintChipsRemovedNotice, dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
+import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup } from '@/types';
 
 const HELP_TOPIC = 'library.linkedContent';
 
@@ -62,6 +64,8 @@ interface LibraryLinkingOptions {
   placeholders: Placeholder[];
   /** The world's shared list on its own — what an arriving copy's world-owned references resolve against. */
   worldPlaceholders: Placeholder[];
+  /** The world's placeholder folders, which say which shared placeholders are blueprints. */
+  placeholderGroups: PlaceholderGroup[];
   locations: GameLocation[];
   /** The world's own traits and groups, which an entity's owned trait requirements name or bind to. */
   traits: Trait[];
@@ -257,16 +261,22 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
     const gained: Placeholder[] = [];
     // Two copies added together must not share owned trait ids, so each sees the ones before it.
     const added: Entity[] = [];
+    const blueprints = blueprintIds({ placeholders: current.worldPlaceholders, placeholderGroups: current.placeholderGroups });
+    let dropped = 0;
     for (const entry of pending) {
       const shared = [...current.worldPlaceholders, ...gained];
       if (entry.kind === 'dictionary') {
         const adopted = adoptBookPlaceholders(entry.item as Dictionary, shared, plan.placeholders);
         gained.push(...adopted.toAdd);
-        current.addBookToWorld(withConnections(adopted.book, adopted.connections));
+        const kept = dropBookBlueprintChips(adopted.book, blueprints);
+        dropped += kept.dropped;
+        current.addBookToWorld(withConnections(kept.book, adopted.connections));
       } else {
         const adopted = adoptEntityPlaceholders(entry.item as Entity, shared, plan.placeholders);
         gained.push(...adopted.toAdd);
-        const { locationRefs = [], ...rest } = adopted.entity;
+        const kept = dropEntityBlueprintChips(adopted.entity, blueprints);
+        dropped += kept.dropped;
+        const { locationRefs = [], ...rest } = kept.entity;
         const used = Object.fromEntries(locationRefs.flatMap((ref) => {
           const id = plan.locations[ref.id] ?? ref.id;
           return placeIds.has(id) ? [[ref.id, id]] : [];
@@ -280,6 +290,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       if (entry.source) notePendingLink(entry.source.id);
     }
     gained.forEach(current.addPlaceholder);
+    if (dropped) toast.info(blueprintChipsRemovedNotice(dropped, 'import'));
   }, [notePendingLink]);
 
   /**

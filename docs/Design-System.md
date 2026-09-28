@@ -138,6 +138,8 @@ Open `#dev?modal=designSystem&tab=prompt-chips` for the production-backed [Promp
 
 Built-in Placeholders (**Player Name**, **Character Name**) keep the chip shape and accent. Each carries a leading `Sparkles` icon from [`BuiltinMark`](../src/components/prompt/BuiltinMark.tsx) in the palette, the `{` menu, and the field.
 
+A blueprint chip keeps the chip shape and its placeholder's accent. It carries a leading `Link2` icon from [`BlueprintMark`](../src/components/prompt/BlueprintMark.tsx) in the same three places, because it reads each bearer's own copy. The showcase's **Blueprint Chips** card shows it.
+
 - The palette and the `{` menu list them first, under a quiet **Built-in** heading.
 - A placed Built-in chip opens no pop-out. Its tooltip says what it becomes.
 - A palette chip that the focused field refuses stays in place, dimmed, so the strip doesn't reflow.

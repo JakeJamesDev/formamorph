@@ -140,7 +140,9 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       traits: [...traits, ...perBearer.pinTraits], entities: [...entities, ...library], locations, stats, placeholders,
     });
     setRolls((prev) => {
-      const next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
+      let next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
+      // A blueprint chip in trait text rolls each bearer's copy, so each bearer's text is walked again through it.
+      for (const { texts: own, copies } of perBearer.copyTexts) next = primeRolls(placeholders, own, next, weightedPick, pinTexts, copies);
       return sameRolls(prev, next) ? prev : next;
     });
   }, [

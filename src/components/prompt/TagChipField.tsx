@@ -14,6 +14,7 @@ import { usePlaceholderStoreOptional } from '@/contexts/PlaceholderStoreContext'
 import { PLACEHOLDER_TRIGGER, placeholderHint } from '@/lib/placeholderInsert';
 import { cn } from '@/lib/utils';
 import type { Placeholder } from '@/types';
+import { blueprintIds } from '@/lib/placeholderBlueprints';
 import ChipInput from './ChipInput';
 import { $flatCaret, $replaceFlatRange, serializeRoot } from './promptFieldState';
 
@@ -161,9 +162,12 @@ const TagChipField = ({ value, onChange, placeholders, ownerId, placeholder, ari
   const store = usePlaceholderStoreOptional();
   const owners = store?.owners;
   const scope = useOwnerScope(store?.lists, ownerId);
+  const lists = store?.lists;
+  // Image tags are no trait or blueprint text, so they refuse blueprint chips.
+  const blueprints = useMemo(() => (lists ? blueprintIds(lists) : undefined), [lists]);
   const vocab = useMemo(
-    () => placeholderVocabulary(placeholders, { ownerId, owners, scope }),
-    [placeholders, ownerId, owners, scope],
+    () => placeholderVocabulary(placeholders, { ownerId, owners, scope, blueprints, refusesBlueprints: true }),
+    [placeholders, ownerId, owners, scope, blueprints],
   );
   return (
     <ChipInput

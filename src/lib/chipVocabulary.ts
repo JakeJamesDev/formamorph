@@ -32,6 +32,8 @@ import {
 import { placeholderGroupOf, placeholderGroupsInTreeOrder } from './placeholderGroups';
 import { BUILTIN_HEADING, BUILTIN_PLACEHOLDERS, builtinForToken, type BuiltinPlaceholder } from './builtinPlaceholders';
 import type { PlaceholderGroup } from '@/types';
+import { acceptsBlueprintChips, isBlueprintChip, type ChipField } from './blueprintChips';
+import { blueprintIds } from './placeholderBlueprints';
 
 /** One token a menu or picker offers, named for the reader. */
 export interface ChipRow {
@@ -160,6 +162,9 @@ export interface ChipVocabulary {
   freshInsertToken(token: string): string;
   /** True when this destination may accept a palette token. Omit when every offered token is valid. */
   acceptsPaletteToken?(token: string): boolean;
+  /** True for a token this field refuses on every path, a paste included: a blueprint chip outside
+   *  blueprint-side text. */
+  refuses?(token: string): boolean;
   /** The rows one level under this token — each the same chip drilled one segment deeper. Present only where
    *  the family has structure to walk; the static prompt variables have none. */
   drill?(token: string): ChipRow[];
@@ -185,6 +190,8 @@ export interface ChipVocabulary {
   fixed?(token: string): boolean;
   /** True for a Built-in Placeholder chip, which carries the Built-in mark and opens no pop-out. */
   builtin?(token: string): boolean;
+  /** True for a chip naming a blueprint, which carries the blueprint mark. */
+  blueprint?(token: string): boolean;
 }
 
 const HEADER_FORMAT_AXIS: PromptVariantAxis = {
@@ -281,6 +288,8 @@ const PLACEHOLDER_MODE_AXIS_FIXED: PromptVariantAxis = {
   readOnlyHelp: 'Draws the same value everywhere, so Unique would change nothing. Unlocks once the placeholder can roll.',
 };
 
+const NO_IDS: ReadonlySet<string> = new Set();
+
 // Palette tokens carry a sentinel placement id; freshInsertToken re-mints a real one on insertion.
 const PALETTE_PID = 'palette';
 
@@ -333,7 +342,7 @@ export function placeholderVocabulary(
    *  displayed — the chips are then not renameable and the typeahead offers no inline create. */
   {
     onRename, onCreate, onPromote, ownerId, owners, scope: scopeOwner, groups, letters = EMPTY_LETTERS, builtins = false,
-    ownerKind = scopeOwner?.kind,
+    ownerKind = scopeOwner?.kind, blueprints = NO_IDS, refusesBlueprints = false,
   }: {
     onRename?: (placeholder: Placeholder) => void;
     /** `home` names the list a member made inside an entity's or book's fields lands in. */
@@ -359,10 +368,15 @@ export function placeholderVocabulary(
     /** The kind of entity or book whose own fields these are, where no world list says so: a library item
      *  is its own document. Defaults to `scope`'s kind. */
     ownerKind?: PlaceholderOwnerRef['kind'];
+    /** The world's blueprints, whose chips carry the blueprint mark. */
+    blueprints?: ReadonlySet<string>;
+    /** The field refuses blueprint chips: no menu offers one and no path inserts one. */
+    refusesBlueprints?: boolean;
   } = {},
 ): ChipVocabulary {
+  const refused = refusesBlueprints ? blueprints : NO_IDS;
   const byId = new Map(placeholders.map((p) => [p.id, p]));
-  const paletteIds = new Set(topLevelPlaceholders(placeholders).map((p) => p.id));
+  const paletteIds = new Set(topLevelPlaceholders(placeholders).filter((p) => !refused.has(p.id)).map((p) => p.id));
   const cycleExclusions = ownerId ? placeholderCycleExclusions(placeholders, ownerId) : null;
   const offered = BUILTIN_PLACEHOLDERS.filter((row) => row.visible({ offered: builtins, ownerKind }));
   /** What one path segment adds, named by itself: a slot is already a name, a val names what it picks. */
@@ -498,14 +512,14 @@ export function placeholderVocabulary(
     palette: () => [
       ...offered.map(builtinRow),
       ...sectionedRows(
-        topLevelPlaceholders(placeholders),
+        topLevelPlaceholders(placeholders).filter((p) => paletteIds.has(p.id)),
         (p, underOwner) => (underOwner ? p.name : `${prefixFor(p.id)}${p.name}`),
       ),
     ],
     // The same sections, plus what one placeholder owns — a picker looking a name up needs the owned rows
     // too, and each keeps the holder chain that tells it from a root of the same name.
     allRows: () => sectionedRows(
-      placeholders,
+      refused.size ? placeholders.filter((p) => !refused.has(p.id)) : placeholders,
       (p, underOwner) => {
         const qualified = qualifiedPlaceholderName(placeholders, p.id) ?? p.name;
         return underOwner ? qualified : `${prefixFor(p.id)}${qualified}`;
@@ -522,6 +536,8 @@ export function placeholderVocabulary(
       const id = decodePlaceholderToken(t)?.id;
       return !!id && paletteIds.has(id) && !cycleExclusions?.has(id);
     },
+    refuses: (t) => isBlueprintChip(t, refused),
+    blueprint: (t) => isBlueprintChip(t, blueprints),
     // A row names only the part it adds; the breadcrumb above it carries where that part sits, and the
     // inserted chip's own label spells the whole path out.
     drill: (t) => {
@@ -614,8 +630,10 @@ export function usePlaceholderChipVocabulary(
   /** Whose fields these are — a placeholder's own value list, or an entity's or book's fields — see
    *  `ownerId` on {@link placeholderVocabulary}. */
   ownerId?: string,
-  /** Offer the Built-in chips: prose fields and the palette strip do, name and keyword fields do not. */
-  { builtins = false }: { builtins?: boolean } = {},
+  /** Offer the Built-in chips: prose fields and the palette strip do, name and keyword fields do not.
+   *  `trait` marks a trait's or trait group's text, `owned` when an entity holds it. `anyField`: the
+   *  vocabulary serves no one field (the palette strip), so it refuses no blueprint. */
+  { builtins = false, trait, anyField = false }: { builtins?: boolean; trait?: { owned: boolean }; anyField?: boolean } = {},
 ): ChipVocabulary {
   const store = usePlaceholderStoreOptional();
   const letters = usePlacementLetters();
@@ -630,14 +648,23 @@ export function usePlaceholderChipVocabulary(
     [setPlaceholders],
   );
   const scope = useOwnerScope(lists, ownerId);
+  const traitOwned = trait?.owned;
+  const blueprints = useMemo(() => (lists ? blueprintIds(lists) : NO_IDS), [lists]);
+  const refusesBlueprints = useMemo(() => {
+    if (!lists || anyField) return false;
+    // An owner that is no entity or book is a placeholder: these are its values.
+    const field: ChipField = ownerId && !scope ? { kind: 'values', placeholderId: ownerId }
+      : traitOwned !== undefined ? { kind: 'trait', owned: traitOwned } : { kind: 'text' };
+    return !acceptsBlueprintChips(field, lists);
+  }, [lists, ownerId, scope, traitOwned, anyField]);
   // Off-world, the store says whose item it is; a field naming another owner (a value list) is not its.
   const bound = store?.owner;
   const ownerKind = scope?.kind ?? (bound && (!ownerId || ownerId === bound.id) ? bound.kind : undefined);
   return useMemo(
     () => placeholderVocabulary(placeholders, {
-      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind,
+      onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind, blueprints, refusesBlueprints,
     }),
-    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind],
+    [placeholders, onRename, onCreate, onPromote, ownerId, owners, scope, groups, letters, builtins, ownerKind, blueprints, refusesBlueprints],
   );
 }
 
@@ -675,6 +702,8 @@ export function worldPromptVocabulary(prompt: ChipVocabulary, placeholder: ChipV
       const family = familyOf(t);
       return family.isKnown(t) && (family.acceptsPaletteToken?.(t) ?? true);
     },
+    refuses: (t) => placeholderFamilyOf(t)?.refuses?.(t) ?? false,
+    blueprint: (t) => placeholderFamilyOf(t)?.blueprint?.(t) ?? false,
     drill: (t) => placeholderFamilyOf(t)?.drill?.(t) ?? [],
     structure: (t) => placeholderFamilyOf(t)?.structure?.(t) ?? null,
     repoint: (t, at) => placeholderFamilyOf(t)?.repoint?.(t, at) ?? t,

@@ -166,7 +166,7 @@ export function useResolvedAuthoredWorld(
   }, [placeholders, rolls, pins, personaName]);
   const resolveEntityFor = useCallback(
     (withPins: PinSet, entity: Entity, text: string) =>
-      resolveEntityCore(entity, text, { placeholders, rolls, pins: withPins.of(entity.id), player }),
+      resolveEntityCore(entity, text, { placeholders, rolls, pins: withPins.of(entity.id), player, copies: withPins.copies(entity.id) }),
     [placeholders, rolls, player],
   );
   const resolveEntityText = useCallback(
@@ -176,7 +176,7 @@ export function useResolvedAuthoredWorld(
   const resolveTraitFor = useCallback(
     (withPins: PinSet, trait: Trait, text: string, owner: Entity | null = null) => {
       const scoped = traitScopedPins(withPins.bind(trait, owner?.id), withPins.of(owner?.id), placeholders);
-      return resolveBearerText(owner, text, { placeholders, rolls, pins: scoped, player });
+      return resolveBearerText(owner, text, { placeholders, rolls, pins: scoped, player, copies: withPins.copies(owner?.id) });
     },
     [placeholders, rolls, player],
   );
@@ -209,7 +209,8 @@ export function useResolvedAuthoredWorld(
 }
 
 const NO_PINS: Record<string, string> = {};
-const NO_PIN_SET: PinSet = { world: NO_PINS, of: () => NO_PINS, bind: (trait) => trait };
+const NO_COPIES = () => undefined;
+const NO_PIN_SET: PinSet = { world: NO_PINS, of: () => NO_PINS, bind: (trait) => trait, copies: () => NO_COPIES };
 
 /** The persona's name with its chips resolved, which the Player Name chip renders. Null with no persona. */
 export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, string>): string | null {

@@ -144,6 +144,18 @@ describe('authoredChipScene', () => {
         .toContain('Paladin: Wren swore the oath in robes.');
     });
 
+    it("reads a blueprint chip in a linked original's text through the entity's own copy", () => {
+      const vow: Trait = { id: 'vow', name: 'Vow', groupId: 'blueprints', isDefault: true, statChanges: [], aiDescription: '{{char}} wears {{ph:garb:world:p2}}.' };
+      // Wren's copy rewords robes and removes chain, so it reads one fixed value.
+      const copy = {
+        id: 'wren-garb', name: 'Garb', values: [], blueprintId: 'garb',
+        valueOverrides: { [phValueId('robes')]: { text: { value: 'sackcloth', blueprint: 'robes' } }, [phValueId('chain')]: { removed: true as const } },
+      };
+      const knight = { ...wren, placeholders: [copy], traitLinks: [link('l1', { originalId: 'vow', originalName: 'Vow' })] };
+      const values = chipValues(authoredChipScene(linked({ traits: [saltborn, vow], entities: [knight, harrow] })));
+      expect(values['<ENTITIES>']).toContain('Vow: Wren wears sackcloth.');
+    });
+
     it("never counts a default Blueprints trait as the player's", () => {
       expect(chipValues(authoredChipScene(linked()))['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.');
     });

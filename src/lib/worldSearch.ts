@@ -5,6 +5,7 @@ import { qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import { foldSeparators, labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import { placeholderOwners, type PlaceholderOwners } from '@/lib/placeholderHomes';
 import { withPinnedValue } from '@/lib/placeholderPins';
+import { acceptsBlueprintChips, dropBlueprintChips } from '@/lib/blueprintChips';
 import {
   setWorldPromptOverride, storedWorldPrompt, worldPromptFieldKey, WORLD_PROMPT_KINDS, WORLD_PROMPT_KIND_LABELS,
 } from '@/lib/worldPrompt';
@@ -53,6 +54,8 @@ export interface SearchTarget {
   fieldLabel: string;
   /** Whether the field renders placeholder chips, and so can accept a chip replacement. */
   chipCapable: boolean;
+  /** Whether the field takes a blueprint chip: a world trait's or trait group's text. */
+  blueprintChips?: boolean;
   /** Whether this is one entry of a chip list rather than a text box. Every string-array field in the
    *  editor is edited as chips, and an entry often repeats its item's name verbatim — so which of the two
    *  a hit belongs to cannot be read off the text. */
@@ -132,7 +135,7 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   const labeled = (name: string | undefined, fallback: string) =>
     untitled(labelPlaceholders(name ?? '', src.placeholders ?? [], { letters, owners }), fallback);
 
-  type Where = Pick<SearchTarget, 'tab' | 'itemId' | 'itemLabel' | 'chipCapable'>;
+  type Where = Pick<SearchTarget, 'tab' | 'itemId' | 'itemLabel' | 'chipCapable' | 'blueprintChips'>;
 
   /**
    * Bind one record's fields. `set` describes an edit as a pure update of the record, so the same
@@ -254,10 +257,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   // ── Traits ────────────────────────────────────────────────────────────────
   (src.traits ?? []).forEach((trait) => {
     const where = { tab: 'traits', itemId: trait.id, itemLabel: labeled(trait.name, 'Trait') };
+    const text = { ...where, chipCapable: true, blueprintChips: acceptsBlueprintChips({ kind: 'trait', owned: false }, src) };
     const { add } = bind(`trait:${trait.id}`, trait, src.updateTrait);
-    add({ ...where, chipCapable: true }, 'name', 'Name', trait.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', trait.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', trait.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add(text, 'name', 'Name', trait.name, (r, v) => ({ ...r, name: v }));
+    add(text, 'playerDescription', 'Player-Facing Description', trait.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add(text, 'aiDescription', 'AI-Facing Description', trait.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
     trait.placeholderPins?.forEach((pin, i) => {
       add({ ...where, chipCapable: false }, `placeholderPins[${i}].value`, 'Pinned Value', pin.value,
         (r, v) => ({
@@ -269,10 +273,11 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
   });
   (src.traitGroups ?? []).forEach((group) => {
     const where = { tab: 'traits', itemId: group.id, itemLabel: labeled(group.name, 'Group') };
+    const text = { ...where, chipCapable: true, blueprintChips: acceptsBlueprintChips({ kind: 'trait', owned: false }, src) };
     const { add } = bind(`traitGroup:${group.id}`, group, src.updateTraitGroup);
-    add({ ...where, chipCapable: true }, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
-    add({ ...where, chipCapable: true }, 'playerDescription', 'Player-Facing Description', group.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
-    add({ ...where, chipCapable: true }, 'aiDescription', 'AI-Facing Description', group.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
+    add(text, 'name', 'Group Name', group.name, (r, v) => ({ ...r, name: v }));
+    add(text, 'playerDescription', 'Player-Facing Description', group.playerDescription, (r, v) => ({ ...r, playerDescription: v }));
+    add(text, 'aiDescription', 'AI-Facing Description', group.aiDescription, (r, v) => ({ ...r, aiDescription: v }));
   });
 
   // ── Dictionaries ──────────────────────────────────────────────────────────
@@ -303,7 +308,8 @@ export function collectSearchTargets(src: SearchSources): SearchTarget[] {
     // there is nothing to carry across.
     // `?? []` throughout: hand-edited world JSON can omit the field the type calls required, and the scan
     // runs in the editor's render, so a missing list has to be nothing to search rather than a blank editor.
-    addEach(where, 'values', 'Values', (ph.values ?? []).map((v) => v.text),
+    const valuesWhere = { ...where, blueprintChips: acceptsBlueprintChips({ kind: 'values', placeholderId: ph.id }, src) };
+    addEach(valuesWhere, 'values', 'Values', (ph.values ?? []).map((v) => v.text),
       (r, next) => ({ ...r, values: (r.values ?? []).map((v, i) => ({ ...v, text: next[i] ?? v.text })) }),
       (r) => (r.values ?? []).map((v) => v.text));
   });
@@ -408,6 +414,10 @@ export interface ReplaceSummary {
   /** Hits that were chips. A chip is changed from its own pop-out, never by a text replace. */
   chips: number;
 }
+
+/** True where `insert` would put a blueprint chip into a field that refuses one. */
+export const refusesBlueprintInsert = (target: SearchTarget, insert: string, blueprints: ReadonlySet<string>): boolean =>
+  !target.blueprintChips && dropBlueprintChips(insert, blueprints).dropped > 0;
 
 /**
  * Replace every match in one pass.

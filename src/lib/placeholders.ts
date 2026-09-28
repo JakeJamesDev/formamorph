@@ -5,6 +5,7 @@ import {
   BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, characterAsPlayer, hasBuiltin, labelBuiltins, renderBuiltins,
   type BuiltinPlaceholder, type BuiltinRender,
 } from './builtinPlaceholders';
+import { withEffectiveCopies, type CopyLookup } from './blueprints';
 
 /**
  * Placeholders — resolve author-defined named values embedded in world text as inline chips. A placeholder
@@ -282,8 +283,10 @@ export function primeRolls(
   existing: PlaceholderRolls = {},
   pick: PlaceholderPick = weightedPick,
   pinTexts?: Record<string, readonly string[]>,
+  /** The copy lookup of the bearer whose texts these are, so its copies get their own rolls. */
+  copies?: CopyLookup,
 ): PlaceholderRolls {
-  const ctx = createResolveCtx({ placeholders, rolls: existing, pick, pinTexts });
+  const ctx = createResolveCtx({ placeholders, rolls: existing, pick, pinTexts, copies });
   for (const text of texts) if (text) resolveText(text, ctx);
   return {
     world: { ...(existing.world ?? {}), ...ctx.minted.world },
@@ -791,9 +794,12 @@ export function describePlaceholders(
   text: string,
   placeholders: readonly Placeholder[] = [],
   pins?: Record<string, string>,
+  /** The copy lookup of the bearer whose text this is, as {@link ResolveOptions.copies}. */
+  copies?: CopyLookup,
 ): string {
   if (!text || !hasPlaceholders(text)) return text;
-  const described = describeText(text, { byId: new Map(placeholders.map((p) => [p.id, p])), pins, depth: 0, seen: new Set() });
+  const byId = new Map(withEffectiveCopies(placeholders).map((p) => [p.id, p]));
+  const described = describeText(text, { byId, copies, pins, depth: 0, seen: new Set() });
   return labelBuiltins(described);
 }
 
@@ -805,6 +811,7 @@ const DESCRIBE_DEPTH_CAP = 2;
  *  change what it reads. */
 interface DescribeCtx {
   byId: Map<string, Placeholder>;
+  copies?: CopyLookup;
   pins?: Record<string, string>;
   /** The shared row this pass is inside — what decides which values read as benched here. */
   share?: ShareCtx;
@@ -837,7 +844,7 @@ function describeChoice(candidates: string[]): string {
 function describeChip(
   token: PlaceholderToken, ctx: DescribeCtx, tail: PlaceholderSegment[], crossing?: Crossing,
 ): string {
-  const ph = ctx.byId.get(token.id);
+  const ph = ctx.copies?.(token.id) ?? ctx.byId.get(token.id);
   if (!ph) return '';
   const share = nextShare(ctx.share, crossing, ph);
   return describePh(ph, [...(token.path ?? []), ...tail], share === ctx.share ? ctx : { ...ctx, share });
@@ -952,6 +959,9 @@ export interface ResolveOptions {
   player?: Omit<BuiltinRender, 'character'>;
   /** The resolved name of the entity that owns the text, which the Character Name chip renders. */
   character?: string | null;
+  /** The copy lookup of the bearer whose text this is: a blueprint chip reads that bearer's copy. Absent, it
+   *  reads the blueprint itself. */
+  copies?: CopyLookup;
 }
 
 /**
@@ -1060,6 +1070,7 @@ type WalkSegment = PlaceholderSegment & { authored?: boolean };
  *  placeholder id; Unique keys the whole subtree under the placement chain that led into it. */
 interface ResolveCtx {
   byId: Map<string, Placeholder>;
+  copies?: CopyLookup;
   rolls: PlaceholderRolls;
   /** Rolls minted during THIS pass — so two chips sharing a key agree even before `setRoll`'s (async) state
    *  update lands back in `rolls`. Shared by reference across the whole walk. */
@@ -1489,7 +1500,7 @@ function chipCtx(token: PlaceholderToken, ctx: ResolveCtx): ResolveCtx {
 function resolveChip(
   token: PlaceholderToken, ctx: ResolveCtx, tail: WalkSegment[], authored: boolean, crossing?: Crossing,
 ): string {
-  const ph = ctx.byId.get(token.id);
+  const ph = ctx.copies?.(token.id) ?? ctx.byId.get(token.id);
   if (!ph) {
     ctx.report({ kind: 'dangling', asked: token.id });
     return '';
@@ -1615,9 +1626,10 @@ export function readPlaceholders(opts: ResolveOptions): PlaceholderReading[] {
 // `pinTexts` and `drawPins` stay off `ResolveOptions`: a render pass never walks pins it is not showing,
 // and never lays pins the collection did not hand it.
 function createResolveCtx(opts: ResolveOptions & Pick<ResolveCtx, 'pinTexts' | 'drawPins' | 'chosen'>): ResolveCtx {
-  const { placeholders, rolls, setRoll, pick = weightedPick, pins, pinTexts, drawPins, chosen, onFinding } = opts;
+  const { placeholders, rolls, setRoll, pick = weightedPick, pins, pinTexts, drawPins, chosen, onFinding, copies } = opts;
   return {
-    byId: new Map(placeholders.map((p) => [p.id, p])),
+    byId: new Map(withEffectiveCopies(placeholders).map((p) => [p.id, p])),
+    copies,
     rolls,
     minted: { world: {}, unique: {} },
     setRoll,

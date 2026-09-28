@@ -1,6 +1,7 @@
 # 07: Blueprint chips
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 0111d245
 Blocked by: 04 — Placeholder Blueprints group and copy rows
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -23,3 +24,7 @@ In trait text the chip resolves to the bearer's copy through the copy lookup and
 - [ ] Preview on an original reads the blueprint; the lens reads the checked bearer's copy.
 - [ ] The glyph has a showcase entry and the user's approval recorded in the ticket before it ships.
 - [ ] Each guard is proven to fail with its rule removed.
+
+## Design approval
+
+- 2026-09-28: the user approved the Link2 glyph on blueprint chips (fields, the `{` menu and the palette strip), shown in the Design System's Prompt Chips → Blueprint Chips card.

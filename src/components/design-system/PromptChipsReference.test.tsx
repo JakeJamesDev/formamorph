@@ -28,3 +28,17 @@ describe('prompt chips reference', () => {
     expect(within(field).getByTestId('prompt-preview')).toHaveTextContent(/^Oren keeps the lamp lit\.$/);
   });
 });
+
+describe('blueprint chips reference', () => {
+  it('marks the blueprint chip in the trait text and on the strip, and nothing else', () => {
+    render(<PromptChipsReference />);
+    const trait = document.querySelector<HTMLElement>('[data-find-field="Trait Description"]');
+    if (!trait) throw new Error('no Trait Description field');
+    expect(trait.querySelectorAll('[data-blueprint-mark]')).toHaveLength(1);
+    const card = trait.closest<HTMLElement>('.rounded-lg') ?? document.body;
+    const strip = card.querySelector<HTMLElement>(`[${CHIP_PALETTE_ATTR}]`);
+    if (!strip) throw new Error('no strip in the Blueprint Chips card');
+    expect(within(strip).getByRole('button', { name: 'Garb' }).querySelector('[data-blueprint-mark]')).not.toBeNull();
+    expect(within(strip).getByRole('button', { name: 'Town' }).querySelector('[data-blueprint-mark]')).toBeNull();
+  });
+});
