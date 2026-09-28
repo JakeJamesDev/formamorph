@@ -213,6 +213,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
 - Per-item overrides of requirement, pin and stat-change lists.
 - Renaming a placeholder copy.
 - A bearer picker on an original's Preview.
+- World text that reads the played persona's copy. An opening about the player needs an entity opening read as the selected persona. Separate effort (Q74).
 
 ## Further Notes
 
@@ -298,3 +299,4 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q71 | "Drop" removes the token; the text around it stays. The chip never becomes plain text. |
   | Q72 | "Text of any original trait" = every chip-bearing text field of every world trait and world trait group, root or under Blueprints. Entity-owned traits and groups refuse. |
   | Q73 | Ticket 07's import job is the predicate at adopt time. A card's copy values keep their blueprint chips; ticket 09 binds the ids. Lorebook and dictionary imports drop them. |
+  | Q74 | Tabled, out of scope: world text reading the played persona's copy. The right shape is an entity opening read as the selected persona, a separate effort. Emberwatch's two openings lose their Class Garb chip for now; the readme drops the claim. |
