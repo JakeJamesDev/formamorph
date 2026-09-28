@@ -185,6 +185,7 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 - Keep the contextual download control in the art’s top-right corner. Other secondary actions remain in their established contextual placements.
 - Give entities the split layout. Their art is tall, so it sits at 2:3 on the left and the text sits on the right. The title and author move to the top of the art, and the art’s actions move to its bottom-right corner. A split card is about twice as wide, so the Entity grid shows three per row on wide screens, two on medium screens and one on phones.
 - Give an entity with no image its Morph art (`EntityPlaceholderArt`): its first letter in goo, in a hue picked from its id. Never a gray box or an icon.
+- Give an entity listing that the server flags as a stand-in its Morph art too. The card never fetches or shows the stored file.
 - Use controlled callbacks in the showcase. The reference never opens a listing, publishes, downloads, deletes, or changes a like outside its local state.
 
 ### Production mapping
@@ -199,7 +200,6 @@ The Prompt Chips reference includes production prompt and placeholder editors wi
 | Favorite selection and pending state | `LikeButton` in [`LikeButton.tsx`](../src/components/community/LikeButton.tsx) |
 | Tag density and overflow | `CardTags` in [`WorldDetails.tsx`](../src/components/WorldDetails.tsx) |
 
-- Give an entity listing that the server flags as a stand-in its Morph art too. The card never fetches or shows the stored file.
 ### Responsive behavior
 
 At desktop widths, cards form a two-column reference grid. At narrower widths they stack at one column while preserving the image-first order, count row, wrapping tags, and minimum touch targets. Title expansion and image actions retain keyboard access; a focused image action becomes visible with the shared focus ring even without hover.
