@@ -110,6 +110,22 @@ export function resetLinkOverride(link: TraitLink, traitId: string, field: keyof
   return withTraitOverrides(link, traitId, withoutOverride(current, field));
 }
 
+/** The link overriding each field where `edited` differs from what the link reads now; the same link when
+ *  nothing differs. An editor's whole-trait write lands here, so untouched fields stay live. */
+export function setLinkEdits(link: TraitLink, trait: Trait, edited: Trait): TraitLink {
+  const current = linkTraitState(trait, link).record;
+  const next = linkFieldsOf(edited);
+  let out = link;
+  for (const field of Object.keys(next) as (keyof TraitLinkFields)[]) {
+    if (!sameValue(next[field], current[field])) out = setLinkOverride(out, trait, field, next[field]);
+  }
+  return out;
+}
+
+/** The link reading one original trait live again: Reset to Blueprint on a linked group's child. */
+export const resetLinkTraitOverrides = (link: TraitLink, traitId: string): TraitLink =>
+  (link.overrides?.[traitId] ? withTraitOverrides(link, traitId, undefined) : link);
+
 /** The link reading its original live everywhere: Reset to Blueprint. */
 export function resetLinkOverrides(link: TraitLink): TraitLink {
   const { overrides: _drop, ...rest } = link;

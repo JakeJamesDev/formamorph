@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { ChevronLeft, Plus, X } from 'lucide-react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Button } from '@/components/ui/button';
@@ -24,23 +24,29 @@ const filterRows = (_value: string, search: string, keywords: string[] = []) =>
  * that adds one. Picking a target opens a second page for the bearer: the same bearer, You, or an entity that
  * bears it. Off-world the target is added for the same bearer at once. A chip opens its target, unless
  * `opens` says the host has nowhere to open it, when it reads as plain text; a chip whose target is gone
- * reads red under its stored name.
+ * reads red under its stored name. `ownerId` names the bearer whose gate the chips read, for a link whose
+ * requirements differ from its original's; without it, the first bearer holding the trait.
  */
-export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true }: {
+export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true, ownerId, labelAside }: {
   trait: Trait;
   onChange: (requires: TraitRequirement[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
+  ownerId?: string;
+  labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<RequirementOption | null>(null);
+  const labelId = useId();
   const requires = trait.requires ?? [];
 
-  const { states, options } = useMemo(() => ({
-    states: gateOf(gateStates(gateInput), ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER, trait.id)?.requirements ?? [],
-    options: requirementOptions(gateInput, trait.id),
-  }), [gateInput, trait.id]);
+  const { states, options } = useMemo(() => {
+    const gates = gateStates(gateInput);
+    const holder = ownerHolding(gateInput.owners, trait.id)?.id ?? WORLD_OWNER;
+    const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, holder, trait.id);
+    return { states: gate?.requirements ?? [], options: requirementOptions(gateInput, trait.id) };
+  }, [gateInput, trait.id, ownerId]);
 
   const listed = (requirement: TraitRequirement) => requires.some((r) => sameRequirement(r, requirement));
   const changeOpen = (next: boolean) => {
@@ -98,8 +104,8 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true
   };
 
   return (
-    <div className="space-y-2">
-      <Label>Requires</Label>
+    <div className="space-y-2" role="group" aria-labelledby={labelId}>
+      <div className="flex items-center gap-2"><Label id={labelId}>Requires</Label>{labelAside}</div>
       <Hint>Available when any one of these holds</Hint>
       <div className="flex flex-wrap items-center gap-1.5">
         {requires.map((requirement, i) => {

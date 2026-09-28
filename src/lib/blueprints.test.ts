@@ -3,7 +3,7 @@ import type { BlueprintOverrides, Entity, Placeholder, PlaceholderValue, Trait, 
 import {
   bearerPlaceholder, copyOf, copyValueState, customPersonaEntity, effectiveCopy, effectiveLinkTrait, effectiveRecord, isCopy,
   linkTraitState, readerFor, removeCopyValue, resetCopyOverrides, resetCopyValue, resetLinkOverride, resetLinkOverrides,
-  setCopyValueText, setCopyValueWeight, setLinkOverride, withOverride, withoutOverride,
+  resetLinkTraitOverrides, setCopyValueText, setCopyValueWeight, setLinkEdits, setLinkOverride, withOverride, withoutOverride,
 } from './blueprints';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -117,6 +117,26 @@ describe('trait links', () => {
     l = setLinkOverride(l, trait('wizard'), 'playerToggle', true);
     expect(resetLinkOverrides(l)).not.toHaveProperty('overrides');
     expect(resetLinkOverrides(link('l1', 'classes'))).toEqual(link('l1', 'classes'));
+  });
+
+  it("resets one trait's overrides and keeps the other traits' maps", () => {
+    let l = setLinkOverride(link('l1', 'classes'), paladin, 'isDefault', false);
+    l = setLinkOverride(l, trait('wizard'), 'playerToggle', true);
+    expect(resetLinkTraitOverrides(l, 'paladin').overrides).toEqual({ wizard: { playerToggle: { value: true, blueprint: false } } });
+    expect(resetLinkTraitOverrides(resetLinkTraitOverrides(l, 'paladin'), 'wizard')).not.toHaveProperty('overrides');
+    expect(resetLinkTraitOverrides(l, 'gone')).toBe(l);
+  });
+
+  it('writes an edited trait as overrides on the fields that differ from what the link reads, and no others', () => {
+    const l = setLinkOverride(link('l1', 'classes'), paladin, 'playerToggle', true);
+    const edited = { ...effectiveLinkTrait(paladin, l), isDefault: false, name: 'Renamed', aiDescription: 'x' };
+    const out = setLinkEdits(l, paladin, edited);
+    expect(linkTraitState(paladin, out).overridden).toEqual(['isDefault', 'playerToggle']);
+    expect(out.overrides?.paladin?.isDefault).toEqual({ value: false, blueprint: true });
+    // An absent list reads as empty, so clearing the last pin of an original with none is no edit.
+    const bare = trait('bare');
+    expect(setLinkEdits(link('l2', 'bare'), bare, { ...bare, requires: [], placeholderPins: undefined })).toEqual(link('l2', 'bare'));
+    expect(setLinkEdits(l, paladin, effectiveLinkTrait(paladin, l))).toBe(l);
   });
 
   it('marks an override stale once the original\'s field changed after it was written', () => {

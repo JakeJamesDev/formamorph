@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  addLink, detachLink, detachDropsStats, dropLinksTo, linkedTraits, linksTo, originalPath, removeLink, resetLink, resetLinkField,
-  setLinkField,
+  addLink, detachLink, detachDropsStats, dropLinksTo, editLinkTrait, linkedTraits, linksTo, originalPath, removeLink, resetLink,
+  resetLinkField, resetLinkTrait, setLinkField,
 } from './traitLinks';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
@@ -139,6 +139,25 @@ describe('setLinkField', () => {
     expect(one.traitLinks?.[0].overrides).toEqual({ paladin: { playerToggle: { value: true, blueprint: false } } });
     expect(resetLinkField(one, 'l1', 'paladin', 'playerToggle').traitLinks?.[0]).toEqual(link('l1', 'classes', 'group'));
     expect(resetLink(set, 'l1').traitLinks?.[0]).toEqual(link('l1', 'classes', 'group'));
+  });
+
+  it("resets one trait's overrides on a group link, leaving its siblings' overrides", () => {
+    const set = setLinkField(world, setLinkField(world, a, 'l1', 'paladin', 'isDefault', false), 'l1', 'wizard', 'isDefault', true);
+    expect(resetLinkTrait(set, 'l1', 'paladin').traitLinks?.[0].overrides).toEqual({ wizard: on(false) });
+  });
+});
+
+describe('editLinkTrait', () => {
+  it("writes the edited fields as the link's overrides, leaving the original and the entity's other links", () => {
+    const ash: Entity = { id: 'ash', name: 'Ash', traitLinks: [link('l-ash', 'paladin', 'trait'), link('l-brave', 'brave', 'trait')] };
+    const paladin = world.traits[0];
+    const out = editLinkTrait(world, ash, 'l-ash', 'paladin', { ...paladin, requires: [], playerToggle: true });
+    expect(out.traitLinks?.[0].overrides).toEqual({
+      paladin: { requires: { value: [], blueprint: paladin.requires }, playerToggle: { value: true, blueprint: false } },
+    });
+    expect(out.traitLinks?.[1]).toBe(ash.traitLinks![1]);
+    expect(world.traits[0].requires).toEqual([{ kind: 'trait', id: 'wizard' }]);
+    expect(editLinkTrait(world, ash, 'l-ash', 'pack', paladin)).toBe(ash);
   });
 });
 

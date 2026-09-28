@@ -8,11 +8,12 @@ import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
 
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
- *  makes it that entity's group, and edits write to the entity. A link shows its original here, with its
- *  own lines in `detailsHeader` and `detailsFooter`. */
-const GroupManager = ({ group, ownerId, detailsHeader, detailsFooter }: {
+ *  makes it that entity's group, and edits write to the entity. A link shows its original here `readOnly`,
+ *  with its own lines in `detailsHeader` and `detailsFooter`. */
+const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, detailsFooter }: {
   group: TraitGroup;
   ownerId?: string;
+  readOnly?: boolean;
   detailsHeader?: ReactNode;
   detailsFooter?: ReactNode;
 }) => {
@@ -35,6 +36,7 @@ const GroupManager = ({ group, ownerId, detailsHeader, detailsFooter }: {
           onChange={(v) => handleChange('name', v)}
           placeholders={placeholders}
           ariaLabel="Group Name"
+          readOnly={readOnly}
         />
       </div>
       <PlaceholderField
@@ -44,6 +46,7 @@ const GroupManager = ({ group, ownerId, detailsHeader, detailsFooter }: {
         placeholders={placeholders}
         markdown
         placeholder="Shown above this group's choices in World Setup. Supports markdown."
+        readOnly={readOnly}
         resizable
       />
       <PlaceholderField
@@ -51,10 +54,12 @@ const GroupManager = ({ group, ownerId, detailsHeader, detailsFooter }: {
         value={editingGroup.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
+        readOnly={readOnly}
         resizable
       />
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
+          disabled={readOnly}
           checked={!!editingGroup.exclusive}
           onCheckedChange={(c) => handleChange('exclusive', c === true)}
         />
