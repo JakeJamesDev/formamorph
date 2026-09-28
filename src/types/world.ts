@@ -153,6 +153,9 @@ export interface TraitLink {
   defaults?: Record<string, boolean>;
   /** Original trait id → bearer placeholder name → the value this link pins it to. */
   pinValues?: Record<string, Record<string, TraitLinkPinValue>>;
+  /** Off-world only: trait id → name for each trait below the original that `defaults` or `pinValues` keys,
+   *  so the keys rebind by name when the original does. Dropped when the link binds to a world. */
+  keyNames?: Record<string, string>;
 }
 
 /** The value one link gives a bearer-relative pin, from the bearer's own list or the world's on fallback. */

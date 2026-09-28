@@ -1,5 +1,5 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { Plus } from 'lucide-react';
+import { Link2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
@@ -8,19 +8,28 @@ import { editorGateInput } from '@/lib/bearers';
 import {
   addOwnedGroup, addOwnedTrait, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits,
 } from '@/lib/ownedTraits';
-import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
+import { bindOwnedTraits, linksBoundTo, linksCarriedFrom, type TraitWorld } from '@/lib/portableTraits';
+import { libraryTraitTree } from '@/lib/traitTree';
+import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { randomUUID } from '@/lib/uuid';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
 import type { Entity, Placeholder } from '@/types';
 import TraitTree from './TraitTree';
 import TraitManager from './TraitManager';
 import GroupManager from './GroupManager';
+import { LinkedFromLine, ThisLinkSection } from './TraitLinkPanel';
 
 const NO_WORLD: TraitWorld = { traits: [], traitGroups: [], entities: [] };
 
-/** A trait store over one library entity: its own traits fill the tree's root, and every write lands on it. */
-function libraryTraitStore(entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[]): TraitStore {
+/**
+ * A trait store over one library entity: its own traits fill the tree's root, and every write lands on it.
+ * Inside `world`, its links read their originals there, and a link edit stores them named from it.
+ */
+function libraryTraitStore(
+  entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[], world: TraitWorld | null,
+): TraitStore {
   const edit = (change: (e: Entity) => Entity) => setEntity((prev) => (prev ? change(prev) : prev));
+  const bearer = world ? linksBoundTo(entity, world) : entity;
   const traits = entity.traits ?? [];
   const traitGroups = entity.traitGroups ?? [];
   return {
@@ -35,29 +44,41 @@ function libraryTraitStore(entity: Entity, setEntity: Dispatch<SetStateAction<En
     updateTraitGroup: (group) => edit((e) => updateOwnedGroup(e, group)),
     removeTrait: (id) => edit((e) => removeOwnedItem(e, id)),
     removeTraitGroup: (id) => edit((e) => removeOwnedItem(e, id)),
-    editEntity: (id, change) => edit((e) => (e.id === id ? change(e) : e)),
+    editEntity: (id, change) => edit((e) => {
+      if (e.id !== id) return e;
+      return world ? linksCarriedFrom(change(linksBoundTo(e, world)), world) : change(e);
+    }),
     // Bound to no world, so "playing as" itself resolves and an outward requirement reads by its stored name.
     gateInput: editorGateInput({ traits: [], traitGroups: [], entities: [bindOwnedTraits(entity, NO_WORLD)] }),
     pinWorld: null,
     offWorld: true,
+    libraryBearer: bearer,
+    linkWorld: world && { traits: [...world.traits], traitGroups: [...world.traitGroups] },
   };
 }
 
 /**
  * A library entity's Traits tab: the World Editor's tree and trait panel over the entity's own traits.
- * Requirements can point only inside the entity; one that points out of it reads by its stored name.
+ * Requirements can point only inside the entity; one that points out of it reads by its stored name. Opened
+ * inside `world`, a link shows its This Link section, and detaches or removes from its row; standalone, and
+ * when the world has no such original, it reads by its stored name only. No link is made here.
  */
-const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity }: {
+const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, world = null }: {
   entity: Entity;
   setEntity: Dispatch<SetStateAction<Entity | null>>;
   placeholders: Placeholder[];
   onOpenEntity: () => void;
+  world?: TraitWorld | null;
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<TraitPanelTab>('details');
-  const store = useMemo(() => libraryTraitStore(entity, setEntity, placeholders), [entity, setEntity, placeholders]);
+  const store = useMemo(() => libraryTraitStore(entity, setEntity, placeholders, world), [entity, setEntity, placeholders, world]);
   const trait = entity.traits?.find((t) => t.id === selectedId);
   const group = entity.traitGroups?.find((g) => g.id === selectedId);
+  const linkRow = useMemo(
+    () => (selectedId ? libraryTraitTree(store.libraryBearer!, store.linkWorld ?? null).linkRows.get(selectedId) : undefined),
+    [selectedId, store],
+  );
 
   const add = (addItem: typeof addOwnedTrait) => {
     const id = randomUUID();
@@ -68,7 +89,7 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity }: 
   return (
     <TraitStoreContext.Provider value={store}>
       <ListDetail
-        showDetail={!!trait || !!group}
+        showDetail={!!trait || !!group || !!linkRow}
         onBack={() => setSelectedId(null)}
         backLabel="Traits"
         list={
@@ -82,14 +103,29 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity }: 
               </Button>
             </div>
             {/* The tree's own empty hint names the World Editor's + button, which this tab doesn't have. */}
-            {entity.traits?.length || entity.traitGroups?.length
+            {entity.traits?.length || entity.traitGroups?.length || entity.traitLinks?.length
               ? <TraitTree selectedId={selectedId} onSelect={setSelectedId} />
               : <Hint className="p-2">No traits yet. Add one to describe this entity to the AI.</Hint>}
           </div>
         }
         detail={
           <div className="p-4">
-            {group ? (
+            {linkRow ? (
+              linkRow.unbound ? (
+                <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
+                  <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <p className="text-label">
+                    Linked to <strong><PlaceholderText text={linkRow.link.originalName} placeholders={placeholders} /></strong>.{' '}
+                    {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
+                  </p>
+                </div>
+              ) : (
+                <div key={selectedId} className="space-y-4">
+                  <LinkedFromLine originalId={linkRow.originalId} />
+                  <ThisLinkSection entity={store.libraryBearer!} link={linkRow.link} originalId={linkRow.originalId} />
+                </div>
+              )
+            ) : group ? (
               <GroupManager key={group.id} group={group} ownerId={entity.id} />
             ) : trait ? (
               <TraitManager

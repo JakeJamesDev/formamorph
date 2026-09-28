@@ -148,7 +148,7 @@ export function chipTexts(item: LinkableContent): string[] {
  *  own, so two identical books never share them. */
 function authoredContent(item: LinkableContent): unknown {
   const shed: Record<string, unknown> = withoutWorldFields(item);
-  if (!('entries' in item) && item.traits) shed.traits = comparableOwnedTraits(item);
+  if (!('entries' in item) && (item.traits || item.traitLinks)) Object.assign(shed, comparableOwnedTraits(item));
   if (Array.isArray(shed.entries)) {
     shed.entries = (shed.entries as { id?: string }[]).map(({ id: _entryId, ...entry }) => entry);
   }

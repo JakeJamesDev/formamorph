@@ -1,5 +1,5 @@
 import { Link2 } from 'lucide-react';
-import { useTraitStore } from '@/contexts/TraitStoreContext';
+import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Hint } from '@/components/ui/typography';
 import { Section } from '@/components/SettingsRows';
@@ -14,23 +14,29 @@ import type { Entity, TraitLink, TraitLinkPinValue } from '@/types';
 
 const NO_VALUE = '__none__';
 
-/** The line above a link's original: where the original lives, and that an edit reaches every link. */
-export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onOpen: (id: string) => void }) {
-  const { traits, traitGroups, placeholders } = useTraitStore();
-  const path = originalPath({ traits, traitGroups }, originalId).join(' › ');
+/** The line above a link's original: where the original lives, and that an edit reaches every link. Without
+ *  `onOpen`, the original can't be edited from here, so the line names it only. */
+export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onOpen?: (id: string) => void }) {
+  const store = useTraitStore();
+  const path = originalPath(originalsOf(store), originalId).join(' › ');
+  const text = <PlaceholderText text={path} placeholders={store.placeholders} />;
   return (
     <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
       <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
       <p className="text-label">
         Linked from{' '}
-        <button
-          type="button"
-          className="font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          onClick={() => onOpen(originalId)}
-        >
-          <PlaceholderText text={path} placeholders={placeholders} />
-        </button>
-        . Edits change every link.
+        {onOpen ? (
+          <>
+            <button
+              type="button"
+              className="font-semibold underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              onClick={() => onOpen(originalId)}
+            >
+              {text}
+            </button>
+            . Edits change every link.
+          </>
+        ) : <><strong>{text}</strong> in this world.</>}
       </p>
     </div>
   );
@@ -42,11 +48,12 @@ export function LinkedFromLine({ originalId, onOpen }: { originalId: string; onO
  * the player plays as the entity, or never. Custom Persona's links are the player's, so they get no note.
  */
 export function ThisLinkSection({ entity, link, originalId }: { entity: Entity; link: TraitLink; originalId: string }) {
-  const { traits, traitGroups, placeholders, placeholderOwners } = useTraitStore();
+  const store = useTraitStore();
+  const { placeholders, placeholderOwners } = store;
   const editBearer = useEditBearer();
   const persona = entity.id === CUSTOM_PERSONA_ID;
   const defaultHint = persona ? 'Selected when a new game starts' : 'Selected for this entity when a new game starts';
-  const rows = linkDefaultTraits({ traits, traitGroups }, link, originalId);
+  const rows = linkDefaultTraits(originalsOf(store), link, originalId);
   const single = rows.length === 1 && rows[0].trait.id === originalId;
   const hasStats = !persona && rows.some(({ trait: t }) => hasStatEffects(t));
   const set = (traitId: string, on: boolean) => editBearer(entity.id, (e) => setLinkDefault(e, link.id, traitId, on));

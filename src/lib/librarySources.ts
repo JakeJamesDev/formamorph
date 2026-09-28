@@ -173,12 +173,14 @@ export function toLibraryItem<T extends LinkableContent>(
     : buildEntityCardData(item as Entity, available, {}, undefined, traitWorld);
   const locationRefs = kindOf(item) === 'entity' ? carriedLocations(item as Entity, worldLocations) : [];
   const traits = 'traits' in carried ? carried.traits : undefined;
+  const traitLinks = 'traitLinks' in carried ? carried.traitLinks : undefined;
   // The world's own fields go, including its id: the caller stamps the library record's own.
   return {
     ...withoutWorldFields(item),
     ...(carried.placeholders?.length ? { placeholders: carried.placeholders } : {}),
     ...(carried.sharedPlaceholders?.length ? { sharedPlaceholders: carried.sharedPlaceholders } : {}),
     ...(traits?.length ? { traits } : {}),
+    ...(traitLinks?.length ? { traitLinks } : {}),
     ...(locationRefs.length ? { locationRefs } : {}),
   } as T;
 }

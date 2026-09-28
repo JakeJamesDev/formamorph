@@ -76,3 +76,68 @@ describe('the library entity Traits tab', () => {
     expect(saved.traits!.map((t) => t.name)).toEqual(['Tamed', 'Oath', 'New Trait']);
   });
 });
+
+describe("the library entity Traits tab's links", () => {
+  /** Carried from a world where Class held Paladin (on for this link) and Wizard. */
+  const linked: Entity = {
+    ...wolf,
+    traitLinks: [
+      {
+        id: 'l-class', originalId: 'w-class', kind: 'group', originalName: 'Class', groupId: null, order: 5,
+        defaults: { 'w-paladin': true }, keyNames: { 'w-paladin': 'Paladin' },
+      },
+      { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Smite', groupId: null, order: 6 },
+    ],
+  };
+  /** A world with its own Class, and no Smite. */
+  const world = {
+    traits: [
+      { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [] },
+      { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [] },
+    ],
+    traitGroups: [{ id: 'n-class', name: 'Class', parentId: null }],
+    entities: [],
+  };
+  const open = async (traitWorld?: typeof world) => {
+    render(<SettingsProvider><EntityEditorModal entityId={null} draft={linked} onClose={vi.fn()} traitWorld={traitWorld} /></SettingsProvider>);
+    await userEvent.click(screen.getByRole('tab', { name: 'Traits' }));
+  };
+  const saved = async () => {
+    await userEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+    return vi.mocked(EntityStorageService.storeEntity).mock.calls.at(-1)![0].data as Entity;
+  };
+
+  it('reads each link by its stored name, read-only, when opened on its own', async () => {
+    await open();
+    expect(screen.queryByText('Paladin')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove Link' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByText('Class'));
+    expect(screen.getByText(/Open this entity from a world to edit the link/)).toBeInTheDocument();
+    expect(screen.queryByText('This Link')).not.toBeInTheDocument();
+  });
+
+  it("reads a link live inside a world, and stores its This Link edit named from that world", async () => {
+    await open(world);
+    expect(screen.getByText('Wizard')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Class'));
+    expect(screen.getByText('This Link')).toBeInTheDocument();
+    const defaults = screen.getByRole('list', { name: 'Enabled by Default' });
+    expect(within(defaults).getByRole('checkbox', { name: 'Paladin' })).toBeChecked();
+    await userEvent.click(within(defaults).getByRole('checkbox', { name: 'Wizard' }));
+    expect((await saved()).traitLinks).toEqual([
+      {
+        id: 'l-class', originalId: 'n-class', kind: 'group', originalName: 'Class', groupId: null, order: 5,
+        defaults: { 'n-paladin': true, 'n-wizard': true }, keyNames: { 'n-paladin': 'Paladin', 'n-wizard': 'Wizard' },
+      },
+      linked.traitLinks![1],
+    ]);
+  });
+
+  it("names a link the world lacks, and removes a link it has", async () => {
+    await open(world);
+    await userEvent.click(screen.getByText('Smite'));
+    expect(screen.getByText(/This world doesn't have it/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Link' }));
+    expect((await saved()).traitLinks).toEqual([linked.traitLinks![1]]);
+  });
+});

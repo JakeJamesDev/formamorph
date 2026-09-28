@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { HelpTopicModal } from '@/components/HelpButton';
@@ -473,6 +473,9 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
   /** The world was saved or rolled back, so nothing is waiting on it any more. */
   const clearPendingLinks = useCallback(() => setPendingIds([]), []);
 
+  const { traits, traitGroups, entities } = options;
+  const traitWorld = useMemo(() => ({ traits, traitGroups, entities }), [traits, traitGroups, entities]);
+
   const dialogs: ReactNode = (
     <>
       <input
@@ -500,6 +503,7 @@ export function useLibraryLinking(options: LibraryLinkingOptions) {
       <HelpTopicModal topicId={HELP_TOPIC} open={helpOpen} onOpenChange={setHelpOpen} />
       <EntityEditorModal
         entityId={libraryEditor?.kind === 'entity' ? libraryEditor.id : null}
+        traitWorld={traitWorld}
         onClose={() => { setLibraryEditor(null); void syncFromLibrary(); }}
       />
       <DictionaryEditorModal
