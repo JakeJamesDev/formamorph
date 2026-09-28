@@ -13,7 +13,7 @@ import { contentLinkState } from '@/lib/contentLink';
 import type { LibraryKind } from '@/lib/librarySources';
 import WorldStorageService from '@/services/WorldStorageService';
 import { traitWorldOf, type TraitWorld } from '@/lib/portableTraits';
-import type { ContentLink, Dictionary, Entity, Placeholder, Trait, TraitGroup } from '@/types';
+import type { ContentLink, Dictionary, Entity, Placeholder, PlaceholderGroup, Trait, TraitGroup } from '@/types';
 
 /**
  * A world whose content is held in memory rather than in storage.
@@ -32,6 +32,8 @@ export interface LiveWorld {
   /** The world's traits and groups, which an updated entity's owned trait requirements bind to. */
   traits?: Trait[];
   traitGroups?: TraitGroup[];
+  /** The world's placeholder folders, which name the blueprints an updated entity's copies bind to. */
+  placeholderGroups?: PlaceholderGroup[];
   writeItem: (item: LinkableContent) => void;
   addPlaceholder: (placeholder: Placeholder) => void;
 }

@@ -1,8 +1,9 @@
 // An entity's owned traits and links off-world: named on the way out, bound to a receiving world on the way in.
 
-import type { Entity, RequirementBearer, Trait, TraitGroup, TraitLink, TraitRequirement } from '@/types';
+import type { Entity, Placeholder, PlaceholderGroup, RequirementBearer, Trait, TraitGroup, TraitLink, TraitRequirement } from '@/types';
 import { linksInTreeOrder, originalOf } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
+import { worldBlueprints } from './placeholderBlueprints';
 import { groupsBelow } from './traitTree';
 
 /** Off-world, a "playing as" or a named bearer on the entity itself names it by this id, since each copy has
@@ -14,6 +15,8 @@ export interface TraitWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
+  /** The world's blueprints, when the record names its placeholder groups: what a carried copy binds to. */
+  blueprints?: readonly Placeholder[];
 }
 
 type Portable = Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'>;
@@ -21,9 +24,16 @@ type Named = { id: string; name: string };
 type EntityBearer = Extract<RequirementBearer, { kind: 'entity' }>;
 type Original = NonNullable<ReturnType<typeof originalOf>>;
 
-/** A world's trait lists, when a record carries them. */
-export const traitWorldOf = (data: { traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[] }): TraitWorld | undefined =>
-  (data.traits ? { traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [] } : undefined);
+/** A world's trait lists, when a record carries them, and its blueprints when it names its placeholder groups. */
+export const traitWorldOf = (data: {
+  traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[];
+  placeholders?: readonly Placeholder[]; placeholderGroups?: readonly PlaceholderGroup[];
+}): TraitWorld | undefined => (data.traits ? {
+  traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [],
+  ...(Array.isArray(data.placeholderGroups)
+    ? { blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups] }) }
+    : {}),
+} : undefined);
 
 const ownIds = (entity: Entity): Set<string> =>
   new Set([...(entity.traits ?? []), ...(entity.traitGroups ?? [])].map((item) => item.id));
@@ -43,7 +53,7 @@ function targets(world: TraitWorld, except?: string) {
 const NO_TARGETS: ReturnType<typeof targets> = { trait: [], group: [], playingAs: [] };
 
 /** The one item carrying `name`, else null: no match and two matches both bind nothing. */
-function uniqueNamed<T extends Named>(list: readonly T[], name: string | undefined): T | null {
+export function uniqueNamed<T extends Named>(list: readonly T[], name: string | undefined): T | null {
   const wanted = name?.trim();
   const named = wanted ? list.filter((item) => item.name.trim() === wanted) : [];
   return named.length === 1 ? named[0] : null;

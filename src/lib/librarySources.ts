@@ -179,6 +179,7 @@ export function toLibraryItem<T extends LinkableContent>(
     ...withoutWorldFields(item),
     ...(carried.placeholders?.length ? { placeholders: carried.placeholders } : {}),
     ...(carried.sharedPlaceholders?.length ? { sharedPlaceholders: carried.sharedPlaceholders } : {}),
+    ...('blueprints' in carried && carried.blueprints?.length ? { blueprints: carried.blueprints } : {}),
     ...(traits?.length ? { traits } : {}),
     ...(traitLinks?.length ? { traitLinks } : {}),
     ...(locationRefs.length ? { locationRefs } : {}),

@@ -39,6 +39,12 @@ export function blueprintIds(world: PlaceholderHomesWorld): Set<string> {
   }));
 }
 
+/** The world's blueprints: its shared placeholders in the Blueprints group or any folder below it. */
+export function worldBlueprints(world: PlaceholderHomesWorld): Placeholder[] {
+  const ids = blueprintIds(world);
+  return (world.placeholders ?? []).filter((p) => ids.has(p.id));
+}
+
 /** The top-level placeholder `p` sits under, walking its owners through `byId`. */
 export function rootPlaceholder(p: Placeholder, byId: ReadonlyMap<string, Placeholder>): Placeholder {
   const seen = new Set<string>();

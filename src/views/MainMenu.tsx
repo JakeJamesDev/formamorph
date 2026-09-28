@@ -73,7 +73,9 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryOwners, libraryCastIds, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { bindOwnedTraits, type TraitWorld } from '@/lib/portableTraits';
+import { bindOwnedTraits } from '@/lib/portableTraits';
+import { bindLibraryEntity } from '@/lib/blueprintTravel';
+import { worldBlueprints } from '@/lib/placeholderBlueprints';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   clearDefaultPersona, hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona,
@@ -279,7 +281,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, []);
   const {
     traits: rawTraits, traitGroups: rawTraitGroups, stats: rawStats, locations: rawLocations, placeholders,
-    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, worldPlaceholders,
+    loadWorldData, dictionaries: worldBooks, entities: worldEntities, getWorldData, worldPlaceholders, placeholderGroups,
   } = useGameData();
   const { beginSession, endSession, rolls } = usePlaceholderSession();
   const { showReadme, setShowReadme } = useReadmeVisibility();
@@ -418,10 +420,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   // The global default persona: a library entity id, device-local.
   const [defaultPersona, setDefaultPersonaId] = useState(readDefaultPersona);
 
-  // The raw world's traits, whose names carried requirements were stored under and bind to.
-  const rawTraitWorld = useMemo<TraitWorld>(
-    () => ({ traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities }),
-    [rawTraits, rawTraitGroups, worldEntities],
+  // The raw world's traits, whose names carried requirements were stored under and bind to, and its blueprints.
+  const rawTraitWorld = useMemo(
+    () => ({
+      traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities,
+      blueprints: worldBlueprints({ placeholders: worldPlaceholders, placeholderGroups }),
+    }),
+    [rawTraits, rawTraitGroups, worldEntities, worldPlaceholders, placeholderGroups],
   );
   // The library entities in the cast, loaded in full on pick so their owned traits join the tree.
   const [libraryCastData, setLibraryCastData] = useState<ReadonlyMap<string, Entity>>(() => new Map());
@@ -439,7 +444,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   }, [castKey, libraryCastData]);
   const libraryCast = useMemo(
     () => castKey.split('|').flatMap((id) => libraryCastData.get(id) ?? [])
-      .map((e) => bindOwnedTraits(e, rawTraitWorld)),
+      .map((e) => bindLibraryEntity(e, rawTraitWorld)),
     [castKey, libraryCastData, rawTraitWorld],
   );
   // The pins the *draft* selection would impose: the traits ticked so far, the starting location picked, and
@@ -1527,12 +1532,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             throw error;
           }
         }));
-      // Each copy gets its own id, its owned traits bound to the world, and the picks made under its library id.
+      // Each copy gets its own id, its owned traits and copies bound to the world, and the picks made under its library id.
       const copyIds = new Map<string, string>();
       const chars = loaded.filter((e): e is Entity => e !== null).map((e) => {
         const id = randomUUID();
         copyIds.set(e.id, id);
-        return bindOwnedTraits({ ...e, id }, rawTraitWorld);
+        return bindLibraryEntity({ ...e, id }, rawTraitWorld);
       });
       const castPicks = rekeyOwnedPicks(castOwnedTraits(draft, entryWorld), copyIds);
       const books = new Map<string, Dictionary>();

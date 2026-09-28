@@ -1,11 +1,13 @@
 import { randomUUID } from '@/lib/uuid';
 import { buildTree, flattenTree } from './groupTree';
 import {
-  absorbPlaceholders, collectUsedPlaceholders, remapPlaceholderIds, remapValuePins, remintPlaceholderDef,
+  absorbPlaceholders, collectUsedPlaceholders, relinkedPin, remapPlaceholderIds, remapValuePins, remintPlaceholderDef,
   SHARED_PATH_SEP,
 } from './placeholders';
 import { holderOf, ownedDescendants } from './placeholderTree';
-import type { Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder, PlaceholderGroup } from '@/types';
+import type {
+  Dictionary, DictionaryEntry, Entity, EntityGroup, Placeholder, PlaceholderGroup, PlaceholderPin, TraitLink,
+} from '@/types';
 
 /**
  * Where a placeholder lives. A world keeps three kinds of list: its own shared placeholders, and the ones
@@ -444,7 +446,15 @@ export function adoptEntityPlaceholders(
   entity: Entity, worldShared: readonly Placeholder[], connections?: Record<string, string>,
 ): Omit<Adopted<Entity>, 'item' | 'idMap'> & { entity: Entity } {
   const { item, toAdd, idMap, ...resolved } = adoptCarried(entity, worldShared, connections);
-  return { entity: item === entity ? entity : remapEntityChips(item, idMap), toAdd, ...resolved };
+  if (item === entity) return { entity, toAdd, ...resolved };
+  const pool = [...(item.placeholders ?? []), ...worldShared, ...toAdd];
+  // The re-mint keeps each owned list in order, so a value's new id sits at its old place.
+  const valueIds: Record<string, string> = {};
+  (entity.placeholders ?? []).forEach((p, i) => {
+    const next = item.placeholders?.[i];
+    if (next?.id === idMap[p.id]) p.values.forEach((v, j) => { if (next.values[j]) valueIds[v.id] = next.values[j].id; });
+  });
+  return { entity: remapOwnedTraitRefs(remapEntityChips(item, idMap), idMap, pool, valueIds), toAdd, ...resolved };
 }
 
 /** {@link adoptCarried} for a dictionary file, with its entries' chips re-aimed. */
@@ -460,22 +470,98 @@ const remapTexts = (texts: string[] | undefined, idMap: Record<string, string>) 
 const sameTexts = (a: string[] | undefined, b: string[] | undefined) => a === b || (!!a && !!b && sameElements(a, b));
 
 /** The entity with every chip in its own fields re-aimed through `idMap`; the same object when nothing maps. */
-export function remapEntityChips(entity: Entity, idMap: Record<string, string>): Entity {
-  const next: Entity = {
+export const remapEntityChips = (entity: Entity, idMap: Record<string, string>): Entity =>
+  mapEntityChips(entity, (text) => remapPlaceholderIds(text, idMap));
+
+/** The entity with `map` over each of its own chip fields; the same object when nothing changes. */
+export function mapEntityChips<T extends Entity>(entity: T, map: (text: string) => string): T {
+  const one = (text: string | undefined) => (text ? map(text) : text);
+  const next: T = {
     ...entity,
-    name: remapText(entity.name, idMap) ?? entity.name,
-    ...(entity.aliases ? { aliases: remapTexts(entity.aliases, idMap) } : {}),
-    ...(entity.playerDescription !== undefined ? { playerDescription: remapText(entity.playerDescription, idMap) } : {}),
-    ...(entity.aiDescription !== undefined ? { aiDescription: remapText(entity.aiDescription, idMap) } : {}),
-    ...(entity.aiSummary !== undefined ? { aiSummary: remapText(entity.aiSummary, idMap) } : {}),
-    ...(entity.imageTags !== undefined ? { imageTags: remapText(entity.imageTags, idMap) } : {}),
-    ...(entity.openings ? { openings: entity.openings.map((o) => ({ ...o, text: remapText(o.text, idMap) ?? o.text })) } : {}),
+    name: one(entity.name) ?? entity.name,
+    ...(entity.aliases ? { aliases: entity.aliases.map(map) } : {}),
+    ...(entity.playerDescription !== undefined ? { playerDescription: one(entity.playerDescription) } : {}),
+    ...(entity.aiDescription !== undefined ? { aiDescription: one(entity.aiDescription) } : {}),
+    ...(entity.aiSummary !== undefined ? { aiSummary: one(entity.aiSummary) } : {}),
+    ...(entity.imageTags !== undefined ? { imageTags: one(entity.imageTags) } : {}),
+    ...(entity.openings ? { openings: entity.openings.map((o) => ({ ...o, text: one(o.text) ?? o.text })) } : {}),
   };
   const same = next.name === entity.name && sameTexts(next.aliases, entity.aliases)
     && next.playerDescription === entity.playerDescription && next.aiDescription === entity.aiDescription
     && next.aiSummary === entity.aiSummary && next.imageTags === entity.imageTags
     && sameTexts(next.openings?.map((o) => o.text), entity.openings?.map((o) => o.text));
   return same ? entity : next;
+}
+
+const TRAIT_TEXT_FIELDS = ['name', 'playerDescription', 'aiDescription'] as const;
+
+/** The item with `text` over each chip field; the same object when nothing changes. */
+function mapItemText<T extends { name: string; playerDescription?: string; aiDescription?: string }>(item: T, text: (t: string) => string): T {
+  let out = item;
+  for (const field of TRAIT_TEXT_FIELDS) {
+    const before = item[field];
+    const after = before && text(before);
+    if (after !== before) out = { ...out, [field]: after };
+  }
+  return out;
+}
+
+/** The link with `pins` over each pin override, its snapshot included; the same link when nothing changes. */
+function mapLinkPins(link: TraitLink, pins: (list: PlaceholderPin[]) => PlaceholderPin[]): TraitLink {
+  let changed = false;
+  const overrides = link.overrides && Object.fromEntries(Object.entries(link.overrides).map(([id, o]) => {
+    if (!o.placeholderPins) return [id, o];
+    const value = pins(o.placeholderPins.value);
+    const blueprint = pins(o.placeholderPins.blueprint);
+    if (value === o.placeholderPins.value && blueprint === o.placeholderPins.blueprint) return [id, o];
+    changed = true;
+    return [id, { ...o, placeholderPins: { value, blueprint } }];
+  }));
+  return changed ? { ...link, overrides } : link;
+}
+
+/**
+ * The entity with its owned traits' and groups' text mapped through `text`, and every pin list its owned
+ * traits and its links' overrides hold mapped through `pins`. `pins` returns the list itself when nothing
+ * moves. The same entity when nothing changes.
+ */
+export function mapOwnedTraitRefs(
+  entity: Entity, text: (t: string) => string, pins: (list: PlaceholderPin[]) => PlaceholderPin[],
+): Entity {
+  const traits = entity.traits?.map((t) => {
+    const out = mapItemText(t, text);
+    const placeholderPins = t.placeholderPins && pins(t.placeholderPins);
+    if (placeholderPins === t.placeholderPins) return out;
+    const { placeholderPins: _p, ...rest } = out;
+    return placeholderPins?.length ? { ...rest, placeholderPins } : rest;
+  });
+  const traitGroups = entity.traitGroups?.map((g) => mapItemText(g, text));
+  const traitLinks = entity.traitLinks?.map((l) => mapLinkPins(l, pins));
+  const same = <T>(a: T[] | undefined, b: T[] | undefined) => !a || a.every((x, i) => x === b![i]);
+  if (same(traits, entity.traits) && same(traitGroups, entity.traitGroups) && same(traitLinks, entity.traitLinks)) return entity;
+  return { ...entity, ...(traits ? { traits } : {}), ...(traitGroups ? { traitGroups } : {}), ...(traitLinks ? { traitLinks } : {}) };
+}
+
+/**
+ * {@link mapOwnedTraitRefs} re-aiming every chip and pin through `idMap`. A moved pin takes its value's new id
+ * from `valueIds`, else re-binds it by value text against its new target in `available`; at a copy it keeps
+ * it, since a copy keeps its blueprint's value ids.
+ */
+export function remapOwnedTraitRefs(
+  entity: Entity, idMap: Record<string, string>, available: readonly Placeholder[], valueIds: Record<string, string> = {},
+): Entity {
+  const byId = new Map(available.map((p) => [p.id, p]));
+  const pins = (list: PlaceholderPin[]) => (list.some((p) => idMap[p.placeholderId])
+    ? list.map((p) => {
+      const to = idMap[p.placeholderId];
+      if (!to) return p;
+      const target = byId.get(to);
+      const aimed = { ...p, placeholderId: to };
+      if (!target || target.blueprintId) return aimed;
+      return p.valueId && valueIds[p.valueId] ? { ...aimed, valueId: valueIds[p.valueId] } : relinkedPin(aimed, target);
+    })
+    : list);
+  return mapOwnedTraitRefs(entity, (t) => remapPlaceholderIds(t, idMap), pins);
 }
 
 /** The book with every chip in its entries re-aimed through `idMap`; the same object when nothing maps. */
