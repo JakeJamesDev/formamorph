@@ -55,24 +55,25 @@ export function resolveEntityTexts(entities: readonly Entity[], resolve: Resolve
 /** Resolves an owned trait's own text: its own pins, with its owner as the Character Name. */
 export type ResolveOwnedTraitText = (trait: Trait, text: string, owner: Entity) => string;
 
-/** Each item's AI description under `resolve`, keeping the list when none held a chip. */
-function resolveAiDescriptions<T extends { aiDescription?: string }>(
+/** Each item's name and AI description under `resolve`, keeping the list when none held a chip. */
+function resolveAiTexts<T extends { name: string; aiDescription?: string }>(
   items: T[] | undefined, resolve: (item: T) => ResolveText,
 ): T[] | undefined {
   if (!items?.length) return items;
   return mapPreservingIdentity(items, (item) => {
+    const name = one(item.name, resolve(item)) ?? '';
     const aiDescription = one(item.aiDescription, resolve(item));
-    return aiDescription === item.aiDescription ? item : { ...item, aiDescription };
+    return name === item.name && aiDescription === item.aiDescription ? item : { ...item, name, aiDescription };
   });
 }
 
-/** Each entity's owned trait and group AI descriptions, with the entity as their Character Name. */
+/** Each entity's trait and group names and AI descriptions, with the entity as their Character Name. */
 export function resolveOwnedTraitTexts(
   entities: readonly Entity[], resolveTrait: ResolveOwnedTraitText, resolveEntity: ResolveEntityText,
 ): Entity[] {
   return mapPreservingIdentity(entities, (e) => {
-    const traits = resolveAiDescriptions(e.traits, (t) => (text) => resolveTrait(t, text, e));
-    const traitGroups = resolveAiDescriptions(e.traitGroups, () => (text) => resolveEntity(e, text));
+    const traits = resolveAiTexts(e.traits, (t) => (text) => resolveTrait(t, text, e));
+    const traitGroups = resolveAiTexts(e.traitGroups, () => (text) => resolveEntity(e, text));
     return traits === e.traits && traitGroups === e.traitGroups ? e : { ...e, traits, traitGroups };
   });
 }

@@ -5,7 +5,7 @@ import type {
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
 import { PLAYER_BEARER } from '../bearers';
-import { inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
+import { borneByPlayer, inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
@@ -99,7 +99,7 @@ export function liveChipScene(
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
     traits,
-    traitGroups: player ? [...player.groups] : sources.traitGroups,
+    traitGroups: player ? borneByPlayer(player.groups) : sources.traitGroups,
     ownedTraits: inForceByOwner(box?.ownedTraits ?? sources.ownedTraits),
     persona,
     location: loc,

@@ -2,6 +2,7 @@
 
 import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { PLAYER_BEARER, resolveBearers, type Bearer, type BearerWorld } from './bearers';
+import { characterAsPlayer } from './builtinPlaceholders';
 import { bindBearerPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
@@ -196,8 +197,10 @@ export function withBearerTrees(entities: readonly Entity[], trees: readonly Bea
   const byId = new Map((trees ?? []).map((tree) => [tree.id, tree]));
   return mapPreservingIdentity(entities, (entity) => {
     const tree = byId.get(entity.id);
-    const same = !tree || (tree.traits.length === (entity.traits?.length ?? 0) && tree.groups.length === (entity.traitGroups?.length ?? 0));
-    return same ? entity : { ...entity, traits: [...tree.traits], traitGroups: [...tree.groups] };
+    // A bearer tree is the owned lists, as they are, then each link's expansion.
+    const linksNothing = !tree
+      || (tree.traits.length === (entity.traits?.length ?? 0) && tree.groups.length === (entity.traitGroups?.length ?? 0));
+    return linksNothing ? entity : { ...entity, traits: [...tree.traits], traitGroups: [...tree.groups] };
   });
 }
 
@@ -211,25 +214,70 @@ export function inBearerPlaces(traits: readonly Trait[], tree: BearerTree | unde
   });
 }
 
+/** Each item with the Character Name in its name and AI description written as the Player Name, for items the
+ *  player bears. */
+export const borneByPlayer = <T extends { name: string; aiDescription?: string }>(items: readonly T[]): T[] =>
+  mapPreservingIdentity(items, (item) => {
+    const name = characterAsPlayer(item.name);
+    const aiDescription = item.aiDescription && characterAsPlayer(item.aiDescription);
+    return name === item.name && aiDescription === item.aiDescription ? item : { ...item, name, aiDescription };
+  });
+
+/** The trait with its bearer-relative pins bound for `bearer`, on `own` placeholders or the world's. */
+export const bindForBearer = (
+  trait: Trait, bearer: Pick<Bearer, 'linkOf'>, own: readonly Placeholder[], shared: readonly Placeholder[],
+): Trait => bindBearerPins(trait, bearer.linkOf.get(trait.id), own, shared);
+
+/** The Traits tab tree with each linked row named for its entity bearer. `named` reads an original's authored
+ *  text with that entity as the Character Name; the player's rows and owned rows keep their names. */
+export function withBearerNames(
+  tree: BearerTraitTree, originals: Pick<BearerWorld, 'traits' | 'traitGroups'>,
+  named: (text: string, bearer: Entity, trait?: Trait) => string,
+): BearerTraitTree {
+  const traitsById = new Map(originals.traits.map((t) => [t.id, t]));
+  const groupsById = new Map(originals.traitGroups.map((g) => [g.id, g]));
+  const linkedTo = (bearerId: string, id: string) => tree.bearers.find((b) => b.id === bearerId)?.linkOf.has(id) ?? false;
+  const traits = mapPreservingIdentity(tree.traits, (row) => {
+    const bearerId = rowBearer(tree, row);
+    const entity = tree.entityNodes.get(bearerId);
+    const original = traitsById.get(row.id);
+    if (!entity || !original || !linkedTo(bearerId, row.id)) return row;
+    const name = named(original.name, entity, original);
+    return name === row.name ? row : { ...row, name };
+  });
+  const groups = mapPreservingIdentity(tree.groups, (row) => {
+    const bearerId = tree.bearerOfGroup.get(row.id);
+    const entity = bearerId ? tree.entityNodes.get(bearerId) : undefined;
+    const originalId = bearerId && row.id.startsWith(`${bearerId}/`) ? row.id.slice(bearerId.length + 1) : '';
+    const original = groupsById.get(originalId);
+    if (!entity || !original || !linkedTo(bearerId!, originalId)) return row;
+    const name = named(original.name, entity);
+    return name === row.name ? row : { ...row, name };
+  });
+  return traits === tree.traits && groups === tree.groups ? tree : { ...tree, traits, groups };
+}
+
 /** What roll priming walks per bearer, whoever ends up played. */
 export interface BearerPriming {
-  /** Every bearer's trait and group names and descriptions, owned ones included. */
+  /** Each entity's own trait and group names and descriptions; linked originals are world text. */
   texts: string[];
-  /** Every bearer's traits that pin, with bearer-relative pins bound for that bearer. The player's bind to the
-   *  world's placeholders and to each library entity's. */
+  /** Every bearer's traits that pin, bound for that bearer. The player's bind to the world's placeholders and
+   *  to each persona's, world or library. */
   pinTraits: Trait[];
 }
 
 export function bearerPriming(world: BearerWorld, library: readonly Entity[], shared: readonly Placeholder[]): BearerPriming {
   const { bearers } = resolveBearers(world, undefined, library);
-  const texts = bearers.flatMap((bearer) => [...bearer.traits, ...bearer.groups]
+  const texts = bearers.flatMap((bearer) => (bearer.entity ? [...bearer.traits, ...bearer.groups] : [])
+    .filter((item) => !bearer.linkOf.has(item.id))
     .flatMap((item) => [item.name, item.playerDescription, item.aiDescription])
     .filter((text): text is string => !!text));
+  const personas = [...world.entities.filter((e) => e.persona), ...library];
   const pinTraits = bearers.flatMap((bearer) => {
-    const owns = bearer.entity ? [bearer.entity.placeholders ?? []] : [[], ...library.map((e) => e.placeholders ?? [])];
+    const owns = bearer.entity ? [bearer.entity.placeholders ?? []] : [[], ...personas.map((e) => e.placeholders ?? [])];
     return owns.flatMap((own) => bearer.traits
       .filter((t) => t.placeholderPins?.length)
-      .map((t) => bindBearerPins(t, bearer.linkOf.get(t.id), own, shared)));
+      .map((t) => bindForBearer(t, bearer, own, shared)));
   });
   return { texts, pinTraits };
 }

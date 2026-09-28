@@ -115,6 +115,20 @@ describe('authoredChipScene', () => {
       expect(values['<ENTITIES|summary>']).toContain('traits: Paladin');
     });
 
+    it("names a cast entity's linked trait for that entity in the summary", () => {
+      const vow: Trait = { id: 'vow', name: '{{char}}’s Vow', groupId: 'templates', isDefault: true, statChanges: [] };
+      const knight = { ...wren, traitLinks: [link('l1', { originalId: 'vow', originalName: 'Vow' })] };
+      const values = chipValues(authoredChipScene(linked({ traits: [saltborn, vow], entities: [knight, harrow] })));
+      expect(values['<ENTITIES|summary>']).toContain('traits: Wren’s Vow');
+    });
+
+    it("names the player in the player's group text", () => {
+      const oaths: TraitGroup = { id: 'oaths', name: 'Oaths', aiDescription: '{{char}} is sworn.', parentId: null };
+      const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', isDefault: true, statChanges: [] };
+      const values = chipValues(authoredChipScene(linked({ traits: [sworn], traitGroups: [templates, oaths] })));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Oaths:\n  The player is sworn.\n  Sworn');
+    });
+
     it("reads a link's own default-on over the original's", () => {
       const knight = { ...wren, traitLinks: [link('l1', { defaults: { paladin: false } })] };
       expect(authoredChipScene(linked({ entities: [knight, harrow] })).ownedTraits).toEqual({});
