@@ -61,7 +61,7 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
       ) : refusal.reason === 'root' ? (
         <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       ) : refusal.reason === 'linked' ? (
-        <>{name} stays a world item, because {refusal.links === 1 ? 'a link points' : `${refusal.links} links point`} at it. Remove the links first.</>
+        <>{name} stays a world item, because {refusal.links === 1 ? 'a link points' : `${refusal.links} links point`} at it or at something in it. Remove {refusal.links === 1 ? 'the link' : 'the links'} first.</>
       ) : (
         <>
           {name} stays {refusal.owner

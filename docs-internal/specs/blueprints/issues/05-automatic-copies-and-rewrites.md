@@ -1,6 +1,6 @@
 # 05: Automatic copies and rewrites
 
-Status: in-progress
+Status: ready-for-human
 Base: 0111d245
 Blocked by: 02 — Custom Persona as an entity mark; 04 — Placeholder Blueprints group and copy rows
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)

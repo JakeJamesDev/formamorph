@@ -189,6 +189,12 @@ describe('syncBlueprintCopies: cleanup', () => {
     expect(sync(w)).toBe(w.entities);
   });
 
+  it('keeps an untouched copy while an edited copy’s reworded value uses it', () => {
+    const reworded = copy('c-her', 'heritage', { valueOverrides: { 'heritage-v': { text: { value: `of ${chip('c1')}`, blueprint: 'Heritage' } } } });
+    const w = uses(entity('a', { placeholders: [copy('c1', 'garb'), reworded] }));
+    expect(sync(w)).toBe(w.entities);
+  });
+
   it('removes a nested copy with the copy that reached it, unless something else still does', () => {
     const w = uses(entity('a', { traitLinks: [link('l1', 'tailor')], placeholders: [copy('c-trim', 'trim'), copy('c-her', 'heritage')] }));
     expect(sync(w)).toBe(w.entities);

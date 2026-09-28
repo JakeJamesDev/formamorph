@@ -401,9 +401,8 @@ function useProvideGameData() {
     return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
 
-  // Copies follow the traits. After any write, each bearer holds the copies its traits need and no untouched
-  // copy nothing uses; an owned trait's blueprint chips and pins name the owner's copies. The slices are
-  // separate states, so the pass runs on the committed world rather than inside one setter.
+  // Copies follow the traits after every write. The slices are separate states, so the pass reads the
+  // committed world rather than one setter's view of it.
   useEffect(() => {
     const next = syncBlueprintCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups });
     if (next !== entities) setEntities(next);
