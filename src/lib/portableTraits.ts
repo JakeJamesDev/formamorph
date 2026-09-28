@@ -85,9 +85,9 @@ function originalById(world: TraitWorld, link: TraitLink): Original | null {
   return original?.kind === link.kind ? original : null;
 }
 
-/** The one world original of the link's kind that carries its stored name. Templates is not an original. */
+/** The one world original of the link's kind that carries its stored name. Blueprints is not an original. */
 function originalByName(world: TraitWorld, link: TraitLink): Original | null {
-  const list: readonly Named[] = link.kind === 'trait' ? world.traits : world.traitGroups.filter((g) => g.system !== 'templates');
+  const list: readonly Named[] = link.kind === 'trait' ? world.traits : world.traitGroups.filter((g) => g.system !== 'blueprints');
   const named = uniqueNamed(list, link.originalName);
   return named && originalOf(world, named.id);
 }

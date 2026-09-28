@@ -260,11 +260,11 @@ function useProvideGameData() {
   }, []);
 
   // Removing a group reparents its direct children (subgroups + traits) to the group's own parent,
-  // rather than orphaning them under a deleted id. Templates' children go to the top level wherever it sits.
+  // rather than orphaning them under a deleted id. Blueprints' children go to the top level wherever it sits.
   const removeTraitGroup = useCallback((groupId: string) => {
     const heirOf = (groups: TraitGroup[]) => {
       const group = groups.find(g => g.id === groupId);
-      return group?.system === 'templates' ? null : group?.parentId ?? null;
+      return group?.system === 'blueprints' ? null : group?.parentId ?? null;
     };
     setTraitGroups(prev => {
       const parentId = heirOf(prev);

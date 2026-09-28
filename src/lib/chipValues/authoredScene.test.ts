@@ -93,10 +93,10 @@ describe('authoredChipScene', () => {
   });
 
   describe('linked traits', () => {
-    const templates: TraitGroup = { id: 'templates', name: 'Templates', parentId: null, system: 'templates' };
+    const blueprints: TraitGroup = { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' };
     const garb = { id: 'garb', name: 'Garb', values: phValues(['robes', 'chain']) };
     const paladin: Trait = {
-      id: 'paladin', name: 'Paladin', groupId: 'templates', isDefault: true, statChanges: [],
+      id: 'paladin', name: 'Paladin', groupId: 'blueprints', isDefault: true, statChanges: [],
       aiDescription: '{{char}} swore the oath in {{ph:garb:world:p1}}.',
       placeholderPins: [{ placeholderId: 'garb', valueId: phValueId('robes'), value: 'robes' }],
     };
@@ -107,7 +107,7 @@ describe('authoredChipScene', () => {
       overrides: { paladin: { placeholderPins: { value: [{ placeholderId: 'garb', value }], blueprint: paladin.placeholderPins! } } },
     });
     const linked = (over: Partial<AuthoredWorld> = {}) => world({
-      traits: [saltborn, paladin], traitGroups: [templates], placeholders: [garb], ...over,
+      traits: [saltborn, paladin], traitGroups: [blueprints], placeholders: [garb], ...over,
     });
 
     it("holds a cast entity's default link in force: full text with the link's own pins, and its name in the summary", () => {
@@ -120,7 +120,7 @@ describe('authoredChipScene', () => {
     });
 
     it("names a cast entity's linked trait for that entity in the summary", () => {
-      const vow: Trait = { id: 'vow', name: '{{char}}’s Vow', groupId: 'templates', isDefault: true, statChanges: [] };
+      const vow: Trait = { id: 'vow', name: '{{char}}’s Vow', groupId: 'blueprints', isDefault: true, statChanges: [] };
       const knight = { ...wren, traitLinks: [link('l1', { originalId: 'vow', originalName: 'Vow' })] };
       const values = chipValues(authoredChipScene(linked({ traits: [saltborn, vow], entities: [knight, harrow] })));
       expect(values['<ENTITIES|summary>']).toContain('traits: Wren’s Vow');
@@ -129,7 +129,7 @@ describe('authoredChipScene', () => {
     it("names the player in the player's group text", () => {
       const oaths: TraitGroup = { id: 'oaths', name: 'Oaths', aiDescription: '{{char}} is sworn.', parentId: null };
       const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', isDefault: true, statChanges: [] };
-      const values = chipValues(authoredChipScene(linked({ traits: [sworn], traitGroups: [templates, oaths] })));
+      const values = chipValues(authoredChipScene(linked({ traits: [sworn], traitGroups: [blueprints, oaths] })));
       expect(values['<TRAITS DESCRIPTION>']).toBe('Oaths:\n  The player is sworn.\n  Sworn');
     });
 
@@ -144,7 +144,7 @@ describe('authoredChipScene', () => {
         .toContain('Paladin: Wren swore the oath in robes.');
     });
 
-    it("never counts a default Templates trait as the player's", () => {
+    it("never counts a default Blueprints trait as the player's", () => {
       expect(chipValues(authoredChipScene(linked()))['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.');
     });
 

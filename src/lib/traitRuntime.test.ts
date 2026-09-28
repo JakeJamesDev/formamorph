@@ -664,7 +664,7 @@ describe('owned traits in play', () => {
 });
 
 describe('linked stat traits follow whoever the player plays', () => {
-  // Paladin (+10 max, +5 starting on h) is a Templates original; Albus and Mira both link it. Vigil is the
+  // Paladin (+10 max, +5 starting on h) is a Blueprints original; Albus and Mira both link it. Vigil is the
   // player's own world trait with the same effects, so a root row and a link row can hold one original.
   const paladin = trait('paladin', [{ statId: 'h', value: 10, type: 'max' }, { statId: 'h', value: 5, type: 'starting' }], {
     name: 'Paladin', playerToggle: true,
@@ -870,13 +870,13 @@ describe('listablePlayerTraits', () => {
 });
 
 describe('traitGateInput', () => {
-  it("leaves Templates out of the player's gates in play", () => {
+  it("leaves Blueprints out of the player's gates in play", () => {
     const world: TraitWorld = {
       traits: [
-        { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'templates' },
+        { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' },
         { id: 'brave', name: 'Brave', statChanges: [], groupId: null },
       ],
-      groups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+      groups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     };
     const [player] = traitGateInput({ traits: [], disabledTraitIds: [] }, world).owners;
     expect(player.traits.map((t) => t.id)).toEqual(['brave']);

@@ -130,13 +130,13 @@ export interface TraitGroup {
   order?: number;
   /** At most one trait in this group may be active — rendered as radio buttons rather than checkboxes. */
   exclusive?: boolean;
-  /** `templates` marks the world's Templates group: it holds originals that reach play only through links.
+  /** `blueprints` marks the world's Blueprints group: it holds originals that reach play only through links.
    *  At most one world group carries it. Never set on an entity's own group. */
-  system?: 'templates';
+  system?: 'blueprints';
 }
 
 /** An entity node's place in the world's Traits tree. The parent is a world group, never an entity's own and
- *  never Templates: a placement that names Templates or a group below it reads as the top level. */
+ *  never Blueprints: a placement that names Blueprints or a group below it reads as the top level. */
 export interface TraitPlacement {
   /** null = top level. */
   groupId: string | null;
@@ -147,7 +147,7 @@ export interface TraitPlacement {
  *  only its own place and per-link data; the original's text, gates and pins reach every link. */
 export interface TraitLink {
   id: string;
-  /** The original's id: a world trait or group at the root or under Templates. */
+  /** The original's id: a world trait or group at the root or under Blueprints. */
   originalId: string;
   kind: 'trait' | 'group';
   /** The original's name when the link was stored, so it travels off-world and rebinds by name. */
@@ -633,6 +633,9 @@ export interface PlaceholderGroup {
   parentId: string | null;
   /** Sibling order among groups sharing the same parent. */
   order?: number;
+  /** `blueprints` marks the world's Blueprints group: its shared placeholders are blueprints, read per
+   *  bearer through copies and never as World placeholders. At most one, at the top level. */
+  system?: 'blueprints';
 }
 
 /** Lightweight preview record used by the main-menu world grid. */

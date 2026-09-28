@@ -203,7 +203,7 @@ export function withBearerTrees(entities: readonly Entity[], trees: readonly Bea
 }
 
 /** The traits where the bearer's tree places them, so a linked original sits at its link and never under
- *  Templates. A trait the tree lacks keeps its own place. */
+ *  Blueprints. A trait the tree lacks keeps its own place. */
 export function inBearerPlaces(traits: readonly Trait[], tree: BearerTree | undefined): Trait[] {
   const placed = new Map((tree?.traits ?? []).map((t) => [t.id, t]));
   return mapPreservingIdentity(traits, (trait) => {

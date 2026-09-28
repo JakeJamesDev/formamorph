@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Link2, ArrowUpFromLine, BookOpen, Folder, User } from 'lucide-react';
+import { Link2, ArrowUpFromLine, BookOpen, Folder, LayoutTemplate, User } from 'lucide-react';
 import { randomUUID } from '@/lib/uuid';
 import { remintPlaceholderDef } from '@/lib/placeholders';
 import { removePlaceholderGroup } from '@/lib/placeholderGroups';
+import { blueprintMoveRefusal, copyName, type BlueprintRefusal } from '@/lib/placeholderBlueprints';
 import { allPlaceholders, placeholderList, withPlaceholderList } from '@/lib/placeholderHomes';
 import {
   applyPlaceholderDrop, chipValueFor, getPlaceholderDropProjection, ownedDescendants, placeholderRows,
@@ -18,6 +19,9 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import { TREE_INDENT } from '@/components/EditorRow';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
+import { useGameDataOptional } from '@/contexts/GameDataContext';
+import type { PlaceholderSlices } from '@/lib/placeholderHomes';
+import { BlueprintRefusalNotice } from './BlueprintRefusalNotice';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 
 /**
@@ -38,6 +42,17 @@ import { SortableTree, type SortableTreeAdapter } from './SortableTree';
  */
 const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) => {
   const { placeholders, setPlaceholders, removePlaceholder, placedIds, lists, setLists, scope } = usePlaceholderStore();
+  const world = useGameDataOptional();
+  // The last move across the Blueprints edge that was refused, and whether it was the group's removal.
+  const [refusal, setRefusal] = useState<{ refusal: BlueprintRefusal; removing: boolean } | null>(null);
+  /** Write every list, unless the change carries a placeholder across the Blueprints edge that something
+   *  still holds on its side. */
+  const commitLists = (next: PlaceholderSlices, removing = false) => {
+    if (!setLists) return;
+    const refused = world ? blueprintMoveRefusal(world.getWorldData(), next) : null;
+    setRefusal(refused && { refusal: refused, removing });
+    if (!refused) setLists(next);
+  };
   // The placeholder a delete is waiting on, held so the confirmation can name what goes with it.
   const [pendingDelete, setPendingDelete] = useState<PlaceholderTreeRow | null>(null);
   const doomed = useMemo(
@@ -108,7 +123,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     const context = { placedIds: placedIds?.() };
     if (lists && setLists && !scope) {
       const next = applyScopedPlaceholderDrop(lists, collapsed, activeId, overId, offsetLeft, TREE_INDENT, context);
-      if (next) setLists(next);
+      if (next) commitLists(next);
       return;
     }
     if (lists && setLists && scope) {
@@ -132,6 +147,22 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     },
     onDrop,
     rowSpec: (node) => {
+      if (node.kind === 'group' && node.group.system === 'blueprints') {
+        return {
+          lead: 'chevron',
+          collapseLabels: ['Expand group', 'Collapse group'],
+          icon: <LayoutTemplate className="h-4 w-4 shrink-0" aria-hidden />,
+          label: node.group.name,
+          labelClass: 'font-medium',
+          removeTitle: 'Remove Blueprints',
+          remove: () => {
+            if (!lists) return;
+            const next = removePlaceholderGroup(lists.placeholderGroups ?? [], lists.placeholders ?? [], node.id);
+            commitLists({ placeholders: next.placeholders, entities: lists.entities ?? [], dictionaries: lists.dictionaries ?? [], placeholderGroups: next.groups }, true);
+            if (selectedId === node.id) onSelect(null);
+          },
+        };
+      }
       if (node.kind === 'group') {
         // A folder over shared rows: deleting it lifts what it holds to its parent. Nothing to duplicate,
         // since a copy of the placeholders inside would need re-minting nobody asked for.
@@ -164,6 +195,10 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         };
       }
       const { placeholder, shared, holderId } = node;
+      const copyOwner = placeholder.blueprintId && node.home.kind !== 'world'
+        ? [...(lists?.entities ?? []), ...(lists?.dictionaries ?? [])].find((o) => o.id === (node.home as { ownerId: string }).ownerId)
+        : undefined;
+      const blueprint = copyOwner ? placeholders.find((p) => p.id === placeholder.blueprintId) : undefined;
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the
       // drag will take the placeholder or share it.
       const usedBy = holderId === null ? usedByMap.get(placeholder.id) : undefined;
@@ -183,7 +218,10 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
             </button>
           </Tip>
         ) : undefined,
-        label: placeholder.name,
+        // A copy reads as its owner's, named after its blueprint live.
+        label: copyOwner
+          ? <PlaceholderText text={copyName(copyOwner.name, blueprint?.name ?? placeholder.name)} placeholders={placeholders} />
+          : placeholder.name,
         meta: usedBy ? `Used by ${usedBy.count}` : undefined,
         metaTitle: usedBy ? `Held as a value of ${usedBy.names.join(', ')}` : undefined,
         actions: shared || holderId === null ? undefined : [{
@@ -195,7 +233,8 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         // owned or top-level row's deletes anything.
         removeTitle: shared && holderId !== null ? 'Remove Reference' : 'Delete',
         remove: () => askRemove(node),
-        duplicate: () => duplicate(node),
+        // One copy per blueprint per owner.
+        duplicate: placeholder.blueprintId ? undefined : () => duplicate(node),
       };
     },
   };
@@ -203,6 +242,14 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
   if (nodes.length === 0) return <EmptyListHint noun="placeholders" />;
   return (
     <>
+      {refusal && (
+        <BlueprintRefusalNotice
+          refusal={refusal.refusal}
+          removing={refusal.removing}
+          placeholders={placeholders}
+          onDismiss={() => setRefusal(null)}
+        />
+      )}
       <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
       <ConfirmDialog
         open={!!pendingDelete}

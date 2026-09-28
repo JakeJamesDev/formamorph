@@ -54,7 +54,7 @@ describe('the Emberwatch default world', () => {
   it('teaches each feature in the readme by naming its example', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
-    for (const label of ['Templates', 'Group links', 'Trait links', 'Per-link defaults', 'Blueprint pins',
+    for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Blueprint pins',
       'Custom Persona', 'Persona-only', 'Same-bearer gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
       expect(readme, label).toContain(`**${label}`);
     }
@@ -93,7 +93,7 @@ describe('bearers on Emberwatch', () => {
     expect(custom.present).toBe(true);
     expect(none.cast.map((e) => e.id)).not.toContain(cp);
     expect(custom.groups.map((g) => g.name)).toEqual(expect.arrayContaining(['Races', 'Classes', 'Racial Abilities', 'Class Abilities']));
-    expect(custom.groups.map((g) => g.name)).not.toContain('Templates');
+    expect(custom.groups.map((g) => g.name)).not.toContain('Blueprints');
     expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Rogue']);
 
     const played = resolveBearers(bearerWorld(world), asEntity(world, 'Albus'));

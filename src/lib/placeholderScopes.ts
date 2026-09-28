@@ -124,7 +124,13 @@ export function placeholderDropAllowed(
   if (parentId !== null && !parent) return false;
   if (active.kind === 'group') {
     if (parent && parent.kind !== 'group') return false;
+    if (active.group.system === 'blueprints') return parentId === null;
     return parentId === null || !isDescendantPlaceholderGroup(world.placeholderGroups ?? [], activeId, parentId);
+  }
+  // A copy is its owner's, once per blueprint, so it only reorders under that owner.
+  if (active.placeholder.blueprintId) {
+    return parent?.kind === 'owner' && active.home.kind !== 'world' && parent.home.kind === active.home.kind
+      && parent.home.ownerId === active.home.ownerId;
   }
   if (parent?.kind === 'group' && active.home.kind !== 'world') return false;
   return !(parent?.kind === 'placeholder' && parent.id.split(SHARED_PATH_SEP).includes(active.placeholder.id));

@@ -1655,17 +1655,17 @@ describe('trait gate rules', () => {
     });
 
     describe('per bearer', () => {
-      // Templates: Races (Human, Elf) and one default-on ability per race, gated on it.
-      const templated = [
+      // Blueprints: Races (Human, Elf) and one default-on ability per race, gated on it.
+      const blueprinted = [
         trait({ id: 'human', name: 'Human', groupId: 'races' }),
         trait({ id: 'elf', name: 'Elf', groupId: 'races' }),
         gated('stubborn', needs('human'), { ...def, groupId: 'abilities' }),
         gated('keen', needs('elf'), { ...def, groupId: 'abilities' }),
       ];
       const traitGroups = [
-        { id: 'templates', name: 'Templates', parentId: null, system: 'templates' as const },
-        { id: 'races', name: 'Races', parentId: 'templates', exclusive: true },
-        { id: 'abilities', name: 'Racial Abilities', parentId: 'templates' },
+        { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' as const },
+        { id: 'races', name: 'Races', parentId: 'blueprints', exclusive: true },
+        { id: 'abilities', name: 'Racial Abilities', parentId: 'blueprints' },
       ];
       const links = (race: string): TraitLink[] => [
         {
@@ -1678,7 +1678,7 @@ describe('trait gate rules', () => {
       const albus = (race: string) => persona('albus', race);
       const sylvie = (race: string) => persona('sylvie', race);
       const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
-        gates(templated, { traitGroups, entities: [resident, ...entities], ...over });
+        gates(blueprinted, { traitGroups, entities: [resident, ...entities], ...over });
 
       it('passes a default one bearer keeps, though another bearer turns it off under its own race', () => {
         expect(only(linked([albus('human'), sylvie('elf')]), rule)).toEqual([]);
@@ -1702,22 +1702,22 @@ describe('trait link rules', () => {
   const needs = (id: string): TraitRequirement[] => [{ kind: 'trait', id }];
   const link = (id: string, originalId: string, kind: TraitLink['kind'], extra: Partial<TraitLink> = {}): TraitLink =>
     ({ id, originalId, kind, originalName: originalId, groupId: null, ...extra });
-  // Root: Faithful. Templates: Smite (requires Faithful), and Classes holding Paladin and Wizard.
+  // Root: Faithful. Blueprints: Smite (requires Faithful), and Classes holding Paladin and Wizard.
   const faithful = trait({ id: 'faithful', name: 'Faithful' });
-  const templated = [
-    trait({ id: 'smite', name: 'Smite', groupId: 'templates', requires: needs('faithful') }),
+  const blueprinted = [
+    trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', requires: needs('faithful') }),
     trait({ id: 'paladin', name: 'Paladin', groupId: 'classes' }),
     trait({ id: 'wizard', name: 'Wizard', groupId: 'classes' }),
   ];
   const traitGroups = [
-    { id: 'templates', name: 'Templates', parentId: null, system: 'templates' as const },
-    { id: 'classes', name: 'Classes', parentId: 'templates' },
+    { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' as const },
+    { id: 'classes', name: 'Classes', parentId: 'blueprints' },
   ];
   const albus = (over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'albus', name: 'Albus', ...over });
   /** The Custom Persona entity: the player's own under None. */
   const newcomer = (over: Partial<Entity> = {}): Entity => ({ ...resident, id: 'cp', name: 'Newcomer', customPersona: true, ...over });
   const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
-    base({ traits: [faithful, ...templated], traitGroups, entities: [resident, ...entities], ...over });
+    base({ traits: [faithful, ...blueprinted], traitGroups, entities: [resident, ...entities], ...over });
   const opened = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => i.id));
 
   describe('never-unlockable per bearer', () => {
@@ -1737,7 +1737,7 @@ describe('trait link rules', () => {
 
     it('opens the link that brings a stuck trait inside a linked group', () => {
       const w = linked([albus({ traitLinks: [link('l-classes', 'classes', 'group')] })], {
-        traits: [faithful, ...templated.map((t) => (t.id === 'paladin' ? { ...t, requires: needs('faithful') } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'paladin' ? { ...t, requires: needs('faithful') } : t))],
       });
       const found = only(w, rule);
       expect(found.map((f) => f.message)).toEqual(['“Albus” links “Paladin” but can never meet “Faithful”, so it never unlocks']);
@@ -1765,9 +1765,9 @@ describe('trait link rules', () => {
     });
 
     it('checks a persona-only entity, which is only present when picked', () => {
-      const smite = trait({ id: 'smite', name: 'Smite', groupId: 'templates', requires: needs('oath') });
+      const smite = trait({ id: 'smite', name: 'Smite', groupId: 'blueprints', requires: needs('oath') });
       const w = linked([albus({ persona: true, personaOnly: true, traitLinks: [link('l-smite', 'smite', 'trait')] })], {
-        traits: [faithful, smite, trait({ id: 'oath', name: 'Oath', groupId: 'templates' })],
+        traits: [faithful, smite, trait({ id: 'oath', name: 'Oath', groupId: 'blueprints' })],
       });
       const found = only(w, rule);
       expect(found.map((f) => f.message)).toEqual(['“Albus” links “Smite” but can never meet “Oath”, so it never unlocks']);
@@ -1779,9 +1779,9 @@ describe('trait link rules', () => {
     });
 
     it('names the Custom Persona entity once the root no longer offers what its link requires', () => {
-      // Faithful moves into Templates, so the root no longer offers it.
+      // Faithful moves into Blueprints, so the root no longer offers it.
       const cp = newcomer({ traitLinks: [link('cp-smite', 'smite', 'trait')] });
-      const found = only(linked([cp], { traits: [{ ...faithful, groupId: 'templates' }, ...templated] }), rule);
+      const found = only(linked([cp], { traits: [{ ...faithful, groupId: 'blueprints' }, ...blueprinted] }), rule);
       expect(found.map((f) => f.message)).toEqual(['“Newcomer” links “Smite” but can never meet “Faithful”, so it never unlocks']);
       expect(opened(found)).toEqual([['cp-smite']]);
     });
@@ -1789,13 +1789,13 @@ describe('trait link rules', () => {
     it('names each bearer when a set spans two', () => {
       const oath = trait({ id: 'oath', name: 'Oath', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'entity', id: 'albus' } }] });
       const found = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', name: 'Bree', traits: [oath] })], {
-        traits: [faithful, ...templated.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
       }), rule);
       expect(found.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Bree” can never unlock — no pick or persona can meet their requirements']);
       expect(opened(found)).toEqual([['l-smite', 'oath']]);
       // Two entities that share a name are still two bearers.
       const twin = only(linked([albus({ traitLinks: [link('l-smite', 'smite', 'trait')] }), albus({ id: 'bree', traits: [oath] })], {
-        traits: [faithful, ...templated.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
+        traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
       }), rule);
       expect(twin.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Albus” can never unlock — no pick or persona can meet their requirements']);
     });
@@ -1931,7 +1931,7 @@ describe('placeholder pin rules', () => {
 
     it('stays quiet for two Personas whose links pin one world placeholder to different values', () => {
       // Only one is played; the other wins in its own text. The cast entity's link still rivals the world trait.
-      const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'templates' });
+      const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'blueprints' });
       const link = (id: string, value: string): TraitLink => ({
         id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null,
         overrides: { paladin: { placeholderPins: { value: [pinTo(value)], blueprint: [] } } },
@@ -1939,7 +1939,7 @@ describe('placeholder pin rules', () => {
       const persona = (id: string, value: string, over: Partial<Entity> = {}): Entity =>
         ({ id, name: id, persona: true, traitLinks: [link(`l-${id}`, value)], ...over });
       const two = contest({
-        traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+        traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
         traits: [paladin],
         entities: [persona('Albus', 'red'), persona('Sylvie', 'blue')],
       });

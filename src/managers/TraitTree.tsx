@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
-import { Folder, Info, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
+import { Folder, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
   getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
   getEntityRootDropProjection, applyEntityRootDrop,
   ownedTraitRows, ownedTraitTree, type FlatTraitNode, type LinkRow, type TraitDropRefusal,
 } from '@/lib/traitTree';
-import { Button } from '@/components/ui/button';
 import { Tip } from '@/components/ui/tooltip';
+import { DropRefusalNotice } from '@/components/editor/DropRefusalNotice';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { removeOwnedItem, withOwnedTraits } from '@/lib/ownedTraits';
 import { detachDropsStats, detachLink, removeLink } from '@/lib/traitLinks';
@@ -52,28 +52,24 @@ export function TraitDropRefusalNotice({ refusal, placeholders, onDismiss }: {
 }) {
   const name = <strong><PlaceholderText text={refusal.name} placeholders={placeholders} /></strong>;
   return (
-    <div role="status" className="mb-2 flex items-start gap-2 rounded-lg border p-3 text-helper">
-      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+    <DropRefusalNotice onDismiss={onDismiss}>
       {refusal.reason === 'duplicate' ? (
-        <span className="flex-1">
-          <PlaceholderText text={refusal.bearer} placeholders={placeholders} /> already has {name}.
-        </span>
+        <><PlaceholderText text={refusal.bearer} placeholders={placeholders} /> already has {name}.</>
       ) : refusal.reason === 'offered' ? (
-        <span className="flex-1">The player already has {name} at the top level.</span>
+        <>The player already has {name} at the top level.</>
       ) : refusal.reason === 'root' ? (
-        <span className="flex-1">{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</span>
+        <>{name} stays at the top level, because the Custom Persona can&apos;t go in a group.</>
       ) : (
-        <span className="flex-1">
+        <>
           {name} stays {refusal.owner
             ? <><PlaceholderText text={refusal.owner} placeholders={placeholders} />&apos;s</>
             : 'a world'} {refusal.kind}, because an entity&apos;s traits can&apos;t change stats.{' '}
           {refusal.kind === 'trait'
             ? 'Remove its stat changes and stat toggles first.'
             : <>Remove the stat changes and stat toggles from <strong><PlaceholderText text={refusal.offender} placeholders={placeholders} /></strong> first.</>}
-        </span>
+        </>
       )}
-      <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
-    </div>
+    </DropRefusalNotice>
   );
 }
 
@@ -217,7 +213,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       // are still the entity's.
       const gateBearer = ownerId ?? entityRoot?.bearer.id ?? PLAYER_BEARER;
       const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, gateBearer, node.id), placeholders);
-      if (node.group?.system === 'templates') {
+      if (node.group?.system === 'blueprints') {
         return {
           lead: 'chevron',
           collapseLabels: ['Expand group', 'Collapse group'],
@@ -225,7 +221,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
           label: <PlaceholderText text={node.group.name} placeholders={placeholders} />,
           labelClass: 'font-medium',
           meta: 'Not offered',
-          removeTitle: 'Remove Templates',
+          removeTitle: 'Remove Blueprints',
           remove: () => askRemoveOriginal(node.id, true),
         };
       }

@@ -16,7 +16,7 @@ const NONE: PersonaRef = { source: 'none' };
 const AS_ALBUS: PersonaRef = { source: 'world', entityId: 'albus' };
 const AS_LIBRARY: PersonaRef = { source: 'library', entityId: 'lib' };
 
-// Root: Brave, the Oaths group (holding Mira's node), Templates. Templates: Classes (Paladin, Wizard), Smite.
+// Root: Brave, the Oaths group (holding Mira's node), Blueprints. Blueprints: Classes (Paladin, Wizard), Smite.
 const albus: Entity = {
   id: 'albus', name: 'Albus', persona: true,
   traits: [trait('oath', { name: 'Oath', groupId: null, order: 0 })],
@@ -44,12 +44,12 @@ const world = (extra: Partial<BearerWorld> = {}): BearerWorld => ({
     trait('brave', { name: 'Brave', groupId: null, order: 0 }),
     trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0, isDefault: true }),
     trait('wizard', { name: 'Wizard', groupId: 'classes', order: 1 }),
-    trait('smite', { name: 'Smite', groupId: 'templates', order: 1, requires: [{ kind: 'trait', id: 'paladin' }] }),
+    trait('smite', { name: 'Smite', groupId: 'blueprints', order: 1, requires: [{ kind: 'trait', id: 'paladin' }] }),
   ],
   traitGroups: [
     group('oaths', null, 1, { name: 'Oaths' }),
-    group('templates', null, 2, { name: 'Templates', system: 'templates' }),
-    group('classes', 'templates', 0, { name: 'Classes', exclusive: true }),
+    group('blueprints', null, 2, { name: 'Blueprints', system: 'blueprints' }),
+    group('classes', 'blueprints', 0, { name: 'Classes', exclusive: true }),
   ],
   entities: [albus, mira, custom],
   ...extra,
@@ -164,13 +164,13 @@ describe('resolveBearers: links', () => {
     expect(b.linkOf.get('bless')?.id).toBe('l-classes');
   });
 
-  it('never expands the Templates group itself or an owned item', () => {
+  it('never expands the Blueprints group itself or an owned item', () => {
     const w = world();
-    const bad: Entity = { ...albus, traitLinks: [link('l-t', 'templates', 'group'), link('l-vow', 'vow', 'trait')] };
+    const bad: Entity = { ...albus, traitLinks: [link('l-t', 'blueprints', 'group'), link('l-vow', 'vow', 'trait')] };
     const b = bearer(world({ entities: [bad, mira] }), 'albus');
     expect(ids(b.groups)).toEqual([]);
     expect(ids(b.traits)).toEqual(['oath']);
-    expect(originalOf(w, 'templates')).toBeNull();
+    expect(originalOf(w, 'blueprints')).toBeNull();
     expect(originalOf(w, 'vow')).toBeNull();
     expect(originalOf(w, 'classes')).toMatchObject({ kind: 'group', item: { id: 'classes' } });
     expect(originalOf(w, 'brave')).toMatchObject({ kind: 'trait', item: { id: 'brave' } });
@@ -178,7 +178,7 @@ describe('resolveBearers: links', () => {
 });
 
 describe('resolveBearers: the player bearer', () => {
-  it('keeps root traits outside Templates and hides Templates, whatever the persona', () => {
+  it('keeps root traits outside Blueprints and hides Blueprints, whatever the persona', () => {
     for (const persona of [NONE, AS_ALBUS]) {
       const b = bearer(world(), PLAYER_BEARER, persona);
       expect(ids(b.traits)).toEqual(['brave']);
@@ -258,7 +258,7 @@ describe('resolveBearers: a requirement never names yourself', () => {
   });
 
   it('applies to the Custom Persona entity’s links under a library persona, and gates the player’s owner the same way', () => {
-    const vow = trait('vow-t', { name: 'Vow', groupId: 'templates', order: 2, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] });
+    const vow = trait('vow-t', { name: 'Vow', groupId: 'blueprints', order: 2, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] });
     const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
     const linkedVow = world({
       traits: [...world().traits, vow],
@@ -377,7 +377,7 @@ describe('resolveBearers: the gate input', () => {
   });
 
   it('names a requirement’s target from the originals when no present bearer holds it', () => {
-    // Smite sits under Templates and no bearer links it under Albus, yet the gate still reads its name.
+    // Smite sits under Blueprints and no bearer links it under Albus, yet the gate still reads its name.
     const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] })] };
     const r = resolveBearers(world({ entities: [albus, gated] }), AS_ALBUS);
     expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.requirements).toEqual([
@@ -395,11 +395,11 @@ describe('resolveBearers: the gate input', () => {
 });
 
 describe('editorGateInput', () => {
-  it('reads the whole world as the player, Templates included, then each bearer with its links expanded', () => {
+  it('reads the whole world as the player, Blueprints included, then each bearer with its links expanded', () => {
     const input = editorGateInput(world({ entities: [albus, mira, custom, { ...newcomer, traitLinks: [link('cp-smite', 'smite', 'trait')] }] }));
     expect(input.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'custom', 'cp']);
     expect(ids(input.owners[0].traits)).toEqual(['brave', 'paladin', 'wizard', 'smite']);
-    expect(ids(input.owners[0].groups)).toEqual(['oaths', 'templates', 'classes']);
+    expect(ids(input.owners[0].groups)).toEqual(['oaths', 'blueprints', 'classes']);
     expect(ids(input.owners[1].traits)).toEqual(['oath', 'paladin', 'wizard']);
     expect(ids(input.owners[4].traits)).toEqual(['smite']);
     expect(input.active).toEqual({});
@@ -407,7 +407,7 @@ describe('editorGateInput', () => {
     expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
   });
 
-  it('reads an entity placement under Templates as the top level', () => {
+  it('reads an entity placement under Blueprints as the top level', () => {
     const under: Entity = { ...mira, traitPlacement: { groupId: 'classes', order: 0 } };
     const r = resolveBearers(world({ entities: [albus, under] }), NONE);
     expect(r.gate.owners.find((o) => o.id === 'mira')?.parentGroupId).toBeNull();
@@ -420,20 +420,20 @@ describe('holdsOriginal', () => {
   it.each([
     ['albus', 'paladin', true, 'a trait inside a linked group'],
     ['albus', 'classes', true, 'the linked group itself'],
-    ['albus', 'templates', false, 'Templates is never held'],
-    ['albus', 'smite', false, 'a Templates trait the bearer has no link to'],
+    ['albus', 'blueprints', false, 'Blueprints is never held'],
+    ['albus', 'smite', false, 'a Blueprints trait the bearer has no link to'],
     ['albus', 'oaths', false, 'a root group the bearer has no link to'],
     ['mira', 'paladin', true, 'a trait linked directly'],
     ['mira', 'classes', true, 'the group holding a directly linked trait'],
     ['mira', 'wizard', false, 'a sibling of a directly linked trait'],
     [PLAYER_BEARER, 'brave', true, 'a root trait the player already has'],
     [PLAYER_BEARER, 'oaths', true, 'a root group the player already has'],
-    [PLAYER_BEARER, 'smite', false, 'a Templates trait the Custom Persona entity links, which the root does not expand'],
-    [PLAYER_BEARER, 'paladin', false, 'a Templates trait nobody offers the player'],
-    ['cp', 'smite', true, 'a Templates trait the Custom Persona entity links'],
+    [PLAYER_BEARER, 'smite', false, 'a Blueprints trait the Custom Persona entity links, which the root does not expand'],
+    [PLAYER_BEARER, 'paladin', false, 'a Blueprints trait nobody offers the player'],
+    ['cp', 'smite', true, 'a Blueprints trait the Custom Persona entity links'],
     ['cp', 'brave', true, 'a root trait the Custom Persona entity holds through the root'],
     ['cp', 'oaths', true, 'a root group the Custom Persona entity holds through the root'],
-    ['cp', 'paladin', false, 'a Templates trait the Custom Persona entity has no link to'],
+    ['cp', 'paladin', false, 'a Blueprints trait the Custom Persona entity has no link to'],
   ])('%s holds %s → %s (%s)', (bearerId, originalId, held) => {
     expect(holdsOriginal(w, bearer(w, bearerId), originalId)).toBe(held);
   });
@@ -455,9 +455,9 @@ describe('makeLink', () => {
     expect(makeLink(w, 'paladin', 'new', { groupId: 'g', order: 0 })).toMatchObject({ kind: 'trait', originalName: 'Paladin', groupId: 'g' });
   });
 
-  it('refuses Templates, an owned item and an unknown id', () => {
+  it('refuses Blueprints, an owned item and an unknown id', () => {
     const w = world();
-    for (const id of ['templates', 'vow', 'gone']) expect(makeLink(w, id, 'new', { groupId: null, order: 0 })).toBeNull();
+    for (const id of ['blueprints', 'vow', 'gone']) expect(makeLink(w, id, 'new', { groupId: null, order: 0 })).toBeNull();
   });
 });
 

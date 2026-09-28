@@ -386,11 +386,11 @@ describe('entity nodes in the traits tab', () => {
 });
 
 describe('linked traits in the traits tab', () => {
-  // Templates › Classes holds Paladin and Wizard. Ash links Classes, Bo links Paladin, and the Custom Persona
+  // Blueprints › Classes holds Paladin and Wizard. Ash links Classes, Bo links Paladin, and the Custom Persona
   // entity links Wizard for a player with no persona.
   const GROUPS = [
-    G('g-templates', 'Templates', { system: 'templates', order: 0 }),
-    G('g-classes', 'Classes', { parentId: 'g-templates', exclusive: true }),
+    G('g-blueprints', 'Blueprints', { system: 'blueprints', order: 0 }),
+    G('g-classes', 'Classes', { parentId: 'g-blueprints', exclusive: true }),
   ];
   const PALADIN = T('t-paladin', 'Paladin', { groupId: 'g-classes', order: 0, isDefault: true });
   const WIZARD = T('t-wizard', 'Wizard', { groupId: 'g-classes', order: 1, playerDescription: '{{char}} studies.' });
@@ -420,7 +420,7 @@ describe('linked traits in the traits tab', () => {
     unfold('Bo');
     expect(within(section('Bo')).getByRole('checkbox', { name: 'Switch on Paladin' })).toBeEnabled();
     expect(screen.getAllByText('Paladin')).toHaveLength(2);
-    expect(screen.queryByRole('group', { name: 'Templates' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Blueprints' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Classes' })).toBeNull();
   });
 

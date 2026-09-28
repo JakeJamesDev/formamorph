@@ -86,9 +86,9 @@ export interface LinkRow {
 /** The row id of a node in a linked group's subtree. The original's own id already has a world row. */
 export const linkRowId = (linkId: string, originalId: string): string => `${linkId}/${originalId}`;
 
-/** The world's Templates group, when the author added one. */
-export const templatesGroup = (groups: readonly TraitGroup[]): TraitGroup | undefined =>
-  groups.find((g) => g.system === 'templates');
+/** The world's Blueprints group, when the author added one. */
+export const blueprintsGroup = (groups: readonly TraitGroup[]): TraitGroup | undefined =>
+  groups.find((g) => g.system === 'blueprints');
 
 /** Every group below `groupId`, depth-first. */
 export function groupsBelow(groups: readonly TraitGroup[], groupId: string): TraitGroup[] {
@@ -100,33 +100,33 @@ export function groupsBelow(groups: readonly TraitGroup[], groupId: string): Tra
   return out;
 }
 
-/** Templates and every world group below it. Empty when the world has no Templates group. */
-export function templatesSubtreeIds(groups: readonly TraitGroup[]): Set<string> {
-  const templates = templatesGroup(groups);
-  return new Set(templates ? [templates.id, ...groupsBelow(groups, templates.id).map((g) => g.id)] : []);
+/** Blueprints and every world group below it. Empty when the world has no Blueprints group. */
+export function blueprintsSubtreeIds(groups: readonly TraitGroup[]): Set<string> {
+  const blueprints = blueprintsGroup(groups);
+  return new Set(blueprints ? [blueprints.id, ...groupsBelow(groups, blueprints.id).map((g) => g.id)] : []);
 }
 
-/** The world's traits and groups without Templates and everything below it: what the root offers the player.
+/** The world's traits and groups without Blueprints and everything below it: what the root offers the player.
  *  The bearer resolver builds the player bearer from it; the trait runtime falls back to it only for a world
  *  given without bearers. */
 export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   traits: readonly T[], groups: readonly G[],
 ): { traits: readonly T[]; groups: readonly G[] } {
-  const inTemplates = templatesSubtreeIds(groups);
-  if (!inTemplates.size) return { traits, groups };
+  const inBlueprints = blueprintsSubtreeIds(groups);
+  if (!inBlueprints.size) return { traits, groups };
   return {
-    traits: traits.filter((t) => t.groupId == null || !inTemplates.has(t.groupId)),
-    groups: groups.filter((g) => !inTemplates.has(g.id)),
+    traits: traits.filter((t) => t.groupId == null || !inBlueprints.has(t.groupId)),
+    groups: groups.filter((g) => !inBlueprints.has(g.id)),
   };
 }
 
-/** The world groups an entity node can sit in: every one outside Templates. */
+/** The world groups an entity node can sit in: every one outside Blueprints. */
 export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
-  const inTemplates = templatesSubtreeIds(groups);
-  return new Set(groups.filter((g) => !inTemplates.has(g.id)).map((g) => g.id));
+  const inBlueprints = blueprintsSubtreeIds(groups);
+  return new Set(groups.filter((g) => !inBlueprints.has(g.id)).map((g) => g.id));
 }
 
-/** The entity node's placement when its group is a world group outside Templates; a gone, foreign or Templates
+/** The entity node's placement when its group is a world group outside Blueprints; a gone, foreign or Blueprints
  *  group reads as none. The Custom Persona entity's node sits at the top level only. */
 export function effectivePlacement(entity: Entity, placeableIds: ReadonlySet<string>): TraitPlacement | null {
   const p = entity.traitPlacement;
@@ -146,19 +146,19 @@ const showsSystemNode = (holds: boolean, emptySystemNodes: boolean) => holds || 
 /** The world's traits, with a node for each entity that owns a trait or a group. A node sits where its
  *  placement puts it; an unplaced node goes to the end of the top level, in entity order. Library entities
  *  (a persona or an added entity) come last at the top level, in the order given. Without `links`, the
- *  player's view, Templates and everything in it drop out. With `links`, the editor's view, an entity's links
+ *  player's view, Blueprints and everything in it drop out. With `links`, the editor's view, an entity's links
  *  draw too, and an entity with links only gets a node, as does the Custom Persona entity while empty.
- *  `emptySystemNodes` off hides an empty Templates group and an empty Custom Persona entity. */
+ *  `emptySystemNodes` off hides an empty Blueprints group and an empty Custom Persona entity. */
 export function ownedTraitTree(
   lists: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
   { links = false, emptySystemNodes = true } = {},
 ): OwnedTraitTree {
   const offered = links ? null : offeredWorldTraits(lists.traits, lists.traitGroups);
-  const templates = links ? templatesGroup(lists.traitGroups) : undefined;
-  const hideTemplates = !!templates && !showsSystemNode(groupHoldsItems(lists, templates.id), emptySystemNodes);
+  const blueprints = links ? blueprintsGroup(lists.traitGroups) : undefined;
+  const hideBlueprints = !!blueprints && !showsSystemNode(groupHoldsItems(lists, blueprints.id), emptySystemNodes);
   const world: WorldTraitLists = offered
     ? { traits: offered.traits, traitGroups: offered.groups }
-    : hideTemplates ? { ...lists, traitGroups: lists.traitGroups.filter((g) => g !== templates) } : lists;
+    : hideBlueprints ? { ...lists, traitGroups: lists.traitGroups.filter((g) => g !== blueprints) } : lists;
   const worldGroupIds = new Set(world.traitGroups.map((g) => g.id));
   const placeable = placeableGroupIds(world.traitGroups);
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
@@ -318,8 +318,8 @@ function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
 }
 
 /**
- * Where a drag in the one tree would land. Templates stays at the top level. A row that is or holds an entity
- * node stops at the top level or a world group outside Templates. Nothing lands inside a linked group, whose
+ * Where a drag in the one tree would land. Blueprints stays at the top level. A row that is or holds an entity
+ * node stops at the top level or a world group outside Blueprints. Nothing lands inside a linked group, whose
  * subtree is its original's. A row carrying a link stays in an entity, and without `createLinks` a world row
  * stays among the world items. Null when the rows below would hold the row where it can't be.
  */
@@ -332,10 +332,10 @@ export function getOwnedTraitDropProjection(
   if (!active) return null;
   const inEntity = (id: string) => tree.entityNodes.has(id) || tree.ownerOf.has(id);
   const worldRow = !inEntity(activeId);
-  const inTemplates = templatesSubtreeIds(tree.groups);
-  const systemNode = active.group?.system === 'templates';
+  const inBlueprints = blueprintsSubtreeIds(tree.groups);
+  const systemNode = active.group?.system === 'blueprints';
   const blocked = systemNode ? () => true : carriesEntityNode(tree, activeId)
-    ? (id: string) => inEntity(id) || inTemplates.has(id)
+    ? (id: string) => inEntity(id) || inBlueprints.has(id)
     : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id));
   const replayed = projectionPastBlocked(items, active, overId, projection, blocked, indentationWidth);
   if (!replayed) return null;
@@ -418,7 +418,7 @@ export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: Tra
 
 /**
  * Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once.
- * The Custom Persona entity's tree is the player's, which already has every original outside Templates.
+ * The Custom Persona entity's tree is the player's, which already has every original outside Blueprints.
  */
 export function linkRefusal(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
@@ -571,7 +571,7 @@ export function applyOwnedTraitDrop(
   pinned.forEach((id) => touched.add(id));
   if (!touched.size) return null;
 
-  // A hidden empty Templates group had no row to move, so it stays with its parent, after the reindexed siblings.
+  // A hidden empty Blueprints group had no row to move, so it stays with its parent, after the reindexed siblings.
   const siblingOrders = (parentId: string | null) => [
     ...dropped.groups.filter((g) => (g.parentId ?? null) === parentId),
     ...dropped.leaves.filter((t) => (t.groupId ?? null) === parentId),

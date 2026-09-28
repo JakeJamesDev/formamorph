@@ -1042,10 +1042,10 @@ describe('EnterWorldWorkspace cast pages', () => {
   });
 
   describe('with links', () => {
-    // Templates › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and the
+    // Blueprints › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and the
     // Custom Persona entity links Wizard for a player with no world persona.
-    const templates = { id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const };
-    const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true };
+    const blueprints = { id: 'blueprints', name: 'Blueprints', parentId: null, order: 2, system: 'blueprints' as const };
+    const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true };
     const link = (id: string, originalId: string, kind: 'trait' | 'group') =>
       ({ id, originalId, kind, originalName: originalId, groupId: null, order: 5 });
     const linked: EntryTraitWorld = {
@@ -1054,7 +1054,7 @@ describe('EnterWorldWorkspace cast pages', () => {
         owned('paladin', { groupId: 'classes', order: 0, isDefault: true, playerDescription: '{{char}} keeps an oath.' }),
         owned('wizard', { groupId: 'classes', order: 1 }),
       ],
-      traitGroups: [...groups, templates, classes],
+      traitGroups: [...groups, blueprints, classes],
       entities: [
         { ...ash, traitLinks: [link('l-ash', 'classes', 'group')] },
         { ...bob, traitLinks: [link('l-bob', 'paladin', 'trait')] },
@@ -1069,7 +1069,7 @@ describe('EnterWorldWorkspace cast pages', () => {
       render(<CastHarness cast={linked} persona={NONE} />);
       const names = within(nav()).getAllByRole('button').map((b) => b.textContent ?? '');
       expect(names.filter((n) => n.startsWith('Classes'))).toHaveLength(1);
-      expect(names.some((n) => n.startsWith('Templates'))).toBe(false);
+      expect(names.some((n) => n.startsWith('Blueprints'))).toBe(false);
       expect(names.indexOf(names.find((n) => n.startsWith('Ash'))!)).toBeLessThan(names.indexOf(names.find((n) => n.startsWith('Classes'))!));
       await user.click(within(nav()).getByRole('button', { name: /^Classes/ }));
       const main = screen.getByRole('main');

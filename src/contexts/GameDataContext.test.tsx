@@ -30,8 +30,8 @@ describe('the Custom Persona entity in the world store', () => {
   const you = { id: 'you', name: 'Wanderer', customPersona: true, traitLinks: links, traitPlacement: { groupId: null, order: 3 } };
   const withPersona = {
     ...world('w', {}),
-    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'templates' }, { id: 'brave', name: 'Brave', statChanges: [] }],
-    traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+    traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'blueprints' }, { id: 'brave', name: 'Brave', statChanges: [] }],
+    traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     entities: [you],
   } as unknown as World;
   const marked = (result: { current: ReturnType<typeof useGameData> }) => result.current.entities.find((e) => e.customPersona);
@@ -65,23 +65,23 @@ describe('the Custom Persona entity in the world store', () => {
     expect(marked(result)?.traitLinks?.map((l) => l.id)).toEqual(['l2']);
   });
 
-  it("removing Templates moves its traits to the top level and keeps the Custom Persona entity's links to them", () => {
+  it("removing Blueprints moves its traits to the top level and keeps the Custom Persona entity's links to them", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(withPersona); });
-    act(() => { result.current.removeTraitGroup('templates'); });
+    act(() => { result.current.removeTraitGroup('blueprints'); });
     expect(result.current.traitGroups).toEqual([]);
     expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
     expect(marked(result)?.traitLinks).toEqual(links);
   });
 
-  it('removing Templates inside another group still moves its traits to the top level', () => {
+  it('removing Blueprints inside another group still moves its traits to the top level', () => {
     const nested = {
       ...withPersona,
-      traitGroups: [{ id: 'lore', name: 'Lore', parentId: null }, { id: 'templates', name: 'Templates', parentId: 'lore', system: 'templates' }],
+      traitGroups: [{ id: 'lore', name: 'Lore', parentId: null }, { id: 'blueprints', name: 'Blueprints', parentId: 'lore', system: 'blueprints' }],
     } as unknown as World;
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(nested); });
-    act(() => { result.current.removeTraitGroup('templates'); });
+    act(() => { result.current.removeTraitGroup('blueprints'); });
     expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
   });
 });

@@ -34,7 +34,7 @@ const link = (id: string, originalId: string, pins?: PlaceholderPin[]): TraitLin
   ...(pins ? { overrides: { [originalId]: { placeholderPins: { value: pins, blueprint: paladinPins } } } } : {}),
 });
 
-const paladin = trait('paladin', paladinPins, { groupId: 'templates', statToggles: [{ statId: 'hunger', enabled: false }] });
+const paladin = trait('paladin', paladinPins, { groupId: 'blueprints', statToggles: [{ statId: 'hunger', enabled: false }] });
 const brave = trait('brave', [pin('mood', 'wary')], { groupId: null, order: 0 });
 const cloak = trait('cloak', [pin('garb', 'Robe')], { groupId: null, order: 1 });
 // Albus rewords Tabard on his copy; Bo removes it; Mira has no copy and her link pins Plate instead.
@@ -51,7 +51,7 @@ const you: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLink
 const lib: Entity = { id: 'lib', name: 'Wren', persona: true, placeholders: [garbCopy('lib-garb', 'Wren cloak')] };
 const world = {
   traits: [brave, cloak, paladin],
-  traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const }],
+  traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, order: 2, system: 'blueprints' as const }],
   entities: [albus, mira, bo, you],
 };
 const hunger: PinnableStat = {
@@ -184,8 +184,8 @@ describe('bearerPriming — what roll priming walks per bearer', () => {
 });
 
 describe('withBearerNames — linked rows in the Traits tab', () => {
-  const vow = trait('vow', [], { name: '{{char}}’s Vow', groupId: 'templates' });
-  const oaths = { id: 'oaths', name: '{{char}}’s Oaths', parentId: 'templates', order: 0 };
+  const vow = trait('vow', [], { name: '{{char}}’s Vow', groupId: 'blueprints' });
+  const oaths = { id: 'oaths', name: '{{char}}’s Oaths', parentId: 'blueprints', order: 0 };
   const vowWorld = {
     ...world, traits: [...world.traits, vow], traitGroups: [...world.traitGroups, oaths],
     entities: [{ ...mira, traitLinks: [link('l-vow', 'vow')] }, { ...bo, traitLinks: [{ ...link('l-oaths', 'oaths'), kind: 'group' as const }] }],
@@ -201,7 +201,7 @@ describe('withBearerNames — linked rows in the Traits tab', () => {
 });
 
 describe('bearerTraitTree — the player-facing tree', () => {
-  const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true };
+  const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true };
   const wizard = trait('wizard', [], { groupId: 'classes', order: 1 });
   const linkedWorld = {
     ...world,

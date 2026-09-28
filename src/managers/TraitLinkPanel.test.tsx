@@ -23,7 +23,7 @@ const traits = [
   trait('brave', { name: 'Brave', groupId: null, order: 1 }),
 ];
 const traitGroups: TraitGroup[] = [
-  { id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'templates' },
+  { id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' },
   { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0 },
 ];
 const link = (id: string, originalId: string, kind: TraitLink['kind'], overrides?: Record<string, TraitLinkOverrides>): TraitLink =>

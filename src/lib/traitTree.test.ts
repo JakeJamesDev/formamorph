@@ -483,10 +483,10 @@ describe('applyOwnedTraitDrop', () => {
 });
 
 describe('applyOwnedTraitDrop with links', () => {
-  // Rows: templates, classes (in templates), paladin, wizard, loner, ash, pack, bond, tamed.
+  // Rows: blueprints, classes (in blueprints), paladin, wizard, loner, ash, pack, bond, tamed.
   const world = {
     traits: [trait('paladin', 'classes', 0), trait('wizard', 'classes', 1), { ...trait('loner', null, 1), name: 'Loner' }],
-    traitGroups: [{ ...group('templates', null, 0), system: 'templates' as const }, { ...group('classes', 'templates', 0), name: 'Classes' }],
+    traitGroups: [{ ...group('blueprints', null, 0), system: 'blueprints' as const }, { ...group('classes', 'blueprints', 0), name: 'Classes' }],
   };
   const ash: Entity = {
     id: 'ash', name: 'Ash',
@@ -509,7 +509,7 @@ describe('applyOwnedTraitDrop with links', () => {
     expect(next.traits?.some((t) => t.id === 'loner')).toBe(false);
   });
 
-  it('links a group from under Templates, stat effects and all', () => {
+  it('links a group from under Blueprints, stat effects and all', () => {
     const strong = { ...world, traits: world.traits.map((t) => (t.id === 'paladin' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'min' as const }] } : t)) };
     // Classes dropped inside Bond, below Tamed.
     const out = applyOwnedTraitDrop(strong, [ash], [], 'classes', 'tamed', 24, 24, { newLinkId: () => 'new' });
@@ -553,7 +553,7 @@ describe('applyOwnedTraitDrop with links', () => {
     const linked = { ...ash, traitLinks: [l1] };
     // Rows: …, ash, pack, bond (collapsed), bob, gruff. Bond at the top level would carry the link out of Ash.
     const bob: Entity = { id: 'bob', name: 'Bob', traits: [trait('gruff', null, 0)] };
-    expect(applyOwnedTraitDrop(strong, [linked, bob], ['bond'], 'bond', 'templates', -24, 24)).toBeNull();
+    expect(applyOwnedTraitDrop(strong, [linked, bob], ['bond'], 'bond', 'blueprints', -24, 24)).toBeNull();
     // Bond onto Gruff joins Bob, link and all; the link's stat effects don't refuse it.
     const out = applyOwnedTraitDrop(strong, [linked, bob], ['bond'], 'bond', 'gruff', 0, 24);
     expect(entityOut(out, 'bob')?.traitLinks).toEqual([l1]);
@@ -616,10 +616,10 @@ describe('getOwnedTraitDropProjection', () => {
 });
 
 describe('system nodes in the one tree', () => {
-  // Rows in the editor: templates, classes, paladin, wizard, loner, ash, pack, then the Custom Persona entity's node.
+  // Rows in the editor: blueprints, classes, paladin, wizard, loner, ash, pack, then the Custom Persona entity's node.
   const world = {
     traits: [trait('paladin', 'classes', 0), trait('wizard', 'classes', 1), { ...trait('loner', null, 1), name: 'Loner' }],
-    traitGroups: [{ ...group('templates', null, 0), system: 'templates' as const }, group('classes', 'templates', 0)],
+    traitGroups: [{ ...group('blueprints', null, 0), system: 'blueprints' as const }, group('classes', 'blueprints', 0)],
   };
   const ash: Entity = { id: 'ash', name: 'Ash', traits: [trait('pack', null, 0)] };
   const cpLink = (originalId: string, kind: 'trait' | 'group' = 'trait'): TraitLink =>
@@ -632,7 +632,7 @@ describe('system nodes in the one tree', () => {
   const drop = (lists: typeof world, ents: Entity[], activeId: string, overId: string, offset: number, collapsed: string[] = []) =>
     applyOwnedTraitDrop(lists, ents, collapsed, activeId, overId, offset, 24, { newLinkId: () => 'new' });
 
-  it('leaves Templates and everything in it out of the tree play reads', () => {
+  it('leaves Blueprints and everything in it out of the tree play reads', () => {
     const tree = ownedTraitTree(world, [ash]);
     expect(tree.groups.map((g) => g.id)).toEqual(['ash']);
     expect(tree.traits.map((t) => t.id)).toEqual(['loner', 'pack']);
@@ -640,24 +640,24 @@ describe('system nodes in the one tree', () => {
 
   it('draws the Custom Persona entity as a node like any entity, holding its links', () => {
     const tree = ownedTraitTree(world, [ash, cp()], [], { links: true });
-    expect(rowsOf(tree).map((r) => r.id)).toEqual(['templates', 'classes', 'paladin', 'wizard', 'loner', 'ash', 'pack', 'cp', 'l-cp']);
+    expect(rowsOf(tree).map((r) => r.id)).toEqual(['blueprints', 'classes', 'paladin', 'wizard', 'loner', 'ash', 'pack', 'cp', 'l-cp']);
     expect(tree.linkRows.get('l-cp')).toMatchObject({ entityId: 'cp', root: true });
     expect(tree.entityNodes.get('cp')?.customPersona).toBe(true);
     // Play draws no node for an entity with links only.
     expect(ownedTraitTree(world, [ash, cp()]).entityNodes.has('cp')).toBe(false);
   });
 
-  it('hides an empty Templates group without emptySystemNodes, and shows it once it holds something', () => {
+  it('hides an empty Blueprints group without emptySystemNodes, and shows it once it holds something', () => {
     const empty = { traits: [world.traits[2]], traitGroups: [world.traitGroups[0]] };
     const hidden = ownedTraitTree(empty, [], [], { links: true, emptySystemNodes: false });
     expect(rowsOf(hidden).map((r) => r.id)).toEqual(['loner']);
     const shown = ownedTraitTree(empty, [], [], { links: true });
-    expect(rowsOf(shown).map((r) => r.id)).toEqual(['templates', 'loner']);
+    expect(rowsOf(shown).map((r) => r.id)).toEqual(['blueprints', 'loner']);
     const full = ownedTraitTree(world, [cp()], [], { links: true, emptySystemNodes: false });
-    expect(rowsOf(full).map((r) => r.id)).toEqual(['templates', 'classes', 'paladin', 'wizard', 'loner', 'cp', 'l-cp']);
+    expect(rowsOf(full).map((r) => r.id)).toEqual(['blueprints', 'classes', 'paladin', 'wizard', 'loner', 'cp', 'l-cp']);
   });
 
-  it('links a Templates trait dropped into the Custom Persona entity, writing that entity alone', () => {
+  it('links a Blueprints trait dropped into the Custom Persona entity, writing that entity alone', () => {
     // Paladin dropped one level into the collapsed node lands as its first item, ahead of the Wizard link.
     const out = drop(world, [ash, cp()], 'paladin', 'cp', 24, ['cp']);
     expect(out).toEqual({
@@ -673,8 +673,8 @@ describe('system nodes in the one tree', () => {
     expect(drop(world, [ash, cp()], 'loner', 'cp', 24, ['cp'])).toEqual({ kind: 'refused', refusal: { reason: 'offered', name: 'Loner' } });
   });
 
-  it('refuses a second link to a Templates trait the Custom Persona entity already has', () => {
-    // Rows: templates, classes, paladin, wizard, loner, ash, pack, cp, l-cp (collapsed).
+  it('refuses a second link to a Blueprints trait the Custom Persona entity already has', () => {
+    // Rows: blueprints, classes, paladin, wizard, loner, ash, pack, cp, l-cp (collapsed).
     expect(drop(world, [ash, cp('classes', 'group')], 'paladin', 'l-cp', 0, ['l-cp']))
       .toEqual({ kind: 'refused', refusal: { reason: 'duplicate', name: 'paladin', bearer: 'Newcomer' } });
   });
@@ -694,10 +694,10 @@ describe('system nodes in the one tree', () => {
     expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['cp']), 'pack', 'cp', 24, 24)).toEqual({ depth: 1, parentId: 'cp' });
   });
 
-  it('never lands an entity node, the Custom Persona entity or a link inside Templates', () => {
+  it('never lands an entity node, the Custom Persona entity or a link inside Blueprints', () => {
     const owning: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traits: [trait('yours', null, 0)] };
     const tree = ownedTraitTree(world, [ash, owning], [], { links: true });
-    // Ash dropped on Loner, two levels in, would sit in Classes inside Templates.
+    // Ash dropped on Loner, two levels in, would sit in Classes inside Blueprints.
     expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['ash']), 'ash', 'loner', 48, 24)).toEqual({ depth: 0, parentId: null });
     expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['cp']), 'cp', 'loner', 48, 24)).toEqual({ depth: 0, parentId: null });
     const linked = { ...ash, traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait' as const, originalName: 'Loner', groupId: null, order: 1 }] };
@@ -724,25 +724,25 @@ describe('system nodes in the one tree', () => {
     expect(linkRefusal(world, ents, 'cp', 'loner')).toEqual({ reason: 'offered', name: 'Loner' });
   });
 
-  it('keeps Templates at the top level (Q68)', () => {
+  it('keeps Blueprints at the top level (Q68)', () => {
     const withFaction = {
       ...world,
       traits: [...world.traits, trait('guard', 'faction', 0)],
       traitGroups: [...world.traitGroups, group('faction', null, 2)],
     };
     const tree = ownedTraitTree(withFaction, [ash], [], { links: true });
-    // Rows: templates, classes, paladin, wizard, loner, faction, guard, ash, pack. One level in, just after
+    // Rows: blueprints, classes, paladin, wizard, loner, faction, guard, ash, pack. One level in, just after
     // Guard, would sit in Faction.
-    expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['templates']), 'templates', 'guard', 24, 24)).toEqual({ depth: 0, parentId: null });
-    const out = drop(withFaction, [ash], 'templates', 'guard', 24);
-    expect(out?.kind === 'moved' && out.world?.groups.find((g) => g.id === 'templates')?.parentId).toBeNull();
+    expect(getOwnedTraitDropProjection(tree, rowsOf(tree, ['blueprints']), 'blueprints', 'guard', 24, 24)).toEqual({ depth: 0, parentId: null });
+    const out = drop(withFaction, [ash], 'blueprints', 'guard', 24);
+    expect(out?.kind === 'moved' && out.world?.groups.find((g) => g.id === 'blueprints')?.parentId).toBeNull();
   });
 
-  it('keeps a hidden empty Templates group through a drop in Basic', () => {
+  it('keeps a hidden empty Blueprints group through a drop in Basic', () => {
     const empty = { traits: [trait('a', null, 1), trait('b', null, 2)], traitGroups: [world.traitGroups[0]] };
     // Rows in Basic: a, b. B dropped on A swaps them.
     const out = applyOwnedTraitDrop(empty, [], [], 'b', 'a', 0, 24, { emptySystemNodes: false });
-    // A and B reindex to 0 and 1, so Templates takes the next free place rather than sharing one.
+    // A and B reindex to 0 and 1, so Blueprints takes the next free place rather than sharing one.
     expect(out?.kind === 'moved' && out.world?.traits.map((t) => [t.id, t.order])).toEqual([['a', 1], ['b', 0]]);
     expect(out?.kind === 'moved' && out.world?.groups).toEqual([{ ...world.traitGroups[0], order: 2 }]);
   });

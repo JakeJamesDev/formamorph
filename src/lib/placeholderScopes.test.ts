@@ -278,6 +278,45 @@ describe('placeholderTreeNodes with groups', () => {
   });
 });
 
+describe('the Blueprints group and copies on the Placeholders tab', () => {
+  const GARB = { ...P('garb', 'Class Garb', ['tabard']), groupId: 'bp' };
+  const COPY: Placeholder = { id: 'c-garb', name: 'Class Garb', values: [], blueprintId: 'garb' };
+  const w = () => ({
+    placeholders: [TOWN, GARB],
+    placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' as const }, { id: 'lore', name: 'Lore', parentId: null, order: 1 }],
+    entities: [molly([EYES, COPY]), tam([P('mood', 'Mood', ['calm'])])],
+    entityGroups: [],
+    dictionaries: [],
+  });
+
+  it('keeps the Blueprints group at the top level', () => {
+    const nodes = placeholderTreeNodes(w());
+    expect(placeholderDropAllowed(w(), nodes, 'bp', null)).toBe(true);
+    expect(placeholderDropAllowed(w(), nodes, 'bp', 'lore')).toBe(false);
+    expect(placeholderDropAllowed(w(), nodes, 'lore', 'bp')).toBe(true);
+  });
+
+  it('keeps a copy directly under its own owner', () => {
+    const nodes = placeholderTreeNodes(w());
+    const allowed = (parent: string | null) => placeholderDropAllowed(w(), nodes, 'c-garb', parent);
+    expect(allowed(ownerNodeId('molly'))).toBe(true);
+    expect(allowed(ownerNodeId('tam'))).toBe(false);
+    expect(allowed(null)).toBe(false);
+    expect(allowed('bp')).toBe(false);
+    expect(allowed('eyes')).toBe(false);
+    // A plain owned placeholder still travels.
+    expect(placeholderDropAllowed(w(), nodes, 'eyes', ownerNodeId('tam'))).toBe(true);
+  });
+
+  it('refuses the drop itself, not just the indicator', () => {
+    // Class Garb (the copy) dragged to the root, below Town.
+    expect(applyScopedPlaceholderDrop(w(), [], 'c-garb', 'town', -INDENT, INDENT)).toBeNull();
+    // Blueprints dragged onto Lore, one level in.
+    expect(applyScopedPlaceholderDrop(w(), [], 'bp', 'lore', INDENT, INDENT)).toBeNull();
+    expect(applyScopedPlaceholderDrop(w(), [], 'lore', 'bp', 0, INDENT)).not.toBeNull();
+  });
+});
+
 describe('the Custom Persona entity on the Placeholders tab', () => {
   const marked = () => ({ ...world(), entities: [molly(), tam([], { customPersona: true })] });
 

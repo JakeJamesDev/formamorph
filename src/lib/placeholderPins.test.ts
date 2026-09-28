@@ -616,7 +616,7 @@ describe('owned traits as pin sources — the world’s traits, then each cast e
 describe('link pin lists as pin sources — a link’s overridden pins, listed per bearer', () => {
   const worldGarb: Placeholder = { id: 'garb', name: 'Class Garb', values: phValues(['Robe', 'Plate']) };
   const plate = pin('garb', 'Plate', phValueId('Plate'));
-  const paladin = trait('paladin', [plate], { name: 'Paladin', groupId: 'templates' });
+  const paladin = trait('paladin', [plate], { name: 'Paladin', groupId: 'blueprints' });
   /** A link to Paladin; with `pins` it overrides the original's list, else it reads the list live. */
   const link = (id: string, pins?: PlaceholderPin[]): TraitLink => ({
     id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 0,
@@ -624,7 +624,7 @@ describe('link pin lists as pin sources — a link’s overridden pins, listed p
   });
   const world = {
     traits: [paladin],
-    traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+    traitGroups: [{ id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' }],
     entities: [
       { id: 'albus', name: 'Albus', traitLinks: [link('l-albus', [pin('garb', 'Gilded plate')])] },
       { id: 'mira', name: 'Mira', traitLinks: [link('l-mira', [pin('garb', 'Robe', phValueId('Robe'))])] },

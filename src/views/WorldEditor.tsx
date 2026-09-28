@@ -36,7 +36,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, LayoutTemplate } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -82,7 +82,8 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { duplicateTraitNode, ownedTraitTree, templatesGroup } from '@/lib/traitTree';
+import { duplicateTraitNode, ownedTraitTree, blueprintsGroup } from '@/lib/traitTree';
+import { blueprintsPlaceholderGroup } from '@/lib/placeholderBlueprints';
 import { bearsTraits, originalOf } from '@/lib/bearers';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
@@ -98,6 +99,7 @@ import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
 import PlaceholderManager from '../managers/PlaceholderManager';
 import PlaceholderList from '../managers/PlaceholderList';
+import { PlaceholderCopyEditor, PlaceholderCopyFooter } from '../managers/PlaceholderCopyEditor';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
@@ -740,12 +742,20 @@ const WorldEditorInner = ({
   };
 
   // The world holds at most one of each system node, so each add hides once its node exists.
-  const hasTemplates = !!templatesGroup(traitGroups);
-  const handleAddTemplates = () => {
+  const hasBlueprints = !!blueprintsGroup(traitGroups);
+  const handleAddBlueprints = () => {
     const id = randomUUID();
     addTraitGroup({
-      id, name: 'Templates', playerDescription: '', aiDescription: '', parentId: null,
-      order: traitRootCount({ traits, traitGroups }), system: 'templates',
+      id, name: 'Blueprints', playerDescription: '', aiDescription: '', parentId: null,
+      order: traitRootCount({ traits, traitGroups }), system: 'blueprints',
+    });
+    setSelectedItemId(id);
+  };
+  const hasPlaceholderBlueprints = !!blueprintsPlaceholderGroup(placeholderGroups);
+  const handleAddPlaceholderBlueprints = () => {
+    const id = randomUUID();
+    addPlaceholderGroup({
+      id, name: 'Blueprints', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length, system: 'blueprints',
     });
     setSelectedItemId(id);
   };
@@ -842,6 +852,12 @@ const WorldEditorInner = ({
   const selectedPlaceholder = useMemo(
     () => placeholderSelection(placeholders, selectedItemId), [placeholders, selectedItemId],
   );
+  // A copy edits over its blueprint, with Reset to Blueprint in the frozen footer.
+  const selectedCopy = activeTab === 'placeholders' && !selectedPlaceholderGroup ? selectedPlaceholder?.row.placeholder : undefined;
+  const copyBlueprint = selectedCopy?.blueprintId ? placeholders.find(p => p.id === selectedCopy.blueprintId) : undefined;
+  const copyFooter = selectedCopy && copyBlueprint
+    ? <PlaceholderCopyFooter copy={selectedCopy} onEditBlueprint={() => setSelectedItemId(copyBlueprint.id)} />
+    : undefined;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
@@ -1119,7 +1135,15 @@ const WorldEditorInner = ({
             : navigateToBenchItem('dictionary', selectedPlaceholderOwner.id))}
         />
       )}
-      {activeTab === "placeholders" && !selectedPlaceholderGroup && selectedPlaceholder && (
+      {selectedCopy && copyBlueprint && selectedPlaceholder && (
+        <PlaceholderCopyEditor
+          key={selectedPlaceholder.row.id}
+          copy={selectedCopy}
+          blueprint={copyBlueprint}
+          ownerName={placeholderOwners.get(selectedCopy.id)?.name ?? ''}
+        />
+      )}
+      {activeTab === "placeholders" && !selectedPlaceholderGroup && selectedPlaceholder && !copyBlueprint && (
         <PlaceholderManager
           key={selectedPlaceholder.row.id}
           placeholder={selectedPlaceholder.row.placeholder}
@@ -1242,20 +1266,23 @@ const WorldEditorInner = ({
       advanced={advanced}
       entities={entities}
       entityGroups={entityGroups}
-      hasTemplates={hasTemplates}
+      hasBlueprints={hasBlueprints}
       onAddGroup={handleAddGroup}
       onAddTrait={handleAddTrait}
       onAddToEntity={handleAddToEntity}
-      onAddTemplates={handleAddTemplates}
+      onAddBlueprints={handleAddBlueprints}
     />
   ) : (
     <>
       <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={addGroupHere} />
       <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={addItemLabel} onAdd={addItemHere} />
+      {activeTab === "placeholders" && !hasPlaceholderBlueprints && (
+        <ListMenuRow icon={<LayoutTemplate className="h-4 w-4" />} label="Add Blueprints Group" onAdd={handleAddPlaceholderBlueprints} />
+      )}
     </>
   );
   const addSlot: ListAddSlot = advanced && grouped
-    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "traits" ? "w-56" : undefined }
+    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "traits" || activeTab === "placeholders" ? "w-56" : undefined }
     : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem };
   const addSearchBar = activeTab !== "overview" && (
     <ListSearchToolbar
@@ -1417,7 +1444,7 @@ const WorldEditorInner = ({
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
-                      detailFooter={detailFooter}
+                      detailFooter={detailFooter ?? copyFooter}
                     />
                   ))}
                 </Tabs>
@@ -1465,7 +1492,7 @@ const WorldEditorInner = ({
                       ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
                       : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
-                  {detailFooter}
+                  {detailFooter ?? copyFooter}
                 </Card>
               </div>
             </Panel>

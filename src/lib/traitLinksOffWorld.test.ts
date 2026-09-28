@@ -38,12 +38,12 @@ const mira: Entity = {
   traitLinks: [classLink, smiteLink, paladinLink],
 };
 
-/** Another world: the same names under new ids in Templates, and its own Albus. */
+/** Another world: the same names under new ids in Blueprints, and its own Albus. */
 const elsewhere: TraitWorld = {
-  traits: [trait('n-paladin', 'Paladin', 'n-class'), trait('n-smite', 'Smite', 'n-templates')],
+  traits: [trait('n-paladin', 'Paladin', 'n-class'), trait('n-smite', 'Smite', 'n-blueprints')],
   traitGroups: [
-    { id: 'n-templates', name: 'Templates', parentId: null, system: 'templates' },
-    { id: 'n-class', name: 'Class', parentId: 'n-templates' },
+    { id: 'n-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+    { id: 'n-class', name: 'Class', parentId: 'n-blueprints' },
   ],
   entities: [{ id: 'n-albus', name: 'Albus' }],
 };
