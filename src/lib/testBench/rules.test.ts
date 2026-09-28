@@ -7,9 +7,12 @@ import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
 import { phValueId, phValues } from '@/test/placeholderValues';
 import {
-  applyRuleFix, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
+  applyRuleFix, bearerWorldOf, runRules, groupFindings, isAdvancedRule, isRuleFixable, selectMatchingFindings,
   MATCHING_RULES, RULES, STAT_CODE_EXECUTION, STAT_CODE_UNKNOWN_NAME, type RuleWorld,
 } from './rules';
+import { syncBlueprintCopies } from '@/lib/blueprintCopies';
+import { allPlaceholders } from '@/lib/placeholderHomes';
+import { placeholderSelection } from '@/lib/placeholderTree';
 
 /** A described entity at the starting location — what keeps the completeness rules quiet about a fixture
  *  that is about something else entirely. */
@@ -1869,6 +1872,178 @@ describe('trait link rules', () => {
 
 });
 
+describe('blueprint and copy rules', () => {
+  const tabard = phValueId('a tabard');
+  const placeholderGroups = [{ id: 'bp', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' as const }];
+  const traitGroups = [{ id: 'tbp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }];
+  const garb: Placeholder = { id: 'garb', name: 'Class Garb', values: phValues(['a tabard', 'blue robes']), groupId: 'bp' };
+  // Trim's value reaches Class Garb, so a bearer of Trim needs a copy of both.
+  const trim: Placeholder = { id: 'trim', name: 'Trim', values: [{ id: 'v-trim', text: 'hem of {{ph:garb:world:pl2}}' }], groupId: 'bp' };
+  const tabardPin: PlaceholderPin = { placeholderId: 'garb', value: 'a tabard', valueId: tabard };
+  // Paladin and Tailor place what they use, so the unused rules stay quiet.
+  const paladin = trait({ id: 'paladin', name: 'Paladin', groupId: 'tbp', aiDescription: 'Wears {{ph:garb:world:pl1}}.', placeholderPins: [tabardPin] });
+  const tailor = trait({ id: 'tailor', name: 'Tailor', groupId: 'tbp', aiDescription: 'Sews a {{ph:trim:world:pl3}}.' });
+  const linkTo = (original: Trait): TraitLink =>
+    ({ id: `l-${original.id}`, originalId: original.id, kind: 'trait', originalName: original.name, groupId: null });
+  const copyOf = (blueprintId: string, extra: Partial<Placeholder> = {}): Placeholder =>
+    ({ id: `c-${blueprintId}`, name: blueprintId, values: [], blueprintId, ...extra });
+  const removesTabard = { valueOverrides: { [tabard]: { removed: true as const } } };
+  const rewordsTabard = { valueOverrides: { [tabard]: { text: { value: 'a gilded tabard', blueprint: 'a tabard' } } } };
+  const albus = (over: Partial<Entity> = {}): Entity =>
+    ({ ...resident, id: 'albus', name: 'Albus', traitLinks: [linkTo(paladin)], placeholders: [copyOf('garb')], ...over });
+  const blueprinted = (entities: Entity[], over: Partial<RuleWorld> = {}) => base({
+    placeholders: [garb, trim], placeholderGroups, traits: [paladin, tailor], traitGroups, entities: [resident, ...entities], ...over,
+  });
+  const opened = (found: ReturnType<typeof runRules>) => found.map((f) => f.items.map((i) => [i.id, i.section]));
+  /** The row the Placeholders tab selects for an item id. */
+  const rowOf = (w: RuleWorld, id: string) => placeholderSelection(allPlaceholders(w), id)?.row.placeholder;
+
+  it('raises nothing for a bearer that holds the copy its link needs', () => {
+    expect(runRules(blueprinted([albus()])).map((f) => f.ruleId)).toEqual([]);
+  });
+
+  describe('a pin naming a value the copy removed', () => {
+    const rule = 'copy-pin-removed-value';
+
+    it('warns when a linked trait’s blueprint pin names a value the bearer’s copy removed, and opens the copy', () => {
+      const w = blueprinted([albus({ placeholders: [copyOf('garb', removesTabard)] })]);
+      const found = only(w, rule);
+      expect(found.map((f) => f.message)).toEqual(['“Albus.Class Garb” removes “a tabard”, the value “Trait: Paladin” pins — the pin applies nothing']);
+      expect(found[0].severity).toBe('warning');
+      expect(opened(found)).toEqual([[['c-garb', 'placeholders'], ['l-paladin', 'traits']]]);
+      expect(rowOf(w, found[0].items[0].id)?.id).toBe('c-garb');
+    });
+
+    it('stays quiet when the copy rewords the pinned value or removes another one', () => {
+      expect(only(blueprinted([albus({ placeholders: [copyOf('garb', rewordsTabard)] })]), rule)).toEqual([]);
+      const removesRobes = { valueOverrides: { [phValueId('blue robes')]: { removed: true as const } } };
+      expect(only(blueprinted([albus({ placeholders: [copyOf('garb', removesRobes)] })]), rule)).toEqual([]);
+    });
+
+    it('reads the root trait through each entity that can play it, and never through the cast', () => {
+      const root = { ...paladin, groupId: null };
+      const removed = copyOf('garb', removesTabard);
+      const w = blueprinted([
+        { ...resident, id: 'wanderer', name: 'Wanderer', persona: true, placeholders: [removed] },
+        { ...resident, id: 'cp', name: 'Newcomer', customPersona: true, placeholders: [{ ...removed, id: 'c-cp' }] },
+        { ...resident, id: 'cast', name: 'Hesk', placeholders: [{ ...removed, id: 'c-cast' }] },
+      ], { traits: [root, tailor] });
+      expect(opened(only(w, rule))).toEqual([
+        [['c-garb', 'placeholders'], ['paladin', 'traits']],
+        [['c-cp', 'placeholders'], ['paladin', 'traits']],
+      ]);
+    });
+
+    it('warns for a pin aimed straight at the copy, and leaves it out of the unknown-value rule', () => {
+      const own = trait({ id: 'own', name: 'Oath', placeholderPins: [{ placeholderId: 'c-garb', value: 'a tabard', valueId: tabard }] });
+      const w = blueprinted([albus({ traitLinks: [], traits: [own], placeholders: [copyOf('garb', removesTabard)] })]);
+      expect(opened(only(w, rule))).toEqual([[['c-garb', 'placeholders'], ['own', 'traits']]]);
+      expect(only(w, 'placeholder-pin-unknown-value')).toEqual([]);
+    });
+
+    it('reads a pin at a copy through its blueprint, so a live blueprint value is no unknown value', () => {
+      const own = trait({ id: 'own', name: 'Oath', placeholderPins: [{ placeholderId: 'c-garb', value: 'a tabard', valueId: tabard }] });
+      const w = blueprinted([albus({ traitLinks: [], traits: [own] })]);
+      expect(only(w, 'placeholder-pin-unknown-value')).toEqual([]);
+      const gone = blueprinted([albus({ traitLinks: [], traits: [{ ...own, placeholderPins: [{ placeholderId: 'c-garb', value: 'a cape', valueId: 'v:cape' }] }] })]);
+      expect(opened(only(gone, 'placeholder-pin-unknown-value'))).toEqual([[['own', 'traits'], ['c-garb', undefined]]]);
+    });
+  });
+
+  describe('a blueprint chip or pin where it doesn’t belong', () => {
+    const rule = 'blueprint-refused-field';
+    const chip = 'with {{ph:garb:world:pl9}}';
+
+    it('warns for a blueprint chip in an entity, a location, an owned trait and a world value, each opening its row', () => {
+      const w = blueprinted([albus({
+        aiDescription: `Walks ${chip}.`,
+        traits: [trait({ id: 'own', name: 'Oath', playerDescription: chip })],
+      })], {
+        locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, playerDescription: chip }],
+        placeholders: [garb, trim, { id: 'mood', name: 'Mood', values: [{ id: 'v-m', text: chip }] }],
+      });
+      const found = only(w, rule);
+      expect(found.map((f) => f.message)).toEqual([
+        '“Albus” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
+        '“Harbor Steps” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
+        '“Oath” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
+        '“Mood” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
+      ]);
+      expect(found[0].severity).toBe('warning');
+      expect(opened(found)).toEqual([
+        [['albus', 'entities']], [['harbor', 'locations']], [['own', 'traits']], [['mood', undefined]],
+      ]);
+    });
+
+    it('leaves a blueprint chip in a world trait, a blueprint value and a copy value, and a copy chip in its owner’s text', () => {
+      const w = blueprinted([albus({
+        aiDescription: 'Wears {{ph:c-garb:world:pl8}}.',
+        traitLinks: [linkTo(paladin), linkTo(tailor)],
+        placeholders: [copyOf('garb'), copyOf('trim', { values: [{ id: 'mine', text: chip }] })],
+      })]);
+      expect(only(w, rule)).toEqual([]);
+    });
+
+    it('warns for a blueprint pin on a location or an owned trait, and not on a world trait or a link', () => {
+      const override = { paladin: { placeholderPins: { value: [tabardPin], blueprint: [] } } };
+      const w = blueprinted([albus({
+        traitLinks: [{ ...linkTo(paladin), overrides: override }],
+        traits: [trait({ id: 'own', name: 'Oath', placeholderPins: [tabardPin] })],
+      })], { locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, placeholderPins: [tabardPin] }] });
+      const found = only(w, rule);
+      expect(found.map((f) => f.message)).toEqual([
+        '“Location: Harbor Steps” pins the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can pin',
+        '“Trait: Albus\'s Oath” pins the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can pin',
+      ]);
+      expect(opened(found)).toEqual([[['harbor', 'locations']], [['own', 'traits']]]);
+    });
+  });
+
+  describe('an edited copy nothing uses', () => {
+    const rule = 'copy-edited-unused';
+
+    it('notes an edited copy with no trait or chip that uses it, and opens the copy', () => {
+      const w = blueprinted([albus({ traitLinks: [], placeholders: [copyOf('garb', rewordsTabard)] })]);
+      const found = only(w, rule);
+      expect(found.map((f) => f.message)).toEqual(['“Albus.Class Garb” is edited, but no trait or chip uses it']);
+      expect(found[0].severity).toBe('info');
+      expect(opened(found)).toEqual([[['c-garb', 'placeholders']]]);
+      expect(rowOf(w, found[0].items[0].id)?.id).toBe('c-garb');
+    });
+
+    it('stays quiet while a trait or a chip in the owner’s text uses it, and for an untouched copy', () => {
+      const edited = [copyOf('garb', rewordsTabard)];
+      expect(only(blueprinted([albus({ placeholders: edited })]), rule)).toEqual([]);
+      expect(only(blueprinted([albus({ traitLinks: [], placeholders: edited, aiDescription: 'In {{ph:c-garb:world:pl8}}.' })]), rule)).toEqual([]);
+      expect(only(blueprinted([albus({ traitLinks: [] })]), rule)).toEqual([]);
+    });
+  });
+
+  describe('a bearer without a copy it needs', () => {
+    const rule = 'copy-missing';
+
+    it('warns for a bearer whose linked trait pins a blueprint it holds no copy of, and opens the bearer and the link', () => {
+      const found = only(blueprinted([albus({ placeholders: [] })]), rule);
+      expect(found.map((f) => f.message)).toEqual(['“Albus” needs a copy of “Class Garb” for “Paladin” but has none, so it reads the blueprint']);
+      expect(found[0].severity).toBe('warning');
+      expect(opened(found)).toEqual([[['albus', 'entities'], ['l-paladin', 'traits']]]);
+    });
+
+    it('names the copy whose values reach a blueprint the bearer lacks', () => {
+      const found = only(blueprinted([albus({ traitLinks: [linkTo(tailor)], placeholders: [copyOf('trim')] })]), rule);
+      expect(found.map((f) => f.message)).toEqual(['“Albus” needs a copy of “Class Garb” for “Albus.Trim” but has none, so it reads the blueprint']);
+      expect(opened(found)).toEqual([[['albus', 'entities'], ['c-trim', 'placeholders']]]);
+    });
+
+    it('stays quiet once the reconcile has run', () => {
+      const w = blueprinted([albus({ traitLinks: [linkTo(paladin), linkTo(tailor)], placeholders: [] })]);
+      expect(only(w, rule)).toHaveLength(2);
+      const entities = syncBlueprintCopies({ ...bearerWorldOf(w), placeholders: w.placeholders ?? [], placeholderGroups: w.placeholderGroups ?? [] });
+      expect(only({ ...w, entities }, rule)).toEqual([]);
+    });
+  });
+});
+
 describe('placeholder pin rules', () => {
   const hue: Placeholder = { id: 'p1', name: 'Hue', values: phValues(['red', 'blue']) };
   // Hue is placed, so the unplaced rules stay quiet and the pin rules are the only ones speaking about it.
@@ -3246,6 +3421,10 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'placeholder-pin-cycle': 'advanced',
   'placeholder-pin-self': 'advanced',
   'placeholder-pin-unknown-value': 'advanced',
+  'copy-pin-removed-value': 'advanced',
+  'blueprint-refused-field': 'advanced',
+  'copy-edited-unused': 'advanced',
+  'copy-missing': 'advanced',
   'placeholder-unused': 'advanced',
   'placeholder-pinned-unused': 'advanced',
   'placeholder-shared-weight-unknown-value': 'advanced',

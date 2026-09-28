@@ -15,9 +15,13 @@ import {
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, pinSourceOwnerId, valuePinners,
-  type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
+  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId,
+  pinTarget, valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
 } from '@/lib/placeholderPins';
+import { copyOf, isCopy } from '@/lib/blueprints';
+import { copyNeeds, isUntouchedCopy, neededCopies, type CopyWorld } from '@/lib/blueprintCopies';
+import { acceptsBlueprintChips, type ChipField } from '@/lib/blueprintChips';
+import { blueprintIds, copyName } from '@/lib/placeholderBlueprints';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
 import {
   allPlaceholders, mapAllPlaceholders, placeholderOwners, withoutPlaceholders, type PlaceholderSlices,
@@ -41,13 +45,14 @@ import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
 import {
-  broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, resolveBearers, type Bearer, type BearerWorld,
+  broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, PLAYER_BEARER, resolveBearers, type Bearer,
+  type BearerWorld,
 } from '@/lib/bearers';
 import { WORLD_OWNER, gateOf, gateStates, neverUnlockable, settleDefaults, type GateInput } from '@/lib/traitGates';
 import { offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
-  Trait, TraitLink, World,
+  Trait, TraitGroup, TraitLink, World,
 } from '@/types';
 
 /**
@@ -522,9 +527,8 @@ const placeholderPinUnknownValue: Rule = {
   summary: (count) => `${count} placeholder pins name a value their placeholder no longer has`,
   check: (world) => {
     const placeholders = allPlaceholders(world);
-    const byId = indexPlaceholders(placeholders);
     return pinRowsOf(world)
-      .filter((row) => hasDeadValueId(row.pin, byId.get(row.pin.placeholderId)))
+      .filter((row) => deadPinTarget(row.pin, placeholders))
       .map((row) => {
         const target = placeholderItem(row.pin.placeholderId, world);
         const applies = row.pin.value
@@ -538,12 +542,21 @@ const placeholderPinUnknownValue: Rule = {
       });
   },
   fix: (world) => {
-    const byId = indexPlaceholders(allPlaceholders(world));
+    const placeholders = allPlaceholders(world);
     return withMappedPins(world, (pin) => {
-      const ph = byId.get(pin.placeholderId);
-      return ph && hasDeadValueId(pin, ph) ? relinkedPin(pin, ph) : pin;
+      const ph = deadPinTarget(pin, placeholders);
+      return ph ? relinkedPin(pin, ph) : pin;
     });
   },
+};
+
+/** The placeholder a pin reads, a copy read over its blueprint, when the pin names a value it lacks. A value
+ *  the copy removed is the copy rule's. */
+const deadPinTarget = (pin: PlaceholderPin, placeholders: readonly Placeholder[]): Placeholder | undefined => {
+  const target = pinTarget(pin, placeholders);
+  if (!target || !hasDeadValueId(pin, target)) return undefined;
+  const stored = target.blueprintId ? placeholders.find((p) => p.id === target.id) : undefined;
+  return stored?.valueOverrides?.[pin.valueId!]?.removed ? undefined : target;
 };
 
 const placeholderPinConflict: Rule = {
@@ -1942,6 +1955,191 @@ const traitLinkRedundant: Rule = {
   },
 };
 
+// ── Blueprints and copies ─────────────────────────────────────────────────────────────────────────────────
+
+/** Every bearer's tree with no persona picked, walked once per world object. */
+const bearersByWorld = new WeakMap<RuleWorld, Map<string, Bearer>>();
+const bearersOf = (world: RuleWorld): Map<string, Bearer> => {
+  let bearers = bearersByWorld.get(world);
+  if (!bearers) {
+    bearers = new Map(resolveBearers(bearerWorldOf(world), undefined).bearers.map((b) => [b.id, b]));
+    bearersByWorld.set(world, bearers);
+  }
+  return bearers;
+};
+
+/** The world as the copy reconcile reads it. */
+const copyWorldOf = (world: RuleWorld): CopyWorld => ({
+  ...bearerWorldOf(world), placeholders: world.placeholders ?? [], placeholderGroups: world.placeholderGroups ?? [],
+});
+
+/** Each entity's copies, with the entity that owns them. */
+const copiesIn = (world: RuleWorld): Array<{ owner: Entity; copy: Placeholder }> =>
+  (world.entities ?? []).flatMap((owner) => (owner.placeholders ?? []).filter(isCopy).map((copy) => ({ owner, copy })));
+
+/** A copy as the tree names it, `Owner.Blueprint`, opening the copy's row. */
+const copyItem = (owner: Entity, copy: Placeholder, world: RuleWorld): FindingItem => {
+  const blueprint = (world.placeholders ?? []).find((p) => p.id === copy.blueprintId);
+  return { id: copy.id, name: copyName(asItem(owner, world).name, labelOf(blueprint?.name ?? copy.name, world)), section: 'placeholders' };
+};
+
+/** A placeholder as a finding names it, a copy as `Owner.Blueprint`. */
+const anyPlaceholderItem = (id: string, world: RuleWorld): FindingItem => {
+  const hit = copiesIn(world).find(({ copy }) => copy.id === id);
+  return hit ? copyItem(hit.owner, hit.copy, world) : placeholderItem(id, world);
+};
+
+/** A trait on a bearer as a finding opens it: the link that brought it, else the trait. */
+const bearerTraitItem = (item: Trait | TraitGroup, bearer: Bearer | undefined, world: RuleWorld): FindingItem => {
+  const link = bearer?.linkOf.get(item.id);
+  return link ? linkItem(link, item.name, world) : namedItem(item.id, item.name, world, 'traits');
+};
+
+const copyPinRemovedValue: Rule = {
+  id: 'copy-pin-removed-value',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} pins name a value their copy removed`,
+  // A blueprint pin reads the copy of each entity that bears the trait, or plays the root trait; a pin a
+  // Detach rewrote names the copy itself.
+  check: (world) => {
+    const bearers = bearersOf(world);
+    const player = bearers.get(PLAYER_BEARER);
+    const blueprintById = new Map((world.placeholders ?? []).map((p) => [p.id, p]));
+    return copiesIn(world).flatMap(({ owner, copy }) => {
+      const removed = new Set(Object.entries(copy.valueOverrides ?? {}).filter(([, o]) => o.removed).map(([id]) => id));
+      if (!removed.size) return [];
+      const bearer = bearers.get(owner.id);
+      const traits = [...(bearer?.traits ?? []), ...(canBePlayer(owner) ? player?.traits ?? [] : [])];
+      const hits = new Map<string, { valueId: string; label: string; item: FindingItem }>();
+      const add = (pin: PlaceholderPin, label: string, item: () => FindingItem) => {
+        if (!pin.valueId || !removed.has(pin.valueId)) return;
+        const at = item();
+        if (!hits.has(at.id)) hits.set(at.id, { valueId: pin.valueId, label, item: at });
+      };
+      for (const t of traits) {
+        for (const pin of t.placeholderPins ?? []) {
+          if (pin.placeholderId === copy.blueprintId) add(pin, `Trait: ${labelOf(t.name, world)}`, () => bearerTraitItem(t, bearer, world));
+        }
+      }
+      for (const row of pinRowsOf(world)) if (row.pin.placeholderId === copy.id) add(row.pin, row.label, () => pinSourceItem(row, world));
+      const target = copyItem(owner, copy, world);
+      const valueText = (id: string) => labelOf(blueprintById.get(copy.blueprintId ?? '')?.values.find((v) => v.id === id)?.text, world);
+      return [...hits.values()].map(({ valueId, label, item }) => finding(
+        copyPinRemovedValue,
+        `${quote(target.name)} removes ${quote(valueText(valueId))}, the value ${quote(label)} pins — the pin applies nothing`,
+        [target, item],
+      ));
+    });
+  },
+};
+
+/** Texts of one kind of field, as {@link acceptsBlueprintChips} reads it, with the row a finding opens, built on a hit. */
+interface FieldTexts {
+  item: () => FindingItem;
+  texts: Array<string | undefined>;
+  field: ChipField;
+}
+
+/** Every chip-bearing field outside the world's own traits, which always take a blueprint chip. */
+const blueprintChipFields = (world: RuleWorld): FieldTexts[] => {
+  const text = { kind: 'text' } as const;
+  return [
+    ...chipOwners(world).filter((o) => o.item.section !== 'traits').map((o) => ({ item: () => o.item, texts: o.texts, field: text })),
+    { item: () => worldItem(world), texts: [world.worldOverview?.description], field: text },
+    ...(world.statUpdates ?? []).map((u) => ({ item: () => namedItem(u.id, u.name, world, 'stats'), texts: [u.prompt], field: text })),
+    ...(world.entities ?? []).flatMap((e) => [...(e.traits ?? []), ...(e.traitGroups ?? [])].map((t) => ({
+      item: () => namedItem(t.id, t.name, world, 'traits'),
+      texts: [t.name, t.playerDescription, t.aiDescription],
+      field: { kind: 'trait', owned: true } as const,
+    }))),
+    ...allPlaceholders(world).map((p) => ({
+      item: () => anyPlaceholderItem(p.id, world),
+      texts: [...(p.values ?? []).map((v) => v.text), ...Object.values(p.valueOverrides ?? {}).map((o) => o.text?.value)],
+      field: { kind: 'values', placeholderId: p.id } as const,
+    })),
+  ];
+};
+
+const BLUEPRINT_SIDE = 'only a world trait or a blueprint or copy value can';
+
+const blueprintRefusedField: Rule = {
+  id: 'blueprint-refused-field',
+  severity: 'warning',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} items hold a blueprint chip or pin where it doesn’t belong`,
+  // Every insert path refuses these, so a hit is a chip or pin that got through: a hand edit or an old file.
+  check: (world) => {
+    const blueprints = blueprintIds(world);
+    if (!blueprints.size) return [];
+    const name = (id: string) => quote(placeholderItem(id, world).name);
+    const chips = blueprintChipFields(world).flatMap(({ item, texts, field }) => {
+      const hit = [...chipIds(texts)].find((id) => blueprints.has(id));
+      if (!hit || acceptsBlueprintChips(field, world)) return [];
+      const at = item();
+      return [finding(blueprintRefusedField, `${quote(at.name)} holds a chip of the blueprint ${name(hit)}, which ${BLUEPRINT_SIDE} hold`, [at])];
+    });
+    const editor = pinEditorWorld(world);
+    const pins = pinRowsOf(world)
+      .filter((row) => blueprints.has(row.pin.placeholderId) && !isBlueprintSideSource(editor, row.source))
+      .map((row) => finding(
+        blueprintRefusedField,
+        `${quote(row.label)} pins the blueprint ${name(row.pin.placeholderId)}, which ${BLUEPRINT_SIDE} pin`,
+        [pinSourceItem(row, world)],
+      ));
+    return [...chips, ...pins];
+  },
+};
+
+const copyEditedUnused: Rule = {
+  id: 'copy-edited-unused',
+  severity: 'info',
+  section: 'placeholders',
+  advanced: true,
+  summary: (count) => `${count} edited copies have no trait or chip that uses them`,
+  // An untouched copy goes with its last use; an edited one stays for the author to keep or delete.
+  check: (world) => {
+    const needed = neededCopies(copyWorldOf(world));
+    return copiesIn(world)
+      .filter(({ owner, copy }) => !isUntouchedCopy(copy) && !needed.get(owner.id)?.has(copy.blueprintId ?? ''))
+      .map(({ owner, copy }) => {
+        const item = copyItem(owner, copy, world);
+        return finding(copyEditedUnused, `${quote(item.name)} is edited, but no trait or chip uses it`, [item]);
+      });
+  },
+};
+
+const copyMissing: Rule = {
+  id: 'copy-missing',
+  severity: 'warning',
+  section: 'entities',
+  advanced: true,
+  summary: (count) => `${count} bearers need a copy they don’t have`,
+  // The reconcile adds every needed copy after each edit, so a hit is a world that skipped it.
+  check: (world) => {
+    const bearers = bearersOf(world);
+    const byId = new Map((world.entities ?? []).map((e) => [e.id, e]));
+    return [...copyNeeds(copyWorldOf(world))].flatMap(([entityId, needs]) => {
+      const entity = byId.get(entityId);
+      if (!entity) return [];
+      return [...needs].filter(([blueprintId]) => !copyOf(entity, blueprintId)).flatMap(([blueprintId, why]) => {
+        const source = why.kind === 'trait' ? bearerTraitItem(why.item, bearers.get(entityId), world)
+          : why.kind === 'value' ? anyPlaceholderItem(why.placeholderId, world)
+          : null;
+        if (!source) return [];
+        const bearer = { ...asItem(entity, world), section: 'entities' as const };
+        return [finding(
+          copyMissing,
+          `${quote(bearer.name)} needs a copy of ${quote(placeholderItem(blueprintId, world).name)} for ${quote(source.name)} but has none, so it reads the blueprint`,
+          [bearer, source],
+        )];
+      });
+    });
+  },
+};
+
 // ── Placeholder pools ─────────────────────────────────────────────────────────────────────────────────────
 
 /** The values a roll can actually land on. Every value benched falls back to a uniform draw
@@ -2575,6 +2773,7 @@ export const RULES: readonly Rule[] = [
   traitGroupMultipleDefaults, traitGroupTooSmall,
   traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
   traitLinkRedundant,
+  copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,

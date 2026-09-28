@@ -1,6 +1,7 @@
 # 10: Test Bench rules
 
-Status: ready-for-agent
+Status: in-progress
+Base: bdc06209
 Blocked by: 06 — Pins by blueprint; 07 — Blueprint chips
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
