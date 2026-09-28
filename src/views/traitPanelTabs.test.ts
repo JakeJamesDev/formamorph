@@ -37,12 +37,12 @@ describe('traitTabForField', () => {
 });
 
 describe('traitPanelTabsFor', () => {
-  it('shows all three tabs in Advanced mode', () => {
-    expect(traitPanelTabsFor(true).map((t) => t.value)).toEqual(['details', 'stats', 'pins']);
+  it('shows all four tabs in Advanced mode', () => {
+    expect(traitPanelTabsFor(true).map((t) => t.value)).toEqual(['details', 'availability', 'stats', 'pins']);
   });
 
   it('drops Pins in Simple mode, which still leaves a strip', () => {
-    expect(traitPanelTabsFor(false).map((t) => t.value)).toEqual(['details', 'stats']);
+    expect(traitPanelTabsFor(false).map((t) => t.value)).toEqual(['details', 'availability', 'stats']);
   });
 
   it('sends every Simple-mode field to a tab Simple mode still shows', () => {

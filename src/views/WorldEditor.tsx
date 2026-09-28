@@ -1067,7 +1067,7 @@ const WorldEditorInner = ({
           key={selectedItemId}
           trait={linkedTrait}
           detailsHeader={<LinkedFromLine originalId={linkedTrait.id} onOpen={setSelectedItemId} />}
-          detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
+          availabilityFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedTrait.id} />}
           onOpenTrait={(id) => navigateToBenchItem('traits', id)}
           onOpenEntity={(id) => navigateToBenchItem('entities', id)}
           tab={shownTraitTab}

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import {
+  asMobile, benchEditorWorld, entityFieldsTab, openEditorTab, openTraitFieldsTab, renderWorldEditorBench,
+} from '@/test/worldEditorBench';
 import type { SortableTreeAdapter } from '@/managers/SortableTree';
 import type { FlatTraitNode } from '@/lib/traitTree';
 import type { World } from '@/types';
@@ -188,6 +190,7 @@ describe('the entity Traits tab as a mirror', () => {
     openMirror('Ash');
     const field = () => screen.getByText('Requires', { selector: 'label' }).parentElement as HTMLElement;
     fireEvent.click(rowNamed('Wild')!);
+    openTraitFieldsTab('Availability');
     // Paladin is a world trait: named, never a button, and the details stay open.
     expect(within(field()).getByText('Paladin')).toBeInTheDocument();
     expect(within(field()).queryByRole('button', { name: 'Paladin' })).toBeNull();
@@ -196,6 +199,7 @@ describe('the entity Traits tab as a mirror', () => {
     fireEvent.click(backRow()!);
     fireEvent.click(rowNamed('Wild')!);
     fireEvent.click(within(field()).getByRole('button', { name: 'Tamed' }));
+    openTraitFieldsTab('Details');
     expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
   });
 

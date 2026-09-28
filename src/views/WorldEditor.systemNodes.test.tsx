@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /** The Traits tab's system nodes: adding Templates and Custom Persona, removing them, and Basic visibility. */
@@ -133,6 +133,7 @@ describe('removing a system node', () => {
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
     fireEvent.click(within(link).getByText('Paladin'));
+    openTraitFieldsTab('Availability');
     const section = screen.getByText('This Link').closest('section')!;
     expect(within(section).getByText('Selected when a new game starts')).toBeInTheDocument();
     fireEvent.click(within(section).getByRole('checkbox'));

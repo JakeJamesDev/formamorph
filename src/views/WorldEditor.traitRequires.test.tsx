@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -50,6 +50,7 @@ const treeRow = (name: string) => screen.getAllByLabelText('Drag to reorder or n
 const selectTrait = (name: string) => {
   openTab(/Traits/);
   fireEvent.click(treeRow(name));
+  openTraitFieldsTab('Availability');
 };
 
 /** The Requires field's body, from its label down. */

@@ -26,7 +26,8 @@ const LOCATION_BODY: Record<string, string> = {
 };
 
 const TRAIT_BODY: Record<string, string> = {
-  details: 'Name, both descriptions, and the trait\'s two switches.',
+  details: 'Name and both descriptions.',
+  availability: 'The trait\'s two switches and its requirements.',
   stats: 'Stat Changes and Stat Availability, with their conflict notes.',
   pins: 'Placeholder pin rows.',
 };

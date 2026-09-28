@@ -29,7 +29,8 @@ Select a trait to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Details** | Name, the two descriptions, the two checkboxes below and [**Requires**](#requirements) | Simple and Advanced |
+| **Details** | Name and the two descriptions | Simple and Advanced |
+| **Availability** | The two checkboxes below, [**Requires**](#requirements), and a link's **This Link** section | Simple and Advanced |
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 

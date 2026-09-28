@@ -54,10 +54,10 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
 };
 
 /**
- * Right-panel editor for one trait: its fields split across Details, Stats and Pins.
+ * Right-panel editor for one trait: its fields split across Details, Availability, Stats and Pins.
  *
  * The panel remounts per trait, so the chosen tab is the editor's to hold and arrives as a prop. Pins is
- * Advanced only, which leaves Simple mode two tabs and a strip either way.
+ * Advanced only.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the other three panels take.
@@ -67,16 +67,16 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone. Its
  * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity. A host that
  * can open only some requirement targets says which through `requirementOpens`; the rest read as plain chips.
- * A link shows its original here, with its own lines in `detailsHeader` and `detailsFooter`.
+ * A link shows its original here, with its own lines in `detailsHeader` and `availabilityFooter`.
  */
 const TraitManager = ({
-  trait, owner, ownerLine = true, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange, focusField,
+  trait, owner, ownerLine = true, detailsHeader, availabilityFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange, focusField,
 }: {
   trait: Trait;
   owner?: Entity;
   ownerLine?: boolean;
   detailsHeader?: ReactNode;
-  detailsFooter?: ReactNode;
+  availabilityFooter?: ReactNode;
   onOpenTrait: (id: string) => void;
   onOpenEntity?: (id: string) => void;
   requirementOpens?: (requirement: TraitRequirement) => boolean;
@@ -199,6 +199,11 @@ const TraitManager = ({
         resizable
         tourAnchor="trait-ai-description"
       />
+    </>
+  );
+
+  const availabilityPanel = (
+    <>
       <label className="flex items-center gap-2 cursor-pointer">
         <Checkbox
           checked={!!editingTrait.isDefault}
@@ -216,7 +221,7 @@ const TraitManager = ({
         <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
       </label>
       <TraitRequiresField trait={editingTrait} onChange={setRequires} onOpen={openRequirement} opens={requirementOpens} />
-      {detailsFooter}
+      {availabilityFooter}
     </>
   );
 
@@ -341,7 +346,9 @@ const TraitManager = ({
     </div>
   );
 
-  const panels: Record<TraitPanelTab, ReactNode> = { details: detailsPanel, stats: statsPanel, pins: pinsPanel };
+  const panels: Record<TraitPanelTab, ReactNode> = {
+    details: detailsPanel, availability: availabilityPanel, stats: statsPanel, pins: pinsPanel,
+  };
 
   return (
     <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields">
