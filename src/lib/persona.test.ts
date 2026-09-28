@@ -179,6 +179,12 @@ describe('resolvePersona: the Custom Persona entity in None’s place', () => {
     expect(withPersonaEntry(marked, { source: 'world', entityId: 'w-mira' })).toBe(marked);
     expect(withPersonaEntry(world, { source: 'none', name: 'Ash' })).toBe(world);
   });
+
+  it('names the marked entity for the library persona the player picked', () => {
+    const picked = withPersonaEntry(marked, { source: 'library', entityId: 'l-wren' }, 'Wren');
+    expect(picked.map((e) => e.name)).toEqual(['Mira', 'Captain Vos', 'Wren']);
+    expect(withPersonaEntry(marked, { source: 'library', entityId: 'l-wren' })).toBe(marked);
+  });
 });
 
 describe('the roster without the played entity', () => {

@@ -27,12 +27,15 @@ export function enteredPersona(entity: Entity, ref: NoneRef | undefined): Entity
   };
 }
 
-/** The world's entities with the Custom Persona entity carrying the player's entry, for the surfaces that
- *  read the marked entity from the list: its tree node and its Character Name. The same list otherwise. */
-export function withPersonaEntry(entities: readonly Entity[], ref: PersonaRef | undefined): readonly Entity[] {
-  if (ref && ref.source !== 'none') return entities;
+/** The world's entities with the Custom Persona entity carrying the player's entry, or the picked library
+ *  persona's name, for the surfaces that read the marked entity from the list: its tree node and its
+ *  Character Name. The same list otherwise. */
+export function withPersonaEntry(entities: readonly Entity[], ref: PersonaRef | undefined, libraryName?: string): readonly Entity[] {
+  if (ref?.source === 'world') return entities;
   const marked = customPersonaEntity(entities);
-  const entered = marked && enteredPersona(marked, ref);
+  const entered = marked && (ref?.source === 'library'
+    ? (libraryName?.trim() ? { ...marked, name: libraryName.trim() } : marked)
+    : enteredPersona(marked, ref));
   return !entered || entered === marked ? entities : entities.map((e) => (e === marked ? entered : e));
 }
 
