@@ -1,0 +1,216 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { act, screen, fireEvent, within } from '@testing-library/react';
+import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import type { SortableTreeAdapter } from '@/managers/SortableTree';
+import type { FlatTraitNode } from '@/lib/traitTree';
+import type { World } from '@/types';
+
+/**
+ * The entity panel's Traits tab as a mirror of the Traits tab over one entity: its tree, the toolbar above
+ * it, and the details that slide in over the list. Driven through the real editor; what lands in the world
+ * is read from the live GameData handle.
+ */
+
+vi.mock('../services/WorldStorageService', () => ({
+  default: {
+    initialize: vi.fn(),
+    getWorldMetadata: vi.fn().mockResolvedValue([]),
+    storeWorld: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock('@/lib/jsonFileWorkerUtils', () => ({
+  serializeJsonBlob: vi.fn(), parseJsonText: vi.fn(), terminateWorker: vi.fn(),
+}));
+
+vi.mock('react-toastify', () => ({
+  toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() },
+  ToastContainer: () => null,
+}));
+
+// dnd-kit's pointer path needs layout jsdom does not have, so a drag is played through the adapter each tree
+// hands the scaffold. Every tree on screen is tapped; a test picks the one holding the row it drags.
+const adapters: SortableTreeAdapter<FlatTraitNode>[] = [];
+vi.mock('@/managers/SortableTree', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/managers/SortableTree')>();
+  return {
+    ...actual,
+    SortableTree: (props: Parameters<typeof actual.SortableTree<FlatTraitNode>>[0]) => {
+      adapters.push(props.adapter);
+      return <actual.SortableTree {...props} />;
+    },
+  };
+});
+const treeHolding = (rowId: string) =>
+  [...adapters].reverse().find((a) => a.getVisible(new Set()).some((r) => r.id === rowId))!;
+
+const WORLD: World = benchEditorWorld({
+  entities: [
+    { id: 'wick', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
+    {
+      id: 'ash', name: 'Ash', persona: true, playerDescription: 'A wolf.', aiDescription: 'A wolf.', locations: ['harbor'],
+      traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, order: 0 }],
+      traits: [
+        { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [], order: 0 },
+        { id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], order: 1, requires: [{ kind: 'trait', id: 't-paladin' }] },
+        { id: 't-pack', name: 'Pack Sense', groupId: null, statChanges: [], order: 2 },
+      ],
+      traitLinks: [{ id: 'l-tamer', originalId: 't-tamer', kind: 'trait', originalName: 'Beast Tamer', groupId: null, order: 1 }],
+    },
+  ],
+  traits: [
+    { id: 't-paladin', name: 'Paladin', statChanges: [] },
+    { id: 't-tamer', name: 'Beast Tamer', statChanges: [{ statId: 's1', value: 1 }] },
+  ],
+} as Partial<World>);
+
+/** The editor's own tab strip. The entity panel's Traits tab shares the name, so the strip is told apart. */
+const openTab = (name: RegExp) => fireEvent.mouseDown(
+  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
+);
+const entityFieldsTab = (name: string) =>
+  within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
+const selectEntity = (name: string) => fireEvent.click(screen.getAllByText(name)[0]);
+const openMirror = (name: string) => {
+  openTab(/Entities/);
+  selectEntity(name);
+  fireEvent.mouseDown(entityFieldsTab('Traits'));
+};
+const searchBox = () => screen.getByPlaceholderText('Search or add new traits');
+const openAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
+/** The mirror's draggable rows, in order: the entity panel's own, apart from the entity tree's rows beside it. */
+const mirrorRows = () => {
+  const panel = screen.getByRole('tablist', { name: 'Entity Fields' }).parentElement as HTMLElement;
+  return within(panel).getAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
+};
+const rowNamed = (name: string) => mirrorRows().find((row) => within(row).queryByText(name));
+const detailsOpen = () => !!screen.queryByRole('tablist', { name: 'Trait Fields' });
+const backRow = () => screen.queryByRole('button', { name: 'Traits' });
+const entity = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!;
+
+beforeEach(() => { localStorage.clear(); adapters.length = 0; });
+
+describe('the entity Traits tab as a mirror', () => {
+  it('draws the entity\'s tree with the Traits tab\'s rows, buttons and gate counts, links among them', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+    expect(within(rowNamed('Tamed')!).getByRole('button', { name: 'Duplicate' })).toBeInTheDocument();
+    expect(within(rowNamed('Tamed')!).getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+    // The link's row sits at the entity's root among its own items, fixed, opening as itself.
+    const link = screen.getByRole('button', { name: 'Open Beast Tamer' });
+    expect(within(link.closest('.cursor-pointer') as HTMLElement).getByRole('button', { name: 'Remove Link' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Help/ })).toBeNull();
+  });
+
+  it('offers Add Trait and Add Group to the entity only, names the new trait from the search text, and slides its details in', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.change(searchBox(), { target: { value: 'Fangs' } });
+    openAddMenu('Ash');
+    expect(screen.getAllByRole('button', { name: /^Add .+ to Ash$/ }).map((b) => b.textContent?.trim())).toEqual(['Add Group to Ash', 'Add Trait to Ash']);
+    expect(screen.queryByRole('button', { name: /Link Trait/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Add Trait to Ash' }));
+    expect(entity(ctx, 'ash').traits!.map((t) => t.name)).toEqual(['Tamed', 'Wild', 'Pack Sense', 'Fangs']);
+    expect(searchBox()).toHaveValue('');
+    expect(backRow()).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Fangs');
+    // Still inside the entity, on its own Traits tab.
+    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
+    expect(entityFieldsTab('Traits')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('searches the entity\'s traits and links flat, lists no group, and says when nothing matches', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.change(searchBox(), { target: { value: 'ta' } });
+    expect(screen.getByText('Tamed')).toBeInTheDocument();
+    expect(screen.getByText('Beast Tamer')).toBeInTheDocument();
+    expect(screen.queryByText('Bond')).toBeNull();
+    expect(screen.queryByText('Pack Sense')).toBeNull();
+    fireEvent.change(searchBox(), { target: { value: 'zzz' } });
+    expect(screen.getByText('No traits match “zzz”.')).toBeInTheDocument();
+  });
+
+  it('returns to the list from the back row, and keeps the open trait across a tab switch', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.click(rowNamed('Wild')!);
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Wild');
+    fireEvent.mouseDown(entityFieldsTab('Profile'));
+    expect(detailsOpen()).toBe(false);
+    fireEvent.mouseDown(entityFieldsTab('Traits'));
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Wild');
+    fireEvent.click(backRow()!);
+    expect(detailsOpen()).toBe(false);
+    expect(rowNamed('Wild')).toBeDefined();
+  });
+
+  it('returns to the list when another entity is selected, and again when the first comes back', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.click(rowNamed('Tamed')!);
+    expect(detailsOpen()).toBe(true);
+    selectEntity('Odd Wick');
+    expect(entityFieldsTab('Traits')).toHaveAttribute('aria-selected', 'true');
+    expect(detailsOpen()).toBe(false);
+    expect(screen.getByText(/Add a trait to give this entity a node on the/)).toBeInTheDocument();
+    selectEntity('Ash');
+    expect(detailsOpen()).toBe(false);
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+  });
+
+  it('reorders inside the entity, counting a link\'s place, and never moves a world trait', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    // Pack Sense dragged above the Beast Tamer link: Bond, Pack Sense, Beast Tamer at the root.
+    act(() => treeHolding('t-pack').onDrop('t-pack', 'l-tamer', 0, new Set()));
+    const ash = entity(ctx, 'ash');
+    expect(ash.traits!.find((t) => t.id === 't-pack')).toMatchObject({ groupId: null, order: 1 });
+    expect(ash.traitLinks![0]).toMatchObject({ id: 'l-tamer', order: 2 });
+    expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Wild1', 'Pack Sense']);
+    // Then into Bond, one indent right onto Wild's slot.
+    act(() => treeHolding('t-pack').onDrop('t-pack', 't-wild', 24, new Set()));
+    expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-pack')).toMatchObject({ groupId: 'g-bond' });
+    expect(ctx().traits.map((t) => t.id)).toEqual(['t-paladin', 't-tamer']);
+  });
+
+  it('opens a link on its Linked-from line and This Link, with no way to the Traits tab', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.click(screen.getByRole('button', { name: 'Open Beast Tamer' }));
+    const line = screen.getByText(/^Linked from/);
+    expect(line).toHaveTextContent('Linked from Beast Tamer in this world.');
+    expect(within(line).queryByRole('button')).toBeNull();
+    expect(screen.getByText('This Link')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ }));
+    expect(entity(ctx, 'ash').traitLinks![0].defaults).toEqual({ 't-tamer': true });
+    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
+  });
+
+  it('shows a trait\'s details without an Owned by line, since the panel already names the entity', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openMirror('Ash');
+    fireEvent.click(rowNamed('Tamed')!);
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
+    expect(screen.queryByText(/^Owned by/)).toBeNull();
+    expect(within(screen.getByRole('tablist', { name: 'Trait Fields' })).queryByRole('tab', { name: 'Stats' })).toBeNull();
+  });
+
+  it('pushes the details in over the mirror on mobile, with their own back row inside the pushed entity panel', () => {
+    const undo = asMobile();
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      openMirror('Ash');
+      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+      fireEvent.click(rowNamed('Tamed')!);
+      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+      fireEvent.click(backRow()!);
+      expect(detailsOpen()).toBe(false);
+      expect(screen.getByRole('tablist', { name: 'Entity Fields' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    } finally {
+      undo();
+    }
+  });
+});

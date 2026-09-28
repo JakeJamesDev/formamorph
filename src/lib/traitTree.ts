@@ -353,6 +353,18 @@ export function getOwnedTraitDropProjection(
     ? (id: string) => inEntity(id) || inTemplates.has(id)
     : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id))
       || (ownedRow && id === CUSTOM_PERSONA_ID);
+  const replayed = projectionOutside(items, active, overId, projection, blocked, indentationWidth);
+  if (!replayed) return null;
+  if (ownerOfParent(tree, replayed.parentId) === null && linksCarried(tree, activeId).length) return null;
+  return replayed;
+}
+
+/** The projection walked up out of every blocked parent, then replayed at that depth so the rows below agree.
+ *  Null when they would hold the row where it can't be. */
+function projectionOutside(
+  items: FlatTraitNode[], active: FlatTraitNode, overId: string, projection: { depth: number; parentId: string | null },
+  blocked: (id: string) => boolean, indentationWidth: number,
+): { depth: number; parentId: string | null } | null {
   const parentOf = new Map(items.map((i) => [i.id, i.parentId]));
   let { depth, parentId } = projection;
   while (parentId !== null && blocked(parentId)) {
@@ -361,10 +373,57 @@ export function getOwnedTraitDropProjection(
   }
   const replayed = depth === projection.depth
     ? projection
-    : getDropProjection(items, activeId, overId, (depth - active.depth) * indentationWidth, indentationWidth);
-  if (replayed.depth !== depth || replayed.parentId !== parentId) return null;
-  if (ownerOfParent(tree, parentId) === null && linksCarried(tree, activeId).length) return null;
-  return replayed;
+    : getDropProjection(items, active.id, overId, (depth - active.depth) * indentationWidth, indentationWidth);
+  return replayed.depth === depth && replayed.parentId === parentId ? replayed : null;
+}
+
+/** Where a drag in a one-entity tree would land. Nothing lands inside a link's rows, which are its original's. */
+export function getEntityRootDropProjection(
+  tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
+): { depth: number; parentId: string | null } | null {
+  const active = items.find((i) => i.id === activeId);
+  if (!active) return null;
+  const projection = getDropProjection(items, activeId, overId, dragOffset, indentationWidth);
+  return projectionOutside(items, active, overId, projection, (id) => tree.linkRows.has(id), indentationWidth);
+}
+
+/**
+ * Resolve a drag in a one-entity tree: the entity's own items reorder and nest among its links, and each
+ * link's own row keeps its place in the order. A linked group's inner rows are read from the original and
+ * never written. Null = nothing to write.
+ */
+export function applyEntityRootDrop(
+  entity: Entity, world: Pick<WorldTraitLists, 'traits' | 'traitGroups'> | null,
+  collapsedIds: Iterable<string>, activeId: string, overId: string, dragOffset: number, indentationWidth: number,
+): Entity | null {
+  const tree = entityRootTraitTree(entity, world);
+  const collapsed = [...collapsedIds];
+  const rows = ownedTraitRows(tree, [...collapsed, activeId]);
+  const projection = getEntityRootDropProjection(tree, rows, activeId, overId, dragOffset, indentationWidth);
+  const activeRow = rows.find((r) => r.id === activeId);
+  if (!projection || !activeRow) return null;
+  const offset = (projection.depth - activeRow.depth) * indentationWidth;
+  const dropped = applyDrop(tree.groups, tree.traits, collapsed, activeId, overId, offset, indentationWidth);
+  if (dropped.groups === tree.groups && dropped.leaves === tree.traits) return null;
+
+  const ownGroupIds = new Set((entity.traitGroups ?? []).map((g) => g.id));
+  const ownTraitIds = new Set((entity.traits ?? []).map((t) => t.id));
+  const traits = dropped.leaves.filter((t) => ownTraitIds.has(t.id));
+  const traitGroups = dropped.groups.filter((g) => ownGroupIds.has(g.id));
+  const placeOf = (id: string) => {
+    const g = dropped.groups.find((x) => x.id === id);
+    if (g) return { groupId: g.parentId, order: g.order ?? 0 };
+    const t = dropped.leaves.find((x) => x.id === id);
+    return { groupId: t?.groupId ?? null, order: t?.order ?? 0 };
+  };
+  const traitLinks = (entity.traitLinks ?? []).map((l) => ({ ...l, ...placeOf(l.id) }));
+  const { traits: _t, traitGroups: _g, traitLinks: _l, ...rest } = entity;
+  return {
+    ...rest,
+    ...(traits.length ? { traits } : {}),
+    ...(traitGroups.length ? { traitGroups } : {}),
+    ...(traitLinks.length ? { traitLinks } : {}),
+  };
 }
 
 /**

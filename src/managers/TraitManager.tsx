@@ -65,12 +65,14 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  *
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
- * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone.
+ * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone. Its
+ * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity.
  * A link shows its original here, with its own lines in `detailsHeader` and `detailsFooter`.
  */
-const TraitManager = ({ trait, owner, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
+const TraitManager = ({ trait, owner, ownerLine = true, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
   trait: Trait;
   owner?: Entity;
+  ownerLine?: boolean;
   detailsHeader?: ReactNode;
   detailsFooter?: ReactNode;
   onOpenTrait: (id: string) => void;
@@ -150,7 +152,7 @@ const TraitManager = ({ trait, owner, detailsHeader, detailsFooter, onOpenTrait,
   const detailsPanel = (
     <>
       {detailsHeader}
-      {owner && (
+      {owner && ownerLine && (
         <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
           <User className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <div className="min-w-0 space-y-0.5">

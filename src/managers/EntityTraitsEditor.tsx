@@ -34,12 +34,14 @@ type SearchRow = { id: string; name: string; linkRow?: LinkRow };
  * the entity doesn't hold, so one entity's trait never shows under another's name. While a search is typed
  * the list is flat: matching traits and Links, never groups.
  */
-const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, emptyHint }: {
+const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity, ownerLine = true, emptyHint }: {
   store: EntityTraitStore;
   layout: EntityTraitsLayout;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onOpenEntity?: (id: string) => void;
+  /** Off, a trait's Details drop their "Owned by" line: for a host whose heading already names the entity. */
+  ownerLine?: boolean;
   /** What the list shows while the entity has no traits, groups or Links. */
   emptyHint: ReactNode;
 }) => {
@@ -183,6 +185,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
                 key={trait.id}
                 trait={trait}
                 owner={bearer}
+                ownerLine={ownerLine}
                 onOpenTrait={onSelect}
                 onOpenEntity={onOpenEntity}
                 tab={tab}

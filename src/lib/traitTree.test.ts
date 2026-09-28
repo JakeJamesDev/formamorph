@@ -3,7 +3,7 @@ import {
   buildTraitTree, isDescendantGroup, buildTraitContext,
   flattenTraitTree, removeChildrenOf, getTraitDropProjection, applyTraitDrop,
   duplicateTraitNode, ownedTraitTree, applyOwnedTraitDrop, getOwnedTraitDropProjection, linkRowId,
-  CUSTOM_PERSONA_ID, linkRefusal,
+  CUSTOM_PERSONA_ID, linkRefusal, entityRootTraitTree, getEntityRootDropProjection, applyEntityRootDrop,
 } from './traitTree';
 import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
@@ -731,5 +731,90 @@ describe('system nodes in the one tree', () => {
     // A and B reindex to 0 and 1, so Templates takes the next free place rather than sharing one.
     expect(out?.kind === 'moved' && out.world?.traits.map((t) => [t.id, t.order])).toEqual([['a', 1], ['b', 0]]);
     expect(out?.kind === 'moved' && out.world?.groups).toEqual([{ ...world.traitGroups[0], order: 2 }]);
+  });
+});
+
+describe('a one-entity tree\'s drops', () => {
+  // The world Ash's links read: Classes holds Paladin and Wizard; Brave sits at the root.
+  const world = {
+    traits: [{ ...trait('paladin', 'classes', 0), name: 'Paladin' }, trait('wizard', 'classes', 1), trait('brave', null, 1)],
+    traitGroups: [{ ...group('classes', null, 0), name: 'Classes' }],
+  };
+  const link = (id: string, originalId: string, kind: 'trait' | 'group', groupId: string | null, order: number): TraitLink =>
+    ({ id, originalId, kind, originalName: originalId, groupId, order });
+  // Ash's rows: bond, -tamed, -wild, l-brave, pack, l-classes, -l-classes/paladin, -l-classes/wizard.
+  const ash: Entity = {
+    id: 'ash', name: 'Ash',
+    traitGroups: [group('bond', null, 0)],
+    traits: [trait('tamed', 'bond', 0), trait('wild', 'bond', 1), trait('pack', null, 2)],
+    traitLinks: [link('l-brave', 'brave', 'trait', null, 1), link('l-classes', 'classes', 'group', null, 3)],
+  };
+  const tree = entityRootTraitTree(ash, world);
+  const rows = (collapsed: string[] = []) => removeChildrenOf(flattenTraitTree(buildTraitTree(tree.groups, tree.traits)), collapsed);
+  const drop = (activeId: string, overId: string, offset: number, collapsed: string[] = []) =>
+    applyEntityRootDrop(ash, world, collapsed, activeId, overId, offset, 24);
+  const order = (entity: Entity) => [
+    ...(entity.traitGroups ?? []).map((g) => [g.id, g.parentId, g.order] as const),
+    ...(entity.traits ?? []).map((t) => [t.id, t.groupId, t.order] as const),
+    ...(entity.traitLinks ?? []).map((l) => [l.id, l.groupId, l.order] as const),
+  ].sort((a, b) => (a[1] ?? '').localeCompare(b[1] ?? '') || a[2]! - b[2]!);
+
+  it('draws the links among the own items in order', () => {
+    expect(rows().map((r) => `${'-'.repeat(r.depth)}${r.id}`)).toEqual([
+      'bond', '-tamed', '-wild', 'l-brave', 'pack', 'l-classes', `-${linkRowId('l-classes', 'paladin')}`, `-${linkRowId('l-classes', 'wizard')}`,
+    ]);
+  });
+
+  it('never projects a drop inside a linked group, whose rows are the original\'s', () => {
+    // Pack dragged one indent right past the linked group's last row would nest in Classes: it stays at the root.
+    expect(getEntityRootDropProjection(tree, rows(['bond']), 'pack', linkRowId('l-classes', 'wizard'), 24, 24))
+      .toEqual({ depth: 0, parentId: null });
+    // Onto a row inside the linked group, or onto its own row with rows below: those rows hold it inside, so no projection.
+    expect(getEntityRootDropProjection(tree, rows(['bond']), 'pack', linkRowId('l-classes', 'paladin'), 24, 24)).toBeNull();
+    expect(getEntityRootDropProjection(tree, rows(), 'pack', 'l-classes', 24, 24)).toBeNull();
+    // Into an own group is fine.
+    expect(getEntityRootDropProjection(tree, rows(), 'pack', 'wild', 24, 24)).toEqual({ depth: 1, parentId: 'bond' });
+  });
+
+  it('reorders own items around a link, counting the link in the order', () => {
+    // Pack dragged above the Brave link: pack, l-brave, l-classes at the root after Bond.
+    const next = drop('pack', 'l-brave', 0)!;
+    expect(order(next)).toEqual([
+      ['bond', null, 0], ['pack', null, 1], ['l-brave', null, 2], ['l-classes', null, 3],
+      ['tamed', 'bond', 0], ['wild', 'bond', 1],
+    ]);
+    expect(next.traitLinks!.map((l) => l.originalName)).toEqual(['brave', 'classes']);
+  });
+
+  it('moves an own group past a link, keeping the group\'s own rows and the link\'s data', () => {
+    const next = drop('bond', 'l-brave', 0, ['bond'])!;
+    expect(order(next).filter(([, parent]) => parent === null)).toEqual([
+      ['l-brave', null, 0], ['bond', null, 1], ['pack', null, 2], ['l-classes', null, 3],
+    ]);
+    expect(next.traits!.filter((t) => t.groupId === 'bond').map((t) => t.id)).toEqual(['tamed', 'wild']);
+    // A linked group's inner rows are never written to the entity.
+    expect(next.traits!.map((t) => t.id)).toEqual(['tamed', 'wild', 'pack']);
+    expect(next.traitGroups!.map((g) => g.id)).toEqual(['bond']);
+    expect(next.traitLinks![1]).toMatchObject({ id: 'l-classes', originalId: 'classes', groupId: null, order: 3 });
+  });
+
+  it('nests an own trait in an own group, and pulls one out to the root', () => {
+    // Pack onto Wild's slot, one indent right, lands in Bond between Tamed and Wild.
+    const nested = drop('pack', 'wild', 24)!;
+    expect(nested.traits!.filter((t) => t.groupId === 'bond').sort((a, b) => a.order! - b.order!).map((t) => t.id)).toEqual(['tamed', 'pack', 'wild']);
+    const out = drop('wild', 'l-brave', 0)!;
+    expect(out.traits!.find((t) => t.id === 'wild')).toMatchObject({ groupId: null });
+    expect(out.traits!.filter((t) => t.groupId === 'bond').map((t) => t.id)).toEqual(['tamed']);
+  });
+
+  it('keeps the order on a drop onto itself, and writes nothing onto a hidden row', () => {
+    expect(order(drop('tamed', 'tamed', 0)!)).toEqual(order(ash));
+    expect(drop('pack', 'tamed', 0, ['bond'])).toBeNull();
+  });
+
+  it('draws an unbound link as one row and reorders around it standalone', () => {
+    const alone: Entity = { ...ash, traitLinks: [link('l-brave', 'brave', 'trait', null, 1)] };
+    const next = applyEntityRootDrop(alone, null, [], 'pack', 'l-brave', 0, 24)!;
+    expect(order(next).filter(([, parent]) => parent === null)).toEqual([['bond', null, 0], ['pack', null, 1], ['l-brave', null, 2]]);
   });
 });

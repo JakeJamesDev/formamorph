@@ -88,7 +88,7 @@ const Harness = () => {
   store.rerender = () => setTick((n) => n + 1);
   return (
     <CodeRenameProvider>
-      <EntityManager entity={store.entity} tab="profile" onTabChange={() => {}} />
+      <EntityManager entity={store.entity} tab="profile" onTabChange={() => {}} traitId={null} onTraitIdChange={() => {}} />
       <button type="button">elsewhere</button>
     </CodeRenameProvider>
   );

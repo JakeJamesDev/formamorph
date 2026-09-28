@@ -43,7 +43,10 @@ const WORLD: World = benchEditorWorld({
   ],
 } as Partial<World>);
 
-const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+/** The editor's own tab strip. The entity panel's Traits tab shares the name, so the strip is told apart. */
+const openTab = (name: RegExp) => fireEvent.mouseDown(
+  screen.getAllByRole('tab', { name }).find((t) => t.closest('[role="tablist"]')?.getAttribute('aria-label') !== 'Entity Fields')!,
+);
 
 /** The entity panel's own tab, apart from the editor's Traits tab of the same name. */
 const entityFieldsTab = (name: string) =>
@@ -61,39 +64,48 @@ const entityNodeRow = (name: string) => screen.queryAllByRole('button', { name: 
 
 const entity = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!;
 
-const selectedRowText = () => document.querySelector('[data-editor-row-selected]')?.textContent;
+/** The last selected row: the trait tree's, past the entity tree's own selected row when both show. */
+const selectedRowText = () => [...document.querySelectorAll('[data-editor-row-selected]')].at(-1)?.textContent;
 
 beforeEach(() => { localStorage.clear(); });
 
+/** The entity Traits tab's own + menu, apart from the editor's. Its label names the entity. */
+const openEntityAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
+
 describe('the entity panel Traits tab', () => {
-  it('adds an entity\'s first trait, which opens on the Traits tab under a new entity node', () => {
+  it('adds an entity\'s first trait in place, which gives it a node on the Traits tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Entities/);
     fireEvent.click(screen.getAllByText('Odd Wick')[0]);
     fireEvent.mouseDown(entityFieldsTab('Traits'));
     expect(screen.getByText(/Add a trait to give this entity a node on the/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add Trait' }));
+    openEntityAddMenu('Odd Wick');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Trait to Odd Wick' }));
     const [added] = entity(ctx, 'wick').traits!;
     expect(added).toMatchObject({ name: 'New Trait', statChanges: [], groupId: null });
 
-    // The entity panel is gone, so the one selected Traits tab is the editor's.
-    expect(screen.queryByRole('tablist', { name: 'Entity Fields' })).toBeNull();
-    expect(screen.getByRole('tab', { name: /Traits/, selected: true })).toBeInTheDocument();
-    expect(selectedRowText()).toBe('New Trait');
+    // The author stays in the entity: its panel is still up, with the new trait's details open.
+    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
+    expect(entityFieldsTab('Traits')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Name')).toHaveTextContent('New Trait');
+
+    openTab(/Traits/);
     expect(entityNodeRow('Odd Wick')).toHaveTextContent(/Odd WickEntity$/);
   });
 
-  it('lists the entity\'s own groups and traits, and opens one on the Traits tab', () => {
+  it('lists the entity\'s own groups and traits as the Traits tab draws them, and opens one in place', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Entities/);
     fireEvent.click(screen.getAllByText('Ash')[0]);
     fireEvent.mouseDown(entityFieldsTab('Traits'));
-    const list = screen.getByRole('list', { name: 'Owned Traits' });
-    expect(within(list).getAllByRole('button').map((b) => b.textContent)).toEqual(['Bond', 'Tamed', 'Wild']);
+    expect(['Bond', 'Tamed', 'Wild'].map((name) => treeRow(name)).every(Boolean)).toBe(true);
+    expect(within(treeRow('Bond')!).getByRole('button', { name: 'Collapse group' })).toBeInTheDocument();
 
-    fireEvent.click(within(list).getByRole('button', { name: 'Wild' }));
+    fireEvent.click(treeRow('Wild')!);
     expect(selectedRowText()).toBe('Wild1');
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Wild');
+    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
   });
 
   it('shows the tab only in Advanced mode', () => {
@@ -142,17 +154,22 @@ describe('entity nodes on the Traits tab', () => {
     openTab(/Entities/);
     fireEvent.click(screen.getAllByText('Odd Wick')[0]);
     fireEvent.mouseDown(entityFieldsTab('Traits'));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Group' }));
+    openEntityAddMenu('Odd Wick');
+    fireEvent.click(screen.getByRole('button', { name: 'Add Group to Odd Wick' }));
     expect(entity(ctx, 'wick').traitGroups).toEqual([expect.objectContaining({ name: 'New Group', parentId: null })]);
+    expect(screen.getByLabelText('Group Name')).toHaveTextContent('New Group');
+    openTab(/Traits/);
     expect(entityNodeRow('Odd Wick')).toBeDefined();
-    expect(selectedRowText()).toBe('New Group');
   });
 
-  it('opens the node on a panel listing its traits, with a way to the entity', () => {
+  it('opens the node on a panel with its name and a way to the entity, and no list of its traits', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(entityNodeRow('Ash')!);
-    expect(screen.getByRole('list', { name: 'Owned Traits' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Owned Traits' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Add (Trait|Group)/ })).toBeNull();
+    // The tree draws the names once each: nothing beside it repeats them.
+    expect(screen.getAllByText('Tamed')).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Open Entity' }));
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
     expect(entityFieldsTab('Traits')).toHaveAttribute('aria-selected', 'true');

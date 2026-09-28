@@ -1,6 +1,7 @@
 # 04: The mirror
 
-Status: ready-for-agent
+Status: in-progress
+Base: 8f1e7886
 Blocked by: 02 — Entity panel tabs fill the pane; 03 — Shared entity traits editor with the toolbar in the library
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -34,3 +35,7 @@ The entity panel's **Traits** tab is a mirror of the **Traits** tab limited to t
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] No export-shape change; say so in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+- 2026-09-28 (implementation): The mirror is `EntityTraitsMirror`, which builds the world entity store (`useWorldEntityTraitStore`) and renders `EntityTraitsEditor` stacked with `ownerLine` off (Q27). The World Editor holds `entityTraitId` beside `entityTab`. Two rulings came mid-ticket: Q26 makes a one-entity tree's drops land relative to Link rows, so `traitTree.ts` gains `getEntityRootDropProjection` and `applyEntityRootDrop`, and `TraitTree` takes that path whenever the store has an `entityRoot`; the library editor gets the same fix. The mirror also exposed a gap from ticket 03: a one-entity tree's own rows read their gates as the player's, so "Wild 🔒1" on the Traits tab showed as "Wild" in the mirror. `TraitTree` now reads an own row's gate as the root entity's. The old bare list (`EntityTraitsSection.tsx`) is gone; `EntityTraitNodePanel` moved to its own file with the name and **Open Entity** only. The mirror store passes `entities: []`, as the library store does: the field lists the entities whose nodes the tree shows, and a one-entity tree shows none. Four owned-traits assertions changed because the spec changes the behavior: adds and row clicks now stay in the entity, and the node panel lists no traits. Static frames from the dev-router (Emberwatch, Albus) confirmed the list and details states on desktop and inside the mobile push; screenshots of the hidden pane came back tiled, so DOM reads carry the evidence.
