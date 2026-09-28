@@ -309,3 +309,4 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q81 | A save from the system-node era loads; its old Custom Persona pick is not held, nothing sits under the marked entity's key, and nothing migrates it. Ticket 08's "does not load" criterion reads this way. |
   | Q82 | The trait runtime treats every player entity bearer alike: the marked entity's linked stat traits apply at a new game and on a switch, and reverse on a persona change, keyed `<entity id>/<trait id>`. |
   | Q83 | The persona offer model carries the custom row; a None ref compares by its entered name and description, so Enter World remembers the entry and Change enables on a name change. |
+  | Q84 | The marked entity's authored aliases stay when the player enters a name; they are the author's setup, like the description under Q11. Player names = the entered name, then the aliases. |
