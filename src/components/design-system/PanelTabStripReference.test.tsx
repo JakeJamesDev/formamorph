@@ -60,7 +60,7 @@ describe('panel tab strip reference', () => {
 
     // Location and trait both open on `details`, and each one holds different fields.
     expect(screen.getByText('Name, starting location, and the three descriptions.')).toBeInTheDocument();
-    expect(screen.getByText('Name, both descriptions, and the trait\'s two switches.')).toBeInTheDocument();
+    expect(screen.getByText('Name and both descriptions.')).toBeInTheDocument();
 
     // And both carry a `pins` tab whose rows are not the same rows.
     const trait = screen.getByRole('tablist', { name: 'Sample Trait Fields' });

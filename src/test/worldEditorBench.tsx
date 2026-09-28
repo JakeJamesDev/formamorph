@@ -120,6 +120,11 @@ export const openEditorTab = (name: RegExp) => fireEvent.mouseDown(
 export const entityFieldsTab = (name: string) =>
   within(screen.getByRole('tablist', { name: 'Entity Fields' })).getByRole('tab', { name });
 
+/** Open one tab of the trait panel's own strip. These tabs switch on mouseDown, not click. */
+export const openTraitFieldsTab = (name: string) => fireEvent.mouseDown(
+  within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name }),
+);
+
 /** Click the editor header's flask — whose first stop is the quick-triage popover, not the full panel. */
 export const clickFlask = async () => {
   fireEvent.click(await screen.findByRole('button', { name: /^Test Bench/ }));

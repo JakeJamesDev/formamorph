@@ -140,7 +140,7 @@ export const DEV_MODAL_TABS = {
   worldEditorStat: ['details', 'descriptors', 'code'],
   // The World Editor's trait panel does the same over the Traits tab
   // (`#dev?modal=worldEditor&tab=traits&subtab=stats`). `pins` is Advanced only.
-  worldEditorTrait: ['details', 'stats', 'pins'],
+  worldEditorTrait: ['details', 'availability', 'stats', 'pins'],
   // The World Editor's dictionary entry panel does the same over the Dictionary tab
   // (`#dev?modal=worldEditor&tab=dictionary&subtab=matching`). It lands on the entry panel, so pair it with
   // a book that has an entry to select. `matching` is Advanced only, and Simple mode leaves one tab and no

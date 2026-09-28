@@ -8,7 +8,7 @@ import type { World } from '@/types';
  *
  * The panel splits its field groups across its own tabs, so a group that loses a field, gains a duplicate,
  * lands out of order, or lands on the wrong tab shows up here as a changed label list. Pins is Advanced only,
- * so Simple mode keeps a strip of two rather than losing it.
+ * so Simple mode shows the other three.
  */
 
 vi.mock('../services/WorldStorageService', () => ({
@@ -86,17 +86,25 @@ const selectTrait = (name: string) => {
 beforeEach(() => { localStorage.clear(); });
 
 describe('the World Editor trait panel tabs', () => {
-  it('offers three tabs in Advanced mode and opens on Details', () => {
+  it('offers four tabs in Advanced mode and opens on Details', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
-    expect(panelTabNames()).toEqual(['Details', 'Stats', 'Pins']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('puts what the trait is and its own switches on Details, and nothing else', () => {
+  it('puts what the trait is on Details, and nothing else', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     selectTrait('Sedge-Born');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description', 'Requires']);
+    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
+    expect(screen.queryByText('Enabled by Default')).toBeNull();
+  });
+
+  it('puts both switches and Requires on Availability, and nothing else', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    selectTrait('Sedge-Born');
+    openPanelTab('Availability');
+    expect(panelLabels()).toEqual(['Requires']);
     expect(panelSwitches()).toEqual(['Enabled by Default', 'Player Can Toggle In-Game']);
   });
 
@@ -120,10 +128,10 @@ describe('the World Editor trait panel tabs', () => {
     expect(screen.getByRole('textbox', { name: 'Pinned Value' })).toHaveValue('copper');
   });
 
-  it('leaves Simple mode two tabs, with Stat Availability gone from Stats', () => {
+  it('leaves Simple mode three tabs, with Stat Availability gone from Stats', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectTrait('Sedge-Born');
-    expect(panelTabNames()).toEqual(['Details', 'Stats']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
     openPanelTab('Stats');
     expect(panelLabels()).toEqual(['Stat Changes']);
     expect(screen.getByRole('button', { name: 'Add Stat Change' })).toBeInTheDocument();
@@ -146,13 +154,13 @@ describe('the World Editor trait panel tabs', () => {
     openPanelTab('Pins');
 
     fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
-    expect(panelTabNames()).toEqual(['Details', 'Stats']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats']);
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
-    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description', 'Requires']);
+    expect(panelLabels()).toEqual(['Name', 'Player-Facing Description', 'AI-Facing Description']);
 
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
     fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
-    expect(panelTabNames()).toEqual(['Details', 'Stats', 'Pins']);
+    expect(panelTabNames()).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
   });
 
   it('shows a trait group its own panel with no strip', () => {

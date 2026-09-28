@@ -68,6 +68,7 @@ describe('the library entity Traits tab', () => {
   it('reads an outward requirement by its stored name, red, and offers only requirements inside the entity', async () => {
     await openTraits();
     await userEvent.click(screen.getByText('Oath'));
+    await userEvent.click(screen.getByRole('tab', { name: 'Availability' }));
     const chip = screen.getByText('Paladin').closest('[data-unresolved]');
     expect(chip).not.toBeNull();
     // "Playing as" the entity itself points inside it, so it reads resolved.

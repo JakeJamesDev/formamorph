@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, entityFieldsTab, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import {
+  benchEditorWorld, entityFieldsTab, openEditorTab, openTraitFieldsTab, renderWorldEditorBench,
+} from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -187,7 +189,7 @@ describe('an owned trait\'s panel', () => {
     expect(screen.getByText(/^Owned by/)).toHaveTextContent('Owned by Ash');
     expect(screen.getByText('Describes them to the AI, and joins your traits when you play as them')).toBeInTheDocument();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Pins']);
 
     fireEvent.click(screen.getByRole('button', { name: 'Ash' }));
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
@@ -199,13 +201,14 @@ describe('an owned trait\'s panel', () => {
     fireEvent.click(treeRow('Paladin')!);
     expect(screen.queryByText(/^Owned by/)).toBeNull();
     const strip = screen.getByRole('tablist', { name: 'Trait Fields' });
-    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Stats', 'Pins']);
+    expect(within(strip).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Details', 'Availability', 'Stats', 'Pins']);
   });
 
   it('writes an edit to its entity, never to the world\'s traits', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Tamed')!);
+    openTraitFieldsTab('Availability');
     act(() => { fireEvent.click(screen.getByRole('checkbox', { name: /Enabled by Default/ })); });
     expect(entity(ctx, 'ash').traits!.find((t) => t.id === 't-tamed')?.isDefault).toBe(true);
     expect(ctx().traits.map((t) => t.id)).toEqual(['t-paladin', 't-tamer']);
@@ -217,6 +220,7 @@ describe('requirements across owners', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Beast Tamer')!);
+    openTraitFieldsTab('Availability');
     fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
     const list = await screen.findByRole('listbox');
     const tamed = within(list).getByRole('option', { name: /^Tamed/ });
@@ -233,6 +237,7 @@ describe('requirements across owners', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Wild')!);
+    openTraitFieldsTab('Availability');
     fireEvent.click(screen.getByRole('button', { name: 'Paladin' }));
     expect(selectedRowText()).toBe('Paladin');
   });
