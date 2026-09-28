@@ -22,53 +22,56 @@ const world = (id: string, overview: Record<string, unknown>): World => ({
 
 const wrapper = ({ children }: { children: ReactNode }) => <GameDataProvider>{children}</GameDataProvider>;
 
-describe('Custom Persona in the world store', () => {
-  const cp = { traitLinks: [
+describe('the Custom Persona entity in the world store', () => {
+  const links = [
     { id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null },
     { id: 'l2', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null },
-  ], traitPlacement: { groupId: null, order: 3 } };
+  ];
+  const you = { id: 'you', name: 'Wanderer', customPersona: true, traitLinks: links, traitPlacement: { groupId: null, order: 3 } };
   const withPersona = {
     ...world('w', {}),
     traits: [{ id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'templates' }, { id: 'brave', name: 'Brave', statChanges: [] }],
     traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
-    customPersona: cp,
+    entities: [you],
   } as unknown as World;
+  const marked = (result: { current: ReturnType<typeof useGameData> }) => result.current.entities.find((e) => e.customPersona);
 
-  it('loads, saves and discards the node with the world, clean on load', async () => {
+  it('loads, saves and discards the mark with the world, clean on load', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(withPersona); });
-    expect(result.current.customPersona).toEqual(cp);
-    expect(result.current.getWorldData().customPersona).toEqual(cp);
+    expect(marked(result)).toMatchObject({ id: 'you', customPersona: true, traitLinks: links });
+    expect(result.current.getWorldData().entities[0].customPersona).toBe(true);
     expect(result.current.isWorldDirty).toBe(false);
 
-    act(() => { result.current.setCustomPersona(undefined); });
+    const { customPersona: _mark, ...unmarked } = result.current.entities[0];
+    act(() => { result.current.updateEntity(unmarked); });
     expect(result.current.isWorldDirty).toBe(true);
-    expect(result.current.getWorldData()).not.toHaveProperty('customPersona');
+    expect(result.current.getWorldData().entities[0]).not.toHaveProperty('customPersona');
     act(() => { result.current.discardChanges(); });
-    expect(result.current.customPersona).toEqual(cp);
+    expect(marked(result)).toMatchObject({ id: 'you', traitLinks: links });
   });
 
-  it('carries no node over from the world loaded before', () => {
+  it('reads no Custom Persona node off a world that still carries one', () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
-    act(() => { result.current.loadWorldData(withPersona); });
-    act(() => { result.current.loadWorldData(world('other', {})); });
-    expect(result.current.customPersona).toBeUndefined();
+    act(() => { result.current.loadWorldData({ ...withPersona, customPersona: { traitLinks: links } } as unknown as World); });
+    expect(result.current.getWorldData()).not.toHaveProperty('customPersona');
+    expect(marked(result)?.traitLinks).toEqual(links);
   });
 
-  it('deleting an original deletes Custom Persona\'s links to it', () => {
+  it("deleting an original deletes the Custom Persona entity's links to it", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(withPersona); });
     act(() => { result.current.removeTrait('paladin'); });
-    expect(result.current.customPersona?.traitLinks.map((l) => l.id)).toEqual(['l2']);
+    expect(marked(result)?.traitLinks?.map((l) => l.id)).toEqual(['l2']);
   });
 
-  it('removing Templates moves its traits to the top level and keeps Custom Persona\'s links to them', () => {
+  it("removing Templates moves its traits to the top level and keeps the Custom Persona entity's links to them", () => {
     const { result } = renderHook(() => useGameData(), { wrapper });
     act(() => { result.current.loadWorldData(withPersona); });
     act(() => { result.current.removeTraitGroup('templates'); });
     expect(result.current.traitGroups).toEqual([]);
     expect(result.current.traits.find((t) => t.id === 'paladin')?.groupId).toBeNull();
-    expect(result.current.customPersona).toEqual(cp);
+    expect(marked(result)?.traitLinks).toEqual(links);
   });
 
   it('removing Templates inside another group still moves its traits to the top level', () => {

@@ -23,8 +23,12 @@ const traitId = (w: World, name: string): string => {
 };
 const asEntity = (w: World, name: string): PersonaRef => ({ source: 'world', entityId: entityNamed(w, name).id });
 
-const bearerWorld = (w: World): BearerWorld =>
-  ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities, customPersona: w.customPersona });
+const bearerWorld = (w: World): BearerWorld => ({ traits: w.traits, traitGroups: w.traitGroups ?? [], entities: w.entities });
+const customPersonaId = (w: World): string => {
+  const marked = w.entities.find((e) => e.customPersona);
+  if (!marked) throw new Error('no Custom Persona entity');
+  return marked.id;
+};
 
 /** The settled default active set of one bearer under a persona choice. */
 const settledDefaults = (w: World, ownerId: string, persona: PersonaRef): string[] => {
@@ -50,7 +54,7 @@ describe('the Emberwatch default world', () => {
   it('teaches each feature in the readme by naming its example', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
-    for (const label of ['Templates', 'Group links', 'Trait links', 'Per-link defaults', "Bearer's Own pins",
+    for (const label of ['Templates', 'Group links', 'Trait links', 'Per-link defaults', 'Blueprint pins',
       'Custom Persona', 'Persona-only', 'Same-bearer gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
       expect(readme, label).toContain(`**${label}`);
     }
@@ -78,16 +82,24 @@ describe('bearers on Emberwatch', () => {
     expect(names(world, settledDefaults(world, entityNamed(world, 'Mother Hesk').id, NONE)).sort()).toEqual(['Cleric', 'Dwarf']);
   });
 
-  it("gives the player Custom Persona's links under None, and a persona's own tree when played", () => {
-    const none = resolveBearers(bearerWorld(world), NONE).bearers.find((b) => b.id === PLAYER_BEARER)!;
-    expect(none.groups.map((g) => g.name)).toEqual(expect.arrayContaining(['Bonds', 'Races', 'Classes', 'Racial Abilities', 'Class Abilities']));
-    expect(none.groups.map((g) => g.name)).not.toContain('Templates');
-    expect([...none.linkOf.values()].every((l) => world.customPersona?.traitLinks.includes(l))).toBe(true);
-    expect(names(world, settledDefaults(world, PLAYER_BEARER, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Rogue']);
+  it("gives the player the Custom Persona entity's links under None, and a persona's own tree when played", () => {
+    const cp = customPersonaId(world);
+    const none = resolveBearers(bearerWorld(world), NONE);
+    const root = none.bearers.find((b) => b.id === PLAYER_BEARER)!;
+    expect(root.groups.map((g) => g.name)).toEqual(['Bonds']);
+    expect(root.linkOf.size).toBe(0);
+    const custom = none.bearers.find((b) => b.id === cp)!;
+    expect(custom.isPlayer).toBe(true);
+    expect(custom.present).toBe(true);
+    expect(none.cast.map((e) => e.id)).not.toContain(cp);
+    expect(custom.groups.map((g) => g.name)).toEqual(expect.arrayContaining(['Races', 'Classes', 'Racial Abilities', 'Class Abilities']));
+    expect(custom.groups.map((g) => g.name)).not.toContain('Templates');
+    expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Rogue']);
 
-    const played = resolveBearers(bearerWorld(world), asEntity(world, 'Albus')).bearers.find((b) => b.id === PLAYER_BEARER)!;
-    expect(played.groups.map((g) => g.name)).toEqual(['Bonds']);
-    expect(played.linkOf.size).toBe(0);
+    const played = resolveBearers(bearerWorld(world), asEntity(world, 'Albus'));
+    expect(played.bearers.find((b) => b.id === PLAYER_BEARER)!.groups.map((g) => g.name)).toEqual(['Bonds']);
+    expect(played.bearers.find((b) => b.id === cp)!.present).toBe(false);
+    expect(played.playerBearerIds).toEqual([PLAYER_BEARER, entityNamed(world, 'Albus').id]);
   });
 
   it('switches a racial ability off and on with the race', () => {
@@ -116,11 +128,14 @@ describe('bearers on Emberwatch', () => {
   });
 
   it('keeps a Custom Persona pick from unlocking a racial ability on the played persona', () => {
-    // Enter World keeps the None picks (Halfling among them) in the player's list under Sylvie.
-    const { gate } = resolveBearers(bearerWorld(world), asEntity(world, 'Sylvie Thornwhistle'));
+    // The Custom Persona entity is absent under Sylvie, so its picks (Halfling among them) gate nothing on her.
+    const cp = customPersonaId(world);
+    const { gate, bearers } = resolveBearers(bearerWorld(world), asEntity(world, 'Sylvie Thornwhistle'));
+    expect(gate.owners.map((o) => o.id)).not.toContain(cp);
+    expect(bearers.find((b) => b.id === cp)?.present).toBe(false);
     const sylvie = entityNamed(world, 'Sylvie Thornwhistle').id;
     const defaults = settleDefaults(gate).active;
-    const active = { ...defaults, [PLAYER_BEARER]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] };
+    const active = { ...defaults, [cp]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] };
     const states = gateStates({ ...gate, active });
     expect(gateOf(states, sylvie, traitId(world, 'Lucky Step'))?.unlocked).toBe(false);
     expect(gateOf(states, sylvie, traitId(world, 'Keen Senses'))?.unlocked).toBe(true);

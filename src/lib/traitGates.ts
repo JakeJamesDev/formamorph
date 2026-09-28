@@ -25,6 +25,8 @@ export interface GateEntity {
   id: string;
   name: string;
   persona?: boolean;
+  /** The Custom Persona mark: the entity's set is the player's under None and a library persona. */
+  customPersona?: boolean;
 }
 
 export interface GateInput {
@@ -63,9 +65,11 @@ export interface GateTraitRef {
   traitId: string;
 }
 
-/** The owner ids whose active sets are the player's: the world root and the played entity. */
-export function playerOwnerIds(persona: PersonaRef): string[] {
-  return persona.source === 'none' ? [WORLD_OWNER] : [WORLD_OWNER, persona.entityId];
+/** The owner ids whose active sets are the player's: the world root, the played entity, and the Custom
+ *  Persona entity under None and a library persona. */
+export function playerOwnerIds(persona: PersonaRef, entities: readonly GateEntity[] = []): string[] {
+  const custom = persona.source === 'world' ? [] : entities.filter((e) => e.customPersona).map((e) => e.id);
+  return persona.source === 'none' ? [WORLD_OWNER, ...custom] : [WORLD_OWNER, persona.entityId, ...custom];
 }
 
 /** The first owner whose tree holds `traitId`: the world's copy of an original, else the entity that owns it. */
@@ -135,7 +139,7 @@ function index(input: GateInput) {
     owners.set(owner.id, { owner, traits, groups, below, rivals });
   }
   const entities = new Map(input.entities.map((entity) => [entity.id, entity]));
-  const playerIds = new Set(playerOwnerIds(input.persona));
+  const playerIds = new Set(playerOwnerIds(input.persona, input.entities));
   /** The owners a requirement from `owner` reads: the player's owners together, or the owner alone. */
   const setOf = (owner: GateOwner): ReadonlySet<string> => (playerIds.has(owner.id) ? playerIds : new Set([owner.id]));
   const bearerSet = (bearer: RequirementBearer | undefined, from: GateOwner): ReadonlySet<string> =>

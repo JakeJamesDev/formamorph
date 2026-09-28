@@ -11,7 +11,8 @@
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
-import { allPinRows, bindBearerPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
+import { readerFor } from '@/lib/blueprints';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
@@ -22,15 +23,23 @@ import { bearerWorldOf, type RuleWorld } from './rules';
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'customPersona'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
 
-/** The lens tests as the None player: the root outside Templates, plus Custom Persona's links. Cached per
- *  world object, since every instrument reads it. */
+/** The lens tests as the None player: the root outside Templates, and the Custom Persona entity's tree after
+ *  it, as one list. Cached per world object, since every instrument reads it. */
 const playerByWorld = new WeakMap<LensWorld, Bearer>();
 function lensPlayer(world: LensWorld): Bearer {
   let player = playerByWorld.get(world);
   if (!player) {
-    player = resolveBearers(bearerWorldOf(world), { source: 'none' }).bearers.find((b) => b.id === PLAYER_BEARER)!;
+    const { bearers } = resolveBearers(bearerWorldOf(world), { source: 'none' });
+    const root = bearers.find((b) => b.id === PLAYER_BEARER)!;
+    const custom = bearers.find((b) => b.isPlayer && b.entity);
+    player = custom ? {
+      ...root,
+      traits: [...root.traits, ...custom.traits],
+      groups: [...root.groups, ...custom.groups],
+      linkOf: new Map([...root.linkOf, ...custom.linkOf]),
+    } : root;
     playerByWorld.set(world, player);
   }
   return player;
@@ -189,13 +198,13 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
   // source holds, and so does every row.
   const rows = allPinRows({
-    traits, traitGroups: groups, entities: world.entities ?? [], customPersona: world.customPersona,
+    traits, traitGroups: groups, entities: world.entities ?? [],
     locations: world.locations ?? [], stats: world.stats ?? [],
     placeholders, placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world),
   });
   const pinLayers = layers.map((layer): LensPinLayer => ({
     ...layer,
-    // A bound bearer-relative pin matches no stored row, but its source's label is the same for every pin.
+    // A bound blueprint pin matches no stored row, but its source's label is the same for every pin.
     label: (rows.find((r) => sameSource(r.source, layer.source) && (r.pin === layer.pin || samePin(r.pin, layer.pin)))
       ?? rows.find((r) => sameSource(r.source, layer.source)))?.label ?? '',
   }));
@@ -220,10 +229,11 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
 }
 
 /** Every trait whose pins world-level text reads in a fresh game under the lens: the player's `active`, with
- *  no persona, so a bearer-relative pin binds to the world's placeholder with the Custom Persona link's value. */
+ *  no persona, so a blueprint pin traces to the Custom Persona entity's copy, else the blueprint. */
 export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
-  const { linkOf } = lensPlayer(world);
-  return active.map((t) => bindBearerPins(t, linkOf.get(t.id), [], world.placeholders ?? []));
+  const blueprints = { placeholders: world.placeholders ?? [], entities: world.entities ?? [] };
+  const reader = readerFor({ source: 'none' }, null, true);
+  return active.map((t) => bindBlueprintPins(t, blueprints, reader));
 }
 
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {

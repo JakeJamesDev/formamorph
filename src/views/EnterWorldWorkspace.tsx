@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tip } from '@/components/ui/tooltip';
 import type { DictionarySelectionItem } from '@/lib/dictionarySelection';
-import type { CustomPersonaNode, Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '@/types';
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
@@ -34,8 +34,6 @@ export interface EnterWorldWorkspaceProps {
   traitEntities?: readonly Entity[];
   /** The library persona and the added library entities, in the order added. */
   traitLibrary?: readonly Entity[];
-  /** The world's Custom Persona node, whose links are the player's under None or a library persona. */
-  customPersona?: CustomPersonaNode;
   resolveEntityText?: ResolveEntityText;
   stats: Stat[];
   locations: GameLocation[];
@@ -92,10 +90,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const categoryNavigationButton = useRef<HTMLButtonElement>(null);
   const traitTree = useMemo(
     () => bearerTraitTree(
-      { traits: props.traits, traitGroups: props.traitGroups, entities: props.traitEntities ?? [], customPersona: props.customPersona },
+      { traits: props.traits, traitGroups: props.traitGroups, entities: props.traitEntities ?? [] },
       props.persona, props.traitLibrary ?? [],
     ),
-    [props.traits, props.traitGroups, props.traitEntities, props.customPersona, props.persona, props.traitLibrary],
+    [props.traits, props.traitGroups, props.traitEntities, props.persona, props.traitLibrary],
   );
   const picksOf = (ownerId: string | undefined) => props.selectedTraits[ownerId ?? WORLD_OWNER] ?? [];
   const traitWorkspace = useMemo(

@@ -199,7 +199,14 @@ const linkOrigin: TraitWorld = {
   entities: [{ id: 'albus', name: 'Albus' }],
 };
 
-/** A persona that links Class with Paladin on and a pinned garb, links Smite, and owns a vow gated on bearers. */
+/** What Mira's Class link overrides on Paladin: default-on, and its pins aimed at the Garb blueprint. */
+const paladinOverrides = {
+  isDefault: { value: true, blueprint: false },
+  placeholderPins: { value: [{ placeholderId: 'garb', value: 'plate' }], blueprint: [] },
+};
+const smiteOverrides = { playerToggle: { value: true, blueprint: false } };
+
+/** A persona that links Class with Paladin on and a pinned garb, links Smite as a toggle, and owns a vow gated on bearers. */
 const mira = (): Entity => ({
   id: 'mira', name: 'Mira', persona: true,
   traits: [trait('t-vow', { name: 'Vow', requires: [
@@ -210,9 +217,9 @@ const mira = (): Entity => ({
   traitLinks: [
     {
       id: 'l-class', originalId: 'w-class', kind: 'group', originalName: 'Class', groupId: null, order: 1,
-      defaults: { 'w-paladin': true }, pinValues: { 'w-paladin': { Garb: { value: 'plate' } } },
+      overrides: { 'w-paladin': paladinOverrides },
     },
-    { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Old Smite', groupId: null, order: 2, defaults: { 'w-smite': false } },
+    { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Old Smite', groupId: null, order: 2, overrides: { 'w-smite': smiteOverrides } },
   ],
 });
 
@@ -269,24 +276,23 @@ describe('bindOwnedTraits with links', () => {
 
   it('keeps a key by id at home after its trait is renamed', () => {
     const renamed = { ...linkOrigin, traits: linkOrigin.traits.map((t) => (t.id === 'w-paladin' ? { ...t, name: 'Holy Knight' } : t)) };
-    expect(linkOf(bindOwnedTraits(carriedMira(), renamed), 'l-class')!.defaults).toEqual({ 'w-paladin': true });
+    expect(linkOf(bindOwnedTraits(carriedMira(), renamed), 'l-class')!.overrides).toEqual({ 'w-paladin': paladinOverrides });
   });
 
   it('rebinds by unique name, with each key following its child by name', () => {
     const bound = bindOwnedTraits(carriedMira(), linkTarget());
     expect(linkOf(bound, 'l-class')).toEqual({
       id: 'l-class', originalId: 'n-class', kind: 'group', originalName: 'Class', groupId: null, order: 1,
-      defaults: { 'n-paladin': true }, pinValues: { 'n-paladin': { Garb: { value: 'plate' } } },
+      overrides: { 'n-paladin': paladinOverrides },
     });
-    expect(linkOf(bound, 'l-smite')).toMatchObject({ originalId: 'n-smite', defaults: { 'n-smite': false } });
+    expect(linkOf(bound, 'l-smite')).toMatchObject({ originalId: 'n-smite', overrides: { 'n-smite': smiteOverrides } });
   });
 
   it('drops a key whose child the rebound original does not hold', () => {
     const world = linkTarget({ traits: [trait('n-cleric', { name: 'Cleric', groupId: 'n-class' }), trait('n-smite', { name: 'Smite' })] });
     const cls = linkOf(bindOwnedTraits(carriedMira(), world), 'l-class')!;
     expect(cls.originalId).toBe('n-class');
-    expect(cls).not.toHaveProperty('defaults');
-    expect(cls).not.toHaveProperty('pinValues');
+    expect(cls).not.toHaveProperty('overrides');
   });
 
   it('drops a link whose original matches no name, or two', () => {
@@ -347,9 +353,13 @@ describe('comparableOwnedTraits with links', () => {
     expect(comparableOwnedTraits({ ...carried, ...bound })).toEqual(comparableOwnedTraits(carried));
   });
 
-  it('tells a changed default apart', () => {
+  it('tells a changed override apart', () => {
     const carried = carriedMira();
-    const changed = { ...carried, traitLinks: carried.traitLinks!.map((l) => ({ ...l, defaults: { ...l.defaults, 'w-paladin': false } })) };
+    const flipped = { ...paladinOverrides, isDefault: { value: false, blueprint: false } };
+    const changed = {
+      ...carried,
+      traitLinks: carried.traitLinks!.map((l) => (l.id === 'l-class' ? { ...l, overrides: { 'w-paladin': flipped } } : l)),
+    };
     expect(comparableOwnedTraits(changed)).not.toEqual(comparableOwnedTraits(carried));
   });
 });

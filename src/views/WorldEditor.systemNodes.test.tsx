@@ -3,7 +3,7 @@ import { screen, fireEvent, within } from '@testing-library/react';
 import { benchEditorWorld, openTraitFieldsTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
-/** The Traits tab's system nodes: adding Templates and Custom Persona, removing them, and Basic visibility. */
+/** The Traits tab's system nodes: adding and removing Templates, the Custom Persona entity's node, and Basic visibility. */
 
 vi.mock('../services/WorldStorageService', () => ({
   default: {
@@ -33,11 +33,12 @@ const FULL: World = benchEditorWorld({
     { id: 't-wizard', name: 'Wizard', statChanges: [], groupId: 'g-templates' },
   ],
   traitGroups: [{ id: 'g-templates', name: 'Templates', parentId: null, system: 'templates' }],
-  customPersona: { traitLinks: [
+  entities: [{ id: 'e-you', name: 'Wanderer', customPersona: true, traitLinks: [
     { id: 'l-paladin', originalId: 't-paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 0 },
     { id: 'l-wizard', originalId: 't-wizard', kind: 'trait', originalName: 'Wizard', groupId: null, order: 1 },
-  ] },
+  ] }],
 } as Partial<World>);
+const marked = (ctx: () => { entities: World['entities'] }) => ctx().entities.find((e) => e.id === 'e-you')!;
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
 const openAddMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
@@ -52,7 +53,7 @@ const confirm = () => fireEvent.click(within(screen.getByRole('alertdialog')).ge
 beforeEach(() => { localStorage.clear(); });
 
 describe('the + menu', () => {
-  it('adds a Templates group and a Custom Persona node, each at most once', () => {
+  it('adds a Templates group at most once', () => {
     const { ctx } = renderWorldEditorBench(BARE, 'advanced');
     openTab(/Traits/);
     openAddMenu();
@@ -62,23 +63,14 @@ describe('the + menu', () => {
 
     openAddMenu();
     expect(screen.queryByRole('button', { name: 'Add Templates Group' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Custom Persona' }));
-    expect(ctx().customPersona).toEqual({ traitLinks: [] });
-    // The new node opens on its panel.
-    expect(screen.getByText('Gives you its linked traits when you have no world persona')).toBeInTheDocument();
-
-    openAddMenu();
-    expect(screen.queryByRole('button', { name: 'Add Templates Group' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add Custom Persona' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Add Group' })).toBeInTheDocument();
   });
 
-  it('offers neither in Basic', () => {
+  it('offers no Templates group in Basic', () => {
     renderWorldEditorBench(BARE, 'simple');
     openTab(/Traits/);
     openAddMenu();
     expect(screen.queryByRole('button', { name: 'Add Templates Group' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add Custom Persona' })).toBeNull();
   });
 });
 
@@ -103,30 +95,19 @@ describe('removing a system node', () => {
     expect(ctx().traitGroups).toEqual([]);
   });
 
-  it('removes Custom Persona and its links after a confirmation naming the count', () => {
+  it("removes a link from the Custom Persona entity's node alone, leaving the originals", () => {
     const { ctx } = renderWorldEditorBench(FULL, 'advanced');
     openTab(/Traits/);
-    fireEvent.click(within(treeRow('Custom Persona')!).getByRole('button', { name: 'Remove Custom Persona' }));
-    expect(screen.getByText('This also deletes its 2 links.')).toBeInTheDocument();
-    confirm();
-    expect(ctx().customPersona).toBeUndefined();
-    expect(ctx().traits).toHaveLength(3);
-    expect(treeRow('Custom Persona')).toBeUndefined();
-  });
-
-  it('gives a Custom Persona link no Detach, and removes it alone', () => {
-    const { ctx } = renderWorldEditorBench(FULL, 'advanced');
-    openTab(/Traits/);
+    expect(treeRow('Wanderer')).toBeDefined();
     const link = screen.getAllByLabelText('Drag to reorder or nest')
       .map((grip) => grip.parentElement as HTMLElement)
       .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
-    expect(within(link).queryByRole('button', { name: 'Detach' })).toBeNull();
     fireEvent.click(within(link).getByRole('button', { name: 'Remove Link' }));
-    expect(ctx().customPersona?.traitLinks.map((l) => l.id)).toEqual(['l-wizard']);
+    expect(marked(ctx).traitLinks?.map((l) => l.id)).toEqual(['l-wizard']);
     expect(ctx().traits).toHaveLength(3);
   });
 
-  it('writes a Custom Persona link\'s own default to the node', () => {
+  it("writes a Custom Persona entity link's own default as an override against the original's value", () => {
     const { ctx } = renderWorldEditorBench(FULL, 'advanced');
     openTab(/Traits/);
     const link = screen.getAllByLabelText('Drag to reorder or nest')
@@ -137,25 +118,27 @@ describe('removing a system node', () => {
     const section = screen.getByText('This Link').closest('section')!;
     expect(within(section).getByText('Selected when a new game starts')).toBeInTheDocument();
     fireEvent.click(within(section).getByRole('checkbox'));
-    expect(ctx().customPersona?.traitLinks[0].defaults).toEqual({ 't-paladin': true });
+    expect(marked(ctx).traitLinks?.[0].overrides).toEqual({ 't-paladin': { isDefault: { value: true, blueprint: false } } });
   });
 });
 
 describe('system nodes in Basic', () => {
-  it('shows non-empty system nodes, still editable', () => {
+  it("shows Templates and the Custom Persona entity's node, still editable", () => {
     const { ctx } = renderWorldEditorBench(FULL, 'simple');
     openTab(/Traits/);
     expect(treeRow('Templates')).toBeDefined();
-    fireEvent.click(within(treeRow('Custom Persona')!).getByRole('button', { name: 'Remove Custom Persona' }));
-    confirm();
-    expect(ctx().customPersona).toBeUndefined();
+    const link = screen.getAllByLabelText('Drag to reorder or nest')
+      .map((grip) => grip.parentElement as HTMLElement)
+      .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
+    fireEvent.click(within(link).getByRole('button', { name: 'Remove Link' }));
+    expect(marked(ctx).traitLinks?.map((l) => l.id)).toEqual(['l-wizard']);
   });
 
-  it('hides empty system nodes', () => {
-    renderWorldEditorBench({ ...BARE, traitGroups: FULL.traitGroups, customPersona: { traitLinks: [] } }, 'simple');
+  it('hides an empty Templates group and a Custom Persona entity that bears nothing', () => {
+    renderWorldEditorBench({ ...BARE, traitGroups: FULL.traitGroups, entities: [{ id: 'e-you', name: 'Wanderer', customPersona: true }] }, 'simple');
     openTab(/Traits/);
     expect(treeRow('Brave')).toBeDefined();
     expect(treeRow('Templates')).toBeUndefined();
-    expect(treeRow('Custom Persona')).toBeUndefined();
+    expect(treeRow('Wanderer')).toBeUndefined();
   });
 });

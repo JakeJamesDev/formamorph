@@ -225,7 +225,7 @@ export function usePersonaName(rolls: PlaceholderRolls, pins: Record<string, str
 
 export function useResolvedWorld(): ResolvedWorld {
   const {
-    traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, entities: rawEntities, customPersona, worldPlaceholders,
+    traits: rawTraits, traitGroups: rawTraitGroups, locations: rawLocations, entities: rawEntities, worldPlaceholders,
   } = useGameData();
   const { rolls, placeholders } = usePlaceholderSession();
   const {
@@ -245,7 +245,7 @@ export function useResolvedWorld(): ResolvedWorld {
     [rawTraits, rawTraitGroups, rawEntities, libraryPersona, discoveredEntities],
   );
   const pinsFor = useCallback((withCodePins: CodePins, over: PinSources = {}) => bearerPins({
-    world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities, customPersona },
+    world: { traits: rawTraits, traitGroups: rawTraitGroups, entities: rawEntities },
     persona: personaRef,
     library: rawLibrary,
     playerTraits: inAuthoredOrder(refreshChosenTraits(over.traits ?? playerTraits, rawTraits), traitOrder),
@@ -259,7 +259,7 @@ export function useResolvedWorld(): ResolvedWorld {
     rolls,
     codePins: withCodePins,
   }), [
-    playerTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, rawEntities, customPersona, worldPlaceholders, rawLibrary,
+    playerTraits, disabledTraitIds, ownedTraits, rawTraits, rawTraitGroups, rawEntities, worldPlaceholders, rawLibrary,
     personaRef, traitOrder, rawLocations, storedLocationId, rawPlayerStats, placeholders, rolls,
   ]);
   const pinSet = useMemo(() => pinsFor(codePins), [pinsFor, codePins]);

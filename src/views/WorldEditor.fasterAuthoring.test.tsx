@@ -22,10 +22,12 @@ vi.mock('react-toastify', () => ({
   ToastContainer: () => null,
 }));
 
-// Entities tab: Heroes (Albus, who links Paladin; Mira; City Guard (Tomas)), Vex. Brave sits at the top level.
+// Entities tab: Heroes (Albus, who links Paladin; Mira; City Guard (Tomas)), Vex, then Wanderer, the Custom
+// Persona entity. Brave sits at the top level.
 const WORLD: World = benchEditorWorld({
   entities: [
     { id: 'e-vex', name: 'Vex', groupId: null, order: 1 },
+    { id: 'e-you', name: 'Wanderer', customPersona: true, groupId: null, order: 2 },
     { id: 'e-mira', name: 'Mira', groupId: 'g-heroes', order: 1 },
     { id: 'e-tomas', name: 'Tomas', groupId: 'g-guard', order: 0 },
     {
@@ -40,7 +42,6 @@ const WORLD: World = benchEditorWorld({
     { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-templates', order: 0 },
   ],
   traitGroups: [{ id: 'g-templates', name: 'Templates', parentId: null, order: 0, system: 'templates' }],
-  customPersona: { traitLinks: [] },
 } as Partial<World>);
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
@@ -85,8 +86,8 @@ describe('the + menu', () => {
     expect(treeRow('Mira')).toBeUndefined();
     openAddMenu();
     fireEvent.click(menuButton('Add Trait to Entity')!);
-    // Custom Persona holds links only, so the add list leaves it out (Q69).
-    expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex']);
+    // The Custom Persona entity is an ordinary entity, so the add list offers it in its place.
+    expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
     fireEvent.click(flyoutRow('Entities', 'Heroes'));
     expect(flyoutRows('Entities')).toEqual(['Albus', 'Mira', '#City Guard']);
     fireEvent.click(flyoutRow('Entities', 'Mira'));
@@ -127,7 +128,7 @@ describe('the + menu', () => {
     fireEvent.click(menuButton('City Guard')!);
     expect(flyoutRows('Entities')).toEqual(['Albus', 'Mira', '#City Guard']);
     fireEvent.click(menuButton('Heroes')!);
-    expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex']);
+    expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
     fireEvent.click(menuButton('Add Trait to Entity')!);
     expect(menuButton('Add Templates Group')).toBeNull();
     expect(menuButton('Add Group to Entity')).toBeInTheDocument();
@@ -137,12 +138,14 @@ describe('the + menu', () => {
 describe('the link button', () => {
   const openLinkFlyout = () => fireEvent.click(screen.getByRole('button', { name: 'Link To…' }));
 
-  it('lists Custom Persona first, then entities by group, with bearers that have the original checked and disabled', () => {
+  it('lists entities by group with the Custom Persona entity marked, and bearers that have the original checked and disabled', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
     openLinkFlyout();
-    expect(flyoutRows('Link To')).toEqual(['Custom Persona', '#Heroes', 'Vex']);
+    expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
+    expect(flyoutRow('Link To', 'Wanderer').querySelector('.lucide-circle-user-round')).not.toBeNull();
+    expect(flyoutRow('Link To', 'Vex').querySelector('.lucide-circle-user-round')).toBeNull();
     fireEvent.click(flyoutRow('Link To', 'Heroes'));
     expect(flyoutRows('Link To')).toEqual(['✓Albus', 'Mira', '#City Guard']);
     expect(flyoutRow('Link To', 'Albus')).toHaveAttribute('aria-pressed', 'true');
@@ -155,16 +158,17 @@ describe('the link button', () => {
     expect(flyoutRows('Link To')).toEqual(['✓Albus', '✓Mira', '#City Guard']);
 
     fireEvent.click(menuButton('Heroes')!);
-    fireEvent.click(flyoutRow('Link To', 'Custom Persona'));
-    expect(ctx().customPersona?.traitLinks).toEqual([expect.objectContaining({ originalId: 't-paladin', order: 0 })]);
+    fireEvent.click(flyoutRow('Link To', 'Wanderer'));
+    expect(ctx().entities.find((e) => e.id === 'e-you')!.traitLinks).toEqual([expect.objectContaining({ originalId: 't-paladin', order: 0 })]);
+    expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', '✓Wanderer']);
   });
 
-  it('checks Custom Persona for a top-level trait, which the player already has', () => {
+  it('checks the Custom Persona entity for a top-level trait, which the player already has', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
     openLinkFlyout();
-    expect(flyoutRows('Link To')).toEqual(['✓Custom Persona', '#Heroes', 'Vex']);
+    expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', '✓Wanderer']);
   });
 
   it('shows on a selected link, acting on its original', () => {
@@ -189,7 +193,7 @@ describe('the link button', () => {
     for (const tab of ['Stats', 'Pins']) {
       openTraitTab(tab);
       openLinkFlyout();
-      expect(flyoutRows('Link To')).toEqual(['Custom Persona', '#Heroes', 'Vex']);
+      expect(flyoutRows('Link To')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
       fireEvent.keyDown(screen.getByRole('group', { name: 'Link To' }), { key: 'Escape' });
       expect(screen.queryByRole('group', { name: 'Link To' })).toBeNull();
     }

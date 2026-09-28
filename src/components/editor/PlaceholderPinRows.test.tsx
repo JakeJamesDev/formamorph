@@ -7,46 +7,43 @@ import type { Placeholder, PlaceholderPin } from '@/types';
 import { PlaceholderPinRows } from './PlaceholderPinRows';
 
 const garb: Placeholder = { id: 'garb', name: 'Class Garb', values: phValues(['Robe', 'Plate']) };
+const boots: Placeholder = { id: 'boots', name: 'Boots', values: phValues(['Sandals']) };
 
 /** One trait's pin rows whose edits land, so a test reads what the author sees next. */
-function Harness({ start, bearerNames }: { start: PlaceholderPin; bearerNames?: string[] }) {
+function Harness({ start }: { start: PlaceholderPin }) {
   const [pins, setPins] = useState([start]);
   return (
     <>
       <PlaceholderPinRows
         pins={pins} onChange={setPins} source={{ kind: 'trait', id: 'paladin' }} world={null}
-        placeholders={[garb]} bearerNames={bearerNames}
+        placeholders={[garb, boots]}
       />
-      <output data-testid="stored">{JSON.stringify(pins[0])}</output>
+      <output data-testid="stored">{JSON.stringify(pins)}</output>
     </>
   );
 }
-const stored = () => JSON.parse(screen.getByTestId('stored').textContent!) as PlaceholderPin;
+const stored = () => JSON.parse(screen.getByTestId('stored').textContent!) as PlaceholderPin[];
+const sectionRow = (name: string) => screen.getAllByTestId('placeholder-section-row').find((row) => row.textContent === name)!;
 
 describe('PlaceholderPinRows — the pin target', () => {
-  it("aims a trait pin at the bearer's own placeholder by name, and back at a placeholder by id", async () => {
-    render(<Harness start={{ placeholderId: 'garb', value: 'Plate' }} bearerNames={['Class Garb']} />);
+  it('re-aims a pin at another placeholder by id, keeping the typed value and dropping the old value id', async () => {
+    render(<Harness start={{ placeholderId: 'garb', value: 'Plate', valueId: garb.values[1].id }} />);
     await userEvent.click(screen.getByRole('button', { name: 'Class Garb' }));
-    expect(screen.getByText("Bearer's Own")).toBeInTheDocument();
-    await userEvent.click(screen.getByTestId('placeholder-name-row'));
-    expect(stored()).toEqual({ placeholderId: '', value: 'Plate', valueId: garb.values[1].id, bearerPlaceholder: 'Class Garb' });
-    expect(screen.getByRole('button', { name: "Bearer's Class Garb" })).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: "Bearer's Class Garb" }));
-    await userEvent.click(screen.getByTestId('placeholder-section-row'));
-    expect(stored()).toEqual({ placeholderId: 'garb', value: 'Plate', valueId: garb.values[1].id });
+    await userEvent.click(sectionRow('Boots'));
+    expect(stored()).toEqual([{ placeholderId: 'boots', value: 'Plate' }]);
+    expect(screen.getByRole('button', { name: 'Boots' })).toBeInTheDocument();
   });
 
-  it('picks a bearer-relative pin’s own value from the world placeholder’s list', async () => {
-    render(<Harness start={{ placeholderId: '', value: '', bearerPlaceholder: 'Class Garb' }} bearerNames={['Class Garb']} />);
+  it("picks a value off the target's list and stores its id", async () => {
+    render(<Harness start={{ placeholderId: 'garb', value: '' }} />);
     await userEvent.click(screen.getByRole('textbox', { name: 'Pinned Value' }));
     await userEvent.click(screen.getByRole('button', { name: 'Robe' }));
-    expect(stored()).toEqual({ placeholderId: '', value: 'Robe', valueId: garb.values[0].id, bearerPlaceholder: 'Class Garb' });
+    expect(stored()).toEqual([{ placeholderId: 'garb', value: 'Robe', valueId: garb.values[0].id }]);
   });
 
-  it('offers no bearer-relative target where the host gives no names', async () => {
-    render(<Harness start={{ placeholderId: 'garb', value: '' }} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Class Garb' }));
-    expect(screen.queryByText("Bearer's Own")).toBeNull();
+  it('removes a pin', async () => {
+    render(<Harness start={{ placeholderId: 'garb', value: 'Plate' }} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Remove Pin' }));
+    expect(stored()).toEqual([]);
   });
 });

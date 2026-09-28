@@ -211,11 +211,23 @@ A trait the player has — chosen at creation or picked up in play. A trait the 
 _Avoid_: held
 
 **Link**:
-A node in an entity's trait tree (or Custom Persona's) that points at an Original and reads it live. Only its default-on state and pin values are its own. A Link is not a trait.
+A node in an entity's trait tree that points at an Original and reads it live until edited. Its Overrides are its own: default-on, requirements, pins, Player Can Toggle and stat changes, per Original trait. A Link is not a trait.
 _Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
 
+**Blueprint**:
+A world trait or placeholder that exists to be linked or copied. A Link or a Copy reads its Blueprint live until edited. An Original is a Blueprint trait.
+_Avoid_: template, master, source
+
+**Copy**:
+An entity-owned placeholder that reads a Blueprint placeholder live, under the Blueprint's value ids. Its Overrides reword, reweight or remove one value at a time; its own values sit beside. Always named after its Blueprint; one per Blueprint per owner.
+_Avoid_: instance, clone, bearer placeholder
+
+**Override**:
+One field a Link or a Copy sets for itself, stored with the Blueprint's value it was made against. A field with no Override reads the Blueprint live. **Reset** returns one field; **Reset to Blueprint** returns them all. An Override is stale when the Blueprint changed that field since.
+_Avoid_: local value, patch, delta
+
 **Bearer**:
-An entity, or Custom Persona, whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You". Requirements and pins resolve per Bearer.
+An entity whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You"; so is the entity with the **Custom Persona** mark under None and a library persona. Requirements and pins resolve per Bearer.
 _Avoid_: owner (an owner holds its own traits only), holder
 
 **Original**:

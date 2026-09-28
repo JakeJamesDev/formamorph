@@ -8,8 +8,8 @@
 // traits, and within one location or one band, the later row wins.
 
 import type {
-  CodePins, CustomPersonaNode, Entity, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
-  Trait, TraitGroup, TraitLink, TraitLinkPinValue,
+  CodePins, Entity, GameLocation, Placeholder, PlaceholderGroup, PlaceholderPin, PlaceholderRolls, PlaceholderValue, Stat, StatDescriptor,
+  Trait, TraitGroup, TraitLink,
 } from '@/types';
 import { encodePlaceholderToken, pinText, placeholderIsChoice, placeholderValueLine, sameMap, VALUE_JOIN } from './placeholders';
 import type { PlaceholderOwners } from './placeholderHomes';
@@ -17,9 +17,9 @@ import { labelPlaceholders, placeholderDisplayName, type PlacementLetters } from
 import { activeDescriptor } from './statContext';
 import { thresholdUnitOf, type BandedStat } from './statDescriptorGeometry';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
-import { PLAYER_BEARER, resolveBearers, type Bearer } from './bearers';
-import { setLinkPinValue } from './traitLinks';
-import { CUSTOM_PERSONA_ID, customPersonaEntity, customPersonaFrom } from './traitTree';
+import { PLAYER_BEARER, canBePlayer, resolveBearers, type Bearer } from './bearers';
+import { bearerPlaceholder, type BlueprintWorld, type CopyReader } from './blueprints';
+import { setLinkField } from './traitLinks';
 
 /** A stat as the descriptor source reads it: its bands and the value that picks one, plus the id and
  *  enabled flag that gate them. A live `PlayerStat` is one; so is an authored stat given its start value. */
@@ -286,60 +286,30 @@ export function traitScopedPins(
   return Object.keys(own).length ? { ...activePins, ...own } : activePins;
 }
 
-/** The placeholder a bearer-relative pin named `name` binds to: the bearer's own top-level one, else the
- *  world's. */
-export function bearerPlaceholderNamed(
-  name: string, own: readonly Placeholder[], world: readonly Placeholder[],
-): Placeholder | undefined {
-  const named = (list: readonly Placeholder[]) => list.find((p) => !p.ownerId && p.name === name);
-  return named(own) ?? named(world);
-}
-
-/** `given` as a pin on the placeholder `name` binds to, or null with no value or nothing to bind. */
-function boundPin(
-  name: string, given: TraitLinkPinValue | undefined, own: readonly Placeholder[], world: readonly Placeholder[],
-): PlaceholderPin | null {
-  const target = bearerPlaceholderNamed(name, own, world);
-  return target && given?.value ? { placeholderId: target.id, ...pinValueOf(given) } : null;
-}
-
-/** A pin's value and value id, the id left out when absent. */
-export const pinValueOf = (v: TraitLinkPinValue): TraitLinkPinValue =>
-  ({ value: v.value, ...(v.valueId ? { valueId: v.valueId } : {}) });
-
 /**
- * The trait with each bearer-relative pin bound for one bearer: aimed at the placeholder of that name, and
- * valued by the link that brought the trait, else by the pin's own value when the bearer holds it directly.
- * A pin with no value or no placeholder to bind drops. The trait itself when it has no bearer-relative pin.
+ * The trait with each pin on a blueprint placeholder traced to the placeholder `reader` reads for it (see
+ * lib/blueprints): the pin then aims at that copy, valued by the named value as the copy reads it. A pin
+ * naming a value the copy removed lays nothing and drops. A pin the reader reads at the blueprint itself,
+ * or on any other placeholder, stays as stored. The trait itself when no pin moved.
  */
-export function bindBearerPins(
-  trait: Trait, link: TraitLink | undefined, own: readonly Placeholder[], world: readonly Placeholder[],
-): Trait {
+export function bindBlueprintPins(trait: Trait, world: BlueprintWorld, reader: CopyReader): Trait {
   const pins = trait.placeholderPins;
-  if (!pins?.some((p) => p.bearerPlaceholder)) return trait;
+  if (!pins?.length) return trait;
+  let moved = false;
   const bound = pins.flatMap((pin): PlaceholderPin[] => {
-    const name = pin.bearerPlaceholder;
-    if (!name) return [pin];
-    const bound = boundPin(name, link ? link.pinValues?.[trait.id]?.[name] : pin, own, world);
-    return bound ? [bound] : [];
+    const target = bearerPlaceholder(world, pin.placeholderId, reader);
+    if (!target || target.id === pin.placeholderId) return [pin];
+    moved = true;
+    if (!pin.valueId) return [{ placeholderId: target.id, value: pin.value }];
+    const value = target.values.find((v) => v.id === pin.valueId);
+    return value ? [{ placeholderId: target.id, value: value.text, valueId: value.id }] : [];
   });
-  return { ...trait, placeholderPins: bound };
+  return moved ? { ...trait, placeholderPins: bound } : trait;
 }
 
-/** The names a trait pin can target relative to its bearer: every top-level placeholder name the world or
- *  an entity carries, once each, the world's first. */
-export function bearerPlaceholderNames(world: PinEditorWorld): string[] {
-  const owners = world.placeholderOwners;
-  const named = world.placeholders.filter((p) => !p.ownerId && p.name && owners?.get(p.id)?.kind !== 'dictionary');
-  return [...new Set(named.map((p) => p.name))];
-}
-
-/** The placeholder an editor reads a pin's values from: its target, or for a bearer-relative pin the first
- *  top-level one of that name, which in a world's combined list is the world's own when it has one. */
-export function pinTarget(pin: PlaceholderPin, placeholders: readonly Placeholder[]): Placeholder | undefined {
-  if (pin.bearerPlaceholder) return placeholders.find((p) => !p.ownerId && p.name === pin.bearerPlaceholder);
-  return placeholders.find((p) => p.id === pin.placeholderId);
-}
+/** The placeholder an editor reads a pin's values from. */
+export const pinTarget = (pin: PlaceholderPin, placeholders: readonly Placeholder[]): Placeholder | undefined =>
+  placeholders.find((p) => p.id === pin.placeholderId);
 
 /**
  * A pin rewritten to hold `value`, naming that value by id when the placeholder carries one spelling it
@@ -364,16 +334,14 @@ export function hasDeadValueId(pin: PlaceholderPin, ph: Placeholder | undefined)
 
 // ---- The editor's view: every pin aimed at one placeholder, and who wins among them ----
 
-/** A link's value for a bearer-relative pin on the trait it brings: the bearer, the link, and the name. */
+/** A link's own pins list for a trait it brings: the bearer and the link that override it. */
 export interface LinkPinRef {
-  /** The entity's id, or Custom Persona's node id. */
   bearerId: string;
   linkId: string;
-  name: string;
 }
 
 /** Where a pin lives. Enough to find the row again and, for a source with a name, to open it. A trait ref
- *  with `link` is that link's value for one of the trait's bearer-relative pins. */
+ *  with `link` is that link's overridden pins list for the trait. */
 export type PinSourceRef =
   | { kind: 'trait'; id: string; link?: LinkPinRef }
   | { kind: 'location'; id: string }
@@ -402,9 +370,8 @@ export interface PinRow {
 export interface PinEditorWorld {
   traits?: readonly Trait[];
   traitGroups?: readonly TraitGroup[];
-  /** The world's entities, whose owned traits pin too, and whose links carry bearer-relative pin values. */
+  /** The world's entities, whose owned traits pin too, and whose links may override a trait's pins. */
   entities?: readonly Entity[];
-  customPersona?: CustomPersonaNode;
   locations?: readonly GameLocation[];
   stats?: readonly Stat[];
   placeholders: readonly Placeholder[];
@@ -429,34 +396,18 @@ type PinList = readonly PlaceholderPin[];
 /** What a write does to a source's pin list; null leaves the world untouched. */
 type PinListChange = (pins: PinList) => PinList | null;
 
-/** Every bearer node the editor shows, each with its effective tree: the world's entities, then Custom
- *  Persona holding its links only. Cached per world object, since every row and note reads it. */
+/** Every entity bearer the editor shows, each with its effective tree. Cached per world object, since every
+ *  row and note reads it. */
 function editorBearers(world: PinEditorWorld): { bearer: Bearer; entity: Entity }[] {
   const hit = bearersCache.get(world);
   if (hit) return hit;
-  const { traits = [], traitGroups = [], entities = [], customPersona } = world;
-  const { bearers } = resolveBearers({ traits, traitGroups, entities, customPersona }, undefined);
-  const player = bearers.find((b) => b.id === PLAYER_BEARER);
-  const persona = customPersona && player && {
-    // The linked copies only, once each: a copy of a root trait follows the root's own in the player's tree.
-    bearer: { ...player, traits: [...new Map(player.traits.filter((t) => player.linkOf.has(t.id)).map((t) => [t.id, t])).values()] },
-    entity: customPersonaEntity(customPersona),
-  };
-  const result = [
-    ...bearers.flatMap((bearer) => (bearer.entity ? [{ bearer, entity: bearer.entity }] : [])),
-    ...(persona ? [persona] : []),
-  ];
+  const { traits = [], traitGroups = [], entities = [] } = world;
+  const { bearers } = resolveBearers({ traits, traitGroups, entities }, undefined);
+  const result = bearers.flatMap((bearer) => (bearer.entity ? [{ bearer, entity: bearer.entity }] : []));
   bearersCache.set(world, result);
   return result;
 }
 const bearersCache = new WeakMap<PinEditorWorld, { bearer: Bearer; entity: Entity }[]>();
-
-/** The world's shared placeholders: those no entity or book carries. */
-const sharedOf = (world: Pick<PinEditorWorld, 'placeholders' | 'placeholderOwners' | 'entities'>): Placeholder[] => {
-  const scoped = world.placeholderOwners
-    ?? new Set((world.entities ?? []).flatMap((e) => e.placeholders ?? []).map((p) => p.id));
-  return world.placeholders.filter((p) => !scoped.has(p.id));
-};
 
 /** One trait as a source row, named with its owner when an entity owns it. */
 function traitEntry(name: ReturnType<typeof labeler>, trait: Trait, entity: Entity | null): PinSourceEntry<'trait'> {
@@ -464,79 +415,35 @@ function traitEntry(name: ReturnType<typeof labeler>, trait: Trait, entity: Enti
   return { source: { kind: 'trait', id: trait.id }, name: trait.name, label: `Trait: ${shown}`, option: shown, pins: trait.placeholderPins };
 }
 
-/** A link's value for each bearer-relative pin on `trait`, bound for the bearer: one row per value set. */
-function linkEntries(
-  world: PinEditorWorld, name: ReturnType<typeof labeler>, trait: Trait, link: TraitLink, entity: Entity,
-): PinSourceEntry<'trait'>[] {
-  const own = entity.id === CUSTOM_PERSONA_ID ? [] : entity.placeholders ?? [];
-  const shared = sharedOf(world);
-  return (trait.placeholderPins ?? []).flatMap((pin) => {
-    const bound = pin.bearerPlaceholder && boundLinkPin(link, trait.id, pin.bearerPlaceholder, own, shared);
-    if (!bound) return [];
-    const entry = traitEntry(name, trait, entity);
-    return [{ ...entry, source: { ...entry.source, link: { bearerId: entity.id, linkId: link.id, name: pin.bearerPlaceholder! } }, pins: [bound] }];
-  });
+/** A link's own pins list for `trait`, when the link overrides it: one row holding that list. `trait` is
+ *  the trait as the bearer reads it, so its pins are the override. */
+function linkEntries(name: ReturnType<typeof labeler>, trait: Trait, link: TraitLink, entity: Entity): PinSourceEntry<'trait'>[] {
+  if (!link.overrides?.[trait.id]?.placeholderPins) return [];
+  const entry = traitEntry(name, trait, entity);
+  return [{ ...entry, source: { ...entry.source, link: { bearerId: entity.id, linkId: link.id } } }];
 }
 
-/** One bearer-relative pin a link's traits carry, as the link's own section edits it. */
-export interface LinkPinRow {
-  trait: Trait;
-  name: string;
-  /** The placeholder it binds to on this bearer, whose values the link picks from. */
-  target: Placeholder;
-  value: TraitLinkPinValue | undefined;
-}
-
-/** Every bearer-relative pin on `traits` that binds for the bearer, once per name, with the link's value. A
- *  name that binds to no placeholder has nothing to pick from, so it has no row. */
-export function linkPinRows(
-  world: Pick<PinEditorWorld, 'placeholders' | 'placeholderOwners' | 'entities'>, traits: readonly Trait[], link: TraitLink,
-  own: readonly Placeholder[],
-): LinkPinRow[] {
-  const shared = sharedOf(world);
-  return traits.flatMap((trait) => {
-    const names = [...new Set((trait.placeholderPins ?? []).flatMap((p) => (p.bearerPlaceholder ? [p.bearerPlaceholder] : [])))];
-    return names.flatMap((name) => {
-      const target = bearerPlaceholderNamed(name, own, shared);
-      return target ? [{ trait, name, target, value: link.pinValues?.[trait.id]?.[name] }] : [];
-    });
-  });
-}
-
-/** The pin a link's value for `name` lays on its bearer, or null when it has no value or nothing to bind. */
-function boundLinkPin(
-  link: TraitLink, traitId: string, name: string, own: readonly Placeholder[], shared: readonly Placeholder[],
-): PlaceholderPin | null {
-  return boundPin(name, link.pinValues?.[traitId]?.[name], own, shared);
-}
-
-/** The text a trait source's pins lay in: the player's for a world trait or a Custom Persona link, else the
- *  entity's own. */
+/** The text a trait source's pins lay in: the player's for a world trait, else the entity's own. */
 function pinContext(world: PinEditorWorld, source: SourceOf<'trait'>): string {
-  if (source.link) return source.link.bearerId === CUSTOM_PERSONA_ID ? PLAYER_BEARER : source.link.bearerId;
+  if (source.link) return source.link.bearerId;
   return (world.entities ?? []).find((e) => e.traits?.some((t) => t.id === source.id))?.id ?? PLAYER_BEARER;
 }
 
-/** Whether the entity is a Persona the player can play. */
+/** Whether the entity's traits can be the player's. */
 const playable = (world: PinEditorWorld, entityId: string): boolean =>
-  !!world.entities?.some((e) => e.id === entityId && e.persona);
+  !!world.entities?.some((e) => e.id === entityId && canBePlayer(e));
 
-/** The world with the link's value for `ref.name` on `traitId` rewritten through `change`, which sees the
- *  bound pin as a one-row list. An emptied list clears the value. */
+/** The world with the link's pins list for `traitId` rewritten through `change`. */
 function writeLinkPin<W extends PinEditorWorld>(world: W, traitId: string, ref: LinkPinRef, change: PinListChange): W {
-  const persona = ref.bearerId === CUSTOM_PERSONA_ID;
-  const holder = persona ? world.customPersona && customPersonaEntity(world.customPersona)
-    : world.entities?.find((e) => e.id === ref.bearerId);
+  const holder = world.entities?.find((e) => e.id === ref.bearerId);
   const link = holder?.traitLinks?.find((l) => l.id === ref.linkId);
-  if (!holder || !link) return world;
-  const own = persona ? [] : holder.placeholders ?? [];
-  const bound = boundLinkPin(link, traitId, ref.name, own, sharedOf(world));
-  const next = change(bound ? [bound] : []);
+  const original = world.traits?.find((t) => t.id === traitId);
+  if (!holder || !link || !original) return world;
+  const next = change(link.overrides?.[traitId]?.placeholderPins?.value ?? original.placeholderPins ?? []);
   if (!next) return world;
-  const edited = setLinkPinValue(holder, link.id, traitId, ref.name, next[0] ? pinValueOf(next[0]) : null);
-  return persona
-    ? { ...world, customPersona: customPersonaFrom(edited) }
-    : { ...world, entities: world.entities!.map((e) => (e.id === ref.bearerId ? edited : e)) };
+  const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] };
+  const edited = setLinkField(lists, holder, link.id, traitId, 'placeholderPins', [...next]);
+  return { ...world, entities: world.entities!.map((e) => (e.id === ref.bearerId ? edited : e)) };
 }
 
 /** One source of one kind, with everything the surfaces read off it. */
@@ -652,19 +559,18 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       const bearerRows = editorBearers(world).flatMap(({ bearer, entity }) =>
         inAuthoredOrder(bearer.traits, traitOrderIndex(bearer.traits, bearer.groups)).flatMap((trait) => {
           const link = bearer.linkOf.get(trait.id);
-          return link ? linkEntries(world, name, trait, link, entity) : [traitEntry(name, trait, entity)];
+          return link ? linkEntries(name, trait, link, entity) : [traitEntry(name, trait, entity)];
         }));
-      // Custom Persona's links are the player's and lay after the root; a Persona's traits can be the player's,
-      // so they list before the cast's, which win in their own text.
+      // A Persona's or the Custom Persona entity's traits can be the player's, so they list before the
+      // cast's, which win in their own text.
       const rank = (row: PinSourceEntry<'trait'>) => {
         const ctx = pinContext(world, row.source);
         return ctx === PLAYER_BEARER ? 0 : playable(world, ctx) ? 1 : 2;
       };
       return [...worldRows, ...[0, 1, 2].flatMap((r) => bearerRows.filter((row) => rank(row) === r))];
     },
-    key: (s) => `trait:${s.id}${s.link ? `:link:${s.link.bearerId}:${s.link.linkId}:${s.link.name}` : ''}`,
-    same: (a, b) => a.id === b.id && a.link?.bearerId === b.link?.bearerId && a.link?.linkId === b.link?.linkId
-      && a.link?.name === b.link?.name,
+    key: (s) => `trait:${s.id}${s.link ? `:link:${s.link.bearerId}:${s.link.linkId}` : ''}`,
+    same: (a, b) => a.id === b.id && a.link?.bearerId === b.link?.bearerId && a.link?.linkId === b.link?.linkId,
     // Two traits meet in one text on one bearer, or the player's against a cast entity's in that entity's text.
     // A Persona's traits are the player's while it is played. Two Personas never both play, so neither is a rival.
     neverTogether: (world, a, b) => {
@@ -687,13 +593,9 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
       });
       return entities ? { ...world, entities } : world;
     },
-    // An owned trait goes back through its entity, so either writer takes a trait pin; a link value through its
-    // bearer.
-    commit: ({ updateTrait, updateEntity, updateCustomPersona }) => (updateTrait || updateEntity) && ((next, source) => {
-      if (source.link?.bearerId === CUSTOM_PERSONA_ID) {
-        if (next.customPersona) updateCustomPersona?.(next.customPersona);
-        return;
-      }
+    // An owned trait goes back through its entity, so either writer takes a trait pin; a link's list through
+    // its bearer.
+    commit: ({ updateTrait, updateEntity }) => (updateTrait || updateEntity) && ((next, source) => {
       if (source.link) {
         const bearer = next.entities?.find((e) => e.id === source.link!.bearerId);
         if (bearer) updateEntity?.(bearer);
@@ -906,10 +808,8 @@ export function updatePinAt<W extends PinEditorWorld>(world: W, source: PinSourc
 /** Where each kind of rewritten source goes back to. A writer left out declines that kind. */
 export interface PinWriters {
   updateTrait?: (trait: Trait) => void;
-  /** Takes an entity whose owned trait's pins, or whose link's pin values, changed. */
+  /** Takes an entity whose owned trait's pins, or whose link's pins list, changed. */
   updateEntity?: (entity: Entity) => void;
-  /** Takes Custom Persona's node when one of its links' pin values changed. */
-  updateCustomPersona?: (node: CustomPersonaNode) => void;
   updateLocation?: (location: GameLocation) => void;
   updateStat?: (stat: Stat) => void;
   updatePlaceholder?: (placeholder: Placeholder) => void;
@@ -942,8 +842,8 @@ export interface PinSourceOption {
 /**
  * Every source of `kind` a pin on `placeholderId` may live on, in the order its list is authored: a trait or
  * location by name, a band as `Hunger ≤ 20: Starving`, a value as `Region = Northern`. The placeholder's own
- * values are left out — a value cannot pin its own placeholder — and so are link values, whose pin lives on
- * the original.
+ * values are left out — a value cannot pin its own placeholder — and so are link rows, whose list is edited
+ * on the link.
  */
 export function pinSourcesOfKind(world: PinEditorWorld, kind: PinSourceKind, placeholderId: string): PinSourceOption[] {
   return specFor(kind).sources(world)

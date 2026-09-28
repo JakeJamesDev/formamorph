@@ -1,7 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, Trait, TraitGroup, TraitLink,
-  TraitLinkPinValue, TraitRequirement,
+  BlueprintOverride, Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, StatChange, Trait, TraitGroup,
+  TraitLink, TraitLinkOverrides, TraitRequirement,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
@@ -187,22 +187,61 @@ function recordOf<V>(raw: unknown, read: (v: unknown) => V | undefined): Record<
   return Object.keys(out).length ? out : undefined;
 }
 
-const pinValueOf = (v: unknown): TraitLinkPinValue | undefined =>
-  (isRecord(v) && typeof v.value === 'string' ? { value: v.value, ...(typeof v.valueId === 'string' ? { valueId: v.valueId } : {}) } : undefined);
+const cardPins = (raw: unknown): PlaceholderPin[] => (Array.isArray(raw) ? raw : []).flatMap((p): PlaceholderPin[] =>
+  (isRecord(p) && typeof p.placeholderId === 'string' && typeof p.value === 'string'
+    ? [{ placeholderId: p.placeholderId, value: p.value, ...(typeof p.valueId === 'string' ? { valueId: p.valueId } : {}) }]
+    : []));
+
+const cardStatChanges = (raw: unknown): StatChange[] => (Array.isArray(raw) ? raw : []).flatMap((c): StatChange[] =>
+  (isRecord(c) && typeof c.statId === 'string' && typeof c.value === 'number'
+    ? [{
+      statId: c.statId, value: c.value,
+      ...(c.type === 'min' || c.type === 'max' || c.type === 'starting' || c.type === 'regen' ? { type: c.type } : {}),
+      ...(typeof c.interval === 'string' ? { interval: c.interval } : {}),
+    }]
+    : []));
+
+/** One override as the card stores it, both sides read through `read`; undefined when either side is not one. */
+function cardOverride<V>(raw: unknown, read: (v: unknown) => V | undefined): BlueprintOverride<V> | undefined {
+  if (!isRecord(raw)) return undefined;
+  const value = read(raw.value);
+  const blueprint = read(raw.blueprint);
+  return value !== undefined && blueprint !== undefined ? { value, blueprint } : undefined;
+}
+
+const cardBoolean = (v: unknown) => (typeof v === 'boolean' ? v : undefined);
+const cardList = <T>(read: (raw: unknown[]) => T[]) => (v: unknown) => (Array.isArray(v) ? read(v) : undefined);
+const cardRequirements = cardList((v) => v.flatMap(cardRequirement));
+
+/** A link's overrides on one trait, each field read in its own shape; undefined when none reads. */
+function cardLinkOverrides(raw: unknown): TraitLinkOverrides | undefined {
+  if (!isRecord(raw)) return undefined;
+  const isDefault = cardOverride(raw.isDefault, cardBoolean);
+  const playerToggle = cardOverride(raw.playerToggle, cardBoolean);
+  const requires = cardOverride(raw.requires, cardRequirements);
+  const placeholderPins = cardOverride(raw.placeholderPins, cardList(cardPins));
+  const statChanges = cardOverride(raw.statChanges, cardList(cardStatChanges));
+  const out: TraitLinkOverrides = {
+    ...(isDefault ? { isDefault } : {}),
+    ...(requires ? { requires } : {}),
+    ...(placeholderPins ? { placeholderPins } : {}),
+    ...(playerToggle ? { playerToggle } : {}),
+    ...(statChanges ? { statChanges } : {}),
+  };
+  return Object.keys(out).length ? out : undefined;
+}
 
 function cardLink(raw: unknown): TraitLink[] {
   if (!isRecord(raw) || typeof raw.id !== 'string' || !raw.id || typeof raw.originalId !== 'string') return [];
   if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
-  const defaults = recordOf(raw.defaults, (v) => (typeof v === 'boolean' ? v : undefined));
-  const pinValues = recordOf(raw.pinValues, (v) => recordOf(v, pinValueOf));
+  const overrides = recordOf(raw.overrides, cardLinkOverrides);
   const keyNames = recordOf(raw.keyNames, (v) => (typeof v === 'string' && v ? v : undefined));
   return [{
     id: raw.id, originalId: raw.originalId, kind: raw.kind,
     originalName: typeof raw.originalName === 'string' ? raw.originalName : '',
     groupId: typeof raw.groupId === 'string' ? raw.groupId : null,
     ...(typeof raw.order === 'number' ? { order: raw.order } : {}),
-    ...(defaults ? { defaults } : {}),
-    ...(pinValues ? { pinValues } : {}),
+    ...(overrides ? { overrides } : {}),
     ...(keyNames ? { keyNames } : {}),
   }];
 }
@@ -211,10 +250,7 @@ function cardLink(raw: unknown): TraitLink[] {
 function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'> {
   const traits: Trait[] = (Array.isArray(obj.traits) ? obj.traits : []).filter(hasIdAndName).map((t) => {
     const requires = Array.isArray(t.requires) ? t.requires.flatMap(cardRequirement) : [];
-    const pins = (Array.isArray(t.placeholderPins) ? t.placeholderPins : []).flatMap((p): PlaceholderPin[] =>
-      (isRecord(p) && typeof p.placeholderId === 'string' && typeof p.value === 'string'
-        ? [{ placeholderId: p.placeholderId, value: p.value, ...(typeof p.valueId === 'string' ? { valueId: p.valueId } : {}) }]
-        : []));
+    const pins = cardPins(t.placeholderPins);
     return {
       id: t.id,
       name: t.name,

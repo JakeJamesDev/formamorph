@@ -171,9 +171,8 @@ describe('the live adapter', () => {
     const link = (id: string): TraitLink => ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null });
     const albus: Entity = { id: 'albus', name: 'Albus', locations: ['quay'], aiDescription: 'A knight.', traitLinks: [link('l1')] };
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
-    const world: BearerWorld = {
-      traits: [paladin], traitGroups: [templates], entities: [albus, wren], customPersona: { traitLinks: [link('l3')] },
-    };
+    const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l3')] };
+    const world: BearerWorld = { traits: [paladin], traitGroups: [templates], entities: [albus, wren, newcomer] };
     const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
       entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [templates],
       bearers: resolveBearers(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
@@ -209,9 +208,11 @@ describe('the live adapter', () => {
       expect(values['<TRAITS DESCRIPTION>']).toBe('Oaths:\n  The player is sworn.\n  Sworn');
     });
 
-    it('names the player in a Custom Persona trait under None', () => {
-      const values = chipValues(liveChipScene(real(null, { traits: [paladin] })));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: The player swore the oath.');
+    it('keys a Custom Persona entity’s linked trait by the entity under None, apart from the root traits', () => {
+      const scene = liveChipScene(real(null, { ownedTraits: { cp: { chosen: ['paladin'] } } }));
+      expect(scene.ownedTraits).toEqual({ cp: ['paladin'] });
+      expect(scene.traits).toEqual([]);
+      expect(scene.traitGroups).toEqual([]);
     });
   });
 

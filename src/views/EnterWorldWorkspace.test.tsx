@@ -956,7 +956,6 @@ describe('EnterWorldWorkspace cast pages', () => {
         traits={[...cast.traits]}
         traitGroups={[...cast.traitGroups]}
         traitEntities={cast.entities}
-        customPersona={cast.customPersona}
         resolveEntityText={(_entity, text) => text}
         // The bearer the workspace hands over is the Character Name in a trait's own text.
         resolveTraitText={(_trait, text, bearer) => text.replace('{{char}}', bearer?.name ?? 'you')}
@@ -968,7 +967,7 @@ describe('EnterWorldWorkspace cast pages', () => {
         traitGates={gateStates(input)}
         traitCascade={cascade}
         onDismissTraitCascade={() => setCascade(null)}
-        worldPersonas={cast.entities.map(optionOf)}
+        worldPersonas={cast.entities.filter((e) => e.persona).map(optionOf)}
         persona={draft.persona}
         onPersonaChange={(ref) => {
           const next = { ...draft, persona: ref };
@@ -1043,8 +1042,8 @@ describe('EnterWorldWorkspace cast pages', () => {
   });
 
   describe('with links', () => {
-    // Templates › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and Custom
-    // Persona links Wizard for a player with no world persona.
+    // Templates › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and the
+    // Custom Persona entity links Wizard for a player with no world persona.
     const templates = { id: 'templates', name: 'Templates', parentId: null, order: 2, system: 'templates' as const };
     const classes = { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true };
     const link = (id: string, originalId: string, kind: 'trait' | 'group') =>
@@ -1056,8 +1055,11 @@ describe('EnterWorldWorkspace cast pages', () => {
         owned('wizard', { groupId: 'classes', order: 1 }),
       ],
       traitGroups: [...groups, templates, classes],
-      entities: [{ ...ash, traitLinks: [link('l-ash', 'classes', 'group')] }, { ...bob, traitLinks: [link('l-bob', 'paladin', 'trait')] }],
-      customPersona: { traitLinks: [link('l-you', 'wizard', 'trait')] },
+      entities: [
+        { ...ash, traitLinks: [link('l-ash', 'classes', 'group')] },
+        { ...bob, traitLinks: [link('l-bob', 'paladin', 'trait')] },
+        { id: 'you', name: 'Wanderer', customPersona: true, traitLinks: [link('l-you', 'wizard', 'trait')] },
+      ],
       library: [],
     };
     const NONE: PersonaRef = { source: 'none' };
@@ -1091,15 +1093,16 @@ describe('EnterWorldWorkspace cast pages', () => {
       expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Paladin' })).toBeChecked();
     });
 
-    it("lists Custom Persona's links among the player's own categories under None, and drops them under a world persona", async () => {
+    it("lists the Custom Persona entity's node under None, its links on its page, and drops it under a world persona", async () => {
       const user = userEvent.setup();
       render(<CastHarness cast={linked} persona={NONE} />);
-      await user.click(within(nav()).getByRole('button', { name: /^General/ }));
-      expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Wizard' })).toBeInTheDocument();
-      expect(within(nav()).queryByRole('button', { name: /Custom Persona/ })).toBeNull();
-      await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
-      await user.click(screen.getByRole('radio', { name: 'Ash' }));
       expect(within(nav()).queryByRole('button', { name: /^General/ })).toBeNull();
+      await user.click(within(nav()).getByRole('button', { name: /^Wanderer/ }));
+      expect(within(screen.getByRole('main')).getByRole('checkbox', { name: 'Wizard' })).toBeInTheDocument();
+      await user.click(within(nav()).getByRole('button', { name: 'Persona' }));
+      expect(screen.queryByRole('radio', { name: 'Wanderer' })).toBeNull();
+      await user.click(screen.getByRole('radio', { name: 'Ash' }));
+      expect(within(nav()).queryByRole('button', { name: /^Wanderer/ })).toBeNull();
       expect(within(nav()).getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
     });
   });

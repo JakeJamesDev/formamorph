@@ -19,9 +19,14 @@ const home: TraitWorld = {
   entities: [{ id: 'albus', name: 'Albus' }],
 };
 
+/** What the Class link overrides on Paladin: default-on, and its pins aimed at the Garb blueprint. */
+const paladinOverrides = {
+  isDefault: { value: true, blueprint: false },
+  placeholderPins: { value: [{ placeholderId: 'garb', value: 'plate' }], blueprint: [] },
+};
 const classLink: TraitLink = {
   id: 'l-class', originalId: 'w-class', kind: 'group', originalName: 'Class', groupId: null, order: 0,
-  defaults: { 'w-paladin': true }, pinValues: { 'w-paladin': { Garb: { value: 'plate' } } },
+  overrides: { 'w-paladin': paladinOverrides },
 };
 const smiteLink: TraitLink = { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Smite', groupId: null, order: 1 };
 const paladinLink: TraitLink = { id: 'l-paladin', originalId: 'w-paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 2 };
@@ -77,7 +82,7 @@ describe.each(carriers)('links through %s', (_name, carry) => {
   it('rebind by unique name elsewhere, with each data key following its trait', async () => {
     const adopted = adoptOwnedTraits(await carry(mira), elsewhere);
     expect(adopted.traitLinks).toEqual([
-      { ...classLink, originalId: 'n-class', defaults: { 'n-paladin': true }, pinValues: { 'n-paladin': { Garb: { value: 'plate' } } } },
+      { ...classLink, originalId: 'n-class', overrides: { 'n-paladin': paladinOverrides } },
       { ...smiteLink, originalId: 'n-smite' },
     ]);
   });
@@ -94,6 +99,7 @@ describe.each(carriers)('links through %s', (_name, carry) => {
     const bearer = bearers.find((b) => b.id === 'lib-mira')!;
     expect(playerBearerIds).toContain('lib-mira');
     expect(bearer.traits.map((t) => [t.id, !!t.isDefault])).toEqual([['t-vow', false], ['n-paladin', true], ['n-smite', false]]);
+    expect(bearer.traits[1].placeholderPins).toEqual([{ placeholderId: 'garb', value: 'plate' }]);
   });
 
   it('rebind a named-scope requirement by bearer name', async () => {

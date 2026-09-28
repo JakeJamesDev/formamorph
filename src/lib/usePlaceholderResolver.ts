@@ -33,7 +33,7 @@ export function useEntityTextResolver(): ResolveEntityText {
 }
 
 function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
-  const { traits, traitGroups, locations, entities, customPersona, worldPlaceholders } = useGameData();
+  const { traits, traitGroups, locations, entities, worldPlaceholders } = useGameData();
   const { placeholders } = usePlaceholderSession();
   // View-aliased (equal to live on the latest page): a past page resolves with the pins that were in
   // force on that turn, not whatever the player has toggled or walked into since.
@@ -42,7 +42,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     personaRef, libraryPersona, discoveredEntities,
   } = useGameplay();
   const pinSet = useMemo(() => bearerPins({
-    world: { traits, traitGroups, entities, customPersona },
+    world: { traits, traitGroups, entities },
     persona: personaRef,
     library: inPlayLibrary({ traits, traitGroups, entities }, libraryPersona, addedCharacters(discoveredEntities)),
     playerTraits: inAuthoredOrder(viewTraits, traitOrderIndex(traits, traitGroups)),
@@ -56,7 +56,7 @@ function useViewPins(): { opts: ResolveOptions; pinSet: PinSet } {
     rolls: placeholderRolls,
     codePins: viewCodePins,
   }), [
-    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, customPersona, worldPlaceholders, personaRef,
+    viewTraits, viewDisabledTraitIds, viewOwnedTraits, traits, traitGroups, entities, worldPlaceholders, personaRef,
     libraryPersona, discoveredEntities, locations, viewLocationId, viewStats, placeholders, placeholderRolls, viewCodePins,
   ]);
   const pins = pinSet.world;

@@ -1,9 +1,10 @@
-// Editor edits of an entity's links: removal, the link's own defaults, Detach, and the cascade when an
+// Editor edits of an entity's links: removal, the link's overrides, Detach, and the cascade when an
 // original goes.
 
-import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink, TraitLinkPinValue } from '@/types';
+import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkFields } from '@/types';
 import { randomUUID } from './uuid';
 import { makeLink, originalOf, type BearerWorld } from './bearers';
+import { effectiveLinkTrait, resetLinkOverride, resetLinkOverrides, setLinkOverride } from './blueprints';
 import { buildTraitTree, flattenTraitTree, groupsBelow, hasStatEffects, isDescendantGroup } from './traitTree';
 import { rootCount, withOwnedTraits } from './ownedTraits';
 
@@ -14,6 +15,10 @@ function withLinks(entity: Entity, links: TraitLink[]): Entity {
   const { traitLinks: _l, ...rest } = entity;
   return links.length ? { ...rest, traitLinks: links } : rest;
 }
+
+/** The entity with one link rewritten through `edit`. */
+const withLink = (entity: Entity, linkId: string, edit: (link: TraitLink) => TraitLink): Entity =>
+  withLinks(entity, (entity.traitLinks ?? []).map((l) => (l.id === linkId ? edit(l) : l)));
 
 /** The world groups from the top down to the original, the original last. Empty when it is gone. */
 export function originalPath(world: WorldTraitLists, originalId: string): string[] {
@@ -26,27 +31,19 @@ export function originalPath(world: WorldTraitLists, originalId: string): string
   return path;
 }
 
-/** The traits a link's row at `originalId` sets defaults for, in tree order, each with its default-on for
- *  this link: the link's own value, else the original's. */
-export function linkDefaultTraits(world: WorldTraitLists, link: TraitLink, originalId: string): { trait: Trait; on: boolean }[] {
+/** The traits a link's row at `originalId` brings, in tree order, each as the link reads it. */
+export function linkedTraits(world: WorldTraitLists, link: TraitLink, originalId: string): Trait[] {
   const rows = flattenTraitTree(buildTraitTree(world.traitGroups, world.traits));
   return rows
     .filter((r) => r.leaf && (r.id === originalId || (r.leaf.groupId != null && isDescendantGroup([...world.traitGroups], originalId, r.leaf.groupId))))
-    .map((r) => ({ trait: r.leaf!, on: link.defaults?.[r.id] ?? !!r.leaf!.isDefault }));
+    .map((r) => effectiveLinkTrait(r.leaf!, link));
 }
 
-/** How many links across `entities` and Custom Persona point at the original. */
-export const linksTo = (entities: readonly Entity[], originalId: string, customPersona?: CustomPersonaNode): number =>
-  [...entities.map((e) => e.traitLinks ?? []), customPersona?.traitLinks ?? []]
-    .reduce((n, links) => n + links.filter((l) => l.originalId === originalId).length, 0);
+/** How many links across `entities` point at the original. */
+export const linksTo = (entities: readonly Entity[], originalId: string): number =>
+  entities.reduce((n, e) => n + (e.traitLinks ?? []).filter((l) => l.originalId === originalId).length, 0);
 
 const linksOriginal = (entity: Entity, originalId: string) => entity.traitLinks?.some((l) => l.originalId === originalId);
-
-/** Custom Persona without its links to the original; the same node when none links it. */
-export function dropCustomPersonaLinksTo(node: CustomPersonaNode | undefined, originalId: string): CustomPersonaNode | undefined {
-  if (!node?.traitLinks.some((l) => l.originalId === originalId)) return node;
-  return { ...node, traitLinks: node.traitLinks.filter((l) => l.originalId !== originalId) };
-}
 
 /** Every entity without its links to the original; the same array when none links it. */
 export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {
@@ -57,7 +54,7 @@ export function dropLinksTo(entities: Entity[], originalId: string): Entity[] {
 
 /** Link the original at the end of the bearer's top level. Null when the id is not an original. */
 export function addLink(world: WorldTraitLists, bearer: Entity, originalId: string, id: string): Entity | null {
-  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) }, bearer.placeholders);
+  const link = makeLink(world, originalId, id, { groupId: null, order: rootCount(bearer) });
   return link && withLinks(bearer, [...(bearer.traitLinks ?? []), link]);
 }
 
@@ -65,25 +62,21 @@ export function addLink(world: WorldTraitLists, bearer: Entity, originalId: stri
 export const removeLink = (entity: Entity, linkId: string): Entity =>
   withLinks(entity, (entity.traitLinks ?? []).filter((l) => l.id !== linkId));
 
-/** Store the link's own default-on for one original trait it brings. */
-export const setLinkDefault = (entity: Entity, linkId: string, traitId: string, on: boolean): Entity =>
-  withLinks(entity, (entity.traitLinks ?? []).map((l) => (l.id === linkId ? { ...l, defaults: { ...l.defaults, [traitId]: on } } : l)));
-
-/** Store the link's value for one bearer-relative pin on a trait it brings; null clears it. Emptied maps are
- *  dropped, so a link with no values stores none. */
-export function setLinkPinValue(
-  entity: Entity, linkId: string, traitId: string, name: string, value: TraitLinkPinValue | null,
+/** Override one field on an original trait the link brings; the original's current value is the snapshot.
+ *  The entity as it is when the trait is not a world trait. */
+export function setLinkField<K extends keyof TraitLinkFields>(
+  world: WorldTraitLists, entity: Entity, linkId: string, traitId: string, field: K, value: TraitLinkFields[K],
 ): Entity {
-  return withLinks(entity, (entity.traitLinks ?? []).map((l) => {
-    if (l.id !== linkId) return l;
-    const { [name]: _drop, ...others } = l.pinValues?.[traitId] ?? {};
-    const forTrait = value ? { ...others, [name]: value } : others;
-    const { [traitId]: _old, ...rest } = l.pinValues ?? {};
-    const pinValues = Object.keys(forTrait).length ? { ...rest, [traitId]: forTrait } : rest;
-    const { pinValues: _prev, ...link } = l;
-    return Object.keys(pinValues).length ? { ...link, pinValues } : link;
-  }));
+  const trait = world.traits.find((t) => t.id === traitId);
+  return trait ? withLink(entity, linkId, (l) => setLinkOverride(l, trait, field, value)) : entity;
 }
+
+/** Read one field on one trait live again. */
+export const resetLinkField = (entity: Entity, linkId: string, traitId: string, field: keyof TraitLinkFields): Entity =>
+  withLink(entity, linkId, (l) => resetLinkOverride(l, traitId, field));
+
+/** Read the whole original live again: Reset to Blueprint. */
+export const resetLink = (entity: Entity, linkId: string): Entity => withLink(entity, linkId, resetLinkOverrides);
 
 /** The original and, for a group, its live subtree. */
 function brought(world: WorldTraitLists, link: TraitLink): { groups: TraitGroup[]; traits: Trait[] } | null {
@@ -97,11 +90,11 @@ function brought(world: WorldTraitLists, link: TraitLink): { groups: TraitGroup[
 
 /** Whether Detach would leave stat changes or stat toggles behind, which an owned trait can't carry. */
 export const detachDropsStats = (world: WorldTraitLists, link: TraitLink): boolean =>
-  brought(world, link)?.traits.some(hasStatEffects) ?? false;
+  brought(world, link)?.traits.some((t) => hasStatEffects(effectiveLinkTrait(t, link))) ?? false;
 
 /**
  * Replace a link with an owned copy of what it brings, in the link's place, under new ids. The copy takes
- * the link's defaults and leaves stat effects behind. Null when the link or its original is gone.
+ * each trait as the link reads it and leaves stat effects behind. Null when the link or its original is gone.
  */
 export function detachLink(world: WorldTraitLists, entity: Entity, linkId: string): { entity: Entity; newId: string } | null {
   const link = entity.traitLinks?.find((l) => l.id === linkId);
@@ -111,20 +104,14 @@ export function detachLink(world: WorldTraitLists, entity: Entity, linkId: strin
   // The original takes the link's place; everything below it keeps its place inside the copy.
   const isOriginal = (id: string) => id === link.originalId;
   const traits = items.traits.map((t): Trait => {
-    const { statToggles: _s, ...rest } = t;
-    // Held directly, a bearer-relative pin lays its own value, so it takes the link's; none lays nothing.
-    const pins = t.placeholderPins?.map((p) => (p.bearerPlaceholder
-      ? { placeholderId: '', bearerPlaceholder: p.bearerPlaceholder, ...(link.pinValues?.[t.id]?.[p.bearerPlaceholder] ?? { value: '' }) }
-      : p));
+    const { statToggles: _s, ...rest } = effectiveLinkTrait(t, link);
     return {
       ...rest,
-      ...(pins ? { placeholderPins: pins } : {}),
       id: ids.get(t.id)!,
       groupId: isOriginal(t.id) ? link.groupId : ids.get(t.groupId!)!,
       order: isOriginal(t.id) ? link.order ?? 0 : t.order,
       statChanges: [],
-      isDefault: link.defaults?.[t.id] ?? t.isDefault,
-      ...(t.requires ? { requires: t.requires.map((r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
+      ...(rest.requires ? { requires: rest.requires.map((r) => (r.kind === 'trait' && ids.has(r.id) ? { ...r, id: ids.get(r.id)! } : r)) } : {}),
     };
   });
   const groups = items.groups.map((g): TraitGroup => ({

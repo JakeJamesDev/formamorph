@@ -1,6 +1,7 @@
 # 01: Blueprint shape and module
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 6fd4d4db
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

@@ -1122,10 +1122,9 @@ export const RightPanel = ({
   // The one tree from the bearer resolver: the player's rows at the top, then a node per present bearer with
   // its owned traits and links expanded. A trait under two bearers is two rows, told apart by their node.
   const gameData = useGameDataOptional();
-  const customPersona = gameData?.customPersona;
   const bearerWorld = React.useMemo(
-    () => ({ traits, traitGroups, entities: traitEntities, customPersona }),
-    [traits, traitGroups, traitEntities, customPersona],
+    () => ({ traits, traitGroups, entities: traitEntities }),
+    [traits, traitGroups, traitEntities],
   );
   // A linked row's name reads its entity as the Character Name, from the original's authored text.
   const traitTree = React.useMemo(

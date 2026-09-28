@@ -67,9 +67,8 @@ function withLinks<T extends Portable>(entity: T, links: TraitLink[] | undefined
   return (links?.length ? { ...rest, traitLinks: links } : rest) as T;
 }
 
-/** The trait ids a link's own data keys: its defaults and its pin values. */
-const keyedIds = (link: TraitLink): string[] =>
-  [...new Set([...Object.keys(link.defaults ?? {}), ...Object.keys(link.pinValues ?? {})])];
+/** The trait ids a link's own data keys: its overrides. */
+const keyedIds = (link: TraitLink): string[] => Object.keys(link.overrides ?? {});
 
 /** The map with each key rewritten, a key that maps to null dropped; absent when nothing is left. */
 function rekeyed<V>(map: Record<string, V> | undefined, key: (id: string) => string | null): Record<string, V> | undefined {
@@ -143,13 +142,9 @@ function bindLink(link: TraitLink, world: TraitWorld): { link: TraitLink; ids: s
     if (traits.some((t) => t.id === id)) return id;
     return uniqueNamed(traits, link.keyNames?.[id])?.id ?? null;
   };
-  const defaults = rekeyed(link.defaults, key);
-  const pinValues = rekeyed(link.pinValues, key);
-  const { keyNames: _k, defaults: _d, pinValues: _p, ...rest } = link;
-  return {
-    ids,
-    link: { ...rest, originalId: original.item.id, kind: original.kind, ...(defaults ? { defaults } : {}), ...(pinValues ? { pinValues } : {}) },
-  };
+  const overrides = rekeyed(link.overrides, key);
+  const { keyNames: _k, overrides: _o, ...rest } = link;
+  return { ids, link: { ...rest, originalId: original.item.id, kind: original.kind, ...(overrides ? { overrides } : {}) } };
 }
 
 /** A library entity's links as the world it is opened in reads them: each that binds takes the world's ids,
@@ -223,13 +218,13 @@ const comparableBearer = (b: EntityBearer, entityId: string): RequirementBearer 
   (isSelfBearer(b, entityId) ? { kind: 'entity', id: SELF_ENTITY } : b.name ? { kind: 'entity', id: '', name: b.name } : { kind: 'entity', id: b.id });
 
 /** A link as two copies compare it: its original and data keys by name, since their ids are each world's own. */
-type ComparableLink = Pick<TraitLink, 'id' | 'kind' | 'originalName' | 'groupId' | 'order' | 'defaults' | 'pinValues'>;
+type ComparableLink = Pick<TraitLink, 'id' | 'kind' | 'originalName' | 'groupId' | 'order' | 'overrides'>;
 
 function comparableLink(link: TraitLink): ComparableLink {
   const key = (id: string) => (id === link.originalId ? '' : link.keyNames?.[id] ?? id);
   return {
     id: link.id, kind: link.kind, originalName: link.originalName, groupId: link.groupId ?? null, order: link.order,
-    defaults: rekeyed(link.defaults, key), pinValues: rekeyed(link.pinValues, key),
+    overrides: rekeyed(link.overrides, key),
   };
 }
 

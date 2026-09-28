@@ -175,6 +175,13 @@ describe('requirements per bearer', () => {
     expect(playerOwnerIds({ source: 'library', entityId: 'lib' })).toEqual([WORLD_OWNER, 'lib']);
   });
 
+  it('counts the Custom Persona entity as the player under None and a library persona, never under a world persona', () => {
+    const entities = [{ id: 'cp', name: 'Newcomer', customPersona: true }, { id: 'albus', name: 'Albus', persona: true }];
+    expect(playerOwnerIds({ source: 'none' }, entities)).toEqual([WORLD_OWNER, 'cp']);
+    expect(playerOwnerIds({ source: 'library', entityId: 'lib' }, entities)).toEqual([WORLD_OWNER, 'lib', 'cp']);
+    expect(playerOwnerIds({ source: 'world', entityId: 'albus' }, entities)).toEqual([WORLD_OWNER, 'albus']);
+  });
+
   it('names the target from the originals when no present bearer holds it, and a gone bearer by its stored name', () => {
     const squire = T('Squire', { requires: [you('Cleric'), { kind: 'trait', id: 'Paladin', bearer: { kind: 'entity', id: 'gone', name: 'Old Albus' } }] });
     const owners = [input({}).owners[0], { ...mira, traits: [squire] }];

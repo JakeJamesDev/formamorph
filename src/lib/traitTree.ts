@@ -7,9 +7,9 @@ import {
   removeChildrenOf as removeChildrenOfGeneric, isDescendantGroup as isDescendantGroupGeneric,
   type GroupTreeNode, type FlatTreeNode,
 } from './groupTree';
-import type { CustomPersonaNode, Entity, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
+import type { Entity, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { xmlEscape } from './utils';
-import { PLAYER_BEARER, bearsTraits, holdsOriginal, makeLink, originalOf, resolveBearers } from './bearers';
+import { bearsTraits, holdsOriginal, makeLink, originalOf, resolveBearers } from './bearers';
 import { randomUUID } from './uuid';
 
 export type TraitTreeNode = GroupTreeNode<TraitGroup, Trait>;
@@ -120,22 +120,6 @@ export function offeredWorldTraits<T extends Trait, G extends TraitGroup>(
   };
 }
 
-/** The Custom Persona node's row id in the Traits tree. */
-export const CUSTOM_PERSONA_ID = 'custom-persona';
-export const CUSTOM_PERSONA_NAME = 'Custom Persona';
-
-/** Custom Persona as the tree draws a bearer node: a node holding links only. */
-export const customPersonaEntity = (node: CustomPersonaNode): Entity => ({
-  id: CUSTOM_PERSONA_ID, name: CUSTOM_PERSONA_NAME, traitLinks: node.traitLinks,
-  ...(node.traitPlacement ? { traitPlacement: node.traitPlacement } : {}),
-});
-
-/** The Custom Persona node an edit of its bearer node writes back. Owned items are never kept. */
-export const customPersonaFrom = (entity: Entity): CustomPersonaNode => ({
-  traitLinks: entity.traitLinks ?? [],
-  ...(entity.traitPlacement ? { traitPlacement: entity.traitPlacement } : {}),
-});
-
 /** The world groups an entity node can sit in: every one outside Templates. */
 export function placeableGroupIds(groups: readonly TraitGroup[]): Set<string> {
   const inTemplates = templatesSubtreeIds(groups);
@@ -149,7 +133,7 @@ export function effectivePlacement(entity: Entity, placeableIds: ReadonlySet<str
   return p && (p.groupId === null || placeableIds.has(p.groupId)) ? p : null;
 }
 
-type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; customPersona?: CustomPersonaNode };
+type WorldTraitLists = { traits: readonly Trait[]; traitGroups: readonly TraitGroup[] };
 
 /** Whether a world group holds a trait or a group directly. */
 export const groupHoldsItems = (lists: Pick<WorldTraitLists, 'traits' | 'traitGroups'>, groupId: string): boolean =>
@@ -162,8 +146,8 @@ const showsSystemNode = (holds: boolean, emptySystemNodes: boolean) => holds || 
  *  placement puts it; an unplaced node goes to the end of the top level, in entity order. Library entities
  *  (a persona or an added entity) come last at the top level, in the order given. Without `links`, the
  *  player's view, Templates and everything in it drop out. With `links`, the editor's view, an entity's links
- *  draw too, an entity with links only gets a node, and so does Custom Persona. `emptySystemNodes` off hides
- *  an empty Templates group and an empty Custom Persona node. */
+ *  draw too, and an entity with links only gets a node. `emptySystemNodes` off hides an empty Templates
+ *  group. */
 export function ownedTraitTree(
   lists: WorldTraitLists, entities: readonly Entity[], library: readonly Entity[] = [],
   { links = false, emptySystemNodes = true } = {},
@@ -178,10 +162,7 @@ export function ownedTraitTree(
   const placeable = placeableGroupIds(world.traitGroups);
   const atRoot = (ref: string | null | undefined) => ref == null || !worldGroupIds.has(ref);
   const hasNode = links ? bearsTraits : ownsTraits;
-  const customPersona = links && lists.customPersona
-    && showsSystemNode(lists.customPersona.traitLinks.length > 0, emptySystemNodes)
-    ? [customPersonaEntity(lists.customPersona)] : [];
-  const owning = [...entities.filter(hasNode), ...customPersona];
+  const owning = entities.filter(hasNode);
   const rootSorts = [
     ...world.traitGroups.map((g, i) => (atRoot(g.parentId) ? g.order ?? i : -1)),
     ...world.traits.map((t, i) => (atRoot(t.groupId) ? t.order ?? i : -1)),
@@ -300,10 +281,9 @@ export interface OwnedTraitDropOptions {
   createLinks?: boolean;
 }
 
-/** What a drop in the one tree writes: the world's lists when they changed, every entity that changed, and
- *  Custom Persona when it changed. */
+/** What a drop in the one tree writes: the world's lists when they changed, and every entity that changed. */
 export type OwnedTraitDrop =
-  | { kind: 'moved'; world?: { traits: Trait[]; groups: TraitGroup[] }; entities: Entity[]; customPersona?: CustomPersonaNode }
+  | { kind: 'moved'; world?: { traits: Trait[]; groups: TraitGroup[] }; entities: Entity[] }
   | { kind: 'refused'; refusal: TraitDropRefusal };
 
 /** Whether the trait changes stats: stat changes or stat toggles. An entity's own traits never do. */
@@ -335,10 +315,10 @@ function linksCarried(tree: OwnedTraitTree, id: string): LinkRow[] {
 }
 
 /**
- * Where a drag in the one tree would land. Templates and Custom Persona stay at the top level. A row that is or holds an entity node stops at the top level
- * or a world group outside Templates. Nothing lands inside a linked group, whose subtree is its original's.
- * A row carrying a link stays in an entity, Custom Persona takes links only, and without `createLinks` a
- * world row stays among the world items. Null when the rows below would hold the row where it can't be.
+ * Where a drag in the one tree would land. Templates stays at the top level. A row that is or holds an entity
+ * node stops at the top level or a world group outside Templates. Nothing lands inside a linked group, whose
+ * subtree is its original's. A row carrying a link stays in an entity, and without `createLinks` a world row
+ * stays among the world items. Null when the rows below would hold the row where it can't be.
  */
 export function getOwnedTraitDropProjection(
   tree: OwnedTraitTree, items: FlatTraitNode[], activeId: string, overId: string, dragOffset: number, indentationWidth: number,
@@ -349,16 +329,15 @@ export function getOwnedTraitDropProjection(
   if (!active) return null;
   const inEntity = (id: string) => tree.entityNodes.has(id) || tree.ownerOf.has(id);
   const worldRow = !inEntity(activeId);
-  const ownedRow = tree.ownerOf.has(activeId) && !tree.linkRows.has(activeId);
   const inTemplates = templatesSubtreeIds(tree.groups);
-  const systemNode = activeId === CUSTOM_PERSONA_ID || active.group?.system === 'templates';
+  const systemNode = active.group?.system === 'templates';
   const blocked = systemNode ? () => true : carriesEntityNode(tree, activeId)
     ? (id: string) => inEntity(id) || inTemplates.has(id)
-    : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id))
-      || (ownedRow && id === CUSTOM_PERSONA_ID);
+    : (id: string) => tree.linkRows.has(id) || (!createLinks && worldRow && inEntity(id));
   const replayed = projectionPastBlocked(items, active, overId, projection, blocked, indentationWidth);
   if (!replayed) return null;
-  if (ownerOfParent(tree, replayed.parentId) === null && linksCarried(tree, activeId).length) return null;
+  // An entity node's links ride inside it; any other row carrying a link stays in an entity.
+  if (!tree.entityNodes.has(activeId) && ownerOfParent(tree, replayed.parentId) === null && linksCarried(tree, activeId).length) return null;
   return replayed;
 }
 
@@ -436,22 +415,21 @@ export function withOwnedLists(entity: Entity, traits: Trait[], traitGroups: Tra
 
 /**
  * Why the bearer node can't link the original; null when it can. A bearer's tree holds each original once.
- * Custom Persona's node is the player bearer, which already has every original outside Templates.
+ * The Custom Persona entity's tree is the player's, which already has every original outside Templates.
  */
 export function linkRefusal(
   world: WorldTraitLists, entities: readonly Entity[], nodeId: string, originalId: string,
 ): Extract<TraitDropRefusal, { reason: 'duplicate' | 'offered' }> | null {
   const bearerWorld = { ...world, entities };
-  const bearerId = nodeId === CUSTOM_PERSONA_ID ? PLAYER_BEARER : nodeId;
-  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === bearerId);
+  const resolved = resolveBearers(bearerWorld, undefined).bearers.find((b) => b.id === nodeId);
   if (!resolved || !holdsOriginal(bearerWorld, resolved, originalId)) return null;
   const name = originalOf(world, originalId)?.item.name ?? '';
+  const entity = entities.find((e) => e.id === nodeId);
   const offered = offeredWorldTraits(world.traits, world.traitGroups);
-  if (nodeId === CUSTOM_PERSONA_ID && [...offered.traits, ...offered.groups].some((item) => item.id === originalId)) {
+  if (entity?.customPersona && [...offered.traits, ...offered.groups].some((item) => item.id === originalId)) {
     return { reason: 'offered', name };
   }
-  const bearer = nodeId === CUSTOM_PERSONA_ID ? CUSTOM_PERSONA_NAME : entities.find((e) => e.id === nodeId)?.name ?? '';
-  return { reason: 'duplicate', name, bearer };
+  return { reason: 'duplicate', name, bearer: entity?.name ?? '' };
 }
 
 /**
@@ -525,22 +503,14 @@ export function applyOwnedTraitDrop(
     const refusal = linkRefusal(world, entities, nodeId, originalId);
     return refusal && { kind: 'refused', refusal };
   };
-  /** The drop's writes, with Custom Persona's node split off the entities. */
-  const moved = (entitiesOut: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop => {
-    const persona = entitiesOut.find((e) => e.id === CUSTOM_PERSONA_ID);
-    return {
-      kind: 'moved',
-      ...(worldOut ? { world: worldOut } : {}),
-      entities: entitiesOut.filter((e) => e !== persona),
-      ...(persona ? { customPersona: customPersonaFrom(persona) } : {}),
-    };
-  };
+  const moved = (entities: Entity[], worldOut?: { traits: Trait[]; groups: TraitGroup[] }): OwnedTraitDrop =>
+    ({ kind: 'moved', ...(worldOut ? { world: worldOut } : {}), entities });
 
   // A world row dropped into an entity links it there; the original stays where it is.
   if (!isNode && from === null && to !== null) {
     const refused = duplicateIn(to, activeId);
     if (refused) return refused;
-    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 }, tree.entityNodes.get(to)!.placeholders);
+    const link = makeLink(world, activeId, newLinkId(), { groupId: null, order: 0 });
     return link && moved([writeEntity(tree.entityNodes.get(to)!, ownerBefore, undefined, link)]);
   }
   if (!isNode && from !== to && to !== null) {

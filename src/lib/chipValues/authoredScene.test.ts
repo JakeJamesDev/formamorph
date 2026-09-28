@@ -3,7 +3,7 @@ import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
 import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOverview } from '@/types';
-import { phValues } from '@/test/placeholderValues';
+import { phValueId, phValues } from '@/test/placeholderValues';
 
 const jetty: GameLocation = { id: 'jetty', name: 'The Jetty', isStarting: true, aiDescription: 'Wet planks over black water.' };
 const landing: GameLocation = { id: 'landing', name: 'The Landing', aiDescription: 'A stone shore below the town.' };
@@ -98,16 +98,20 @@ describe('authoredChipScene', () => {
     const paladin: Trait = {
       id: 'paladin', name: 'Paladin', groupId: 'templates', isDefault: true, statChanges: [],
       aiDescription: '{{char}} swore the oath in {{ph:garb:world:p1}}.',
-      placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Garb', value: 'plain robes' }],
+      placeholderPins: [{ placeholderId: 'garb', valueId: phValueId('robes'), value: 'robes' }],
     };
     const link = (id: string, over: Partial<TraitLink> = {}): TraitLink =>
       ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, ...over });
+    /** A link overriding Paladin's pins list with one plain pin on Garb. */
+    const pinning = (id: string, value: string) => link(id, {
+      overrides: { paladin: { placeholderPins: { value: [{ placeholderId: 'garb', value }], blueprint: paladin.placeholderPins! } } },
+    });
     const linked = (over: Partial<AuthoredWorld> = {}) => world({
       traits: [saltborn, paladin], traitGroups: [templates], placeholders: [garb], ...over,
     });
 
-    it("holds a cast entity's default link in force: full text with its own pin value, and its name in the summary", () => {
-      const knight = { ...wren, traitLinks: [link('l1', { pinValues: { paladin: { Garb: { value: 'silver plate' } } } })] };
+    it("holds a cast entity's default link in force: full text with the link's own pins, and its name in the summary", () => {
+      const knight = { ...wren, traitLinks: [pinning('l1', 'silver plate')] };
       const scene = authoredChipScene(linked({ entities: [knight, harrow] }));
       expect(scene.ownedTraits).toEqual({ wren: ['paladin'] });
       const values = chipValues(scene);
@@ -130,18 +134,27 @@ describe('authoredChipScene', () => {
     });
 
     it("reads a link's own default-on over the original's", () => {
-      const knight = { ...wren, traitLinks: [link('l1', { defaults: { paladin: false } })] };
+      const knight = { ...wren, traitLinks: [link('l1', { overrides: { paladin: { isDefault: { value: false, blueprint: true } } } })] };
       expect(authoredChipScene(linked({ entities: [knight, harrow] })).ownedTraits).toEqual({});
+    });
+
+    it("reads a cast entity's linked trait with the original's pins when the link reads them live", () => {
+      const knight = { ...wren, traitLinks: [link('l1')] };
+      expect(chipValues(authoredChipScene(linked({ entities: [knight, harrow] })))['<ENTITIES>'])
+        .toContain('Paladin: Wren swore the oath in robes.');
     });
 
     it("never counts a default Templates trait as the player's", () => {
       expect(chipValues(authoredChipScene(linked()))['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.');
     });
 
-    it("counts a default Custom Persona link as the player's, at the root, naming the player", () => {
-      const robed = link('l2', { pinValues: { paladin: { Garb: { value: 'plain robes' } } } });
-      const values = chipValues(authoredChipScene(linked({ customPersona: { traitLinks: [robed] } })));
-      expect(values['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.\nPaladin: The player swore the oath in plain robes.');
+    it("holds a Custom Persona entity's default link under the entity, and never folds it into the root", () => {
+      const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [pinning('l2', 'plain robes')] };
+      const scene = authoredChipScene(linked({ entities: [newcomer, wren, harrow] }));
+      expect(scene.ownedTraits).toEqual({ cp: ['paladin'] });
+      expect(scene.traits).toEqual([saltborn]);
+      // The marked entity is never in the cast, so it opens nowhere.
+      expect(scene.presentIds).toEqual(['wren']);
     });
   });
 

@@ -782,7 +782,7 @@ This pattern differs from two others on purpose. Its entity list sits inside the
 
 - 🧭 **One level at a time.** The flyout shows one entity group level. A group row carries a folder icon and a trailing chevron, and opens that group's level. A group with no entity anywhere below it has no row.
 - ⬅️ **Back row.** Above the rows, a Back row with an arrow names the level you're on. It returns one level. On the top level of a menu drill-in, it names the menu row that opened the list and returns to the menu.
-- 👤 **Custom Persona first.** When a flyout offers it, Custom Persona sits first on the top level with its own icon.
+- 👤 **Custom Persona icon.** The entity with the Custom Persona mark sits in its Entities-tab place and carries its own icon.
 - ✅ **Check column.** A flyout that shows held state starts every row with a check column, so group rows and entity rows align. A held entity reads checked and dimmed, and can't be picked.
 - Rows use the menu's row size and padding. Long names wrap. The list scrolls inside the popover when it outgrows the space.
 

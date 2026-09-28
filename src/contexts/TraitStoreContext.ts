@@ -1,11 +1,11 @@
-import { createContext, useContext, useMemo, type Dispatch, type SetStateAction } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { editorGateInput } from '@/lib/bearers';
 import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
 import type { PlaceholderOwners } from '@/lib/placeholderHomes';
-import type { CustomPersonaNode, Entity, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { Entity, Placeholder, Stat, Trait, TraitGroup } from '@/types';
 
 /**
  * The trait CRUD the trait-editing widgets need. The World Editor binds it to the world; a library entity
@@ -27,9 +27,6 @@ export interface TraitStore {
   removeTrait: (id: string) => void;
   removeTraitGroup: (id: string) => void;
   editEntity: (id: string, edit: (entity: Entity) => Entity) => void;
-  /** The world's Custom Persona node. Absent off-world, where there is none to hold. */
-  customPersona?: CustomPersonaNode;
-  setCustomPersona?: Dispatch<SetStateAction<CustomPersonaNode | undefined>>;
   /** Every owner's traits with nothing active: what gates read in the editor. */
   gateInput: GateInput;
   /** What the pin rows read rivals from. Null off-world. */
@@ -66,10 +63,9 @@ export function useTraitStore(): TraitStore {
   const traits = world?.traits;
   const traitGroups = world?.traitGroups;
   const entities = world?.entities;
-  const customPersona = world?.customPersona;
   const gateInput = useMemo(
-    () => editorGateInput({ traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], customPersona }),
-    [traits, traitGroups, entities, customPersona],
+    () => editorGateInput({ traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [] }),
+    [traits, traitGroups, entities],
   );
   if (provided) return provided;
   if (!world) throw new Error('useTraitStore needs a world or a TraitStoreContext');
@@ -88,8 +84,6 @@ export function useTraitStore(): TraitStore {
     removeTrait: world.removeTrait,
     removeTraitGroup: world.removeTraitGroup,
     editEntity: world.editEntity,
-    customPersona: world.customPersona,
-    setCustomPersona: world.setCustomPersona,
     gateInput,
     pinWorld: world,
   };

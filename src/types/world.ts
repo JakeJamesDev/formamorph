@@ -84,16 +84,24 @@ export interface TraitStatToggle {
 /** A placeholder its source forces to a fixed value while the source is active, masking that playthrough's
  *  roll. The one shape every source carries: a trait, a location, a stat descriptor, a placeholder value. */
 export interface PlaceholderPin {
-  /** Empty when `bearerPlaceholder` names the target instead. */
+  /** The target's id. A trait pin may name a blueprint placeholder: on each bearer it then traces to that
+   *  bearer's copy (see lib/blueprints). */
   placeholderId: string;
   value: string;
   /** The pinned value's id, when the pin names one the placeholder carries. Preferred over `value`, so a
    *  pin picked off the list follows the author re-spelling it. Absent for a value typed off the list. */
   valueId?: string;
-  /** A trait pin's target by name, relative to the bearer: the bearer's own placeholder with this name, else
-   *  the world's. The bearer's link supplies the value; `value` is only what a new link starts from. */
-  bearerPlaceholder?: string;
 }
+
+/** One overridden field on a blueprint-origin record: the value set here and the blueprint's value it was
+ *  made against. The blueprint changing that field since marks the override stale. */
+export interface BlueprintOverride<V> {
+  value: V;
+  blueprint: V;
+}
+
+/** A sparse override map over a blueprint's fields. An absent key reads the blueprint live. */
+export type BlueprintOverrides<T> = { [K in keyof T]?: BlueprintOverride<T[K]> };
 
 /** Whose active set a requirement reads: the played persona's, or a named entity's. `name` is the entity's
  *  name when it was stored, so an unresolved one still reads. Absent on a requirement = the same bearer. */
@@ -148,26 +156,24 @@ export interface TraitLink {
   groupId: string | null;
   /** Sibling order among the bearer's items sharing the same parent. */
   order?: number;
-  /** Original trait id → default-on for this link. Absent = the original's own `isDefault`, read live. A
-   *  linked group keys its children here. */
-  defaults?: Record<string, boolean>;
-  /** Original trait id → bearer placeholder name → the value this link pins it to. */
-  pinValues?: Record<string, Record<string, TraitLinkPinValue>>;
-  /** Off-world only: trait id → name for each trait below the original that `defaults` or `pinValues` keys,
-   *  so the keys rebind by name when the original does. Dropped when the link binds to a world. */
+  /** Original trait id → this link's overrides on that trait. A trait absent here, or a field absent in its
+   *  map, reads the original live. A linked group keys its children here. */
+  overrides?: Record<string, TraitLinkOverrides>;
+  /** Off-world only: trait id → name for each trait below the original that `overrides` keys, so the keys
+   *  rebind by name when the original does. Dropped when the link binds to a world. */
   keyNames?: Record<string, string>;
 }
 
-/** The value one link gives a bearer-relative pin, from the bearer's own list or the world's on fallback. */
-export type TraitLinkPinValue = Pick<PlaceholderPin, 'value' | 'valueId'>;
-
-/** The Custom Persona node: links whose originals are the player's traits when the persona is None or a
- *  library persona. It holds links only, and at most one exists. Its bearer key is the player's world key. */
-export interface CustomPersonaNode {
-  traitLinks: TraitLink[];
-  /** Where the node sits in the world's Traits tree. Absent = the end of the top level. */
-  traitPlacement?: TraitPlacement;
+/** The fields a link may override on a trait its original brings. Name and descriptions stay the original's. */
+export interface TraitLinkFields {
+  isDefault: boolean;
+  requires: TraitRequirement[];
+  placeholderPins: PlaceholderPin[];
+  playerToggle: boolean;
+  statChanges: StatChange[];
 }
+
+export type TraitLinkOverrides = BlueprintOverrides<TraitLinkFields>;
 
 /** A selectable character trait that applies `statChanges` and adds AI context when chosen at game start. */
 export interface Trait {
@@ -209,6 +215,10 @@ export interface Entity {
   /** The entity exists only while it is the picked persona: unpicked, it leaves the cast and never joins a
    *  scene. Read only with the Persona mark. */
   personaOnly?: boolean;
+  /** Marks the entity as the Custom Persona: the player's own entity under None and under a library persona,
+   *  never in the cast (see lib/bearers). At most one per world, at the root. Excludes the Persona marks and
+   *  implies persona-only. */
+  customPersona?: boolean;
   /** Where a world persona begins, flagged as a starting location or not. Absent = Automatic: the first of
    *  its locations that is a starting location. Read only for a world entity with the Persona mark. */
   startingLocationId?: string;
@@ -512,8 +522,6 @@ export interface World {
   traits: Trait[];
   /** Folders organizing traits in the editor and selection screen. */
   traitGroups?: TraitGroup[];
-  /** The Custom Persona node, when the author added one (see `CustomPersonaNode`). */
-  customPersona?: CustomPersonaNode;
   statUpdates: StatUpdate[];
   /** v2.x: ordered books of lorebook entries (replaces the flat `dictionary`; legacy worlds fold to one
    *  "Default" book on load via `migrateWorld`). Guaranteed ≥1 book after that normalization. */
@@ -559,11 +567,28 @@ export interface Placeholder {
    *  below it, joined with `/`; the inner map keys by value id like `weights`. Deny-list: a value in
    *  neither map weighs 1, so a value added to the original later rolls here too. */
   sharedWeights?: Record<string, Record<string, number>>;
+  /** The blueprint this placeholder copies (see lib/blueprints). A copy reads the blueprint's values live,
+   *  under the blueprint's ids, and `values` holds only the copy's own. It is always named after its
+   *  blueprint, and an owner holds one copy per blueprint. */
+  blueprintId?: string;
+  /** Blueprint value id → what this copy changes on that value. A value absent here reads live. */
+  valueOverrides?: Record<string, CopyValueOverrides>;
   /** The editor folder this placeholder sits in on the Placeholders tab; null/absent = ungrouped. Only a
    *  shared placeholder is grouped: a scoped one sits under its entity or book, an owned one under its
    *  holder. Editor-only, never sent to the AI, and dropped from card and dictionary exports. */
   groupId?: string | null;
 }
+
+/** The fields a copy may override on one of its blueprint's values. */
+export interface CopyValueFields {
+  text: string;
+  /** The draw weight: the blueprint's `weights` entry, 1 when absent. */
+  weight: number;
+}
+
+/** What a copy changes on one blueprint value: its fields, or the value left out of this copy. A removed
+ *  value never rolls here, and a pin naming it lays nothing. */
+export type CopyValueOverrides = BlueprintOverrides<CopyValueFields> & { removed?: true };
 
 /**
  * What one world's copy of an entity or dictionary follows. The record lives on the copy inside the world,
