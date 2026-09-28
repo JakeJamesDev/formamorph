@@ -1653,6 +1653,43 @@ describe('trait gate rules', () => {
       const w = gates([gated('t', needs('gone'), def), gated('u', needs('t'), def)]);
       expect(only(w, rule)).toEqual([]);
     });
+
+    describe('per bearer', () => {
+      // Templates: Races (Human, Elf) and one default-on ability per race, gated on it.
+      const templated = [
+        trait({ id: 'human', name: 'Human', groupId: 'races' }),
+        trait({ id: 'elf', name: 'Elf', groupId: 'races' }),
+        gated('stubborn', needs('human'), { ...def, groupId: 'abilities' }),
+        gated('keen', needs('elf'), { ...def, groupId: 'abilities' }),
+      ];
+      const traitGroups = [
+        { id: 'templates', name: 'Templates', parentId: null, system: 'templates' as const },
+        { id: 'races', name: 'Races', parentId: 'templates', exclusive: true },
+        { id: 'abilities', name: 'Racial Abilities', parentId: 'templates' },
+      ];
+      const links = (race: string) => [
+        { id: `l-races-${race}`, originalId: 'races', kind: 'group' as const, originalName: 'Races', groupId: null, defaults: { [race]: true } },
+        { id: `l-abilities-${race}`, originalId: 'abilities', kind: 'group' as const, originalName: 'Racial Abilities', groupId: null },
+      ];
+      const albus = (race: string): Entity => ({ ...resident, id: 'albus', name: 'Albus', persona: true, traitLinks: links(race) });
+      const sylvie = (race: string): Entity => ({ ...resident, id: 'sylvie', name: 'Sylvie', persona: true, traitLinks: links(race) });
+      const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
+        gates(templated, { traitGroups, entities: [resident, ...entities], ...over });
+
+      it('passes a default one bearer keeps, though another bearer turns it off under its own race', () => {
+        expect(only(linked([albus('human'), sylvie('elf')]), rule)).toEqual([]);
+      });
+
+      it('flags a default no bearer keeps, and names what it requires', () => {
+        const found = only(linked([albus('human'), sylvie('human')]), rule);
+        expect(ids(found)).toEqual([['keen']]);
+        expect(found[0].message).toBe('“KEEN” is marked default but starts unselected — no starting default or persona choice meets “Elf”');
+      });
+
+      it('counts a default Custom Persona keeps under None', () => {
+        expect(only(linked([albus('human')], { customPersona: { traitLinks: links('elf') } }), rule)).toEqual([]);
+      });
+    });
   });
 });
 
@@ -1939,6 +1976,23 @@ describe('placeholder pin rules', () => {
       }), 'placeholder-pin-conflict');
       expect(found.message).toBe('“Hue” is pinned by “Trait: Sworn” and “Trait: Ash\'s Tamed” — “Trait: Ash\'s Tamed” wins whenever it is in force');
       expect(found.items).toContainEqual({ id: 'o1', name: 'Tamed', section: 'traits' });
+    });
+
+    it('stays quiet for two Personas whose links pin one world placeholder to different values', () => {
+      // Only one is played; the other wins in its own text. The cast entity's link still rivals the world trait.
+      const garb = { id: 'paladin', name: 'Paladin', groupId: 'templates', placeholderPins: [{ placeholderId: '', value: '', bearerPlaceholder: 'Hue' }] };
+      const link = (id: string, value: string): TraitLink =>
+        ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, pinValues: { paladin: { Hue: { value } } } });
+      const persona = (id: string, value: string, over: Partial<Entity> = {}): Entity =>
+        ({ id, name: id, persona: true, traitLinks: [link(`l-${id}`, value)], ...over });
+      const two = contest({
+        traitGroups: [{ id: 'templates', name: 'Templates', parentId: null, system: 'templates' }],
+        traits: [trait(garb)],
+        entities: [persona('Albus', 'red'), persona('Sylvie', 'blue')],
+      });
+      expect(only(two, 'placeholder-pin-conflict')).toEqual([]);
+      const [found] = only({ ...two, entities: [persona('Albus', 'red'), persona('Ash', 'blue', { persona: false })] }, 'placeholder-pin-conflict');
+      expect(found.message).toBe('“Hue” is pinned by “Trait: Albus\'s Paladin” and “Trait: Ash\'s Paladin” — “Trait: Ash\'s Paladin” wins whenever it is in force');
     });
 
     it('stays quiet for pins that can never be in force together: exclusive siblings, bands of one stat', () => {

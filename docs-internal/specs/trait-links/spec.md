@@ -292,7 +292,7 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q79 | A cast entity's text: world pins, then the player's trait pins, then its own on top. |
   | Q80 | Persona story 54 stands: a persona-only entity's openings never draw. |
   | Q81 | The Persona-only switch is in the world entity editor only. |
-  | Q82 | In the conflict note a Persona-marked entity's traits count as both its own and the player's, so they rival every cast entity's; the cast entity wins in its own text. |
+  | Q82 | In the conflict note a Persona-marked entity's traits count as both its own and the player's, so they rival every cast entity's; the cast entity wins in its own text. Amended by emberwatch-world Q27: two Persona-marked entities' traits never rival each other, since only one is played and each wins in its own text. |
   | Q83 | Under None or a library persona, Custom Persona's links merge into the player's root categories; no separate heading. |
   | Q84 | The player is one bearer, so Q64 applies to the union: an original held at the root and through the played persona's link shows once (root wins), holds one stat record, and the Test Bench reports the redundant link. |
   | Q85 | A linked group's per-link keys travel off-world with child names and rebind by id, then unique name within the subtree, else drop. |
