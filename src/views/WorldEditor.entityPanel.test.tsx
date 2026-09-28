@@ -83,10 +83,10 @@ describe('the World Editor entity panel tabs', () => {
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('offers three tabs in Simple mode', () => {
+  it('offers two tabs in Simple mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     selectEntity('Wren');
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Traits']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions']);
   });
 
   it('puts the identity fields, the picture and its tags on Profile, and no description', () => {
@@ -139,7 +139,7 @@ describe('the World Editor entity panel tabs', () => {
     selectEntity('Wren');
     openPanelTab('Placeholders');
     fireEvent.click(screen.getByRole('radio', { name: 'Simple' }));
-    expect(panelTabNames()).toEqual(['Profile', 'Descriptions', 'Traits']);
+    expect(panelTabNames()).toEqual(['Profile', 'Descriptions']);
     expect(panelTab('Profile')).toHaveAttribute('aria-selected', 'true');
     expect(panelLabels()).toEqual(['Image', 'Name', 'Locations']);
   });

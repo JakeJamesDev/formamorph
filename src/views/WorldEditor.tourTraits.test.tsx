@@ -68,11 +68,8 @@ const stepNumber = () => Number(/(\d+) \//.exec(within(tourBar()).getByText(/^Au
 const stepNote = () => screen.getAllByRole('dialog').find((d) => within(d).queryByText(`${stepNumber()} / ${TOTAL}`))!;
 const noteButton = (name: string) => within(stepNote()).queryByRole('button', { name });
 const addButton = () => screen.getByRole('button', { name: 'Add to Traits' });
-/** The Traits tab's + opens its menu; Add Trait there makes the trait. */
-const clickAddTrait = () => {
-  fireEvent.click(addButton());
-  fireEvent.click(screen.getByRole('button', { name: 'Add Trait' }));
-};
+/** In Simple mode, the Traits tab's + makes the trait in one click. */
+const clickAddTrait = () => fireEvent.click(addButton());
 
 const inPlay = () => screen.getByRole('region', { name: 'In Play' });
 const playerSees = () => within(inPlay()).queryByRole('region', { name: 'Player Sees' });

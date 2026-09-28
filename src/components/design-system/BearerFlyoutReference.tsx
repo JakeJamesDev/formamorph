@@ -5,6 +5,7 @@ import { ListAddButton } from '@/components/ListToolbar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Hint } from '@/components/ui/typography';
 import { MENU_ROW } from '@/components/menuRow';
+import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { BearerList } from '@/managers/BearerPicker';
 import { bearerChoices } from '@/lib/bearerChoices';
 import { CUSTOM_PERSONA_ID } from '@/lib/traitTree';
@@ -28,26 +29,30 @@ const nameOf = (id: string) => (id === CUSTOM_PERSONA_ID ? 'Custom Persona' : EN
 export function BearerFlyoutReference() {
   const [addOpen, setAddOpen] = useState(false);
   const [drilled, setDrilled] = useState(false);
+  const [from, setFrom] = useState<SlideFrom>(null);
+  const drill = (on: boolean) => { setDrilled(on); setFrom(on ? 'right' : 'left'); };
   const [linked, setLinked] = useState(() => new Set(['albus']));
   const [status, setStatus] = useState('The sample has no new trait.');
   return (
     <section aria-label="Bearer Flyouts" className="flex flex-wrap items-start gap-6 rounded-lg border bg-background p-4">
       <div className="space-y-2">
-        <Popover open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) setDrilled(false); }}>
+        <Popover open={addOpen} onOpenChange={(open) => { setAddOpen(open); setDrilled(false); setFrom(null); }}>
           <PopoverTrigger asChild><ListAddButton label="Add to Traits" /></PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-56 p-1">
-            {drilled ? (
-              <BearerList
-                choices={bearerChoices(GROUPS, ENTITIES)}
-                label="Entities"
-                back={{ label: 'Add Trait to Entity', onBack: () => setDrilled(false) }}
-                onPick={(id) => { setStatus(`The sample added a trait to ${nameOf(id)}.`); setAddOpen(false); setDrilled(false); }}
-              />
-            ) : (
-              <button type="button" className={MENU_ROW} onClick={() => setDrilled(true)}>
-                Add Trait to Entity
-              </button>
-            )}
+          <PopoverContent side="bottom" align="start" className="w-56 overflow-hidden p-1">
+            <DrillSlide key={String(drilled)} from={from}>
+              {drilled ? (
+                <BearerList
+                  choices={bearerChoices(GROUPS, ENTITIES)}
+                  label="Entities"
+                  back={{ label: 'Add Trait to Entity', onBack: () => drill(false) }}
+                  onPick={(id) => { setStatus(`The sample added a trait to ${nameOf(id)}.`); setAddOpen(false); setDrilled(false); }}
+                />
+              ) : (
+                <button type="button" className={MENU_ROW} onClick={() => drill(true)}>
+                  Add Trait to Entity
+                </button>
+              )}
+            </DrillSlide>
           </PopoverContent>
         </Popover>
         <Hint role="status">{status}</Hint>
@@ -57,7 +62,7 @@ export function BearerFlyoutReference() {
           <PopoverTrigger asChild>
             <Button type="button" variant="outline" size="sm" className="gap-1"><Link2 className="h-3.5 w-3.5" aria-hidden />Link To…</Button>
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className="w-60 p-1">
+          <PopoverContent side="bottom" align="start" className="w-60 overflow-hidden p-1">
             <BearerList
               choices={bearerChoices(GROUPS, ENTITIES, { customPersona: true })}
               label="Link To"

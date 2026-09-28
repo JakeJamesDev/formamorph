@@ -60,18 +60,17 @@ const flyoutRow = (label: string, name: string) => within(screen.getByRole('grou
 beforeEach(() => { localStorage.clear(); });
 
 describe('the + menu', () => {
-  it('offers Add Trait to Entity in Basic, and Add Group to Entity in Advanced only', () => {
-    renderWorldEditorBench(WORLD, 'simple');
+  it('offers both drill-ins in Advanced', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     openAddMenu();
     expect(menuButton('Add Trait')).toBeInTheDocument();
     expect(menuButton('Add Trait to Entity')).toBeInTheDocument();
-    expect(menuButton('Add Group to Entity')).toBeNull();
-    expect(menuButton('Add Group')).toBeNull();
+    expect(menuButton('Add Group to Entity')).toBeInTheDocument();
   });
 
-  it('adds a trait in one click in Basic when the world has no entity to offer', () => {
-    const { ctx } = renderWorldEditorBench({ ...WORLD, entities: [], customPersona: undefined }, 'simple');
+  it('adds a trait in one click in Basic, even with entities to offer', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
     openTab(/Traits/);
     openAddMenu();
     expect(menuButton('Add Trait to Entity')).toBeNull();
@@ -79,7 +78,7 @@ describe('the + menu', () => {
   });
 
   it('adds an owned trait to an entity with no node, which gets one with the new row selected', () => {
-    const { ctx } = renderWorldEditorBench(WORLD, 'simple');
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     expect(treeRow('Mira')).toBeUndefined();
     openAddMenu();

@@ -96,13 +96,11 @@ describe('the entity panel Traits tab', () => {
     expect(selectedRowText()).toBe('Wild1');
   });
 
-  it('adds a group only in Advanced mode', () => {
+  it('shows the tab only in Advanced mode', () => {
     renderWorldEditorBench(WORLD, 'simple');
     openTab(/Entities/);
     fireEvent.click(screen.getAllByText('Odd Wick')[0]);
-    fireEvent.mouseDown(entityFieldsTab('Traits'));
-    expect(screen.getByRole('button', { name: 'Add Trait' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add Group' })).toBeNull();
+    expect(within(screen.getByRole('tablist', { name: 'Entity Fields' })).queryByRole('tab', { name: 'Traits' })).toBeNull();
   });
 });
 
