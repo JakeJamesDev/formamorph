@@ -6,7 +6,8 @@ import { runRules } from './testBench/rules';
 import { PLAYER_BEARER, resolveBearers, type BearerWorld } from './bearers';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
-import { effectiveCopy } from './blueprints';
+import { copyLookup, effectiveCopy, readerFor } from './blueprints';
+import { resolvePlaceholders } from './placeholders';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -65,13 +66,28 @@ describe('the Emberwatch default world', () => {
     const copy = hesk.placeholders!.find((p) => p.blueprintId === garb.id)!;
     expect(copy.values).toEqual([]);
     expect(effectiveCopy(copy, garb).values.find((v) => v.id === clericPin.valueId)?.text).toMatch(/scorched gray vestments/);
-    expect(hesk.aiDescription).toContain(`{{ph:${copy.id}:`);
+    expect(hesk.playerDescription).toContain(`{{ph:${copy.id}:`);
+  });
+
+  it("reads each bearer's own garb from the Class Garb chip in a class's text", () => {
+    const garb = world.placeholders!.find((p) => p.name === 'Class Garb')!;
+    const classText = (bearer: string, className: string) => {
+      const cls = world.traits.find((t) => t.name === className)!;
+      const pinned = cls.placeholderPins![0].valueId;
+      return resolvePlaceholders(cls.aiDescription ?? '', {
+        placeholders: [...world.placeholders!, ...world.entities.flatMap((e) => e.placeholders ?? [])],
+        rolls: {}, pick: (values) => values.find((v) => v.id === pinned)!.text,
+        copies: copyLookup({ placeholders: world.placeholders!, entities: world.entities }, readerFor(undefined, entityNamed(world, bearer), false)),
+      });
+    };
+    expect(classText('Mother Hesk', 'Cleric')).toMatch(/wears scorched gray vestments/);
+    expect(classText('Albus', 'Paladin')).toContain(`wears ${garb.values[0].text}`);
   });
 
   it('teaches each feature in the readme by naming its example', () => {
     const readme = world.worldOverview.readme ?? '';
     expect(readme).toContain('## How this world is built');
-    for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Blueprint pins',
+    for (const label of ['Blueprints', 'Group links', 'Trait links', 'Per-link defaults', 'Link overrides', 'Blueprint pins', 'Blueprint chips',
       'Custom Persona', 'Persona-only', 'Same-bearer gates', 'Any-of gates', 'Named-scope gates', 'Gated defaults']) {
       expect(readme, label).toContain(`**${label}`);
     }
@@ -79,12 +95,18 @@ describe('the Emberwatch default world', () => {
 });
 
 describe('bearers on Emberwatch', () => {
-  it('leaves Wanderer out of the cast unless picked', () => {
-    const wanderer = entityNamed(world, 'Wanderer');
+  it('makes Wanderer the Custom Persona entity, out of the cast either way', () => {
+    expect(customPersonaId(world)).toBe(entityNamed(world, 'Wanderer').id);
     expect(resolveBearers(bearerWorld(world), NONE).cast.map((e) => e.name)).not.toContain('Wanderer');
     expect(resolveBearers(bearerWorld(world), asEntity(world, 'Albus')).cast.map((e) => e.name)).not.toContain('Wanderer');
-    const picked = resolveBearers(bearerWorld(world), { source: 'world', entityId: wanderer.id });
-    expect(picked.bearers.find((b) => b.id === wanderer.id)?.present).toBe(true);
+  });
+
+  it("gives Albus's Paladin more Faith than the blueprint's, and nobody else's", () => {
+    const faith = (persona: PersonaRef, bearer: string) => resolveBearers(bearerWorld(world), persona).bearers
+      .find((b) => b.name === bearer)!.traits.find((t) => t.name === 'Paladin')!.statChanges;
+    expect(faith(NONE, 'Albus')).toEqual([{ statId: 'faith', value: 40, type: 'max' }]);
+    expect(faith(NONE, 'Sylvie Thornwhistle')).toEqual([{ statId: 'faith', value: 30, type: 'max' }]);
+    expect(faith(NONE, 'Wanderer')).toEqual([{ statId: 'faith', value: 30, type: 'max' }]);
   });
 
   it('starts Albus as a Human Paladin with his racial ability on', () => {
@@ -96,7 +118,7 @@ describe('bearers on Emberwatch', () => {
   it('starts Sylvie as an Elf Rogue and Hesk as a Dwarf Cleric', () => {
     expect(names(world, settledDefaults(world, entityNamed(world, 'Sylvie Thornwhistle').id, NONE)).sort())
       .toEqual(['Elf', 'Keen Senses', 'Rogue']);
-    expect(names(world, settledDefaults(world, entityNamed(world, 'Mother Hesk').id, NONE)).sort()).toEqual(['Cleric', 'Dwarf']);
+    expect(names(world, settledDefaults(world, entityNamed(world, 'Mother Hesk').id, NONE)).sort()).toEqual(['Cleric', 'Darkvision', 'Dwarf']);
   });
 
   it("gives the player the Custom Persona entity's links under None, and a persona's own tree when played", () => {
@@ -111,7 +133,7 @@ describe('bearers on Emberwatch', () => {
     expect(none.cast.map((e) => e.id)).not.toContain(cp);
     expect(custom.groups.map((g) => g.name)).toEqual(expect.arrayContaining(['Races', 'Classes', 'Racial Abilities', 'Class Abilities']));
     expect(custom.groups.map((g) => g.name)).not.toContain('Blueprints');
-    expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Rogue']);
+    expect(names(world, settledDefaults(world, cp, NONE)).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
 
     const played = resolveBearers(bearerWorld(world), asEntity(world, 'Albus'));
     expect(played.bearers.find((b) => b.id === PLAYER_BEARER)!.groups.map((g) => g.name)).toEqual(['Bonds']);
@@ -120,10 +142,10 @@ describe('bearers on Emberwatch', () => {
   });
 
   it('switches a racial ability off and on with the race', () => {
-    const { gate } = resolveBearers(bearerWorld(world), asEntity(world, 'Wanderer'));
+    const { gate } = resolveBearers(bearerWorld(world), NONE);
     const wanderer = entityNamed(world, 'Wanderer').id;
     const start = settleDefaults(gate);
-    expect(names(world, start.active[wanderer]).sort()).toEqual(['Darkvision', 'Dwarf', 'Wizard']);
+    expect(names(world, start.active[wanderer]).sort()).toEqual(['Halfling', 'Lucky Step', 'Wizard']);
     const asElf = switchTrait({ ...gate, active: start.active }, wanderer, traitId(world, 'Elf'), start.cascadeOff)!;
     expect(names(world, asElf.active[wanderer]).sort()).toEqual(['Elf', 'Keen Senses', 'Wizard']);
   });

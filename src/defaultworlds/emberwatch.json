@@ -15,8 +15,8 @@
       "adventure"
     ],
     "playerSetting": "open",
-    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** starts as a Dwarf Wizard. Change the **Race** and the **Class** to build your own, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Every bearer of a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that bearer's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Custom Persona.** The entity with the Custom Persona mark. Its links apply when you play with no persona or with a persona from your library, and its copies of **Class Garb** and **Heritage** are what those pins read.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** is your own character. Enter your name, then change the **Race** and the **Class** from the Halfling Wizard it starts as. Your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Bring a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Blueprints.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf**, **Cleric** and **Darkvision** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original. Darkvision is default-on in Blueprints, so Hesk's link starts it on with no override.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Link overrides.** Select **Paladin** under Albus's **Classes** link. Its stat change is an override, so Albus gains more Faith than any other Paladin. **Reset** returns it to the blueprint.\n- **Blueprint pins.** Each Class pins **Class Garb** and each Race pins **Heritage**, two placeholders in the Placeholders tab's **Blueprints** group. Every bearer of a Class or a Race owns a copy of each, named like **Albus.Class Garb**, and the pin lands on that bearer's copy. A copy reads the blueprint's values until you edit one. Hesk's and Corvin's copies reword the value their class and race pin, so their text reads their own words.\n- **Blueprint chips.** Each Class's AI description ends with a **Class Garb** chip, and each Race's with a **Heritage** chip. A chip in a blueprint trait reads the bearer's copy, so one Cleric text gives Hesk her own vestments.\n- **Custom Persona.** **Wanderer** carries the Custom Persona mark, so it takes None's place at Enter World. The player enters a name, and Wanderer's links build the character. Its links also apply under a persona from your library, and its copies of **Class Garb** and **Heritage** fill in where that persona has none.\n- **Persona-only.** The Custom Persona mark implies Persona-only. Unpicked, Wanderer leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks. Play Albus and the trait is not offered, because nobody is their own squire.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
@@ -296,14 +296,8 @@
       "name": "Wanderer",
       "type": "Person",
       "playerDescription": "You came up the frontier road with a name nobody here knows yet. You wear {{ph:2efd5460-acaf-594a-8231-f7bcf45281ac:world:a7c09709-2e76-56cd-a2de-ac68042e30a4}} and have {{ph:1a1c79e6-c73b-55db-a15e-aa0ff82a0763:world:8970f412-ae8f-5d61-ab5b-db9ebfe00b2c}}. Your race and class are yours to pick.",
-      "aiDescription": "{{char}} came up the frontier road alone, with a name nobody in Emberwatch knows yet. {{char}} wears {{ph:2efd5460-acaf-594a-8231-f7bcf45281ac:world:6d704dc4-9f2e-5bcb-b4e2-77aee463591c}} and has {{ph:1a1c79e6-c73b-55db-a15e-aa0ff82a0763:world:3a1e2375-3332-5097-8c0e-28666d4400e7}}. Nobody here owes {{char}} anything, and {{char}} owes nobody; every bond is still to be made.",
+      "aiDescription": "{{char}} came up the frontier road alone, with a name nobody in Emberwatch knows yet. Nobody here owes {{char}} anything, and {{char}} owes nobody; every bond is still to be made.",
       "aiSummary": "A newcomer to Emberwatch with no history here yet.",
-      "locations": [
-        "12fb7d50-05f3-557d-907a-8f1310d89790"
-      ],
-      "persona": true,
-      "personaOnly": true,
-      "startingLocationId": "12fb7d50-05f3-557d-907a-8f1310d89790",
       "traitLinks": [
         {
           "id": "2b9d99e9-06ec-5075-9594-969799b0c2da",
@@ -313,7 +307,7 @@
           "groupId": null,
           "order": 0,
           "overrides": {
-            "36b77fb2-a867-566e-90b4-6bbd664e19b9": {
+            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
               "isDefault": {
                 "value": true,
                 "blueprint": false
@@ -367,14 +361,19 @@
           "values": [],
           "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
         }
-      ]
+      ],
+      "customPersona": true,
+      "traitPlacement": {
+        "groupId": null,
+        "order": 2
+      }
     },
     {
       "id": "6d14f861-781e-5b30-9996-e271ac3c39d2",
       "name": "Albus",
       "type": "Person",
       "playerDescription": "Broad and quiet, with a soldier's bearing and a patience the Ember taught. He wears {{ph:bc785559-8f16-565b-a3b7-a54f998f66b5:world:6ac3e932-5377-5fa9-9b90-4c5ccb2e2740}} and has {{ph:207bc548-27df-5a67-be79-191efe6dfda1:world:a7930ec8-b930-5ca5-bcaf-ed69487574c0}}. He came to Emberwatch because the Ember told him to, and he does not expect to leave.",
-      "aiDescription": "Sworn to the Ember, in his late thirties, broad-shouldered, quiet, with a scarred jaw and steady gray eyes. He wears {{ph:bc785559-8f16-565b-a3b7-a54f998f66b5:world:e4f1908f-14b1-5ff8-85f5-1a9f6e789ab2}} and has {{ph:207bc548-27df-5a67-be79-191efe6dfda1:world:ddf12fce-2a27-5dd2-a9c8-9cce6bf30e0a}}. He speaks little and means all of it. He believes the barrow's opening is a test the Ember set for the keep, and he intends to pass it. He is protective of the weak, hard on the cruel, and slow to trust a thief. He keeps his shield polished and his oaths simple.",
+      "aiDescription": "Sworn to the Ember, in his late thirties, broad-shouldered, quiet, with a scarred jaw and steady gray eyes. He speaks little and means all of it. He believes the barrow's opening is a test the Ember set for the keep, and he intends to pass it. He is protective of the weak, hard on the cruel, and slow to trust a thief. He keeps his shield polished and his oaths simple.",
       "aiSummary": "The keep's quiet, steady champion of the Ember, sworn to seeing the barrow closed.",
       "locations": [
         "12fb7d50-05f3-557d-907a-8f1310d89790",
@@ -412,6 +411,22 @@
               "isDefault": {
                 "value": true,
                 "blueprint": false
+              },
+              "statChanges": {
+                "value": [
+                  {
+                    "statId": "faith",
+                    "value": 40,
+                    "type": "max"
+                  }
+                ],
+                "blueprint": [
+                  {
+                    "statId": "faith",
+                    "value": 30,
+                    "type": "max"
+                  }
+                ]
               }
             }
           }
@@ -453,7 +468,7 @@
       "name": "Sylvie Thornwhistle",
       "type": "Person",
       "playerDescription": "Slight, with a crooked grin and a habit of standing where the light is not. She wears {{ph:a4520beb-279c-56cb-aeb5-cc92135784c1:world:6026546d-d48c-5ec5-b62d-e3b20ec4fb9a}} and has {{ph:36d28f0c-9d34-5bb1-84f0-fe97a603c7f2:world:b247fb83-b8d3-587e-a097-98b3fe7522e6}}. She says she is here for the bounty. She is also here for the barrow's grave goods.",
-      "aiDescription": "Slight, quick, of indeterminate age, with a crooked grin and green eyes that miss nothing. She wears {{ph:a4520beb-279c-56cb-aeb5-cc92135784c1:world:fc46ea18-dc61-592d-92c3-4cbb542be9f3}} and has {{ph:36d28f0c-9d34-5bb1-84f0-fe97a603c7f2:world:afc59b7e-607e-5681-a9a7-d8d6f58c6363}}. She talks fast, lies well, and pays her debts. She answered the call for the bounty and stayed for the rumor of grave gold in the barrow. She likes Albus more than she admits and needles him constantly. She keeps a room at the Cinder and Crown and an escape route out its window.",
+      "aiDescription": "Slight, quick, of indeterminate age, with a crooked grin and green eyes that miss nothing. She talks fast, lies well, and pays her debts. She answered the call for the bounty and stayed for the rumor of grave gold in the barrow. She likes Albus more than she admits and needles him constantly. She keeps a room at the Cinder and Crown and an escape route out its window.",
       "aiSummary": "At the keep for the bounty and the barrow's gold, quick and quick-tongued.",
       "locations": [
         "12fb7d50-05f3-557d-907a-8f1310d89790",
@@ -535,7 +550,7 @@
       "name": "Mother Hesk",
       "type": "Person",
       "playerDescription": "The dwarf priestess who keeps the chapel flame and the infirmary cots. She wears {{ph:ab4d8e95-0627-5bce-bbcd-e00e25a6ce03:world:6172e4cd-3acd-590e-9544-53242d516de6}} and has {{ph:7f918ab1-2ae3-5f65-b4c3-a69a28275d0a:world:bedcc40f-a002-528f-8063-abe47708cd50}}. She heals anyone and scolds everyone.",
-      "aiDescription": "A dwarf cleric of the Ember, sixty years old and built like a forge. She wears {{ph:ab4d8e95-0627-5bce-bbcd-e00e25a6ce03:world:7c8e4778-6c45-58f7-adef-8568626c0fde}} and has {{ph:7f918ab1-2ae3-5f65-b4c3-a69a28275d0a:world:dd56147a-1cd5-55d9-a3a2-b1787fd83e13}}. She runs the Chapel of the Ember as chapel and infirmary. She heals anyone who comes through her door and lectures them while she does it. She has buried three keep captains and expects to bury the fourth. She knows the barrow's old rites better than anyone alive and says so only when asked twice.",
+      "aiDescription": "A dwarf cleric of the Ember, sixty years old and built like a forge. She runs the Chapel of the Ember as chapel and infirmary. She heals anyone who comes through her door and lectures them while she does it. She has buried three keep captains and expects to bury the fourth. She knows the barrow's old rites better than anyone alive and says so only when asked twice.",
       "aiSummary": "The dwarf cleric who keeps the chapel flame and heals the keep, blunt and kind.",
       "locations": [
         "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4"
@@ -606,6 +621,14 @@
               }
             }
           }
+        },
+        {
+          "id": "6e84a04f-1a93-490c-8c6c-63a65e8f2846",
+          "originalId": "49fb8c17-184b-5a21-a738-b583265d56c3",
+          "kind": "trait",
+          "originalName": "Darkvision",
+          "groupId": null,
+          "order": 2
         }
       ]
     },
@@ -614,7 +637,7 @@
       "name": "Corvin Vale",
       "type": "Person",
       "playerDescription": "A rival adventurer with a river-city accent and a smile that costs money. He wears {{ph:ae3bc751-f4dc-5d39-bb6a-359fd448654b:world:2a11ad43-e63b-5b1b-a070-4023affcb585}} and has {{ph:1c70d45e-827c-5ce1-94b1-f101ca1bf24f:world:119b08b8-3a3c-573c-8b16-e8f3214b4aee}}. He wants the barrow's secrets for himself.",
-      "aiDescription": "A human wizard in his thirties, lean, well-dressed and always slightly amused. He wears {{ph:ae3bc751-f4dc-5d39-bb6a-359fd448654b:world:bd26d50c-69b6-5aa4-92e8-6182153ce18e}} and has {{ph:1c70d45e-827c-5ce1-94b1-f101ca1bf24f:world:11a225b5-ca11-50ed-973f-cf0815daed35}}. He answered the call for hands before anyone else and has been buying drinks at the Cinder and Crown ever since, collecting rumors about the barrow. He believes it holds a lost grimoire and intends to have it. He is charming, competitive and not above a quiet betrayal, but he keeps his word once it is given in front of witnesses.",
+      "aiDescription": "A human wizard in his thirties, lean, well-dressed and always slightly amused. He answered the call for hands before anyone else and has been buying drinks at the Cinder and Crown ever since, collecting rumors about the barrow. He believes it holds a lost grimoire and intends to have it. He is charming, competitive and not above a quiet betrayal, but he keeps his word once it is given in front of witnesses.",
       "aiSummary": "A rival human wizard hunting the barrow's lost grimoire, charming and competitive.",
       "locations": [
         "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
@@ -721,81 +744,6 @@
         "Wight"
       ],
       "pronouns": "it"
-    },
-    {
-      "id": "fa0b04dd-ebfe-5674-a222-b23cf4f7bd41",
-      "name": "Custom Persona",
-      "playerDescription": "A newcomer to Emberwatch. Pick a race and a class, and the story is yours.",
-      "aiDescription": "The player's own character, new to Emberwatch. Their race and class come from their traits.",
-      "customPersona": true,
-      "traitLinks": [
-        {
-          "id": "029df56d-06dd-5765-8969-4b63fcc363cb",
-          "originalId": "0b69078b-79fc-58ea-81fe-d358aaa43e13",
-          "kind": "group",
-          "originalName": "Races",
-          "groupId": null,
-          "order": 0,
-          "overrides": {
-            "15816ba9-0bd7-50a6-8d89-9f38d7234d3f": {
-              "isDefault": {
-                "value": true,
-                "blueprint": false
-              }
-            }
-          }
-        },
-        {
-          "id": "07cc2b0c-1600-5dd3-b27e-d317eb766a83",
-          "originalId": "fc9ffd07-11d1-5ed3-a6f2-1ebf90d7c481",
-          "kind": "group",
-          "originalName": "Classes",
-          "groupId": null,
-          "order": 1,
-          "overrides": {
-            "5e64d14c-ccf8-5219-8beb-d44c1491b4b0": {
-              "isDefault": {
-                "value": true,
-                "blueprint": false
-              }
-            }
-          }
-        },
-        {
-          "id": "b60f0d2c-f416-5e8f-83b2-231cd7723539",
-          "originalId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
-          "kind": "group",
-          "originalName": "Racial Abilities",
-          "groupId": null,
-          "order": 2
-        },
-        {
-          "id": "4bd1acc3-3b3e-533a-a380-77dad4064960",
-          "originalId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
-          "kind": "group",
-          "originalName": "Class Abilities",
-          "groupId": null,
-          "order": 3
-        }
-      ],
-      "traitPlacement": {
-        "groupId": null,
-        "order": 2
-      },
-      "placeholders": [
-        {
-          "id": "b6234598-16a9-575f-be04-5f54d002ee7c",
-          "name": "Class Garb",
-          "values": [],
-          "blueprintId": "4b22e697-fcdc-534c-bd78-aa758dda5ec7"
-        },
-        {
-          "id": "f5a9fc7a-508a-512a-ab98-7ce7c0bbcae0",
-          "name": "Heritage",
-          "values": [],
-          "blueprintId": "55ffa1d2-deff-50e7-a162-a055d4c38c06"
-        }
-      ]
     }
   ],
   "traits": [
@@ -824,7 +772,7 @@
       "id": "889d6e62-5641-5102-a184-7e409aa95d60",
       "name": "Human",
       "playerDescription": "Restless, adaptable, and quick to make a name.",
-      "aiDescription": "{{char}} is human: adaptable, ambitious, and quick to earn a reputation on the frontier.",
+      "aiDescription": "{{char}} is human: adaptable, ambitious, and quick to earn a reputation on the frontier. {{char}} has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:b4e31843-ae11-419b-b4e2-c8d358099ae1}}.",
       "statChanges": [
         {
           "statId": "renown",
@@ -846,7 +794,7 @@
       "id": "f16630f6-5baf-5dc6-a114-efd32d326255",
       "name": "Elf",
       "playerDescription": "Long-lived, sharp-eyed, and close to the weave of magic.",
-      "aiDescription": "{{char}} is an elf: long-lived, graceful, keen of sight and hearing, and naturally close to arcane power.",
+      "aiDescription": "{{char}} is an elf: long-lived, graceful, keen of sight and hearing, and naturally close to arcane power. {{char}} has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:261d9714-3115-4e71-8b66-1adc93512e1e}}.",
       "statChanges": [
         {
           "statId": "mana",
@@ -868,7 +816,7 @@
       "id": "36b77fb2-a867-566e-90b4-6bbd664e19b9",
       "name": "Dwarf",
       "playerDescription": "Stout, stubborn, and hard to put down.",
-      "aiDescription": "{{char}} is a dwarf: stout, stubborn, hardy, and slow to forgive a debt or an insult.",
+      "aiDescription": "{{char}} is a dwarf: stout, stubborn, hardy, and slow to forgive a debt or an insult. {{char}} has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:c992ba69-5376-4481-8b0f-e868a8bd6fea}}.",
       "statChanges": [
         {
           "statId": "health",
@@ -890,7 +838,7 @@
       "id": "15816ba9-0bd7-50a6-8d89-9f38d7234d3f",
       "name": "Halfling",
       "playerDescription": "Small, lucky, and never quite broke.",
-      "aiDescription": "{{char}} is a halfling: small, cheerful, light-fingered when it counts, and lucky in small ways.",
+      "aiDescription": "{{char}} is a halfling: small, cheerful, light-fingered when it counts, and lucky in small ways. {{char}} has {{ph:55ffa1d2-deff-50e7-a162-a055d4c38c06:world:da18fa14-a2a5-4dc6-834f-e68900acc4c5}}.",
       "statChanges": [
         {
           "statId": "gold",
@@ -912,7 +860,7 @@
       "id": "6289a54c-9886-5693-a0e2-0ef61f735109",
       "name": "Paladin",
       "playerDescription": "A sworn warrior of the Ember. Sword, shield and holy light.",
-      "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith.",
+      "aiDescription": "{{char}} is a paladin: a sworn warrior of the Ember who fights with sword and shield and channels holy light through faith. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:53b40c47-48f2-441c-a1ab-d123d6bf25ea}}.",
       "statChanges": [
         {
           "statId": "faith",
@@ -934,7 +882,7 @@
       "id": "03673bae-78ae-5a1d-a09b-24b1a89ff1f5",
       "name": "Wizard",
       "playerDescription": "A scholar of the arcane. Spells from study, not prayer.",
-      "aiDescription": "{{char}} is a wizard: a scholar of the arcane who casts spells learned from study, and who guards a spellbook above all other possessions.",
+      "aiDescription": "{{char}} is a wizard: a scholar of the arcane who casts spells learned from study, and who guards a spellbook above all other possessions. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:8e8ae315-c290-4b74-9e15-a23d17d06efb}}.",
       "statChanges": [
         {
           "statId": "mana",
@@ -956,7 +904,7 @@
       "id": "5e64d14c-ccf8-5219-8beb-d44c1491b4b0",
       "name": "Rogue",
       "playerDescription": "A shadow with a knife. Locks, pockets and quiet exits.",
-      "aiDescription": "{{char}} is a rogue: quick, quiet and practical, skilled with locks, pockets, poisons and quiet exits, and never without a plan to leave.",
+      "aiDescription": "{{char}} is a rogue: quick, quiet and practical, skilled with locks, pockets, poisons and quiet exits, and never without a plan to leave. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:2d6eca9b-5125-4b81-99e1-28c43c56e200}}.",
       "statChanges": [
         {
           "statId": "gold",
@@ -978,7 +926,7 @@
       "id": "052f965e-d53d-5d83-90fe-626f4469f9b2",
       "name": "Cleric",
       "playerDescription": "A healer and priest of the Ember. Mends wounds and turns the dead.",
-      "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead.",
+      "aiDescription": "{{char}} is a cleric: a priest and healer of the Ember whose prayers mend wounds and drive back the undead. {{char}} wears {{ph:4b22e697-fcdc-534c-bd78-aa758dda5ec7:world:b32afcc9-4da3-4132-a094-c40caf046dc1}}.",
       "statChanges": [
         {
           "statId": "faith",
