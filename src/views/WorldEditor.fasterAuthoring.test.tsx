@@ -39,9 +39,9 @@ const WORLD: World = benchEditorWorld({
   entityGroups: [{ id: 'g-heroes', name: 'Heroes', parentId: null, order: 0 }, { id: 'g-guard', name: 'City Guard', parentId: 'g-heroes', order: 2 }],
   traits: [
     { id: 't-brave', name: 'Brave', statChanges: [], groupId: null, order: 1 },
-    { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-templates', order: 0 },
+    { id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-blueprints', order: 0 },
   ],
-  traitGroups: [{ id: 'g-templates', name: 'Templates', parentId: null, order: 0, system: 'templates' }],
+  traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
 } as Partial<World>);
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
@@ -130,7 +130,7 @@ describe('the + menu', () => {
     fireEvent.click(menuButton('Heroes')!);
     expect(flyoutRows('Entities')).toEqual(['#Heroes', 'Vex', 'Wanderer']);
     fireEvent.click(menuButton('Add Trait to Entity')!);
-    expect(menuButton('Add Templates Group')).toBeNull();
+    expect(menuButton('Add Blueprints Group')).toBeNull();
     expect(menuButton('Add Group to Entity')).toBeInTheDocument();
   });
 });
@@ -226,7 +226,7 @@ describe('the link button', () => {
     expect(menuButton('Link To…')).toBeNull();
   });
 
-  it('never shows in Basic, on an owned trait, or on Templates', () => {
+  it('never shows in Basic, on an owned trait, or on Blueprints', () => {
     const { unmount } = renderWorldEditorBench(WORLD, 'simple');
     openTab(/Traits/);
     fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
@@ -238,7 +238,7 @@ describe('the link button', () => {
     fireEvent.click(within(treeRow('Oath')!).getByText('Oath'));
     expect(screen.getByText(/Owned by/)).toBeInTheDocument();
     expect(menuButton('Link To…')).toBeNull();
-    fireEvent.click(within(treeRow('Templates')!).getByText('Templates'));
+    fireEvent.click(within(treeRow('Blueprints')!).getByText('Blueprints'));
     expect(menuButton('Link To…')).toBeNull();
   });
 });

@@ -7,16 +7,16 @@ import { TraitRequiresField } from './TraitRequiresField';
 import type { Entity, Trait, TraitGroup, TraitRequirement } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
-// Root: Brave. Templates: Classes (Paladin, Wizard), Smite. Albus links Classes; Mira owns Squire.
+// Root: Brave. Blueprints: Classes (Paladin, Wizard), Smite. Albus links Classes; Mira owns Squire.
 const traits = [
   trait('brave', { name: 'Brave', groupId: null, order: 0 }),
   trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0 }),
   trait('wizard', { name: 'Wizard', groupId: 'classes', order: 1 }),
-  trait('smite', { name: 'Smite', groupId: 'templates', order: 1 }),
+  trait('smite', { name: 'Smite', groupId: 'blueprints', order: 1 }),
 ];
 const traitGroups: TraitGroup[] = [
-  { id: 'templates', name: 'Templates', parentId: null, order: 1, system: 'templates' },
-  { id: 'classes', name: 'Classes', parentId: 'templates', order: 0, exclusive: true },
+  { id: 'blueprints', name: 'Blueprints', parentId: null, order: 1, system: 'blueprints' },
+  { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true },
 ];
 const albus: Entity = {
   id: 'albus', name: 'Albus', persona: true,

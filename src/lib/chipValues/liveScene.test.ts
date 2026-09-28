@@ -164,17 +164,17 @@ describe('the live adapter', () => {
   });
 
   describe('linked traits', () => {
-    const templates: TraitGroup = { id: 'templates', name: 'Templates', parentId: null, system: 'templates' };
+    const blueprints: TraitGroup = { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' };
     const paladin: Trait = {
-      id: 'paladin', name: 'Paladin', groupId: 'templates', aiDescription: '{{char}} swore the oath.', statChanges: [],
+      id: 'paladin', name: 'Paladin', groupId: 'blueprints', aiDescription: '{{char}} swore the oath.', statChanges: [],
     };
     const link = (id: string): TraitLink => ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null });
     const albus: Entity = { id: 'albus', name: 'Albus', locations: ['quay'], aiDescription: 'A knight.', traitLinks: [link('l1')] };
     const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
     const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [link('l3')] };
-    const world: BearerWorld = { traits: [paladin], traitGroups: [templates], entities: [albus, wren, newcomer] };
+    const world: BearerWorld = { traits: [paladin], traitGroups: [blueprints], entities: [albus, wren, newcomer] };
     const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
-      entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [templates],
+      entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [blueprints],
       bearers: resolveBearers(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
       resolveTrait: (_trait, text, owner) => resolveBearerText(owner ?? null, text, {
         placeholders: [], rolls: {}, player: { name: persona?.entity.name },

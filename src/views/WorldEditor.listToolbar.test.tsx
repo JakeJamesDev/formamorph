@@ -83,14 +83,14 @@ describe('the search text names the next add', () => {
     expect(box).toHaveValue('');
   });
 
-  it('Add Templates Group ignores the text and still clears the box', () => {
+  it('Add Blueprints Group ignores the text and still clears the box', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     const box = searchBox('traits');
     type(box, 'Not a name');
     fireEvent.click(addButton('Traits'));
-    fireEvent.click(menuButton('Add Templates Group'));
-    expect(ctx().traitGroups.find((g) => g.system === 'templates')?.name).toBe('Templates');
+    fireEvent.click(menuButton('Add Blueprints Group'));
+    expect(ctx().traitGroups.find((g) => g.system === 'blueprints')?.name).toBe('Blueprints');
     expect(box).toHaveValue('');
   });
 

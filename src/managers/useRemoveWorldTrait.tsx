@@ -9,10 +9,10 @@ import { groupHoldsItems } from '@/lib/traitTree';
 const alsoDeletesLinks = (links: number): string =>
   `This also deletes ${links === 1 ? 'its link' : `its ${links} links`}.`;
 
-type Pending = { id: string; name: string; isGroup: boolean; links: number; templates: boolean };
+type Pending = { id: string; name: string; isGroup: boolean; links: number; blueprints: boolean };
 
 /** Delete a world trait or group. Its links go with it, so a linked one asks first, naming the count. A
- *  non-empty Templates group asks too, since its traits move to the top level and reach the player. */
+ *  non-empty Blueprints group asks too, since its traits move to the top level and reach the player. */
 export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => void; dialog: ReactNode } {
   const { traits, traitGroups, entities, removeTrait, removeTraitGroup, placeholders } = useTraitStore();
   const [pending, setPending] = useState<Pending | null>(null);
@@ -20,15 +20,15 @@ export function useRemoveWorldTrait(): { ask: (id: string, isGroup: boolean) => 
   const ask = (id: string, isGroup: boolean) => {
     const links = linksTo(entities, id);
     const group = isGroup ? traitGroups.find((g) => g.id === id) : undefined;
-    const templates = group?.system === 'templates' && groupHoldsItems({ traits, traitGroups }, id);
+    const blueprints = group?.system === 'blueprints' && groupHoldsItems({ traits, traitGroups }, id);
     const name = (group ?? traits.find((t) => t.id === id))?.name ?? '';
-    if (links || templates) setPending({ id, name, isGroup, links, templates });
+    if (links || blueprints) setPending({ id, name, isGroup, links, blueprints });
     else remove(id, isGroup);
   };
-  const title = pending?.templates
+  const title = pending?.blueprints
     ? `Remove ${labelPlaceholders(pending.name, placeholders)}?`
     : `Delete ${labelPlaceholders(pending?.name ?? '', placeholders)}?`;
-  const description = pending?.templates
+  const description = pending?.blueprints
     ? 'Its traits move to the top level, where the player can pick them.'
     : alsoDeletesLinks(pending?.links ?? 0);
   const dialog = (

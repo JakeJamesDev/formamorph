@@ -167,8 +167,8 @@ describe('library entities in the cast', () => {
   });
 });
 
-describe('Templates at Enter World', () => {
-  it('never starts a trait under Templates, while a default root trait starts on', () => {
+describe('Blueprints at Enter World', () => {
+  it('never starts a trait under Blueprints, while a default root trait starts on', () => {
     const traits: Trait[] = [
       { id: 'paladin', name: 'Paladin', statChanges: [], groupId: 'classes', isDefault: true },
       { id: 'brave', name: 'Brave', statChanges: [], groupId: null, isDefault: true },
@@ -176,8 +176,8 @@ describe('Templates at Enter World', () => {
     const lists: EntryTraitWorld = {
       traits,
       traitGroups: [
-        { id: 'templates', name: 'Templates', parentId: null, system: 'templates' },
-        { id: 'classes', name: 'Classes', parentId: 'templates' },
+        { id: 'blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+        { id: 'classes', name: 'Classes', parentId: 'blueprints' },
       ],
       entities: [], library: [],
     };

@@ -71,14 +71,14 @@ export const playsAs = (entity: Entity, persona: PersonaRef | undefined): boolea
  *  Persona entity. What the editor, which has no persona, reads. */
 export const canBePlayer = (entity: Pick<Entity, 'persona' | 'customPersona'>): boolean => !!entity.persona || !!entity.customPersona;
 
-/** A world trait or group a link may point at. Templates itself and every owned item are not originals. */
+/** A world trait or group a link may point at. Blueprints itself and every owned item are not originals. */
 export function originalOf(
   world: Pick<BearerWorld, 'traits' | 'traitGroups'>, id: string,
 ): { kind: 'trait'; item: Trait } | { kind: 'group'; item: TraitGroup } | null {
   const trait = world.traits.find((t) => t.id === id);
   if (trait) return { kind: 'trait', item: trait };
   const group = world.traitGroups.find((g) => g.id === id);
-  return group && group.system !== 'templates' ? { kind: 'group', item: group } : null;
+  return group && group.system !== 'blueprints' ? { kind: 'group', item: group } : null;
 }
 
 /** A link to `originalId` at `place`, reading the original live, or null when the id is not an original. */
@@ -147,7 +147,7 @@ export function linksInTreeOrder(entity: Entity, links: readonly TraitLink[] = e
 }
 
 /** The ids the player already holds before a played entity's own tree: every root trait and group outside
- *  Templates. */
+ *  Blueprints. */
 function playerHeldIds(world: BearerWorld): Set<string> {
   const root = offeredWorldTraits(world.traits, world.traitGroups);
   return new Set([...root.traits, ...root.groups].map((item) => item.id));
@@ -187,7 +187,7 @@ export function withoutSelfNamedGates(traits: readonly Trait[], playedId: string
   });
 }
 
-/** The player bearer: the root outside Templates. A trait gated only on the played persona itself is left
+/** The player bearer: the root outside Blueprints. A trait gated only on the played persona itself is left
  *  out (see {@link withoutSelfNamedGates}). The Custom Persona entity's tree is its own bearer. */
 function playerBearer(world: BearerWorld, persona: PersonaRef | undefined): Bearer {
   const root = offeredWorldTraits(world.traits, world.traitGroups);
@@ -235,7 +235,7 @@ export function resolveBearers(
 }
 
 /**
- * The gate input the editor reads: the whole world as the player's owner, Templates included so every row
+ * The gate input the editor reads: the whole world as the player's owner, Blueprints included so every row
  * reads its gate, then each entity bearer with its links expanded, a persona-only one included since the
  * author sees every tree. Nothing is active and there is no persona.
  */
@@ -254,7 +254,7 @@ export function editorGateInput(world: BearerWorld): GateInput {
 
 /**
  * Whether the bearer's tree already holds `originalId`, or anything a link to it would bring. The player
- * bearer and the Custom Persona entity hold every root item outside Templates, whatever the persona the
+ * bearer and the Custom Persona entity hold every root item outside Blueprints, whatever the persona the
  * bearer was resolved under, so the Custom Persona entity cannot link what the root already offers and the
  * check reads the same in the editor and in play.
  */

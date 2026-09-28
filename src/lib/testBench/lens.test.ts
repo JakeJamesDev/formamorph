@@ -225,31 +225,31 @@ describe('pins from owned traits', () => {
 });
 
 describe('the player bearer', () => {
-  // Templates: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
-  const templates: TraitGroup[] = [
-    { id: 'g-templates', name: 'Templates', parentId: null, system: 'templates' },
-    { id: 'g-classes', name: 'Classes', parentId: 'g-templates', exclusive: true },
+  // Blueprints: Classes (Paladin pins Hair Color by value id, Wizard) and a default Warded pinning Homeland.
+  const blueprints: TraitGroup[] = [
+    { id: 'g-blueprints', name: 'Blueprints', parentId: null, system: 'blueprints' },
+    { id: 'g-classes', name: 'Classes', parentId: 'g-blueprints', exclusive: true },
   ];
-  const templated: Trait[] = [
+  const blueprinted: Trait[] = [
     {
       id: 't-paladin', name: 'Paladin', groupId: 'g-classes', statChanges: [], order: 0, isDefault: true,
       placeholderPins: [{ placeholderId: 'ph-hair', valueId: phValueId('ash'), value: 'ash' }],
     },
     { id: 't-wizard', name: 'Wizard', groupId: 'g-classes', statChanges: [], order: 1 },
     {
-      id: 't-warded', name: 'Warded', groupId: 'g-templates', statChanges: [], isDefault: true,
+      id: 't-warded', name: 'Warded', groupId: 'g-blueprints', statChanges: [], isDefault: true,
       placeholderPins: [{ placeholderId: 'ph-home', value: 'the Reach' }],
     },
   ];
   const link = (id: string, originalId: string, kind: 'trait' | 'group', extra = {}) =>
     ({ id, originalId, kind, originalName: originalId, groupId: null, ...extra });
-  const withTemplates = (over: Partial<LensWorld> = {}) =>
-    world({ traits: [...traits, ...templated], traitGroups: [...groups, ...templates], ...over });
+  const withBlueprints = (over: Partial<LensWorld> = {}) =>
+    world({ traits: [...traits, ...blueprinted], traitGroups: [...groups, ...blueprints], ...over });
   const active = (w: LensWorld, pcTraitId: string | null = null) =>
     lensActiveTraits(w, buildLens(w, { pcTraitId, locationId: null })).map((t) => t.id);
 
-  it('leaves Templates out: no PC from its groups, no default, no pin', () => {
-    const w = withTemplates();
+  it('leaves Blueprints out: no PC from its groups, no default, no pin', () => {
+    const w = withBlueprints();
     expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach']);
     expect(active(w)).toEqual([]);
     expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({});
@@ -262,7 +262,7 @@ describe('the player bearer', () => {
       } } } }),
       link('cp-warded', 't-warded', 'trait'),
     ] };
-    const w = withTemplates({ entities: [newcomer] });
+    const w = withBlueprints({ entities: [newcomer] });
     expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach', 't-paladin', 't-wizard']);
     expect(active(w)).toEqual(['t-paladin', 't-warded']);
     expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-hair': 'jet', 'ph-home': 'the Reach' });
@@ -274,7 +274,7 @@ describe('the player bearer', () => {
     const newcomer: Entity = { id: 'cp', name: 'Newcomer', customPersona: true, traitLinks: [
       link('cp-warded', 't-warded', 'trait', { overrides: { 't-warded': { isDefault: { value: false, blueprint: true } } } }),
     ] };
-    expect(active(withTemplates({ entities: [newcomer] }))).toEqual([]);
+    expect(active(withBlueprints({ entities: [newcomer] }))).toEqual([]);
   });
 });
 

@@ -25,7 +25,7 @@ export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
   & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
 
-/** The lens tests as the None player: the root outside Templates, and the Custom Persona entity's tree after
+/** The lens tests as the None player: the root outside Blueprints, and the Custom Persona entity's tree after
  *  it, as one list. Cached per world object, since every instrument reads it. */
 const playerByWorld = new WeakMap<LensWorld, Bearer>();
 function lensPlayer(world: LensWorld): Bearer {

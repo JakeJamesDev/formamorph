@@ -10,7 +10,7 @@ import type { Entity, PersonaRef, PlayerStat, Trait, TraitGroup, TraitLink } fro
 const paladin: Trait = {
   id: 'paladin', name: 'Paladin', groupId: 'blueprints', order: 0, statChanges: [{ statId: 'h', value: 5, type: 'starting' }],
 };
-const groups: TraitGroup[] = [{ id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'templates' }];
+const groups: TraitGroup[] = [{ id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }];
 const linkTo = (id: string): TraitLink => ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 0 });
 const albusLink = setLinkOverride(
   setLinkOverride(linkTo('l-albus'), paladin, 'statChanges', [{ statId: 'h', value: 12, type: 'starting' }]), paladin, 'playerToggle', true,

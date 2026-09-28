@@ -302,14 +302,14 @@ describe('bindOwnedTraits with links', () => {
     expect(bindOwnedTraits(carriedMira(), two).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
   });
 
-  it('binds a link only to an original of its own kind, never to Templates itself', () => {
+  it('binds a link only to an original of its own kind, never to Blueprints itself', () => {
     const world = linkTarget({
       traits: [trait('n-class-trait', { name: 'Class' }), trait('n-smite', { name: 'Smite' })],
-      traitGroups: [{ ...group('n-templates', 'Class'), system: 'templates' }],
+      traitGroups: [{ ...group('n-blueprints', 'Class'), system: 'blueprints' }],
     });
     expect(bindOwnedTraits(carriedMira(), world).traitLinks!.map((l) => l.id)).toEqual(['l-smite']);
-    // Templates sharing the name leaves the one real Class unique.
-    const shadowed = linkTarget({ traitGroups: [{ ...group('n-templates', 'Class'), system: 'templates' }, { ...group('n-class', 'Class'), parentId: 'n-templates' }] });
+    // Blueprints sharing the name leaves the one real Class unique.
+    const shadowed = linkTarget({ traitGroups: [{ ...group('n-blueprints', 'Class'), system: 'blueprints' }, { ...group('n-class', 'Class'), parentId: 'n-blueprints' }] });
     expect(linkOf(bindOwnedTraits(carriedMira(), shadowed), 'l-class')!.originalId).toBe('n-class');
   });
 

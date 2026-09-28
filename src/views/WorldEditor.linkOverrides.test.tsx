@@ -30,7 +30,7 @@ const WORLD: World = benchEditorWorld({
     { id: 'e-mira', name: 'Mira', groupId: null, order: 1, traitLinks: [linkTo('l-mira')] },
   ],
   traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], groupId: 'g-blueprints', order: 0 }],
-  traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'templates' }],
+  traitGroups: [{ id: 'g-blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' }],
 } as Partial<World>);
 
 /** The tree row a link draws under its bearer's node. */

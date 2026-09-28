@@ -101,17 +101,17 @@ export function remintOwnedTraits(entity: Entity, entityIds: ReadonlyMap<string,
 }
 
 /** Every owner's traits for the gate module: the world first, then each entity that owns a trait or a group,
- *  then the library entities, whose nodes sit at the top level. The world owner leaves out Templates unless
- *  `keepTemplates`, which the editor sets so its rows still read their gates. */
+ *  then the library entities, whose nodes sit at the top level. The world owner leaves out Blueprints unless
+ *  `keepBlueprints`, which the editor sets so its rows still read their gates. */
 export function traitOwners(
   world: { traits: readonly Trait[]; traitGroups: readonly TraitGroup[]; entities: readonly Entity[] },
   library: readonly Entity[] = [],
-  { keepTemplates = false } = {},
+  { keepBlueprints = false } = {},
 ): GateOwner[] {
   const placeable = placeableGroupIds(world.traitGroups);
   const owner = (e: Entity, parentGroupId: string | null): GateOwner =>
     ({ id: e.id, name: e.name, traits: traitsOf(e), groups: groupsOf(e), parentGroupId });
-  const offered = keepTemplates ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups);
+  const offered = keepBlueprints ? { traits: world.traits, groups: world.traitGroups } : offeredWorldTraits(world.traits, world.traitGroups);
   return [
     { id: WORLD_OWNER, name: '', ...offered },
     ...world.entities.filter(ownsTraits).map((e) => owner(e, effectivePlacement(e, placeable)?.groupId ?? null)),

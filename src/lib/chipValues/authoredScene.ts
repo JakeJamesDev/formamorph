@@ -97,7 +97,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     // Stats read their authored starting value — the same shape a playthrough's stats carry.
     stats: options.stats
       ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min })),
-    // The player bearer's traits, where its tree places them: never Templates, and Custom Persona's at the root.
+    // The player bearer's traits, where its tree places them: never Blueprints, and Custom Persona's at the root.
     traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
       .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
     traitGroups: borneByPlayer(player.groups),
