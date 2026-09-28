@@ -68,3 +68,4 @@ _shots/
 *.jks
 *.keystore
 _coloraudit/
+*.tsbuildinfo
