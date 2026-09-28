@@ -104,7 +104,7 @@ const PERSONA_ROLES: Record<EntityHome, { value: PersonaRole; label: string; hin
     { value: 'cast', label: 'Cast', hint: 'Appears in the world as a regular entity' },
     { value: 'playable', label: 'Playable', hint: 'Lets the player play as this entity, or meet it in the world' },
     { value: 'only', label: 'Persona-Only', hint: 'Appears only when the player picks it as their persona' },
-    { value: 'custom', label: 'Custom Persona', hint: 'Becomes the character the player creates' },
+    { value: 'custom', label: 'Custom Persona', hint: 'Becomes the persona the player creates' },
   ],
   library: [
     { value: 'cast', label: 'Cast', hint: 'Joins a world as a regular entity' },
@@ -112,8 +112,8 @@ const PERSONA_ROLES: Record<EntityHome, { value: PersonaRole; label: string; hin
   ],
 };
 
-// Four across only once the column clears the widest label on each; two-up below that.
-const GRID_COLS: Record<number, string> = { 2: 'grid-cols-2', 4: 'h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4' };
+// The world's four go across only once the column clears the widest label on each; two-up below that.
+const ROLE_GRID: Record<EntityHome, string> = { world: 'h-auto grid-cols-2 [@container(min-width:32rem)]:grid-cols-4', library: 'grid-cols-2' };
 
 /** The Persona role. Advanced only in the World Editor; the library editor is always Advanced. Leaving the
  *  Custom Persona role asks first when the entity carries links, traits or copies. */
@@ -144,7 +144,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
         aria-labelledby={`entity-persona-${value.id}`}
         // A single ToggleGroup clears its value when the active item is clicked again; a role is always set.
         onValueChange={(v) => { if (v) pick(v as PersonaRole); }}
-        className={`grid w-full ${GRID_COLS[roles.length]}`}
+        className={`grid w-full ${ROLE_GRID[home]}`}
       >
         {roles.map((r) => (
           <ToggleGroupItem key={r.value} value={r.value} disabled={r.value === 'custom' && !!customPersonaHolder}>
@@ -167,7 +167,7 @@ export const EntityPersonaField = ({ value, onChange, placeholders = [], home, c
       <ConfirmDialog
         open={!!pending}
         onOpenChange={(open) => { if (!open) setPending(null); }}
-        title={`Remove the Custom Persona Mark from ${labelPlaceholders(value.name, placeholders)}?`}
+        title={`Remove the Custom Persona Role from ${labelPlaceholders(value.name, placeholders)}?`}
         description={pending?.line}
         onConfirm={() => {
           if (pending) apply(pending.role);
