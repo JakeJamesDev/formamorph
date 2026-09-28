@@ -46,6 +46,7 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q19** The migrated toolbar keeps `data-tour-anchor="list-add"` on the **+** and `data-editor-find-skip` on the search box. The authoring tour and the find bar read them.
 - **Q20** On mobile the nested stacked layout needs the same definite height as Q18. The pushed entity panel gives its **Traits** tab a flex column too.
 - **Q21** The widget clears the search box after every add, menu rows included. **Add Templates Group** and **Add Custom Persona** still ignore the search text as a name; they no longer leave a stale filter hiding the new row.
+- **Q22** The dictionary panel's Placeholders tab fills the pane through the same per-tab host switch as the entity tabs. The viewport-based fallback height is shared by both, so it goes entirely rather than staying for one of them.
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
