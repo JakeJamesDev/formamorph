@@ -128,6 +128,20 @@ describe('requirements per bearer', () => {
     active, entities, persona,
   });
 
+  it('never opens a gate through an active id the owner does not hold, so a dormant pick opens nothing', () => {
+    // Under Albus, the player's list still carries a Custom Persona pick the world owner no longer holds.
+    const dormant = input({ [WORLD_OWNER]: ['Halfling'], albus: [] }, { source: 'world', entityId: 'albus' });
+    const lucky = T('Lucky Step', { requires: [trait('Halfling')] });
+    const withLucky: GateInput = {
+      ...dormant,
+      owners: dormant.owners.map((o) => (o.id === 'albus' ? { ...o, traits: [...o.traits, lucky] } : o)),
+      originals: { traits: [T('Halfling'), lucky], groups: [] },
+    };
+    expect(reason(withLucky, 'Lucky Step', 'albus')).toEqual(['Halfling']);
+    expect(unlocked(withLucky, 'Lucky Step', 'albus')).toBe(false);
+    expect(switchTrait(withLucky, 'albus', 'Lucky Step')).toBeNull();
+  });
+
   it('never lets a same-bearer requirement hold through another bearer', () => {
     const albusOnly = input({ albus: ['Paladin'] });
     expect(unlocked(albusOnly, 'Smite', 'albus')).toBe(true);

@@ -147,8 +147,13 @@ function index(input: GateInput) {
 
 type Index = ReturnType<typeof index>;
 
+/** Each owner's active set, limited to the traits it holds: a pick an owner no longer holds, such as a
+ *  Custom Persona pick lying dormant under a world persona, opens nothing. `settle` locates the same way. */
 const activeSets = (input: GateInput): ActiveIn => {
-  const sets = new Map(Object.entries(input.active).map(([ownerId, ids]) => [ownerId, new Set(ids)]));
+  const sets = new Map(input.owners.map((owner) => {
+    const held = new Set(owner.traits.map((t) => t.id));
+    return [owner.id, new Set((input.active[owner.id] ?? []).filter((id) => held.has(id)))];
+  }));
   return (ownerId, id) => sets.get(ownerId)?.has(id) ?? false;
 };
 

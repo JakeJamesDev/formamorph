@@ -115,6 +115,18 @@ describe('bearers on Emberwatch', () => {
     expect(names(world, player(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
   });
 
+  it('keeps a Custom Persona pick from unlocking a racial ability on the played persona', () => {
+    // Enter World keeps the None picks (Halfling among them) in the player's list under Sylvie.
+    const { gate } = resolveBearers(bearerWorld(world), asEntity(world, 'Sylvie Thornwhistle'));
+    const sylvie = entityNamed(world, 'Sylvie Thornwhistle').id;
+    const defaults = settleDefaults(gate).active;
+    const active = { ...defaults, [PLAYER_BEARER]: [traitId(world, 'Halfling'), traitId(world, 'Rogue'), traitId(world, 'Lucky Step')] };
+    const states = gateStates({ ...gate, active });
+    expect(gateOf(states, sylvie, traitId(world, 'Lucky Step'))?.unlocked).toBe(false);
+    expect(gateOf(states, sylvie, traitId(world, 'Keen Senses'))?.unlocked).toBe(true);
+    expect(switchTrait({ ...gate, active }, sylvie, traitId(world, 'Lucky Step'))).toBeNull();
+  });
+
   it('locks Squire to Albus when Albus stops being a Paladin', () => {
     const { gate } = resolveBearers(bearerWorld(world), NONE);
     const albus = entityNamed(world, 'Albus').id;
