@@ -32,6 +32,7 @@ import { downloadBlob } from '@/lib/downloadBlob';
 import { canonicalStringify } from '@/lib/canonicalStringify';
 import EntityStorageService from '@/services/EntityStorageService';
 import { EditorModeContext, type EditorModeValue } from '@/lib/editorMode';
+import type { TraitWorld } from '@/lib/portableTraits';
 import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/types';
 
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
@@ -47,10 +48,10 @@ const ALWAYS_ADVANCED: EditorModeValue = { mode: 'advanced', advanced: true, set
  * exports a `.webp` card; Save writes to `EntityStorageService` — a draft isn't persisted until then.
  * `onPublish` (when the user is signed in) hands the character up to the publish dialog. The Entity tab's
  * sub-tabs are the World Editor entity panel's, over the same field bodies. `focusField` opens the tab and
- * sub-tab that hold a field.
+ * sub-tab that hold a field. `traitWorld` is the world the editor was opened from, which the links read.
  */
 const EntityEditorModal = ({
-  entityId, draft, onClose, onPublish, initialTab = 'entity', initialSubTab = 'profile', focusField,
+  entityId, draft, onClose, onPublish, initialTab = 'entity', initialSubTab = 'profile', focusField, traitWorld,
 }: {
   entityId: string | null;
   draft?: Entity | null;
@@ -59,6 +60,7 @@ const EntityEditorModal = ({
   initialTab?: EntityEditorTab;
   initialSubTab?: EntityEditorSubTab;
   focusField?: FocusFieldHint | null;
+  traitWorld?: TraitWorld;
 }) => {
   const [entity, setEntity] = useState<Entity | null>(null);
   const [libraryDetails, setLibraryDetails] = useState<LibraryDetails | undefined>();
@@ -249,7 +251,9 @@ const EntityEditorModal = ({
             </div>
           </ScrollArea>
         ) : entity && tab === 'traits' ? (
-          <LibraryTraitsEditor entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} />
+          <LibraryTraitsEditor
+            entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
+          />
         ) : (
           // The same palette the field tabs get, over the value fields: a value is a chip field too.
           <ChipInsertTargetProvider>

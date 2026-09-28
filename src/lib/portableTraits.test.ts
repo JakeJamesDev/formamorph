@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, portableOwnedTraits, type TraitWorld,
+  SELF_ENTITY, adoptOwnedTraits, bindOwnedTraits, comparableOwnedTraits, portableOwnedTraits, type TraitWorld,
 } from './portableTraits';
 import { gateStates } from './traitGates';
 import { traitOwners } from './ownedTraits';
@@ -174,9 +174,175 @@ describe('adoptOwnedTraits', () => {
     expect(adoptOwnedTraits(plain, target())).toBe(plain);
   });
 
+  it('gives fresh link ids when a second copy of a links-only entity joins', () => {
+    const first: Entity = { id: 'e1', name: 'E', traitLinks: mira().traitLinks };
+    const adopted = adoptOwnedTraits({ ...first, id: 'e2' }, { ...linkOrigin, entities: [first] });
+    expect(adopted.traitLinks!.map((l) => l.id)).not.toContain('l-class');
+    expect(adopted.traitLinks!.map((l) => l.originalId)).toEqual(['w-class', 'w-smite']);
+  });
+
   it('ignores the copy itself when looking for collisions', () => {
     const copy = carried();
     const adopted = adoptOwnedTraits(copy, target({ entities: [...target().entities, copy] }));
     expect(adopted.traits!.map((t) => t.id)).toEqual(['t-tamed', 't-pack', 't-oath']);
+  });
+});
+
+/** A world with a Class group of two classes, a root Smite, and Albus. */
+const linkOrigin: TraitWorld = {
+  traits: [
+    trait('w-paladin', { name: 'Paladin', groupId: 'w-class' }),
+    trait('w-wizard', { name: 'Wizard', groupId: 'w-class' }),
+    trait('w-smite', { name: 'Smite' }),
+  ],
+  traitGroups: [group('w-class', 'Class')],
+  entities: [{ id: 'albus', name: 'Albus' }],
+};
+
+/** A persona that links Class with Paladin on and a pinned garb, links Smite, and owns a vow gated on bearers. */
+const mira = (): Entity => ({
+  id: 'mira', name: 'Mira', persona: true,
+  traits: [trait('t-vow', { name: 'Vow', requires: [
+    { kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } },
+    { kind: 'trait', id: 'w-smite', bearer: { kind: 'you' } },
+    { kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'mira' } },
+  ] })],
+  traitLinks: [
+    {
+      id: 'l-class', originalId: 'w-class', kind: 'group', originalName: 'Class', groupId: null, order: 1,
+      defaults: { 'w-paladin': true }, pinValues: { 'w-paladin': { Garb: { value: 'plate' } } },
+    },
+    { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Old Smite', groupId: null, order: 2, defaults: { 'w-smite': false } },
+  ],
+});
+
+const linkOf = (e: Pick<Entity, 'traitLinks'>, id: string) => e.traitLinks?.find((l) => l.id === id);
+const vowOf = (e: Pick<Entity, 'traits'>) => e.traits!.find((t) => t.id === 't-vow')!.requires!;
+
+describe('portableOwnedTraits with links', () => {
+  it("names each link's original, and each child its per-link data keys", () => {
+    const out = portableOwnedTraits(mira(), linkOrigin);
+    expect(out.traitLinks).toEqual([
+      { ...linkOf(mira(), 'l-class'), keyNames: { 'w-paladin': 'Paladin' } },
+      { ...linkOf(mira(), 'l-smite'), originalName: 'Smite' },
+    ]);
+  });
+
+  it('names a named-scope bearer, and the entity itself as SELF_ENTITY', () => {
+    expect(vowOf(portableOwnedTraits(mira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.bearer)).toEqual([
+      { kind: 'entity', id: 'albus', name: 'Albus' },
+      { kind: 'you' },
+      { kind: 'entity', id: SELF_ENTITY, name: 'Mira' },
+    ]);
+  });
+
+  it('keeps stored names without a world', () => {
+    const out = portableOwnedTraits(mira());
+    expect(linkOf(out, 'l-smite')!.originalName).toBe('Old Smite');
+    expect(vowOf(out)[0]).toEqual({ kind: 'trait', id: 'w-smite', bearer: { kind: 'entity', id: 'albus' } });
+  });
+
+  it('carries the links of an entity that owns nothing', () => {
+    const linksOnly: Entity = { id: 'e', name: 'E', traitLinks: mira().traitLinks };
+    expect(portableOwnedTraits(linksOnly, linkOrigin).traitLinks).toHaveLength(2);
+  });
+});
+
+/** The receiving world: the same names under new ids, and its own Albus. */
+const linkTarget = (extra: Partial<TraitWorld> = {}): TraitWorld => ({
+  traits: [
+    trait('n-paladin', { name: 'Paladin', groupId: 'n-class' }),
+    trait('n-smite', { name: 'Smite' }),
+  ],
+  traitGroups: [group('n-class', 'Class')],
+  entities: [{ id: 'n-albus', name: 'Albus' }],
+  ...extra,
+});
+
+const carriedMira = () => ({ ...mira(), ...portableOwnedTraits(mira(), linkOrigin), id: 'copy' });
+
+describe('bindOwnedTraits with links', () => {
+  it('binds by id first, so a trip home keeps every key and drops the names map', () => {
+    const bound = bindOwnedTraits(carriedMira(), linkOrigin);
+    expect(bound.traitLinks).toEqual([linkOf(mira(), 'l-class'), { ...linkOf(mira(), 'l-smite'), originalName: 'Smite' }]);
+  });
+
+  it('keeps a key by id at home after its trait is renamed', () => {
+    const renamed = { ...linkOrigin, traits: linkOrigin.traits.map((t) => (t.id === 'w-paladin' ? { ...t, name: 'Holy Knight' } : t)) };
+    expect(linkOf(bindOwnedTraits(carriedMira(), renamed), 'l-class')!.defaults).toEqual({ 'w-paladin': true });
+  });
+
+  it('rebinds by unique name, with each key following its child by name', () => {
+    const bound = bindOwnedTraits(carriedMira(), linkTarget());
+    expect(linkOf(bound, 'l-class')).toEqual({
+      id: 'l-class', originalId: 'n-class', kind: 'group', originalName: 'Class', groupId: null, order: 1,
+      defaults: { 'n-paladin': true }, pinValues: { 'n-paladin': { Garb: { value: 'plate' } } },
+    });
+    expect(linkOf(bound, 'l-smite')).toMatchObject({ originalId: 'n-smite', defaults: { 'n-smite': false } });
+  });
+
+  it('drops a key whose child the rebound original does not hold', () => {
+    const world = linkTarget({ traits: [trait('n-cleric', { name: 'Cleric', groupId: 'n-class' }), trait('n-smite', { name: 'Smite' })] });
+    const cls = linkOf(bindOwnedTraits(carriedMira(), world), 'l-class')!;
+    expect(cls.originalId).toBe('n-class');
+    expect(cls).not.toHaveProperty('defaults');
+    expect(cls).not.toHaveProperty('pinValues');
+  });
+
+  it('drops a link whose original matches no name, or two', () => {
+    const none = bindOwnedTraits(carriedMira(), linkTarget({ traits: [] , traitGroups: [] }));
+    expect(none.traitLinks).toBeUndefined();
+    const two = linkTarget({ traits: [...linkTarget().traits, trait('n-smite-2', { name: 'Smite' })] });
+    expect(bindOwnedTraits(carriedMira(), two).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
+  });
+
+  it('binds a link only to an original of its own kind, never to Templates itself', () => {
+    const world = linkTarget({
+      traits: [trait('n-class-trait', { name: 'Class' }), trait('n-smite', { name: 'Smite' })],
+      traitGroups: [{ ...group('n-templates', 'Class'), system: 'templates' }],
+    });
+    expect(bindOwnedTraits(carriedMira(), world).traitLinks!.map((l) => l.id)).toEqual(['l-smite']);
+    // Templates sharing the name leaves the one real Class unique.
+    const shadowed = linkTarget({ traitGroups: [{ ...group('n-templates', 'Class'), system: 'templates' }, { ...group('n-class', 'Class'), parentId: 'n-templates' }] });
+    expect(linkOf(bindOwnedTraits(carriedMira(), shadowed), 'l-class')!.originalId).toBe('n-class');
+  });
+
+  it('drops a link whose original the tree already holds through an earlier link', () => {
+    const paladin = { id: 'l-paladin', originalId: 'w-paladin', kind: 'trait' as const, originalName: 'Paladin', groupId: null };
+    const doubled: Entity = { ...mira(), traitLinks: [...mira().traitLinks!, paladin] };
+    const carried = { ...doubled, ...portableOwnedTraits(doubled, linkOrigin), id: 'copy' };
+    expect(bindOwnedTraits(carried, linkTarget()).traitLinks!.map((l) => l.id)).toEqual(['l-class', 'l-smite']);
+  });
+
+  it('rebinds a named-scope bearer by id, then unique name, else leaves it unresolved by name', () => {
+    expect(vowOf(bindOwnedTraits(carriedMira(), linkOrigin)).map((r) => r.kind !== 'playingAs' && r.bearer)).toEqual([
+      { kind: 'entity', id: 'albus', name: 'Albus' }, { kind: 'you' }, { kind: 'entity', id: 'copy', name: 'Mira' },
+    ]);
+    expect(vowOf(bindOwnedTraits(carriedMira(), linkTarget()))[0]).toEqual(
+      { kind: 'trait', id: 'n-smite', name: 'Smite', bearer: { kind: 'entity', id: 'n-albus', name: 'Albus' } },
+    );
+    const twins = linkTarget({ entities: [{ id: 'a1', name: 'Albus' }, { id: 'a2', name: 'Albus' }] });
+    expect(vowOf(bindOwnedTraits(carriedMira(), twins))[0]).toMatchObject({ bearer: { kind: 'entity', id: '', name: 'Albus' } });
+    const renamed = { ...linkOrigin, entities: [{ id: 'albus', name: 'Sir Albus' }] };
+    expect(vowOf(bindOwnedTraits(carriedMira(), renamed))[0]).toMatchObject({ bearer: { kind: 'entity', id: 'albus' } });
+  });
+
+  it('binds the links of an entity that owns nothing', () => {
+    const linksOnly: Entity = { id: 'e', name: 'E', ...portableOwnedTraits({ id: 'e', name: 'E', traitLinks: mira().traitLinks }, linkOrigin) };
+    expect(bindOwnedTraits(linksOnly, linkTarget()).traitLinks!.map((l) => l.originalId)).toEqual(['n-class', 'n-smite']);
+  });
+});
+
+describe('comparableOwnedTraits with links', () => {
+  it('reads a copy bound elsewhere the same as the carried form', () => {
+    const carried = carriedMira();
+    const bound = portableOwnedTraits(bindOwnedTraits(carried, linkTarget()), linkTarget());
+    expect(comparableOwnedTraits({ ...carried, ...bound })).toEqual(comparableOwnedTraits(carried));
+  });
+
+  it('tells a changed default apart', () => {
+    const carried = carriedMira();
+    const changed = { ...carried, traitLinks: carried.traitLinks!.map((l) => ({ ...l, defaults: { ...l.defaults, 'w-paladin': false } })) };
+    expect(comparableOwnedTraits(changed)).not.toEqual(comparableOwnedTraits(carried));
   });
 });

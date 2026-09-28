@@ -76,6 +76,8 @@ export interface LinkRow {
   originalId: string;
   /** The link's own row, which the author drags, detaches and removes. Subtree rows are read-only. */
   root: boolean;
+  /** A library entity's link with no original to read: one read-only row by its stored name. */
+  unbound?: boolean;
 }
 
 /** The row id of a node in a linked group's subtree. The original's own id already has a world row. */
@@ -210,34 +212,67 @@ export function ownedTraitTree(
     }
     for (const link of links ? entity.traitLinks ?? [] : []) {
       const original = originalOf(world, link.originalId);
-      if (!original) continue;
-      const row = (rowId: string, originalId: string, root: boolean) => {
-        linkRows.set(rowId, { entityId: entity.id, link, originalId, root });
-        ownerOf.set(rowId, entity.id);
-      };
-      const at = { order: link.order ?? 0 };
-      row(link.id, link.originalId, true);
-      if (original.kind === 'trait') {
-        traits.push({ ...original.item, id: link.id, groupId: parent(link.groupId), ...at });
-        continue;
-      }
-      groups.push({ ...original.item, id: link.id, parentId: parent(link.groupId), ...at });
-      // Every subtree node's parent is the original or a group below it.
-      const inLink = (ref: string | null | undefined) => (ref === original.item.id ? link.id : linkRowId(link.id, ref!));
-      const subGroups = groupsBelow(world.traitGroups, original.item.id);
-      for (const g of subGroups) {
-        groups.push({ ...g, id: linkRowId(link.id, g.id), parentId: inLink(g.parentId) });
-        row(linkRowId(link.id, g.id), g.id, false);
-      }
-      const below = new Set([original.item.id, ...subGroups.map((g) => g.id)]);
-      for (const t of world.traits) {
-        if (t.groupId == null || !below.has(t.groupId)) continue;
-        traits.push({ ...t, id: linkRowId(link.id, t.id), groupId: inLink(t.groupId) });
-        row(linkRowId(link.id, t.id), t.id, false);
-      }
+      if (original) pushLinkRows({ groups, traits, ownerOf, linkRows }, world, entity.id, link, original, parent);
     }
   });
   return { groups, traits, entityNodes, ownerOf, linkRows };
+}
+
+/** One link's rows: the original at the link's place and, for a group, its live subtree below it. */
+function pushLinkRows(
+  tree: Pick<OwnedTraitTree, 'groups' | 'traits' | 'ownerOf' | 'linkRows'>, world: Pick<WorldTraitLists, 'traits' | 'traitGroups'>,
+  entityId: string, link: TraitLink, original: NonNullable<ReturnType<typeof originalOf>>,
+  parent: (ref: string | null | undefined) => string | null,
+) {
+  const row = (rowId: string, originalId: string, root: boolean) => {
+    tree.linkRows.set(rowId, { entityId, link, originalId, root });
+    tree.ownerOf.set(rowId, entityId);
+  };
+  const at = { order: link.order ?? 0 };
+  row(link.id, link.originalId, true);
+  if (original.kind === 'trait') {
+    tree.traits.push({ ...original.item, id: link.id, groupId: parent(link.groupId), ...at });
+    return;
+  }
+  tree.groups.push({ ...original.item, id: link.id, parentId: parent(link.groupId), ...at });
+  // Every subtree node's parent is the original or a group below it.
+  const inLink = (ref: string | null | undefined) => (ref === original.item.id ? link.id : linkRowId(link.id, ref!));
+  const subGroups = groupsBelow(world.traitGroups, original.item.id);
+  for (const g of subGroups) {
+    tree.groups.push({ ...g, id: linkRowId(link.id, g.id), parentId: inLink(g.parentId) });
+    row(linkRowId(link.id, g.id), g.id, false);
+  }
+  const below = new Set([original.item.id, ...subGroups.map((g) => g.id)]);
+  for (const t of world.traits) {
+    if (t.groupId == null || !below.has(t.groupId)) continue;
+    tree.traits.push({ ...t, id: linkRowId(link.id, t.id), groupId: inLink(t.groupId) });
+    row(linkRowId(link.id, t.id), t.id, false);
+  }
+}
+
+/**
+ * A library entity's Traits tree: its own items at the root, with its links among them. Inside a world a link
+ * reads its original there; standalone, or when the world has no such original, it draws as one unbound row
+ * by its stored name. Own items have no owner, as the library editor edits them as the root.
+ */
+export function libraryTraitTree(entity: Entity, world: Pick<WorldTraitLists, 'traits' | 'traitGroups'> | null): OwnedTraitTree {
+  const tree: OwnedTraitTree = {
+    groups: [...entity.traitGroups ?? []], traits: [...entity.traits ?? []],
+    entityNodes: new Map(), ownerOf: new Map(), linkRows: new Map(),
+  };
+  const own = new Set(tree.groups.map((g) => g.id));
+  const parent = (ref: string | null | undefined) => (ref != null && own.has(ref) ? ref : null);
+  for (const link of entity.traitLinks ?? []) {
+    const original = world && originalOf(world, link.originalId);
+    if (world && original) {
+      pushLinkRows(tree, world, entity.id, link, original, parent);
+      continue;
+    }
+    tree.traits.push({ id: link.id, name: link.originalName, statChanges: [], groupId: parent(link.groupId), order: link.order ?? 0 });
+    tree.linkRows.set(link.id, { entityId: entity.id, link, originalId: link.originalId, root: true, unbound: true });
+    tree.ownerOf.set(link.id, entity.id);
+  }
+  return tree;
 }
 
 /** Why a drop into an entity was refused: `offender`, inside the dragged `name`, has stat effects; the

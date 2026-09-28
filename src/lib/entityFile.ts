@@ -1,6 +1,7 @@
 import { randomUUID } from "@/lib/uuid";
 import type {
-  Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, Trait, TraitGroup, TraitRequirement,
+  Entity, Opening, Placeholder, PlaceholderPin, LibraryDetails, RequirementBearer, Trait, TraitGroup, TraitLink,
+  TraitLinkPinValue, TraitRequirement,
 } from '@/types';
 import { readLibraryDetails } from './contentAuthor';
 import { remintOpenings } from './openings';
@@ -55,6 +56,8 @@ export interface EntityCardData {
    *  stores its target's name, so a receiving world can bind it. */
   traits?: Trait[];
   traitGroups?: TraitGroup[];
+  /** The entity's links, each storing its original's name so a receiving world can bind it. */
+  traitLinks?: TraitLink[];
   /** Where this character came from, so an importer can reconnect it (see lib/componentFileLinks). */
   source?: ComponentFileSource;
   /** The worlds this character is offered for, by listing id. Never the worlds themselves. */
@@ -159,14 +162,53 @@ const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v =
 const hasIdAndName = (v: unknown): v is Record<string, unknown> & { id: string; name: string } =>
   isRecord(v) && typeof v.id === 'string' && !!v.id && typeof v.name === 'string';
 
-function cardRequirement(raw: unknown): TraitRequirement[] {
-  if (!isRecord(raw) || typeof raw.id !== 'string') return [];
-  if (raw.kind !== 'trait' && raw.kind !== 'group' && raw.kind !== 'playingAs') return [];
-  return [{ kind: raw.kind, id: raw.id, ...(typeof raw.name === 'string' && raw.name ? { name: raw.name } : {}) }];
+const nameOf = (raw: Record<string, unknown>) => (typeof raw.name === 'string' && raw.name ? { name: raw.name } : {});
+
+function cardBearer(raw: unknown): { bearer?: RequirementBearer } {
+  if (!isRecord(raw)) return {};
+  if (raw.kind === 'you') return { bearer: { kind: 'you' } };
+  return raw.kind === 'entity' && typeof raw.id === 'string' ? { bearer: { kind: 'entity', id: raw.id, ...nameOf(raw) } } : {};
 }
 
-/** The card's owned traits and groups. An owned trait carries no stat effects, so none are read. */
-function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups'> {
+function cardRequirement(raw: unknown): TraitRequirement[] {
+  if (!isRecord(raw) || typeof raw.id !== 'string') return [];
+  if (raw.kind === 'playingAs') return [{ kind: raw.kind, id: raw.id, ...nameOf(raw) }];
+  if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
+  return [{ kind: raw.kind, id: raw.id, ...nameOf(raw), ...cardBearer(raw.bearer) }];
+}
+
+/** The record's entries that `read` accepts; absent when none is left. */
+function recordOf<V>(raw: unknown, read: (v: unknown) => V | undefined): Record<string, V> | undefined {
+  if (!isRecord(raw)) return undefined;
+  const out = Object.fromEntries(Object.entries(raw).flatMap(([k, v]) => {
+    const value = read(v);
+    return value === undefined ? [] : [[k, value] as const];
+  }));
+  return Object.keys(out).length ? out : undefined;
+}
+
+const pinValueOf = (v: unknown): TraitLinkPinValue | undefined =>
+  (isRecord(v) && typeof v.value === 'string' ? { value: v.value, ...(typeof v.valueId === 'string' ? { valueId: v.valueId } : {}) } : undefined);
+
+function cardLink(raw: unknown): TraitLink[] {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || !raw.id || typeof raw.originalId !== 'string') return [];
+  if (raw.kind !== 'trait' && raw.kind !== 'group') return [];
+  const defaults = recordOf(raw.defaults, (v) => (typeof v === 'boolean' ? v : undefined));
+  const pinValues = recordOf(raw.pinValues, (v) => recordOf(v, pinValueOf));
+  const keyNames = recordOf(raw.keyNames, (v) => (typeof v === 'string' && v ? v : undefined));
+  return [{
+    id: raw.id, originalId: raw.originalId, kind: raw.kind,
+    originalName: typeof raw.originalName === 'string' ? raw.originalName : '',
+    groupId: typeof raw.groupId === 'string' ? raw.groupId : null,
+    ...(typeof raw.order === 'number' ? { order: raw.order } : {}),
+    ...(defaults ? { defaults } : {}),
+    ...(pinValues ? { pinValues } : {}),
+    ...(keyNames ? { keyNames } : {}),
+  }];
+}
+
+/** The card's owned traits, groups and links. An owned trait carries no stat effects, so none are read. */
+function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 'traitGroups' | 'traitLinks'> {
   const traits: Trait[] = (Array.isArray(obj.traits) ? obj.traits : []).filter(hasIdAndName).map((t) => {
     const requires = Array.isArray(t.requires) ? t.requires.flatMap(cardRequirement) : [];
     const pins = (Array.isArray(t.placeholderPins) ? t.placeholderPins : []).flatMap((p): PlaceholderPin[] =>
@@ -196,7 +238,12 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
     ...(typeof g.order === 'number' ? { order: g.order } : {}),
     ...(g.exclusive === true ? { exclusive: true } : {}),
   }));
-  return { ...(traits.length ? { traits } : {}), ...(traitGroups.length ? { traitGroups } : {}) };
+  const traitLinks = (Array.isArray(obj.traitLinks) ? obj.traitLinks : []).flatMap(cardLink);
+  return {
+    ...(traits.length ? { traits } : {}),
+    ...(traitGroups.length ? { traitGroups } : {}),
+    ...(traitLinks.length ? { traitLinks } : {}),
+  };
 }
 
 /** One card row as an opening, or nothing when it is not one. An unknown kind reads as a Player Action. The
