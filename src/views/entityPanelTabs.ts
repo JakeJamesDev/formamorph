@@ -22,11 +22,6 @@ export function entityPanelTabsFor(advanced: boolean) {
   return ENTITY_PANEL_TABS.filter((t) => advanced || !('advancedOnly' in t && t.advancedOnly));
 }
 
-/** The tabs that take the detail pane's full height, with their own scrolling inside. */
-export function entityTabFillsPane(tab: EntityPanelTab): boolean {
-  return tab === 'traits' || tab === 'placeholders';
-}
-
 /** The panel tabs that the library entity editor puts on its top strip instead of the Entity sub-strip. */
 type LibraryTopTab = 'traits' | 'placeholders';
 const isLibraryTopTab = (value: EntityPanelTab): value is LibraryTopTab => value === 'traits' || value === 'placeholders';

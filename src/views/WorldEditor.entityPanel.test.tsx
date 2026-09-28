@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, within } from '@testing-library/react';
-import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, panelTabLayout, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -153,30 +153,27 @@ describe('the World Editor entity panel tabs', () => {
   });
 });
 
-/** Where the entity panel sits: a flex column at the pane's height, or the pane's scroll area. */
-const panelHost = () => {
-  const strip = screen.getByRole('tablist', { name: 'Entity Fields' });
-  if (strip.closest('[data-radix-scroll-area-viewport]')) return 'scroll';
-  return strip.closest('[data-detail-fill]') ? 'fill' : 'none';
-};
+const layout = () => panelTabLayout('Entity Fields');
+const FIXED_SCROLL = { strip: 'fixed', body: 'scroll' };
+const FIXED_FILL = { strip: 'fixed', body: 'fill' };
 
 describe('the World Editor entity panel height', () => {
   it.each([
     ['desktop', () => () => {}],
     ['mobile', asMobile],
-  ])('fills the pane for Traits and Placeholders and scrolls the other tabs on %s', (_, setUp) => {
+  ])('keeps the strip fixed, fills the pane for Traits and Placeholders, and scrolls the other tabs on %s', (_, setUp) => {
     const undo = setUp();
     try {
       renderWorldEditorBench(WORLD, 'advanced');
       selectEntity('Wren');
-      expect(panelHost()).toBe('scroll');
+      expect(layout()).toEqual(FIXED_SCROLL);
       openPanelTab('Traits');
-      expect(panelHost()).toBe('fill');
+      expect(layout()).toEqual(FIXED_FILL);
       openPanelTab('Placeholders');
-      expect(panelHost()).toBe('fill');
+      expect(layout()).toEqual(FIXED_FILL);
       for (const tab of ['Descriptions', 'Openings', 'Profile']) {
         openPanelTab(tab);
-        expect(panelHost()).toBe('scroll');
+        expect(layout()).toEqual(FIXED_SCROLL);
       }
     } finally {
       undo();

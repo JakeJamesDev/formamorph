@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Trash2, User } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { PanelTabsList } from "@/components/ui/panel-tabs";
+import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { PlaceholderPinRows } from '@/components/editor/PlaceholderPinRows';
@@ -345,12 +344,11 @@ const TraitManager = ({
   const panels: Record<TraitPanelTab, ReactNode> = { details: detailsPanel, stats: statsPanel, pins: pinsPanel };
 
   return (
-    <Tabs value={shownTab} onValueChange={(v) => onTabChange(v as TraitPanelTab)} className="space-y-4">
-      <PanelTabsList tabs={tabs} stripLabel="Trait Fields" />
+    <PanelTabs tabs={tabs} value={shownTab} onValueChange={onTabChange} stripLabel="Trait Fields">
       {tabs.map((t) => (
-        <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>
+        <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}
-    </Tabs>
+    </PanelTabs>
   );
 };
 

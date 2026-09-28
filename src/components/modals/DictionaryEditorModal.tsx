@@ -227,8 +227,10 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
                   </ScrollArea>
                 </div>
               }
+              // The entry panel keeps its tab strip above a body that scrolls itself.
+              scrollDetail={false}
               detail={
-                <FieldColumn>
+                <FieldColumn fill>
                   {selectedEntry ? (
                     <ChipInsertTargetProvider>
                       <PlaceholderPaletteBar placeholders={bookPlaceholders} />

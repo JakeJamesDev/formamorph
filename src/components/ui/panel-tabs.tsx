@@ -1,5 +1,13 @@
+import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+
+/** Set by a host to its side and bottom padding, so a tab body scrolls to the panel's edges. */
+export const PANEL_GUTTER_VAR = '--panel-gutter';
+const GUTTER = `var(${PANEL_GUTTER_VAR}, 0px)`;
+const NEG_GUTTER = `calc(${GUTTER} * -1)`;
 
 export interface PanelTab {
   value: string;
@@ -33,5 +41,51 @@ export function PanelTabsList({ tabs, stripLabel, labelClassName = 'hidden sm:in
         </TabsTrigger>
       ))}
     </TabsList>
+  );
+}
+
+/**
+ * An editor detail panel's tabs: the strip is a fixed header row, and each `PanelTabContent` scrolls
+ * below it. The panel takes the height its host gives it. One tab is no choice, so it gets no strip, and a
+ * chosen tab the current mode hides shows the first tab.
+ */
+export function PanelTabs<T extends string>({ tabs, value, onValueChange, stripLabel, labelClassName, children }: {
+  tabs: readonly (PanelTab & { value: T })[];
+  value: T;
+  onValueChange: (value: T) => void;
+  stripLabel: string;
+  labelClassName?: string;
+  children: ReactNode;
+}) {
+  const shown = tabs.some((t) => t.value === value) ? value : tabs[0].value;
+  return (
+    <Tabs value={shown} onValueChange={(v) => onValueChange(v as T)} className="flex min-h-0 flex-1 flex-col gap-4">
+      {tabs.length > 1 && <PanelTabsList tabs={tabs} stripLabel={stripLabel} labelClassName={labelClassName} />}
+      {children}
+    </Tabs>
+  );
+}
+
+/** One tab's body under `PanelTabs`. It scrolls on its own; `fill` hands the height to a body that scrolls inside itself. */
+export function PanelTabContent({ value, fill = false, className, children }: {
+  value: string;
+  fill?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <TabsContent value={value} className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+      {fill ? children : (
+        <ScrollArea
+          className="min-h-0 flex-1"
+          style={{ marginInline: NEG_GUTTER, marginBottom: NEG_GUTTER }}
+          viewportProps={{ 'data-panel-tab-body': '' }}
+        >
+          <div className={cn('space-y-4', className)} style={{ paddingInline: GUTTER, paddingBottom: GUTTER }}>
+            {children}
+          </div>
+        </ScrollArea>
+      )}
+    </TabsContent>
   );
 }

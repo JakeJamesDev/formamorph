@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Hint } from '@/components/ui/typography';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { useEditorMode } from '@/lib/editorMode';
 import {
   dictionaryBookPanelTabsFor, dictionaryBookTabForField, type DictionaryBookPanelTab,
@@ -42,22 +41,13 @@ const DictionaryBookManager = ({ book, tab, onTabChange, focusField }: {
     </>
   );
 
-  if (tabs.length === 1) return <div className="space-y-4">{detailsPanel}</div>;
-
-  // Placeholders takes the height the host gives it and scrolls inside; Details grows with its fields.
-  const fills = tab === 'placeholders';
   return (
-    <Tabs
-      value={tab}
-      onValueChange={(v) => onTabChange(v as DictionaryBookPanelTab)}
-      className={fills ? 'flex min-h-0 flex-1 flex-col gap-4' : 'space-y-4'}
-    >
-      <PanelTabsList tabs={tabs} stripLabel="Dictionary Fields" />
-      <TabsContent value="details" className="space-y-4">{detailsPanel}</TabsContent>
-      <TabsContent value="placeholders" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Dictionary Fields">
+      <PanelTabContent value="details">{detailsPanel}</PanelTabContent>
+      <PanelTabContent value="placeholders" fill>
         <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} fill />
-      </TabsContent>
-    </Tabs>
+      </PanelTabContent>
+    </PanelTabs>
   );
 };
 

@@ -10,8 +10,7 @@ import { EntityOpenings } from '@/managers/OpeningsPanel';
 import {
   ENTITY_EDITOR_SUBTABS, ENTITY_EDITOR_TABS, entityEditorTabForField, type EntityEditorSubTab, type EntityEditorTab,
 } from '@/views/entityPanelTabs';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import { LibraryAuthorField } from '@/components/LibraryAuthorField';
@@ -204,51 +203,56 @@ const EntityEditorModal = ({
         onPublish={onPublish && entity ? () => onPublish(entity, libraryDetails) : undefined}
       >
         {entity && tab === 'entity' ? (
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="flex flex-col sm:flex-row">
-              {!narrow && (
-                <div className="w-80 shrink-0 space-y-6 p-4 pr-0">
+          <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+            {!narrow && (
+              <ScrollArea className="w-80 shrink-0">
+                <div className="space-y-6 p-4 pr-0">
                   <LibraryAuthorField value={libraryDetails?.author} onChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />
                   <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
                 </div>
-              )}
-              <FieldColumn>
-                <Tabs value={subTab} onValueChange={(v) => setSubTab(v as EntityEditorSubTab)} className="space-y-4">
-                  {/* The right column is narrow until `lg`, so labels wait for it. */}
-                  <PanelTabsList tabs={ENTITY_EDITOR_SUBTABS} stripLabel="Entity Fields" labelClassName="hidden lg:inline" />
-                  <ChipInsertTargetProvider>
-                    <PlaceholderPaletteBar placeholders={pool} />
-                    <TabsContent value="profile" className="space-y-4">
-                      {narrow && (
-                        <>
-                          <LibraryAuthorField value={libraryDetails?.author} onChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />
-                          <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
-                        </>
-                      )}
-                      <EntityProfileFields
-                        value={entity}
-                        onChange={handleChange}
-                        placeholders={pool}
-                        home="library"
-                        // Two columns need ~570px, which the field column has from `lg`.
-                        columnsClassName="lg:grid-cols-[18rem_minmax(0,1fr)]"
-                      />
-                    </TabsContent>
-                    <TabsContent value="descriptions" className="space-y-4">
-                      <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
-                    </TabsContent>
-                    <TabsContent value="openings">
-                      <EntityOpenings
-                        entity={entity}
-                        placeholders={pool}
-                        onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}
-                      />
-                    </TabsContent>
-                  </ChipInsertTargetProvider>
-                </Tabs>
-              </FieldColumn>
-            </div>
-          </ScrollArea>
+              </ScrollArea>
+            )}
+            <FieldColumn fill>
+              {/* The right column is narrow until `lg`, so labels wait for it. */}
+              <PanelTabs
+                tabs={ENTITY_EDITOR_SUBTABS}
+                value={subTab}
+                onValueChange={setSubTab}
+                stripLabel="Entity Fields"
+                labelClassName="hidden lg:inline"
+              >
+                <ChipInsertTargetProvider>
+                  <PlaceholderPaletteBar placeholders={pool} />
+                  <PanelTabContent value="profile">
+                    {narrow && (
+                      <>
+                        <LibraryAuthorField value={libraryDetails?.author} onChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />
+                        <TagsField values={libraryDetails?.tags ?? entity.tags} onChange={handleTags} />
+                      </>
+                    )}
+                    <EntityProfileFields
+                      value={entity}
+                      onChange={handleChange}
+                      placeholders={pool}
+                      home="library"
+                      // Two columns need ~570px, which the field column has from `lg`.
+                      columnsClassName="lg:grid-cols-[18rem_minmax(0,1fr)]"
+                    />
+                  </PanelTabContent>
+                  <PanelTabContent value="descriptions">
+                    <EntityDescriptionFields value={entity} onChange={handleChange} placeholders={pool} />
+                  </PanelTabContent>
+                  <PanelTabContent value="openings">
+                    <EntityOpenings
+                      entity={entity}
+                      placeholders={pool}
+                      onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}
+                    />
+                  </PanelTabContent>
+                </ChipInsertTargetProvider>
+              </PanelTabs>
+            </FieldColumn>
+          </div>
         ) : entity && tab === 'traits' ? (
           <LibraryTraitsEditor
             entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
