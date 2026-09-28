@@ -4,7 +4,7 @@ import { encodePlaceholderToken } from './placeholders';
 import { detachLink } from './traitLinks';
 import { applyOwnedTraitDrop } from './traitTree';
 import { copyOf } from './blueprints';
-import { isUntouchedCopy, neededCopies, syncBlueprintCopies, type CopyWorld } from './blueprintCopies';
+import { copyNeeds, isUntouchedCopy, neededCopies, syncBlueprintCopies, type CopyWorld } from './blueprintCopies';
 
 const chip = (id: string) => encodePlaceholderToken({ id, mode: 'world', placementId: `p-${id}` });
 const value = (id: string, text: string, extra: Partial<PlaceholderValue> = {}): PlaceholderValue => ({ id, text, ...extra });
@@ -100,6 +100,22 @@ describe('neededCopies', () => {
   it('ignores chips and pins on placeholders that are not blueprints', () => {
     const w = world({ entities: [entity('a', { traits: [trait('own', { aiDescription: chip('eyes'), placeholderPins: [{ placeholderId: 'eyes', value: 'x' }] })] })] });
     expect(neededCopies(w).has('a')).toBe(false);
+  });
+});
+
+describe('copyNeeds', () => {
+  it('names the trait that needs a copy, and the placeholder whose values reach one, as the bearer reads it', () => {
+    const w = world({ entities: [entity('a', { traitLinks: [link('l1', 'tailor')] })] });
+    const why = copyNeeds(w).get('a');
+    expect(why?.get('trim')).toMatchObject({ kind: 'trait', item: { id: 'tailor' } });
+    expect(why?.get('heritage')).toEqual({ kind: 'value', placeholderId: 'trim' });
+    const own = world({ entities: [entity('a', { traitLinks: [link('l1', 'tailor')], placeholders: [copy('c-trim', 'trim')] })] });
+    expect(copyNeeds(own).get('a')?.get('heritage')).toEqual({ kind: 'value', placeholderId: 'c-trim' });
+  });
+
+  it('names the owner’s own text when only a chip there keeps its copy', () => {
+    const w = world({ entities: [entity('a', { aiDescription: `sees ${chip('c1')}`, placeholders: [copy('c1', 'garb')] })] });
+    expect(copyNeeds(w).get('a')?.get('garb')).toEqual({ kind: 'own' });
   });
 });
 

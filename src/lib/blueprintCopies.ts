@@ -46,16 +46,28 @@ function copyBlueprints(entities: readonly Entity[]): Map<string, string> {
   return out;
 }
 
-/**
- * Entity id → the blueprints it needs a copy of. A bearer needs every blueprint a trait on it pins or
- * places, its links expanded, and the root traits' when it can be the player; then every blueprint those
- * placeholders reach through their values, read as the bearer's own copy where it has one. A chip in the
- * owner's own text, or a pin on its own trait, that names one of its copies keeps that copy needed. Entities
- * that need nothing have no entry.
- */
+/** Why a bearer needs a copy: a trait or group on it (or a root one it can play) pins or places the
+ *  blueprint; a placeholder it reads reaches it through its values; or a chip in its own text names the copy. */
+export type CopyNeed =
+  | { kind: 'trait'; item: Trait | TraitGroup }
+  | { kind: 'value'; placeholderId: string }
+  | { kind: 'own' };
+
+/** The blueprints each entity needs a copy of, as {@link copyNeeds} gives them without the reasons. */
 export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
+  return new Map([...copyNeeds(world)].map(([id, needs]) => [id, new Set(needs.keys())]));
+}
+
+/**
+ * Entity id → each blueprint it needs a copy of, with the first reason found. A bearer needs every
+ * blueprint a trait on it pins or places, its links expanded, and the root traits' when it can be the
+ * player; then every blueprint those placeholders reach through their values, read as the bearer's own copy
+ * where it has one. A chip in the owner's own text, or a pin on its own trait, that names one of its copies
+ * keeps that copy needed. Entities that need nothing have no entry.
+ */
+export function copyNeeds(world: CopyWorld): Map<string, Map<string, CopyNeed>> {
   const blueprints = blueprintIds({ placeholders: [...world.placeholders], placeholderGroups: [...world.placeholderGroups] });
-  const out = new Map<string, Set<string>>();
+  const out = new Map<string, Map<string, CopyNeed>>();
   if (!blueprints.size) return out;
   const byId = new Map(world.placeholders.map((p) => [p.id, p]));
   const copyBlueprint = copyBlueprints(world.entities);
@@ -67,22 +79,23 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
     const ownCopyIds = new Set(ownPlaceholders.filter((p) => p.blueprintId).map((p) => p.id));
     // A named id counts as its blueprint's, whether it is the blueprint or a copy of it anywhere.
     const asBlueprint = (id: string): string | undefined => (blueprints.has(id) ? id : copyBlueprint.get(id));
-    const needed = new Set<string>();
+    const needed = new Map<string, CopyNeed>();
+    const need = (blueprintId: string, why: CopyNeed) => { if (!needed.has(blueprintId)) needed.set(blueprintId, why); };
     const bearer: Bearer | undefined = bearers.get(e.id);
     const items: (Trait | TraitGroup)[] = [
       ...(bearer ? [...bearer.traits, ...bearer.groups] : []),
       ...(canBePlayer(e) ? [...root.traits, ...root.groups] : []),
     ];
-    for (const item of items) for (const id of traitTargets(item)) { const b = asBlueprint(id); if (b) needed.add(b); }
+    for (const item of items) for (const id of traitTargets(item)) { const b = asBlueprint(id); if (b) need(b, { kind: 'trait', item }); }
     // The owner's own text and its placeholders' values, reworded ones included, keep a copy of its own in use.
     const ownTexts = texts([
       ...entityTexts(e),
       ...ownPlaceholders.flatMap((p) => p.values.map((v) => v.text)),
       ...ownPlaceholders.flatMap((p) => Object.values(p.valueOverrides ?? {}).map((o) => o.text?.value)),
     ]);
-    for (const id of directChipTargets(ownTexts)) if (ownCopyIds.has(id)) needed.add(copyBlueprint.get(id)!);
+    for (const id of directChipTargets(ownTexts)) if (ownCopyIds.has(id)) need(copyBlueprint.get(id)!, { kind: 'own' });
     // What each needed placeholder reaches through its values, as this bearer reads it.
-    const queue = [...needed];
+    const queue = [...needed.keys()];
     while (queue.length) {
       const id = queue.pop()!;
       const blueprint = byId.get(id);
@@ -91,7 +104,7 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
       const readsAs = mine ? effectiveCopy(mine, blueprint) : blueprint;
       for (const target of valueTargets(readsAs)) {
         const b = asBlueprint(target);
-        if (b && !needed.has(b)) { needed.add(b); queue.push(b); }
+        if (b && !needed.has(b)) { need(b, { kind: 'value', placeholderId: readsAs.id }); queue.push(b); }
       }
     }
     if (needed.size) out.set(e.id, needed);

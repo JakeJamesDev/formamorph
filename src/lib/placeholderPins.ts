@@ -692,15 +692,25 @@ const blueprintCache = new WeakMap<PinEditorWorld, ReturnType<typeof blueprintIn
  */
 export function pinTargetFilter(world: PinEditorWorld | null, source: PinSourceRef): (target: Placeholder) => boolean {
   if (!world) return (target) => !isCopy(target);
+  const { blueprints } = blueprintIndex(world);
+  const { side, root } = sourceSide(world, source);
+  // A copy's value on its own blueprint would land on that copy: a value pinning its own placeholder.
+  return (target) => !isCopy(target) && target.id !== root?.blueprintId && (side || !blueprints.has(target.id));
+}
+
+/** Whether `source` is blueprint-side, and the top-level placeholder a value source belongs to. */
+function sourceSide(world: PinEditorWorld, source: PinSourceRef): { side: boolean; root?: Placeholder } {
   const { blueprints, byId } = blueprintIndex(world);
   const owner = source.kind === 'value' ? byId.get(source.placeholderId) : undefined;
   const root = owner && rootPlaceholder(owner, byId);
   const side = source.kind === 'trait'
     ? !!world.traits?.some((t) => t.id === source.id)
     : !!root && (blueprints.has(root.id) || isCopy(root));
-  // A copy's value on its own blueprint would land on that copy: a value pinning its own placeholder.
-  return (target) => !isCopy(target) && target.id !== root?.blueprintId && (side || !blueprints.has(target.id));
+  return { side, root };
 }
+
+/** Whether a pin on `source` may name a blueprint: a world trait, or a value under a blueprint or a copy. */
+export const isBlueprintSideSource = (world: PinEditorWorld, source: PinSourceRef): boolean => sourceSide(world, source).side;
 
 /** The kinds that can pin `placeholderId`: every kind, or for a blueprint the two with a blueprint side. */
 export function pinKindsFor(world: PinEditorWorld, placeholderId: string): typeof PIN_KINDS {
