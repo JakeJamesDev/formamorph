@@ -44,6 +44,8 @@ const WORLD: World = benchEditorWorld({
 } as Partial<World>);
 
 const openTab = (name: RegExp) => fireEvent.mouseDown(screen.getByRole('tab', { name }));
+const openTraitTab = (name: string) =>
+  fireEvent.mouseDown(within(screen.getByRole('tablist', { name: 'Trait Fields' })).getByRole('tab', { name }));
 const openAddMenu = () => fireEvent.click(screen.getByRole('button', { name: 'Add to Traits' }));
 const menuButton = (name: string) => screen.queryByRole('button', { name });
 
@@ -176,6 +178,48 @@ describe('the link button', () => {
     openLinkFlyout();
     fireEvent.click(flyoutRow('Link To', 'Heroes'));
     expect(flyoutRows('Link To')).toEqual(['✓Albus', 'Mira', '#City Guard']);
+  });
+
+  it('sits below every panel tab, not only Details', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(within(treeRow('Paladin')!).getByText('Paladin'));
+    // Frozen: the button is outside every scroll viewport, so the tab content scrolls under it.
+    expect(menuButton('Link To…')!.closest('[data-radix-scroll-area-viewport]')).toBeNull();
+    for (const tab of ['Stats', 'Pins']) {
+      openTraitTab(tab);
+      openLinkFlyout();
+      expect(flyoutRows('Link To')).toEqual(['Custom Persona', '#Heroes', 'Vex']);
+      fireEvent.keyDown(screen.getByRole('group', { name: 'Link To' }), { key: 'Escape' });
+      expect(screen.queryByRole('group', { name: 'Link To' })).toBeNull();
+    }
+  });
+
+  it('shows on a selected link on a non-Details tab, with the Linked-from line left on Details', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Traits/);
+    const link = screen.getAllByLabelText('Drag to reorder or nest')
+      .map((grip) => grip.parentElement as HTMLElement)
+      .find((row) => within(row).queryByRole('button', { name: 'Open Paladin' }))!;
+    fireEvent.click(within(link).getByText('Paladin'));
+    openTraitTab('Stats');
+    expect(screen.queryByText(/Linked from/)).toBeNull();
+    expect(menuButton('Link To…')).not.toBeNull();
+  });
+
+  it('never shows on a non-Details tab in Basic or on an owned trait', () => {
+    const { unmount } = renderWorldEditorBench(WORLD, 'simple');
+    openTab(/Traits/);
+    fireEvent.click(within(treeRow('Brave')!).getByText('Brave'));
+    openTraitTab('Stats');
+    expect(menuButton('Link To…')).toBeNull();
+    unmount();
+
+    renderWorldEditorBench(WORLD, 'advanced');
+    openTab(/Traits/);
+    fireEvent.click(within(treeRow('Oath')!).getByText('Oath'));
+    openTraitTab('Pins');
+    expect(menuButton('Link To…')).toBeNull();
   });
 
   it('never shows in Basic, on an owned trait, or on Templates', () => {

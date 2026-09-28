@@ -90,7 +90,7 @@ export function BearerList({ choices, label, onPick, held, back }: {
 }
 
 /**
- * The link button on a world trait or group's Details: links it to a bearer the way a drag into that
+ * The link button in a world trait or group's detail footer: links it to a bearer the way a drag into that
  * bearer does. A bearer that already has it reads checked. The flyout stays open for the next pick.
  */
 export function LinkToBearerButton({ originalId }: { originalId: string }) {
@@ -120,7 +120,7 @@ export function LinkToBearerButton({ originalId }: { originalId: string }) {
         </Button>
       </PopoverTrigger>
       {/* Inline, so the editor's modal scroll lock lets the wheel reach the list. */}
-      <PopoverContent portal={false} side="bottom" align="end" className="w-60 overflow-hidden p-1">
+      <PopoverContent portal={false} side="top" align="end" className="w-60 overflow-hidden p-1">
         <BearerList choices={choices} label="Link To" onPick={pick} held={(id) => held.has(id)} />
       </PopoverContent>
     </Popover>

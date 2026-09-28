@@ -70,6 +70,25 @@ describe('ListDetail', () => {
     expect(panel()).not.toHaveClass('bg-background');
   });
 
+  it('freezes the detail footer below the detail scroll, side by side and in the push', () => {
+    const footer = <div>DETAIL-FOOTER</div>;
+    const frozen = () => {
+      const foot = screen.getByText('DETAIL-FOOTER');
+      const scroller = screen.getByText('DETAIL-CONTENT').closest('[data-radix-scroll-area-viewport]');
+      expect(scroller).not.toBeNull();
+      expect(scroller!.contains(foot)).toBe(false);
+      // The next sibling of the detail's scroll root, inside the same column.
+      expect(scroller!.parentElement!.nextElementSibling).toBe(foot);
+    };
+    mockMatchMedia(false);
+    const { unmount } = render(<ListDetail {...base} detailFooter={footer} showDetail />);
+    frozen();
+    unmount();
+    mockMatchMedia(true);
+    render(<ListDetail {...base} detailFooter={footer} showDetail />);
+    frozen();
+  });
+
   it('stacked: hides the detail panel from assistive tech while the list shows', () => {
     mockMatchMedia(false);
     render(<ListDetail {...base} stacked showDetail={false} backLabel="Traits" />);

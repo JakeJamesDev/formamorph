@@ -1,6 +1,7 @@
 # 06: Link To as a panel footer
 
-Status: ready-for-agent
+Status: in-progress
+Base: 2e1a0d0f
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -28,3 +29,8 @@ On the **Traits** tab, a world trait's or group's **Link To…** button sits in 
 - [ ] Prove each new guard fails when its rule is removed; never remove a real trigger to go green.
 - [ ] No export-shape change; say so in the response.
 - [ ] Add the In-Progress changelog entry, update the code graph, and complete the shared-code side-effect scan.
+
+## Comments
+
+- 2026-09-28, user ruling mid-build: the footer is frozen, like the editor's **Save** bar. It is the detail pane's own bar (`p-3 border-t`), outside the detail scroll, in the side-by-side card and in the `ListDetail` push (`detailFooter`). It is not a slot inside the trait or group panel. The flyout opens upward.
+- The trait panel's tabs are Details, Stats and Pins. The Bench tests check Stats and Pins; "Requires" in the criteria has no tab.

@@ -10,13 +10,14 @@ import { cn } from '@/lib/utils';
  * columns). Mobile shows one panel at a time: the list, and — when `showDetail` is set — the detail slides in
  * over it with a back header, native push-navigation style. `stacked` uses that push at every width, for a
  * host too narrow to split. The caller owns selection; this only takes the `showDetail` flag and an `onBack`
- * to pop. Slide is skipped under `prefers-reduced-motion`.
+ * to pop. Slide is skipped under `prefers-reduced-motion`. `detailFooter` stays frozen below the detail's scroll.
  */
 export function ListDetail({
-  list, detail, showDetail, onBack, backLabel = 'Back', className, stacked = false, scrollList = true, scrollDetail = true,
+  list, detail, detailFooter, showDetail, onBack, backLabel = 'Back', className, stacked = false, scrollList = true, scrollDetail = true,
 }: {
   list: ReactNode;
   detail: ReactNode;
+  detailFooter?: ReactNode;
   /** Whether the detail is active (drives the push; ignored side by side, which shows both). */
   showDetail: boolean;
   /** Pop back to the list from the push (typically clears the caller's selection). */
@@ -42,9 +43,12 @@ export function ListDetail({
         {scrollList
           ? <ScrollArea className="w-1/2 min-w-0 border-r">{list}</ScrollArea>
           : <div className="w-1/2 min-w-0 border-r overflow-hidden">{list}</div>}
-        {scrollDetail
-          ? <ScrollArea className="w-1/2 min-w-0">{detail}</ScrollArea>
-          : <div data-detail-fill className="w-1/2 min-w-0 flex flex-col">{detail}</div>}
+        <div className="w-1/2 min-w-0 flex flex-col">
+          {scrollDetail
+            ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
+            : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
+          {detailFooter}
+        </div>
       </div>
     );
   }
@@ -83,6 +87,7 @@ export function ListDetail({
         {scrollDetail
           ? <ScrollArea className="flex-1 min-h-0">{detail}</ScrollArea>
           : <div data-detail-fill className="flex-1 min-h-0 flex flex-col">{detail}</div>}
+        {detailFooter}
       </div>
     </div>
   );
