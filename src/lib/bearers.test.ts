@@ -103,6 +103,42 @@ describe('resolveBearers: links', () => {
     expect(b.linkOf.size).toBe(0);
   });
 
+  it('yields an original once per bearer, first in tree order, when a linked group already brings it', () => {
+    const both = (paladinOrder: number, classesOrder: number): Entity => ({
+      ...albus, traits: [],
+      traitLinks: [
+        link('l-classes', 'classes', 'group', { order: classesOrder }),
+        link('l-paladin', 'paladin', 'trait', { order: paladinOrder }),
+      ],
+    });
+    const first = bearer(world({ entities: [both(0, 1)] }), 'albus');
+    expect(ids(first.traits)).toEqual(['paladin', 'wizard']);
+    expect(first.traits[0]).toMatchObject({ groupId: null, order: 0 });
+    expect(first.linkOf.get('paladin')?.id).toBe('l-paladin');
+    expect(first.linkOf.get('wizard')?.id).toBe('l-classes');
+
+    const later = bearer(world({ entities: [both(1, 0)] }), 'albus');
+    expect(ids(later.traits)).toEqual(['paladin', 'wizard']);
+    expect(later.traits[0]).toMatchObject({ groupId: 'classes' });
+    expect(later.linkOf.get('paladin')?.id).toBe('l-classes');
+  });
+
+  it('yields a nested linked group once, inside the outer one when that comes first', () => {
+    const w = world({
+      traitGroups: [...world().traitGroups, group('holy', 'classes', 2, { name: 'Holy' })],
+      traits: [...world().traits, trait('bless', { name: 'Bless', groupId: 'holy', order: 0 })],
+    });
+    const nested: Entity = {
+      ...albus, traits: [],
+      traitLinks: [link('l-classes', 'classes', 'group', { order: 0 }), link('l-holy', 'holy', 'group', { order: 1 })],
+    };
+    const b = bearer({ ...w, entities: [nested] }, 'albus');
+    expect(ids(b.groups)).toEqual(['classes', 'holy']);
+    expect(b.groups[1]).toMatchObject({ parentId: 'classes' });
+    expect(ids(b.traits)).toEqual(['paladin', 'wizard', 'bless']);
+    expect(b.linkOf.get('bless')?.id).toBe('l-classes');
+  });
+
   it('never expands the Templates group itself or an owned item', () => {
     const w = world();
     const bad: Entity = { ...albus, traitLinks: [link('l-t', 'templates', 'group'), link('l-vow', 'vow', 'trait')] };
@@ -142,6 +178,14 @@ describe('resolveBearers: the player bearer', () => {
     const asAlbus = bearer(w, PLAYER_BEARER, AS_ALBUS);
     expect(ids(asAlbus.traits)).toEqual(['brave']);
     expect(asAlbus.linkOf.size).toBe(0);
+  });
+
+  it('holds a root trait once when Custom Persona also links it, the root winning', () => {
+    const w = world({ customPersona: { traitLinks: [link('cp-brave', 'brave', 'trait'), link('cp-brave-2', 'brave', 'trait')] } });
+    const b = bearer(w, PLAYER_BEARER);
+    expect(ids(b.traits)).toEqual(['brave']);
+    expect(b.traits[0]).toMatchObject({ groupId: null, order: 0 });
+    expect(b.linkOf.has('brave')).toBe(false);
   });
 
   it('is the only player bearer under None; a persona’s bearer joins it when picked', () => {

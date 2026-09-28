@@ -15,7 +15,7 @@ import {
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
 import {
-  allPinRows, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, pinSourceOwnerId, valuePinners,
+  allPinRows, bearerPlaceholderNamed, collectPins, hasDeadValueId, indexPlaceholders, pinConflict, pinSourceOwnerId, valuePinners,
   type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
 } from '@/lib/placeholderPins';
 import { holdsAsChip, qualifiedPlaceholderName } from '@/lib/placeholderTree';
@@ -40,11 +40,14 @@ import { formatBytes, IMAGE_CAPS, type ImageCap } from '@/lib/imageOptim';
 import { clamp } from '@/lib/utils';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
-import { editorGateInput } from '@/lib/bearers';
-import { WORLD_OWNER, gateStates, neverUnlockable, settleDefaults } from '@/lib/traitGates';
+import {
+  broughtIds, editorGateInput, linksInTreeOrder, originalOf, resolveBearers, type Bearer, type BearerWorld,
+} from '@/lib/bearers';
+import { WORLD_OWNER, gateOf, gateStates, neverUnlockable, settleDefaults } from '@/lib/traitGates';
+import { CUSTOM_PERSONA_NAME, customPersonaEntity, offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
-  Trait, World,
+  Trait, TraitLink, World,
 } from '@/types';
 
 /**
@@ -318,10 +321,14 @@ const aliasSelfDuplicate: Rule = {
   })),
 };
 
+/** Authored text as a finding names it: chips by their placement labels, blank as Untitled. */
+const labelOf = (text: string | undefined, world: RuleWorld): string =>
+  labelPlaceholders(text ?? '', allPlaceholders(world), { letters: lettersOf(world) }).trim() || 'Untitled';
+
 /** A non-entity item, chips labeled like the editor's own lists label them. */
 const namedItem = (id: string, name: string | undefined, world: RuleWorld, section?: FindingSection): FindingItem => ({
   id,
-  name: labelPlaceholders(name ?? '', allPlaceholders(world), { letters: lettersOf(world) }).trim() || 'Untitled',
+  name: labelOf(name, world),
   ...(section ? { section } : {}),
 });
 
@@ -1674,13 +1681,52 @@ const traitGroupTooSmall: Rule = {
 
 // ── Trait gates ───────────────────────────────────────────────────────────────────────────────────────────
 
+/** The slices the bearer resolver reads. */
+export type BearerSource = Partial<Pick<RuleWorld, 'traits' | 'traitGroups' | 'entities' | 'customPersona'>>;
+
+/** The world as the bearer resolver reads it. A trait whose id is in `open`, world or owned, loses its
+ *  requirements. */
+export function bearerWorldOf(world: BearerSource, open: ReadonlySet<string> = new Set()): BearerWorld {
+  const opened = (t: Trait): Trait => (open.has(t.id) ? { ...t, requires: [] } : t);
+  return {
+    traits: (world.traits ?? []).map(opened),
+    traitGroups: world.traitGroups ?? [],
+    entities: (world.entities ?? []).map((e) => ({ ...e, name: e.name ?? '', ...(e.traits ? { traits: e.traits.map(opened) } : {}) })),
+    ...(world.customPersona ? { customPersona: world.customPersona } : {}),
+  };
+}
+
+/** None, then playing as each world persona, persona-only ones included. */
+const personaChoices = (world: RuleWorld): PersonaRef[] => [
+  { source: 'none' },
+  ...(world.entities ?? []).filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
+];
+
+/** A bearer as a finding names it: the entity, Custom Persona for its links, null for the player's own root. */
+const bearerName = (bearer: Bearer | undefined, link: TraitLink | undefined): string | null =>
+  (bearer?.entity ? bearer.name : link ? CUSTOM_PERSONA_NAME : null);
+
+const pairKey = (a: string, b: string) => `${a}\u0000${b}`;
+
+/** A trait on one bearer, as a gate finding names it and opens it. */
+interface StuckTrait {
+  ownerId: string;
+  traitId: string;
+  traitName: string;
+  /** See {@link bearerName}. */
+  bearer: string | null;
+  link?: TraitLink;
+  /** Each requirement as its editor chip reads, quoted. */
+  requirements: string[];
+}
+
 interface GateReport {
   /** Trait id → each requirement as its editor chip reads, quoted. */
   requirementTexts: Map<string, string[]>;
-  /** Trait id → the requirements whose target this world no longer has, quoted. */
+  /** Trait id → the requirements whose target this world no longer has, quoted. World and owned traits. */
   unresolved: Map<string, string[]>;
-  /** Never-unlockable sets, with a trait behind a deleted target counted as openable. */
-  stuck: string[][];
+  /** Never-unlockable sets across every bearer, with a trait behind a deleted target counted as openable. */
+  stuck: StuckTrait[][];
   /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
   offDefaults: string[];
 }
@@ -1688,40 +1734,64 @@ interface GateReport {
 /**
  * The gate findings, worked out once per world object. A trait with a deleted target counts as openable for
  * the other two rules, so each root cause raises one finding: its dependents show once the author re-points it.
+ * Each bearer is checked as if picked: a trait is stuck only when it is stuck under every persona choice
+ * that holds it.
  */
 const gateReportsByWorld = new WeakMap<RuleWorld, GateReport>();
 const gateReportOf = (world: RuleWorld): GateReport => {
   let report = gateReportsByWorld.get(world);
   if (report) return report;
   const traits = world.traits ?? [];
-  // Every bearer is present, so a requirement that names an entity resolves; the rules still read the
-  // world's own traits until the per-bearer rules land.
-  const gateInput = (withTraits: readonly Trait[]) => editorGateInput({
-    traits: withTraits,
-    traitGroups: world.traitGroups ?? [],
-    entities: (world.entities ?? []).map((e) => ({ ...e, name: e.name ?? '' })),
-    ...(world.customPersona ? { customPersona: world.customPersona } : {}),
-  });
-  const label = (text: string) => quote(labelPlaceholders(text, allPlaceholders(world), { letters: lettersOf(world) }));
+  const label = (text: string) => quote(labelOf(text, world));
 
   const requirementTexts = new Map<string, string[]>();
   const unresolved = new Map<string, string[]>();
-  for (const [id, state] of gateStates(gateInput(traits)).get(WORLD_OWNER) ?? []) {
-    requirementTexts.set(id, state.requirements.map((r) => label(r.text)));
-    const dead = state.requirements.filter((r) => r.unresolved).map((r) => label(r.text));
-    if (dead.length) unresolved.set(id, dead);
+  for (const [ownerId, states] of gateStates(editorGateInput(bearerWorldOf(world)))) {
+    for (const [id, state] of states) {
+      if (ownerId === WORLD_OWNER) requirementTexts.set(id, state.requirements.map((r) => label(r.text)));
+      const dead = state.requirements.filter((r) => r.unresolved).map((r) => label(r.text));
+      if (dead.length && !unresolved.has(id)) unresolved.set(id, dead);
+    }
   }
 
-  const input = gateInput(traits.map((t) => (unresolved.has(t.id) ? { ...t, requires: [] } : t)));
-  const stuck = neverUnlockable(input)
-    .map((set) => set.filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId))
-    .filter((set) => set.length > 0);
-  const stuckIds = new Set(stuck.flat());
-  const choices: PersonaRef[] = [
-    { source: 'none' },
-    ...input.entities.filter((e) => e.persona).map((e): PersonaRef => ({ source: 'world', entityId: e.id })),
-  ];
-  const offUnder = choices.map((persona) => new Set(settleDefaults({ ...input, persona }).turnedOff.map((r) => r.traitId)));
+  const openable = bearerWorldOf(world, new Set(unresolved.keys()));
+  const passes = personaChoices(world).map((persona) => {
+    const { bearers, gate } = resolveBearers(openable, persona);
+    const holds = new Map(gate.owners.map((o) => [o.id, new Set(o.traits.map((t) => t.id))]));
+    const sets = neverUnlockable(gate);
+    return { bearers: new Map(bearers.map((b) => [b.id, b])), gate, holds, sets, stuck: new Set(sets.flat().map((r) => pairKey(r.ownerId, r.traitId))) };
+  });
+  const stuckEverywhere = (ownerId: string, traitId: string) =>
+    passes.every((p) => !p.holds.get(ownerId)?.has(traitId) || p.stuck.has(pairKey(ownerId, traitId)));
+
+  const reported = new Set<string>();
+  const stuck = passes.flatMap((pass) => {
+    let states: ReturnType<typeof gateStates> | undefined;
+    return pass.sets.map((set) => set
+      .filter((r) => !reported.has(pairKey(r.ownerId, r.traitId)) && stuckEverywhere(r.ownerId, r.traitId))
+      .map((r): StuckTrait => {
+        reported.add(pairKey(r.ownerId, r.traitId));
+        const bearer = pass.bearers.get(r.ownerId);
+        const link = bearer?.linkOf.get(r.traitId);
+        states ??= gateStates({ ...pass.gate, active: {} });
+        return {
+          ownerId: r.ownerId,
+          traitId: r.traitId,
+          traitName: bearer?.traits.find((t) => t.id === r.traitId)?.name ?? '',
+          bearer: bearerName(bearer, link),
+          ...(link ? { link } : {}),
+          requirements: (gateOf(states, r.ownerId, r.traitId)?.requirements ?? []).map((req) => label(req.text)),
+        };
+      }))
+      .filter((set) => set.length > 0);
+  });
+
+  const input = editorGateInput(openable);
+  const stuckIds = new Set([
+    ...neverUnlockable(input).flat().filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId),
+    ...stuck.flat().filter((t) => t.ownerId === WORLD_OWNER && !t.link).map((t) => t.traitId),
+  ]);
+  const offUnder = personaChoices(world).map((persona) => new Set(settleDefaults({ ...input, persona }).turnedOff.map((r) => r.traitId)));
   const offDefaults = traits
     .filter((t) => !stuckIds.has(t.id) && offUnder.every((off) => off.has(t.id)))
     .map((t) => t.id);
@@ -1731,22 +1801,46 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   return report;
 };
 
-const traitItem = (id: string, world: RuleWorld): FindingItem =>
-  namedItem(id, (world.traits ?? []).find((t) => t.id === id)?.name, world);
+/** A world or owned trait by its id, opening its own row. */
+const traitItem = (id: string, world: RuleWorld): FindingItem => namedItem(id, [
+  ...(world.traits ?? []), ...(world.entities ?? []).flatMap((e) => e.traits ?? []),
+].find((t) => t.id === id)?.name, world);
+
+/** A link as a finding opens it: its own row in the Traits tree, named by what it brings. */
+const linkItem = (link: TraitLink, name: string | undefined, world: RuleWorld): FindingItem =>
+  namedItem(link.id, name ?? link.originalName, world, 'traits');
+
+/** The rows a finding opens, once each: a trait a link brings opens the link. */
+const uniqueItems = (items: FindingItem[]): FindingItem[] =>
+  items.filter((item, i) => items.findIndex((other) => other.id === item.id) === i);
+
+/** A never-unlockable set as one line: the bearer's own words when one bearer holds the whole set. */
+function stuckMessage(set: StuckTrait[], world: RuleWorld): string {
+  const name = (text: string) => quote(labelOf(text, world));
+  const traits = listNames(set.map((t) => name(t.traitName)));
+  const holders = new Set(set.map((t) => (t.bearer === null ? null : t.ownerId)));
+  const holder = holders.size === 1 ? set[0].bearer : null;
+  if (holder === null) {
+    const named = set.map((t) => (t.bearer === null ? name(t.traitName) : `${name(t.traitName)} on ${name(t.bearer)}`));
+    return `${listNames(named)} can never unlock — no pick or persona can meet ${set.length === 1 ? 'its' : 'their'} requirements`;
+  }
+  const verb = set.every((t) => t.link) ? 'links' : 'has';
+  if (set.length === 1) {
+    return `${name(holder)} ${verb} ${traits} but can never meet ${set[0].requirements.join(' or ')}, so it never unlocks`;
+  }
+  return `${name(holder)} ${verb} ${traits}, which can never unlock — nothing ${name(holder)} can hold meets their requirements`;
+}
 
 const traitRequirementNeverUnlockable: Rule = {
   id: 'trait-requirement-never-unlockable',
   severity: 'error',
   section: 'traits',
   summary: (count) => `${count} sets of traits can never unlock`,
-  check: (world) => gateReportOf(world).stuck.map((set) => {
-    const items = set.map((id) => traitItem(id, world));
-    return finding(
-      traitRequirementNeverUnlockable,
-      `${listNames(items.map((i) => quote(i.name)))} can never unlock — no pick or persona can meet ${items.length === 1 ? 'its' : 'their'} requirements`,
-      items,
-    );
-  }),
+  check: (world) => gateReportOf(world).stuck.map((set) => finding(
+    traitRequirementNeverUnlockable,
+    stuckMessage(set, world),
+    uniqueItems(set.map((t) => (t.link ? linkItem(t.link, t.traitName, world) : namedItem(t.traitId, t.traitName, world)))),
+  )),
 };
 
 const traitRequirementUnresolved: Rule = {
@@ -1778,6 +1872,143 @@ const traitDefaultGated: Rule = {
         `${quote(item.name)} is marked default but starts unselected — no starting default or persona choice meets ${(requirementTexts.get(id) ?? []).join(' or ')}`,
         [item],
       );
+    });
+  },
+};
+
+// ── Trait links ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** One Bearer's Own pin on a trait one bearer holds, bound the way play binds it for that bearer. */
+interface BearerPin {
+  trait: Trait;
+  name: string;
+  /** See {@link bearerName}. */
+  bearer: string | null;
+  link?: TraitLink;
+  /** Whether the name resolves to a placeholder on the bearer or in the world. For the player's own root,
+   *  a world persona's placeholders count, since the root binds to the played persona's first. */
+  binds: boolean;
+}
+
+/** Every Bearer's Own pin on every bearer's tree, persona-only entities and Custom Persona included.
+ *  Walked once per world object; two rules read it. */
+const bearerPinsByWorld = new WeakMap<RuleWorld, BearerPin[]>();
+const bearerPinsOf = (world: RuleWorld): BearerPin[] => {
+  let pins = bearerPinsByWorld.get(world);
+  if (pins) return pins;
+  const shared = world.placeholders ?? [];
+  const personaOwn = (world.entities ?? []).filter((e) => e.persona).map((e) => e.placeholders ?? []);
+  pins = resolveBearers(bearerWorldOf(world), undefined).bearers.flatMap((b) => b.traits.flatMap((trait) => {
+    const names = [...new Set((trait.placeholderPins ?? []).flatMap((p) => (p.bearerPlaceholder ? [p.bearerPlaceholder] : [])))];
+    const link = b.linkOf.get(trait.id);
+    const owns = b.entity ? [b.entity.placeholders ?? []] : link ? [[]] : [[], ...personaOwn];
+    return names.map((name): BearerPin => ({
+      trait, name, link,
+      bearer: bearerName(b, link),
+      binds: owns.some((own) => !!bearerPlaceholderNamed(name, own, shared)),
+    }));
+  }));
+  bearerPinsByWorld.set(world, pins);
+  return pins;
+};
+
+/** The row a bearer pin's finding opens: the link that brought the trait, else the trait. */
+const bearerPinItem = (pin: BearerPin, world: RuleWorld): FindingItem =>
+  (pin.link ? linkItem(pin.link, pin.trait.name, world) : namedItem(pin.trait.id, pin.trait.name, world, 'traits'));
+
+const traitLinkPinNoValue: Rule = {
+  id: 'trait-link-pin-no-value',
+  severity: 'warning',
+  section: 'traits',
+  advanced: true,
+  summary: (count) => `${count} links have no value for a Bearer's Own pin`,
+  check: (world) => bearerPinsOf(world)
+    .filter((pin) => pin.link && pin.binds && !pin.link.pinValues?.[pin.trait.id]?.[pin.name]?.value)
+    .map((pin) => finding(
+      traitLinkPinNoValue,
+      `${quote(labelOf(pin.bearer ?? '', world))} links ${quote(labelOf(pin.trait.name, world))} with no value for ${quote(pin.name)}, so the pin is ignored`,
+      [bearerPinItem(pin, world)],
+    )),
+};
+
+const traitBearerPinUnknownName: Rule = {
+  id: 'trait-bearer-pin-unknown-name',
+  severity: 'warning',
+  section: 'traits',
+  advanced: true,
+  summary: (count) => `${count} Bearer's Own pins name an unknown placeholder`,
+  check: (world) => {
+    const byPin = new Map<string, BearerPin[]>();
+    for (const pin of bearerPinsOf(world)) {
+      if (pin.binds) continue;
+      const k = pairKey(pin.trait.id, pin.name);
+      byPin.set(k, [...(byPin.get(k) ?? []), pin]);
+    }
+    return [...byPin.values()].map((pins) => {
+      const bearers = [...new Set(pins.flatMap((p) => (p.bearer === null ? [] : [quote(labelOf(p.bearer, world))])))];
+      const where = bearers.length ? `on ${bearers.join(', ')} and in the world` : 'in the world';
+      return finding(
+        traitBearerPinUnknownName,
+        `${quote(labelOf(pins[0].trait.name, world))} pins ${quote(pins[0].name)}, an unknown name ${where}, so the pin is ignored`,
+        uniqueItems(pins.map((p) => bearerPinItem(p, world))),
+      );
+    });
+  },
+};
+
+/** Why a link adds nothing to its bearer's tree. */
+type Redundancy =
+  | { reason: 'offered' }
+  | { reason: 'reached'; by: TraitLink }
+  | { reason: 'duplicate' };
+
+/** Why the link at `i` of `links`, in tree order, adds nothing, or null when it adds something. */
+function redundancyOf(
+  lists: Pick<BearerWorld, 'traits' | 'traitGroups'>, links: readonly TraitLink[], i: number, offered: ReadonlySet<string>,
+): Redundancy | null {
+  const link = links[i];
+  if (offered.has(link.originalId)) return { reason: 'offered' };
+  const by = links.find((other) => other.kind === 'group' && other.originalId !== link.originalId
+    && broughtIds(lists, other.originalId).includes(link.originalId));
+  if (by) return { reason: 'reached', by };
+  return links.slice(0, i).some((other) => other.originalId === link.originalId) ? { reason: 'duplicate' } : null;
+}
+
+/** What follows "“Albus” links “Smite”" in a redundant-link finding. */
+function redundancyTail(why: Redundancy, bearer: string, persona: boolean, originalName: (link: TraitLink) => string): string {
+  if (why.reason === 'reached') return `, which its link to ${quote(originalName(why.by))} already brings`;
+  if (why.reason === 'duplicate') return ' twice';
+  const played = persona ? `, so the link is ignored while ${bearer} is played` : '';
+  return `, which the top level already offers the player${played}`;
+}
+
+const traitLinkRedundant: Rule = {
+  id: 'trait-link-redundant',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} links bring a trait or group their bearer already has`,
+  // Custom Persona and a Persona-marked entity play as the player, whose top level already offers every
+  // root item. Any bearer can hold one original twice through a linked group.
+  check: (world) => {
+    const lists = { traits: world.traits ?? [], traitGroups: world.traitGroups ?? [] };
+    const root = offeredWorldTraits(lists.traits, lists.traitGroups);
+    const rootIds = new Set([...root.traits, ...root.groups].map((item) => item.id));
+    const none = new Set<string>();
+    const holders = [
+      ...(world.entities ?? []).map((e) => ({ entity: e, rootOffers: e.persona ? rootIds : none, persona: !!e.persona })),
+      ...(world.customPersona ? [{ entity: customPersonaEntity(world.customPersona), rootOffers: rootIds, persona: false }] : []),
+    ];
+    const originalName = (link: TraitLink) => labelOf(originalOf(lists, link.originalId)?.item.name ?? link.originalName, world);
+    return holders.flatMap(({ entity, rootOffers, persona }) => {
+      const links = linksInTreeOrder(entity);
+      const bearer = quote(labelOf(entity.name ?? '', world));
+      return links.flatMap((link, i) => {
+        if (!originalOf(lists, link.originalId)) return [];
+        const why = redundancyOf(lists, links, i, rootOffers);
+        if (!why) return [];
+        const item = linkItem(link, originalName(link), world);
+        return [finding(traitLinkRedundant, `${bearer} links ${quote(item.name)}${redundancyTail(why, bearer, persona, originalName)}`, [item])];
+      });
     });
   },
 };
@@ -2414,6 +2645,7 @@ export const RULES: readonly Rule[] = [
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
   traitGroupMultipleDefaults, traitGroupTooSmall,
   traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
+  traitLinkRedundant, traitLinkPinNoValue, traitBearerPinUnknownName,
   placeholderWeightUnknownValue, wildcardSingleValue,
   placeholderPinUnknownValue, placeholderPinConflict, placeholderPinCycle, placeholderPinSelf,
   placeholderSlotMiss, placeholderDanglingReference, placeholderReferenceCycle, placeholderEmptyRecord,

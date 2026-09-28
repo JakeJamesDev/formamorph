@@ -3,7 +3,7 @@ import { encodePlaceholderToken, resolvePlaceholders } from '@/lib/placeholders'
 import type { GameLocation, Placeholder, Trait, TraitGroup } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 import {
-  buildLens, describeBrokenPin, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
+  buildLens, describeBrokenPin, lensActiveTraits, lensLocationOptions, lensPcOptions, lensStatOverrides, resolveLensText,
   seedLens, type LensWorld,
 } from './lens';
 
@@ -200,6 +200,55 @@ describe('pins from owned traits', () => {
     const lens = buildLens(w, { pcTraitId: 't-sedge', locationId: null });
     expect(lens.pins).toEqual({ 'ph-hair': 'jet' });
     expect(lens.pinLayers.map((l) => [l.label, l.wins])).toEqual([['Trait: Sedge-Born', true]]);
+  });
+});
+
+describe('the player bearer', () => {
+  // Templates: Classes (Paladin pins Hair Color by name, Wizard) and a default Warded pinning Homeland.
+  const templates: TraitGroup[] = [
+    { id: 'g-templates', name: 'Templates', parentId: null, system: 'templates' },
+    { id: 'g-classes', name: 'Classes', parentId: 'g-templates', exclusive: true },
+  ];
+  const templated: Trait[] = [
+    {
+      id: 't-paladin', name: 'Paladin', groupId: 'g-classes', statChanges: [], order: 0, isDefault: true,
+      placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Hair Color', value: 'ash' }],
+    },
+    { id: 't-wizard', name: 'Wizard', groupId: 'g-classes', statChanges: [], order: 1 },
+    {
+      id: 't-warded', name: 'Warded', groupId: 'g-templates', statChanges: [], isDefault: true,
+      placeholderPins: [{ placeholderId: 'ph-home', value: 'the Reach' }],
+    },
+  ];
+  const link = (id: string, originalId: string, kind: 'trait' | 'group', extra = {}) =>
+    ({ id, originalId, kind, originalName: originalId, groupId: null, ...extra });
+  const withTemplates = (over: Partial<LensWorld> = {}) =>
+    world({ traits: [...traits, ...templated], traitGroups: [...groups, ...templates], ...over });
+  const active = (w: LensWorld, pcTraitId: string | null = null) =>
+    lensActiveTraits(w, buildLens(w, { pcTraitId, locationId: null })).map((t) => t.id);
+
+  it('leaves Templates out: no PC from its groups, no default, no pin', () => {
+    const w = withTemplates();
+    expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach']);
+    expect(active(w)).toEqual([]);
+    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({});
+  });
+
+  it('adds Custom Persona’s links as the None player: their PCs, defaults and link pin values', () => {
+    const w = withTemplates({ customPersona: { traitLinks: [
+      link('cp-classes', 'g-classes', 'group', { pinValues: { 't-paladin': { 'Hair Color': { value: 'jet' } } } }),
+      link('cp-warded', 't-warded', 'trait'),
+    ] } });
+    expect(lensPcOptions(w).map((o) => o.id)).toEqual(['t-sedge', 't-reach', 't-paladin', 't-wizard']);
+    expect(active(w)).toEqual(['t-paladin', 't-warded']);
+    expect(buildLens(w, { pcTraitId: null, locationId: null }).pins).toEqual({ 'ph-hair': 'jet', 'ph-home': 'the Reach' });
+    // Picking Wizard retires Paladin, its exclusive sibling in the linked group.
+    expect(active(w, 't-wizard')).toEqual(['t-wizard', 't-warded']);
+  });
+
+  it('reads a Custom Persona link’s own default-on over the original’s', () => {
+    const w = withTemplates({ customPersona: { traitLinks: [link('cp-warded', 't-warded', 'trait', { defaults: { 't-warded': false } })] } });
+    expect(active(w)).toEqual([]);
   });
 });
 

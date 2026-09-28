@@ -14,14 +14,27 @@ import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters
 import { allPinRows, bindBearerPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
+import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
 import type { GameLocation, Placeholder, Trait } from '@/types';
-import type { RuleWorld } from './rules';
+import { bearerWorldOf, type RuleWorld } from './rules';
 
 /** The slices of the authored world the lens reads. The rest of the document is optional and read only to
  *  letter the pickers' chips the way the editor letters them — entities come first in that walk. */
 export type LensWorld =
   Pick<RuleWorld, 'traits' | 'traitGroups' | 'locations' | 'placeholders' | 'stats'>
-  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview'>>;
+  & Partial<Pick<RuleWorld, 'entities' | 'entityGroups' | 'dictionaries' | 'worldOverview' | 'customPersona'>>;
+
+/** The lens tests as the None player: the root outside Templates, plus Custom Persona's links. Cached per
+ *  world object, since every instrument reads it. */
+const playerByWorld = new WeakMap<LensWorld, Bearer>();
+function lensPlayer(world: LensWorld): Bearer {
+  let player = playerByWorld.get(world);
+  if (!player) {
+    player = resolveBearers(bearerWorldOf(world), { source: 'none' }).bearers.find((b) => b.id === PLAYER_BEARER)!;
+    playerByWorld.set(world, player);
+  }
+  return player;
+}
 
 /** What the author picked, as the two ids it comes down to. Both nullable: no PC is a real setting (the
  *  world as anyone would meet it), and a world with no locations has nowhere to stand. */
@@ -82,12 +95,11 @@ export interface BenchLens {
  */
 export function lensPcOptions(world: LensWorld): LensOption[] {
   const placeholders = allPlaceholders(world);
-  const exclusive = new Map(
-    (world.traitGroups ?? []).filter((g) => g.exclusive).map((g) => [g.id, g.name]),
-  );
+  const { traits, groups } = lensPlayer(world);
+  const exclusive = new Map(groups.filter((g) => g.exclusive).map((g) => [g.id, g.name]));
   if (exclusive.size === 0) return [];
-  const order = traitOrderIndex(world.traits ?? [], world.traitGroups ?? []);
-  const members = (world.traits ?? []).filter((t) => t.groupId != null && exclusive.has(t.groupId));
+  const order = traitOrderIndex(traits, groups);
+  const members = traits.filter((t) => t.groupId != null && exclusive.has(t.groupId));
   const letters = worldPlacementLetters(world);
   return inAuthoredOrder(members, order).map((t) => ({
     id: t.id,
@@ -164,19 +176,21 @@ export function buildLens(world: LensWorld, state: LensState): BenchLens {
   const traits = world.traits ?? [];
   const groups = world.traitGroups ?? [];
   const placeholders = allPlaceholders(world);
-  const pc = traits.find((t) => t.id === state.pcTraitId) ?? null;
+  const player = lensPlayer(world);
+  const pc = player.traits.find((t) => t.id === state.pcTraitId) ?? traits.find((t) => t.id === state.pcTraitId) ?? null;
   const location = (world.locations ?? []).find((l) => l.id === state.locationId) ?? null;
   const active = activeTraitsFor(world, pc);
   const { pins, layers } = collectPinLayers({
     traits: lensPinTraits(world, active),
     location,
-    stats: startingStatsWith(world.stats ?? [], active, { traits, groups }),
+    stats: startingStatsWith(world.stats ?? [], active, { traits: player.traits, groups: player.groups }),
     placeholders,
   });
   // The editors' labels for the same rows, matched by the stored pin: a layer carries the pin object its
   // source holds, and so does every row.
   const rows = allPinRows({
-    traits, traitGroups: groups, entities: world.entities ?? [], locations: world.locations ?? [], stats: world.stats ?? [],
+    traits, traitGroups: groups, entities: world.entities ?? [], customPersona: world.customPersona,
+    locations: world.locations ?? [], stats: world.stats ?? [],
     placeholders, placeholderOwners: placeholderOwners(world), placementLetters: worldPlacementLetters(world),
   });
   const pinLayers = layers.map((layer): LensPinLayer => ({
@@ -206,14 +220,14 @@ export function lensActiveTraits(world: LensWorld, lens: BenchLens): Trait[] {
 }
 
 /** Every trait whose pins world-level text reads in a fresh game under the lens: the player's `active`, with
- *  no persona, so a bearer-relative pin binds to the world's placeholder. */
+ *  no persona, so a bearer-relative pin binds to the world's placeholder with the Custom Persona link's value. */
 export function lensPinTraits(world: LensWorld, active: readonly Trait[]): Trait[] {
-  return active.map((t) => bindBearerPins(t, undefined, [], world.placeholders ?? []));
+  const { linkOf } = lensPlayer(world);
+  return active.map((t) => bindBearerPins(t, linkOf.get(t.id), [], world.placeholders ?? []));
 }
 
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {
-  const traits = world.traits ?? [];
-  const groups = world.traitGroups ?? [];
+  const { traits, groups } = lensPlayer(world);
   const order = traitOrderIndex(traits, groups);
   const defaults = traits.filter((t) => t.isDefault);
   if (!pc) return inAuthoredOrder(defaults, order);

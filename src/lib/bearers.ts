@@ -4,6 +4,7 @@
 import type { CustomPersonaNode, Entity, PersonaRef, Placeholder, Trait, TraitGroup, TraitLink, TraitPlacement } from '@/types';
 import { WORLD_OWNER, type GateInput, type GateOwner } from './traitGates';
 import { effectivePlacement, groupsBelow, offeredWorldTraits, ownsTraits, placeableGroupIds } from './traitTree';
+import { buildTree, flattenTree } from './groupTree';
 
 /** The player bearer's id: the world's root traits, plus Custom Persona's links when they apply. It is the
  *  player's world key, so None and a library persona share the same state. */
@@ -105,7 +106,7 @@ function subtreeOf(world: Pick<BearerWorld, 'traits' | 'traitGroups'>, group: Tr
 }
 
 /** The world node ids a link to `originalId` brings: the original and, for a group, its live subtree. */
-function broughtIds(world: BearerWorld, originalId: string): string[] {
+export function broughtIds(world: Pick<BearerWorld, 'traits' | 'traitGroups'>, originalId: string): string[] {
   const original = originalOf(world, originalId);
   if (!original) return [];
   if (original.kind === 'trait') return [originalId];
@@ -119,26 +120,45 @@ const withLinkDefault = (trait: Trait, link: TraitLink): Trait => {
   return on === undefined ? trait : { ...trait, isDefault: on };
 };
 
-/** Each link's expansion: the original moved to the link's place, with its subtree, or nothing. */
-function expandLinks(world: BearerWorld, links: readonly TraitLink[], place?: (link: TraitLink) => TraitPlacement) {
+/** Each link's expansion: the original moved to the link's place, with its subtree, or nothing. Links run
+ *  in `links` order, and an item `held` or brought by an earlier link is skipped, so each original expands
+ *  once per bearer. */
+function expandLinks(
+  world: BearerWorld, links: readonly TraitLink[], place?: (link: TraitLink) => TraitPlacement, held: ReadonlySet<string> = new Set(),
+) {
   const traits: Trait[] = [];
   const groups: TraitGroup[] = [];
   const linkOf = new Map<string, TraitLink>();
+  const brought = new Set(held);
   for (const link of links) {
     const original = originalOf(world, link.originalId);
-    if (!original) continue;
+    if (!original || brought.has(original.item.id)) continue;
     const at = place ? place(link) : { groupId: link.groupId, order: link.order ?? 0 };
     if (original.kind === 'trait') {
       traits.push(withLinkDefault({ ...original.item, ...at }, link));
       linkOf.set(original.item.id, link);
+      brought.add(original.item.id);
       continue;
     }
     const subtree = subtreeOf(world, original.item);
-    groups.push({ ...original.item, parentId: at.groupId, order: at.order }, ...subtree.groups);
-    traits.push(...subtree.traits.map((t) => withLinkDefault(t, link)));
-    for (const item of [original.item, ...subtree.groups, ...subtree.traits]) linkOf.set(item.id, link);
+    // A subgroup already brought took its own subtree with it, so filtering by id keeps the rest in place.
+    const subGroups = subtree.groups.filter((g) => !brought.has(g.id));
+    const subTraits = subtree.traits.filter((t) => !brought.has(t.id));
+    groups.push({ ...original.item, parentId: at.groupId, order: at.order }, ...subGroups);
+    traits.push(...subTraits.map((t) => withLinkDefault(t, link)));
+    for (const item of [original.item, ...subGroups, ...subTraits]) {
+      linkOf.set(item.id, link);
+      brought.add(item.id);
+    }
   }
   return { traits, groups, linkOf };
+}
+
+/** An entity's links in its tree's order: by place among its own groups, then by order. */
+export function linksInTreeOrder(entity: Entity, links: readonly TraitLink[] = entity.traitLinks ?? []): TraitLink[] {
+  const byId = new Map(links.map((l) => [l.id, l]));
+  const leaves = links.map((l) => ({ id: l.id, name: '', groupId: l.groupId, order: l.order }));
+  return flattenTree(buildTree(entity.traitGroups ?? [], leaves)).flatMap((row) => byId.get(row.id) ?? []);
 }
 
 /** The ids the player already holds before the played persona's own tree: every root trait and group outside
@@ -156,7 +176,7 @@ function playerHeldIds(world: BearerWorld, persona: PersonaRef | undefined): Set
 function entityBearer(world: BearerWorld, entity: Entity, persona: PersonaRef | undefined, isPlayer: boolean, present: boolean): Bearer {
   const held = isPlayer ? playerHeldIds(world, persona) : null;
   const links = (entity.traitLinks ?? []).filter((l) => !held || !broughtIds(world, l.originalId).some((id) => held.has(id)));
-  const expanded = expandLinks(world, links);
+  const expanded = expandLinks(world, linksInTreeOrder(entity, links));
   return {
     id: entity.id, name: entity.name, entity, isPlayer, present,
     traits: [...(entity.traits ?? []), ...expanded.traits],
@@ -165,13 +185,16 @@ function entityBearer(world: BearerWorld, entity: Entity, persona: PersonaRef | 
   };
 }
 
-/** Custom Persona's links expanded at the player's root, after every root item. */
+/** Custom Persona's links expanded at the player's root, after every root item. What the root offers stays
+ *  the root's. */
 function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof offeredWorldTraits>) {
   const links = world.customPersona?.traitLinks ?? [];
   const rootOrders = [...root.groups.filter((g) => g.parentId === null), ...root.traits.filter((t) => (t.groupId ?? null) === null)]
     .map((item, i) => item.order ?? i);
   const afterRoot = Math.max(-1, ...rootOrders) + 1;
-  return expandLinks(world, links, (link) => ({ groupId: null, order: afterRoot + (link.order ?? links.indexOf(link)) }));
+  const order = (link: TraitLink) => link.order ?? links.indexOf(link);
+  const rootIds = new Set([...root.traits, ...root.groups].map((item) => item.id));
+  return expandLinks(world, [...links].sort((a, b) => order(a) - order(b)), (link) => ({ groupId: null, order: afterRoot + order(link) }), rootIds);
 }
 
 /** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library persona. */
