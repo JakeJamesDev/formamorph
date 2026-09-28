@@ -163,7 +163,7 @@ An entity's links go with it to the library, to a character card and into a worl
 
 With no match, or two, the link is dropped. A link to a trait the entity already has is dropped too. Its **This Link** picks follow their traits the same way. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
 
-The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **This Link**, **Remove Link** and **Detach**. Opened from the library, it shows them by name only.
+The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **This Link**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
 
 ## Templates
 
