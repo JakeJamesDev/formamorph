@@ -16,11 +16,7 @@ export function useListSearch(): ListSearch {
 }
 
 /** What a + menu's rows use: run an add with the typed text, then clear the box and close the menu. */
-export type ListAddApi = {
-  typed: string;
-  add: (action: (typed: string) => void) => void;
-  close: () => void;
-};
+export type ListAddApi = { add: (action: (typed: string) => void) => void };
 
 export const ListAddContext = createContext<ListAddApi | null>(null);
 

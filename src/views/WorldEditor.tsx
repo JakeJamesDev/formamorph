@@ -774,16 +774,9 @@ const WorldEditorInner = ({
       activeTab === "locations" ? locations :
       activeTab === "traits" ? traits :
       activeTab === "statUpdates" ? statUpdates : [];
-
-    // Search what the author reads: the row's label, the placeholders behind its chips, and their values.
-    // A name holding a chip is stored as a token, so matching the raw value would mean typing a UUID.
-    const needle = searchTerm.toLowerCase();
-    const hit = (text: string) => text.toLowerCase().includes(needle);
-    return itemsToFilter.filter((item) =>
-      hit(labelPlaceholders(item.name, placeholders, { letters: placementLetters, owners: placeholderOwners }))
-      || chipPlaceholderNames(item.name, placeholders, { owners: placeholderOwners }).some(hit)
-      || hit(describePlaceholders(item.name, placeholders)));
-  }, [activeTab, stats, entities, locations, traits, statUpdates, searchTerm, placeholders, placementLetters, placeholderOwners]);
+    const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
+    return itemsToFilter.filter((item) => matchesListSearch(item.name, search.term, names));
+  }, [activeTab, stats, entities, locations, traits, statUpdates, search.term, placeholders, placementLetters, placeholderOwners]);
 
   // The search results reuse one row for every tab, and entities are the only kind here that follows a
   // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
