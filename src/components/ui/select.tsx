@@ -13,7 +13,7 @@ const SelectValue = SelectPrimitive.Value
 
 // A dense row asks for `size="sm"` rather than hand-shrinking with `h-8`.
 const selectTriggerVariants = cva(
-  "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+  "flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-left placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
   {
     variants: { size: { default: "h-10 text-label", sm: "h-8 text-meta" } },
     defaultVariants: { size: "default" },

@@ -119,6 +119,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The Entities chip with Name content lists only who is in the scene in the Choices and re-roll prompts.** That variant read the whole location roster, past the presence filter the other variants respect. Every variant of the chip now comes from one enumerated set, so a new variant cannot miss the filter.
   - **Each character's planning and diary requests read that character's description with its placeholders filled in.** They sent the raw placeholder tokens before. The planning request runs with Staged thinking. Scene pictures built from a character's description fill them in too.
   - **Drawing a scene again uses the tags you edited.** **Draw again** and **Generate Scene Image** wrote new tags from the narration before, so a redraw after an edit used the old tags and the next one used your edit. Only **Re-roll tags** writes new tags now.
+  - **A select's value starts at its left edge, however long it is.** A value too long for the box was centered before it was cut off, so it read as indented by a different amount on every row. It now starts at the left, like a short one, and is cut off at the right.
 
 - **🛠️ Developer tooling**
   - **Design System:**
