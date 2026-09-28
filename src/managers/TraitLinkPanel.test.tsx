@@ -89,6 +89,9 @@ describe('ThisLinkSection — bearer-relative pins', () => {
     renderSection({ id: 'mira', name: 'Mira', traitLinks: [link('paladin', 'trait')] }, 'paladin');
     const row = screen.getByRole('list', { name: 'Pinned Values' });
     expect(within(row).getByText(/Class Garb →/)).toBeInTheDocument();
+    // Every row's label and select sit in one two-column grid, so the selects share one left edge.
+    expect(row).toHaveClass('grid');
+    expect(within(row).getByText(/Class Garb →/).closest('li')).toHaveClass('contents');
     const select = screen.getByRole('combobox', { name: 'Class Garb Value' });
     expect(select).toHaveTextContent('No Value');
     await userEvent.click(select);
