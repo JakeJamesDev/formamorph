@@ -7,6 +7,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import EntityStorageService from '@/services/EntityStorageService';
 import { SELF_ENTITY } from '@/lib/portableTraits';
 import type { LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
+import { encodePlaceholderToken } from '@/lib/placeholders';
 import { phValues } from '@/test/placeholderValues';
 import type { Entity } from '@/types';
 
@@ -41,10 +42,18 @@ const wolf: Entity = {
   ],
 };
 
-async function openTraits() {
-  render(<SettingsProvider><EntityEditorModal entityId={null} draft={wolf} onClose={vi.fn()} /></SettingsProvider>);
+async function openTraits(draft: Entity = wolf, traitWorld?: LibraryEditorWorld) {
+  render(<SettingsProvider><EntityEditorModal entityId={null} draft={draft} onClose={vi.fn()} traitWorld={traitWorld} /></SettingsProvider>);
   await userEvent.click(screen.getByRole('tab', { name: 'Traits' }));
 }
+
+const searchBox = () => screen.getByPlaceholderText('Search or add new traits');
+const openAddMenu = () => userEvent.click(screen.getByRole('button', { name: /^Add to Wolf/ }));
+const selectedRow = () => within(document.querySelector('[data-editor-row-selected]') as HTMLElement);
+const saveEntity = async () => {
+  await userEvent.click(screen.getByRole('button', { name: /^Save$/ }));
+  return vi.mocked(EntityStorageService.storeEntity).mock.calls.at(-1)![0].data as Entity;
+};
 
 describe('the library entity Traits tab', () => {
   it("shows the entity's own traits and groups, and edits an owned trait with no Stats tab", async () => {
@@ -69,13 +78,105 @@ describe('the library entity Traits tab', () => {
     expect(screen.queryByText('Playing As')).not.toBeInTheDocument();
   });
 
-  it('adds a trait to the entity and saves it with the entity', async () => {
+  it('adds a trait to the entity from the + menu and saves it with the entity', async () => {
     await openTraits();
-    await userEvent.click(screen.getByRole('button', { name: 'Add Trait' }));
+    await openAddMenu();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Trait to Wolf' }));
     expect(screen.getAllByText('New Trait').length).toBeGreaterThan(0);
-    await userEvent.click(screen.getByRole('button', { name: /^Save$/ }));
-    const saved = vi.mocked(EntityStorageService.storeEntity).mock.calls.at(-1)![0].data as Entity;
-    expect(saved.traits!.map((t) => t.name)).toEqual(['Tamed', 'Oath', 'New Trait']);
+    expect((await saveEntity()).traits!.map((t) => t.name)).toEqual(['Tamed', 'Oath', 'New Trait']);
+  });
+
+  it('keeps the list beside the details, with no back row', async () => {
+    await openTraits();
+    await userEvent.click(screen.getByText('Oath'));
+    expect(screen.getByRole('tablist', { name: 'Trait Fields' })).toBeInTheDocument();
+    expect(screen.getByText('Bond')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Traits' })).not.toBeInTheDocument();
+  });
+});
+
+describe("the library entity Traits tab's toolbar", () => {
+  it('replaces the Add buttons with the search box and a + menu that adds to the entity', async () => {
+    await openTraits();
+    expect(searchBox()).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Trait' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Group' })).not.toBeInTheDocument();
+    await openAddMenu();
+    expect(screen.getByRole('button', { name: 'Add Trait to Wolf' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add Group to Wolf' })).toBeInTheDocument();
+  });
+
+  it("draws the entity's name through its placeholders on the menu rows", async () => {
+    const token = encodePlaceholderToken({ id: 'p-kind', mode: 'world', placementId: 'v-kind' });
+    await openTraits({
+      ...wolf, name: `Wolf of ${token}`, placeholders: [{ id: 'p-kind', name: 'Kind', values: phValues(['Grey']) }],
+    });
+    await openAddMenu();
+    const row = screen.getByRole('button', { name: /^Add Trait to Wolf of/ });
+    expect(row.textContent).not.toContain('{{');
+    expect(row.textContent).toMatch(/Kind/);
+  });
+
+  it('names a new trait from the search text, clears the box, and opens its details', async () => {
+    await openTraits();
+    await userEvent.type(searchBox(), 'Fangs');
+    await openAddMenu();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Trait to Wolf' }));
+    expect(searchBox()).toHaveValue('');
+    expect(screen.getByRole('tablist', { name: 'Trait Fields' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveTextContent('Fangs');
+    expect((await saveEntity()).traits!.map((t) => t.name)).toEqual(['Tamed', 'Oath', 'Fangs']);
+  });
+
+  it('names a new group from the search text and opens it', async () => {
+    await openTraits();
+    await userEvent.type(searchBox(), 'Marks');
+    await openAddMenu();
+    await userEvent.click(screen.getByRole('button', { name: 'Add Group to Wolf' }));
+    expect(searchBox()).toHaveValue('');
+    expect(screen.getByLabelText('Group Name')).toHaveTextContent('Marks');
+    expect((await saveEntity()).traitGroups!.map((g) => g.name)).toEqual(['Bond', 'Marks']);
+  });
+
+  it('keeps its own empty hint on an entity with no traits', async () => {
+    await openTraits({ id: 'wolf', name: 'Wolf' });
+    expect(screen.getByText('No traits yet. Add one to describe this entity to the AI.')).toBeInTheDocument();
+  });
+});
+
+describe("the library entity Traits tab's search", () => {
+  it('lists matching traits flat while a search is typed, and no groups', async () => {
+    await openTraits();
+    await userEvent.type(searchBox(), 'ta');
+    expect(screen.getByText('Tamed')).toBeInTheDocument();
+    expect(screen.queryByText('Oath')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bond')).not.toBeInTheDocument();
+    await userEvent.clear(searchBox());
+    await userEvent.type(searchBox(), 'Bond');
+    expect(screen.getByText('No traits match “Bond”.')).toBeInTheDocument();
+    await userEvent.clear(searchBox());
+    expect(screen.getByText('Bond')).toBeInTheDocument();
+  });
+
+  it('says when no trait matches', async () => {
+    await openTraits();
+    await userEvent.type(searchBox(), 'zzz');
+    expect(screen.getByText('No traits match “zzz”.')).toBeInTheDocument();
+  });
+
+  it("removes and duplicates a match through the entity's own traits", async () => {
+    await openTraits();
+    await userEvent.type(searchBox(), 'Tamed');
+    await userEvent.click(screen.getByText('Tamed'));
+    await userEvent.click(selectedRow().getByRole('button', { name: 'Duplicate' }));
+    // The copy is selected, so its row and its open details both show the name.
+    expect(selectedRow().getByText('Tamed (Copy)')).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Tamed'));
+    await userEvent.click(selectedRow().getByRole('button', { name: 'Delete' }));
+    expect(screen.queryByText('Tamed')).not.toBeInTheDocument();
+    const saved = await saveEntity();
+    expect(saved.traits!.map((t) => t.name)).toEqual(['Oath', 'Tamed (Copy)']);
+    expect(saved.traits!.find((t) => t.name === 'Tamed (Copy)')!.groupId).toBe('g-bond');
   });
 });
 
@@ -158,5 +259,22 @@ describe("the library entity Traits tab's links", () => {
     await userEvent.click(screen.getByText('Class'));
     await userEvent.click(screen.getByRole('combobox', { name: 'Garb Value' }));
     expect(screen.getByRole('option', { name: 'robes' })).toBeInTheDocument();
+  });
+
+  it("lists a Link's own row in a search, by the name it shows, and never a linked group's inner rows", async () => {
+    await open(world);
+    await userEvent.type(searchBox(), 'Class');
+    expect(screen.getByText('Class')).toBeInTheDocument();
+    expect(screen.queryByText('Wizard')).not.toBeInTheDocument();
+    await userEvent.clear(searchBox());
+    await userEvent.type(searchBox(), 'Wizard');
+    expect(screen.getByText('No traits match “Wizard”.')).toBeInTheDocument();
+    await userEvent.clear(searchBox());
+    // Smite has no original in this world, so its row shows the stored name.
+    await userEvent.type(searchBox(), 'Smite');
+    await userEvent.click(screen.getByText('Smite'));
+    expect(screen.getByText(/This world doesn't have it/)).toBeInTheDocument();
+    await userEvent.click(selectedRow().getByRole('button', { name: 'Remove Link' }));
+    expect((await saved()).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
   });
 });

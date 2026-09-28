@@ -46,4 +46,21 @@ describe('ListDetail', () => {
     screen.getByRole('button', { name: /placeholders/i }).click();
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it('stacked: pushes the detail over the list with a back button at desktop width', () => {
+    mockMatchMedia(false);
+    const onBack = vi.fn();
+    render(<ListDetail {...base} stacked showDetail backLabel="Traits" onBack={onBack} />);
+    const back = screen.getByRole('button', { name: /traits/i });
+    // The list stays mounted underneath, as on the mobile push.
+    expect(screen.getByText('LIST-CONTENT')).toBeTruthy();
+    back.click();
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('stacked: hides the detail panel from assistive tech while the list shows', () => {
+    mockMatchMedia(false);
+    render(<ListDetail {...base} stacked showDetail={false} backLabel="Traits" />);
+    expect(screen.getByText('DETAIL-CONTENT').closest('[aria-hidden="true"]')).not.toBeNull();
+  });
 });
