@@ -3,6 +3,7 @@ import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { CircleUserRound, Folder, Info, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
   CUSTOM_PERSONA_ID, CUSTOM_PERSONA_NAME, getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
+  getEntityRootDropProjection, applyEntityRootDrop,
   ownedTraitRows, ownedTraitTree, type FlatTraitNode, type LinkRow, type TraitDropRefusal,
 } from '@/lib/traitTree';
 import { useEditBearer } from './useEditBearer';
@@ -183,9 +184,16 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
 
   const adapter: SortableTreeAdapter<FlatTraitNode> = {
     getVisible: (collapsed) => ownedTraitRows(tree, collapsed),
-    projectDepth: (visible, activeId, overId, offsetLeft) =>
-      getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced })?.depth ?? null,
+    projectDepth: (visible, activeId, overId, offsetLeft) => (entityRoot
+      ? getEntityRootDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT)
+      : getOwnedTraitDropProjection(tree, visible, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced }))?.depth ?? null,
     onDrop: (activeId, overId, offsetLeft, collapsed) => {
+      // A one-entity tree reorders the entity's own items among its links, and nothing else moves.
+      if (entityRoot) {
+        const moved = applyEntityRootDrop(entityRoot.bearer, entityRoot.world, collapsed, activeId, overId, offsetLeft, TREE_INDENT);
+        if (moved) editEntity(entityRoot.bearer.id, () => moved);
+        return;
+      }
       // Creating a link is Advanced only; existing links still drag in Simple.
       const next = applyOwnedTraitDrop(
         lists, entities, collapsed, activeId, overId, offsetLeft, TREE_INDENT, { createLinks: advanced, emptySystemNodes: advanced },
@@ -231,7 +239,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
       }
       const isGroup = node.kind === 'group';
       const ownerId = tree.ownerOf.get(node.id);
-      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, ownerId ?? PLAYER_BEARER, node.id), placeholders);
+      // A one-entity tree's own rows have no owner entry, since the editor edits them as the root; their gates
+      // are still the entity's.
+      const gateBearer = ownerId ?? entityRoot?.bearer.id ?? PLAYER_BEARER;
+      const { unresolved, meta, metaTitle } = isGroup ? {} : gateMeta(gateOf(gates, gateBearer, node.id), placeholders);
       if (node.group?.system === 'templates') {
         return {
           lead: 'chevron',

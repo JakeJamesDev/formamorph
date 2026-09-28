@@ -63,7 +63,7 @@ const FIELD_KEYS: Record<string, string> = {
 
 const WorldPanel = () => {
   const [tab, setTab] = useState<EntityPanelTab>('profile');
-  return <EntityManager entity={entity} tab={tab} onTabChange={setTab} />;
+  return <EntityManager entity={entity} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} />;
 };
 
 const ownText = (el: Element) =>
@@ -234,7 +234,7 @@ describe('the two entity editors', () => {
     world.updateEntity.mockClear();
     const Panel = () => {
       const [tab, setTab] = useState<EntityPanelTab>('profile');
-      return <EntityManager entity={withOpenings} tab={tab} onTabChange={setTab} />;
+      return <EntityManager entity={withOpenings} tab={tab} onTabChange={setTab} traitId={null} onTraitIdChange={() => {}} />;
     };
     render(<SettingsProvider><Panel /></SettingsProvider>);
     expect(await rowsOn()).toEqual(library);

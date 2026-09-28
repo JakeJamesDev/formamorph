@@ -88,7 +88,7 @@ import { LinkedFromLine, ThisLinkSection } from '../managers/TraitLinkPanel';
 import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
 import { LinkToBearerButton } from '../managers/BearerPicker';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
-import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
+import { EntityTraitNodePanel } from '../managers/EntityTraitNodePanel';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -245,6 +245,9 @@ const WorldEditorInner = ({
   // draw one frame of a strip with nothing selected over an empty body. The choice itself is kept, so
   // returning to Advanced returns to the tab the author left.
   const shownEntityTab = entityTabs.some((t) => t.value === entityTab) ? entityTab : 'profile';
+  // The entity Traits tab's open trait, held here for the same reason. Never reset here: the tab's editor
+  // clears a selection the shown entity doesn't hold, and a tab switch away and back keeps it.
+  const [entityTraitId, setEntityTraitId] = useState<string | null>(null);
   // The location panel's own tabs, held here for the same reason and answered the same way.
   const [locationTab, setLocationTab] = useState<LocationPanelTab>('details');
   const locationTabs = useMemo(() => locationPanelTabsFor(advanced), [advanced]);
@@ -1013,7 +1016,8 @@ const WorldEditorInner = ({
           entity={selectedEntity}
           tab={shownEntityTab}
           onTabChange={setEntityTab}
-          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
+          traitId={entityTraitId}
+          onTraitIdChange={setEntityTraitId}
           focusField={focusFieldForItem(findField, selectedEntity.id)}
         />
       )}
@@ -1039,7 +1043,6 @@ const WorldEditorInner = ({
         <EntityTraitNodePanel
           key={selectedTraitNode.id}
           entity={selectedTraitNode}
-          onOpen={setSelectedItemId}
           onOpenEntity={() => navigateToBenchItem('entities', selectedTraitNode.id, 'traits')}
         />
       )}

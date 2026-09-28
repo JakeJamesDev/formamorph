@@ -4,7 +4,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { PanelTabsList } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
-import EntityTraitsSection from './EntityTraitsSection';
+import EntityTraitsMirror from './EntityTraitsMirror';
 import { EntityOpenings } from './OpeningsPanel';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { statCodeName } from '@/lib/statCodeNames';
@@ -15,23 +15,25 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
 import { entityPanelTabsFor, entityTabFillsPane, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 /**
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Traits, Openings
- * and Placeholders. A trait row opens on the Traits tab through `onOpenTrait`.
+ * and Placeholders. The Traits tab is the Traits tab's editor over this entity alone.
  *
- * The panel remounts per entity, so the chosen tab is the editor's to hold and arrives as a prop.
+ * The panel remounts per entity, so the chosen tab and the Traits tab's open trait are the editor's to hold
+ * and arrive as props.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the Overview panel takes for its own pair.
  */
-const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
+const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, focusField }: {
   entity: Entity;
-  onOpenTrait?: (id: string) => void;
   tab: EntityPanelTab;
   onTabChange: (tab: EntityPanelTab) => void;
+  /** The Traits tab's open trait, group or Link; null shows its list. */
+  traitId: string | null;
+  onTraitIdChange: (id: string | null) => void;
   focusField?: FocusFieldHint | null;
 }) => {
   const { updateEntity, entities, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
@@ -119,11 +121,11 @@ const EntityManager = ({ entity, tab, onTabChange, onOpenTrait, focusField }: {
           <EntityDescriptionFields {...groupProps} />
         </TabsContent>
 
-        <TabsContent value="traits" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
-          <ScrollArea className="min-h-0 flex-1">
-            <EntityTraitsSection entity={entity} onOpen={(id) => onOpenTrait?.(id)} />
-          </ScrollArea>
-        </TabsContent>
+        {advanced && (
+          <TabsContent value="traits" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+            <EntityTraitsMirror entity={entity} selectedId={traitId} onSelect={onTraitIdChange} />
+          </TabsContent>
+        )}
 
         {advanced && (
           <TabsContent value="openings">
