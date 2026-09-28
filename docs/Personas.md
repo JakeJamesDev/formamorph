@@ -71,7 +71,7 @@ A row above **Stats**, **Traits** and **Location** shows your persona's portrait
 | When you change | What happens |
 |---|---|
 | Memories written before | They keep the old name |
-| A world entity you stop playing | It comes back to the cast on the next turn |
+| A world entity you stop playing | It comes back to the cast on the next turn. An entity the author made only for the player leaves the world. |
 | A save from before personas | It starts on **None**, and you can give it a persona this way |
 | The world | It remembers the new pick |
 

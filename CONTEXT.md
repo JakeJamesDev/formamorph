@@ -209,3 +209,15 @@ _Avoid_: placeholder context, editor state
 **Acquired**:
 A trait the player has — chosen at creation or picked up in play. A trait the player switched off is still Acquired.
 _Avoid_: held
+
+**Link**:
+A node in an entity's trait tree (or Custom Persona's) that points at an Original and reads it live. Only its default-on state and pin values are its own. A Link is not a trait.
+_Avoid_: shared trait, reference, copy; linked copy (that is a library item's world copy)
+
+**Bearer**:
+An entity, or Custom Persona, whose trait tree holds a trait, directly or through a Link. The played persona is the Bearer "You". Requirements and pins resolve per Bearer.
+_Avoid_: owner (an owner holds its own traits only), holder
+
+**Original**:
+The world trait or group a Link points at, at the root or under Templates. An entity's own trait is never an Original.
+_Avoid_: source (a listing's term), template, parent

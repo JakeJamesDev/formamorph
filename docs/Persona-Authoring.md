@@ -11,6 +11,8 @@ How your world meets the player's persona: playable entities, the **Persona Choi
 | You want | Use |
 |---|---|
 | The player to play as one of your entities | The **Persona** checkbox on that entity |
+| An entity that exists only when the player picks it | The **Persona-Only** checkbox under **Persona** |
+| Traits for a player with no world persona | The **Custom Persona** node in the **Traits** tab |
 | To decide who the player can be | **Persona Choice** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Player Name** chip |
@@ -23,7 +25,8 @@ When a player picks it:
 
 | What | Effect |
 |---|---|
-| The cast | The entity leaves it for that game. It returns when the player changes persona. |
+| The cast | The entity leaves it for that game. It returns when the player changes persona, unless it's [Persona-Only](#persona-only-entities). |
+| Its traits | They're the player's traits, marked **You**. See [Entity Traits](World-Editor-Traits#entity-traits). |
 | The AI | Reads that everyone in the world already knows this person, and that your text about the entity means the player |
 | Starting location | The entity's first location that is a starting location is preselected. The player can change it. |
 | [Entity Openings](World-Editor-Openings#entity-openings) | The entity's own openings leave the draw, so page one never greets the player as themselves |
@@ -33,6 +36,24 @@ Only entities you select are playable. The checkbox is your statement that the e
 > ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you select the checkbox. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
 A selected **Persona** checkbox turns on the notice beside the mode switch.
+
+## Persona-Only Entities
+
+Some entities exist only as a player slot, such as a "Custom Character" with no story of their own. Select the **Persona-Only** checkbox under **Persona** to keep one out of the world unless the player picks it.
+
+| The player | The entity |
+|---|---|
+| Picks it | Is the player, the same as any playable entity |
+| Picks someone else, or **None** | Isn't in the world. It's left out of the cast, scenes, diaries and the side panel. |
+
+- **Its openings never draw.** When picked, it's the player. When not picked, it's absent.
+- **The checkbox is in the World Editor only.** A library entity is never in a cast, so it doesn't need one.
+
+## Traits for Any Persona
+
+A player who picks **None** or a persona from their own library has no world entity's traits. The **Custom Persona** node gives them traits anyway, such as a race and a class. Its linked traits are the player's whenever no world persona is picked, and the picks carry over between **None** and library personas.
+
+Custom Persona is in the **Traits** tab. See [Custom Persona](World-Editor-Traits#custom-persona).
 
 ## Persona Choice
 

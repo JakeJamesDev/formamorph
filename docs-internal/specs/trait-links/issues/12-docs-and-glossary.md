@@ -1,6 +1,7 @@
 # 12: Docs and glossary
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 3cb80813
 Blocked by: 09 — Linked traits in AI context; 10 — Links across library and import; 11 — Test Bench link rules
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: low
