@@ -283,3 +283,5 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q56 | A copy's overridden value text and weight show "Blueprint changed" through 03's shared control. |
   | Q57 | Unmark and delete confirm only when something goes with the entity; an empty marked entity unmarks or deletes with no dialog, like a trait or placeholder today. |
   | Q58 | The empty marked entity shows as a bearer in Advanced only, like an empty Blueprints group. Basic cannot link or mark, so it hides it. |
+  | Q59 | An edit that lands on the blueprint's value still makes an override. Reset is the one way back to live. |
+  | Q60 | Every write takes a fresh snapshot, so editing a stale field clears "Blueprint changed". The marker means "the blueprint changed after your last edit". |
