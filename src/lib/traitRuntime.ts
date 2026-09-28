@@ -16,11 +16,11 @@ import type {
 } from '@/types';
 import { clamp } from './utils';
 import { ownedTraitStatesFrom, recordKey } from './ownedTraitState';
-import { activeOwnedTraitIds, playedEntityId } from './ownedTraitsInPlay';
+import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
-  gateOf, gateStates, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
+  gateOf, gateStates, playerOwnerIds, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
 } from './traitGates';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
@@ -75,30 +75,43 @@ export function heldPlayerTraits(traits: readonly Trait[], world: TraitWorld): T
   return traits.filter((t) => held.has(t.id));
 }
 
-/** The played persona's active traits that change stats: its links, since an owned trait never carries stat
- *  effects. Empty with no persona, or under a world with no bearers. */
-export function playedStatTraits(state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): Trait[] {
-  const played = playedEntityId(world.persona);
-  const owner = played ? world.bearers?.find((o) => o.id === played) : undefined;
-  if (!played || !owner) return [];
-  const on = new Set(activeOwnedTraitIds(state.ownedTraits ?? {})[played] ?? []);
-  return owner.traits.filter((t) => on.has(t.id) && hasStatEffects(t));
+/** The entity bearers whose active traits are the player's, in bearer order: the Custom Persona entity under
+ *  None and a library persona, and the played persona. Empty with no persona or no bearers. */
+const playerEntityBearers = (world: TraitWorld): readonly GateOwner[] => {
+  if (!world.persona || !world.bearers) return [];
+  const ids = new Set(playerOwnerIds(world.persona, world.entities));
+  return world.bearers.filter((o) => o.id !== WORLD_OWNER && ids.has(o.id));
+};
+
+/** Whether `ownerId` is a player entity bearer, whose stat traits move the player's stats. */
+const isPlayerBearer = (world: TraitWorld, ownerId: string): boolean => playerEntityBearers(world).some((o) => o.id === ownerId);
+
+/** Each player entity bearer's active traits that change stats, with the bearer that holds them: the played
+ *  persona's links, and the Custom Persona entity's, since an owned trait never carries stat effects. */
+function playedStatTraitsByOwner(state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): [string, Trait][] {
+  const active = activeOwnedTraitIds(state.ownedTraits ?? {});
+  return playerEntityBearers(world).flatMap((owner) => {
+    const on = new Set(active[owner.id] ?? []);
+    return owner.traits.filter((t) => on.has(t.id) && hasStatEffects(t)).map((t): [string, Trait] => [owner.id, t]);
+  });
 }
 
-/** Every trait whose stat effects are in force: the player's active held world traits, then the played
- *  persona's active linked stat traits. Bounds derive from this set, and so do stat toggles. */
+/** The player's active linked traits that change stats: the played persona's, and the Custom Persona
+ *  entity's under None and a library persona. Empty with no persona, or under a world with no bearers. */
+export const playedStatTraits = (state: Pick<TraitForceState, 'ownedTraits'>, world: TraitWorld): Trait[] =>
+  playedStatTraitsByOwner(state, world).map(([, t]) => t);
+
+/** Every trait whose stat effects are in force: the player's active held world traits, then the player's
+ *  active linked stat traits. Bounds derive from this set, and so do stat toggles. */
 export function statTraitsInForce(state: TraitForceState, world: TraitWorld): Trait[] {
   return [...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world), ...playedStatTraits(state, world)];
 }
 
 /** Each stat trait in force with its record key, so two worlds' sets compare by what the record is under. */
-const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => {
-  const played = playedEntityId(world.persona);
-  return [
-    ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
-    ...playedStatTraits(state, world).map((t): [string, Trait] => [recordKey(played!, t.id), t]),
-  ];
-};
+const keyedStatTraits = (state: TraitForceState, world: TraitWorld): [string, Trait][] => [
+  ...heldPlayerTraits(activeTraits(state.traits, state.disabledTraitIds), world).map((t): [string, Trait] => [t.id, t]),
+  ...playedStatTraitsByOwner(state, world).map(([ownerId, t]): [string, Trait] => [recordKey(ownerId, t.id), t]),
+];
 
 /** Summed trait contributions to one stat, per axis. */
 function traitContributions(statId: string, traits: readonly Trait[]) {
@@ -329,27 +342,26 @@ function switchTrait(state: TraitRuntimeState, trait: Trait, on: boolean, world:
 }
 
 /** Switch a bearer's trait in its lists, moving stats when the trait has them and the player bears it: the
- *  world's traits, and the played persona's linked stat traits. A cast entity's trait moves lists only. */
+ *  world's traits, and a player entity bearer's linked stat traits. A cast entity's trait moves lists only. */
 function flipBearerTrait(state: TraitRuntimeState, ownerId: string, trait: Trait, on: boolean, world: TraitWorld): TraitRuntimeState {
   if (ownerId === WORLD_OWNER) return switchTrait(state, trait, on, world);
-  if (ownerId === playedEntityId(world.persona) && hasStatEffects(trait)) return switchTrait(state, trait, on, world, ownerId);
+  if (isPlayerBearer(world, ownerId) && hasStatEffects(trait)) return switchTrait(state, trait, on, world, ownerId);
   return withOwnedSwitch(state, ownerId, trait.id, on);
 }
 
 /**
- * Apply the played persona's active linked stat traits, in its tree order, as picking them at creation
+ * Apply the player's active linked stat traits, bearer by bearer in tree order, as picking them at creation
  * would. For a new game and the Enter World preview, whose owned picks are already chosen.
  */
 export function applyPlayedStatTraits(state: TraitRuntimeState, world: TraitWorld): { state: TraitRuntimeState; applied: Trait[] } {
-  const played = playedEntityId(world.persona);
-  const applied = playedStatTraits(state, world);
+  const applied = playedStatTraitsByOwner(state, world);
   let next = state;
   const on: Trait[] = [];
-  for (const trait of applied) {
+  for (const [ownerId, trait] of applied) {
     on.push(trait);
-    next = moveStats(next, trait, true, recordKey(played!, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
+    next = moveStats(next, trait, true, recordKey(ownerId, trait.id), [...activeTraits(next.traits, next.disabledTraitIds), ...on]);
   }
-  return { state: next, applied };
+  return { state: next, applied: applied.map(([, t]) => t) };
 }
 
 /**
@@ -520,12 +532,11 @@ function withOwnedSwitch(state: TraitRuntimeState, ownerId: string, traitId: str
 }
 
 /** A trait as the log and the banner name it: an NPC's owned trait carries its owner's name. The world's
- *  traits and the played entity's are the player's own, so they read bare. */
+ *  traits and a player entity bearer's are the player's own, so they read bare. */
 function labeler(world: TraitWorld, nameOf: (trait: Trait) => string) {
-  const played = playedEntityId(world.persona);
   const owners = new Map(entityBearers(world).map((o) => [o.id, o]));
   return (trait: Trait, ownerId: string): string => {
-    const owner = ownerId === WORLD_OWNER || ownerId === played ? undefined : owners.get(ownerId);
+    const owner = ownerId === WORLD_OWNER || isPlayerBearer(world, ownerId) ? undefined : owners.get(ownerId);
     return owner ? `${owner.name}'s ${nameOf(trait)}` : nameOf(trait);
   };
 }

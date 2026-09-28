@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, namedStartLocation, offeredPersonas,
+  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, namedStartLocation, offeredPersonas, samePersonaRef,
   offeredStartLocations, personaStartLocation, preselectPersona, readDefaultPersona, readWorldPersona,
   rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting, type PersonaChoices,
 } from './personaPick';
@@ -37,6 +37,8 @@ describe('preselectPersona (step and Quick Start)', () => {
     ['a remembered world pick the world no longer marks falls through', { available: { world: ['w'], library: ['a'] }, remembered: world('gone'), globalDefault: 'a' }, lib('a')],
     ['world personas alone: None when nothing is remembered', { available: { world: ['w'], library: [] }, globalDefault: 'a' }, NONE],
     ['world personas alone: the remembered world pick', { available: { world: ['w'], library: [] }, remembered: world('w') }, world('w')],
+    ['a Custom Persona entity alone: the remembered entry', { available: { world: [], library: [], custom: true }, remembered: { source: 'none', name: 'Ash' } }, { source: 'none', name: 'Ash' }],
+    ['a Custom Persona entity under Cast with a world persona: the world persona, its row unoffered', { available: { world: ['w'], library: [], custom: true }, playerSetting: 'cast', remembered: { source: 'none', name: 'Ash' } }, world('w')],
   ])('%s', (_label, over, expected) => {
     expect(preselectPersona(choices(over))).toEqual(expected);
   });
@@ -85,6 +87,23 @@ describe('offeredPersonas', () => {
     }
     expect(hasPersonaChoice(offeredPersonas('cast', both))).toBe(true);
     expect(hasPersonaChoice(offeredPersonas('fixed', { world: [], library: ['a'] }))).toBe(true);
+  });
+
+  it('offers the Custom Persona entity in None’s place, which is a choice on its own, and drops it with None under Cast', () => {
+    expect(offeredPersonas('open', { world: [], library: [], custom: 'cp' })).toEqual({ world: [], library: [], none: true, custom: 'cp' });
+    expect(hasPersonaChoice(offeredPersonas('open', { world: [], library: [], custom: 'cp' }))).toBe(true);
+    expect(offeredPersonas('cast', { ...both, custom: 'cp' })).toEqual({ world: ['w'], library: [], none: false });
+  });
+});
+
+describe('samePersonaRef', () => {
+  it('compares picks by source and id, and None picks by their entry', () => {
+    expect(samePersonaRef(NONE, NONE)).toBe(true);
+    expect(samePersonaRef(NONE, { source: 'none', name: 'Ash' })).toBe(false);
+    expect(samePersonaRef({ source: 'none', name: 'Ash', description: '' }, { source: 'none', name: 'Ash' })).toBe(true);
+    expect(samePersonaRef(lib('a'), lib('a'))).toBe(true);
+    expect(samePersonaRef(lib('a'), world('a'))).toBe(false);
+    expect(samePersonaRef(lib('a'), lib('b'))).toBe(false);
   });
 });
 

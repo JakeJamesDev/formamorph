@@ -301,11 +301,12 @@ export interface SaveObject {
 }
 
 /** A save's persona choice: a world entity, a library entity, or an explicit None. Content is read live
- *  from its source by id, never copied into the save. */
+ *  from its source by id, never copied into the save. With a Custom Persona entity, None plays that
+ *  entity: the entered name replaces the entity's, and the entered description follows its own. */
 export type PersonaRef =
   | { source: 'world'; entityId: string }
   | { source: 'library'; entityId: string }
-  | { source: 'none' };
+  | { source: 'none'; name?: string; description?: string };
 
 /** Placeholder id → what stat code pinned it to: one text, or the list an Object pin holds. Masks the roll
  *  and every authored pin until code unpins it. */

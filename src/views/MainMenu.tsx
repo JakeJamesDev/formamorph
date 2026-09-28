@@ -80,8 +80,9 @@ import {
   readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting,
   type PersonaPickContext,
 } from '@/lib/personaPick';
-import { personaOption } from '@/lib/persona';
+import { personaOption, withPersonaEntry } from '@/lib/persona';
 import type { PersonaPick } from '@/lib/persona';
+import { customPersonaEntity } from '@/lib/blueprints';
 import type { PersonaOption } from '@/components/game/PersonaPicker';
 import WorldStorageService from '../services/WorldStorageService';
 import DictionaryStorageService from '../services/DictionaryStorageService';
@@ -1464,11 +1465,21 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
       .map((entity) => ({ ...personaOption(resolveEntityText)(entity), startsAt: namedStartLocation(entity, locations)?.name })),
     [resolvedWorldEntities, resolveEntityText, locations],
   );
+  /** The Custom Persona entity, which stands in None's place. */
+  const customPersonaOption = useMemo<PersonaOption | undefined>(() => {
+    const marked = customPersonaEntity(resolvedWorldEntities);
+    return marked && personaOption(resolveEntityText)(marked);
+  }, [resolvedWorldEntities, resolveEntityText]);
+  /** The entities the trait tree pages, the marked one carrying the player's entry. */
+  const entryTraitEntities = useMemo(
+    () => withPersonaEntry(entryWorld.entities, entryDraft.persona),
+    [entryWorld.entities, entryDraft.persona],
+  );
   const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
   /** What the step's Persona category lists under the world's player setting. */
   const personaOffer = useMemo(
-    () => offeredPersonas(playerSetting, { world: worldPersonaOptions, library: personaOptions }),
-    [playerSetting, worldPersonaOptions, personaOptions],
+    () => offeredPersonas(playerSetting, { world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
+    [playerSetting, worldPersonaOptions, personaOptions, customPersonaOption],
   );
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
@@ -1482,6 +1493,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     available: {
       world: worldPersonaOptions.map((option) => option.id),
       library: personaOptions.map((option) => option.id),
+      custom: !!customPersonaOption,
     },
   });
   // Reads a library persona for page one. One deleted since the pick lands as None.
@@ -3211,7 +3223,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           worldName={selectedWorld.name}
           traits={traits}
           traitGroups={traitGroups}
-          traitEntities={entryWorld.entities}
+          traitEntities={entryTraitEntities}
           traitLibrary={entryWorld.library}
           resolveEntityText={resolveEntityText}
           stats={rawStats}
@@ -3227,6 +3239,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           worldPersonas={personaOffer.world}
           personas={personaOffer.library}
           personaNone={personaOffer.none}
+          personaCustom={personaOffer.custom}
           persona={entryDraft.persona}
           onPersonaChange={handlePersonaChange}
           categoryIndex={entryDraft.traitSection}

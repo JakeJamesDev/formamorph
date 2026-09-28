@@ -14,7 +14,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
 import {
-  activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playedEntityId, rowBearer, withBearerNames,
+  activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playerEntityIds, rowBearer, withBearerNames,
 } from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { WORLD_OWNER } from '@/lib/traitGates';
@@ -1265,7 +1265,7 @@ export const RightPanel = ({
             traits={listedTraits}
             groups={traitTree.groups}
             entityNodes={traitTree.entityNodes}
-            playedEntityId={playedEntityId(personaRef)}
+            playerEntityIds={playerEntityIds(traitTree)}
             stats={playerStats}
             isOff={(id, bearerId) => (bearerId === WORLD_OWNER
               ? disabledTraits.has(id) || !heldTraitIds.has(id)

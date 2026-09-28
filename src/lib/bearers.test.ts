@@ -231,6 +231,16 @@ describe('resolveBearers: the player bearer', () => {
     expect(resolveBearers(marked, AS_LIBRARY, [lib]).playerBearerIds).toEqual([PLAYER_BEARER, 'cp', 'lib']);
     expect(resolveBearers(marked, AS_ALBUS).playerBearerIds).toEqual([PLAYER_BEARER, 'albus']);
   });
+
+  it('keeps the Custom Persona entity out of the cast under every persona, and out of the gate owners under a world persona', () => {
+    const marked = world({ entities: [albus, mira, custom, newcomer] });
+    const lib: Entity = { id: 'lib', name: 'Lib', persona: true, traits: [trait('calm')] };
+    expect(ids(resolveBearers(marked, NONE).cast)).toEqual(['albus', 'mira']);
+    expect(ids(resolveBearers(marked, AS_LIBRARY, [lib]).cast)).toEqual(['albus', 'mira']);
+    expect(ids(resolveBearers(marked, AS_ALBUS).cast)).toEqual(['mira']);
+    expect(resolveBearers(marked, NONE).gate.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira', 'cp']);
+    expect(resolveBearers(marked, AS_ALBUS).gate.owners.map((o) => o.id)).toEqual([PLAYER_BEARER, 'albus', 'mira']);
+  });
 });
 
 describe('resolveBearers: a requirement never names yourself', () => {

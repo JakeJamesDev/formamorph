@@ -633,6 +633,31 @@ describe('the persona at world entry', () => {
     expect(onStartGame.mock.calls[0][6].ref).toEqual(libraryRef('self'));
   });
 
+  it('lists the Custom Persona entity in None’s place and starts the game with the entered name and description', async () => {
+    const record = world();
+    record.data.entities = [{
+      id: 'you', name: 'Wanderer', playerDescription: 'A newcomer.', aiDescription: '', aiSummary: '', customPersona: true,
+      traits: [{ id: 'curious', name: 'Curious', statChanges: [] }],
+    }];
+    await WorldStorageService.storeWorld(record);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    const nav = () => within(screen.getByRole('navigation', { name: 'World setup categories' }));
+    expect(screen.queryByRole('radio', { name: 'None' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Wanderer' })).toBeChecked();
+    expect(screen.getByText('A newcomer.')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Ash' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'Quiet.' } });
+    // The marked entity's page wears the entered name and the You mark.
+    expect(nav().getByRole('button', { name: /^Ash/ })).toHaveTextContent('You');
+    fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
+    const ref: PersonaRef = { source: 'none', name: 'Ash', description: 'Quiet.' };
+    expect(onStartGame.mock.calls[0][6]).toEqual({ ref });
+    expect(readWorldPersona('entry-world')).toEqual(ref);
+  });
+
   it('hides the category with no persona, starts on None, and leaves the world with no remembered pick', async () => {
     const onStartGame = vi.fn();
     renderMainMenu({ onStartGame });

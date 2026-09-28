@@ -31,7 +31,7 @@ describe('withHeldOwners', () => {
   });
 
   it('keeps a bearer’s state keyed by its own id, so None and a library persona share the player’s picks', () => {
-    // Custom Persona's links are the player's, under the world key, whichever of the two the save names.
+    // The player's cascade-off list and records sit under the world key, whichever of the two the save names.
     const shared = state({ ownedTraits: { lib: { chosen: ['calm'] } }, cascadeOffTraitIds: { world: ['paladin'] }, appliedTraitValues: { paladin: { h: 5 } } });
     for (const persona of [undefined, { source: 'library' as const, entityId: 'lib' }]) {
       const kept = withHeldOwners(shared, heldEntityIds([], shared, persona));

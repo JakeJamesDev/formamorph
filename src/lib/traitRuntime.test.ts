@@ -841,6 +841,54 @@ describe('a Custom Persona pick under a world persona', () => {
   });
 });
 
+describe('the Custom Persona entity’s stat traits', () => {
+  // Paladin is the marked entity's link (+5 starting on h); Oath is a library persona's own (+2).
+  const paladin = trait('paladin', [{ statId: 'h', value: 5, type: 'starting' }], { name: 'Paladin', playerToggle: true });
+  const oath = trait('oath', [{ statId: 'h', value: 2, type: 'starting' }], { name: 'Oath', playerToggle: true });
+  const cp = { id: 'cp', name: 'Newcomer', traits: [paladin], groups: [] };
+  const lib = { id: 'lib', name: 'Wren', traits: [oath], groups: [] };
+  const entities = [{ id: 'cp', name: 'Newcomer', customPersona: true }, { id: 'albus', name: 'Albus', persona: true }];
+  const none: TraitWorld = { traits: [], groups: [], entities, persona: { source: 'none' }, bearers: [{ id: 'world', name: '', traits: [], groups: [] }, cp] };
+  const asLib: TraitWorld = { ...none, persona: { source: 'library', entityId: 'lib' }, bearers: [...none.bearers!, lib] };
+  const asAlbus: TraitWorld = {
+    ...none, persona: { source: 'world', entityId: 'albus' },
+    bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'albus', name: 'Albus', traits: [], groups: [] }],
+  };
+  const picked = state({ ownedTraits: { cp: { chosen: ['paladin'] }, lib: { chosen: ['oath'] } } });
+
+  it('are in force under None and under a library persona beside its own, and not under a world persona', () => {
+    expect(statTraitsInForce(picked, none).map((t) => t.id)).toEqual(['paladin']);
+    expect(statTraitsInForce(picked, asLib).map((t) => t.id)).toEqual(['paladin', 'oath']);
+    expect(statTraitsInForce(picked, asAlbus)).toEqual([]);
+  });
+
+  it('apply at a new game under the marked entity’s own record key', () => {
+    const { state: seeded, applied } = applyPlayedStatTraits(picked, asLib);
+    expect(applied.map((t) => t.id)).toEqual(['paladin', 'oath']);
+    expect(valueOf(seeded)).toBe(57);
+    expect(seeded.appliedValues).toEqual({ 'cp/paladin': { h: 5 }, 'lib/oath': { h: 2 } });
+  });
+
+  it('move the stats on a switch of the marked entity’s trait, as the played persona’s do', () => {
+    const off = switchPlayerTrait(applyPlayedStatTraits(picked, none).state, 'paladin', false, none, undefined, 'cp')!;
+    expect(valueOf(off.state)).toBe(50);
+    expect(off.state.ownedTraits?.cp).toEqual({ chosen: ['paladin'], disabled: ['paladin'] });
+    expect(off.log).toEqual(['Trait switched off: Paladin']);
+    const on = switchPlayerTrait(off.state, 'paladin', true, none, undefined, 'cp')!;
+    expect(valueOf(on.state)).toBe(55);
+  });
+
+  it('reverse on a switch to a world persona and return on the way back', () => {
+    const seeded = applyPlayedStatTraits(picked, none).state;
+    const away = switchPersonaStats(seeded, none, asAlbus);
+    expect(away.log).toEqual(['Trait switched off: Paladin']);
+    expect(valueOf(away.state)).toBe(50);
+    const back = switchPersonaStats(away.state, asAlbus, none);
+    expect(back.log).toEqual(['Trait switched on: Paladin']);
+    expect(valueOf(back.state)).toBe(55);
+  });
+});
+
 describe('traitSwitchLog', () => {
   it('writes the player’s own switch without an attribution', () => {
     expect(traitSwitchLog('Brave', 'on', ['Timid'])).toEqual(['Trait switched off: Timid', 'Trait switched on: Brave']);
