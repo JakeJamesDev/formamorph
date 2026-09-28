@@ -802,11 +802,14 @@ const allChipTexts = (world: RuleWorld): Array<string | undefined> => [
 
 /** The placeholders no chip anywhere references, each with the traits still pinning it. A pin is authored
  *  intent, not a placement — any pin entry counts, empty value included — so the two rules over this list
- *  exactly partition "unplaced", and the delete-fix can never orphan a pin. */
+ *  exactly partition "unplaced", and the delete-fix can never orphan a pin. A blueprint is placed wherever
+ *  a copy of it is, and a copy is never listed: it exists because a trait needs it (see lib/blueprintCopies). */
 const unplacedPlaceholders = (world: RuleWorld): Array<{ placeholder: Placeholder; pinnedBy: Trait[] }> => {
   const placed = chipIds(allChipTexts(world));
-  return allPlaceholders(world)
-    .filter((p) => !placed.has(p.id))
+  const all = allPlaceholders(world);
+  for (const p of all) if (p.blueprintId && placed.has(p.id)) placed.add(p.blueprintId);
+  return all
+    .filter((p) => !p.blueprintId && !placed.has(p.id))
     .map((placeholder) => ({
       placeholder,
       pinnedBy: (world.traits ?? []).filter((t) =>

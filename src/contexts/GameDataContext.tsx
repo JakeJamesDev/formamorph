@@ -7,6 +7,7 @@ import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo } from '@/lib/traitLinks';
+import { syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
@@ -364,7 +365,7 @@ function useProvideGameData() {
     const nextStats = Array.isArray(worldData.stats) ? worldData.stats : [];
     const nextLocations = Array.isArray(worldData.locations) ? worldData.locations : [];
     const nextConnections = Array.isArray(worldData.connections) ? worldData.connections : [];
-    const nextEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
+    const loadedEntities = Array.isArray(worldData.entities) ? worldData.entities : [];
     const nextEntityGroups = Array.isArray(worldData.entityGroups) ? worldData.entityGroups : [];
     const nextTraits = Array.isArray(worldData.traits) ? worldData.traits : [];
     const nextTraitGroups = Array.isArray(worldData.traitGroups) ? worldData.traitGroups : [];
@@ -374,6 +375,11 @@ function useProvideGameData() {
       ? worldData.dictionaries : [makeDefaultBook()];
     const nextPlaceholders = Array.isArray(worldData.placeholders) ? worldData.placeholders : [];
     const nextPlaceholderGroups = Array.isArray(worldData.placeholderGroups) ? worldData.placeholderGroups : [];
+    // Every bearer holds the copies its traits need before the baseline is taken, so a world that arrives
+    // without them opens clean.
+    const nextEntities = syncBlueprintCopies({
+      traits: nextTraits, traitGroups: nextTraitGroups, entities: loadedEntities, placeholders: nextPlaceholders, placeholderGroups: nextPlaceholderGroups,
+    });
     setWorldId(worldData.id);
     setStats(nextStats);
     setLocations(nextLocations);
@@ -394,6 +400,14 @@ function useProvideGameData() {
 
     return { world: worldData, isDefault };
   }, [setWorldOverview, setStats, setLocations, setEntities, setTraits, setStatUpdates, setDictionaries]);
+
+  // Copies follow the traits. After any write, each bearer holds the copies its traits need and no untouched
+  // copy nothing uses; an owned trait's blueprint chips and pins name the owner's copies. The slices are
+  // separate states, so the pass runs on the committed world rather than inside one setter.
+  useEffect(() => {
+    const next = syncBlueprintCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups });
+    if (next !== entities) setEntities(next);
+  }, [traits, traitGroups, entities, worldPlaceholders, placeholderGroups]);
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(

@@ -579,9 +579,26 @@ describe('applyOwnedTraitDrop with links', () => {
     expect(getOwnedTraitDropProjection(tree, rows, 'pack', linkRowId('l1', 'paladin'), 48, 24)).toBeNull();
   });
 
-  it('makes no link with links off: the row stays among the world items', () => {
-    // Loner dropped on Pack, one level in, would sit in Ash.
-    expect(drop([ash], 'loner', 'pack', 0, [], false)).toBeNull();
+  it('moves a world trait into the entity with links off, taking it out of the world', () => {
+    // Loner dropped below Pack at Ash's root.
+    const out = drop([ash], 'loner', 'pack', 0, [], false);
+    expect(out?.kind === 'moved' && out.world?.traits.map((t) => t.id)).toEqual(['paladin', 'wizard']);
+    const next = entityOut(out, 'ash')!;
+    expect(next).not.toHaveProperty('traitLinks');
+    expect(next.traits?.find((t) => t.id === 'loner')).toMatchObject({ groupId: null, order: 1 });
+  });
+
+  it('refuses the move with links off while an entity links the item or something below it', () => {
+    const linked: Entity = { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l1', originalId: 'loner', kind: 'trait', originalName: 'Loner', groupId: null, order: 0 }] };
+    expect(drop([ash, linked], 'loner', 'pack', 0, [], false)).toEqual({ kind: 'refused', refusal: { reason: 'linked', name: 'Loner', links: 1 } });
+    const groupLinked: Entity = { ...linked, traitLinks: [{ id: 'l1', originalId: 'paladin', kind: 'trait', originalName: 'paladin', groupId: null, order: 0 }] };
+    expect(drop([ash, groupLinked], 'classes', 'pack', 0, [], false)?.kind).toBe('refused');
+  });
+
+  it('refuses the move with links off when the world trait carries stat effects', () => {
+    const strong = { ...world, traits: world.traits.map((t) => (t.id === 'loner' ? { ...t, statChanges: [{ statId: 's', value: 1, type: 'min' as const }] } : t)) };
+    const out = applyOwnedTraitDrop(strong, [ash], [], 'loner', 'pack', 0, 24, { createLinks: false });
+    expect(out?.kind === 'refused' && out.refusal.reason).toBe('stats');
   });
 });
 

@@ -1,6 +1,7 @@
 # 05: Automatic copies and rewrites
 
-Status: ready-for-agent
+Status: in-progress
+Base: 0111d245
 Blocked by: 02 — Custom Persona as an entity mark; 04 — Placeholder Blueprints group and copy rows
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high
@@ -18,7 +19,7 @@ Detach, and a drag of an original onto an entity as an owned trait, rewrite ever
 
 ## Acceptance criteria
 
-- [ ] World-transform tests cover each trigger, nested copies, root-trait copies on every persona, and copies created on marking.
-- [ ] Cleanup removes only untouched copies, never while a chip in the owner's text uses one, and never an edited copy.
-- [ ] Detach and drag-to-entity produce an owned trait whose chips and pins name the entity's copies; missing copies are created.
-- [ ] Each guard is proven to fail with its rule removed.
+- [x] World-transform tests cover each trigger, nested copies, root-trait copies on every persona, and copies created on marking.
+- [x] Cleanup removes only untouched copies, never while a chip in the owner's text uses one, and never an edited copy.
+- [x] Detach and drag-to-entity produce an owned trait whose chips and pins name the entity's copies; missing copies are created.
+- [x] Each guard is proven to fail with its rule removed.
