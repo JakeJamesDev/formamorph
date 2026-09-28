@@ -12,18 +12,25 @@
 //   label-leak           — the output repeats a trait block label or bolded trait name (guard, down)
 // Also reported per arm: mean words and the share of outputs with quoted dialogue (regression check).
 //
+// `--linked` builds the same traits as Templates originals that each bearer links, with `{{char}}` in place of
+// the owner's name, through the bearer resolver. It prints whether its chips match the owned build byte for byte.
+//
 // Usage: npx vite-node testing/baseline/harness/owned-traits-probe.cli.ts --
 //          [--endpoint URL] [--model ID] [--runs 12] [--max 600] [--only narr-bram,plan-odette] [--pool 4]
-//          [--dump] [--show]
+//          [--dump] [--show] [--linked]
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defaultSystemPrompt, defaultThinkingPrompt } from '@/components/game/GamePrompts';
+import { resolveBearers } from '@/lib/bearers';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
+import { withBearerTrees } from '@/lib/ownedTraitsInPlay';
+import { resolveEntityText } from '@/lib/placeholders';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
+import { resolveEntityTexts, resolveOwnedTraitTexts } from '@/lib/resolveWorldNames';
 import { buildNarrationPrompt } from '@/lib/turnPipeline/narrationPrompt';
 import { migrateWorld } from '@/lib/version';
-import type { Entity, Trait } from '@/types';
+import type { Entity, Trait, TraitGroup, TraitLink } from '@/types';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -57,25 +64,57 @@ if (args.includes('--unnamed')) {
   }
   fixture.persona.traits = unnamed(fixture.persona.name, fixture.persona.traits ?? []);
 }
-const world = { ...base, entities: base.entities.map((e) => (fixture.owned[e.id] ? { ...e, traits: fixture.owned[e.id] } : e)) };
 const inForce: Record<string, string[]> = Object.fromEntries([
   ...Object.entries(fixture.owned).map(([id, traits]) => [id, traits.map((t) => t.id)]),
   [fixture.persona.id, (fixture.persona.traits ?? []).map((t) => t.id)],
 ]);
+const resolveOwn = (entity: Entity, text: string) => resolveEntityText(entity, text, { placeholders: [], rolls: {} });
 
-const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
-if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
-const sceneBase = authoredChipScene(world, {
-  location,
-  activeTraitIds: world.traits.filter((trait) => trait.isDefault).map((trait) => trait.id),
-  resolve: (text: string) => text,
-});
-const ctxFor = (arm: typeof ARMS[number]) => chipValues({
-  ...sceneBase,
-  persona: { source: 'world', entity: fixture.persona },
-  ownedTraits: arm === 'after' ? inForce : {},
-});
-const CTX = { before: ctxFor('before'), after: ctxFor('after') };
+/** Both arms' chips, from owned traits or from links to Templates originals. */
+function buildCtx(linked: boolean) {
+  const templates: TraitGroup = { id: 'probe-templates', name: 'Templates', parentId: null, system: 'templates' };
+  const originals: Trait[] = [];
+  // A linked bearer's trait moves to Templates, its owner's name written as the Character Name.
+  const asLinks = (owner: Entity, traits: Trait[]): Entity => {
+    const traitLinks = traits.map((t, i): TraitLink => {
+      originals.push({ ...t, groupId: templates.id, aiDescription: t.aiDescription?.replace(new RegExp(`^${owner.name}\\b`), '{{char}}') });
+      return { id: `link-${t.id}`, originalId: t.id, kind: 'trait', originalName: t.name, groupId: null, order: i };
+    });
+    const { traits: _owned, ...rest } = owner;
+    return { ...rest, traitLinks };
+  };
+  const bear = (e: Entity, traits: Trait[]) => (linked ? asLinks(e, traits) : { ...e, traits });
+  const entities = base.entities.map((e) => (fixture.owned[e.id] ? bear(e, fixture.owned[e.id]) : e));
+  const persona = bear(fixture.persona, fixture.persona.traits ?? []);
+  if (!originals.every((t) => t.aiDescription?.startsWith('{{char}} '))) throw new Error('A linked original still names its owner.');
+  const world = { ...base, entities, traits: [...base.traits, ...originals], traitGroups: [...(base.traitGroups ?? []), ...(linked ? [templates] : [])] };
+
+  const location = world.locations.find((candidate) => candidate.id === 'loc-sedge');
+  if (!location) throw new Error('Sedge Landing fixture is missing loc-sedge.');
+  const sceneBase = authoredChipScene(world, {
+    location,
+    activeTraitIds: base.traits.filter((trait) => trait.isDefault).map((trait) => trait.id),
+    resolve: (text: string) => text,
+    resolveEntity: resolveOwn,
+  });
+  // The played persona's tree, resolved as play resolves it: its links expanded, itself as the Character Name.
+  const { bearers } = resolveBearers({ ...world, entities: [...entities, persona] }, { source: 'world', entityId: persona.id });
+  const played = resolveOwnedTraitTexts(
+    resolveEntityTexts(withBearerTrees([persona], bearers), resolveOwn), (_t, text, owner) => resolveOwn(owner, text), resolveOwn,
+  )[0];
+  const ctxFor = (arm: typeof ARMS[number]) => chipValues({
+    ...sceneBase,
+    persona: { source: 'world', entity: played },
+    ownedTraits: arm === 'after' ? inForce : {},
+  });
+  return { before: ctxFor('before'), after: ctxFor('after') };
+}
+const CTX = buildCtx(args.includes('--linked'));
+if (args.includes('--linked')) {
+  const owned = buildCtx(false);
+  const differ = ARMS.flatMap((arm) => Object.keys(owned[arm]).filter((token) => owned[arm][token] !== CTX[arm][token]).map((t) => `${arm} ${t}`));
+  console.log(differ.length ? `linked chips differ from owned: ${differ.join(', ')}` : 'linked chips match the owned build byte for byte');
+}
 
 const TRAIT_NAMES = [...Object.values(fixture.owned).flat(), ...(fixture.persona.traits ?? [])].map((t) => t.name);
 const CHECKS: Record<string, { test: (text: string) => boolean; want: boolean }> = {

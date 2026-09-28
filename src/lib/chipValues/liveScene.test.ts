@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { liveChipScene, type LiveSceneSources } from './liveScene';
 import { chipValues } from './chipValues';
-import { resolveEntityText } from '../placeholders';
+import { resolveBearers, type BearerWorld } from '../bearers';
+import { resolveBearerText, resolveEntityText } from '../placeholders';
 import { buildCharacterUserMessage, buildDiaryUserMessage } from '../stagedPlanning';
 import { buildToolSnapshot } from '../tools/toolSnapshot';
-import type { Entity, GameLocation, PlayerStat, Trait } from '@/types';
+import type { Entity, GameLocation, PlayerStat, Trait, TraitGroup, TraitLink } from '@/types';
 
 // The harbor: the Quay contains the Warehouse.
 const quay: GameLocation = { id: 'quay', name: 'Quay', aiDescription: 'Wet stone and rope.' };
@@ -159,6 +160,47 @@ describe('the live adapter', () => {
         ...cast, persona: { source: 'world', entity: wren }, ownedTraits: { wren: { chosen: ['scar'] } },
       }));
       expect(values['<TRAITS DESCRIPTION>']).toBe('Sea Legs: Steady on any deck.\nScarred: Wren carries a scar.');
+    });
+  });
+
+  describe('linked traits', () => {
+    const templates: TraitGroup = { id: 'templates', name: 'Templates', parentId: null, system: 'templates' };
+    const paladin: Trait = {
+      id: 'paladin', name: 'Paladin', groupId: 'templates', aiDescription: '{{char}} swore the oath.', statChanges: [],
+    };
+    const link = (id: string): TraitLink => ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null });
+    const albus: Entity = { id: 'albus', name: 'Albus', locations: ['quay'], aiDescription: 'A knight.', traitLinks: [link('l1')] };
+    const wren: Entity = { id: 'wren', name: 'Wren', persona: true, aiDescription: 'Rows the ferry.', traitLinks: [link('l2')] };
+    const world: BearerWorld = {
+      traits: [paladin], traitGroups: [templates], entities: [albus, wren], customPersona: { traitLinks: [link('l3')] },
+    };
+    const real = (persona: LiveSceneSources['persona'], over: Partial<LiveSceneSources> = {}) => sources({
+      entities: [albus], allEntities: [albus], persona, traits: [], traitGroups: [templates],
+      bearers: resolveBearers(world, persona ? { source: 'world', entityId: persona.entity.id } : undefined).bearers,
+      resolveTrait: (_trait, text, owner) => resolveBearerText(owner ?? null, text, {
+        placeholders: [], rolls: {}, player: { name: persona?.entity.name },
+      }),
+      ...over,
+    });
+
+    it("gives a cast entity its active linked trait in full, with the entity as the Character Name", () => {
+      const values = chipValues(liveChipScene(real(null, { ownedTraits: { albus: { chosen: ['paladin'] } } })));
+      expect(values['<ENTITIES>']).toContain('Paladin: Albus swore the oath.');
+      expect(values['<ENTITIES|summary>']).toContain('traits: Paladin');
+    });
+
+    it('leaves out a linked trait the playthrough has not chosen', () => {
+      expect(chipValues(liveChipScene(real(null)))['<ENTITIES>']).not.toContain('Paladin');
+    });
+
+    it("joins the played world persona's linked trait to the player's, named for the persona", () => {
+      const values = chipValues(liveChipScene(real({ source: 'world', entity: wren }, { ownedTraits: { wren: { chosen: ['paladin'] } } })));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: Wren swore the oath.');
+    });
+
+    it('names the player in a Custom Persona trait under None', () => {
+      const values = chipValues(liveChipScene(real(null, { traits: [paladin] })));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: The player swore the oath.');
     });
   });
 

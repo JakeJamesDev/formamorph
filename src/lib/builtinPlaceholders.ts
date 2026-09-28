@@ -146,6 +146,11 @@ export function labelBuiltins(text: string): string {
   return ROW_RES.reduce((out, { row, re }) => out.replace(re, row.label), text);
 }
 
+const CHARACTER_RE = new RegExp(CHARACTER_NAME.source, 'g');
+
+/** Write every Character Name as the Player Name, for text the player bears. */
+export const characterAsPlayer = (text: string): string => text.replace(CHARACTER_RE, PLAYER_NAME.token);
+
 /** Render every Built-in in the text from the playthrough. */
 export function renderBuiltins(text: string, render: BuiltinRender = {}): string {
   return text.replace(RENDER_RE, (...args: unknown[]) => {

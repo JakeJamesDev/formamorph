@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useGameData } from './GameDataContext';
 import { primeRolls, weightedPick } from '@/lib/placeholders';
+import { bearerPriming } from '@/lib/ownedTraitsInPlay';
 import { allPinTexts, valuePinRollChips } from '@/lib/placeholderPins';
 import { entityTexts } from '@/lib/entityTexts';
 import { overviewTexts } from '@/lib/overviewTexts';
@@ -63,7 +64,7 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
   const [rolls, setRolls] = useState<PlaceholderRolls>(NO_ROLLS);
   const [persona, setPersonaState] = useState<Entity | null>(null);
   const {
-    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, placeholders: worldPlaceholders,
+    worldOverview, entities, locations, dictionaries, stats, traits, traitGroups, customPersona, placeholders: worldPlaceholders,
   } = useGameData();
   const placeholders = useMemo(() => personaPlaceholderSet(worldPlaceholders, persona), [worldPlaceholders, persona]);
 
@@ -116,6 +117,9 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
   // read the moment their trait is on, so their chips are primed too, whichever traits get picked.
   useEffect(() => {
     if (!sessionActive || placeholders.length === 0) return;
+    // Each bearer's tree: owned text and linked originals, and pins bound for that bearer.
+    const library = persona ? [persona] : [];
+    const perBearer = bearerPriming({ traits, traitGroups, entities, customPersona }, library, worldPlaceholders);
     const texts = [
       ...overviewTexts(worldOverview),
       ...entities.flatMap(entityTexts),
@@ -125,18 +129,24 @@ export function PlaceholderSessionProvider({ children }: { children: ReactNode }
       ...traits.flatMap((t) => [t.name, t.playerDescription, t.aiDescription]),
       ...traitGroups.flatMap((g) => [g.name, g.playerDescription, g.aiDescription]),
       ...(persona ? entityTexts(persona) : []),
+      ...perBearer.texts,
     ].filter((t): t is string => !!t);
     // Keep the previous object when nothing new was rolled. `primeRolls` always returns a fresh object, and
     // this effect depends on `rolls` so a save restoring mid-session gets its missing placements primed —
     // without the identity guard those two facts are a render loop.
     // A placeholder whose values pin something reads its own world roll, so it gets one whether or not any
     // text places it.
-    const pinTexts = allPinTexts({ traits, entities: persona ? [...entities, persona] : entities, locations, stats, placeholders });
+    const pinTexts = allPinTexts({
+      traits: [...traits, ...perBearer.pinTraits], entities: [...entities, ...library], locations, stats, placeholders,
+    });
     setRolls((prev) => {
       const next = primeRolls(placeholders, [...texts, ...valuePinRollChips(placeholders)], prev, weightedPick, pinTexts);
       return sameRolls(prev, next) ? prev : next;
     });
-  }, [sessionActive, rolls, placeholders, entities, locations, dictionaries, stats, traits, traitGroups, worldOverview, persona]);
+  }, [
+    sessionActive, rolls, placeholders, worldPlaceholders, entities, locations, dictionaries, stats, traits, traitGroups, customPersona,
+    worldOverview, persona,
+  ]);
 
   return (
     <PlaceholderSessionContext.Provider

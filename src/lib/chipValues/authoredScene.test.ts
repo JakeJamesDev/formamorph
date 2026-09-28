@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { authoredChipScene, type AuthoredWorld } from './authoredScene';
 import { chipValues } from './chipValues';
 import { NONE_PLACEHOLDER } from '../promptFallbacks';
-import type { Entity, GameLocation, Stat, Trait, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Stat, Trait, TraitGroup, TraitLink, WorldOverview } from '@/types';
 import { phValues } from '@/test/placeholderValues';
 
 const jetty: GameLocation = { id: 'jetty', name: 'The Jetty', isStarting: true, aiDescription: 'Wet planks over black water.' };
@@ -90,6 +90,45 @@ describe('authoredChipScene', () => {
     };
     const scene = authoredChipScene(world({ entities: [{ ...wren, traits: [worn] }, harrow], placeholders: [coat] }));
     expect(chipValues(scene)['<ENTITIES>']).toContain('Red Coat: Wren wears a crimson coat.');
+  });
+
+  describe('linked traits', () => {
+    const templates: TraitGroup = { id: 'templates', name: 'Templates', parentId: null, system: 'templates' };
+    const garb = { id: 'garb', name: 'Garb', values: phValues(['robes', 'chain']) };
+    const paladin: Trait = {
+      id: 'paladin', name: 'Paladin', groupId: 'templates', isDefault: true, statChanges: [],
+      aiDescription: '{{char}} swore the oath in {{ph:garb:world:p1}}.',
+      placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Garb', value: 'plain robes' }],
+    };
+    const link = (id: string, over: Partial<TraitLink> = {}): TraitLink =>
+      ({ id, originalId: 'paladin', kind: 'trait', originalName: 'Paladin', groupId: null, ...over });
+    const linked = (over: Partial<AuthoredWorld> = {}) => world({
+      traits: [saltborn, paladin], traitGroups: [templates], placeholders: [garb], ...over,
+    });
+
+    it("holds a cast entity's default link in force: full text with its own pin value, and its name in the summary", () => {
+      const knight = { ...wren, traitLinks: [link('l1', { pinValues: { paladin: { Garb: { value: 'silver plate' } } } })] };
+      const scene = authoredChipScene(linked({ entities: [knight, harrow] }));
+      expect(scene.ownedTraits).toEqual({ wren: ['paladin'] });
+      const values = chipValues(scene);
+      expect(values['<ENTITIES>']).toContain('Paladin: Wren swore the oath in silver plate.');
+      expect(values['<ENTITIES|summary>']).toContain('traits: Paladin');
+    });
+
+    it("reads a link's own default-on over the original's", () => {
+      const knight = { ...wren, traitLinks: [link('l1', { defaults: { paladin: false } })] };
+      expect(authoredChipScene(linked({ entities: [knight, harrow] })).ownedTraits).toEqual({});
+    });
+
+    it("never counts a default Templates trait as the player's", () => {
+      expect(chipValues(authoredChipScene(linked()))['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.');
+    });
+
+    it("counts a default Custom Persona link as the player's, at the root, naming the player", () => {
+      const robed = link('l2', { pinValues: { paladin: { Garb: { value: 'plain robes' } } } });
+      const values = chipValues(authoredChipScene(linked({ customPersona: { traitLinks: [robed] } })));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Saltborn: Raised on the coast.\nPaladin: The player swore the oath in plain robes.');
+    });
   });
 
   it('holds every enabled lore entry with its position, since no keyword has fired yet', () => {

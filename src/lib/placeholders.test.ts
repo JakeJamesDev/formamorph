@@ -5,6 +5,7 @@ import { phValueId, phValues } from '@/test/placeholderValues';
 import {
   resolvePlaceholders,
   resolveEntityText,
+  resolveBearerText,
   encodePlaceholderToken,
   decodePlaceholderToken,
   encodePlaceholderPath,
@@ -200,6 +201,20 @@ describe('resolveEntityText', () => {
     })).toBe('Vos owes Wren.');
     expect(resolveEntityText({ name: 'Vos' }, '{{user}} owes {{char}}.', { placeholders: [], rolls: {} }))
       .toBe('The player owes Vos.');
+  });
+});
+
+describe('resolveBearerText', () => {
+  it('fills Character Name with an entity bearer, as its own text does', () => {
+    expect(resolveBearerText({ name: 'Albus' }, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
+      .toBe('Albus swore the oath.');
+  });
+
+  it('reads Character Name as the Player Name when the player bears the trait', () => {
+    expect(resolveBearerText(null, '{{char}} swore the oath.', { placeholders: [], rolls: {}, player: { name: 'Wren' } }))
+      .toBe('Wren swore the oath.');
+    expect(resolveBearerText(null, '{{char}} swore. Kneel to {{char}}’s oath.', { placeholders: [], rolls: {} }))
+      .toBe('The player swore. Kneel to the player’s oath.');
   });
 });
 

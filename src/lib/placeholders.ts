@@ -2,7 +2,7 @@ import { randomUUID } from "@/lib/uuid";
 import type { Placeholder, PlaceholderPin, PlaceholderRolls, PlaceholderValue } from '@/types';
 import type { PromptSegment } from './promptTemplate';
 import {
-  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, hasBuiltin, labelBuiltins, renderBuiltins,
+  BUILTIN_TOKEN_SOURCE, CHARACTER_NAME, builtinForToken, characterAsPlayer, hasBuiltin, labelBuiltins, renderBuiltins,
   type BuiltinPlaceholder, type BuiltinRender,
 } from './builtinPlaceholders';
 
@@ -1575,6 +1575,12 @@ export function resolveEntityText(entity: { name: string } | null, text: string,
   if (!text || !hasPlaceholders(text)) return text;
   const noOwner = { ...opts, character: null };
   return resolvePlaceholders(text, { ...opts, character: entity && resolvePlaceholders(entity.name, noOwner) });
+}
+
+/** Resolve a trait's own text with its bearer as the Character Name. With no entity bearer the player bears
+ *  it, so the Character Name reads as the Player Name. */
+export function resolveBearerText(bearer: { name: string } | null, text: string, opts: ResolveOptions): string {
+  return resolveEntityText(bearer, bearer ? text : characterAsPlayer(text), opts);
 }
 
 /** One placeholder as play reads it right now: what it resolves to, and each authored value resolved. */

@@ -4,6 +4,8 @@ import type {
 } from '@/types';
 import { entityIdsAt } from '../entityPresence';
 import { entityNamed, scenePresentHere, type OwnedTraitsInForce } from '../locationContext';
+import { PLAYER_BEARER } from '../bearers';
+import { inBearerPlaces, withBearerTrees, type BearerTree } from '../ownedTraitsInPlay';
 import type { ResolvedPersona } from '../persona';
 import { resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText } from '../resolveWorldNames';
 import type { ChipScene, ChipSceneTime } from './chipScene';
@@ -21,6 +23,8 @@ export interface LiveSceneSources {
   traitGroups: TraitGroup[];
   /** Each entity's owned trait picks and switch-offs. None when absent. */
   ownedTraits?: OwnedTraitStates;
+  /** Each bearer's tree, links expanded. An entity with none reads its owned traits alone. */
+  bearers?: readonly BearerTree[];
   resolve: (text: string) => string;
   /** A trait's own text under its own pins, with an owned trait's owner as the Character Name. */
   resolveTrait: ResolveTraitText;
@@ -65,8 +69,10 @@ export function liveChipScene(
   // Each entity's text resolves with that entity as its owner, as trait text resolves under its own pins.
   const resolveEntity = box?.resolveEntity ?? sources.resolveEntity;
   const resolveTrait = box?.resolveTrait ?? sources.resolveTrait;
-  const ownText = (entities: Entity[]) =>
-    resolveOwnedTraitTexts(resolveEntityTexts(entities, resolveEntity), resolveTrait, resolveEntity);
+  // An entity's links join its owned traits, each resolved with the entity as its bearer.
+  const ownText = (entities: Entity[]) => resolveOwnedTraitTexts(
+    resolveEntityTexts(withBearerTrees(entities, sources.bearers), resolveEntity), resolveTrait, resolveEntity,
+  );
   const allEntities = ownText(sources.allEntities);
   const persona = sources.persona && { ...sources.persona, entity: ownText([sources.persona.entity])[0] };
   const loc = location ?? sources.location;
@@ -83,7 +89,9 @@ export function liveChipScene(
   }
   // A trait's own description resolves with its own pins, so the AI reads the same words the player's card
   // shows; the scene's resolve then covers the group headers, since trait text is token-free by then.
-  const traits = (box?.activeTraits ?? sources.traits).map((trait) =>
+  // The player's traits sit in the player bearer's tree, so a Custom Persona pick reads at the root.
+  const player = sources.bearers?.find((b) => b.id === PLAYER_BEARER);
+  const traits = inBearerPlaces(box?.activeTraits ?? sources.traits, player).map((trait) =>
     trait.aiDescription ? { ...trait, aiDescription: resolveTrait(trait, trait.aiDescription) } : trait,
   );
 
@@ -91,7 +99,7 @@ export function liveChipScene(
     overview: sources.overview,
     stats: box?.activeStats ?? sources.stats,
     traits,
-    traitGroups: sources.traitGroups,
+    traitGroups: player ? [...player.groups] : sources.traitGroups,
     ownedTraits: inForceByOwner(box?.ownedTraits ?? sources.ownedTraits),
     persona,
     location: loc,
@@ -123,17 +131,17 @@ function inForceByOwner(states: OwnedTraitStates | undefined): OwnedTraitsInForc
 /** The live adapter: one memoized builder over the playthrough's contexts. */
 export function useLiveChipScene(sources: LiveSceneSources): (location?: GameLocation | null, box?: SceneWrites | null) => ChipScene {
   const {
-    overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
-    connections, entities, allEntities, participants, notes, time, placeholders,
+    overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
+    locations, connections, entities, allEntities, participants, notes, time, placeholders,
   } = sources;
   return useCallback(
     (at?: GameLocation | null, box?: SceneWrites | null) => liveChipScene({
-      overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
-      connections, entities, allEntities, participants, notes, time, placeholders,
+      overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
+      locations, connections, entities, allEntities, participants, notes, time, placeholders,
     }, at, box),
     [
-      overview, stats, traits, traitGroups, ownedTraits, resolve, resolveTrait, resolveEntity, persona, location, locations,
-      connections, entities, allEntities, participants, notes, time, placeholders,
+      overview, stats, traits, traitGroups, ownedTraits, bearers, resolve, resolveTrait, resolveEntity, persona, location,
+      locations, connections, entities, allEntities, participants, notes, time, placeholders,
     ],
   );
 }

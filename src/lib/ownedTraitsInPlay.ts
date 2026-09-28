@@ -8,6 +8,7 @@ import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import type { GateOwner } from './traitGates';
 import { effectivePlacement, placeableGroupIds } from './traitTree';
+import { mapPreservingIdentity } from './utils';
 
 /** The entity whose owned traits are the player's own: the played persona's, or null. */
 export const playedEntityId = (ref: PersonaRef | undefined): string | null =>
@@ -185,3 +186,50 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
 
 const inBearerOrder = (traits: readonly Trait[], bearer: Bearer): Trait[] =>
   inAuthoredOrder(traits, traitOrderIndex(bearer.traits, bearer.groups));
+
+/** One bearer's effective tree, as an entity's AI context reads it. */
+export type BearerTree = Pick<GateOwner, 'id' | 'traits' | 'groups'>;
+
+/** Each entity with its bearer tree as its traits and groups, so its links read like owned traits. An entity
+ *  with no bearer, or with nothing linked, stays as it is. */
+export function withBearerTrees(entities: readonly Entity[], trees: readonly BearerTree[] | undefined): Entity[] {
+  const byId = new Map((trees ?? []).map((tree) => [tree.id, tree]));
+  return mapPreservingIdentity(entities, (entity) => {
+    const tree = byId.get(entity.id);
+    const same = !tree || (tree.traits.length === (entity.traits?.length ?? 0) && tree.groups.length === (entity.traitGroups?.length ?? 0));
+    return same ? entity : { ...entity, traits: [...tree.traits], traitGroups: [...tree.groups] };
+  });
+}
+
+/** The traits where the bearer's tree places them, so a linked original sits at its link and never under
+ *  Templates. A trait the tree lacks keeps its own place. */
+export function inBearerPlaces(traits: readonly Trait[], tree: BearerTree | undefined): Trait[] {
+  const placed = new Map((tree?.traits ?? []).map((t) => [t.id, t]));
+  return mapPreservingIdentity(traits, (trait) => {
+    const at = placed.get(trait.id);
+    return !at || (at.groupId === trait.groupId && at.order === trait.order) ? trait : { ...trait, groupId: at.groupId, order: at.order };
+  });
+}
+
+/** What roll priming walks per bearer, whoever ends up played. */
+export interface BearerPriming {
+  /** Every bearer's trait and group names and descriptions, owned ones included. */
+  texts: string[];
+  /** Every bearer's traits that pin, with bearer-relative pins bound for that bearer. The player's bind to the
+   *  world's placeholders and to each library entity's. */
+  pinTraits: Trait[];
+}
+
+export function bearerPriming(world: BearerWorld, library: readonly Entity[], shared: readonly Placeholder[]): BearerPriming {
+  const { bearers } = resolveBearers(world, undefined, library);
+  const texts = bearers.flatMap((bearer) => [...bearer.traits, ...bearer.groups]
+    .flatMap((item) => [item.name, item.playerDescription, item.aiDescription])
+    .filter((text): text is string => !!text));
+  const pinTraits = bearers.flatMap((bearer) => {
+    const owns = bearer.entity ? [bearer.entity.placeholders ?? []] : [[], ...library.map((e) => e.placeholders ?? [])];
+    return owns.flatMap((own) => bearer.traits
+      .filter((t) => t.placeholderPins?.length)
+      .map((t) => bindBearerPins(t, bearer.linkOf.get(t.id), own, shared)));
+  });
+  return { texts, pinTraits };
+}
