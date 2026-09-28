@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Link2, ArrowUpFromLine, BookOpen, Folder, LayoutTemplate, User } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Link2, ArrowUpFromLine, BookOpen, CornerDownRight, Folder, LayoutTemplate, User } from 'lucide-react';
 import { randomUUID } from '@/lib/uuid';
 import { remintPlaceholderDef } from '@/lib/placeholders';
 import { removePlaceholderGroup } from '@/lib/placeholderGroups';
 import { blueprintMoveRefusal, copyName, type BlueprintRefusal } from '@/lib/placeholderBlueprints';
+import { isUntouchedCopy } from '@/lib/blueprintCopies';
 import { allPlaceholders, placeholderList, withPlaceholderList } from '@/lib/placeholderHomes';
 import {
   applyPlaceholderDrop, chipValueFor, getPlaceholderDropProjection, ownedDescendants, placeholderRows,
@@ -41,7 +42,7 @@ import { SortableTree, type SortableTreeAdapter } from './SortableTree';
  * toolbar button), mirroring how the World Editor and library editor place their own.
  */
 const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) => {
-  const { placeholders, setPlaceholders, removePlaceholder, placedIds, lists, setLists, scope } = usePlaceholderStore();
+  const { placeholders, setPlaceholders, removePlaceholder, placedIds, lists, setLists, scope, copiesInUse } = usePlaceholderStore();
   const world = useGameDataOptional();
   // The last move across the Blueprints edge that was refused, and whether it was the group's removal.
   const [refusal, setRefusal] = useState<{ refusal: BlueprintRefusal; removing: boolean } | null>(null);
@@ -203,22 +204,39 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the
       // drag will take the placeholder or share it.
       const usedBy = holderId === null ? usedByMap.get(placeholder.id) : undefined;
+      const blueprintName = blueprint?.name ?? placeholder.name;
+      const untouchedCopy = !!copyOwner && isUntouchedCopy(placeholder);
+      // A copy in use comes straight back untouched when deleted. With no use data, only an untouched copy is
+      // known to be in use: nothing else keeps one.
+      const copyInUse = !!copyOwner && (copiesInUse
+        ? !!copiesInUse.get(copyOwner.id)?.has(placeholder.blueprintId!)
+        : untouchedCopy);
+      const jump = (to: string, tip: string, glyph: ReactNode) => (
+        <Tip tip={tip} labelsChild={false}>
+          <button
+            type="button"
+            aria-label={`Open ${to === placeholder.id ? placeholder.name : blueprintName}`}
+            onClick={(e) => { e.stopPropagation(); onSelect(to); }}
+            className="shrink-0 px-0.5"
+          >
+            {glyph}
+          </button>
+        </Tip>
+      );
+      const copyGlyph = <Link2 className="h-3.5 w-3.5 opacity-50" />;
       return {
         // Every placeholder can hold another, so a row holding none reserves the slot for alignment.
         lead: parentRowIds.has(node.id) ? 'chevron' : 'spacer',
         collapseLabels: ['Expand nested placeholders', 'Collapse nested placeholders'],
-        icon: shared ? (
-          <Tip tip={`Shared, opens ${placeholder.name}`} labelsChild={false}>
-            <button
-              type="button"
-              aria-label={`Open ${placeholder.name}`}
-              onClick={(e) => { e.stopPropagation(); onSelect(placeholder.id); }}
-              className="shrink-0 px-0.5"
-            >
-              <Link2 className="h-3.5 w-3.5" />
-            </button>
-          </Tip>
-        ) : undefined,
+        icon: shared ? jump(placeholder.id, `Shared, opens ${placeholder.name}`, <CornerDownRight className="h-3.5 w-3.5" />)
+          // A scoped list holds no blueprint row to open.
+          : copyOwner && blueprint && !scope ? jump(blueprint.id, `Copy of ${blueprintName}, opens it${untouchedCopy ? '' : '. Modified for this entity'}`, copyGlyph)
+          : copyOwner ? (
+            <Tip tip={`Copy of ${blueprintName}${untouchedCopy ? '' : '. Modified for this entity'}`} labelsChild={false}>
+              <span className="shrink-0 px-0.5" aria-label="Copy">{copyGlyph}</span>
+            </Tip>
+          ) : undefined,
+        overridden: copyOwner && !untouchedCopy ? 'Modified for this entity' : undefined,
         // A copy reads as its owner's, named after its blueprint live.
         label: copyOwner
           ? <PlaceholderText text={copyName(copyOwner.name, blueprint?.name ?? placeholder.name)} placeholders={placeholders} />
@@ -233,7 +251,10 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         // The affordance has to say what it does: a shared row's X unhooks the reference, and only an
         // owned or top-level row's deletes anything.
         removeTitle: shared && holderId !== null ? 'Remove Reference' : 'Delete',
-        remove: () => askRemove(node),
+        remove: copyInUse ? undefined : () => askRemove(node),
+        removeBlocked: !copyInUse ? undefined
+          : untouchedCopy ? 'A trait uses this copy. It goes away when nothing uses it.'
+          : 'A trait uses this copy. Use Reset to Blueprint to undo your edits.',
         // One copy per blueprint per owner.
         duplicate: placeholder.blueprintId ? undefined : () => duplicate(node),
       };

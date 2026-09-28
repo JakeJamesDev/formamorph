@@ -55,6 +55,10 @@ export interface TreeRowSpec {
   removeTitle?: string;
   /** Absent on a fixed row, which offers no delete. */
   remove?: () => void;
+  /** Why the row can't be removed; shows the delete action unavailable with this tip. Read only without `remove`. */
+  removeBlocked?: string;
+  /** Tip of the dot that marks a row overriding its blueprint. */
+  overridden?: string;
   /** Absent on a fixed row, which offers no duplicate. */
   duplicate?: () => void;
   /** The row is derived from something else (an owner node read off an entity): it cannot be dragged, and
@@ -121,10 +125,13 @@ function TreeRow({ id, selectId, depth, spec, selected, onSelect, isCollapsed, t
       labelClass={spec.labelClass}
       meta={spec.meta}
       metaTitle={spec.metaTitle}
+      overridden={spec.overridden}
       actions={[
         ...(spec.actions ?? []),
         ...(spec.duplicate ? [{ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: spec.duplicate }] : []),
-        ...(spec.remove ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: spec.remove }] : []),
+        ...(spec.remove ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: spec.remove }]
+          : spec.removeBlocked ? [{ icon: <X className="h-4 w-4" />, title: spec.removeTitle ?? 'Delete', onClick: () => {}, disabledReason: spec.removeBlocked }]
+          : []),
       ]}
     />
   );

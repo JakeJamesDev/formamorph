@@ -30,6 +30,9 @@ export interface PlaceholderStore {
   /** The world's lists, for the tab that draws an owner node per entity or book and moves records between
    *  them. Absent on a store bound to one list. */
   lists?: PlaceholderHomesWorld;
+  /** Entity id → the blueprints it needs a copy of. A needed copy can't be deleted: the copy sync would bring
+   *  it straight back, untouched. Absent where no traits reach the list. */
+  copiesInUse?: ReadonlyMap<string, ReadonlySet<string>>;
   /** Write every list at once — what a drop that moves a record between owners needs. */
   setLists?: (next: PlaceholderSlices) => void;
   /** The one list this store edits when it is bound to an owner's own section rather than the whole tab:

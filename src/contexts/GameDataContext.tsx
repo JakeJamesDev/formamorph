@@ -7,7 +7,7 @@ import { registerDevHook } from '@/lib/devRouter';
 import { migrateWorld, APP_VERSION } from '@/lib/version';
 import { dropLocationFromEntities } from '@/lib/entityPresence';
 import { dropLinksTo } from '@/lib/traitLinks';
-import { syncBlueprintCopies } from '@/lib/blueprintCopies';
+import { neededCopies, syncBlueprintCopies } from '@/lib/blueprintCopies';
 import { dropLocationFromConnections } from '@/lib/locationGraph';
 import { removeLocationPromotingChildren } from '@/lib/locationTree';
 import { newLocationPosition } from '@/lib/locationCanvas';
@@ -407,6 +407,11 @@ function useProvideGameData() {
     const next = syncBlueprintCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups });
     if (next !== entities) setEntities(next);
   }, [traits, traitGroups, entities, worldPlaceholders, placeholderGroups]);
+  // What each entity's copies are kept for, so the Placeholders tab can refuse a delete the sync would undo.
+  const copiesInUse = useMemo(
+    () => neededCopies({ traits, traitGroups, entities, placeholders: worldPlaceholders, placeholderGroups }),
+    [traits, traitGroups, entities, worldPlaceholders, placeholderGroups],
+  );
 
   // The current editor state as a canonical world payload; the one source consumers serialize/save/export from.
   const getWorldData = useCallback(
@@ -510,9 +515,9 @@ function useProvideGameData() {
     () => ({
       placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder,
       placedIds: () => directChipTargets(chipBearingTexts(worldRef.current())),
-      owners: placeholderOwnerIndex, lists, setLists: setPlaceholderLists,
+      owners: placeholderOwnerIndex, lists, setLists: setPlaceholderLists, copiesInUse,
     }),
-    [placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder, placeholderOwnerIndex, lists, setPlaceholderLists],
+    [placeholders, setPlaceholders, addPlaceholder, updatePlaceholder, removePlaceholder, placeholderOwnerIndex, lists, setPlaceholderLists, copiesInUse],
   );
 
   // The document's placement letters, rewalked on every edit and kept by identity while nothing changed,

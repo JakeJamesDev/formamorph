@@ -23,13 +23,13 @@ const ash: Entity = {
 };
 const bob: Entity = { id: 'bob', name: 'Bob', traitLinks: [{ id: 'l-bob', originalId: 'brave', kind: 'trait', originalName: 'Brave', groupId: null }] };
 
-function setup() {
+function setup(start: Entity[] = [ash, bob]) {
   const onSelect = vi.fn();
   const removeTrait = vi.fn();
   const removeTraitGroup = vi.fn();
   let entities: Entity[] = [];
   function Harness() {
-    const [current, setCurrent] = useState<Entity[]>([ash, bob]);
+    const [current, setCurrent] = useState<Entity[]>(start);
     entities = current;
     const store = {
       traits, traitGroups, entities: current, placeholders: [], stats: [],
@@ -64,10 +64,32 @@ describe('TraitTree link rows', () => {
     expect(action('Pack', 0, 'Detach')).toBeNull();
   });
 
-  it('shows a linked group\'s live subtree as rows with no actions', () => {
-    setup();
+  it("shows a linked group's live subtree as rows that open their original and can't be removed", () => {
+    const { entity, onSelect } = setup();
     // Paladin: the world row, then the linked group's row of it.
-    expect(within(row('Paladin', 1)).queryAllByRole('button').filter((b) => b.getAttribute('aria-label') !== 'Paladin')).toEqual([]);
+    const linked = row('Paladin', 1);
+    fireEvent.click(within(linked).getByRole('button', { name: 'Open Paladin' }));
+    expect(onSelect).toHaveBeenCalledWith('paladin');
+    const remove = within(linked).getByRole('button', { name: 'Remove' });
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(remove);
+    expect(entity('ash').traitLinks?.map((l) => l.id)).toEqual(['l-brave', 'l-classes', 'l-calm']);
+    expect(within(linked).queryByRole('button', { name: 'Detach' })).toBeNull();
+  });
+
+  it('marks a link row that overrides its original with a dot, in a linked group too', () => {
+    const overridden: Entity = {
+      ...ash,
+      traitLinks: ash.traitLinks!.map((l) => (l.id === 'l-brave'
+        ? { ...l, overrides: { brave: { isDefault: { value: true, blueprint: false } } } }
+        : l.id === 'l-classes' ? { ...l, overrides: { paladin: { playerToggle: { value: true, blueprint: false } } } } : l)),
+    };
+    setup([overridden, bob]);
+    const dot = (label: string, n: number) => within(row(label, n)).queryByLabelText('Modified for this link');
+    expect(dot('Brave', 1)).not.toBeNull();
+    expect(dot('Paladin', 1)).not.toBeNull();
+    expect(dot('Calm', 1)).toBeNull();
+    expect(dot('Brave', 0)).toBeNull();
   });
 
   it('removes a link and leaves the original alone', () => {
