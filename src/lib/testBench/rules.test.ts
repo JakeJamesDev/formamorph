@@ -1946,7 +1946,19 @@ describe('blueprint and copy rules', () => {
       const w = blueprinted([albus({ traitLinks: [], traits: [own] })]);
       expect(only(w, 'placeholder-pin-unknown-value')).toEqual([]);
       const gone = blueprinted([albus({ traitLinks: [], traits: [{ ...own, placeholderPins: [{ placeholderId: 'c-garb', value: 'a cape', valueId: 'v:cape' }] }] })]);
-      expect(opened(only(gone, 'placeholder-pin-unknown-value'))).toEqual([[['own', 'traits'], ['c-garb', undefined]]]);
+      const found = only(gone, 'placeholder-pin-unknown-value');
+      expect(found.map((f) => f.message)).toEqual(['“Trait: Albus\'s Oath” pins “Albus.Class Garb” to a value it no longer has — “a cape” is forced as written']);
+      expect(opened(found)).toEqual([[['own', 'traits'], ['c-garb', 'placeholders']]]);
+    });
+
+    it('warns once for each removed value one trait pins', () => {
+      const removesBoth = { valueOverrides: { [tabard]: { removed: true as const }, [phValueId('blue robes')]: { removed: true as const } } };
+      const both = { ...paladin, placeholderPins: [tabardPin, { placeholderId: 'garb', value: 'blue robes', valueId: phValueId('blue robes') }] };
+      const found = only(blueprinted([albus({ placeholders: [copyOf('garb', removesBoth)] })], { traits: [both, tailor] }), rule);
+      expect(found.map((f) => f.message)).toEqual([
+        '“Albus.Class Garb” removes “a tabard”, the value “Trait: Paladin” pins — the pin applies nothing',
+        '“Albus.Class Garb” removes “blue robes”, the value “Trait: Paladin” pins — the pin applies nothing',
+      ]);
     });
   });
 
@@ -1964,10 +1976,10 @@ describe('blueprint and copy rules', () => {
       });
       const found = only(w, rule);
       expect(found.map((f) => f.message)).toEqual([
-        '“Albus” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
-        '“Harbor Steps” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
-        '“Oath” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
-        '“Mood” holds a chip of the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can hold',
+        '“Albus” holds a chip of the blueprint “Class Garb”, but only world traits, blueprint values and copy values take blueprint chips',
+        '“Harbor Steps” holds a chip of the blueprint “Class Garb”, but only world traits, blueprint values and copy values take blueprint chips',
+        '“Albus\'s Oath” holds a chip of the blueprint “Class Garb”, but only world traits, blueprint values and copy values take blueprint chips',
+        '“Mood” holds a chip of the blueprint “Class Garb”, but only world traits, blueprint values and copy values take blueprint chips',
       ]);
       expect(found[0].severity).toBe('warning');
       expect(opened(found)).toEqual([
@@ -1984,18 +1996,25 @@ describe('blueprint and copy rules', () => {
       expect(only(w, rule)).toEqual([]);
     });
 
-    it('warns for a blueprint pin on a location or an owned trait, and not on a world trait or a link', () => {
+    it('warns for a blueprint pin on a location, a stat band, a world value or an owned trait, and not on a world trait, a link or a blueprint value', () => {
       const override = { paladin: { placeholderPins: { value: [tabardPin], blueprint: [] } } };
       const w = blueprinted([albus({
         traitLinks: [{ ...linkTo(paladin), overrides: override }],
         traits: [trait({ id: 'own', name: 'Oath', placeholderPins: [tabardPin] })],
-      })], { locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, placeholderPins: [tabardPin] }] });
+      })], {
+        locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, placeholderPins: [tabardPin] }],
+        stats: [stat({ id: 's1', name: 'Hunger', descriptors: [{ id: 'd1', threshold: 20, description: 'Starving', placeholderPins: [tabardPin] }] })],
+        placeholders: [
+          garb, { ...trim, values: [{ ...trim.values[0], pins: [tabardPin] }] },
+          { id: 'mood', name: 'Mood', values: [{ id: 'v-m', text: 'grim', pins: [tabardPin] }] },
+        ],
+      });
       const found = only(w, rule);
+      const tail = 'pins the blueprint “Class Garb”, but only world traits, blueprint values and copy values pin blueprints';
       expect(found.map((f) => f.message)).toEqual([
-        '“Location: Harbor Steps” pins the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can pin',
-        '“Trait: Albus\'s Oath” pins the blueprint “Class Garb”, which only a world trait or a blueprint or copy value can pin',
+        `“Hunger ≤ 20” ${tail}`, `“Location: Harbor Steps” ${tail}`, `“Trait: Albus's Oath” ${tail}`, `“Mood = grim” ${tail}`,
       ]);
-      expect(opened(found)).toEqual([[['harbor', 'locations']], [['own', 'traits']]]);
+      expect(opened(found)).toEqual([[['s1', 'stats']], [['harbor', 'locations']], [['own', 'traits']], [['mood', 'placeholders']]]);
     });
   });
 
