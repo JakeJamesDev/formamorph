@@ -18,10 +18,14 @@ export interface TraitCascade {
 
 const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
 
-/** The banner after a selection change turns gated traits off. */
+/** The banner after a selection change turns gated traits off. It renders last in its scroll host and sticks
+ *  to the host's bottom edge, so the rows above it never move when it appears. */
 export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCascade; onDismiss: () => void }) {
   return (
-    <div role="status" className="mb-4 flex items-start gap-2 rounded-lg border p-3 text-helper">
+    <div
+      role="status"
+      className="sticky bottom-0 z-10 mt-4 flex items-start gap-2 rounded-lg border bg-background p-3 text-helper shadow-md animate-in fade-in slide-in-from-bottom-1 motion-reduce:animate-none"
+    >
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <span className="flex-1">Turned off <strong>{LIST.format(cascade.off)}</strong>, because of {cascade.because}.</span>
       <Button type="button" variant="ghost" size="sm" className="-my-1 h-7" onClick={onDismiss}>Dismiss</Button>
@@ -142,7 +146,6 @@ export function SetupTraitList({
           <MarkdownRenderer text={resolveText(group.playerDescription)} />
         </div>
       ))}
-      {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
       <fieldset className="mt-4 min-w-0">
         <legend className="sr-only">{name} choices</legend>
         {exclusive ? (
@@ -157,6 +160,7 @@ export function SetupTraitList({
           <div className="grid min-w-0 gap-3 xl:grid-cols-2">{rows}</div>
         )}
       </fieldset>
+      {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
     </>
   );
 }
