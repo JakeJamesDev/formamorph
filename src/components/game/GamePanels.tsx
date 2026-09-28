@@ -13,7 +13,9 @@ import { mergeBodyMorphs } from '@/lib/bodyMorphs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { traitOrderIndex, activeStatEnabled, refreshChosenTraits } from '@/lib/traitEffects';
 import { listablePlayerTraits, statTraitsInForce, traitGateInput, type TraitWorld } from '@/lib/traitRuntime';
-import { activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playedEntityId, rowBearer } from '@/lib/ownedTraitsInPlay';
+import {
+  activeOwnedTraitIds, bearerTraitTree, inPlayBearers, playedEntityId, rowBearer, withBearerNames,
+} from '@/lib/ownedTraitsInPlay';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -1103,7 +1105,7 @@ export const RightPanel = ({
     personaRef,
   } = useGameplay();
   const {
-    locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText,
+    locations, connections, traits, traitGroups, viewStats: playerStats, currentLocation, resolveTraitText, resolveEntityText,
     entities: cast, persona, traitEntities, traitLibrary,
   } = useResolvedWorld();
   // In Chat a scroll moves the viewed turn, so the stat rows snap to it.
@@ -1119,14 +1121,20 @@ export const RightPanel = ({
   const heldTraitIds = React.useMemo(() => new Set(playerTraits.map((t) => t.id)), [playerTraits]);
   // The one tree from the bearer resolver: the player's rows at the top, then a node per present bearer with
   // its owned traits and links expanded. A trait under two bearers is two rows, told apart by their node.
-  const customPersona = useGameDataOptional()?.customPersona;
+  const gameData = useGameDataOptional();
+  const customPersona = gameData?.customPersona;
   const bearerWorld = React.useMemo(
     () => ({ traits, traitGroups, entities: traitEntities, customPersona }),
     [traits, traitGroups, traitEntities, customPersona],
   );
+  // A linked row's name reads its entity as the Character Name, from the original's authored text.
   const traitTree = React.useMemo(
-    () => bearerTraitTree(bearerWorld, personaRef, traitLibrary),
-    [bearerWorld, personaRef, traitLibrary],
+    () => withBearerNames(
+      bearerTraitTree(bearerWorld, personaRef, traitLibrary),
+      { traits: gameData?.traits ?? [], traitGroups: gameData?.traitGroups ?? [] },
+      (text, bearer, trait) => (trait ? resolveTraitText(trait, text, bearer) : resolveEntityText(bearer, text)),
+    ),
+    [bearerWorld, personaRef, traitLibrary, gameData?.traits, gameData?.traitGroups, resolveTraitText, resolveEntityText],
   );
   // A bearer's trait card reads that bearer as the Character Name, as the AI does.
   const resolveTreeTraitText = React.useCallback(

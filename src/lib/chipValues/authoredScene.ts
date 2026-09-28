@@ -3,9 +3,9 @@ import { entityIdsAt } from '../entityPresence';
 import { allPlaceholders } from '../placeholderHomes';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '../bearers';
 import { characterAsPlayer } from '../builtinPlaceholders';
-import { withBearerTrees } from '../ownedTraitsInPlay';
+import { bindForBearer, borneByPlayer, withBearerTrees } from '../ownedTraitsInPlay';
 import { resolveBearerText, resolveEntityText, resolvePlaceholders } from '../placeholders';
-import { bindBearerPins, traitScopedPins } from '../placeholderPins';
+import { traitScopedPins } from '../placeholderPins';
 import {
   resolveEntityTexts, resolveOwnedTraitTexts, type ResolveEntityText, type ResolveOwnedTraitText,
 } from '../resolveWorldNames';
@@ -73,10 +73,9 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
   const { bearers } = resolveBearers({ traits, traitGroups, entities, customPersona: world.customPersona }, undefined);
   const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
   const bearerOf = new Map(bearers.map((b) => [b.id, b]));
-  const bound = (trait: Trait, bearer: Bearer) =>
-    bindBearerPins(trait, bearer.linkOf.get(trait.id), bearer.entity?.placeholders ?? [], world.placeholders ?? []);
-  const ownPins = (trait: Trait, bearer: Bearer | undefined) =>
-    traitScopedPins(bearer ? bound(trait, bearer) : trait, {}, placeholders);
+  const ownPins = (trait: Trait, bearer: Bearer | undefined) => traitScopedPins(
+    bearer ? bindForBearer(trait, bearer, bearer.entity?.placeholders ?? [], world.placeholders ?? []) : trait, {}, placeholders,
+  );
   // An entity's trait reads its own pins, bound for that entity, with the entity as the Character Name.
   const resolveOwned: ResolveOwnedTraitText = options.resolveEntity
     ? (_trait, text, owner) => options.resolveEntity!(owner, text)
@@ -87,8 +86,7 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     : withLinks;
   const presentIds = entityIdsAt(location?.id, entities);
   const activeIds = new Set(options.activeTraitIds ?? player.traits.filter((trait) => trait.isDefault).map((trait) => trait.id));
-  // The player bears its traits, so the Character Name reads as the Player Name. A caller's resolve reads
-  // the rest; otherwise each trait reads its own pins.
+  // The player bears its traits: the Character Name reads as the Player Name, under a caller's resolve or own pins.
   const playerText = (trait: Trait, text: string) => (options.resolve
     ? characterAsPlayer(text)
     : resolveBearerText(null, text, { placeholders, rolls: {}, pins: ownPins(trait, player) }));
@@ -99,9 +97,9 @@ export function authoredChipScene(world: AuthoredWorld, options: AuthoredSceneOp
     stats: options.stats
       ?? stats.map((stat) => ({ ...stat, value: typeof stat.value === 'number' ? stat.value : stat.min })),
     // The player bearer's traits, where its tree places them: never Templates, and Custom Persona's at the root.
-    traits: player.traits.filter((trait) => activeIds.has(trait.id))
-      .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait)),
-    traitGroups: player.groups,
+    traits: borneByPlayer(player.traits.filter((trait) => activeIds.has(trait.id))
+      .map((trait) => (trait.aiDescription ? { ...trait, aiDescription: playerText(trait, trait.aiDescription) } : trait))),
+    traitGroups: borneByPlayer(player.groups),
     // Each entity holds its default traits, owned and linked, as the entry step preselects them.
     ownedTraits: Object.fromEntries(bearers.flatMap((bearer) => {
       const defaults = bearer.traits.filter((trait) => trait.isDefault).map((trait) => trait.id);

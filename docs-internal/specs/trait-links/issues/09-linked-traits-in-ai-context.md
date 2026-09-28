@@ -1,6 +1,6 @@
 # 09: Linked traits in AI context
 
-Status: in-progress
+Status: ready-for-human
 Base: 93424d0d
 Blocked by: 08 — Bearers at enter-world and in play
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -55,4 +55,12 @@ The narrator knows Albus is a Paladin. A cast entity's active linked traits join
 - The live Traits chip placed a Custom Persona pick under a "Templates:" header, since the scene used the world's groups. The player's traits now read their place from the player bearer's tree (Q83).
 - Priming never walked owned trait text (the trait-gates review's follow-up). It now walks every bearer's trait and group names and descriptions.
 
-**Left for others:** the Test Bench's Opening instrument passes its own entity resolution, so a linked trait there reads the lens pins, not the link's pin values (ticket 11's area).
+**Review (0cc2afc6), folded in:**
+- A linked trait's name on a cast entity read as the player in the Traits tab, and as nothing in the AI roster. Tab rows now name linked originals for their entity (`withBearerNames`), and the roster resolves trait and group names with their bearer.
+- Player-bearer group text now reads `{{char}}` as the player (Q89), in both scenes.
+- Priming binds the player's pins to every persona's placeholders, world ones too (Q77), and walks only entities' own text, not the world text twice.
+- The pin-binding call is one helper, `bindForBearer`.
+
+**Open:** priming owned trait text goes past Q90's wording. The spec session was asked whether it stays in this ticket; no reply yet.
+
+**Left for others:** the Test Bench's Opening and AI Context instruments pass their own resolution, so a linked trait there reads the lens pins, and `{{char}}` in a cast entity's trait reads as nothing in AI Context (ticket 11's area).

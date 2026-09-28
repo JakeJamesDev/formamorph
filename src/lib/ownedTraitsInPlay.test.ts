@@ -4,6 +4,7 @@ import { phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
   activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerPriming, bearerTraitTree, inPlayLibrary, rowBearer,
+  withBearerNames,
   type BearerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
@@ -132,7 +133,8 @@ describe('bearerPriming — what roll priming walks per bearer', () => {
       traits: [...world.traits, ...bearerPriming(world, [lib], shared).pinTraits],
       placeholders: [...shared, ...albus.placeholders!, ...lib.placeholders!],
     });
-    expect(texts['albus-garb']).toEqual(['Gilded plate']);
+    // Albus's link, and the player's cloak, which lays on Albus's own Class Garb while you play him.
+    expect([...texts['albus-garb']].sort()).toEqual(['Gilded plate', 'Robe']);
     // Mira's link, Custom Persona's link and the directly held cloak; the pin's own Tabard only seeds new links.
     expect([...texts.garb].sort()).toEqual(['Plate', 'Robe']);
     // Under the library persona the player's pins bind to its own Class Garb.
@@ -150,6 +152,23 @@ describe('bearerPriming — what roll priming walks per bearer', () => {
     expect(texts).toEqual(expect.arrayContaining([
       'Kit’s {{ph:mood:world:p1}} streak', 'Kit hums {{ph:mood:world:p2}}.', 'Kit’s {{ph:mood:world:p3}} habits.',
     ]));
+  });
+});
+
+describe('withBearerNames — linked rows in the Traits tab', () => {
+  const vow = trait('vow', [], { name: '{{char}}’s Vow', groupId: 'templates' });
+  const oaths = { id: 'oaths', name: '{{char}}’s Oaths', parentId: 'templates', order: 0 };
+  const vowWorld = {
+    ...world, traits: [...world.traits, vow], traitGroups: [...world.traitGroups, oaths],
+    entities: [{ ...mira, traitLinks: [link('l-vow', 'vow')] }, { ...bo, traitLinks: [{ ...link('l-oaths', 'oaths'), kind: 'group' as const }] }],
+  };
+  const named = (text: string, bearer: Entity) => text.replace('{{char}}', bearer.name);
+
+  it("names a linked row for its entity, and leaves the player's rows alone", () => {
+    const tree = withBearerNames(bearerTraitTree(vowWorld, NONE), vowWorld, named);
+    expect(tree.traits.filter((t) => t.id === 'vow').map((t) => [rowBearer(tree, t), t.name])).toEqual([['mira', 'Mira’s Vow']]);
+    expect(tree.groups.find((g) => g.id === bearerGroupId('bo', 'oaths'))?.name).toBe('Bo’s Oaths');
+    expect(tree.traits.find((t) => t.id === 'brave')?.name).toBe('brave');
   });
 });
 

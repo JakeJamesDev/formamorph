@@ -198,6 +198,17 @@ describe('the live adapter', () => {
       expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: Wren swore the oath.');
     });
 
+    it("names the player in the player's group text", () => {
+      const oaths: TraitGroup = { id: 'oaths', name: 'Oaths', aiDescription: '{{char}} is sworn.', parentId: null };
+      const sworn: Trait = { id: 'sworn', name: 'Sworn', groupId: 'oaths', statChanges: [] };
+      const grouped = { ...world, traits: [sworn], traitGroups: [oaths] };
+      const values = chipValues(liveChipScene(real(null, {
+        traits: [sworn], traitGroups: [oaths], bearers: resolveBearers(grouped, undefined).bearers, resolve: (text) =>
+          resolveEntityText(null, text, { placeholders: [], rolls: {} }),
+      })));
+      expect(values['<TRAITS DESCRIPTION>']).toBe('Oaths:\n  The player is sworn.\n  Sworn');
+    });
+
     it('names the player in a Custom Persona trait under None', () => {
       const values = chipValues(liveChipScene(real(null, { traits: [paladin] })));
       expect(values['<TRAITS DESCRIPTION>']).toBe('Paladin: The player swore the oath.');
