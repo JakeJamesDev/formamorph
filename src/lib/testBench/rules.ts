@@ -1791,8 +1791,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     ...neverUnlockable(input).flat().filter((r) => r.ownerId === WORLD_OWNER).map((r) => r.traitId),
     ...stuck.flat().filter((t) => t.ownerId === WORLD_OWNER && !t.link).map((t) => t.traitId),
   ]);
-  // Each bearer settles its own defaults, so a default is off only when no bearer keeps it under any persona
-  // choice: a race's ability turned off on one bearer says nothing about the bearer whose race it is.
+  // Each bearer settles its own defaults, so a default is off only when no bearer keeps it under any persona.
   const everOff = new Set<string>();
   const everOn = new Set<string>();
   const settleInto = (gate: Omit<GateInput, 'active'>) => {

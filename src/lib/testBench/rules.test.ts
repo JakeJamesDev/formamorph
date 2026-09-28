@@ -1671,8 +1671,9 @@ describe('trait gate rules', () => {
         { id: `l-races-${race}`, originalId: 'races', kind: 'group' as const, originalName: 'Races', groupId: null, defaults: { [race]: true } },
         { id: `l-abilities-${race}`, originalId: 'abilities', kind: 'group' as const, originalName: 'Racial Abilities', groupId: null },
       ];
-      const albus = (race: string): Entity => ({ ...resident, id: 'albus', name: 'Albus', persona: true, traitLinks: links(race) });
-      const sylvie = (race: string): Entity => ({ ...resident, id: 'sylvie', name: 'Sylvie', persona: true, traitLinks: links(race) });
+      const persona = (id: string, race: string): Entity => ({ ...resident, id, name: id, persona: true, traitLinks: links(race) });
+      const albus = (race: string) => persona('albus', race);
+      const sylvie = (race: string) => persona('sylvie', race);
       const linked = (entities: Entity[], over: Partial<RuleWorld> = {}) =>
         gates(templated, { traitGroups, entities: [resident, ...entities], ...over });
 

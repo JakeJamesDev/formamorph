@@ -15,8 +15,8 @@
       "adventure"
     ],
     "playerSetting": "open",
-    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** builds a character from scratch: choose a **Race** and a **Class**, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
-    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG character system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Templates.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Bearer's Own pins.** Each Class pins **Class Garb** and each Race pins **Heritage** on the bearer. The pin binds to the bearer's own placeholder of that name, else to the world's. Hesk and Corvin own both placeholders, so their pins fill their own text. The personas fall back to the world placeholders, so the openings read the played character's garb.\n- **Custom Persona.** Its links apply when you play with no persona or with a persona from your library. It owns no placeholders, so its pin values come from the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
+    "introReadme": "🔥 **The barrow beyond the wall has opened.** Emberwatch Keep wants hands, and pays in gold and renown for anyone who comes back with answers.\n\nBefore your first step, pick who you are:\n- **Wanderer** starts as a Dwarf Wizard. Change the **Race** and the **Class** to build your own, and your abilities follow.\n- **Albus** is a Human Paladin and **Sylvie Thornwhistle** an Elf Rogue, ready to play.\n- Play as yourself or a persona from your library, and you still pick a Race and Class in this world.\n\nYour class sets your garb and raises one resource. Your race gives one small edge and one ability that switches on with it. Class abilities need their class; **Blessed Light** answers to Clerics and Paladins alike.",
+    "readme": "## Emberwatch\n\nA stone keep at the end of the frontier road. The barrow past the wall has opened, and Captain Blackwell pays in **Gold** and **Renown** for anyone who finds out why and does something about it.\n\n**Playing**\n- **Health** keeps you standing. **Mana** feeds spells, **Faith** feeds prayers and holy light. Rest restores both.\n- Your abilities use the resource their description names. Ask the narrator to use one by name.\n- Mother Hesk at the chapel knows the barrow's rites. Corvin Vale at the tavern knows its rumors. Neither tells you for free.\n- The Barrow Wight gets stronger every night. Go in prepared, with light and allies.\n\n**Places**\n- **Emberwatch Keep** and the **Old Watchtower** are the captain's ground.\n- **Ashford Square**, the **Cinder and Crown** and the **Chapel of the Ember** are the town's.\n- **The Barrow Beyond the Wall** is where the answers are.\n\n## How this world is built\n\nEmberwatch is also an example of an RPG race-and-class system. Open it in the World Editor with Advanced mode on and look at the **Traits** tab.\n\n- **Templates.** The system group that holds every Race, Class and ability once. Traits under it never reach the player directly. They reach play only through links.\n- **Group links.** **Wanderer**, **Albus** and **Sylvie Thornwhistle** each link the **Races**, **Classes**, **Racial Abilities** and **Class Abilities** groups. One edit to Paladin reaches every bearer.\n- **Trait links.** **Mother Hesk** links the **Dwarf** and **Cleric** traits. **Corvin Vale** links **Human** and **Wizard**. A single-trait link brings one original.\n- **Per-link defaults.** Select Albus's **Classes** link and open **This Link**. Paladin is default-on there and Wizard is not. Sylvie's link makes Rogue the default.\n- **Bearer's Own pins.** Each Class pins **Class Garb** and each Race pins **Heritage** on the bearer. The pin binds to the bearer's own placeholder of that name, else to the world's. Hesk and Corvin own both placeholders, so their pins fill their own text. The personas fall back to the world placeholders, so the openings read the played persona's garb.\n- **Custom Persona.** Its links apply when you play with no persona or with a persona from your library. It owns no placeholders, so its pin values come from the world lists.\n- **Persona-only.** **Wanderer** carries the Persona-only mark. Unpicked, it leaves the cast and never joins a scene.\n- **Same-bearer gates.** **Smite** requires Paladin on the same bearer. Your Wizard never unlocks it through Albus.\n- **Any-of gates.** **Blessed Light** requires Cleric or Paladin. Either one unlocks it.\n- **Named-scope gates.** The root trait **Squire to Albus** requires **Albus: Paladin**. Re-class Albus at Enter World and the trait locks.\n- **Gated defaults and cascades.** Each racial ability is default-on and requires its race. Change race and the old ability switches off; the new one switches on.\n- **Test Bench.** Open **Test Bench → Issues** to see the rule pass. This world runs clean.",
     "openings": [
       {
         "id": "a47ba8ec-fd14-5aa5-849a-6dfc2f6468db",
@@ -807,7 +807,7 @@
     {
       "id": "10502266-1aec-53fe-bef2-ca07df05bce8",
       "name": "Squire to Albus",
-      "playerDescription": "You carry Albus's shield and learn at his side. Needs Albus to be a Paladin.",
+      "playerDescription": "You carry Albus's shield and learn at his side.",
       "aiDescription": "The player serves as squire to Albus the paladin: they carry his shield, tend his gear, and learn the Ember's ways at his side. Albus is protective and demanding of them.",
       "statChanges": [],
       "groupId": "d8c779b2-dc6c-5815-8395-18bc4decfa16",
@@ -1012,7 +1012,7 @@
     {
       "id": "79604b12-d958-51ef-af08-c5d2e0ded0db",
       "name": "Stubborn Heart",
-      "playerDescription": "Once a day, shrug off a wound that should have dropped you. Needs Human.",
+      "playerDescription": "Once a day, shrug off a wound that should have dropped you.",
       "aiDescription": "Once a day, {{char}} can stay on their feet through a blow that should have dropped them, driven by sheer human stubbornness.",
       "statChanges": [],
       "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
@@ -1029,7 +1029,7 @@
     {
       "id": "257de5e1-c723-5b99-961d-05fac3f3583c",
       "name": "Keen Senses",
-      "playerDescription": "Hear a whisper across a room and see a trap before it sees you. Needs Elf.",
+      "playerDescription": "Hear a whisper across a room and see a trap before it sees you.",
       "aiDescription": "{{char}} hears and sees far beyond human range, catching whispers, hidden traps and movement in dim light.",
       "statChanges": [],
       "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
@@ -1046,7 +1046,7 @@
     {
       "id": "49fb8c17-184b-5a21-a738-b583265d56c3",
       "name": "Darkvision",
-      "playerDescription": "See in the dark as if by dim moonlight. Needs Dwarf.",
+      "playerDescription": "See in the dark as if by dim moonlight.",
       "aiDescription": "{{char}} sees in total darkness as if by dim moonlight, in shades of gray.",
       "statChanges": [],
       "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
@@ -1063,7 +1063,7 @@
     {
       "id": "c60a5a5b-dcaa-5d68-abe5-9fc0c35d0f63",
       "name": "Lucky Step",
-      "playerDescription": "When it matters most, fortune turns your way. Needs Halfling.",
+      "playerDescription": "When it matters most, fortune turns your way.",
       "aiDescription": "When fate hangs on one moment, luck bends toward {{char}}: a slipped grip, a missed arrow, a coin that lands right.",
       "statChanges": [],
       "groupId": "dea4f1f1-9308-540b-bd4d-3e1c845d5a6c",
@@ -1080,7 +1080,7 @@
     {
       "id": "2bbf3e01-0873-5a6d-a913-8c9e7300e596",
       "name": "Smite",
-      "playerDescription": "Pour holy light into one blow. Costs Faith. Needs Paladin.",
+      "playerDescription": "Pour holy light into one blow. Costs Faith.",
       "aiDescription": "{{char}} channels the Ember into a single strike that burns the unholy and staggers the living. Each use costs Faith.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1096,7 +1096,7 @@
     {
       "id": "1efc667f-eeb9-5336-aea2-01d9c47d037a",
       "name": "Lay on Hands",
-      "playerDescription": "Close a wound with a touch. Costs Faith. Needs Paladin.",
+      "playerDescription": "Close a wound with a touch. Costs Faith.",
       "aiDescription": "{{char}} closes wounds with a touch and a short prayer, spending Faith to restore Health.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1112,7 +1112,7 @@
     {
       "id": "14704d22-1e87-5a05-b419-3456e398b4f2",
       "name": "Firebolt",
-      "playerDescription": "A dart of flame from the fingertip. Costs Mana. Needs Wizard.",
+      "playerDescription": "A dart of flame from the fingertip. Costs Mana.",
       "aiDescription": "{{char}} hurls a dart of flame that ignites what it strikes. Each cast costs Mana.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1128,7 +1128,7 @@
     {
       "id": "b9a0e391-0b61-5a06-bff1-79949753d8a8",
       "name": "Arcane Ward",
-      "playerDescription": "A shimmering shield that takes the hit for you. Costs Mana. Needs Wizard.",
+      "playerDescription": "A shimmering shield that takes the hit for you. Costs Mana.",
       "aiDescription": "{{char}} raises a shimmering barrier that absorbs one blow or spell before it breaks. Costs Mana to raise.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1144,7 +1144,7 @@
     {
       "id": "0c39ad36-a657-5898-9954-52f4c57c5002",
       "name": "Sneak Attack",
-      "playerDescription": "Strike from where no one is looking, and strike hard. Needs Rogue.",
+      "playerDescription": "Strike from where no one is looking, and strike hard.",
       "aiDescription": "When {{char}} strikes an enemy that has not noticed them, the blow lands with brutal precision.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1160,7 +1160,7 @@
     {
       "id": "c2c41655-7c88-5c24-abbc-6d12e85360c4",
       "name": "Nimble Fingers",
-      "playerDescription": "Locks open, purses lighten, and nobody notices. Needs Rogue.",
+      "playerDescription": "Locks open, purses lighten, and nobody notices.",
       "aiDescription": "{{char}} opens locks, lifts purses and palms small objects with practiced ease, and rarely gets caught.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1176,7 +1176,7 @@
     {
       "id": "f84a79bd-0e10-5df8-9659-f8023f61c11f",
       "name": "Turn Undead",
-      "playerDescription": "Raise the holy symbol and the dead recoil. Costs Faith. Needs Cleric.",
+      "playerDescription": "Raise the holy symbol and the dead recoil. Costs Faith.",
       "aiDescription": "{{char}} raises their holy symbol and calls on the Ember; lesser undead flee and greater ones hesitate. Costs Faith.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1192,7 +1192,7 @@
     {
       "id": "e7ab1aed-79f8-5885-bb7a-1a117c2b44b5",
       "name": "Mend Wounds",
-      "playerDescription": "A prayer that knits flesh and stops bleeding. Costs Faith. Needs Cleric.",
+      "playerDescription": "A prayer that knits flesh and stops bleeding. Costs Faith.",
       "aiDescription": "{{char}} prays over a wound and it knits closed, restoring Health. Costs Faith.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",
@@ -1208,7 +1208,7 @@
     {
       "id": "abbd66f9-c334-51a3-9687-b15d6d9dd220",
       "name": "Blessed Light",
-      "playerDescription": "A light no shadow can stand in. Costs Faith. Needs Cleric or Paladin.",
+      "playerDescription": "A light no shadow can stand in. Costs Faith.",
       "aiDescription": "{{char}} calls up a warm holy radiance that reveals hidden things, dispels darkness and pains the undead. Costs Faith.",
       "statChanges": [],
       "groupId": "5ef8a6b9-d25f-50de-96c3-004fddd8df1b",

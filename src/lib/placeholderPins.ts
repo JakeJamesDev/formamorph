@@ -666,8 +666,7 @@ const PIN_SOURCE_KINDS: { [K in PinSourceKind]: PinSourceSpec<K> } = {
     same: (a, b) => a.id === b.id && a.link?.bearerId === b.link?.bearerId && a.link?.linkId === b.link?.linkId
       && a.link?.name === b.link?.name,
     // Two traits meet in one text on one bearer, or the player's against a cast entity's in that entity's text.
-    // A Persona's traits are the player's while it is played. Two Personas never both play: the one in the cast
-    // wins in its own text and the played one everywhere else, so neither is a rival the note can rule on.
+    // A Persona's traits are the player's while it is played. Two Personas never both play, so neither is a rival.
     neverTogether: (world, a, b) => {
       const home = traitHome(world, a.id);
       if (home && exclusiveSiblings(home.trait, home.traits, home.groups).includes(b.id)) return true;
