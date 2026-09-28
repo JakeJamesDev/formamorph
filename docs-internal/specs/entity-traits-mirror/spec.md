@@ -45,6 +45,7 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q18** The entity panel's host stops scrolling for the entity **Traits** and Placeholders tabs and gives them a flex column with the pane's real height. Other detail panels keep the pane's `ScrollArea`. The Placeholders tab's viewport-based fallback height goes in this effort.
 - **Q19** The migrated toolbar keeps `data-tour-anchor="list-add"` on the **+** and `data-editor-find-skip` on the search box. The authoring tour and the find bar read them.
 - **Q20** On mobile the nested stacked layout needs the same definite height as Q18. The pushed entity panel gives its **Traits** tab a flex column too.
+- **Q21** The widget clears the search box after every add, menu rows included. **Add Templates Group** and **Add Custom Persona** still ignore the search text as a name; they no longer leave a stale filter hiding the new row.
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
@@ -119,5 +120,5 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 ## Further Notes
 
 - The World Editor's Dictionary and Placeholders tabs ignore the search today; their box only names new items. The migration keeps that.
-- **Add Templates Group** does not take the search text as its name. The migration keeps that.
+- **Add Templates Group** does not take the search text as its name. The migration keeps that. The box now clears after it (Q21).
 - The mirror nests a push inside the mobile entity push (Q11). Nothing else in the editor goes three levels deep.
