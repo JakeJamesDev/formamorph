@@ -787,9 +787,6 @@ const WorldEditorInner = ({
 
   // The search results reuse one row for every tab, and entities are the only kind here that follows a
   // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
-  // These entity tabs scroll inside themselves, so the pane gives them its height instead of its scroll.
-  const detailFills = activeTab === "entities" && !selectedEntityGroup && !!selectedEntity
-    && entityTabFillsPane(shownEntityTab);
   // lucide `Map` icon is imported above and shadows the global.
   const entityLinks = useMemo(
     () => Object.fromEntries(entities.map((e) => [e.id, e.link])) as Record<string, ContentLink | undefined>,
@@ -828,6 +825,10 @@ const WorldEditorInner = ({
   };
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
+  // These panel tabs scroll inside themselves, so the pane gives them its height instead of its scroll.
+  const detailFills = (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity
+    && entityTabFillsPane(shownEntityTab))
+    || (activeTab === "dictionary" && !!selectedBook && shownBookTab === 'placeholders');
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
   // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
@@ -1357,7 +1358,6 @@ const WorldEditorInner = ({
     </div>
   );
 
-                      scrollDetail={!detailFills}
   return (
     <div className={`${embedded ? "h-full" : "app-viewport"} flex flex-col overflow-hidden`}>
       {!embedded && (
@@ -1417,6 +1417,7 @@ const WorldEditorInner = ({
                       onBack={() => setSelectedItemId(null)}
                       backLabel="Back"
                       scrollList={!canvasView}
+                      scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
                     />

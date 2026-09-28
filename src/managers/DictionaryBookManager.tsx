@@ -44,11 +44,17 @@ const DictionaryBookManager = ({ book, tab, onTabChange, focusField }: {
 
   if (tabs.length === 1) return <div className="space-y-4">{detailsPanel}</div>;
 
+  // Placeholders takes the height the host gives it and scrolls inside; Details grows with its fields.
+  const fills = tab === 'placeholders';
   return (
-    <Tabs value={tab} onValueChange={(v) => onTabChange(v as DictionaryBookPanelTab)} className="space-y-4">
+    <Tabs
+      value={tab}
+      onValueChange={(v) => onTabChange(v as DictionaryBookPanelTab)}
+      className={fills ? 'flex min-h-0 flex-1 flex-col gap-4' : 'space-y-4'}
+    >
       <PanelTabsList tabs={tabs} stripLabel="Dictionary Fields" />
       <TabsContent value="details" className="space-y-4">{detailsPanel}</TabsContent>
-      <TabsContent value="placeholders">
+      <TabsContent value="placeholders" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
         <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} fill />
       </TabsContent>
     </Tabs>

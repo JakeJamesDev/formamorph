@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { asMobile, benchEditorWorld, renderWorldEditorBench } from '@/test/worldEditorBench';
 import type { World } from '@/types';
 
 /**
@@ -136,5 +136,32 @@ describe('the World Editor dictionary book panel tabs', () => {
     // The switch wears the hidden-data marker, whose own label joins its accessible name.
     fireEvent.click(screen.getByRole('radio', { name: /^Advanced/ }));
     expect(panelTab('Details')).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+/** Where the book panel sits: a flex column at the pane's height, or the pane's scroll area. */
+const panelHost = () => {
+  const strip = screen.getByRole('tablist', { name: 'Dictionary Fields' });
+  if (strip.closest('[data-radix-scroll-area-viewport]')) return 'scroll';
+  return strip.closest('[data-detail-fill]') ? 'fill' : 'none';
+};
+
+describe('the World Editor dictionary book panel height', () => {
+  it.each([
+    ['desktop', () => () => {}],
+    ['mobile', asMobile],
+  ])('fills the pane for Placeholders and scrolls Details on %s', (_, setUp) => {
+    const undo = setUp();
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      selectBook('Fen Lore');
+      expect(panelHost()).toBe('scroll');
+      openPanelTab('Placeholders');
+      expect(panelHost()).toBe('fill');
+      openPanelTab('Details');
+      expect(panelHost()).toBe('scroll');
+    } finally {
+      undo();
+    }
   });
 });
