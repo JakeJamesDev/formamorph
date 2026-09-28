@@ -250,12 +250,15 @@ function pushLinkRows(
   }
 }
 
+/** Whether a Link's own row offers Remove Link: always with an Original, and with no Original only inside a world. */
+export const linkRowRemovable = (row: LinkRow, world: object | null): boolean => !row.unbound || !!world;
+
 /**
- * A library entity's Traits tree: its own items at the root, with its links among them. Inside a world a link
+ * One entity's Traits tree: its own items at the root, with its links among them. Inside a world a link
  * reads its original there; standalone, or when the world has no such original, it draws as one unbound row
- * by its stored name. Own items have no owner, as the library editor edits them as the root.
+ * by its stored name. Own items have no owner, as the editor edits them as the root.
  */
-export function libraryTraitTree(entity: Entity, world: Pick<WorldTraitLists, 'traits' | 'traitGroups'> | null): OwnedTraitTree {
+export function entityRootTraitTree(entity: Entity, world: Pick<WorldTraitLists, 'traits' | 'traitGroups'> | null): OwnedTraitTree {
   const tree: OwnedTraitTree = {
     groups: [...entity.traitGroups ?? []], traits: [...entity.traits ?? []],
     entityNodes: new Map(), ownerOf: new Map(), linkRows: new Map(),

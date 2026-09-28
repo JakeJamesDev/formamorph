@@ -1,6 +1,6 @@
 # 03: Shared entity traits editor with the toolbar in the library
 
-Status: in-progress
+Status: ready-for-human
 Base: 431a4d2e
 Blocked by: 01 — List toolbar widget
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
@@ -34,4 +34,4 @@ An author editing a library entity gets the World Editor's search box and **+** 
 
 ## Comments
 
-- 2026-09-28 (implementation): The store's one-entity root is now `entityRoot: EntityRoot` (was `library: LibraryLinks`), same shape, separate from `offWorld`; the library store sets both. Rulings Q23 to Q25 came from the spec session mid-ticket. The shared editor's adds write through `setTraits` / `setTraitGroups`, not `editEntity`, so adding a trait in the library never rebinds the entity's links as a side effect. The existing "adds a trait" test now opens the **+** menu, since the **Add Trait** button became the **Add Trait to <entity>** row. The editor's reset of selection on an entity change has no test here: the library modal never swaps entities, so ticket 04's bench test covers it.
+- 2026-09-28 (implementation): The store's one-entity root is now `entityRoot: EntityRoot` (was `library: LibraryLinks`), same shape, separate from `offWorld`; the library store sets both. Rulings Q23 to Q25 came from the spec session mid-ticket. The shared editor's adds write through `setTraits` / `setTraitGroups`, not `editEntity`, so adding a trait in the library never rebinds the entity's links as a side effect. The existing "adds a trait" test now opens the **+** menu, since the **Add Trait** button became the **Add Trait to <entity>** row. The editor's selection reset is a stale-selection guard: whenever the selected id is not a trait, group or Link of the current entity, it clears the selection and the details tab, on mount included. The review found a mount-time check is needed because the World Editor keys `EntityManager` by entity id, so an entity change remounts the editor with the old selection still held by the host. It has no test here: the library modal never swaps entities, so ticket 04's bench test covers it (open a trait on A, select B, select A again: the list shows, not the trait).

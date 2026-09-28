@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { originalsOf, useTraitStore } from '@/contexts/TraitStoreContext';
 import { CircleUserRound, Folder, Info, LayoutTemplate, Link2, Lock, Unlink, User } from 'lucide-react';
 import {
-  CUSTOM_PERSONA_ID, CUSTOM_PERSONA_NAME, getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, libraryTraitTree,
+  CUSTOM_PERSONA_ID, CUSTOM_PERSONA_NAME, getOwnedTraitDropProjection, applyOwnedTraitDrop, duplicateTraitNode, entityRootTraitTree, linkRowRemovable,
   ownedTraitRows, ownedTraitTree, type FlatTraitNode, type LinkRow, type TraitDropRefusal,
 } from '@/lib/traitTree';
 import { useEditBearer } from './useEditBearer';
@@ -92,7 +92,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
   const lists = useMemo(() => ({ traits, traitGroups, customPersona }), [traits, traitGroups, customPersona]);
   const tree = useMemo(
     () => (entityRoot
-      ? libraryTraitTree(entityRoot.bearer, entityRoot.world)
+      ? entityRootTraitTree(entityRoot.bearer, entityRoot.world)
       : ownedTraitTree(lists, entities, [], { links: true, emptySystemNodes: advanced })),
     [lists, entities, advanced, entityRoot],
   );
@@ -136,7 +136,7 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
         label: <PlaceholderText text={name} placeholders={placeholders} />,
         labelClass: 'text-muted-foreground',
         fixed: true,
-        ...(entityRoot?.world ? {
+        ...(linkRowRemovable(linkRow, entityRoot?.world ?? null) ? {
           removeTitle: 'Remove Link',
           remove: () => editBearer(linkRow.entityId, (e) => removeLink(e, linkRow.link.id)),
         } : {}),
