@@ -1,6 +1,7 @@
 # 08: Custom Persona at Enter World and in play
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: dcfa6752
 Blocked by: 05 — Automatic copies and rewrites; 06 — Pins by blueprint
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

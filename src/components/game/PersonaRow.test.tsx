@@ -62,6 +62,24 @@ describe('the persona row', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
+  it('stands the Custom Persona entity in None’s place, and carries the entered name into the ref and the row', async () => {
+    const you: Entity = { id: 'w-you', name: 'Wanderer', customPersona: true, playerDescription: 'A newcomer to the fen.' };
+    const onPersonaChange = vi.fn();
+    const h = renderRightPanel({ onPersonaChange }, { world: { entities: [you] } });
+    expect(within(row()).getByText('Wanderer')).toBeTruthy();
+    const dialog = await openPicker();
+    expect(within(dialog).queryByRole('radio', { name: 'None' })).toBeNull();
+    expect(within(dialog).getByRole('radio', { name: 'Wanderer' })).toBeChecked();
+    expect(within(dialog).getByText('A newcomer to the fen.')).toBeTruthy();
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Ash');
+    await userEvent.type(within(dialog).getByRole('textbox', { name: 'Description' }), 'Quiet.');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Change' }));
+    const ref: PersonaRef = { source: 'none', name: 'Ash', description: 'Quiet.' };
+    expect(h.gameplay().personaRef).toEqual(ref);
+    expect(onPersonaChange).toHaveBeenCalledWith(ref, 'Ash');
+    await waitFor(() => expect(within(row()).getByText('Ash')).toBeTruthy());
+  });
+
   it('hands the new persona and its name on, so the traits can settle under it', async () => {
     await store(wren);
     const onPersonaChange = vi.fn();

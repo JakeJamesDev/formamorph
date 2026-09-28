@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { personaOption, resolvePersona } from './persona';
+import { enteredPersona, personaOption, resolvePersona, withPersonaEntry, worldEntitiesOf } from './persona';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, buildSublocationEntitiesContext } from './locationContext';
 import type { Entity, GameLocation, PersonaRef } from '@/types';
@@ -16,7 +16,7 @@ describe('resolvePersona', () => {
   const cases: Array<{
     label: string;
     ref: PersonaRef | undefined;
-    persona: { name: string; source: 'world' | 'library' } | null;
+    persona: { name: string; source: 'world' | 'library' | 'custom' } | null;
     cast: string[];
     playerNames: string[];
     unresolved: boolean;
@@ -123,6 +123,61 @@ describe('resolvePersona: persona-only entities', () => {
     const dock: GameLocation = { id: 'dock', name: 'Dock' };
     expect(buildEntityContext(dock, cast, { format: 'markdown' })).not.toContain('Custom Character');
     expect(buildEntityContext(dock, cast, { format: 'markdown' })).toContain('Captain Vos');
+  });
+});
+
+describe('resolvePersona: the Custom Persona entity in None’s place', () => {
+  const you = ent('w-you', 'Wanderer', {
+    customPersona: true, aliases: ['Stranger'], playerDescription: 'A traveler.', aiDescription: 'Arrived last night.',
+  });
+  const marked = [mira, vos, you];
+
+  it.each<{ label: string; ref: PersonaRef | undefined }>([
+    { label: 'an absent reference', ref: undefined },
+    { label: 'an explicit None', ref: { source: 'none' } },
+  ])('plays the marked entity under $label, out of the cast, under its own name', ({ ref }) => {
+    const res = resolvePersona(ref, marked, library);
+    expect(res.persona).toEqual({ entity: you, source: 'custom' });
+    expect(res.cast.map((e) => e.id)).toEqual(['w-mira', 'w-vos']);
+    expect(res.playerNames).toEqual(['Wanderer', 'Stranger']);
+    expect(res.unresolved).toBe(false);
+  });
+
+  it('replaces its name with the entered name and follows both descriptions with the entered one', () => {
+    const res = resolvePersona({ source: 'none', name: ' Ash ', description: ' Hates the cold. ' }, marked, library);
+    expect(res.persona?.entity).toEqual({
+      ...you, name: 'Ash', playerDescription: 'A traveler.\n\nHates the cold.', aiDescription: 'Arrived last night.\n\nHates the cold.',
+    });
+    expect(res.playerNames).toEqual(['Ash', 'Stranger']);
+  });
+
+  it('keeps the authored name for a blank entry, and writes the entered description alone into an empty field', () => {
+    const bare = { ...you, aiDescription: undefined };
+    expect(enteredPersona(bare, { source: 'none', name: '  ' })).toBe(bare);
+    expect(enteredPersona(bare, { source: 'none', description: 'Quiet.' })).toMatchObject({ name: 'Wanderer', aiDescription: 'Quiet.' });
+  });
+
+  it('keeps a world persona and a library persona as they are, the marked entity out of both casts', () => {
+    const asMira = resolvePersona({ source: 'world', entityId: 'w-mira' }, marked, library);
+    expect(asMira.persona).toEqual({ entity: mira, source: 'world' });
+    expect(asMira.cast.map((e) => e.id)).toEqual(['w-vos']);
+    const asWren = resolvePersona({ source: 'library', entityId: 'l-wren' }, marked, library);
+    expect(asWren.persona).toEqual({ entity: wren, source: 'library' });
+    expect(asWren.cast.map((e) => e.id)).toEqual(['w-mira', 'w-vos']);
+  });
+
+  it('counts the played marked entity among the world’s entities, as a played world persona is', () => {
+    const { cast, persona } = resolvePersona({ source: 'none', name: 'Ash' }, marked, library);
+    expect(worldEntitiesOf(cast, persona).map((e) => e.name)).toEqual(['Mira', 'Captain Vos', 'Ash']);
+    expect(worldEntitiesOf(cast, resolvePersona({ source: 'library', entityId: 'l-wren' }, marked, library).persona)).toBe(cast);
+  });
+
+  it('puts the entered entity in the list in the marked entity’s place, and leaves other lists alone', () => {
+    const entered = withPersonaEntry(marked, { source: 'none', name: 'Ash' });
+    expect(entered.map((e) => e.name)).toEqual(['Mira', 'Captain Vos', 'Ash']);
+    expect(withPersonaEntry(marked, { source: 'none' })).toBe(marked);
+    expect(withPersonaEntry(marked, { source: 'world', entityId: 'w-mira' })).toBe(marked);
+    expect(withPersonaEntry(world, { source: 'none', name: 'Ash' })).toBe(world);
   });
 });
 

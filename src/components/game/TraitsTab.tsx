@@ -29,8 +29,9 @@ export interface TraitsTabProps {
   groups: TraitGroup[];
   /** Entity node id → the bearer it draws, each holding that bearer's tree. */
   entityNodes?: ReadonlyMap<string, Pick<Entity, 'name'>>;
-  /** The entity the player plays, whose node is marked You. */
-  playedEntityId?: string | null;
+  /** The entity nodes that are the player's, each marked You: the played persona, and the Custom Persona
+   *  entity under None and a library persona. */
+  playerEntityIds?: readonly string[];
   stats: TraitTabStat[];
   /** Switched off or never taken in the bearer's tree — the panel draws no line between the two. */
   isOff: (traitId: string, bearerId: string) => boolean;
@@ -65,10 +66,11 @@ const seedOpen = (sections: TraitSection[], isOff: (id: string, bearerId: string
   new Set(sections.filter((s) => s.blocks.some((b) => b.traits.some((t) => !isOff(t.id, bearerOf(b))))).map((s) => s.key));
 
 export const TraitsTab = ({
-  traits, groups, entityNodes, playedEntityId = null, stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
+  traits, groups, entityNodes, playerEntityIds = [], stats, isOff, readOnly, onToggleTrait, resolveTraitText, view, setView,
   gates, cascade, onDismissCascade,
 }: TraitsTabProps) => {
   const entityNodeIds = React.useMemo(() => new Set(entityNodes?.keys() ?? []), [entityNodes]);
+  const isPlayer = (entityId: string | null | undefined) => !!entityId && playerEntityIds.includes(entityId);
   const sections = React.useMemo(() => buildTraitSections(traits, groups, entityNodeIds), [traits, groups, entityNodeIds]);
   // An entity node wears the user glyph, and the played one a You mark, as at Enter World.
   const entityIcon = <User aria-hidden className="h-3.5 w-3.5 shrink-0" />;
@@ -112,7 +114,7 @@ export const TraitsTab = ({
   // A cast entity's trait carries its bearer's name, as the log does; the player's own read bare.
   const active = sections.flatMap((s) => s.blocks.flatMap((b) => b.traits
     .filter((t) => !isOff(t.id, bearerOf(b)))
-    .map((t) => (b.entityId && b.entityId !== playedEntityId ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
+    .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
   const row = (trait: Trait, block: TraitBlock, off: boolean) => {
     const bearerId = bearerOf(block);
@@ -215,7 +217,7 @@ export const TraitsTab = ({
             {/* The glyph and the You mark sit on the node's own heading, not on every group below it. */}
             {block.entityNode && entityIcon}
             {block.subheader}
-            {block.entityNode && block.entityId === playedEntityId && youMark}
+            {block.entityNode && isPlayer(block.entityId) && youMark}
           </p>
         )}
         {block.traits.map((trait) => row(trait, block, isOff(trait.id, bearerOf(block))))}
@@ -252,7 +254,7 @@ export const TraitsTab = ({
             // A filter that matched inside a collapsed section has to open it, or the result is invisible.
             const isOpen = section.name === null || filtering || open.has(section.key);
             const disabledOpen = filtering || openDisabled.has(section.key);
-            const played = !!section.entityId && section.entityId === playedEntityId;
+            const played = isPlayer(section.entityId);
             return (
               <div
                 key={section.key}

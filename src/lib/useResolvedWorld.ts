@@ -5,7 +5,8 @@ import { usePlaceholderSession } from '@/contexts/PlaceholderSessionContext';
 import { resolveBearerText, resolveEntityText as resolveEntityCore, resolvePlaceholders } from '@/lib/placeholders';
 import { activeOwnedTraitIds, addedCharacters, bearerPins, inPlayLibrary, type PinSet } from '@/lib/ownedTraitsInPlay';
 import { traitScopedPins } from '@/lib/placeholderPins';
-import { resolvePersona, type ResolvedPersona } from '@/lib/persona';
+import { resolvePersona, withPersonaEntry, type ResolvedPersona } from '@/lib/persona';
+import { customPersonaEntity } from '@/lib/blueprints';
 import { personaPlaceholderSet } from '@/lib/personaPlaceholders';
 import { inAuthoredOrder, refreshChosenTraits, traitOrderIndex } from '@/lib/traitEffects';
 import {
@@ -43,6 +44,8 @@ export interface ResolvedWorld {
   playerNames: string[];
   /** The world's entities the player can play as, the played one included. */
   worldPersonas: Entity[];
+  /** The Custom Persona entity, which stands in None's place; null when the world has none. */
+  customPersona: Entity | null;
   /** The save names a persona its source no longer holds. False while a library read is in flight. */
   personaUnresolved: boolean;
   locations: GameLocation[];
@@ -282,12 +285,17 @@ export function useResolvedWorld(): ResolvedWorld {
     [personaRef, worldEntities, libraryEntities],
   );
   const worldPersonas = useMemo(() => worldEntities.filter((e) => e.persona === true), [worldEntities]);
+  const customPersona = useMemo(() => customPersonaEntity(worldEntities) ?? null, [worldEntities]);
   // The one Traits tree's entities, their owned trait names resolved as the world's are.
   const resolveOwnedNames = useCallback(
     (list: Entity[]) => resolveOwnedTraitNames(list, (t, owner) => (text) => resolveTraitText(t, text, owner), resolvePH),
     [resolveTraitText, resolvePH],
   );
-  const traitEntities = useMemo(() => resolveOwnedNames(worldEntities), [resolveOwnedNames, worldEntities]);
+  // The marked entity's node carries the player's entry: its name in the heading and as its Character Name.
+  const traitEntities = useMemo(
+    () => resolveOwnedNames([...withPersonaEntry(worldEntities, personaRef)]),
+    [resolveOwnedNames, worldEntities, personaRef],
+  );
   const traitLibrary = useMemo(
     () => resolveOwnedNames(resolveEntityNames(rawLibrary, resolveNameOf)),
     [resolveOwnedNames, rawLibrary, resolveNameOf],
@@ -309,7 +317,7 @@ export function useResolvedWorld(): ResolvedWorld {
   const viewStats = useMemo(() => resolveStatNames(rawViewStats, resolvePH), [rawViewStats, resolvePH]);
 
   return {
-    entities, persona, playerNames, worldPersonas, personaUnresolved: unresolved && !personaPending,
+    entities, persona, playerNames, worldPersonas, customPersona, personaUnresolved: unresolved && !personaPending,
     locations, connections, stats, traits, traitGroups, dictionary, currentLocation,
     playerStats, viewStats, traitOrder, traitEntities, traitLibrary, pins, pinSet, pinsFor,
     resolvePH, resolveFor, resolveWith, resolveOpening, resolveTraitText, resolveTraitFor,

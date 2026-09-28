@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PersonaPicker, type PersonaOption } from './PersonaPicker';
-import { personaOption } from '@/lib/persona';
+import { personaOption, worldEntitiesOf } from '@/lib/persona';
 import { useGameplay } from '@/contexts/GameplayContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useResolvedWorld } from '@/lib/useResolvedWorld';
@@ -14,19 +14,16 @@ import { pickedAtStart } from '@/lib/runtimeCharacters';
 import { primaryImage } from '@/lib/entityImages';
 import { thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
-import { offeredPersonas, rememberWorldPersona, worldPlayerSetting } from '@/lib/personaPick';
+import { offeredPersonas, rememberWorldPersona, samePersonaRef, worldPlayerSetting } from '@/lib/personaPick';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { PersonaRef } from '@/types';
-
-const sameRef = (a: PersonaRef, b: PersonaRef) =>
-  a.source === b.source && (a.source === 'none' || (b.source !== 'none' && a.entityId === b.entityId));
 
 /** The player's persona in the side panel: portrait, name, and a Change control that opens the picker.
  *  `onChange` runs after the persona changes, with the new persona's name, or null for None. */
 export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: string | null) => void }) {
   const { personaRef, setPersonaRef, discoveredEntities } = useGameplay();
   const { worldId, worldOverview } = useGameData();
-  const { persona, entities: cast, worldPersonas, resolveEntityText } = useResolvedWorld();
+  const { persona, entities: cast, worldPersonas, customPersona, resolveEntityText } = useResolvedWorld();
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<PersonaOption[]>([]);
   // Null until the player picks in this opening, so the picker starts on the current persona.
@@ -46,7 +43,7 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
       (library) => {
         if (!mounted) return;
         // The played world entity counts too: a library persona it copies stays out.
-        const world = persona?.source === 'world' ? [...cast, persona.entity] : cast;
+        const world = worldEntitiesOf(cast, persona);
         setOptions(inGamePersonas(library, world, pickedAtStart(discoveredEntities)).map(({ id, name, image, description }) => ({ id, name, image, description })));
       },
       () => { if (mounted) setOptions([]); },
@@ -56,12 +53,15 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
-  const offer = offeredPersonas(worldPlayerSetting(worldOverview), { world: worldPersonas.map(personaOption(resolveEntityText)), library: options });
+  const offer = offeredPersonas(worldPlayerSetting(worldOverview), {
+    world: worldPersonas.map(personaOption(resolveEntityText)), library: options,
+    custom: customPersona ? personaOption(resolveEntityText)(customPersona) : undefined,
+  });
 
   const apply = () => {
     setPersonaRef(choice);
     if (worldId) rememberWorldPersona(worldId, choice);
-    const picked = choice.source === 'none' ? undefined
+    const picked = choice.source === 'none' ? (offer.custom && { name: choice.name?.trim() || offer.custom.name })
       : [...offer.world, ...offer.library].find((option) => option.id === choice.entityId);
     onChange(choice, picked?.name ?? null);
     showPicker(false);
@@ -89,13 +89,14 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
               world={offer.world}
               library={offer.library}
               none={offer.none}
+              custom={offer.custom}
               value={choice}
               onChange={setDraft}
             />
           </ScrollArea>
           <DialogFooter className="shrink-0">
             <Button variant="ghost" onClick={() => showPicker(false)}>Cancel</Button>
-            <Button onClick={apply} disabled={sameRef(choice, current)}>Change</Button>
+            <Button onClick={apply} disabled={samePersonaRef(choice, current)}>Change</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

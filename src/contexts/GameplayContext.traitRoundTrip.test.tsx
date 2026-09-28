@@ -8,8 +8,9 @@ import { GameplayProvider, useGameplay } from './GameplayContext';
 import { GameDataProvider } from './GameDataContext';
 import { PlaceholderSessionProvider } from './PlaceholderSessionContext';
 import {
-  acquireTrait, applyCodeTraitSwitches, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
+  acquireTrait, applyCodeTraitSwitches, heldPlayerTraits, seedStatBases, setTraitEnabled, switchPlayerTrait, type TraitRuntimeState,
 } from '@/lib/traitRuntime';
+import { inPlayBearers } from '@/lib/ownedTraitsInPlay';
 import type { PlayerStat, Stat, Trait } from '@/types';
 
 vi.mock('@/lib/useTtsPlayback', () => import('@/test/stubs/ttsPlayback'));
@@ -281,6 +282,57 @@ describe('owned trait state across a save/load round trip', () => {
       await live().loadGame('save-owned-4', [], [authored], []);
     });
     expect(live().ownedTraits).toEqual({ lib: { chosen: ['brave'] } });
+  });
+
+  it("keeps the Custom Persona entity's picks under its own key, under None and under a library persona", async () => {
+    const live = mount();
+    await act(async () => { live().setOwnedTraits({ cp: { chosen: ['wizard'] } }); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-owned-6'); });
+    await act(async () => { live().setOwnedTraits({}); });
+    await act(async () => { await live().loadGame('save-owned-6', [], [authored], ['cp']); });
+    expect(live().ownedTraits).toEqual({ cp: { chosen: ['wizard'] } });
+    await act(async () => { live().setPersonaRef({ source: 'library', entityId: 'lib' }); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-owned-7'); });
+    await act(async () => { live().setOwnedTraits({}); });
+    await act(async () => { await live().loadGame('save-owned-7', [], [authored], ['cp']); });
+    expect(live().ownedTraits).toEqual({ cp: { chosen: ['wizard'] } });
+    expect(live().personaRef).toEqual({ source: 'library', entityId: 'lib' });
+  });
+
+  it("keeps the player's entered name and description on a None persona", async () => {
+    const live = mount();
+    const entered = { source: 'none' as const, name: 'Ash', description: 'Quiet.' };
+    await act(async () => { live().setPersonaRef(entered); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-persona-1'); });
+    await act(async () => { live().setPersonaRef({ source: 'none' }); });
+    await act(async () => { await live().loadGame('save-persona-1', [], [authored], []); });
+    expect(live().personaRef).toEqual(entered);
+  });
+
+  it("loads a save from the system-node era with its Custom Persona pick unheld and nothing under the marked entity's key", async () => {
+    // A save from before the mark lists the pick among the player's world traits. The marked entity's tree
+    // holds it, so the listed trait is not held, nothing migrates it, and the marked entity has no picks.
+    const wizard: Trait = { id: 'wizard', name: 'Wizard', statChanges: [], groupId: 'classes' };
+    const world = {
+      traits: [wizard],
+      traitGroups: [
+        { id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' as const },
+        { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0 },
+      ],
+      entities: [{
+        id: 'cp', name: 'Newcomer', customPersona: true,
+        traitLinks: [{ id: 'l', originalId: 'wizard', kind: 'trait' as const, originalName: 'Wizard', groupId: null, order: 0 }],
+      }],
+    };
+    const live = mount();
+    await act(async () => { live().setPlayerTraits([wizard]); });
+    await act(async () => { await live().saveGame('slot', 'World', 'w1', 'save-node-era'); });
+    await act(async () => { live().setPlayerTraits([]); });
+    await act(async () => { await live().loadGame('save-node-era', [], [authored], ['cp']); });
+    expect(live().playerTraits).toEqual([wizard]);
+    expect(live().ownedTraits).toEqual({});
+    const bearers = inPlayBearers(world, live().personaRef);
+    expect(heldPlayerTraits(live().playerTraits, { traits: world.traits, groups: world.traitGroups, bearers })).toEqual([]);
   });
 
   it('omits the field from a save with no owned state, and reads its absence as none', async () => {

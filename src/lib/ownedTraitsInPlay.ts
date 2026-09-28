@@ -2,7 +2,7 @@
 
 import type { DiscoveredEntity, Entity, OwnedTraitStates, PersonaRef, Placeholder, Trait, TraitGroup } from '@/types';
 import { PLAYER_BEARER, resolveBearers, type Bearer, type BearerWorld } from './bearers';
-import { copyLookup, readerFor, type CopyLookup, type CopyReader } from './blueprints';
+import { copyLookup, customPersonaEntity, readerFor, type CopyLookup, type CopyReader } from './blueprints';
 import { characterAsPlayer } from './builtinPlaceholders';
 import { entityTexts } from './entityTexts';
 import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
@@ -60,14 +60,26 @@ export const bearerGroupId = (bearerId: string, groupId: string): string => `${b
 
 /** Every present bearer's tree in one list, in the order Enter World and the Traits tab draw it: an entity
  *  node sits where its placement puts it; an unplaced node goes to the end of the top level, in entity
- *  order, and the library's nodes come last. */
+ *  order, and the library's nodes come last. The picked persona takes the Custom Persona entity's slot,
+ *  leaving its own placement; the marked entity's node, when present, follows it directly. */
 export function bearerTraitTree(world: BearerWorld, persona: PersonaRef | undefined, library: readonly Entity[] = []): BearerTraitTree {
   const { bearers } = resolveBearers(world, persona, library);
   const player = bearers.find((b) => b.id === PLAYER_BEARER)!;
-  const nodes = bearers.filter((b) => b.entity && b.present);
+  const played = playedEntityId(persona);
+  const marked = customPersonaEntity(world.entities);
+  // The entity whose place a node takes: the marked entity for the picked persona, else its own.
+  const slotOf = (b: Bearer) => (marked && b.id === played ? marked : b.entity!);
+  const rank = new Map(bearers.map((b, i) => [b.id, i]));
+  // Two nodes in one slot: the picked persona comes first, the marked entity right after.
+  const playedFirst = (a: Bearer, b: Bearer) => (a.id === played ? -1 : b.id === played ? 1 : 0);
+  const nodes = bearers.filter((b) => b.entity && b.present)
+    .sort((a, b) => (rank.get(slotOf(a).id)! - rank.get(slotOf(b).id)!) || playedFirst(a, b));
   const placeable = placeableGroupIds(world.traitGroups);
   const libraryIds = new Set(library.map((e) => e.id));
-  const placementOf = (b: Bearer) => (libraryIds.has(b.id) ? null : effectivePlacement(b.entity!, placeable));
+  const placementOf = (b: Bearer) => {
+    const slot = slotOf(b);
+    return libraryIds.has(slot.id) ? null : effectivePlacement(slot, placeable);
+  };
   const rootGroupIds = new Set(player.groups.map((g) => g.id));
   const atRoot = (ref: string | null | undefined) => ref == null || !rootGroupIds.has(ref);
   const rootSorts = [
@@ -101,8 +113,13 @@ export function bearerTraitTree(world: BearerWorld, persona: PersonaRef | undefi
   return { groups, traits, entityNodes, bearerOfGroup, bearers };
 }
 
+/** The entity nodes that are the player's, in node order: the played persona, and the Custom Persona
+ *  entity under None and a library persona. Each wears the You mark. */
+export const playerEntityIds = (tree: Pick<BearerTraitTree, 'bearers'>): string[] =>
+  tree.bearers.filter((b) => b.entity && b.isPlayer && b.present).map((b) => b.id);
+
 /** The bearer a tree row belongs to: its group's entity bearer, else the player. */
-export const rowBearer = (tree: Pick<BearerTraitTree, 'bearerOfGroup'>, row: Pick<Trait, 'groupId'>): string =>
+export const rowBearer =(tree: Pick<BearerTraitTree, 'bearerOfGroup'>, row: Pick<Trait, 'groupId'>): string =>
   (row.groupId != null ? tree.bearerOfGroup.get(row.groupId) : undefined) ?? PLAYER_BEARER;
 
 /** What every bearer's pins are read from in play. */

@@ -430,14 +430,28 @@ describe('linked traits in the traits tab', () => {
     expect(view.props.onToggleTrait).toHaveBeenCalledWith('t-paladin', false, 'e-ash');
   });
 
-  it("lists the Custom Persona entity's links under its own node as the player under None", () => {
+  it("lists the Custom Persona entity's links under its own node as the player under None, marked You", () => {
     withLinks();
     expect(screen.queryByRole('group', { name: 'General' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Wanderer, You, 0 enabled' })).toBeTruthy();
     unfold('Wanderer');
     expect(within(section('Wanderer')).getByRole('checkbox', { name: 'Switch on Wizard' })).toBeEnabled();
     // The Character Name chip resolves to the marked entity, never to another bearer.
     expect(within(section('Wanderer')).getByText(/studies\.$/).textContent).toBe('Wanderer studies.');
     expect(screen.getByText("Ash's Paladin")).toBeTruthy();
+  });
+
+  it("names the Custom Persona entity's node and its Character Name after the player's entered name", () => {
+    withLinks({ seed: (gameplay) => {
+      gameplay.setPersonaRef({ source: 'none', name: 'Ash Vale' });
+      gameplay.setOwnedTraits({ 'e-ash': { chosen: ['t-paladin'] }, 'e-you': { chosen: ['t-wizard'] } });
+    } });
+    expect(screen.queryByRole('group', { name: 'Wanderer' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ash Vale, You, 1 enabled' })).toBeTruthy();
+    expect(within(section('Ash Vale')).getByText(/studies\.$/).textContent).toBe('Ash Vale studies.');
+    // The player's own trait reads bare in the active list; a cast entity's carries its name.
+    expect(screen.getByText(/2 active:/).parentElement).toHaveTextContent("Ash's Paladin");
+    expect(screen.getByText(/2 active:/).parentElement).not.toHaveTextContent("Ash Vale's Wizard");
   });
 
   it('drops the Custom Persona entity under a world persona, and marks that persona You on its node of links', () => {
@@ -447,6 +461,8 @@ describe('linked traits in the traits tab', () => {
     expect(screen.getByRole('button', { name: 'Ash, You, 1 enabled' })).toBeTruthy();
     expect(screen.getByText(/1 active:/).parentElement).toHaveTextContent('Paladin');
     expect(screen.queryByText("Ash's Paladin")).toBeNull();
+    // Ash's section stands where the marked entity's stood: after Bo's, once.
+    expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Bo', 'Ash']);
   });
 
   it("reads a linked trait's Character Name as its bearer", () => {

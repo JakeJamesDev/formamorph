@@ -3,8 +3,8 @@ import type { Entity, PersonaRef, Placeholder, PlaceholderPin, Trait, TraitLink 
 import { phValueId, phValues } from '@/test/placeholderValues';
 import { allPinTexts, type PinnableStat } from './placeholderPins';
 import {
-  activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerPriming, bearerTraitTree, inPlayLibrary, rowBearer,
-  withBearerNames,
+  activeOwnedTraitIds, addedCharacters, bearerGroupId, bearerPins, bearerPriming, bearerTraitTree, inPlayLibrary, playerEntityIds,
+  rowBearer, withBearerNames,
   type BearerPinState,
 } from './ownedTraitsInPlay';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
@@ -258,16 +258,69 @@ describe('bearerTraitTree — the player-facing tree', () => {
     expect(asAlbus.traits.map((t) => rowBearer(asAlbus, t))).not.toContain('cp');
   });
 
-  it('places a node where the author put it, ends the top level with the unplaced ones, and puts the library last', () => {
+  it('places a node where the author put it, ends the top level with the unplaced ones, and puts an added library character last', () => {
     const wolf: Entity = { id: 'wolf', name: 'Wolf', traits: [trait('t-wild')] };
     const tree = bearerTraitTree(linkedWorld, AS_LIB, [{ ...lib, traits: [trait('t-lib')] }, wolf]);
     const nodes = tree.groups.filter((g) => tree.entityNodes.has(g.id)).map((g) => [g.id, g.order] as const);
-    expect(nodes.map(([id]) => id)).toEqual(['albus', 'mira', 'cp', 'lib', 'wolf']);
+    // The library persona takes the unplaced marked entity's place among the nodes.
+    expect(nodes.map(([id]) => id)).toEqual(['albus', 'mira', 'lib', 'cp', 'wolf']);
     expect(nodes.find(([id]) => id === 'albus')?.[1]).toBe(5);
     // The unplaced nodes follow the last top-level order, Albus's placed node at 5.
     const rootMax = Math.max(5, ...tree.traits.filter((t) => t.groupId == null).map((t) => t.order ?? 0));
     const unplaced = nodes.filter(([id]) => id !== 'albus').map(([, order]) => order ?? -1);
     expect(unplaced).toEqual([rootMax + 1, rootMax + 2, rootMax + 3, rootMax + 4]);
+  });
+
+  describe('the picked persona in the marked entity’s slot', () => {
+    // Knights is a root group Albus's node sits in; the marked entity sits at the top level, third.
+    const knights = { id: 'g-knights', name: 'Knights', parentId: null, order: 3 };
+    const slotWorld = {
+      ...linkedWorld,
+      traitGroups: [...linkedWorld.traitGroups, knights],
+      entities: [
+        { ...linkedWorld.entities[0], traitPlacement: { groupId: 'g-knights', order: 0 } },
+        linkedWorld.entities[1],
+        { ...linkedWorld.entities[2], traitPlacement: { groupId: null, order: 2 } },
+      ],
+    };
+    const nodeAt = (tree: ReturnType<typeof bearerTraitTree>, id: string) => {
+      const node = tree.groups.find((g) => g.id === id);
+      return node ? [node.parentId, node.order] : null;
+    };
+
+    it('keeps the marked entity in its slot under None, and marks it the player’s', () => {
+      const tree = bearerTraitTree(slotWorld, NONE);
+      expect(nodeAt(tree, 'cp')).toEqual([null, 2]);
+      expect(nodeAt(tree, 'albus')).toEqual(['g-knights', 0]);
+      expect(playerEntityIds(tree)).toEqual(['cp']);
+    });
+
+    it('moves a played world persona’s node into the marked entity’s slot, out of its own group, with the marked node gone', () => {
+      const tree = bearerTraitTree(slotWorld, AS_ALBUS);
+      expect(nodeAt(tree, 'albus')).toEqual([null, 2]);
+      expect(nodeAt(tree, 'cp')).toBeNull();
+      // Albus's node stands third among the nodes, where the marked entity stood.
+      expect(tree.groups.filter((g) => tree.entityNodes.has(g.id)).map((g) => g.id)).toEqual(['mira', 'albus']);
+      expect(playerEntityIds(tree)).toEqual(['albus']);
+    });
+
+    it('puts a library persona’s node in the marked entity’s slot with the marked node right after it, both the player’s', () => {
+      const tree = bearerTraitTree(slotWorld, AS_LIB, [{ ...lib, traits: [trait('t-lib')] }]);
+      expect(nodeAt(tree, 'lib')).toEqual([null, 2]);
+      expect(nodeAt(tree, 'cp')).toEqual([null, 2]);
+      expect(tree.groups.filter((g) => tree.entityNodes.has(g.id)).map((g) => g.id)).toEqual(['albus', 'mira', 'lib', 'cp']);
+      expect(playerEntityIds(tree)).toEqual(['cp', 'lib']);
+      expect(rowBearer(tree, tree.traits.find((t) => t.id === 't-lib')!)).toBe('lib');
+      expect(tree.traits.filter((t) => t.id === 'wizard').map((t) => rowBearer(tree, t))).toEqual(['albus', 'mira', 'cp']);
+    });
+
+    it('leaves a played persona at its own placement when the world has no marked entity', () => {
+      const unmarked = { ...slotWorld, entities: slotWorld.entities.slice(0, 2) };
+      expect(nodeAt(bearerTraitTree(unmarked, AS_ALBUS), 'albus')).toEqual(['g-knights', 0]);
+      const withLib = bearerTraitTree(unmarked, AS_LIB, [{ ...lib, traits: [trait('t-lib')] }]);
+      // Unplaced, after Mira's unplaced node at 4.
+      expect(nodeAt(withLib, 'lib')).toEqual([null, 5]);
+    });
   });
 
   it('leaves out a bearer the playthrough does not hold', () => {

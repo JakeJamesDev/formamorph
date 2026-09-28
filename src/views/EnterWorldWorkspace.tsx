@@ -14,7 +14,8 @@ import type { Entity, GameLocation, PersonaRef, Stat, Trait, TraitGroup } from '
 import { PersonaPicker, PersonaPortrait, type PersonaOption } from '@/components/game/PersonaPicker';
 import { primaryImage } from '@/lib/entityImages';
 import type { ResolveEntityText } from '@/lib/resolveWorldNames';
-import { bearerTraitTree } from '@/lib/ownedTraitsInPlay';
+import { bearerTraitTree, playerEntityIds } from '@/lib/ownedTraitsInPlay';
+import { hasPersonaChoice } from '@/lib/personaPick';
 import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,8 @@ export interface EnterWorldWorkspaceProps {
   personas?: PersonaOption[];
   /** The picker offers None. Absent = yes. */
   personaNone?: boolean;
+  /** The Custom Persona entity, which stands in None's place. */
+  personaCustom?: PersonaOption;
   persona?: PersonaRef;
   onPersonaChange?: (ref: PersonaRef) => void;
   categoryIndex: number;
@@ -100,7 +103,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => buildTraitWorkspace(traitTree.traits, traitTree.groups, new Set(traitTree.entityNodes.keys())),
     [traitTree],
   );
-  const playedEntityId = props.persona && props.persona.source !== 'none' ? props.persona.entityId : null;
+  const playerIds = playerEntityIds(traitTree);
   const youMark = <span className="ml-2 text-meta font-normal text-primary">You</span>;
   // One entity, one role: the persona leaves the character list, and an added character leaves the picker.
   const personaId = props.persona?.source === 'library' ? props.persona.entityId : null;
@@ -112,7 +115,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     () => (personaId ? props.libraryEntities.filter((entity) => entity.id !== personaId) : props.libraryEntities),
     [personaId, props.libraryEntities],
   );
-  const hasPersonas = (props.worldPersonas?.length ?? 0) + (props.personas?.length ?? 0) > 0;
+  const hasPersonas = hasPersonaChoice({
+    world: props.worldPersonas ?? [], library: props.personas ?? [], none: props.personaNone !== false, custom: props.personaCustom,
+  });
   const categories = useMemo(
     () => [
       ...(hasPersonas ? [{ kind: 'persona' as const, id: 'persona', name: 'Persona' }] : []),
@@ -156,7 +161,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
         {category.kind === 'traits' && category.entityNode && <User aria-hidden className="h-4 w-4 shrink-0" />}
         <span className="min-w-0 flex-1 break-words">
           {category.name}
-          {category.kind === 'traits' && category.entityNode && category.entityId === playedEntityId && youMark}
+          {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMark}
         </span>
         {category.kind === 'traits' && category.traits.length > 0 && (
           <span
@@ -181,7 +186,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">Starting Traits</p>
           <h2 className="break-words text-heading font-semibold">
             {entity.name}
-            {entity.id === playedEntityId && youMark}
+            {playerIds.includes(entity.id) && youMark}
           </h2>
           {description && (
             <div className="mt-1 max-w-3xl text-helper text-muted-foreground">
@@ -364,6 +369,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 world={props.worldPersonas}
                 library={personaOptions}
                 none={props.personaNone}
+                custom={props.personaCustom}
                 value={props.persona}
                 onChange={props.onPersonaChange}
               />

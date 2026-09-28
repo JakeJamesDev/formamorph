@@ -16,18 +16,27 @@ export interface PersonaOffer<T> {
   library: T[];
   /** The picker offers None. */
   none: boolean;
+  /** The Custom Persona entity, which stands in None's place while None is offered. */
+  custom?: T;
 }
 
 /** The personas a picker lists. Cast keeps only the world's personas and drops None; a Cast world with no
  *  world persona offers what Fixed offers. */
-export function offeredPersonas<T>(setting: WorldPlayerSetting, available: { world: T[]; library: T[] }): PersonaOffer<T> {
+export function offeredPersonas<T>(setting: WorldPlayerSetting, available: { world: T[]; library: T[]; custom?: T }): PersonaOffer<T> {
   if (setting === 'cast' && available.world.length > 0) return { world: available.world, library: [], none: false };
-  return { world: available.world, library: available.library, none: true };
+  return { world: available.world, library: available.library, none: true, ...(available.custom ? { custom: available.custom } : {}) };
 }
 
-/** A picker has something to pick: None alone is no choice. */
+/** A picker has something to pick: None alone is no choice, but the Custom Persona entity's row is one. */
 export function hasPersonaChoice(offer: PersonaOffer<unknown>): boolean {
-  return offer.world.length + offer.library.length > 0;
+  return offer.world.length + offer.library.length > 0 || (offer.none && offer.custom !== undefined);
+}
+
+/** Whether two refs name the same pick, an entered name or description included. */
+export function samePersonaRef(a: PersonaRef, b: PersonaRef): boolean {
+  if (a.source !== b.source) return false;
+  if (a.source === 'none' && b.source === 'none') return (a.name ?? '') === (b.name ?? '') && (a.description ?? '') === (b.description ?? '');
+  return a.source !== 'none' && b.source !== 'none' && a.entityId === b.entityId;
 }
 
 /** The inputs of the preselect rule, shared by the enter-world step and Quick Start. */
@@ -37,8 +46,9 @@ export interface PersonaChoices {
   remembered: PersonaRef | undefined;
   /** The global default: a library entity id. */
   globalDefault: string | undefined;
-  /** The persona ids the picker offers: the world's marked entities and the library personas. */
-  available: { world: string[]; library: string[] };
+  /** The persona ids the picker offers: the world's marked entities and the library personas, and whether a
+   *  Custom Persona entity stands in None's place. */
+  available: { world: string[]; library: string[]; custom?: boolean };
 }
 
 const NONE: PersonaRef = { source: 'none' };
@@ -46,7 +56,7 @@ const NONE: PersonaRef = { source: 'none' };
 /** The persona the picker starts on: the world's remembered pick, then the rule of the world's player setting,
  *  then the global default, then None. A pick the picker does not offer falls through to the next rule. */
 export function preselectPersona({ playerSetting, remembered, globalDefault, available }: PersonaChoices): PersonaRef {
-  const offer = offeredPersonas(playerSetting, available);
+  const offer = offeredPersonas(playerSetting, { ...available, custom: available.custom ? 'custom' : undefined });
   if (!hasPersonaChoice(offer)) return NONE;
   const offered = (ref: PersonaRef) => (ref.source === 'none' ? offer.none : offer[ref.source].includes(ref.entityId));
   if (remembered && offered(remembered)) return remembered;
