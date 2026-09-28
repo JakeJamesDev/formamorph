@@ -175,7 +175,7 @@ One concept, **Blueprints**, with one behavior everywhere: **live until edited**
 ### Custom Persona entity
 
 - The Custom Persona system node is removed. An entity gains an optional Custom Persona mark. At most one per world, root only, author-ordered (Q7, Q12, Q13). Duplicate drops the mark (Q35).
-- The mark excludes Persona and Persona-only and implies persona-only. The other two switches hide on it (Q16).
+- The mark excludes Persona and Persona-only and implies persona-only. It is the fourth segment of the Persona control (Q16, Q41).
 - Bearer resolution: the marked entity's tree is the player's tree under create-your-own and under a library persona, beside the root traits. A world persona's tree is its own.
 - Enter World lists the marked entity in None's place. The picked persona renders at the marked entity's tree position and leaves its own group.
 - Create-your-own: the player's name replaces the entity's name; the player's description follows the entity's (Q11).
@@ -265,3 +265,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q38 | A trait link keeps `originalId`; it is the link's blueprint id. Overrides are keyed by original trait id, each field holding its value and blueprint snapshot. Placeholders gain `blueprintId`. |
   | Q39 | A pin by blueprint is a plain pin whose placeholder id is the blueprint's; no new pin field. The collector resolves it through the copy lookup. |
   | Q40 | Under the mark the marked entity is an ordinary entity bearer: the player under None and under a library persona, never in the cast, absent under a world persona. The root player bearer expands no node's links. A link on it that the root already offers is dropped, as a played persona's is today. Active state keys by the entity's id from 01 on; 08 owns the save-key tests and surfaces. |
+  | Q41 | The mark is a fourth segment, Custom Persona, on the entity's Persona segmented control (Cast / Playable / Persona-Only / Custom Persona), World Editor Advanced only. Supersedes Q16's "switches hide": the control changed to segments in the meantime. While another entity holds the mark the segment is disabled with a hint naming that entity. |
+  | Q42 | Root-only means the Traits tab tree. A drop of the marked node into a trait group is refused with the inline notice. Entities tab groups are editor folders and stay free. |
+  | Q43 | Marking an entity that sits in a trait group clears its placement, so it moves to the end of the root. |
+  | Q44 | Unmark counts links, owned traits and copies. Delete counts links, owned traits and owned placeholders. Groups are not counted. Delete confirms for the marked entity only; other entities keep today's delete. |
