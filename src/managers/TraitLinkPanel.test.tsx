@@ -6,6 +6,8 @@ import { editorGateInput } from '@/lib/bearers';
 import type { LinkRow } from '@/lib/traitTree';
 import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from './TraitLinkPanel';
 import type { TraitPanelTab } from '@/views/traitPanelTabs';
+import { ALWAYS_ADVANCED, EditorModeContext } from '@/lib/editorMode';
+import { phValues } from '@/test/placeholderValues';
 import type { Entity, Trait, TraitGroup, TraitLink, TraitLinkOverrides } from '@/types';
 
 // The chip fields are Lexical editors; what matters here is whether a link leaves them writable.
@@ -18,7 +20,10 @@ vi.mock('@/components/prompt/PlaceholderField', () => ({
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const traits = [
-  trait('paladin', { name: 'Paladin', groupId: 'classes', order: 0, isDefault: true, aiDescription: 'Sworn to a god.' }),
+  trait('paladin', {
+    name: 'Paladin', groupId: 'classes', order: 0, isDefault: true, aiDescription: 'Sworn to a god.',
+    placeholderPins: [{ placeholderId: 'garb', value: 'Tabard' }], statToggles: [{ statId: 's', enabled: false }],
+  }),
   trait('wizard', { name: 'Wizard', groupId: 'classes', order: 1, statChanges: [{ statId: 's', value: 1, type: 'min' }] }),
   trait('brave', { name: 'Brave', groupId: null, order: 1 }),
 ];
@@ -26,6 +31,7 @@ const traitGroups: TraitGroup[] = [
   { id: 'blueprints', name: 'Blueprints', parentId: null, order: 0, system: 'blueprints' },
   { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0 },
 ];
+const garb = { id: 'garb', name: 'Class Garb', values: phValues(['Tabard', 'Robe']) };
 const link = (id: string, originalId: string, kind: TraitLink['kind'], overrides?: Record<string, TraitLinkOverrides>): TraitLink =>
   ({ id, originalId, kind, originalName: originalId, groupId: null, order: 0, ...(overrides ? { overrides } : {}) });
 const row = (entityId: string, l: TraitLink, originalId = l.originalId, root = true): LinkRow => ({ entityId, link: l, originalId, root });
@@ -38,12 +44,17 @@ function Harness({ entities, updateTrait = vi.fn(), children }: {
 }) {
   const [current, setCurrent] = useState(entities);
   const store = {
-    traits, traitGroups, entities: current, placeholders: [], stats: [{ id: 's', name: 'Strength' }],
+    traits, traitGroups, entities: current, placeholders: [garb], stats: [{ id: 's', name: 'Strength' }],
     placeholderOwners: new Map(), pinWorld: null, updateTrait,
     gateInput: editorGateInput({ traits, traitGroups, entities: current }),
     editEntity: (id: string, edit: (e: Entity) => Entity) => setCurrent((all) => all.map((e) => (e.id === id ? edit(e) : e))),
   } as unknown as TraitStore;
-  return <TraitStoreContext.Provider value={store}>{children(current)}</TraitStoreContext.Provider>;
+  // Advanced, so the Pins tab and Stat Availability show.
+  return (
+    <EditorModeContext.Provider value={ALWAYS_ADVANCED}>
+      <TraitStoreContext.Provider value={store}>{children(current)}</TraitStoreContext.Provider>
+    </EditorModeContext.Provider>
+  );
 }
 
 /** Ash's link to Paladin in the panel, open on `tab`; `seen` gets every entity after each render. */
@@ -126,6 +137,23 @@ describe('LinkedTraitManager', () => {
     expect(seen.entities[0].traitLinks![0].overrides?.paladin?.statChanges)
       .toEqual({ value: [{ statId: '', value: 0, type: 'min' }], blueprint: [] });
     expect(screen.getByRole('button', { name: 'Reset Stat Changes' })).toBeInTheDocument();
+  });
+
+  it('keeps Stat Availability read-only on a link', () => {
+    renderLink([ashLinks()], { tab: 'stats' });
+    expect(screen.queryByRole('button', { name: 'Add Stat Availability' })).toBeNull();
+    const toggleRow = screen.getByText('Stat Availability').closest('.space-y-2')!;
+    for (const control of within(toggleRow as HTMLElement).getAllByRole('combobox')) expect(control).toBeDisabled();
+  });
+
+  it("overrides the pins as a whole list, with a Reset back to the blueprint's pins", () => {
+    const seen = renderLink([ashLinks()], { tab: 'pins' });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Pin' }));
+    expect(seen.entities[0].traitLinks![0].overrides?.paladin?.placeholderPins)
+      .toEqual({ value: [], blueprint: [{ placeholderId: 'garb', value: 'Tabard' }] });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Placeholder Pins' }));
+    expect(seen.entities[0].traitLinks![0]).not.toHaveProperty('overrides');
+    expect(screen.getByRole('button', { name: 'Remove Pin' })).toBeInTheDocument();
   });
 });
 

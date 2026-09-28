@@ -158,6 +158,7 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
         onBack={() => onSelect(null)}
         backLabel="Traits"
         scrollList={false}
+        detailFooter={linkRow && !linkRow.unbound ? <LinkFooter bearer={bearer} row={linkRow} /> : undefined}
         list={
           <div className="flex h-full min-h-0 flex-col">
             <ListSearchToolbar
@@ -213,7 +214,6 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
                       detailsFooter={<ThisLinkSection entity={bearer} link={linkRow.link} originalId={linkRow.originalId} />}
                     />
                   )}
-                  <LinkFooter bearer={bearer} row={linkRow} />
                 </div>
               )
             ) : group ? (
