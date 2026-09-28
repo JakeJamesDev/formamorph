@@ -130,18 +130,18 @@ describe('the two entity editors', () => {
     );
     render(simple(<WorldPanel />));
     expect(screen.getByLabelText('Pronouns')).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: /^Persona/ })).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Persona' })).toBeNull();
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(screen.getByLabelText('Pronouns')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: /^Persona/ })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Persona' })).toBeInTheDocument();
   });
 
-  it('write the Persona mark and pronouns to the entity in the World Editor', async () => {
+  it('write the Persona role and pronouns to the entity in the World Editor', async () => {
     world.updateEntity.mockClear();
     render(<SettingsProvider><WorldPanel /></SettingsProvider>);
-    await userEvent.click(screen.getByRole('checkbox', { name: /^Persona/ }));
-    expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', persona: true });
+    await userEvent.click(screen.getByRole('radio', { name: 'Persona-Only' }));
+    expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', persona: true, personaOnly: true });
     await userEvent.type(screen.getByLabelText('Pronouns'), 'x');
     expect(world.updateEntity.mock.calls.at(-1)?.[0]).toMatchObject({ id: 'e1', pronouns: 'x' });
   });

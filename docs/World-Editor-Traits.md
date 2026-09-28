@@ -151,7 +151,7 @@ Link rules:
 - **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits. **Player Can Toggle In-Game** follows the original.
 - **The AI reads a linked trait like the entity's own**, with that link's pin values.
 
-> ⚠️ **A link's Stat Changes apply only to the player.** On an entity with the **Persona** checkbox, they apply when the player plays as it. On any other entity, they do nothing. The **This Link** section says which applies.
+> ⚠️ **A link's Stat Changes apply only to the player.** On a **Playable** or **Persona-Only** entity, they apply when the player plays as it. On any other entity, they do nothing. The **This Link** section says which applies.
 
 ### Detach
 
@@ -211,7 +211,7 @@ An entity's own trait pins never reach anyone else's text. Albus's class never c
 
 ## Test Bench Checks
 
-The **Test Bench** checks every bearer as if the player picked it. That includes entities with the **Persona** checkbox and Custom Persona.
+The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and Custom Persona.
 
 It shows an error when a trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
 

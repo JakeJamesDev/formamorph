@@ -2,7 +2,7 @@
 
 A persona is who you are in the story. It gives the AI your name, your pronouns and your description.
 
-> A persona is an [entity](Entities) with the **Persona** checkbox selected. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
+> A persona is an [entity](Entities) set to **Playable** under **Persona**. It uses the same editor as every other entity. Authors who want players to play as a world's own entities should read [Personas for Authors](Persona-Authoring).
 
 ---
 
@@ -10,7 +10,7 @@ A persona is who you are in the story. It gives the AI your name, your pronouns 
 
 1. Open the library's **Entities** tab.
 2. Select **New Entity**, or open an entity you already have.
-3. On the **Profile** tab, select the **Persona** checkbox.
+3. On the **Profile** tab, set **Persona** to **Playable**.
 
 No copy is made. The entity is now one of your personas, and you can still add it to a world as an entity.
 

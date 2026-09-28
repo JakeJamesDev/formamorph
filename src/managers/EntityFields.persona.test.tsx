@@ -14,33 +14,41 @@ function mount(value: Partial<Entity>, home: EntityHome = 'world', onChange = vi
   return onChange;
 }
 
-describe('the Persona-Only switch', () => {
-  it('writes the mark', async () => {
-    const user = userEvent.setup();
-    const onChange = mount({ persona: true });
-    const box = screen.getByRole('checkbox', { name: /Persona-Only/ });
-    expect(box).not.toBeChecked();
-    await user.click(box);
-    expect(onChange).toHaveBeenLastCalledWith('personaOnly', true);
+const role = (name: string) => screen.getByRole('radio', { name });
+
+describe('the Persona role', () => {
+  it.each([
+    [{}, 'Cast'],
+    [{ persona: true }, 'Playable'],
+    [{ persona: true, personaOnly: true }, 'Persona-Only'],
+  ] as const)('reads %o as %s', (value, label) => {
+    mount(value);
+    expect(role(label)).toBeChecked();
   });
 
-  it('reads a stored mark as checked, and unchecking clears it', async () => {
-    const user = userEvent.setup();
+  it('writes both marks for Persona-Only', async () => {
+    const onChange = mount({});
+    await userEvent.setup().click(role('Persona-Only'));
+    expect(onChange).toHaveBeenCalledWith('persona', true);
+    expect(onChange).toHaveBeenCalledWith('personaOnly', true);
+  });
+
+  it('clears both marks for Cast', async () => {
     const onChange = mount({ persona: true, personaOnly: true });
-    const box = screen.getByRole('checkbox', { name: /Persona-Only/ });
-    expect(box).toBeChecked();
-    await user.click(box);
-    expect(onChange).toHaveBeenLastCalledWith('personaOnly', undefined);
+    await userEvent.setup().click(role('Cast'));
+    expect(onChange).toHaveBeenCalledWith('persona', undefined);
+    expect(onChange).toHaveBeenCalledWith('personaOnly', undefined);
   });
 
-  it('shows only with the Persona mark', () => {
-    mount({ personaOnly: true });
-    expect(screen.getByRole('checkbox', { name: /^Persona\b(?!-)/ })).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: /Persona-Only/ })).not.toBeInTheDocument();
+  it('keeps the role when the active segment is clicked again', async () => {
+    const onChange = mount({ persona: true });
+    await userEvent.setup().click(role('Playable'));
+    expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('shows only in a world, since a library entity is never in a world cast', () => {
+  it('offers no Persona-Only in the library, since a library entity is never in a world cast', () => {
     mount({ persona: true }, 'library');
-    expect(screen.queryByRole('checkbox', { name: /Persona-Only/ })).not.toBeInTheDocument();
+    expect(role('Playable')).toBeChecked();
+    expect(screen.queryByRole('radio', { name: 'Persona-Only' })).not.toBeInTheDocument();
   });
 });
