@@ -221,7 +221,10 @@ Give an entity the one or two names the story will actually use. Each alias is a
   'worldEditor.traits': {
     title: 'Traits',
     wikiPage: 'World-Editor-Traits',
-    body: `The choices that make one playthrough different from the next: *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
+    tabs: [
+      {
+        label: 'Basics',
+        body: `The choices that make one playthrough different from the next: *Scarred*, *Silver-Tongued*, *Afraid of Water*. The player picks their traits before the story starts, and the ones they take are described to the AI on every turn.
 
 A trait is a durable fact about the character. Stats move constantly and the story moves with them. A trait stays fixed, so the narrator is handed the same fact on turn one and turn ninety. A stat says *how much*, a trait says *who you are*.
 
@@ -242,6 +245,28 @@ A trait is a durable fact about the character. Stats move constantly and the sto
 **Simple mode hides** Stat Availability and Placeholder Pins, and adds traits without groups. Switch the editor to Advanced to use them.
 
 Write the AI-Facing Description as a fact about the character the narrator can act on, not a stat note. *"Flinches at open water"* beats *"-20 swimming"*.`,
+      },
+      {
+        label: 'Links & Blueprints',
+        body: `Links, Blueprints and Custom Persona need Advanced mode to create.
+
+**Requires** makes a trait available only while one of its targets holds: a trait, any trait in a group, or a persona the player plays. It checks whoever has the trait, unless you pick another bearer. *Smite* requires *Paladin* means Paladin on the same character.
+
+**Entities can have traits.** Each entity with traits shows as a node below the world's traits. Its active traits describe it to the AI, and they become the player's when the player plays that entity. Type \`{{char}}\` in a trait's text to name whoever has it.
+
+**Links share one trait.** Drag a world trait or group onto an entity node, or select it and use **Link To…**. The entity gets that trait, its **original**, without a copy. A link reads the original live until you change a field on it. Each field you change is an override for that link only: Enabled by Default, Requires, Placeholder Pins, Player Can Toggle In-Game and Stat Changes.
+
+- **Reset** returns one field to the original. **Reset to Blueprint** returns them all.
+- **Edit Blueprint** jumps to the original, so the change reaches every link.
+- **Detach** turns the link into the entity's own trait, which no longer follows the original.
+
+**Blueprints** holds originals that only some characters get, like classes and races. Add it from **+**. Traits under it are never offered to the player directly. They reach play only through links.
+
+**Custom Persona** is a mark on one entity, set on its **Profile** tab. It takes None's place at Enter World. Its traits are the player's when they play with no world persona, or with a persona from their library. Use it to give a race and a class to a player who brings their own character.
+
+**Pins by blueprint.** A trait can pin a blueprint placeholder. On each bearer the pin lands on that bearer's own copy, so Albus's class never changes your description. The Placeholders tab's **?** explains copies.`,
+      },
+    ],
   },
   'worldEditor.statChanges': {
     title: 'Stat Changes',
@@ -272,6 +297,8 @@ The pinned value doesn't have to come from the placeholder's own list. The box s
 
 A value that is a chip pins that part. Pin a Wildcard to the value holding *isAsian* and every chip of it takes that variant. The box names such a value after the part it holds, exactly as the Values list does, so you pick by the thing rather than by the words it joins to. A chip inside a longer value is prose, so that one reads as what it will resolve to.
 
+**Pin a blueprint** to reach every bearer's own copy of it. Albus's *Paladin* pins his copy of *Class Garb*, and nobody else's. A link can replace this list for one bearer.
+
 When two active traits pin the same placeholder, the one lower in the trait list wins. The row says so whenever that applies. A location's pin outranks a trait's, and a stat band's outranks both. A placeholder value's pin ranks under all three.`,
   },
   'worldEditor.locationPins': {
@@ -293,7 +320,10 @@ The **Add Pin** button picks the kind of source, then the source, and writes an 
   'worldEditor.placeholders': {
     title: 'Placeholders',
     wikiPage: 'World-Editor-Placeholders',
-    body: `Reusable bits of world text you define once and drop into your writing as chips: an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere you place its chip, it resolves to one of those values when the story runs.
+    tabs: [
+      {
+        label: 'Basics',
+        body: `Reusable bits of world text you define once and drop into your writing as chips: an eye color, a street name, a deity. Each has a **Name** and a list of **Values**, and everywhere you place its chip, it resolves to one of those values when the story runs.
 
 Placeholders let a world vary without being rewritten. Author *"the {{Eye Color}} stranger"* once, and it reads as a real detail every playthrough. Sometimes it's the same detail on purpose, sometimes a fresh one each time.
 
@@ -319,6 +349,20 @@ New placeholders start as Wildcards, and one you have never touched reads as the
 **Placeholders are Advanced-only.** The editor's mode switch has to be on Advanced for this tab and the chip palette to appear.
 
 Define a placeholder here, then place its chip from any field that offers them. A placeholder with no values resolves to nothing, so give it at least one.`,
+      },
+      {
+        label: 'Blueprints & Copies',
+        body: `A **blueprint** is a placeholder that exists to be copied, like *Class Garb*. Add the **Blueprints** group from **+**, then move a placeholder into it. Each entity that needs the blueprint gets its own **copy**, so one *Class Garb* reads a different value on each character.
+
+**Copies appear by themselves.** When a trait on an entity pins or places a blueprint, that entity gets a copy, named like *Albus.Class Garb*. A top-level trait makes one for every Persona entity and for the Custom Persona entity. An untouched copy goes away with its last use. One you edited stays.
+
+**A copy follows its blueprint until you edit it.** You can reword a value, change its weight, add a value only this character has, or remove one. Values the blueprint gains later reach every copy. **Reset** returns one value, and **Reset to Blueprint** returns them all.
+
+**Blueprint chips** read the bearer's own copy, and they show a link glyph. Write one *Paladin* description with a *Class Garb* chip, and each Paladin reads their own garb. They work only in an original trait's text and in blueprint and copy values, because the chip needs a bearer to read.
+
+**A blueprint is never a World placeholder.** A move out of the group is refused while a trait, a value or a copy uses it, and the notice names each use.`,
+      },
+    ],
   },
   'worldEditor.stats': {
     title: 'Stats',
