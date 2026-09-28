@@ -29,7 +29,7 @@ Select a trait to open its panel.
 
 | Tab | Holds | Mode |
 |---|---|---|
-| **Details** | Name, the two descriptions and the two checkboxes below | Simple and Advanced |
+| **Details** | Name, the two descriptions, the two checkboxes below and [**Requires**](#requirements) | Simple and Advanced |
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 
@@ -86,6 +86,144 @@ Groups organize the list. A trait group also has text of its own:
 Check **Exclusive** when the group is one choice between options: a species, an origin, a starting class. The group shows radio buttons and allows one trait at most. Pick another trait, and the first one clears. Click the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off.
 
 > 💡 **Give an exclusive group a default.** Check **Enabled by Default** on one trait, so the group always has an answer. With two defaults, the first in the list wins.
+
+## Requirements
+
+**Requires** on the **Details** tab makes a trait available only when one of its targets holds. A target is a trait, any trait in a group, or a persona the player plays as. With two targets, either one is enough.
+
+### Whose trait counts
+
+The entity that has a trait is its **bearer**. The player is one bearer, marked **You**. Each entity in the cast is another.
+
+A requirement checks the same bearer by default. *Smite* requires *Paladin* means Paladin on the entity that has Smite. The player's *Wizard* never unlocks Smite for anyone else.
+
+To check another bearer, pick one after you pick the target:
+
+| Bearer | The requirement holds when |
+|---|---|
+| **Same Bearer** | Whoever has the trait also has the target. This is the default. |
+| **You** | The player has the target |
+| An entity | That entity has the target. The list shows only entities that can have it. |
+
+For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player is a Paladin.
+
+## Entity Traits
+
+An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
+
+- **Add one from the Traits tab.** Select **+**, then **Add Trait to Entity**, and pick the entity. In Advanced mode, **Add Group to Entity** adds a group the same way.
+- **Or add one in the entity's editor**, in its **Traits** section.
+
+An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the player's.
+
+> 💡 **Type `{{char}}` in a trait's text to name its bearer.** On an entity, it reads as that entity's name. On the player's traits, it reads as the persona's name, or "the player" with no persona. One *Paladin* text then names each Paladin.
+
+> 💡 **Entity traits can't have Stat Changes or Stat Availability.** Only the player has stats.
+
+## Links
+
+**Advanced mode only.** A link gives a world trait to an entity without a copy. Write *Paladin* one time, then link it to every entity that can be a Paladin. The trait a link points to is its **original**.
+
+Make a link in one of two ways:
+
+- **Drag** a world trait or group onto an entity node. The original stays where it is.
+- **Select the original** and select **Link To…** at the top of its **Details** tab. Pick each entity that gets it. An entity that already has it shows as checked.
+
+A link row shows a link icon. It reads the original live: name, descriptions, requirements and pins. Edit the original, and every link changes. A linked group brings all of its traits, also ones you add later, and it stays **Exclusive** when the original is.
+
+Select a link to open the original's **Details** under the line "Linked from **Templates › Classes › Paladin**. Edits change every link." Below them, the **This Link** section holds what belongs to this link only:
+
+| Setting | What it does |
+|---|---|
+| **Enabled by Default** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits. |
+| *Placeholder* **→** | The value for a [Bearer's Own pin](#bearers-own-pins) on this entity |
+
+Link rules:
+
+- **An entity has each original one time.** A second link to it, direct or through a linked group, is refused.
+- **Only world traits and groups can be originals.** To share an entity's own trait, move it to the world's traits or to [Templates](#templates), then link it.
+- **Remove a link, and the original stays.** Delete the original, and its links go with it. The confirmation tells you how many.
+- **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits. **Player Can Toggle In-Game** follows the original.
+- **The AI reads a linked trait like the entity's own**, with that link's pin values.
+
+> ⚠️ **A link's Stat Changes apply only to the player.** On an entity with the **Persona** checkbox, they apply when the player plays as it. On any other entity, they do nothing. The **This Link** section says which applies.
+
+### Detach
+
+On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the link into the entity's own trait. The copy no longer follows the original, so edit it freely.
+
+Entity traits can't have stat effects. When the original has **Stat Changes** or **Stat Availability**, a confirmation asks first, and the copy comes without them.
+
+### Links in the Library
+
+An entity's links go with it to the library, to a character card and into a world bundle. Each link keeps the name of its original. When the entity joins a world, each link binds to:
+
+1. The trait or group with the same id, when the world has it
+2. Else the one trait or group of its kind with the same name
+
+With no match, or two, the link is dropped. A link to a trait the entity already has is dropped too. Its **This Link** picks follow their traits the same way. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
+
+The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **This Link**, **Remove Link** and **Detach**. Opened from the library, it shows them by name only.
+
+## Templates
+
+**Advanced mode only.** Select **+**, then **Add Templates Group**. Traits under Templates are never offered to the player. They reach play only through links. Keep originals there that only some entities get, such as classes and races.
+
+- **A world has one Templates group.** It stays at the top level.
+- **Entities can't go under Templates.** Templates holds world traits and groups only.
+- **Remove it, and its traits move to the top level.** They're then offered to the player, so a confirmation asks first.
+
+## Custom Persona
+
+**Advanced mode only.** Select **+**, then **Add Custom Persona**. The Custom Persona node holds links only. Its linked traits are the player's when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
+
+- **The picks carry over.** A player who switches between **None** and a library persona keeps their Custom Persona picks.
+- **In play, its traits sit with the world's top-level traits.** They have no separate heading.
+- **It can't link what the top level already offers.** The player has those traits already.
+- **Remove it, and its links go too.** The confirmation tells you how many.
+
+> 💡 With Advanced mode off, links, Templates and Custom Persona still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
+
+## Bearer's Own Pins
+
+**Advanced mode only.** A trait pin can pin each bearer's own placeholder in place of one world placeholder. In the pin's placeholder list, pick a name under **Bearer's Own**. On each bearer, the pin uses that bearer's own placeholder with that name. A bearer with no placeholder of that name uses the world placeholder with that name.
+
+Each link picks its own value in its **This Link** section. Albus's *Paladin* can pin his *Class Garb* to *silvered plate*, and another Paladin's link can pick *a plain tabard*. A link with no value pins nothing.
+
+The pin's own value applies when a bearer has the trait directly, with no link. It is also the first value of a new link that uses the world placeholder.
+
+### Whose pins apply where
+
+| Text | Pins that apply |
+|---|---|
+| World text: locations, the world prompt, narration | The world's pins, then the player's trait pins |
+| The player's persona | The same as world text |
+| An entity's own text | The world's pins, then the player's trait pins, then the entity's own trait pins on top |
+
+An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
+
+## Test Bench Checks
+
+The **Test Bench** checks every bearer as if the player picked it. That includes entities with the **Persona** checkbox and Custom Persona.
+
+It shows an error when a trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
+
+It shows a warning when:
+
+- A link has no value for a Bearer's Own pin. The warning opens the link.
+- A Bearer's Own name matches no placeholder on the bearer or in the world.
+- A link is redundant, because another link on the same bearer already brings its original.
+
+## Example: RPG Classes
+
+A world where the player and some entities have a class.
+
+1. **Add a Templates group.** Under it, add an exclusive **Classes** group with *Paladin*, *Cleric* and *Wizard*. Add a **Spells** group with *Smite*, and set *Smite* to require *Paladin*.
+2. **Link Classes and Spells to Albus.** In **This Link**, check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
+3. **Give each class a Bearer's Own pin.** *Paladin* pins **Bearer's Own** *Class Garb*. Give Albus a *Class Garb* placeholder, and pick its value in his link.
+4. **Add Custom Persona and link Classes to it.** A player with no world persona now picks a class too.
+
+In play, a player who picks *Wizard* never unlocks Albus's *Smite*, and Albus's garb never changes the player's description.
 
 ## Getting started
 
