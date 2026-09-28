@@ -291,10 +291,12 @@ export function useResolvedWorld(): ResolvedWorld {
     (list: Entity[]) => resolveOwnedTraitNames(list, (t, owner) => (text) => resolveTraitText(t, text, owner), resolvePH),
     [resolveTraitText, resolvePH],
   );
-  // The marked entity's node carries the player's entry: its name in the heading and as its Character Name.
+  // The marked entity's node carries the player's entry or library persona: its name in the heading and as
+  // its Character Name.
+  const libraryName = libraryEntities[0]?.name;
   const traitEntities = useMemo(
-    () => resolveOwnedNames([...withPersonaEntry(worldEntities, personaRef)]),
-    [resolveOwnedNames, worldEntities, personaRef],
+    () => resolveOwnedNames([...withPersonaEntry(worldEntities, personaRef, libraryName)]),
+    [resolveOwnedNames, worldEntities, personaRef, libraryName],
   );
   const traitLibrary = useMemo(
     () => resolveOwnedNames(resolveEntityNames(rawLibrary, resolveNameOf)),

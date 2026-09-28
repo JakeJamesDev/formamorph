@@ -1473,10 +1473,13 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     const marked = customPersonaEntity(resolvedWorldEntities);
     return marked && personaOption(resolveEntityText)(marked);
   }, [resolvedWorldEntities, resolveEntityText]);
-  /** The entities the trait tree pages, the marked one carrying the player's entry. */
+  /** The entities the trait tree pages, the marked one carrying the player's entry or library persona. */
+  const entryPersona = entryDraft.persona;
+  const entryLibraryName = entryPersona?.source === 'library'
+    ? personaOptions.find((p) => p.id === entryPersona.entityId)?.name : undefined;
   const entryTraitEntities = useMemo(
-    () => withPersonaEntry(entryWorld.entities, entryDraft.persona),
-    [entryWorld.entities, entryDraft.persona],
+    () => withPersonaEntry(entryWorld.entities, entryDraft.persona, entryLibraryName),
+    [entryWorld.entities, entryDraft.persona, entryLibraryName],
   );
   const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
   /** What the step's Persona category lists under the world's player setting. */
