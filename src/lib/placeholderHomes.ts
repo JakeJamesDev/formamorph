@@ -557,8 +557,9 @@ export function remapOwnedTraitRefs(
       if (!to) return p;
       const target = byId.get(to);
       const aimed = { ...p, placeholderId: to };
-      if (!target || target.blueprintId) return aimed;
-      return p.valueId && valueIds[p.valueId] ? { ...aimed, valueId: valueIds[p.valueId] } : relinkedPin(aimed, target);
+      if (!target) return aimed;
+      if (p.valueId && valueIds[p.valueId]) return { ...aimed, valueId: valueIds[p.valueId] };
+      return target.blueprintId ? aimed : relinkedPin(aimed, target);
     })
     : list);
   return mapOwnedTraitRefs(entity, (t) => remapPlaceholderIds(t, idMap), pins);

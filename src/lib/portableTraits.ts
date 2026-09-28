@@ -15,7 +15,7 @@ export interface TraitWorld {
   traits: readonly Trait[];
   traitGroups: readonly TraitGroup[];
   entities: readonly Entity[];
-  /** The world's blueprints, when the record names its placeholder groups: what a carried copy binds to. */
+  /** The world's blueprints, what a carried copy binds to. */
   blueprints?: readonly Placeholder[];
 }
 
@@ -24,15 +24,13 @@ type Named = { id: string; name: string };
 type EntityBearer = Extract<RequirementBearer, { kind: 'entity' }>;
 type Original = NonNullable<ReturnType<typeof originalOf>>;
 
-/** A world's trait lists, when a record carries them, and its blueprints when it names its placeholder groups. */
+/** A world's trait lists and its blueprints, when a record carries traits. A record with no placeholder folders has no blueprints. */
 export const traitWorldOf = (data: {
   traits?: readonly Trait[]; traitGroups?: readonly TraitGroup[]; entities?: readonly Entity[];
   placeholders?: readonly Placeholder[]; placeholderGroups?: readonly PlaceholderGroup[];
 }): TraitWorld | undefined => (data.traits ? {
   traits: data.traits, traitGroups: data.traitGroups ?? [], entities: data.entities ?? [],
-  ...(Array.isArray(data.placeholderGroups)
-    ? { blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups] }) }
-    : {}),
+  blueprints: worldBlueprints({ placeholders: [...data.placeholders ?? []], placeholderGroups: [...data.placeholderGroups ?? []] }),
 } : undefined);
 
 const ownIds = (entity: Entity): Set<string> =>

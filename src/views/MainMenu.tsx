@@ -73,9 +73,7 @@ import {
   castOwnedTraits, emptyEntryDraft, entryDefaults, entryGateInput, entryOwners, libraryCastIds, rekeyOwnedPicks,
   withLibraryDefaults, withLocationPick, withPersonaPick, withSettledTraits, type EntryDraft, type EntryTraitWorld,
 } from '@/lib/entryDraft';
-import { bindOwnedTraits } from '@/lib/portableTraits';
-import { bindLibraryEntity } from '@/lib/blueprintTravel';
-import { worldBlueprints } from '@/lib/placeholderBlueprints';
+import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   clearDefaultPersona, hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona,
@@ -424,7 +422,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   const rawTraitWorld = useMemo(
     () => ({
       traits: rawTraits, traitGroups: rawTraitGroups, entities: worldEntities,
-      blueprints: worldBlueprints({ placeholders: worldPlaceholders, placeholderGroups }),
+      ...blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups }),
     }),
     [rawTraits, rawTraitGroups, worldEntities, worldPlaceholders, placeholderGroups],
   );
@@ -2822,7 +2820,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                             const cast: EntryTraitWorld = {
                               ...rawEntryWorld,
                               library: pick.libraryEntity
-                                ? [bindOwnedTraits(pick.libraryEntity, rawTraitWorld)]
+                                ? [bindLibraryEntity(pick.libraryEntity, rawTraitWorld)]
                                 : [],
                             };
                             onStartGame(

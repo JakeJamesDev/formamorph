@@ -21,8 +21,7 @@ import { backfillGameStateStats } from '../lib/statBackfill';
 import { appendLogEntry, type LogKind } from '../lib/playLog';
 import { registerDevHook } from '../lib/devRouter';
 import { useLibraryEntity } from '../lib/useLibraryEntity';
-import { bindCarriedBlueprints } from '../lib/blueprintTravel';
-import { worldBlueprints } from '../lib/placeholderBlueprints';
+import { bindCarriedBlueprints, blueprintBindWorld } from '../lib/blueprintTravel';
 import { useGameData } from './GameDataContext';
 import type { WorldCalendar } from '../lib/gameClock';
 import type { MemoryPinMap } from '../lib/milestoneMemory';
@@ -131,7 +130,7 @@ function useProvideGameplay() {
   );
   const { worldPlaceholders, placeholderGroups } = useGameData();
   const libraryPersona = useMemo(
-    () => storedPersona && bindCarriedBlueprints(storedPersona, worldBlueprints({ placeholders: worldPlaceholders, placeholderGroups })).entity,
+    () => storedPersona && bindCarriedBlueprints(storedPersona, blueprintBindWorld({ placeholders: worldPlaceholders, placeholderGroups })).entity,
     [storedPersona, worldPlaceholders, placeholderGroups],
   );
   // A library persona's placeholders join the session's set, and its Wildcards are drawn when it lands.

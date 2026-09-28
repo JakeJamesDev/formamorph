@@ -3,12 +3,12 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { addCopyToStoredWorld } from './addToStoredWorld';
-import { bindLibraryEntity } from './blueprintTravel';
+import { bindLibraryEntity, blueprintBindWorld } from './blueprintTravel';
+import { copyValueState } from './blueprints';
 import { embedEntityCard } from './entityCard';
 import { buildEntityCardData, importCharacterFile, parseEntityCardData } from './entityFile';
 import { saveCopyToLibrary } from './librarySources';
 import { encodePlaceholderToken } from './placeholders';
-import { worldBlueprints } from './placeholderBlueprints';
 import { applyLibraryUpdate, type LibrarySource } from './linkedContent';
 import { traitWorldOf, type TraitWorld } from './portableTraits';
 import EntityStorageService from '@/services/EntityStorageService';
@@ -34,12 +34,16 @@ const homeGarb: Placeholder = {
 const home = { placeholders: [tone, homeGarb, homeCrest], placeholderGroups: [BLUEPRINTS], traits: [trait('w-paladin', 'Paladin')] };
 const homeTraits: TraitWorld = { traits: home.traits, traitGroups: [], entities: [] };
 
-/** Elsewhere: the same blueprints under new ids, their values under new ids with the same text but one. */
+/** Elsewhere: every placeholder under new ids and new placements. Crest has an eagle in place of the hawk. */
+const newTone: Placeholder = { id: 'n-tone', name: 'Tone', values: [value('n-dry', 'dry')] };
+const newGarb: Placeholder = {
+  id: 'n-garb', name: 'Class Garb', groupId: 'g-bp',
+  values: [value('n-plate', `plate under ${chip('n-crest')}`), value('n-robe', `a ${chip('n-tone')} robe`)],
+};
 const elsewhere = {
   placeholders: [
-    tone,
-    { id: 'n-garb', name: 'Class Garb', groupId: 'g-bp', values: [value('n-plate', `plate under ${chip('n-crest')}`), value('n-robe', 'a velvet robe')] },
-    { id: 'n-crest', name: 'Crest', groupId: 'g-bp', values: [value('n-lion', 'a lion'), value('n-hawk', 'a hawk')] },
+    newTone, newGarb,
+    { id: 'n-crest', name: 'Crest', groupId: 'g-bp', values: [value('n-lion', 'a lion'), value('n-eagle', 'an eagle')] },
   ],
   placeholderGroups: [BLUEPRINTS],
   traits: [trait('n-paladin', 'Paladin')],
@@ -59,7 +63,13 @@ const mira: Entity = {
     },
     { id: 'mira-crest', name: 'Crest', blueprintId: 'crest', values: [], valueOverrides: { 'v-hawk': { removed: true } } },
   ],
-  traits: [{ ...trait('t-vow', 'Vow'), placeholderPins: [{ placeholderId: 'mira-garb', value: 'a silk robe', valueId: 'v-robe' }] }],
+  traits: [{
+    ...trait('t-vow', 'Vow'),
+    placeholderPins: [
+      { placeholderId: 'mira-garb', value: 'a silk robe', valueId: 'v-robe' },
+      { placeholderId: 'mira-garb', value: 'a sash', valueId: 'v-own' },
+    ],
+  }],
   traitLinks: [{
     id: 'l-paladin', originalId: 'w-paladin', kind: 'trait', originalName: 'Paladin', groupId: null, order: 1,
     overrides: {
@@ -137,7 +147,10 @@ describe.each(carriers)('copies through %s', (_name, carry) => {
     expect(copyNamed(entity, 'Crest')).toMatchObject({ blueprintId: 'crest', valueOverrides: { 'v-hawk': { removed: true } } });
     expect(entity).not.toHaveProperty('blueprints');
     expect(entity.playerDescription).toBe(`Mira wears ${chip(garb.id, 'mira-garb')}.`);
-    expect(entity.traits![0].placeholderPins).toEqual([{ placeholderId: garb.id, value: 'a silk robe', valueId: 'v-robe' }]);
+    expect(entity.traits![0].placeholderPins).toEqual([
+      { placeholderId: garb.id, value: 'a silk robe', valueId: 'v-robe' },
+      { placeholderId: garb.id, value: 'a sash', valueId: garb.values[0].id },
+    ]);
     expect(entity.traitLinks![0].overrides).toEqual(mira.traitLinks![0].overrides);
     expect(placeholders.map((p) => p.id)).toEqual(['tone', 'garb', 'crest']);
   });
@@ -148,15 +161,24 @@ describe.each(carriers)('copies through %s', (_name, carry) => {
     expect(entity.placeholders!.map((p) => p.blueprintId)).toEqual(['garb', 'crest']);
   });
 
-  it('bind by unique name elsewhere, each override and value pin following the value with the same text', async () => {
+  it('bind by unique name elsewhere, each override and pin following the value that reads the same', async () => {
     const { entity } = await importInto(elsewhere, await carry(mira));
-    // The robe reads differently here, so its override and the vow's pin at it go.
-    expect(copyNamed(entity, 'Class Garb')).toMatchObject({ blueprintId: 'n-garb' });
-    expect(copyNamed(entity, 'Class Garb')).not.toHaveProperty('valueOverrides');
-    expect(copyNamed(entity, 'Crest')).toMatchObject({ blueprintId: 'n-crest', valueOverrides: { 'n-hawk': { removed: true } } });
-    expect(entity.traits![0]).not.toHaveProperty('placeholderPins');
+    const garb = copyNamed(entity, 'Class Garb');
+    // The robe reads the same through Tone's new id, so its rewording stays, current against the new blueprint.
+    expect(garb).toMatchObject({
+      blueprintId: 'n-garb',
+      valueOverrides: { 'n-robe': { text: { value: 'a silk robe', blueprint: newGarb.values[1].text } } },
+    });
+    expect(copyValueState(garb, newGarb, 'n-robe').stale).toEqual([]);
+    // The hawk has no twin here, so its removal goes.
+    expect(copyNamed(entity, 'Crest')).toMatchObject({ blueprintId: 'n-crest' });
+    expect(copyNamed(entity, 'Crest')).not.toHaveProperty('valueOverrides');
+    expect(entity.traits![0].placeholderPins).toEqual([
+      { placeholderId: garb.id, value: 'a silk robe', valueId: 'n-robe' },
+      { placeholderId: garb.id, value: 'a sash', valueId: garb.values[0].id },
+    ]);
     expect(entity.traitLinks![0].overrides!['n-paladin'].placeholderPins).toEqual({
-      value: [{ placeholderId: 'n-garb', value: homeGarb.values[0].text, valueId: 'n-plate' }], blueprint: [],
+      value: [{ placeholderId: 'n-garb', value: newGarb.values[0].text, valueId: 'n-plate' }], blueprint: [],
     });
   });
 
@@ -171,12 +193,32 @@ describe.each(carriers)('copies through %s', (_name, carry) => {
     expect(garb.values.map((v) => v.text.replace(/:world:[^}]+/g, ''))).toEqual([`plate under {{ph:${crest.id}}}`, 'a silk robe', 'a sash']);
     expect(crest.values.map((v) => v.text)).toEqual(['a lion']);
     const robe = garb.values[1].id;
-    expect(entity.traits![0].placeholderPins).toEqual([{ placeholderId: garb.id, value: 'a silk robe', valueId: robe }]);
+    expect(entity.traits![0].placeholderPins).toEqual([
+      { placeholderId: garb.id, value: 'a silk robe', valueId: robe },
+      { placeholderId: garb.id, value: 'a sash', valueId: garb.values[2].id },
+    ]);
     expect(entity.traitLinks![0].overrides!['b-paladin'].placeholderPins!.value).toEqual([
       { placeholderId: garb.id, value: homeGarb.values[0].text, valueId: garb.values[0].id },
     ]);
     expect(placeholders.map((p) => p.id)).toEqual(['tone']);
     expect(dropped).toBe(0);
+  });
+});
+
+describe('a pin at a value the bound blueprint lacks', () => {
+  it('goes, and a trait left with no pins stores none', async () => {
+    const hawk: Trait = { ...trait('t-hawk', 'Hawk Sigil'), placeholderPins: [{ placeholderId: 'mira-crest', value: 'a hawk', valueId: 'v-hawk' }] };
+    const { entity } = await importInto(elsewhere, await carriers[0][1]({ ...mira, traits: [...mira.traits!, hawk] }));
+    expect(entity.traits!.find((t) => t.name === 'Hawk Sigil')).not.toHaveProperty('placeholderPins');
+  });
+});
+
+describe('a copy whose blueprint name two world blueprints carry', () => {
+  it('binds to neither and turns plain', async () => {
+    const twice = { ...elsewhere, placeholders: [...elsewhere.placeholders, { ...newGarb, id: 'n-garb-2' }] };
+    const { entity } = await importInto(twice, await carriers[0][1](mira));
+    expect(copyNamed(entity, 'Class Garb')).not.toHaveProperty('blueprintId');
+    expect(copyNamed(entity, 'Crest').blueprintId).toBe('n-crest');
   });
 });
 
@@ -212,7 +254,7 @@ describe('a library update', () => {
 });
 
 describe('a library persona at play', () => {
-  const world = (w: typeof elsewhere) => ({ traits: w.traits, traitGroups: [], entities: [], blueprints: worldBlueprints(w) });
+  const world = (w: typeof elsewhere) => ({ traits: w.traits, traitGroups: [], entities: [], ...blueprintBindWorld(w) });
 
   it('binds its copies and links to the world it enters', async () => {
     const there = bindLibraryEntity(await carriers[2][1](mira), world(elsewhere));
