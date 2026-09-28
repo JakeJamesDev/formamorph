@@ -189,7 +189,7 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
 
 - Added: `blueprintId` and override maps on trait links and placeholders, each override with its blueprint snapshot; per-value removals on copies; the placeholder Blueprints group; the Custom Persona entity mark; cards carry the blueprints their copies reach (Q25).
 - Removed: the Custom Persona system node; `bearerPlaceholder` on pins; per-link pin values keyed by name.
-- Changed: the save's Custom Persona bearer key. The trait Templates group is stored as Blueprints (Q33).
+- Changed: the save's Custom Persona bearer key. The save's None persona ref gains optional `name` and `description` (Q79). The trait Templates group is stored as Blueprints (Q33).
 - Import binds a copy's blueprint by id, then by unique name. With no match the copy becomes a plain owned placeholder with its resolved values, and every pin on the card that named the blueprint is rewritten to that placeholder, the same rewrite Detach uses (Q25, Q32).
 
 ## Testing Decisions
@@ -307,3 +307,5 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q79 | Create-your-own entry: the persona picker's None row becomes the marked entity's row (portrait, name, player description). Picking it shows Name and Description fields under the row, at Enter World and in the in-play Change Persona dialog. The save's persona ref carries the entered name and description. Player Name chips and the planner read the entered name. |
   | Q80 | Tree slot under a library persona: the persona's node sits at the marked entity's position and the marked entity's own node follows it directly, both marked You. Row-to-bearer mapping stays intact. |
   | Q81 | A save from the system-node era loads; its old Custom Persona pick is not held, nothing sits under the marked entity's key, and nothing migrates it. Ticket 08's "does not load" criterion reads this way. |
+  | Q82 | The trait runtime treats every player entity bearer alike: the marked entity's linked stat traits apply at a new game and on a switch, and reverse on a persona change, keyed `<entity id>/<trait id>`. |
+  | Q83 | The persona offer model carries the custom row; a None ref compares by its entered name and description, so Enter World remembers the entry and Change enables on a name change. |
