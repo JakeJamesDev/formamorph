@@ -236,7 +236,6 @@ export const TraitsTab = ({
           className="h-8 pl-7 text-label"
         />
       </div>
-      {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
       <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-2 pb-2">
           {active.length > 0 && (
@@ -305,6 +304,7 @@ export const TraitsTab = ({
               </div>
             );
           })}
+          {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
         </div>
       </ScrollArea>
     </div>

@@ -362,9 +362,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <p className="mb-1 text-meta font-medium tracking-wide text-muted-foreground">World Setup</p>
               <h2 className="mb-3 text-heading font-semibold">{current.name}</h2>
               <p className="mb-4 text-helper text-muted-foreground">Choose who you play in this world</p>
-              {props.traitCascade && props.onDismissTraitCascade && (
-                <TraitCascadeNotice cascade={props.traitCascade} onDismiss={props.onDismissTraitCascade} />
-              )}
               <PersonaPicker
                 world={props.worldPersonas}
                 library={personaOptions}
@@ -372,6 +369,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
                 value={props.persona}
                 onChange={props.onPersonaChange}
               />
+              {props.traitCascade && props.onDismissTraitCascade && (
+                <TraitCascadeNotice cascade={props.traitCascade} onDismiss={props.onDismissTraitCascade} />
+              )}
             </>
           )}
           {current?.kind === 'location' && (
