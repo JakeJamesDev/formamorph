@@ -8,7 +8,7 @@ import { accentAtChance, BENCHED, chanceChipStyle, type ChanceStyle } from '@/li
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import { tintMarkStyle } from '@/lib/previewTint';
 import { EditorModeContext } from '@/lib/editorMode';
-import type { GameLocation, Placeholder, Stat, Trait, TraitGroup } from '@/types';
+import type { GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup } from '@/types';
 import type { PinsWorld } from '@/components/editor/PlaceholderPinsSection';
 import PlaceholderEditor from './PlaceholderEditor';
 import PlaceholderManager from './PlaceholderManager';
@@ -39,6 +39,7 @@ vi.mock('@/contexts/PlaceholderStoreContext', () => ({
 // editor with no world at all.
 interface TestWorld {
   traits: Trait[]; traitGroups: TraitGroup[]; locations: GameLocation[]; stats: Stat[]; placeholders: Placeholder[];
+  placeholderGroups?: PlaceholderGroup[];
 }
 let gameData: PinsWorld | null = null;
 /** The world as the host last rendered it — what a test reads a write back from. */
@@ -917,7 +918,7 @@ describe('PlaceholderManager — the Pins section', () => {
   });
 
   /** The world editor's store, reduced to what the section reads and writes. */
-  const Host = ({ initial }: { initial: TestWorld }) => {
+  const Host = ({ initial, placeholder = TOWN }: { initial: TestWorld; placeholder?: Placeholder }) => {
     const [state, setState] = useState(initial);
     const swap = <T extends { id: string }>(list: T[], item: T) => list.map((x) => (x.id === item.id ? item : x));
     latest = state;
@@ -930,7 +931,7 @@ describe('PlaceholderManager — the Pins section', () => {
       // No entity in this world owns a trait.
       updateEntity: () => {},
     };
-    return <PlaceholderManager placeholder={TOWN} />;
+    return <PlaceholderManager placeholder={placeholder} />;
   };
   const world = () => latest;
   const sources = () => screen.getAllByRole('combobox', { name: 'Pin Source' }) as HTMLSelectElement[];
@@ -995,6 +996,23 @@ describe('PlaceholderManager — the Pins section', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Pin Kind' }), 'Placeholder Value');
     const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
     expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Region = Northern', 'Region = Southern']);
+  });
+
+  it('offers a blueprint only trait and blueprint-side value sources', async () => {
+    const garb: Placeholder = { id: 'garb', name: 'Garb', groupId: 'bp', values: [{ id: 'v-white', text: 'white tabard' }] };
+    const plate: Placeholder = { id: 'plate', name: 'Plate', groupId: 'bp', values: [{ id: 'v-gilt', text: 'gilt' }] };
+    const initial = {
+      ...base(), placeholders: [TOWN, REGION, garb, plate],
+      placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }],
+    };
+    siblings = initial.placeholders;
+    render(<Host initial={initial} placeholder={garb} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add Pin' }));
+    const kinds = screen.getByRole('combobox', { name: 'Pin Kind' });
+    expect(within(kinds).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Trait', 'Placeholder Value']);
+    await userEvent.selectOptions(kinds, 'Placeholder Value');
+    const picker = screen.getByRole('combobox', { name: 'New Pin Source' });
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['', 'Plate = gilt']);
   });
 
   it('is hidden in Simple mode', () => {

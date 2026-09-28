@@ -18,7 +18,8 @@ import { activeDescriptor } from './statContext';
 import { thresholdUnitOf, type BandedStat } from './statDescriptorGeometry';
 import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { PLAYER_BEARER, canBePlayer, resolveBearers, type Bearer } from './bearers';
-import { bearerPlaceholder, type BlueprintWorld, type CopyReader } from './blueprints';
+import { effectiveCopy, isCopy, lookupCopy, type BlueprintWorld, type CopyReader } from './blueprints';
+import { blueprintIds, rootPlaceholder } from './placeholderBlueprints';
 import { setLinkField } from './traitLinks';
 
 /** A stat as the descriptor source reads it: its bands and the value that picks one, plus the id and
@@ -297,7 +298,7 @@ export function bindBlueprintPins(trait: Trait, world: BlueprintWorld, reader: C
   if (!pins?.length) return trait;
   let moved = false;
   const bound = pins.flatMap((pin): PlaceholderPin[] => {
-    const target = bearerPlaceholder(world, pin.placeholderId, reader);
+    const target = lookupCopy(world, pin.placeholderId, reader);
     if (!target || target.id === pin.placeholderId) return [pin];
     moved = true;
     if (!pin.valueId) return [{ placeholderId: target.id, value: pin.value }];
@@ -307,9 +308,12 @@ export function bindBlueprintPins(trait: Trait, world: BlueprintWorld, reader: C
   return moved ? { ...trait, placeholderPins: bound } : trait;
 }
 
-/** The placeholder an editor reads a pin's values from. */
-export const pinTarget = (pin: PlaceholderPin, placeholders: readonly Placeholder[]): Placeholder | undefined =>
-  placeholders.find((p) => p.id === pin.placeholderId);
+/** The placeholder an editor reads a pin's values from. A copy reads as the copy reads its blueprint. */
+export function pinTarget(pin: PlaceholderPin, placeholders: readonly Placeholder[]): Placeholder | undefined {
+  const target = placeholders.find((p) => p.id === pin.placeholderId);
+  const blueprint = target?.blueprintId ? placeholders.find((p) => p.id === target.blueprintId) : undefined;
+  return target && blueprint ? effectiveCopy(target, blueprint) : target;
+}
 
 /**
  * A pin rewritten to hold `value`, naming that value by id when the placeholder carries one spelling it
@@ -664,6 +668,46 @@ const specFor = (kind: PinSourceKind): PinSourceSpec<PinSourceKind> =>
 export const PIN_KINDS: ReadonlyArray<{ kind: PinSourceKind; label: string; empty: string }> =
   KINDS_BY_RANK.map((kind) => ({ kind, label: specFor(kind).label, empty: specFor(kind).empty }));
 
+// ---- Pins on blueprints ----
+
+/** The world's blueprint ids and its placeholders by id. Cached per world object, since every picker row
+ *  reads them. */
+function blueprintIndex(world: PinEditorWorld): { blueprints: ReadonlySet<string>; byId: ReadonlyMap<string, Placeholder> } {
+  const hit = blueprintCache.get(world);
+  if (hit) return hit;
+  const index = {
+    blueprints: blueprintIds({ placeholders: [...world.placeholders], placeholderGroups: [...(world.placeholderGroups ?? [])] }),
+    byId: indexPlaceholders(world.placeholders),
+  };
+  blueprintCache.set(world, index);
+  return index;
+}
+const blueprintCache = new WeakMap<PinEditorWorld, ReturnType<typeof blueprintIndex>>();
+
+/**
+ * Which placeholders a pin on `source` may name. Never a copy: a trait pins the blueprint, and each bearer
+ * reads its own copy. A blueprint only from a blueprint-side source: a world trait (a link's pins list names
+ * its original), or a value under a blueprint or a copy. Without a world no blueprint is known, so only
+ * copies are left out.
+ */
+export function pinTargetFilter(world: PinEditorWorld | null, source: PinSourceRef): (target: Placeholder) => boolean {
+  if (!world) return (target) => !isCopy(target);
+  const { blueprints, byId } = blueprintIndex(world);
+  const owner = source.kind === 'value' ? byId.get(source.placeholderId) : undefined;
+  const root = owner && rootPlaceholder(owner, byId);
+  const side = source.kind === 'trait'
+    ? !!world.traits?.some((t) => t.id === source.id)
+    : !!root && (blueprints.has(root.id) || isCopy(root));
+  // A copy's value on its own blueprint would land on that copy: a value pinning its own placeholder.
+  return (target) => !isCopy(target) && target.id !== root?.blueprintId && (side || !blueprints.has(target.id));
+}
+
+/** The kinds that can pin `placeholderId`: every kind, or for a blueprint the two with a blueprint side. */
+export function pinKindsFor(world: PinEditorWorld, placeholderId: string): typeof PIN_KINDS {
+  if (!blueprintIndex(world).blueprints.has(placeholderId)) return PIN_KINDS;
+  return PIN_KINDS.filter((k) => k.kind === 'trait' || k.kind === 'value');
+}
+
 export function sameSource(a: PinSourceRef, b: PinSourceRef): boolean {
   return a.kind === b.kind && specOf(a).same(a, b);
 }
@@ -843,11 +887,13 @@ export interface PinSourceOption {
  * Every source of `kind` a pin on `placeholderId` may live on, in the order its list is authored: a trait or
  * location by name, a band as `Hunger ≤ 20: Starving`, a value as `Region = Northern`. The placeholder's own
  * values are left out — a value cannot pin its own placeholder — and so are link rows, whose list is edited
- * on the link.
+ * on the link, and every source {@link pinTargetFilter} keeps from the placeholder.
  */
 export function pinSourcesOfKind(world: PinEditorWorld, kind: PinSourceKind, placeholderId: string): PinSourceOption[] {
+  const target = world.placeholders.find((p) => p.id === placeholderId);
   return specFor(kind).sources(world)
     .filter((entry) => !(entry.source.kind === 'value' && entry.source.placeholderId === placeholderId))
     .filter((entry) => !(entry.source.kind === 'trait' && entry.source.link))
+    .filter((entry) => !target || pinTargetFilter(world, entry.source)(target))
     .map((entry) => ({ source: entry.source, label: entry.option }));
 }

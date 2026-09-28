@@ -258,7 +258,7 @@ export const readerFor = (persona: PersonaRef | undefined, entity: Pick<Entity, 
  * reader goes through it, then the blueprint itself. A copy comes back effective, with the blueprint's
  * values under it. Undefined when the world has no such blueprint.
  */
-export function bearerPlaceholder(world: BlueprintWorld, blueprintId: string, reader: CopyReader): Placeholder | undefined {
+export function lookupCopy(world: BlueprintWorld, blueprintId: string, reader: CopyReader): Placeholder | undefined {
   const blueprint = world.placeholders.find((p) => p.id === blueprintId);
   if (!blueprint) return undefined;
   const copy = copyOf(reader.entity, blueprintId)

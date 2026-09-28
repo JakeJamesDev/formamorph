@@ -1,6 +1,7 @@
 # 06: Pins by blueprint
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 0111d245
 Blocked by: 03 — Link overrides in the editor; 04 — Placeholder Blueprints group and copy rows
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high

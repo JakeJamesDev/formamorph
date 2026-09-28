@@ -6,7 +6,7 @@ import { PinValueField } from '@/components/editor/PinValueField';
 import { PlaceholderSectionList } from '@/components/editor/PlaceholderSectionList';
 import { placeholderVocabulary } from '@/lib/chipVocabulary';
 import { decodePlaceholderToken } from '@/lib/placeholders';
-import { withPinnedValue, type PinEditorWorld, type PinSourceRef } from '@/lib/placeholderPins';
+import { pinSourceKey, pinTargetFilter, withPinnedValue, type PinEditorWorld, type PinSourceRef } from '@/lib/placeholderPins';
 import type { Placeholder, PlaceholderPin } from '@/types';
 
 /**
@@ -41,6 +41,20 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
     const all = vocab.allRows?.() ?? vocab.palette();
     return excludeId ? all.filter((row) => decodePlaceholderToken(row.token)?.id !== excludeId) : all;
   }, [placeholders, excludeId, owners, groups, letters]);
+  const sourceKey = pinSourceKey(source);
+  const offered = useMemo(() => {
+    const byId = new Map(placeholders.map((p) => [p.id, p]));
+    const mayTarget = pinTargetFilter(world, source);
+    return rows.map((row) => {
+      const id = decodePlaceholderToken(row.token)?.id ?? '';
+      const target = byId.get(id);
+      return { row, id, offered: !target || mayTarget(target) };
+    });
+    // `source` is a fresh object each render; its key stands for it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, placeholders, world, sourceKey]);
+  // A stored pin keeps its own row, so a target the source may no longer pick still reads as picked.
+  const rowsFor = (pin: PlaceholderPin) => offered.filter((o) => o.offered || o.id === pin.placeholderId).map((o) => o.row);
 
   return (
     <div className="space-y-2">
@@ -49,7 +63,7 @@ export function PlaceholderPinRows({ pins, onChange, source, world, placeholders
           <div className="flex space-x-2">
             {/* Re-aiming the pin drops the value id with it — the id named a value of the old placeholder. */}
             <PlaceholderSectionList
-              rows={rows}
+              rows={rowsFor(pin)}
               selectedId={pin.placeholderId}
               onSelect={(id) => setPin(index, withPinnedValue({ placeholderId: id, value: pin.value }, pin.value, placeholders))}
               placeholders={placeholders}
