@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { BlueprintOverrides, Entity, Placeholder, PlaceholderValue, Trait, TraitLink } from '@/types';
 import {
-  bearerPlaceholder, copyOf, copyValueState, customPersonaEntity, effectiveCopy, effectiveLinkTrait, effectiveRecord, isCopy,
+  lookupCopy, copyOf, copyValueState, customPersonaEntity, effectiveCopy, effectiveLinkTrait, effectiveRecord, isCopy,
   linkTraitState, readerFor, removeCopyValue, resetCopyOverrides, resetCopyValue, resetLinkOverride, resetLinkOverrides,
   resetLinkTraitOverrides, setCopyValueText, setCopyValueWeight, setLinkEdits, setLinkOverride, withOverride, withoutOverride,
 } from './blueprints';
@@ -258,20 +258,20 @@ describe('copy lookup', () => {
     ['the root player under None reads the Custom Persona\'s', readerFor({ source: 'none' }, null, true), 'cp-garb'],
     ['the root player under a world persona reads the blueprint', readerFor({ source: 'world', entityId: 'albus' }, null, true), 'garb'],
   ] as const)('%s', (_name, reader, id) => {
-    expect(bearerPlaceholder(world, 'garb', reader)?.id).toBe(id);
+    expect(lookupCopy(world, 'garb', reader)?.id).toBe(id);
   });
 
   it('reads the blueprint under None with no marked entity, and the effective copy otherwise', () => {
     const plain = { placeholders: [garb], entities: [albus] };
-    expect(bearerPlaceholder(plain, 'garb', readerFor({ source: 'none' }, null, true))).toBe(garb);
-    expect(bearerPlaceholder(world, 'garb', readerFor({ source: 'none' }, null, true))?.values).toEqual([value('tabard', 'a plain tabard')]);
-    expect(bearerPlaceholder(world, 'gone', readerFor({ source: 'none' }, null, true))).toBeUndefined();
+    expect(lookupCopy(plain, 'garb', readerFor({ source: 'none' }, null, true))).toBe(garb);
+    expect(lookupCopy(world, 'garb', readerFor({ source: 'none' }, null, true))?.values).toEqual([value('tabard', 'a plain tabard')]);
+    expect(lookupCopy(world, 'gone', readerFor({ source: 'none' }, null, true))).toBeUndefined();
   });
 
   it('never reaches the Custom Persona\'s copy for a cast entity or a world persona', () => {
     const hesk: Entity = { id: 'hesk', name: 'Hesk' };
-    expect(bearerPlaceholder(world, 'garb', readerFor({ source: 'none' }, hesk, false))).toBe(garb);
+    expect(lookupCopy(world, 'garb', readerFor({ source: 'none' }, hesk, false))).toBe(garb);
     const bare = { ...albus, placeholders: [] };
-    expect(bearerPlaceholder(world, 'garb', readerFor({ source: 'world', entityId: 'albus' }, bare, true))).toBe(garb);
+    expect(lookupCopy(world, 'garb', readerFor({ source: 'world', entityId: 'albus' }, bare, true))).toBe(garb);
   });
 });

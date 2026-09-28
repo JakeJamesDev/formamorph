@@ -5,7 +5,8 @@ import { readerFor } from './blueprints';
 import { decodePlaceholderToken } from './placeholders';
 import {
   activePlaceholderPins, addPinAt, allPinTexts, bindBlueprintPins, canCommitPinSource, collectPinLayers, collectPins, commitPinSource, pinConflict,
-  pinSourceKey, pinSourcesOfKind, pinsTargeting, pinTarget, removePinAt, sameSource, updatePinAt, valuePinRollChips, type PinnableStat,
+  pinKindsFor, pinSourceKey, pinSourcesOfKind, pinsTargeting, pinTarget, pinTargetFilter, removePinAt, sameSource, updatePinAt,
+  valuePinRollChips, withPinnedValue, type PinnableStat,
 } from './placeholderPins';
 
 const P = (id: string, values: string[]): Placeholder => ({ id, name: id, values: phValues(values) });
@@ -786,5 +787,74 @@ describe('pinSourcesOfKind — what the add and re-aim pickers offer', () => {
     expect(new Set(keys).size).toBe(keys.length);
     expect(pinSourceKey({ kind: 'descriptor', statId: 'hunger', descriptorId: 1 }))
       .not.toBe(pinSourceKey({ kind: 'descriptor', statId: 'hunger', descriptorId: '1x' }));
+  });
+});
+
+describe('pins on blueprints — only blueprint-side sources name a blueprint, and none names a copy', () => {
+  const garb: Placeholder = {
+    id: 'garb', name: 'Garb', groupId: 'bp',
+    values: [{ id: 'v-white', text: 'white tabard' }, { id: 'v-mail', text: 'mail' }],
+  };
+  const copy: Placeholder = {
+    id: 'albus-garb', name: 'Garb', blueprintId: 'garb', values: [{ id: 'v-rust', text: 'rust cloak' }],
+    valueOverrides: { 'v-white': { text: { value: 'sun-disc tabard', blueprint: 'white tabard' } }, 'v-mail': { removed: true } },
+  };
+  const sash: Placeholder = { id: 'sash', name: 'Sash', groupId: 'bp', values: [{ id: 'v-red', text: 'red' }] };
+  // A part Garb owns: its values sit under a blueprint.
+  const trim: Placeholder = { id: 'trim', name: 'Trim', ownerId: 'garb', values: [{ id: 'v-gilt', text: 'gilt' }] };
+  const town = P('town', ['Marrow']);
+  const ash: Entity = { id: 'ash', name: 'Ash', placeholders: [copy], traits: [trait('tamed', [])] };
+  const world = {
+    traits: [trait('paladin', [])],
+    traitGroups: [],
+    entities: [ash],
+    locations: [location('fen', [])],
+    stats: [{ ...stat('hunger', 50, [{ threshold: 20, pins: [] }]), name: 'Hunger', type: 'number' }],
+    placeholders: [garb, trim, sash, town, copy],
+    placeholderGroups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' as const }],
+  } as unknown as EditorWorld;
+  const offers = (source: Parameters<typeof pinTargetFilter>[1], w: EditorWorld | null = world) =>
+    [garb, sash, town, copy].filter(pinTargetFilter(w, source)).map((p) => p.id);
+
+  it('lets a world trait and a link’s pins list name a blueprint, never a copy', () => {
+    expect(offers({ kind: 'trait', id: 'paladin' })).toEqual(['garb', 'sash', 'town']);
+    expect(offers({ kind: 'trait', id: 'paladin', link: { bearerId: 'ash', linkId: 'l' } })).toEqual(['garb', 'sash', 'town']);
+  });
+
+  it('lets a blueprint’s values, its parts’ values and a copy’s values name a blueprint', () => {
+    expect(offers({ kind: 'value', placeholderId: 'garb', valueId: 'v-white' })).toEqual(['garb', 'sash', 'town']);
+    expect(offers({ kind: 'value', placeholderId: 'trim', valueId: 'v-gilt' })).toEqual(['garb', 'sash', 'town']);
+  });
+
+  it('keeps a copy’s values off its own blueprint, which would pin the copy itself', () => {
+    expect(offers({ kind: 'value', placeholderId: 'albus-garb', valueId: 'v-rust' })).toEqual(['sash', 'town']);
+  });
+
+  it('keeps blueprints from an owned trait, a location, a band and a world value', () => {
+    expect(offers({ kind: 'trait', id: 'tamed' })).toEqual(['town']);
+    expect(offers({ kind: 'location', id: 'fen' })).toEqual(['town']);
+    expect(offers({ kind: 'descriptor', statId: 'hunger', descriptorId: 'hunger-b0' })).toEqual(['town']);
+    expect(offers({ kind: 'value', placeholderId: 'town', valueId: town.values[0].id })).toEqual(['town']);
+  });
+
+  it('keeps copies out with no world behind the editor', () => {
+    expect(offers({ kind: 'trait', id: 'paladin' }, null)).toEqual(['garb', 'sash', 'town']);
+  });
+
+  it('offers a blueprint’s Pins section only trait and value sources, each blueprint-side', () => {
+    expect(pinKindsFor(world, 'garb').map((k) => k.kind)).toEqual(['trait', 'value']);
+    expect(pinKindsFor(world, 'town').map((k) => k.kind)).toEqual(['descriptor', 'location', 'trait', 'value']);
+    expect(pinSourcesOfKind(world, 'trait', 'garb').map((s) => s.label)).toEqual(['paladin']);
+    const valueOwners = (id: string) => pinSourcesOfKind(world, 'value', id).map((s) => (s.source as { placeholderId: string }).placeholderId);
+    expect(valueOwners('garb')).toEqual(['trim', 'sash']);
+    expect(valueOwners('sash')).toEqual(['garb', 'garb', 'trim', 'albus-garb']);
+    expect(pinSourcesOfKind(world, 'trait', 'town').map((s) => s.label)).toEqual(['paladin', "Ash's tamed"]);
+  });
+
+  it('reads a copy’s values as the copy reads them, so a picked value keeps the blueprint’s id', () => {
+    const onCopy = pin('albus-garb', '');
+    expect(pinTarget(onCopy, world.placeholders)?.values.map((v) => v.text)).toEqual(['sun-disc tabard', 'rust cloak']);
+    expect(withPinnedValue(onCopy, 'sun-disc tabard', world.placeholders)).toEqual(pin('albus-garb', 'sun-disc tabard', 'v-white'));
+    expect(withPinnedValue(onCopy, 'mail', world.placeholders)).toEqual(pin('albus-garb', 'mail'));
   });
 });

@@ -73,6 +73,21 @@ describe('bearerPins — each bearer lays its own pins', () => {
     expect(pinsUnder(NONE, []).of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
   });
 
+  it("traces a link's overridden pins list to that bearer's copy, while another bearer reads its own", () => {
+    const ROBE = phValueId('Robe');
+    const kitCopy: Placeholder = {
+      id: 'kit-garb', name: 'Class Garb', values: [], blueprintId: 'garb',
+      valueOverrides: { [ROBE]: { text: { value: 'Sackcloth', blueprint: 'Robe' } } },
+    };
+    const kit: Entity = { id: 'kit', name: 'Kit', placeholders: [kitCopy], traitLinks: [link('l-kit', 'paladin', [pin('garb', 'Robe', ROBE)])] };
+    const pins = bearerPins(
+      { world: { ...world, entities: [...world.entities, kit] }, persona: NONE, playerTraits: [], owned: { ...owned, kit: ['paladin'] }, sharedPlaceholders: shared },
+      { placeholders: [...allPlaceholders, kitCopy] },
+    );
+    expect(pins.of('kit')).toEqual({ 'kit-garb': 'Sackcloth' });
+    expect(pins.of('albus')).toEqual({ 'albus-garb': 'Gilded plate', mood: 'fierce' });
+  });
+
   it("reads the blueprint itself for a bearer with no copy, valued by the link's own pins", () => {
     expect(pinsUnder(NONE, []).of('mira')).toEqual({ garb: 'Plate' });
   });

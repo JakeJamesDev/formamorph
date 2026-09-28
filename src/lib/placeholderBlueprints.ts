@@ -39,6 +39,19 @@ export function blueprintIds(world: PlaceholderHomesWorld): Set<string> {
   }));
 }
 
+/** The top-level placeholder `p` sits under, walking its owners through `byId`. */
+export function rootPlaceholder(p: Placeholder, byId: ReadonlyMap<string, Placeholder>): Placeholder {
+  const seen = new Set<string>();
+  let at = p;
+  while (at.ownerId && !seen.has(at.id)) {
+    seen.add(at.id);
+    const up = byId.get(at.ownerId);
+    if (!up) break;
+    at = up;
+  }
+  return at;
+}
+
 /** How the tree and the notices name a copy. */
 export const copyName = (ownerName: string, blueprintName: string): string => `${ownerName}.${blueprintName}`;
 
@@ -121,19 +134,8 @@ function sourcesOfUse(world: BlueprintUseWorld, blueprints: ReadonlySet<string>)
     const home = homes.get(p.id);
     if (home && home.kind !== 'world') ownerName.set(p.id, ownerNames.get(home.ownerId) ?? '');
   }
-  const rootOf = (p: Placeholder): Placeholder => {
-    const seen = new Set<string>();
-    let at = p;
-    while (at.ownerId && !seen.has(at.id)) {
-      seen.add(at.id);
-      const up = byId.get(at.ownerId);
-      if (!up) break;
-      at = up;
-    }
-    return at;
-  };
   for (const p of all) {
-    const root = rootOf(p);
+    const root = rootPlaceholder(p, byId);
     const blueprint = byId.get(root.blueprintId ?? '');
     const kind = blueprints.has(root.id) ? 'blueprint' : root.blueprintId ? 'copy' : 'placeholder';
     const name = kind === 'copy' ? copyName(ownerName.get(root.id) ?? '', blueprint?.name ?? root.name) : root === p ? p.name : `${root.name} › ${p.name}`;

@@ -7,7 +7,7 @@ import { HelpButton } from '@/components/HelpButton';
 import { PinConflictNote } from '@/components/editor/PinConflictNote';
 import { PinValueField } from '@/components/editor/PinValueField';
 import {
-  addPinAt, commitPinSource, PIN_KINDS, pinSourceKey, pinSourcesOfKind, pinsTargeting,
+  addPinAt, commitPinSource, pinKindsFor, pinSourceKey, pinSourcesOfKind, pinsTargeting,
   removePinAt, sameSource, updatePinAt,
   type PinEditorWorld, type PinRow, type PinSourceKind, type PinSourceRef,
 } from '@/lib/placeholderPins';
@@ -41,6 +41,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
   const placeholders = world.placeholders;
   const rows = useMemo(() => pinsTargeting(world, placeholder.id), [world, placeholder.id]);
   const options = (kind: PinSourceKind) => pinSourcesOfKind(world, kind, placeholder.id);
+  const kinds = pinKindsFor(world, placeholder.id);
 
   /** Hand each source that `next` rewrote back to its writer. `next` carries every change at once, so a
    *  source written twice lands the same record twice, which is harmless. */
@@ -105,7 +106,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
                 <SelectValue placeholder="Kind of source" />
               </SelectTrigger>
               <SelectContent>
-                {PIN_KINDS.map((k) => <SelectItem key={k.kind} value={k.kind}>{k.label}</SelectItem>)}
+                {kinds.map((k) => <SelectItem key={k.kind} value={k.kind}>{k.label}</SelectItem>)}
               </SelectContent>
             </Select>
             {draft.kind && (
@@ -128,7 +129,7 @@ export function PlaceholderPinsSection({ world, placeholder }: {
             </Button>
           </div>
           {draft.kind && draftOptions.length === 0 && (
-            <p className="text-meta text-muted-foreground pl-1">{PIN_KINDS.find((k) => k.kind === draft.kind)?.empty}</p>
+            <p className="text-meta text-muted-foreground pl-1">{kinds.find((k) => k.kind === draft.kind)?.empty}</p>
           )}
         </div>
       )}
