@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useGameData } from '../contexts/GameDataContext';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { EntityDescriptionFields, EntityLocationsField, EntityProfileFields, EntityStartingLocationField } from './EntityFields';
 import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 import EntityTraitsMirror from './EntityTraitsMirror';
@@ -14,8 +13,7 @@ import type { Entity, FocusFieldHint } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRows } from '@/lib/locationTree';
 import { useEditorMode } from '@/lib/editorMode';
-import { entityPanelTabsFor, entityTabFillsPane, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
-import { cn } from '@/lib/utils';
+import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/views/entityPanelTabs';
 
 /**
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Traits, Openings
@@ -82,19 +80,11 @@ const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, foc
     depth,
   }));
   const tabs = entityPanelTabsFor(advanced);
-  // A filling tab takes the height the host gives it and scrolls inside; the others grow with their fields.
-  const fills = entityTabFillsPane(tab);
 
   return (
-    <div className={cn(fills ? 'flex min-h-0 flex-1 flex-col' : 'space-y-4')}>
-      <Tabs
-        value={tab}
-        onValueChange={(v) => onTabChange(v as EntityPanelTab)}
-        className={cn(fills ? 'flex min-h-0 flex-1 flex-col gap-4' : 'space-y-4')}
-      >
-        <PanelTabsList tabs={tabs} stripLabel="Entity Fields" />
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entity Fields">
 
-        <TabsContent value="profile" className="space-y-4">
+        <PanelTabContent value="profile">
           <EntityProfileFields
             {...groupProps}
             nameHandlers={rename}
@@ -115,35 +105,34 @@ const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, foc
               </>
             )}
           />
-        </TabsContent>
+        </PanelTabContent>
 
-        <TabsContent value="descriptions" className="space-y-4">
+        <PanelTabContent value="descriptions">
           <EntityDescriptionFields {...groupProps} />
-        </TabsContent>
+        </PanelTabContent>
 
         {advanced && (
-          <TabsContent value="traits" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+          <PanelTabContent value="traits" fill>
             <EntityTraitsMirror entity={entity} selectedId={traitId} onSelect={onTraitIdChange} />
-          </TabsContent>
+          </PanelTabContent>
         )}
 
         {advanced && (
-          <TabsContent value="openings">
+          <PanelTabContent value="openings">
             <EntityOpenings
               entity={editingEntity}
               placeholders={placeholders}
               onChange={(patch) => writeWhole({ ...editingEntity, ...patch })}
             />
-          </TabsContent>
+          </PanelTabContent>
         )}
 
         {advanced && (
-          <TabsContent value="placeholders" className="mt-0 min-h-0 flex-1 flex-col data-[state=active]:flex">
+          <PanelTabContent value="placeholders" fill>
             <ScopedPlaceholdersSection kind="entity" ownerId={entity.id} fill />
-          </TabsContent>
+          </PanelTabContent>
         )}
-      </Tabs>
-    </div>
+    </PanelTabs>
   );
 };
 

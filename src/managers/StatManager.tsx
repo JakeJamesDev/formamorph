@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Hint } from "@/components/ui/typography";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Code } from "lucide-react";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { PanelTabsList } from "@/components/ui/panel-tabs";
+import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import {
   Select,
   SelectContent,
@@ -428,16 +427,13 @@ const StatManager = ({ stat, tab, onTabChange, focusField }: {
 
   const panels: Record<StatPanelTab, ReactNode> = { details, descriptors, code };
 
-  // One tab left is no choice to offer, so Simple renders the Details body bare with no strip above it.
-  if (tabs.length === 1) return <div className="space-y-4">{panels[tabs[0].value]}</div>;
 
   return (
-    <Tabs value={tab} onValueChange={(v) => onTabChange(v as StatPanelTab)} className="space-y-4">
-      <PanelTabsList tabs={tabs} stripLabel="Stat Fields" />
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Stat Fields">
       {tabs.map((t) => (
-        <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>
+        <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}
-    </Tabs>
+    </PanelTabs>
   );
 };
 

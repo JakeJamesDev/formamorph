@@ -71,7 +71,7 @@ import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
-import { ENTITY_PANEL_TABS, entityPanelTabsFor, entityTabFillsPane, type EntityPanelTab } from './entityPanelTabs';
+import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
 import { STAT_PANEL_TABS, statPanelTabsFor, type StatPanelTab } from './statPanelTabs';
 import { TRAIT_PANEL_TABS, traitPanelTabsFor, type TraitPanelTab } from './traitPanelTabs';
@@ -821,11 +821,15 @@ const WorldEditorInner = ({
   ) : undefined;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
-  // These panel tabs scroll inside themselves, so the pane gives them its height instead of its scroll.
-  const detailFills = (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity
-    && entityTabFillsPane(shownEntityTab))
-    || (activeTab === "dictionary" && !!selectedBook && shownBookTab === 'placeholders');
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
+  // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
+  // Mirrors the panel branches in detailContent.
+  const detailFills = (activeTab === "stats" && !!selectedItem)
+    || (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity)
+    || (activeTab === "locations" && !!selectedItem)
+    || (activeTab === "traits" && !selectedGroup && !!selectedTrait)
+    || (!!selectedLinkRow && !!selectedLinkBearer && !!linkedTrait)
+    || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
   // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
   // each of those weights it differently. Memoized because resolving one walks the whole tree, and this

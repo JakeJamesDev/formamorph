@@ -4,8 +4,7 @@ import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { PanelTabsList } from "@/components/ui/panel-tabs";
+import { PanelTabContent, PanelTabs } from "@/components/ui/panel-tabs";
 import { KeywordChips } from "@/components/KeywordChips";
 import { Hint } from "@/components/ui/typography";
 import { HintInfo } from "@/components/SettingsRows";
@@ -179,16 +178,13 @@ const DictionaryManager = ({ entry, placeholders = [], ownerId, tab, onTabChange
 
   const panels: Record<DictionaryPanelTab, ReactNode> = { details: detailsPanel, matching: matchingPanel };
 
-  // One tab is not a choice, so Simple mode gets that tab's body bare rather than a strip of one.
-  if (tabs.length === 1) return <div className="space-y-4">{panels[tabs[0].value]}</div>;
 
   return (
-    <Tabs value={tab} onValueChange={(v) => onTabChange(v as DictionaryPanelTab)} className="space-y-4">
-      <PanelTabsList tabs={tabs} stripLabel="Entry Fields" />
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Entry Fields">
       {tabs.map((t) => (
-        <TabsContent key={t.value} value={t.value} className="space-y-4">{panels[t.value]}</TabsContent>
+        <PanelTabContent key={t.value} value={t.value}>{panels[t.value]}</PanelTabContent>
       ))}
-    </Tabs>
+    </PanelTabs>
   );
 };
 

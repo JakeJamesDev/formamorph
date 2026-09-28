@@ -6,8 +6,7 @@ import { entityIdsAt, setLocationRoster } from '@/lib/entityPresence';
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { PanelTabsList } from '@/components/ui/panel-tabs';
+import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import AiGenerateButton from "@/components/AiGenerateButton";
 import PlaceholderField, { PlaceholderNameField } from "@/components/prompt/PlaceholderField";
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -76,10 +75,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
   const tabs = locationPanelTabsFor(advanced);
 
   return (
-    <Tabs value={tab} onValueChange={(v) => onTabChange(v as LocationPanelTab)} className="space-y-4">
-      <PanelTabsList tabs={tabs} stripLabel="Location Fields" />
+    <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Location Fields">
 
-      <TabsContent value="details" className="space-y-4">
+      <PanelTabContent value="details">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <div data-tour-anchor="location-name" className="min-w-0 flex-1 space-y-2">
             <Label>Name</Label>
@@ -151,9 +149,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             resizable
           />
         )}
-      </TabsContent>
+      </PanelTabContent>
 
-      <TabsContent value="presence" className="space-y-4">
+      <PanelTabContent value="presence">
         <div className="space-y-2">
           <Label>Entities</Label>
           <MultiSelect
@@ -166,9 +164,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
           />
         </div>
         <LocationConnections location={editingLocation} />
-      </TabsContent>
+      </PanelTabContent>
 
-      <TabsContent value="media" className="space-y-4">
+      <PanelTabContent value="media">
         <ImageTagsField
           label="Background Image"
           tourAnchor="location-image"
@@ -192,10 +190,10 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             />
           </div>
         )}
-      </TabsContent>
+      </PanelTabContent>
 
       {advanced && (
-        <TabsContent value="pins" className="space-y-2">
+        <PanelTabContent value="pins" className="space-y-2">
           <div className="flex items-center gap-2">
             <Label>Placeholder Pins</Label>
             <HelpButton topicId="worldEditor.locationPins" className="h-6 w-6" />
@@ -207,9 +205,9 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             world={world}
             placeholders={placeholders}
           />
-        </TabsContent>
+        </PanelTabContent>
       )}
-    </Tabs>
+    </PanelTabs>
   );
 };
 

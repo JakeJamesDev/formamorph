@@ -600,6 +600,7 @@ The foundation's [review record](../docs-internal/designs/design-system/workflow
 - Each tab carries an icon and a name. The name is always on `aria-label`, so it reaches assistive technology and role queries whether or not it is drawn.
 - The label gives way to its icon wherever the pane is narrow. The icon never shrinks.
 - The strip is named, because the editor's own strip is on the same screen and can carry a tab of the same name.
+- The strip is a fixed header row. Only the tab's body scrolls, below it, so the tabs never leave the panel.
 - Mode-only tabs are filtered out of the registry before the strip renders, not disabled in place.
 
 **Density:** Compact. The strip is 40px tall at every width. Labels use the production label role; hiding one does not change the strip's height, so the panel below it does not move.

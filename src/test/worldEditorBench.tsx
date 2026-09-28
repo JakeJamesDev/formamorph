@@ -130,3 +130,13 @@ export const clickOpenBench = async () => {
   await clickFlask();
   fireEvent.click(await screen.findByRole('button', { name: 'Open Test Bench' }));
 };
+
+/** Where a detail panel's parts sit: its strip fixed above any scroll, and the open tab's body scrolling on
+ *  its own or filling the pane for a body that scrolls inside itself. */
+export const panelTabLayout = (stripLabel: string) => {
+  const strip = screen.getByRole('tablist', { name: stripLabel });
+  const open = within(strip).getByRole('tab', { selected: true });
+  const body = document.getElementById(open.getAttribute('aria-controls') ?? '');
+  const fixed = !strip.closest('[data-radix-scroll-area-viewport]') && !!strip.closest('[data-detail-fill]');
+  return { strip: fixed ? 'fixed' : 'scrolls', body: body?.querySelector('[data-panel-tab-body]') ? 'scroll' : 'fill' };
+};
