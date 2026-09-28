@@ -277,3 +277,18 @@ describe('placeholderTreeNodes with groups', () => {
     });
   });
 });
+
+describe('the Custom Persona entity on the Placeholders tab', () => {
+  const marked = () => ({ ...world(), entities: [molly(), tam([], { customPersona: true })] });
+
+  it('lists the marked entity as an owner while it owns nothing, and no other empty entity', () => {
+    expect(shape(placeholderTreeNodes(marked()))).toEqual(['Town', '[Molly]', '  Eyes', '[Tam]', '[Fen]', '  Lore']);
+    expect(shape(placeholderTreeNodes(world()))).toEqual(['Town', '[Molly]', '  Eyes', '[Fen]', '  Lore']);
+  });
+
+  it('takes a shared row dropped under its empty owner node', () => {
+    const next = applyScopedPlaceholderDrop(marked(), [], 'town', ownerNodeId('tam'), INDENT, INDENT);
+    expect(next!.placeholders).toEqual([]);
+    expect(next!.entities.find((e) => e.id === 'tam')?.placeholders?.map((p) => p.id)).toEqual(['town']);
+  });
+});

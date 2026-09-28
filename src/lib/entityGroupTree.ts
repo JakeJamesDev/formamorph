@@ -44,14 +44,18 @@ export const getEntityDropProjection = (
 
 /** Deep-duplicate an entity or a whole group subtree, inserting the copy right after the original. A copy
  *  with placeholders of its own gets fresh ones, its chips re-aimed at them, so the two never share a def.
- *  Its owned traits and groups get fresh ids too. */
+ *  Its owned traits and groups get fresh ids too. A copy never carries the Custom Persona mark. */
 export function duplicateEntityNode(
   groups: EntityGroup[], entities: Entity[], id: string,
 ): { groups: EntityGroup[]; entities: Entity[]; newId: string } {
   const r = duplicateNode(groups, entities, id);
   if (r.leaves === entities) return { groups: r.groups, entities, newId: r.newId };
   const original = new Set(entities.map((e) => e.id));
-  const leaves = r.leaves.map((e) => (original.has(e.id) ? e : duplicateEntityPlaceholders(remintOwnedTraits({ ...e, ...remintOpenings(e) }, r.idMap))));
+  const leaves = r.leaves.map((e) => {
+    if (original.has(e.id)) return e;
+    const { customPersona: _mark, ...copy } = e;
+    return duplicateEntityPlaceholders(remintOwnedTraits({ ...copy, ...remintOpenings(copy) }, r.idMap));
+  });
   return { groups: r.groups, entities: leaves, newId: r.newId };
 }
 

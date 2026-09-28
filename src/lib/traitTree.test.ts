@@ -846,3 +846,34 @@ describe('a one-entity tree\'s drops', () => {
     expect(order(next).filter(([, parent]) => parent === null)).toEqual([['bond', null, 0], ['pack', null, 1], ['l-brave', null, 2]]);
   });
 });
+
+describe('the Custom Persona entity in the one tree', () => {
+  const lists = { traits: [trait('paladin', 'class', 0), trait('loner', null, 1)], traitGroups: [group('class', null, 0)] };
+  const cp: Entity = { id: 'cp', name: 'Newcomer', customPersona: true };
+  const rows = (ents: Entity[], opts: { links: boolean; emptySystemNodes?: boolean } = { links: true }) => {
+    const tree = ownedTraitTree(lists, ents, [], opts);
+    return flattenTraitTree(buildTraitTree(tree.groups, tree.traits)).map((n) => `${'-'.repeat(n.depth)}${n.id}`);
+  };
+
+  it('draws the marked entity as a node in the editor while it holds nothing, Basic and play excepted', () => {
+    expect(rows([cp, { id: 'bob', name: 'Bob' }])).toEqual(['class', '-paladin', 'loner', 'cp']);
+    expect(rows([cp], { links: true, emptySystemNodes: false })).toEqual(['class', '-paladin', 'loner']);
+    expect(rows([cp], { links: false })).toEqual(['class', '-paladin', 'loner']);
+  });
+
+  it('refuses the marked node dropped into a world group, naming the entity', () => {
+    // Rows while it drags: class, paladin, loner, cp. Dropped on Paladin it would nest under Class.
+    expect(applyOwnedTraitDrop(lists, [cp], [], 'cp', 'paladin', 0, 24)).toEqual({ kind: 'refused', refusal: { reason: 'root', name: 'Newcomer' } });
+  });
+
+  it('moves the marked node among the top-level items, keeping the order the author gives it', () => {
+    const out = applyOwnedTraitDrop(lists, [cp], [], 'cp', 'class', 0, 24);
+    expect(out?.kind === 'moved' && out.entities).toEqual([{ ...cp, traitPlacement: { groupId: null, order: 0 } }]);
+  });
+
+  it('reads a group placement on the marked entity as the top level', () => {
+    const stored = { ...cp, traitPlacement: { groupId: 'class', order: 0 } };
+    expect(rows([stored])).toEqual(['class', '-paladin', 'loner', 'cp']);
+    expect(rows([{ ...stored, customPersona: undefined, traits: [trait('pack', null, 0)] }])).toEqual(['class', '-cp', '--pack', '-paladin', 'loner']);
+  });
+});

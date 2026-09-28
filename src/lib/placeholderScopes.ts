@@ -95,14 +95,15 @@ export function placeholderTreeNodes(world: PlaceholderHomesWorld): PlaceholderT
   };
   folders(null, 0);
   out.push(...rowsOf(shared.filter((p) => placeholderGroupOf(groups, p) === null)));
-  const section = (owner: PlaceholderOwnerRef, list: Placeholder[] | undefined) => {
-    if (!list?.length) return;
+  // The Custom Persona entity lists while empty, so the author can reach it.
+  const section = (owner: PlaceholderOwnerRef, list: Placeholder[] | undefined, always = false) => {
+    if (!list?.length && !always) return;
     const home: PlaceholderHome = { kind: owner.kind, ownerId: owner.id };
     const node: PlaceholderOwnerNode = { kind: 'owner', id: ownerNodeId(owner.id), parentId: null, depth: 0, owner, home };
-    out.push(node, ...rowsOf(list, node));
+    out.push(node, ...rowsOf(list ?? [], node));
   };
   for (const e of entitiesInTreeOrder(world.entityGroups ?? [], world.entities ?? [])) {
-    section({ kind: 'entity', id: e.id, name: e.name }, e.placeholders);
+    section({ kind: 'entity', id: e.id, name: e.name }, e.placeholders, !!e.customPersona);
   }
   for (const b of world.dictionaries ?? []) section({ kind: 'dictionary', id: b.id, name: b.name }, b.placeholders);
   return out;

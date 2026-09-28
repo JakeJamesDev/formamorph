@@ -127,6 +127,13 @@ describe('duplicateEntityNode', () => {
     expect(descEyeP).not.toBe(nameP);
     expect(src.name).toContain(':p1}}'); // the original is untouched
   });
+
+  it('drops the Custom Persona mark on the copy and keeps it on the original', () => {
+    const src: Entity = { ...entity('a', null, 0), customPersona: true };
+    const { entities: e2, newId } = duplicateEntityNode([], [src], 'a');
+    expect(e2.find((x) => x.id === newId)).not.toHaveProperty('customPersona');
+    expect(e2.find((x) => x.id === 'a')?.customPersona).toBe(true);
+  });
 });
 
 describe('flattenEntityTree / removeChildrenOf', () => {

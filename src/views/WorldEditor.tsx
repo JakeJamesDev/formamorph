@@ -68,6 +68,7 @@ import EntityGroupManager from '../managers/EntityGroupManager';
 import PlaceholderGroupManager from '../managers/PlaceholderGroupManager';
 import TraitTree from '../managers/TraitTree';
 import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
+import { useRemoveEntity } from '../managers/useRemoveEntity';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
@@ -161,7 +162,7 @@ const WorldEditorInner = ({
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
-    removeStat, removeEntity, removeLocation, removeStatUpdate,
+    removeStat, removeLocation, removeStatUpdate,
     setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds, editEntity,
   } = useGameData();
@@ -913,11 +914,12 @@ const WorldEditorInner = ({
   };
 
   const { ask: askRemoveWorldTrait, dialog: removeWorldTraitDialog } = useRemoveWorldTrait();
+  const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
   const removeItem = (id: string) => {
     if (activeTab === "stats") {
       removeStat(id);
     } else if (activeTab === "entities") {
-      removeEntity(id);
+      askRemoveEntity(id);
     } else if (activeTab === "locations") {
       removeLocation(id);
     } else if (activeTab === "traits") {
@@ -975,6 +977,7 @@ const WorldEditorInner = ({
         : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "traits" && (search.typed ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {removeWorldTraitDialog}
+      {removeEntityDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
       {activeTab === "statUpdates" && renderItemList(filteredItems)}
       {activeTab === "placeholders" && <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />}
