@@ -1,6 +1,7 @@
 # 05: Design-System entry and showcase for stacked list-and-detail
 
-Status: ready-for-agent
+Status: in-progress
+Base: 757ed582
 Blocked by: 04 — The mirror
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium

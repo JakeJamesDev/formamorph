@@ -37,7 +37,7 @@ Enter World opens on a **Persona** category when at least one persona is availab
 
 | Choice | What it means |
 |---|---|
-| **None** | Play as the world describes the player |
+| **None** | Play as the world describes the player. A world with a [Custom Persona](#create-your-own) shows that entity here instead. |
 | **From This World** | Entities the author made playable. See [Play a World's Own Entity](#play-a-worlds-own-entity). |
 | **Your Personas** | The personas in your library |
 
@@ -63,6 +63,17 @@ Pick an entity under **From This World**, and you play it:
 - The AI reads that everyone in the world already knows you.
 - Its first starting location is selected for you. You can pick another.
 - Its own openings leave the draw.
+
+## Create Your Own
+
+Some worlds have a **Custom Persona**. It takes **None**'s place in the list, with the author's portrait and name. Pick it, and **Name** and **Description** fields open under it.
+
+- **Your name replaces the entity's name.** The story calls you by it.
+- **Your description follows the author's.** The AI reads both.
+- **The world can give you traits**, such as a race and a class. They stay when you switch between it and a persona from your library.
+- **A world persona you pick shows in its slot.** It leaves its own group while you play it.
+
+**Change Persona** in game has the same entry. Change the name, and **Change** turns on.
 
 ## Change It in Game
 

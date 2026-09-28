@@ -231,5 +231,5 @@ An entity whose trait tree holds a trait, directly or through a Link. The played
 _Avoid_: owner (an owner holds its own traits only), holder
 
 **Original**:
-The world trait or group a Link points at, at the root or under Templates. An entity's own trait is never an Original.
+The world trait or group a Link points at, at the root or under Blueprints. An Original is a Blueprint trait. An entity's own trait is never an Original.
 _Avoid_: source (a listing's term), template, parent

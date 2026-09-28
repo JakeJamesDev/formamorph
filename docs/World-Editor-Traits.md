@@ -30,7 +30,7 @@ Select a trait to open its panel.
 | Tab | Holds | Mode |
 |---|---|---|
 | **Details** | Name and the two descriptions | Simple and Advanced |
-| **Availability** | The two checkboxes below, [**Requires**](#requirements), and a link's **This Link** section | Simple and Advanced |
+| **Availability** | The two checkboxes below, and [**Requires**](#requirements) | Simple and Advanced |
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 
@@ -134,68 +134,91 @@ Make a link in one of two ways:
 - **Drag** a world trait or group onto an entity node. The original stays where it is.
 - **Select the original** and select **Link To…** at the top of its **Details** tab. Pick each entity that gets it. An entity that already has it shows as checked.
 
-A link row shows a link icon. It reads the original live: name, descriptions, requirements and pins. Edit the original, and every link changes. A linked group brings all of its traits, also ones you add later, and it stays **Exclusive** when the original is.
+A link row shows a link icon. It reads the original live until you change a field on the link. Edit the original, and every link that did not override that field changes. A linked group brings all of its traits, also ones you add later, and it stays **Exclusive** when the original is.
 
-Select a link to open the original's **Details** under the line "Linked from **Templates › Classes › Paladin**. Edits change every link." Below them, the **This Link** section holds what belongs to this link only:
+Select a link to edit it. The link's own **Details** show the original's name and descriptions as read-only text. Every other field is yours to change for this link only:
 
-| Setting | What it does |
+| Field | Override |
 |---|---|
 | **Enabled by Default** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits. |
-| *Placeholder* **→** | The value for a [Bearer's Own pin](#bearers-own-pins) on this entity |
+| **Requires** | Replaces the original's whole list |
+| **Placeholder Pins** | Replaces the original's whole list |
+| **Player Can Toggle In-Game** | Locks or opens the trait for this entity |
+| **Stat Changes** | Replaces the original's whole list |
 
 Link rules:
 
 - **An entity has each original one time.** A second link to it, direct or through a linked group, is refused.
-- **Only world traits and groups can be originals.** To share an entity's own trait, move it to the world's traits or to [Templates](#templates), then link it.
+- **Only world traits and groups can be originals.** To share an entity's own trait, move it to the world's traits or to [Blueprints](#blueprints), then link it.
 - **Remove a link, and the original stays.** Delete the original, and its links go with it. The confirmation tells you how many.
-- **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits. **Player Can Toggle In-Game** follows the original.
-- **The AI reads a linked trait like the entity's own**, with that link's pin values.
+- **The player chooses at Enter World.** A player can change which linked traits an entity starts with, under the same rules as the entity's own traits.
+- **The AI reads a linked trait like the entity's own**, with that link's overrides.
 
-> ⚠️ **A link's Stat Changes apply only to the player.** On a **Playable** or **Persona-Only** entity, they apply when the player plays as it. On any other entity, they do nothing. The **This Link** section says which applies.
+> ⚠️ **A link's Stat Changes apply only to the player.** On a **Playable** or **Persona-Only** entity, they apply when the player plays as it. On any other entity, they do nothing. When the player switches persona, the stat changes of the link apply and reverse, not the original's.
+
+### Overrides
+
+A link is **live until edited**. Each field you change becomes an override. The rest of the link keeps following the original.
+
+- **Reset** sits at the end of an overridden field's label row. It returns that field to the original.
+- **Reset to Blueprint** sits in the footer below every tab. It returns every override on the link. On a trait in a linked group, it returns that trait's overrides.
+- **Blueprint changed** shows beside a field's **Reset** when the original changed that field after you set your override. Your value may be stale. Edit the field again, or reset it, and the marker clears. It shows on the **Details** panel only, never in the tree.
+- **Edit Blueprint** in the footer selects the original. Edit there to change every bearer. The control names say Blueprint for every original, also one at the top level.
+
+A linked group's shape stays live. To add, remove or move a trait for one bearer only, use **Detach**.
 
 ### Detach
 
-On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the link into the entity's own trait. The copy no longer follows the original, so edit it freely.
+On a link row's menu, **Detach** takes the place of **Duplicate**. It turns the link into the entity's own trait. The trait no longer follows the original, so edit it freely.
 
-Entity traits can't have stat effects. When the original has **Stat Changes** or **Stat Availability**, a confirmation asks first, and the copy comes without them.
+**Detach** rewrites the trait's text so it keeps this bearer's values. Each [blueprint chip](World-Editor-Placeholders#blueprint-chips) and each [pin by blueprint](#pins-by-blueprint) now names the entity's own [copy](World-Editor-Placeholders#copies). Any copy the trait needs and the entity lacks is made. Dragging an original onto an entity as its own trait, and moving an entity's own trait to another entity, do the same rewrite.
+
+Entity traits can't have stat effects. When the original has **Stat Changes** or **Stat Availability**, a confirmation asks first, and the trait comes without them.
 
 ### Links in the Library
 
-An entity's links go with it to the library, to a character card and into a world bundle. Each link keeps the name of its original. When the entity joins a world, each link binds to:
+An entity's links go with it to the library, to a character card and into a world bundle. Each link keeps the name of its original and its overrides. When the entity joins a world, each link binds to:
 
 1. The trait or group with the same id, when the world has it
 2. Else the one trait or group of its kind with the same name
 
-With no match, or two, the link is dropped. A link to a trait the entity already has is dropped too. Its **This Link** picks follow their traits the same way. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
+With no match, or two, the link is dropped. A link to a trait the entity already has is dropped too. A requirement that names a bearer, such as "Albus: Paladin", binds to the one entity with that name. A library persona's links bind to the world the player enters.
 
-The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **This Link**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
+The library entity editor shows links but never makes them. Opened from a world, it shows them live, with **Reset**, **Remove Link** and **Detach**, and you can still remove a link that world lacks. Opened from the library, it shows them by name only.
 
-## Templates
+## Blueprints
 
-**Advanced mode only.** Select **+**, then **Add Templates Group**. Traits under Templates are never offered to the player. They reach play only through links. Keep originals there that only some entities get, such as classes and races.
+**Advanced mode only.** Select **+**, then **Add Blueprints Group**. A blueprint is an item that exists to be linked or copied. A link or a copy reads its blueprint live until you edit it. Traits under Blueprints are never offered to the player. They reach play only through links. Keep originals there that only some entities get, such as classes and races.
 
-- **A world has one Templates group.** It stays at the top level.
-- **Entities can't go under Templates.** Templates holds world traits and groups only.
+- **A world has one Blueprints group.** It stays at the top level.
+- **Entities can't go under Blueprints.** Blueprints holds world traits and groups only.
 - **Remove it, and its traits move to the top level.** They're then offered to the player, so a confirmation asks first.
+
+Placeholders have a [Blueprints group](World-Editor-Placeholders#blueprints) of their own, with the same rule.
 
 ## Custom Persona
 
-**Advanced mode only.** Select **+**, then **Add Custom Persona**. The Custom Persona node holds links only. Its linked traits are the player's when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
+**Advanced mode only.** Custom Persona is a mark on one entity. The marked entity is a normal entity: it owns traits, links and [copies](World-Editor-Placeholders#copies). Its traits are the player's when the player has no world persona: **None**, or a persona from their own library. Use it to give a race and a class to a player who brings their own persona.
 
+Set the mark on the entity's **Profile** tab. **Custom Persona** is the fourth choice of the **Persona** control, beside **Cast**, **Playable** and **Persona-Only**. See [Custom Persona](Persona-Authoring#custom-persona) for the full rules.
+
+- **The Traits and Placeholders tabs always list it** as a bearer, so you can drag to it and link to it while it is empty.
 - **The picks carry over.** A player who switches between **None** and a library persona keeps their Custom Persona picks.
 - **In play, its traits sit with the world's top-level traits.** They have no separate heading.
 - **It can't link what the top level already offers.** The player has those traits already.
-- **Remove it, and its links go too.** The confirmation tells you how many.
+- **It stays at the top level** of the **Traits** tab, in the order you set.
 
-> 💡 With Advanced mode off, links, Templates and Custom Persona still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
+> 💡 With Advanced mode off, links, Blueprints and the Custom Persona entity still show when they hold something, and you can still edit them. Only making new ones needs Advanced mode.
 
-## Bearer's Own Pins
+## Pins by Blueprint
 
-**Advanced mode only.** A trait pin can pin each bearer's own placeholder in place of one world placeholder. In the pin's placeholder list, pick a name under **Bearer's Own**. On each bearer, the pin uses that bearer's own placeholder with that name. A bearer with no placeholder of that name uses the world placeholder with that name.
+**Advanced mode only.** A trait pin can pin a [blueprint placeholder](World-Editor-Placeholders#blueprints). In the pin's placeholder list, pick the blueprint, then pick its value. You set the value one time, on the original.
 
-Each link picks its own value in its **This Link** section. Albus's *Paladin* can pin his *Class Garb* to *silvered plate*, and another Paladin's link can pick *a plain tabard*. A link with no value pins nothing.
+On each bearer, the pin traces the blueprint to that bearer's own [copy](World-Editor-Placeholders#copies). Albus's *Paladin* pins *Class Garb*. Albus's copy of *Class Garb* holds the pin, and no other bearer's copy changes.
 
-The pin's own value applies when a bearer has the trait directly, with no link. It is also the first value of a new link that uses the world placeholder.
+A link can override its **Placeholder Pins** list. Albus's link can pin *silvered plate*, and another Paladin's link can pin *a plain tabard*.
+
+A pin that names a value the copy removed pins nothing.
 
 ### Whose pins apply where
 
@@ -207,28 +230,29 @@ The pin's own value applies when a bearer has the trait directly, with no link. 
 
 An entity's own trait pins never reach anyone else's text. Albus's class never changes the player's description.
 
-> 💡 **A persona's own placeholder takes the pin, not the world's.** When the player plays Albus, his *Paladin* pins his own *Class Garb*, and a world *Class Garb* chip in an opening shows its rolled value. When world text should read the played persona's garb, give the persona no placeholder of that name and pick its link values from the world list. The bundled world **Emberwatch** does both: its cast owns Class Garb and Heritage, and its personas use the world's.
-
 ## Test Bench Checks
 
-The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and Custom Persona.
+The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and the Custom Persona entity.
 
 It shows an error when a trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
 
 It shows a warning when:
 
-- A link has no value for a Bearer's Own pin. The warning opens the link.
-- A Bearer's Own name matches no placeholder on the bearer or in the world.
+- A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
+- A copy removed the value that a pin names. The pin pins nothing.
+- A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
 - A link is redundant, because another link on the same bearer already brings its original.
+
+It shows a note when an edited copy has no trait or chip that uses it. Keep the copy or delete it.
 
 ## Example: RPG Classes
 
 A world where the player and some entities have a class.
 
-1. **Add a Templates group.** Under it, add an exclusive **Classes** group with *Paladin*, *Cleric* and *Wizard*. Add a **Spells** group with *Smite*, and set *Smite* to require *Paladin*.
-2. **Link Classes and Spells to Albus.** In **This Link**, check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
-3. **Give each class a Bearer's Own pin.** *Paladin* pins **Bearer's Own** *Class Garb*. Give Albus a *Class Garb* placeholder, and pick its value in his link.
-4. **Add Custom Persona and link Classes to it.** A player with no world persona now picks a class too.
+1. **Add a Blueprints group.** Under it, add an exclusive **Classes** group with *Paladin*, *Cleric* and *Wizard*. Add a **Spells** group with *Smite*, and set *Smite* to require *Paladin*.
+2. **Link Classes and Spells to Albus.** Select the link, then check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
+3. **Pin a blueprint from each class.** In the Placeholders tab, add a Blueprints group with *Class Garb*. *Paladin* pins *Class Garb* to *silvered plate*. Albus gets his own copy of *Class Garb* by itself.
+4. **Mark a Custom Persona entity and link Classes to it.** A player with no world persona now picks a class too.
 
 In play, a player who picks *Wizard* never unlocks Albus's *Smite*, and Albus's garb never changes the player's description.
 

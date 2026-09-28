@@ -1,6 +1,7 @@
 # 11: Docs and glossary
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 6b772ea6
 Blocked by: 08 — Custom Persona at Enter World and in play; 09 — Travel and import; 10 — Test Bench rules
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
 Reasoning effort: low
@@ -14,6 +15,6 @@ An author can read how blueprints, copies, link overrides, pins by blueprint, bl
 
 ## Acceptance criteria
 
-- [ ] Wiki pages cover each behavior above with the Writing Guide's voice; no page references agent files.
-- [ ] CONTEXT.md carries Blueprint and Copy, and the Original entry is updated.
-- [ ] No published page still describes the Templates group, the Custom Persona node or bearer-relative pins.
+- [x] Wiki pages cover each behavior above with the Writing Guide's voice; no page references agent files.
+- [x] CONTEXT.md carries Blueprint and Copy, and the Original entry is updated.
+- [x] No published page still describes the Templates group, the Custom Persona node or bearer-relative pins.

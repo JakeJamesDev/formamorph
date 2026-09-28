@@ -12,14 +12,14 @@ How your world meets the player's persona: playable entities, the **Persona Choi
 |---|---|
 | The player to play as one of your entities | **Playable** under **Persona** on that entity |
 | An entity that exists only when the player picks it | **Persona-Only** under **Persona** |
-| Traits for a player with no world persona | The **Custom Persona** node in the **Traits** tab |
+| Traits for a player with no world persona | The **Custom Persona** entity |
 | To decide who the player can be | **Persona Choice** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Player Name** chip |
 
 ## Make an Entity Playable
 
-Open the entity's **Profile** tab and set **Persona** to **Playable**. The entity then shows under **From This World** when a player enters your world.
+In Advanced mode, open the entity's **Profile** tab and set **Persona** to **Playable**. The entity then shows under **From This World** when a player enters your world.
 
 When a player picks it:
 
@@ -49,11 +49,32 @@ Some entities exist only as a player slot, such as a "Custom Character" with no 
 - **Its openings never draw.** When picked, it's the player. When not picked, it's absent.
 - **The checkbox is in the World Editor only.** A library entity is never in a cast, so it doesn't need one.
 
-## Traits for Any Persona
+## Custom Persona
 
-A player who picks **None** or a persona from their own library has no world entity's traits. The **Custom Persona** node gives them traits anyway, such as a race and a class. Its linked traits are the player's whenever no world persona is picked, and the picks carry over between **None** and library personas.
+A player who picks a persona from their own library has no world entity's traits. A player who picks **None** has none either. The **Custom Persona** entity gives them traits anyway, such as a race and a class. It also stands in **None**'s place at Enter World.
 
-Custom Persona is in the **Traits** tab. See [Custom Persona](World-Editor-Traits#custom-persona).
+Open the entity's **Profile** tab and set **Persona** to **Custom Persona**. The mark is the fourth choice, beside **Cast**, **Playable** and **Persona-Only**.
+
+| Rule | Detail |
+|---|---|
+| One per world | While one entity holds the mark, the choice is off on every other entity. A hint names the holder. |
+| Not in the cast | The mark takes the place of **Playable** and **Persona-Only**, and the entity acts as Persona-Only. It never joins a scene. |
+| A normal entity | It owns traits, links and [copies](World-Editor-Placeholders#copies). You name it. |
+| At the top level | It stays at the top level of the **Traits** tab, in the order you set. A drop into a group is refused. |
+| Always a bearer | The **Traits** and **Placeholders** tabs list it, so you can drag and link to it while it is empty. |
+| Duplicate | A duplicate drops the mark. |
+
+Its traits are the player's when the player picks **None** or a library persona. A world persona keeps its own traits. The picks carry over between **None** and library personas.
+
+Copies work in the same order. A library persona's own copy wins. The Custom Persona entity's copy fills in where the persona has none. The [blueprint](World-Editor-Placeholders#blueprints) itself reads last.
+
+Remove the mark, and the entity keeps its links, traits and copies. A confirmation names the counts. Delete the entity, and they go with it. That confirmation names the counts too. An empty entity does neither with a dialog.
+
+A world with no marked entity keeps **None** as before. A blueprint chip then reads the blueprint's own values.
+
+> 💡 **Enter World shows the entity in place of None.** The player enters a name, and it replaces the entity's name in the story. The player's own description follows yours, so the AI reads both your setup and the player's details. Your aliases stay.
+
+See [Custom Persona](World-Editor-Traits#custom-persona) for how its links and pins work in the **Traits** tab.
 
 ## Persona Choice
 
