@@ -49,6 +49,18 @@ export function removeOwnedItem(entity: Entity, id: string): Entity {
   );
 }
 
+/** The writes a trait store over one entity makes, each through `edit` on that entity. */
+export function ownedTraitWrites(edit: (change: (entity: Entity) => Entity) => void) {
+  return {
+    setTraits: (next: Trait[]) => edit((e) => withOwnedTraits(e, next, groupsOf(e))),
+    setTraitGroups: (next: TraitGroup[]) => edit((e) => withOwnedTraits(e, traitsOf(e), next)),
+    updateTrait: (trait: Trait) => edit((e) => updateOwnedTrait(e, trait)),
+    updateTraitGroup: (group: TraitGroup) => edit((e) => updateOwnedGroup(e, group)),
+    removeTrait: (id: string) => edit((e) => removeOwnedItem(e, id)),
+    removeTraitGroup: (id: string) => edit((e) => removeOwnedItem(e, id)),
+  };
+}
+
 /** The entity that owns trait or group `id`, with the item itself. */
 export function findOwnedItem(
   entities: readonly Entity[], id: string,

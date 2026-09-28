@@ -156,11 +156,10 @@ const TraitTree = ({ selectedId, onSelect }: { selectedId: string | null; onSele
     } satisfies Partial<TreeRowSpec>;
     // A linked group's subtree is the original's, so its rows are read here and edited there.
     if (!linkRow.root) return { ...shared, icon: isGroup ? <Folder className="h-4 w-4 shrink-0" /> : undefined, fixed: true };
-    // A root entity's tree holds no original to open, and its drops don't place links.
+    // A root entity's tree holds no original to open, so the icon opens the link's own row.
     const opens = entityRoot ? node.id : linkRow.originalId;
     return {
       ...shared,
-      fixed: !!entityRoot,
       icon: (
         <Tip tip={`Linked, opens ${labelPlaceholders(name, placeholders)}`} labelsChild={false}>
           <button

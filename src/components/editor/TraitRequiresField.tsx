@@ -22,13 +22,15 @@ const filterRows = (_value: string, search: string, keywords: string[] = []) =>
 /**
  * The trait panel's Requires field: the trait's requirements as chips joined by "or", and a searchable picker
  * that adds one. Picking a target opens a second page for the bearer: the same bearer, You, or an entity that
- * bears it. Off-world the target is added for the same bearer at once. A chip opens its target; a chip whose
- * target is gone reads red under its stored name.
+ * bears it. Off-world the target is added for the same bearer at once. A chip opens its target, unless
+ * `opens` says the host has nowhere to open it, when it reads as plain text; a chip whose target is gone
+ * reads red under its stored name.
  */
-export function TraitRequiresField({ trait, onChange, onOpen }: {
+export function TraitRequiresField({ trait, onChange, onOpen, opens = () => true }: {
   trait: Trait;
   onChange: (requires: TraitRequirement[]) => void;
   onOpen: (requirement: TraitRequirement) => void;
+  opens?: (requirement: TraitRequirement) => boolean;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
   const [open, setOpen] = useState(false);
@@ -115,7 +117,7 @@ export function TraitRequiresField({ trait, onChange, onOpen }: {
                   unresolved && 'border-destructive text-destructive',
                 )}
               >
-                {unresolved ? (
+                {unresolved || !opens(requirement) ? (
                   <span className="min-w-0 truncate">{plain}</span>
                 ) : (
                   <button

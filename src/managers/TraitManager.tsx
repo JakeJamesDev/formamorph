@@ -66,10 +66,13 @@ const ConflictNote = ({ conflict, placeholders, onOpen }: {
  * `onOpenTrait` also takes a trait group's id, which the Traits tab selects the same way.
  *
  * An `owner` makes it that entity's trait: edits write to the entity, and the stat sections are gone. Its
- * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity.
+ * "Owned by" line goes with `ownerLine` off, for a host whose heading already names the entity. A host that
+ * can open only some requirement targets says which through `requirementOpens`; the rest read as plain chips.
  * A link shows its original here, with its own lines in `detailsHeader` and `detailsFooter`.
  */
-const TraitManager = ({ trait, owner, ownerLine = true, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, tab, onTabChange, focusField }: {
+const TraitManager = ({
+  trait, owner, ownerLine = true, detailsHeader, detailsFooter, onOpenTrait, onOpenEntity, requirementOpens, tab, onTabChange, focusField,
+}: {
   trait: Trait;
   owner?: Entity;
   ownerLine?: boolean;
@@ -77,6 +80,7 @@ const TraitManager = ({ trait, owner, ownerLine = true, detailsHeader, detailsFo
   detailsFooter?: ReactNode;
   onOpenTrait: (id: string) => void;
   onOpenEntity?: (id: string) => void;
+  requirementOpens?: (requirement: TraitRequirement) => boolean;
   tab: TraitPanelTab;
   onTabChange: (tab: TraitPanelTab) => void;
   focusField?: FocusFieldHint | null;
@@ -212,7 +216,7 @@ const TraitManager = ({ trait, owner, ownerLine = true, detailsHeader, detailsFo
         <span>Player Can Toggle In-Game</span>
         <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
       </label>
-      <TraitRequiresField trait={editingTrait} onChange={setRequires} onOpen={openRequirement} />
+      <TraitRequiresField trait={editingTrait} onChange={setRequires} onOpen={openRequirement} opens={requirementOpens} />
       {detailsFooter}
     </>
   );
