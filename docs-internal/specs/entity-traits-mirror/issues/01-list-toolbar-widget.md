@@ -1,6 +1,7 @@
 # 01: List toolbar widget, World Editor migrated
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: c42530c9
 Blocked by: None (can start immediately)
 Recommended model: Claude Fable 5.1 (`claude-fable-5-1`)
 Reasoning effort: high

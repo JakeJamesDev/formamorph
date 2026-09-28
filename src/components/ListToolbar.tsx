@@ -52,11 +52,7 @@ export function ListSearchToolbar({ search, add, placeholder, className, childre
   after?: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const api: ListAddApi = {
-    typed: search.typed,
-    add: (action) => { action(search.typed); search.clear(); setMenuOpen(false); },
-    close: () => setMenuOpen(false),
-  };
+  const api: ListAddApi = { add: (action) => { action(search.typed); search.clear(); setMenuOpen(false); } };
   return (
     <ListToolbar className={className}>
       {'menu' in add ? (
