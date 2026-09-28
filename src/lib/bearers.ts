@@ -197,15 +197,34 @@ function customPersonaExpansion(world: BearerWorld, root: ReturnType<typeof offe
   return expandLinks(world, [...links].sort((a, b) => order(a) - order(b)), (link) => ({ groupId: null, order: afterRoot + order(link) }), rootIds);
 }
 
-/** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library persona. */
+/**
+ * The player's traits without the ones that name the played persona as another bearer. A named-scope
+ * requirement describes a relationship to someone else, so while the player is that someone the requirement
+ * falls away, and a trait that had no other way in is not offered.
+ */
+export function withoutSelfNamedGates(traits: readonly Trait[], playedId: string | null): Trait[] {
+  if (playedId === null) return [...traits];
+  return traits.flatMap((trait) => {
+    const requires = trait.requires ?? [];
+    if (requires.length === 0) return [trait];
+    const kept = requires.filter((req) => !(req.kind !== 'playingAs' && req.bearer?.kind === 'entity' && req.bearer.id === playedId));
+    if (kept.length === 0) return [];
+    return [kept.length === requires.length ? trait : { ...trait, requires: kept }];
+  });
+}
+
+/** The player bearer: the root outside Templates, plus Custom Persona's links under None or a library persona.
+ *  A trait gated only on the played persona itself is left out (see {@link withoutSelfNamedGates}). */
 function playerBearer(world: BearerWorld, persona: PersonaRef | undefined): Bearer {
   const root = offeredWorldTraits(world.traits, world.traitGroups);
   const expanded = persona?.source === 'world' ? expandLinks(world, []) : customPersonaExpansion(world, root);
+  const traits = withoutSelfNamedGates([...root.traits, ...expanded.traits], playedId(persona));
+  const linkOf = new Map([...expanded.linkOf].filter(([id]) => traits.some((t) => t.id === id) || !world.traits.some((t) => t.id === id)));
   return {
     id: PLAYER_BEARER, name: '', entity: null, isPlayer: true, present: true,
-    traits: [...root.traits, ...expanded.traits],
+    traits,
     groups: [...root.groups, ...expanded.groups],
-    linkOf: expanded.linkOf,
+    linkOf,
   };
 }
 

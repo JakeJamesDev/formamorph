@@ -109,6 +109,12 @@ describe('bearers on Emberwatch', () => {
     expect(gateOf(states, entityNamed(world, 'Mother Hesk').id, traitId(world, 'Blessed Light'))).toBeUndefined();
   });
 
+  it('never offers Squire to Albus to Albus himself', () => {
+    const player = (persona: PersonaRef) => resolveBearers(bearerWorld(world), persona).bearers.find((b) => b.id === PLAYER_BEARER)!;
+    expect(names(world, player(asEntity(world, 'Sylvie Thornwhistle')).traits.map((t) => t.id))).toContain('Squire to Albus');
+    expect(names(world, player(asEntity(world, 'Albus')).traits.map((t) => t.id))).not.toContain('Squire to Albus');
+  });
+
   it('locks Squire to Albus when Albus stops being a Paladin', () => {
     const { gate } = resolveBearers(bearerWorld(world), NONE);
     const albus = entityNamed(world, 'Albus').id;

@@ -107,6 +107,8 @@ To check another bearer, pick one after you pick the target:
 
 For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squire trait only when the player is a Paladin.
 
+A requirement that names an entity describes a relationship to someone else. When the player plays that entity, the requirement falls away. *Squire to Albus* requires *Albus: Paladin*, so it is offered to every player except Albus. A trait with a second target, such as *Paladin* on the same bearer, stays and uses the other target. An entity's own traits keep every requirement, so Albus can still gate his own trait on *Albus: Paladin*.
+
 ## Entity Traits
 
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.

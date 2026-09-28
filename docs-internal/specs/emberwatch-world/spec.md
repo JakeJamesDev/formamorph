@@ -128,6 +128,7 @@ Ship a new bundled world, **Emberwatch**. It is a small high-fantasy frontier st
   | Q24 | One named-scope gate: Squire to Albus. |
   | Q25 | Done: the Test Bench is clean and the gates are green. |
   | Q26 | Personas fall back to the world Class Garb and Heritage; only the cast (Hesk, Corvin) owns both. New evidence: a persona's own placeholder shadows the world's for its pins, so the openings' world chip would keep its roll under Wanderer, Albus or Sylvie. Ruled 2026-09-28. |
+  | Q28 | A named-scope requirement never names yourself. The player bearer drops a requirement whose bearer is the played persona; a trait with no other way in is not offered, and a persona switch in play takes it off with its stat changes. The played entity's own tree keeps every requirement. Squire to Albus therefore stays at the root. Ruled 2026-09-28 after the Enter World check showed it offered to Albus. |
   | Q27 | Fix the two Test Bench rules that misread per-bearer links inside this effort, in their own commit: `trait-default-gated` settles defaults per bearer, and `placeholder-pin-conflict` no longer makes two Personas' pins rivals. Amends trait-links Q82. Ruled 2026-09-28. |
 
 - **Expect findings.** This world is the first real authoring pass over trait links. Record each gap the authoring pass hits in the Comments section below, for triage.

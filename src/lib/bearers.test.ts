@@ -199,6 +199,45 @@ describe('resolveBearers: the player bearer', () => {
   });
 });
 
+describe('resolveBearers: a requirement never names yourself', () => {
+  const albusPaladin = { kind: 'trait' as const, id: 'paladin', bearer: { kind: 'entity' as const, id: 'albus' } };
+  const squire = trait('squire', { name: 'Squire to Albus', groupId: null, order: 1, requires: [albusPaladin] });
+  const sworn = trait('sworn', { name: 'Sworn', groupId: null, order: 2, requires: [albusPaladin, { kind: 'trait', id: 'brave' }] });
+  const w = world({ traits: [...world().traits, squire, sworn] });
+
+  it('offers a root trait gated on Albus to everyone but Albus', () => {
+    expect(ids(bearer(w, PLAYER_BEARER).traits)).toContain('squire');
+    expect(ids(bearer(w, PLAYER_BEARER, AS_LIBRARY, [{ id: 'lib', name: 'Lib', persona: true }]).traits)).toContain('squire');
+    expect(ids(bearer(w, PLAYER_BEARER, AS_ALBUS).traits)).not.toContain('squire');
+  });
+
+  it('keeps a trait with another way in, minus the requirement that names you', () => {
+    const asAlbus = bearer(w, PLAYER_BEARER, AS_ALBUS).traits.find((t) => t.id === 'sworn');
+    expect(asAlbus?.requires).toEqual([{ kind: 'trait', id: 'brave' }]);
+    expect(bearer(w, PLAYER_BEARER).traits.find((t) => t.id === 'sworn')?.requires).toHaveLength(2);
+  });
+
+  it('leaves the played entity’s own tree alone, so Albus can gate on himself there', () => {
+    const oath = trait('oath', { name: 'Oath', groupId: null, order: 0, requires: [albusPaladin] });
+    const own = world({ entities: [{ ...albus, traits: [oath] }, mira, custom] });
+    expect(bearer(own, 'albus', AS_ALBUS).traits.find((t) => t.id === 'oath')?.requires).toEqual([albusPaladin]);
+  });
+
+  it('applies to Custom Persona’s links under a library persona, and gates the player’s owner the same way', () => {
+    const vow = trait('vow-t', { name: 'Vow', groupId: 'templates', order: 2, requires: [{ kind: 'trait', id: 'paladin', bearer: { kind: 'entity', id: 'lib' } }] });
+    const lib: Entity = { id: 'lib', name: 'Lib', persona: true };
+    const linkedVow = world({
+      traits: [...world().traits, vow],
+      entities: [albus, mira, { ...custom, traitLinks: [link('l-vow', 'vow-t', 'trait')] }],
+      customPersona: { traitLinks: [link('l-vow', 'vow-t', 'trait')] },
+    });
+    expect(ids(bearer(linkedVow, PLAYER_BEARER).traits)).toContain('vow-t');
+    expect(ids(bearer(linkedVow, PLAYER_BEARER, AS_LIBRARY, [lib]).traits)).not.toContain('vow-t');
+    const { gate } = resolveBearers(w, AS_ALBUS);
+    expect(gate.owners[0].traits.map((t) => t.id)).not.toContain('squire');
+  });
+});
+
 describe('resolveBearers: a world persona’s tree', () => {
   it('is its own owned traits and links, marked as the player when picked', () => {
     const picked = bearer(world(), 'albus', AS_ALBUS);
