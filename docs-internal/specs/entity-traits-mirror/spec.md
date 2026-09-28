@@ -50,6 +50,8 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q23** `ListDetail`'s stacked option and its test land in ticket 03 with the shared editor's layout prop, so the prop is never inert. Ticket 04 uses it.
 - **Q24** The flat search lists each Link's own row, trait links and group links alike, matched by the name the row shows: the Original's live name in a world, the stored name standalone. Rows inside a linked group's subtree are the Original's rows and stay out, as groups do.
 - **Q25** The shared editor's **+** reads "Add to <entity name>" through the entity's placeholders, and its box reads "Search or add new traits", as on the **Traits** tab. The store's "root is one entity" field is named `entityRoot`; the library store and ticket 04's world store both set it.
+- **Q26** In the one-entity tree, drops land relative to Link rows: a drag past a Link reorders around it, and own items keep an order that counts the Links between them, as on the **Traits** tab. Nesting into a linked group stays blocked. The library editor shares the path and gets the same behavior.
+- **Q27** The mirror hides the "Owned by <entity>" line on a trait's Details; the entity panel's heading already names the entity. The owner still drives everything else. The library editor keeps its line and its Entity-tab switch.
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
