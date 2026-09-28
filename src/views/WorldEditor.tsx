@@ -87,6 +87,7 @@ import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
 import { bearerChoices } from '@/lib/bearerChoices';
 import { BearerList, LinkToBearerButton } from '../managers/BearerPicker';
 import { MENU_ROW } from '@/components/menuRow';
+import { DrillSlide, type SlideFrom } from '@/components/DrillSlide';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import { EntityTraitNodePanel } from '../managers/EntityTraitsSection';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
@@ -460,6 +461,8 @@ const WorldEditorInner = ({
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   // The + menu's drill-in: which kind of owned item it adds to the entity picked next.
   const [addToEntity, setAddToEntity] = useState<OwnedKind | null>(null);
+  const [addMenuFrom, setAddMenuFrom] = useState<SlideFrom>(null);
+  const drillAddMenu = (kind: OwnedKind | null) => { setAddToEntity(kind); setAddMenuFrom(kind ? 'right' : 'left'); };
   const [showAddDictionary, setShowAddDictionary] = useState(false);
   const [showAddEntity, setShowAddEntity] = useState(false);
   // Back out of the connection step reopens the picker on the picks already made rather than a clean one.
@@ -1258,7 +1261,7 @@ const WorldEditorInner = ({
   // A drill-in row: its label heads the entity list it opens in place of the menu.
   const toEntityLabel: Record<OwnedKind, string> = { trait: 'Add Trait to Entity', group: 'Add Group to Entity' };
   const addToEntityItem = (icon: ReactNode, kind: OwnedKind) => entities.length > 0 && (
-    <button type="button" className={MENU_ROW} onClick={() => setAddToEntity(kind)}>
+    <button type="button" className={MENU_ROW} onClick={() => drillAddMenu(kind)}>
       {icon} <span className="flex-1">{toEntityLabel[kind]}</span>
       <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
     </button>
@@ -1268,14 +1271,14 @@ const WorldEditorInner = ({
       choices={bearerChoices(entityGroups, entities)}
       label="Entities"
       onPick={(id) => handleAddToEntity(addToEntity, id)}
-      back={{ label: toEntityLabel[addToEntity], onBack: () => setAddToEntity(null) }}
+      back={{ label: toEntityLabel[addToEntity], onBack: () => drillAddMenu(null) }}
     />
   ) : (
     <>
       {advanced && addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', handleAddGroup)}
       {addMenuItem(<FilePlus className="h-4 w-4" />, 'Add Trait', handleAddTrait)}
       {advanced && addToEntityItem(<FolderPlus className="h-4 w-4" />, 'group')}
-      {addToEntityItem(<FilePlus className="h-4 w-4" />, 'trait')}
+      {advanced && addToEntityItem(<FilePlus className="h-4 w-4" />, 'trait')}
       {advanced && !hasTemplates
         && addMenuItem(<LayoutTemplate className="h-4 w-4" />, 'Add Templates Group', handleAddTemplates)}
       {advanced && !customPersona
@@ -1284,14 +1287,14 @@ const WorldEditorInner = ({
   );
   const addSearchBar = activeTab !== "overview" && (
     <ListToolbar className="mt-4">
-      {/* Basic's Traits + is a menu only when it has a second row to offer. */}
-      {(activeTab === "traits" && (advanced || entities.length > 0)) || (advanced && grouped) ? (
-        <Popover open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); if (!open) setAddToEntity(null); }}>
+      {advanced && grouped ? (
+        <Popover open={addMenuOpen} onOpenChange={(open) => { setAddMenuOpen(open); setAddToEntity(null); setAddMenuFrom(null); }}>
           <PopoverTrigger asChild>
             <ListAddButton label={addLabel} data-tour-anchor="list-add" />
           </PopoverTrigger>
-          <PopoverContent side="bottom" align="start" className={cn(activeTab === "traits" ? "w-56" : "w-44", "p-1")}>
-            {activeTab === "traits" ? traitsMenu : (
+          {/* Inline, so the editor's modal scroll lock lets the wheel reach the entity list. */}
+          <PopoverContent portal={false} side="bottom" align="start" className={cn(activeTab === "traits" ? "w-56" : "w-44", "overflow-hidden p-1")}>
+            {activeTab === "traits" ? <DrillSlide key={addToEntity ?? ''} from={addMenuFrom}>{traitsMenu}</DrillSlide> : (
               <>
                 {addMenuItem(<FolderPlus className="h-4 w-4" />, 'Add Group', addGroupHere)}
                 {addMenuItem(<FilePlus className="h-4 w-4" />, addItemLabel, addItemHere)}

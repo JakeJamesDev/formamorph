@@ -10,7 +10,7 @@ import { tabForField } from './findFocus';
 export const ENTITY_PANEL_TABS = [
   { value: 'profile', label: 'Profile', icon: User },
   { value: 'descriptions', label: 'Descriptions', icon: AlignLeft },
-  { value: 'traits', label: 'Traits', icon: Sparkles },
+  { value: 'traits', label: 'Traits', icon: Sparkles, advancedOnly: true },
   { value: 'openings', label: 'Openings', icon: Play, advancedOnly: true },
   { value: 'placeholders', label: 'Placeholders', icon: Braces, advancedOnly: true },
 ] as const;

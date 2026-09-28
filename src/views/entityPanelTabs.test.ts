@@ -56,6 +56,10 @@ describe('entityTabForField', () => {
       expect(simple.has(entityTabForField(key) as string)).toBe(true);
     }
   });
+
+  it('shows Simple mode only Profile and Descriptions', () => {
+    expect(entityPanelTabsFor(false).map((t) => t.value)).toEqual(['profile', 'descriptions']);
+  });
 });
 
 describe('the library entity editor tabs', () => {

@@ -111,8 +111,8 @@ For example, *Squire* requires **You**: *Paladin*. A squire entity gets its Squi
 
 An entity can have traits of its own. Each entity with traits shows as a node in the **Traits** tab, below the world's traits.
 
-- **Add one from the Traits tab.** Select **+**, then **Add Trait to Entity**, and pick the entity. In Advanced mode, **Add Group to Entity** adds a group the same way.
-- **Or add one in the entity's editor**, in its **Traits** section.
+- **Add one from the Traits tab.** In Advanced mode, select **+**, then **Add Trait to Entity**, and pick the entity. **Add Group to Entity** adds a group the same way.
+- **Or add one in the entity's editor**, in its **Traits** tab, in Advanced mode.
 
 An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the player's.
 

@@ -108,14 +108,14 @@ describe('the two entity editors', () => {
     expect(worldTabs).toEqual(['Profile', 'Descriptions', 'Traits', 'Openings', 'Placeholders']);
   });
 
-  it('drop Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
+  it('drop Traits, Openings and Placeholders in the World Editor in Simple mode, and keep them in the always-Advanced library', () => {
     const simple = (ui: React.ReactNode) => (
       <SettingsProvider>
         <EditorModeContext.Provider value={{ mode: 'simple', advanced: false, setMode: vi.fn() }}>{ui}</EditorModeContext.Provider>
       </SettingsProvider>
     );
     render(simple(<WorldPanel />));
-    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions', 'Traits']);
+    expect(fieldTabNames()).toEqual(['Profile', 'Descriptions']);
     cleanup();
     render(simple(<EntityEditorModal entityId={null} draft={entity} onClose={vi.fn()} />));
     expect(topTabNames()).toEqual(['Entity', 'Traits', 'Placeholders']);

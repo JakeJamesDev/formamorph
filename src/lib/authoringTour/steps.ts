@@ -675,7 +675,7 @@ const TRAIT_STEPS: readonly TourStep[] = [
     tab: 'traits',
     item: 'trait',
     title: 'Add a Trait',
-    body: 'Press the + button, then Add Trait, to add a trait players can pick when a new game starts',
+    body: 'Press the + button to add a trait players can pick when a new game starts',
     add: addTraitItem,
   }),
   {
