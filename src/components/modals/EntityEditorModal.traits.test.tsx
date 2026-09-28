@@ -6,6 +6,8 @@ import EntityEditorModal from './EntityEditorModal';
 import { SettingsProvider } from '@/contexts/SettingsContext';
 import EntityStorageService from '@/services/EntityStorageService';
 import { SELF_ENTITY } from '@/lib/portableTraits';
+import type { LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
+import { phValues } from '@/test/placeholderValues';
 import type { Entity } from '@/types';
 
 /** The library entity editor's Traits tab: the World Editor's tree and panel over the entity's own traits. */
@@ -89,16 +91,17 @@ describe("the library entity Traits tab's links", () => {
       { id: 'l-smite', originalId: 'w-smite', kind: 'trait', originalName: 'Smite', groupId: null, order: 6 },
     ],
   };
-  /** A world with its own Class, and no Smite. */
-  const world = {
+  /** A world with its own Class, where Paladin pins the bearer's Garb and Wizard requires Paladin, and no Smite. */
+  const world: LibraryEditorWorld = {
     traits: [
-      { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [] },
-      { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [] },
+      { id: 'n-paladin', name: 'Paladin', groupId: 'n-class', statChanges: [], placeholderPins: [{ placeholderId: '', bearerPlaceholder: 'Garb', value: 'plate' }] },
+      { id: 'n-wizard', name: 'Wizard', groupId: 'n-class', statChanges: [], requires: [{ kind: 'trait', id: 'n-paladin' }] },
     ],
     traitGroups: [{ id: 'n-class', name: 'Class', parentId: null }],
     entities: [],
+    placeholders: [{ id: 'p-garb', name: 'Garb', values: phValues(['plate', 'robes']) }],
   };
-  const open = async (traitWorld?: typeof world) => {
+  const open = async (traitWorld?: LibraryEditorWorld) => {
     render(<SettingsProvider><EntityEditorModal entityId={null} draft={linked} onClose={vi.fn()} traitWorld={traitWorld} /></SettingsProvider>);
     await userEvent.click(screen.getByRole('tab', { name: 'Traits' }));
   };
@@ -133,11 +136,27 @@ describe("the library entity Traits tab's links", () => {
     ]);
   });
 
-  it("names a link the world lacks, and removes a link it has", async () => {
+  it("names a link the world lacks, and removes it there", async () => {
     await open(world);
     await userEvent.click(screen.getByText('Smite'));
     expect(screen.getByText(/This world doesn't have it/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove Link' }));
-    expect((await saved()).traitLinks).toEqual([linked.traitLinks![1]]);
+    const [classRemove, smiteRemove] = screen.getAllByRole('button', { name: 'Remove Link' });
+    expect(classRemove).toBeInTheDocument();
+    await userEvent.click(smiteRemove);
+    expect((await saved()).traitLinks!.map((l) => l.id)).toEqual(['l-class']);
+  });
+
+  it("reads a linked original's gate on its row inside a world", async () => {
+    await open(world);
+    await userEvent.click(screen.getByText('Wizard'));
+    const row = document.querySelector('[data-editor-row-selected]')!;
+    expect(row.querySelector('[tabindex="0"]')?.textContent).toBe('1');
+  });
+
+  it("offers the world placeholder's values for a bearer's-own pin the entity doesn't have", async () => {
+    await open(world);
+    await userEvent.click(screen.getByText('Class'));
+    await userEvent.click(screen.getByRole('combobox', { name: 'Garb Value' }));
+    expect(screen.getByRole('option', { name: 'robes' })).toBeInTheDocument();
   });
 });

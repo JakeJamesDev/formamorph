@@ -1,9 +1,9 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { Link2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ListDetail } from '@/components/ui/list-detail';
 import { Hint } from '@/components/ui/typography';
-import { TraitStoreContext, type TraitStore } from '@/contexts/TraitStoreContext';
+import { TraitStoreContext, type LibraryLinks, type TraitStore } from '@/contexts/TraitStoreContext';
 import { editorGateInput } from '@/lib/bearers';
 import {
   addOwnedGroup, addOwnedTrait, removeOwnedItem, updateOwnedGroup, updateOwnedTrait, withOwnedTraits,
@@ -17,19 +17,21 @@ import type { Entity, Placeholder } from '@/types';
 import TraitTree from './TraitTree';
 import TraitManager from './TraitManager';
 import GroupManager from './GroupManager';
-import { LinkedFromLine, ThisLinkSection } from './TraitLinkPanel';
+import { LinkedFromLine, LinkNotice, ThisLinkSection } from './TraitLinkPanel';
 
 const NO_WORLD: TraitWorld = { traits: [], traitGroups: [], entities: [] };
+
+/** The world a library entity's editor was opened from: what its links and requirements read. */
+export type LibraryEditorWorld = TraitWorld & { placeholders: readonly Placeholder[] };
 
 /**
  * A trait store over one library entity: its own traits fill the tree's root, and every write lands on it.
  * Inside `world`, its links read their originals there, and a link edit stores them named from it.
  */
 function libraryTraitStore(
-  entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[], world: TraitWorld | null,
-): TraitStore {
+  entity: Entity, setEntity: Dispatch<SetStateAction<Entity | null>>, placeholders: Placeholder[], world: LibraryEditorWorld | null,
+): TraitStore & { library: LibraryLinks } {
   const edit = (change: (e: Entity) => Entity) => setEntity((prev) => (prev ? change(prev) : prev));
-  const bearer = world ? linksBoundTo(entity, world) : entity;
   const traits = entity.traits ?? [];
   const traitGroups = entity.traitGroups ?? [];
   return {
@@ -48,12 +50,14 @@ function libraryTraitStore(
       if (e.id !== id) return e;
       return world ? linksCarriedFrom(change(linksBoundTo(e, world)), world) : change(e);
     }),
-    // Bound to no world, so "playing as" itself resolves and an outward requirement reads by its stored name.
-    gateInput: editorGateInput({ traits: [], traitGroups: [], entities: [bindOwnedTraits(entity, NO_WORLD)] }),
+    // Standalone, "playing as" itself resolves and an outward requirement reads by its stored name.
+    gateInput: editorGateInput({
+      traits: world?.traits ?? [], traitGroups: world?.traitGroups ?? [],
+      entities: [...(world?.entities ?? []).filter((e) => e.id !== entity.id), bindOwnedTraits(entity, world ?? NO_WORLD)],
+    }),
     pinWorld: null,
     offWorld: true,
-    libraryBearer: bearer,
-    linkWorld: world && { traits: [...world.traits], traitGroups: [...world.traitGroups] },
+    library: { bearer: world ? linksBoundTo(entity, world) : entity, world },
   };
 }
 
@@ -68,7 +72,7 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, wo
   setEntity: Dispatch<SetStateAction<Entity | null>>;
   placeholders: Placeholder[];
   onOpenEntity: () => void;
-  world?: TraitWorld | null;
+  world?: LibraryEditorWorld | null;
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<TraitPanelTab>('details');
@@ -76,7 +80,7 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, wo
   const trait = entity.traits?.find((t) => t.id === selectedId);
   const group = entity.traitGroups?.find((g) => g.id === selectedId);
   const linkRow = useMemo(
-    () => (selectedId ? libraryTraitTree(store.libraryBearer!, store.linkWorld ?? null).linkRows.get(selectedId) : undefined),
+    () => (selectedId ? libraryTraitTree(store.library.bearer, store.library.world).linkRows.get(selectedId) : undefined),
     [selectedId, store],
   );
 
@@ -112,17 +116,14 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, wo
           <div className="p-4">
             {linkRow ? (
               linkRow.unbound ? (
-                <div className="flex items-start gap-2 rounded-md border border-dashed p-2">
-                  <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                  <p className="text-label">
-                    Linked to <strong><PlaceholderText text={linkRow.link.originalName} placeholders={placeholders} /></strong>.{' '}
-                    {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
-                  </p>
-                </div>
+                <LinkNotice>
+                  Linked to <strong><PlaceholderText text={linkRow.link.originalName} placeholders={placeholders} /></strong>.{' '}
+                  {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
+                </LinkNotice>
               ) : (
                 <div key={selectedId} className="space-y-4">
                   <LinkedFromLine originalId={linkRow.originalId} />
-                  <ThisLinkSection entity={store.libraryBearer!} link={linkRow.link} originalId={linkRow.originalId} />
+                  <ThisLinkSection entity={store.library.bearer} link={linkRow.link} originalId={linkRow.originalId} />
                 </div>
               )
             ) : group ? (
