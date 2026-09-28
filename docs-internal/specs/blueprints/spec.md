@@ -302,3 +302,4 @@ All changes are unreleased (trait-links is not an ancestor of `v3.0.1`), so no c
   | Q74 | Tabled, out of scope: world text reading the played persona's copy. The right shape is an entity opening read as the selected persona, a separate effort. Emberwatch's two openings lose their Class Garb chip for now; the readme drops the claim. |
   | Q75 | A copy's own value never pins its own blueprint: on that bearer the pin would land on the copy itself. Extends the self-pin rule. A value of a part a blueprint owns counts as blueprint-side, like the blueprint's own values. |
   | Q76 | The two unused-placeholder Bench rules read a blueprint as placed wherever a copy of it is chipped, and never list a copy: a copy exists because a trait needs it. |
+  | Q77 | In Simple mode, a world row dropped into an entity is refused with a notice while any link points at it or at something in it. A move never leaves links pointing at an owned item. |
