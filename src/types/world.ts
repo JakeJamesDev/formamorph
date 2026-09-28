@@ -276,6 +276,9 @@ export interface Entity {
   /** Off-world only: the shared placeholders this entity's chips use, so they resolve after import. An import
    *  merges them into the world's shared list by name and values and clears the field. */
   sharedPlaceholders?: Placeholder[];
+  /** Off-world only: the blueprints this entity's copies read, so a receiving world can bind each copy to its
+   *  own blueprint by id, then by name (see lib/blueprintTravel). Binding clears the field. */
+  blueprints?: Placeholder[];
   /** Off-world only: the locations this entity stood in, named so a receiving world can connect each one
    *  to a location of its own. The entity keeps ownership of the references; `locations` holds them once
    *  the world resolves them, and an import clears this field. */

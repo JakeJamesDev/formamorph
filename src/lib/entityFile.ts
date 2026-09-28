@@ -20,6 +20,7 @@ import { entityImages, primaryImage } from './entityImages';
 import { fetchAsDataUrl, isRemoteImage } from './imageSource';
 import { morphCardImage } from './morphArtCanvas';
 import { portableOwnedTraits, type TraitWorld } from './portableTraits';
+import { carriedBlueprints } from './blueprintTravel';
 
 /** Discriminator identifying a standalone character card (vs. a world, save, or dictionary file). */
 export const ENTITY_FILE_KIND = 'entity' as const;
@@ -49,6 +50,8 @@ export interface EntityCardData {
   placeholders?: Placeholder[];
   /** The shared placeholders the entity's chips and its own reach, so they resolve after import. */
   sharedPlaceholders?: Placeholder[];
+  /** The blueprints the entity's copies read, so a receiving world can bind each copy (see lib/blueprintTravel). */
+  blueprints?: Placeholder[];
   /** The entity's own openings and their weights (see lib/openings). Import mints fresh ids for both. */
   openings?: Opening[];
   openingWeights?: Record<string, number>;
@@ -79,7 +82,10 @@ export function buildEntityCardData(
 ): EntityCardData {
   // Folders are the world's: a def leaves its folder reference behind.
   const owned = portablePlaceholders(entity.placeholders ?? []);
-  const shared = portablePlaceholders(sharedPlaceholdersUsed(chipTexts(entity), owned, available));
+  const blueprints = portablePlaceholders(carriedBlueprints(entity, available));
+  // The blueprints' values, and the copies' reworded ones, reach shared placeholders too.
+  const reworded = owned.flatMap((p) => Object.values(p.valueOverrides ?? {}).flatMap((o) => (o.text ? [o.text.value] : [])));
+  const shared = portablePlaceholders(sharedPlaceholdersUsed([...chipTexts(entity), ...reworded], [...owned, ...blueprints], available));
   const extras = entityImages(entity).slice(1);
   return {
     formamorphKind: ENTITY_FILE_KIND,
@@ -98,6 +104,7 @@ export function buildEntityCardData(
     ...(extras.length ? { extraImages: extras } : {}),
     ...(owned.length ? { placeholders: owned } : {}),
     ...(shared.length ? { sharedPlaceholders: shared } : {}),
+    ...(blueprints.length ? { blueprints } : {}),
     ...(entity.openings?.length ? { openings: entity.openings } : {}),
     ...(entity.openings?.length && entity.openingWeights && Object.keys(entity.openingWeights).length
       ? { openingWeights: entity.openingWeights } : {}),
@@ -152,6 +159,7 @@ export function parseEntityCardData(raw: unknown): Entity {
     // ones merge into the world's list (see `adoptEntityPlaceholders`).
     ...(Array.isArray(obj.placeholders) ? { placeholders: migrateCarriedPlaceholders(obj.placeholders) } : {}),
     ...(Array.isArray(obj.sharedPlaceholders) ? { sharedPlaceholders: migrateCarriedPlaceholders(obj.sharedPlaceholders) } : {}),
+    ...(Array.isArray(obj.blueprints) ? { blueprints: migrateCarriedPlaceholders(obj.blueprints) } : {}),
     ...(carried.openings ? { openings: carried.openings } : {}),
     ...(carried.openingWeights ? { openingWeights: carried.openingWeights } : {}),
     ...cardOwnedTraits(obj),

@@ -17,7 +17,8 @@ import { unresolvedReferences, type ConnectionPlan, type ReferenceRow } from '@/
 import WorldStorageService from '@/services/WorldStorageService';
 import { adoptOwnedTraits } from '@/lib/portableTraits';
 import { dropBookBlueprintChips, dropEntityBlueprintChips } from '@/lib/blueprintChips';
-import { blueprintIds } from '@/lib/placeholderBlueprints';
+import { blueprintIds, worldBlueprints } from '@/lib/placeholderBlueprints';
+import { bindCarriedBlueprints } from '@/lib/blueprintTravel';
 import type { Dictionary, Entity, GameLocation, Placeholder, PlaceholderGroup, Trait, TraitGroup, WorldOverview } from '@/types';
 
 /** The world slices this pass reads out of a stored record. */
@@ -98,11 +99,12 @@ export async function addCopyToStoredWorld(
       };
     }
 
-    const adopted = adoptEntityPlaceholders(withId as Entity, shared, plan.placeholders);
+    const bound = bindCarriedBlueprints(withId as Entity, worldBlueprints(data));
+    const adopted = adoptEntityPlaceholders(bound.entity, shared, plan.placeholders);
     const places = [...locations, ...plan.newLocations];
     const known = new Set(places.map((place) => place.id));
     const scrubbed = dropEntityBlueprintChips(adopted.entity, blueprints);
-    dropped = scrubbed.dropped;
+    dropped = bound.dropped + scrubbed.dropped;
     const { locationRefs = [], ...rest } = scrubbed.entity;
     // A membership the world cannot place is dropped rather than left pointing at a location it has not got.
     const used = Object.fromEntries(locationRefs.flatMap((ref) => {
