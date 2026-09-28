@@ -1,11 +1,9 @@
-// Automatic placeholder copies: one reconcile over the world that gives every bearer the copies its traits
-// need and takes back the ones nothing uses. It runs after every editor write and at load, so no trigger is
-// wired by hand: a trait added, linked or moved onto a bearer, a chip or pin joining an original that has
-// bearers, an entity marked Persona or Custom Persona, all land here. The same pass traces an owned trait's
-// blueprint chips and pins to the owner's copies, which is what Detach and a drag into an entity rewrite.
+// Automatic placeholder copies: one reconcile over the world, run at load and after every editor write, so
+// every trigger (a trait added, linked or moved; a chip or pin joining an original; a Persona mark) lands
+// here and no bearer is left without a copy. The same pass is the Detach and drag-to-entity rewrite.
 
 import type { Entity, Placeholder, PlaceholderGroup, PlaceholderPin, Trait, TraitGroup } from '@/types';
-import { canBePlayer, resolveBearers, type Bearer } from './bearers';
+import { canBePlayer, resolveBearers, type Bearer, type BearerWorld } from './bearers';
 import { copyOf, effectiveCopy } from './blueprints';
 import { entityTexts } from './entityTexts';
 import { blueprintIds } from './placeholderBlueprints';
@@ -13,11 +11,8 @@ import { directChipTargets, remapPlaceholderIds } from './placeholders';
 import { offeredWorldTraits } from './traitTree';
 import { randomUUID } from './uuid';
 
-/** What the reconcile reads: the trait lists, the entities, and the world's own placeholder list with its folders. */
-export interface CopyWorld {
-  traits: readonly Trait[];
-  traitGroups: readonly TraitGroup[];
-  entities: readonly Entity[];
+/** What the reconcile reads: the bearer world plus the world's own placeholder list with its folders. */
+export interface CopyWorld extends BearerWorld {
   placeholders: readonly Placeholder[];
   placeholderGroups: readonly PlaceholderGroup[];
 }
@@ -25,11 +20,14 @@ export interface CopyWorld {
 /** A copy the author has not edited: no value overrides and no values of its own. Only these are removed. */
 export const isUntouchedCopy = (p: Placeholder): boolean => !!p.blueprintId && !p.values.length && !p.valueOverrides;
 
-const traitTexts = (t: Trait | TraitGroup): string[] => [t.name, t.playerDescription, t.aiDescription].filter((s): s is string => !!s);
+/** The fields of a trait or group that hold chips. */
+const TEXT_FIELDS = ['name', 'playerDescription', 'aiDescription'] as const;
+
+const texts = (strings: readonly (string | undefined)[]): string[] => strings.filter((s): s is string => !!s);
 
 /** The placeholder ids a trait's text and pins name. A group has text only. */
 function traitTargets(item: Trait | TraitGroup): Set<string> {
-  const ids = directChipTargets(traitTexts(item));
+  const ids = directChipTargets(texts(TEXT_FIELDS.map((field) => item[field])));
   for (const pin of ('placeholderPins' in item ? item.placeholderPins : undefined) ?? []) ids.add(pin.placeholderId);
   return ids;
 }
@@ -65,7 +63,8 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
   const root = offeredWorldTraits(world.traits, world.traitGroups);
 
   for (const e of world.entities) {
-    const own = new Set((e.placeholders ?? []).filter((p) => p.blueprintId).map((p) => p.id));
+    const ownPlaceholders = e.placeholders ?? [];
+    const ownCopyIds = new Set(ownPlaceholders.filter((p) => p.blueprintId).map((p) => p.id));
     // A named id counts as its blueprint's, whether it is the blueprint or a copy of it anywhere.
     const asBlueprint = (id: string): string | undefined => (blueprints.has(id) ? id : copyBlueprint.get(id));
     const needed = new Set<string>();
@@ -75,9 +74,13 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
       ...(canBePlayer(e) ? [...root.traits, ...root.groups] : []),
     ];
     for (const item of items) for (const id of traitTargets(item)) { const b = asBlueprint(id); if (b) needed.add(b); }
-    // The owner's own text and its placeholders' values keep a copy of its own in use.
-    const ownTexts = [...entityTexts(e), ...(e.placeholders ?? []).flatMap((p) => p.values.map((v) => v.text))].filter((s): s is string => !!s);
-    for (const id of directChipTargets(ownTexts)) if (own.has(id)) needed.add(copyBlueprint.get(id)!);
+    // The owner's own text and its placeholders' values, reworded ones included, keep a copy of its own in use.
+    const ownTexts = texts([
+      ...entityTexts(e),
+      ...ownPlaceholders.flatMap((p) => p.values.map((v) => v.text)),
+      ...ownPlaceholders.flatMap((p) => Object.values(p.valueOverrides ?? {}).map((o) => o.text?.value)),
+    ]);
+    for (const id of directChipTargets(ownTexts)) if (ownCopyIds.has(id)) needed.add(copyBlueprint.get(id)!);
     // What each needed placeholder reaches through its values, as this bearer reads it.
     const queue = [...needed];
     while (queue.length) {
@@ -85,8 +88,8 @@ export function neededCopies(world: CopyWorld): Map<string, Set<string>> {
       const blueprint = byId.get(id);
       if (!blueprint) continue;
       const mine = copyOf(e, id);
-      const read = mine ? effectiveCopy(mine, blueprint) : blueprint;
-      for (const target of valueTargets(read)) {
+      const readsAs = mine ? effectiveCopy(mine, blueprint) : blueprint;
+      for (const target of valueTargets(readsAs)) {
         const b = asBlueprint(target);
         if (b && !needed.has(b)) { needed.add(b); queue.push(b); }
       }
@@ -105,7 +108,7 @@ function remapPins(pins: PlaceholderPin[] | undefined, idMap: Record<string, str
 /** The item with its text chips and pins traced through `idMap`; the same object when nothing moved. */
 function remapItem<T extends Trait | TraitGroup>(item: T, idMap: Record<string, string>): T {
   let out = item;
-  for (const field of ['name', 'playerDescription', 'aiDescription'] as const) {
+  for (const field of TEXT_FIELDS) {
     const text = item[field];
     if (!text) continue;
     const next = remapPlaceholderIds(text, idMap);
@@ -130,11 +133,11 @@ export function syncBlueprintCopies(world: CopyWorld, newId: () => string = rand
   const copyBlueprint = copyBlueprints(world.entities);
   let changed = false;
   const entities = world.entities.map((e): Entity => {
-    const needs = needed.get(e.id) ?? new Set<string>();
+    const neededHere = needed.get(e.id) ?? new Set<string>();
     const before = e.placeholders ?? [];
-    const kept = before.filter((p) => !p.blueprintId || needs.has(p.blueprintId) || !isUntouchedCopy(p));
+    const kept = before.filter((p) => !p.blueprintId || neededHere.has(p.blueprintId) || !isUntouchedCopy(p));
     const have = new Set(kept.map((p) => p.blueprintId).filter((id): id is string => !!id));
-    const added = [...needs].flatMap((id): Placeholder[] => {
+    const added = [...neededHere].flatMap((id): Placeholder[] => {
       const blueprint = byId.get(id);
       return blueprint && !have.has(id) ? [{ id: newId(), name: blueprint.name, values: [], blueprintId: id }] : [];
     });
