@@ -56,6 +56,7 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q29** On a trait's Details inside a one-entity editor, a Requires chip whose target the entity holds is a button that selects it. A chip whose target is outside the entity (a world trait, a persona) renders as a plain non-interactive chip: same look, no button role, no hover. Nothing navigates to the **Traits** tab (Q10).
 - **Q30** A stacked details panel nested inside a panel takes the host panel's surface color, never the page background. The top-level mobile push over the page keeps the page color. The dashed Linked-from box stays.
 - **Q31** In the **This Link** section, every label-plus-control row shares one label column: a two-column grid whose label column is sized by the longest label, so every control starts on the same line. The single pin row uses the same grid.
+- **Q32** On the **Traits** tab, a world original's **Link To…** moves from the Details header to a panel footer below the tab strip, so it shows on every panel tab. The Linked-from line and **This Link** stay on Details. Ticket 06.
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
