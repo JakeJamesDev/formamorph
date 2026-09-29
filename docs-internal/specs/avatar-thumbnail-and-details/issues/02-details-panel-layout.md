@@ -1,6 +1,7 @@
 # 02: Collapse Avatar Details and Put the Actions in One Row
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: be9bbf3d
 Blocked by: None (can start immediately)
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium

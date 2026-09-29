@@ -7,6 +7,8 @@ import { MobileControlsDrawer } from '@/components/MobileControlsDrawer';
 import { useVrmCustomization } from '@/lib/useVrmCustomization';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { useBackStop } from '@/hooks/useBackStop';
+import { useAvatarDetailsOpen } from '@/lib/useAvatarDetailsOpen';
+import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { VrmFileDetails, Row } from '@/components/VrmFileDetails';
 import type { VrmLicense } from '@/types';
 import { gateAvatarLicense, type AvatarLicenseRequirement } from '@/lib/avatarLicenseGate';
@@ -47,6 +49,7 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   // The same slider/color surface the enter-world flow uses, so a creator can test that a model's morphs
   // actually respond here.
   const { setCaps, vrmViewerRef, viewerProps, controls } = useVrmCustomization();
+  const [detailsOpen, setDetailsOpen] = useAvatarDetailsOpen();
   const isMobile = useIsMobile();
   // The mobile overlay is not a Radix layer, so the Android back button cannot see it and closes it here.
   useBackStop(isMobile && open ? onClose : undefined);
@@ -69,20 +72,22 @@ export function ModelDetailsPanel({ open, name, url, license, size, failed = fal
   );
 
   const info = (
-    <VrmFileDetails license={license} size={size ?? 0}>
-      <Row label="Community Creations">
-        {verdict.allowed
-          ? <span className="text-success">Shareable</span>
-          : <span className="text-destructive">Not shareable</span>}
-      </Row>
+    <CollapsibleSection title="Details" open={detailsOpen} onOpenChange={setDetailsOpen} contentClassName="mt-2">
+      <VrmFileDetails license={license} size={size ?? 0}>
+        <Row label="Community Creations">
+          {verdict.allowed
+            ? <span className="text-success">Shareable</span>
+            : <span className="text-destructive">Not shareable</span>}
+        </Row>
 
-      {!verdict.allowed && (
-        <p className="mt-3 text-[11px] text-muted-foreground">
-          Needs {verdict.failedRequirements.map((id) => REQUIREMENT_LABELS[id]).join(', ')} to publish to
-          Community Creations.
-        </p>
-      )}
-    </VrmFileDetails>
+        {!verdict.allowed && (
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Needs {verdict.failedRequirements.map((id) => REQUIREMENT_LABELS[id]).join(', ')} to publish to
+            Community Creations.
+          </p>
+        )}
+      </VrmFileDetails>
+    </CollapsibleSection>
   );
 
   // The mobile path is a plain overlay rather than a Radix dialog, so it has no exit transition to preserve

@@ -75,15 +75,15 @@ export function ModelDetailsModal({ model, onPublish, onClose }: {
       failed={failed}
       onClose={onClose}
       footer={
-        <div className="space-y-2">
-          <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-            <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1" onClick={handleExport} disabled={!blob}>
+            <ActionIcon.export className="mr-2 h-4 w-4" /> Export
           </Button>
           {/* Offered whatever the file's license says. Pressing it on a model that cannot be shared is
               how the player learns which requirement it fails, so the gate runs on the press. */}
           {onPublish && model && (
-            <Button variant="outline" size="sm" className="w-full" onClick={() => onPublish(model)}>
-              <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish Avatar
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => onPublish(model)}>
+              <ActionIcon.publish className="mr-2 h-4 w-4" /> Publish
             </Button>
           )}
         </div>
