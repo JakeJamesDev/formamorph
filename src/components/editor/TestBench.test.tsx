@@ -705,9 +705,12 @@ describe('TestBench Opening instrument', () => {
     expect(opening.onPersonaChange).toHaveBeenCalledWith(null);
   });
 
-  it('marks a location’s row with its location and a persona’s row as Self', () => {
+  it('marks a location’s row with its location', () => {
     renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
     expect(screen.getByRole('button', { name: /Harbor Steps.*Gulls wheel\./ })).toBeInTheDocument();
+  });
+
+  it('marks a persona’s row as Self', () => {
     renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
     expect(screen.getByRole('button', { name: /Wren.*Narration \(Self\).*You are Wren\./ })).toBeInTheDocument();
   });

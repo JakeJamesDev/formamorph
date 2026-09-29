@@ -15,20 +15,20 @@
  * Pure and world-shaped: no React, no storage, no world mutation.
  */
 import { defaultNarrationUserPrompt, defaultSystemPrompt } from '@/components/game/GamePrompts';
-import { copyLookup, customPersonaEntity, readerFor, type CopyLookup } from '@/lib/blueprints';
+import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
 import { bearerPriming } from '@/lib/ownedTraitsInPlay';
 import { allPlaceholders } from '@/lib/placeholderHomes';
 import { DEFAULT_MAX_TOKENS } from '@/contexts/settingsDefaults';
 import { authoredChipScene } from '@/lib/chipValues/authoredScene';
 import { chipValues } from '@/lib/chipValues/chipValues';
 import { estimateTokens } from '@/lib/memoryUtils';
-import { resolvePersona } from '@/lib/persona';
+import { newGamePool } from '@/lib/newGameOpening';
 import {
   collectPlaceholderPlacements, decodePlaceholderToken, describePlaceholders, lonePlaceholderToken,
   placeholderChances, primeRolls, resolveEntityText, resolvePlaceholders,
   type PlaceholderPick,
 } from '@/lib/placeholders';
-import { DEFAULT_OPENING, openingOwner, openingPool, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
+import { DEFAULT_OPENING, openingOwner, openingsEnabled, poolChances, poolKey } from '@/lib/openings';
 import { renderPromptTemplate } from '@/lib/promptTemplate';
 import { activeDescriptor } from '@/lib/statContext';
 import { allPinTexts, collectPins, valuePinRollChips } from '@/lib/placeholderPins';
@@ -407,17 +407,16 @@ export function buildOpening(
   const worldEntities = world.entities ?? [];
   const personas = worldEntities.filter((e) => e.persona && !e.customPersona);
   const personaId = personas.find((e) => e.id === choice.personaId)?.id ?? null;
-  const { persona, cast } = resolvePersona(personaId ? { source: 'world', entityId: personaId } : { source: 'none' }, worldEntities, []);
-  const customPersona = customPersonaEntity(worldEntities);
-  const entries = openingPool({
-    overview: world.worldOverview, entities: cast, locations: world.locations ?? [], startingLocationId: location?.id,
-    persona, customPersona,
+  const { persona, cast, customPersona, pool: entries } = newGamePool({
+    pick: { ref: personaId ? { source: 'world', entityId: personaId } : { source: 'none' } },
+    worldEntities, overview: world.worldOverview, locations: world.locations ?? [], startingLocationId: location?.id, picked: [],
   });
   const chances = poolChances(entries);
   const entityName = new Map([...cast, persona?.entity, customPersona].flatMap((e) => (e ? [[e.id, e.name] as const] : [])));
   const locationName = new Map((world.locations ?? []).map((l) => [l.id, l.name]));
-  // A game without a persona reads the Player Name chip as "you"; a world persona names it.
-  const player = personaId && persona ? { name: resolve(persona.entity.name), kind: 'opening' as const } : { kind: 'opening' as const };
+  // The Player Name chip names the played entity: the persona, or the Custom Persona entity under None. A
+  // world with neither reads "you".
+  const player = { name: persona ? resolve(persona.entity.name) : undefined, kind: 'opening' as const };
   const openingText = (text: string, owner: Entity | null = null) =>
     resolveEntityText(owner, text, { placeholders, rolls, pins, player });
   const pool = entries.map((entry, i): OpeningPoolRow => ({
