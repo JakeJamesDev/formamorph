@@ -34,12 +34,34 @@ Select a trait to open its panel.
 | **Stats** | **Stat Changes**, and **Stat Availability** in Advanced mode | Simple and Advanced |
 | **Pins** | **Placeholder Pins** | Advanced only |
 
-## The checkboxes
+## Mode
+
+**Mode** on the **Availability** tab sets who controls the trait.
+
+| Mode | What it does |
+|---|---|
+| **Optional** | The player chooses the trait. This is the default. |
+| **Always On** | The trait is on whenever its [requirements](#requirements) hold. The player can never switch it. With no requirements, it's always on. |
+| **Hidden** | Works like **Always On**, and the player never sees it. The AI reads it like any active trait. |
+
+Only **Optional** traits show the two checkboxes below. **Always On** and **Hidden** hide them, because a value there would mean nothing.
 
 | Checkbox | What it does |
 |---|---|
 | **Enabled by Default** | Selects the trait when a new game starts. The player can still clear it. |
 | **Player Can Toggle In-Game** | The player can turn the trait on or off from the **Traits** tab during play |
+
+### Curses
+
+A curse is an **Always On** trait that requires the cursed item. The player picks the item, and the curse comes with it. The player drops the item, and the curse lifts. The player sees the curse only when it takes effect.
+
+### Hidden traits
+
+A **Hidden** trait can carry **Stat Changes**, and visible stat bars move. Use it for a secret bonus or a hidden nature. A hidden trait's name shows only in tools for authors: the Prompt viewer and the **Test Bench**. Other requirement lines skip it, and a trait whose requirements are all hidden reads **Locked**.
+
+> 💡 **A requirement can point at an Always On or Hidden trait.** A hidden bonus can unlock other traits.
+
+> ⚠️ **Stat code never switches an Always On or Hidden trait.** Its requirements alone decide.
 
 ## Stat Changes
 
@@ -82,11 +104,35 @@ Groups organize the list. A trait group also has text of its own:
 | **Player-Facing Description** | Text the player reads under the heading |
 | **AI-Facing Description** | A header the AI reads above the group's active traits, such as *"Origin: where this life began"*. A group with no active traits is skipped. |
 
-### Exclusive
+### Pick Count
 
-Check **Exclusive** when the group is one choice between options: a species, an origin, a starting class. The group shows radio buttons and allows one trait at most. Pick another trait, and the first one clears. Click the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off.
+**Pick Count** sets how many traits the player must and can pick from the group.
 
-> 💡 **Give an exclusive group a default.** Check **Enabled by Default** on one trait, so the group always has an answer. With two defaults, the first in the list wins.
+| Preset | Picks |
+|---|---|
+| **Any** | No minimum, no maximum |
+| **Exactly One** | One pick, no more and no less. A class or a species. |
+| **Up to One** | Zero or one pick. The group shows radio buttons. |
+| **Custom** | You set **At Least** and **At Most**. Leave **At Most** empty for no limit. |
+
+Only traits placed directly in the group count. A subgroup sets its own count. An **Always On** trait counts toward its group's minimum and maximum.
+
+**Up to One** is one choice between options. Pick another trait, and the first one clears. Click the picked trait to clear it, so "none of these" is always possible. In play, a trait the player can toggle works the same way: turn one on, and the others in its group turn off. An **Always On** sibling can't clear, so the switch is refused.
+
+On the setup screen:
+
+- A group that's short of its minimum says how many more picks it needs, such as *Choose 2 more traits*.
+- **Begin** stays disabled until every group meets its minimum. **Quick Start** never blocks, and it leaves the gap in place.
+- At a maximum above one, the unchecked rows disable. Uncheck one to pick another.
+
+In play:
+
+- The game refuses a switch-off that drops a group below its minimum.
+- A trait that leaves because its requirements stop holding can drop a group below its minimum. The game doesn't ask for a replacement. The trait returns when its requirements hold again.
+- An **Always On** trait whose requirements start to hold joins its group even when the group is full. The group runs over its maximum until the player drops a pick.
+- **Exactly** N with N above one can't change in play. To allow swaps, set a range with **Custom**.
+
+> 💡 **Give an Exactly One group a default.** Check **Enabled by Default** on one trait, so a new game starts with a valid answer. With two defaults in an **Up to One** group, the first in the list wins.
 
 ## Requirements
 
@@ -134,7 +180,7 @@ Make a link in one of two ways:
 - **Drag** a world trait or group onto an entity node. The original stays where it is.
 - **Select the original** and select **Link To…** at the top of its **Details** tab. Pick each entity that gets it. An entity that already has it shows as checked.
 
-A link row shows a link icon. It reads the original live until you change a field on the link. Edit the original, and every link that did not override that field changes. A linked group brings all of its traits, also ones you add later, and it stays **Exclusive** when the original is.
+A link row shows a link icon. It reads the original live until you change a field on the link. Edit the original, and every link that did not override that field changes. A linked group brings all of its traits, also ones you add later, and it keeps the original's **Pick Count**.
 
 Select a link to edit it. The link's own **Details** show the original's name and descriptions as read-only text. Every other field is yours to change for this link only:
 
@@ -143,6 +189,7 @@ Select a link to edit it. The link's own **Details** show the original's name an
 | **Enabled by Default** | Selects the trait for this entity when a new game starts. A linked group lists each of its traits. |
 | **Requires** | Replaces the original's whole list |
 | **Placeholder Pins** | Replaces the original's whole list |
+| **Mode** | Makes the trait Optional, Always On or Hidden for this entity. One bearer can have a trait innately, and another can pick it. |
 | **Player Can Toggle In-Game** | Locks or opens the trait for this entity |
 | **Stat Changes** | Replaces the original's whole list |
 
@@ -234,11 +281,17 @@ An entity's own trait pins never reach anyone else's text. Albus's class never c
 
 The **Test Bench** checks every bearer as if the player picked it. That includes **Playable** and **Persona-Only** entities and the Custom Persona entity.
 
-It shows an error when a trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
+It shows an error when:
+
+- A trait can never unlock for its bearer. For example, Albus links *Smite*, but nothing on Albus gives *Paladin*.
+- A group's **At Least** is above its **At Most**.
+- A group needs more picks than its traits can ever unlock.
+- A new game starts a group with fewer picks than its minimum. The defaults and active **Always On** traits don't meet it.
 
 It shows a warning when:
 
-- A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
+- More **Always On** traits can be active together than a group's maximum allows. The check can report a group that never fills, because it ignores the maximums of other groups.
+- A group marks more traits as default than its maximum allows. Some defaults won't apply.- A bearer needs a copy of a blueprint and has none. The warning names the bearer and the trait or chip that needs it.
 - A copy removed the value that a pin names. The pin pins nothing.
 - A blueprint chip or a pin by blueprint sits where it is refused, such as in a location or a world placeholder.
 - A link is redundant, because another link on the same bearer already brings its original.
@@ -249,7 +302,7 @@ It shows a note when an edited copy has no trait or chip that uses it. Keep the 
 
 A world where the player and some entities have a class.
 
-1. **Add a Blueprints group.** Under it, add an exclusive **Classes** group with *Paladin*, *Cleric* and *Wizard*. Add a **Spells** group with *Smite*, and set *Smite* to require *Paladin*.
+1. **Add a Blueprints group.** Under it, add a **Classes** group set to **Exactly One**, with *Paladin*, *Cleric* and *Wizard*. Add a **Spells** group with *Smite*, and set *Smite* to require *Paladin*.
 2. **Link Classes and Spells to Albus.** Select the link, then check **Enabled by Default** on *Paladin*. Albus starts as a Paladin, and Smite unlocks for him.
 3. **Pin a blueprint from each class.** In the Placeholders tab, add a Blueprints group with *Class Garb*. *Paladin* pins *Class Garb* to *silvered plate*. Albus gets his own copy of *Class Garb* by itself.
 4. **Mark a Custom Persona entity and link Classes to it.** A player with no world persona now picks a class too.
