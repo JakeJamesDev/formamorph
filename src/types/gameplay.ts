@@ -150,11 +150,11 @@ export interface VrmLicense {
   modification?: 'prohibited' | 'allowModification' | 'allowModificationRedistribution';
 }
 
-/** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
- *  the grid can render without holding every model's bytes. */
 /** Where an Avatar's card image comes from: the file's embedded image, or the rendered portrait. */
 export type AvatarThumbnailSource = 'file' | 'generated';
 
+/** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
+ *  the grid can render without holding every model's bytes. */
 export interface ModelMetadata extends CommunityLink {
   id: string;
   name: string;

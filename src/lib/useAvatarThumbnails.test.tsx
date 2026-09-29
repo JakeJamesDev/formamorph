@@ -49,11 +49,22 @@ describe('useAvatarThumbnails', () => {
     await act(() => result.current.setSource('a', 'generated'));
 
     expect(result.current.models[0]).toEqual(card());
-    expect(toastError).toHaveBeenCalledWith(failure, expect.objectContaining({ headline: expect.any(String) }));
+    expect(toastError).toHaveBeenCalledWith(failure, { headline: "Couldn't generate the thumbnail." });
+  });
+
+  it('names a failed switch back to the file without blaming a render', async () => {
+    const failure = new Error('storage failed');
+    service.setThumbnailSource.mockRejectedValueOnce(failure);
+    const { result } = renderGrid([card({ thumbnailSource: 'generated' })]);
+
+    await act(() => result.current.setSource('a', 'file'));
+
+    expect(toastError).toHaveBeenCalledWith(failure, { headline: "Couldn't change the thumbnail." });
   });
 
   it('backfills a card whose file was never read, so the menu learns it has a choice', async () => {
     const { result } = renderGrid([card({ hasFileThumbnail: undefined })]);
     await waitFor(() => expect(result.current.models[0].hasFileThumbnail).toBe(true));
     expect(service.ensureCard).toHaveBeenCalledWith('a');
-  });});
+  });
+});

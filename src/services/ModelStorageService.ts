@@ -43,6 +43,12 @@ const isFlat = (record: unknown): record is FlatModelRecord =>
 const shrinkThumbnail = (thumbnail: string | undefined): Promise<string | undefined> =>
   thumbnail ? optimizeImageDataUrl(thumbnail, IMAGE_CAPS.thumbnail) : Promise.resolve(undefined);
 
+/** A freshly read file's thumbnail fields: its embedded image shown as the file variant, or `null` for none. */
+const fileThumbnailFields = async (embedded: string | undefined): Promise<Pick<VrmData, 'thumbnail' | 'fileThumbnail'>> => {
+  const fileThumbnail = (await shrinkThumbnail(embedded)) ?? null;
+  return { thumbnail: fileThumbnail ?? undefined, fileThumbnail };
+};
+
 /** The chosen variant, else whichever one exists. */
 const shownThumbnail = (data: VrmData): string | undefined =>
   data.thumbnailSource === 'generated'
@@ -97,6 +103,9 @@ class ModelStorageService {
 
   /** The running build's bundled default file hash, read once per session; a failed read clears it. */
   private bundledDefaultHash: Promise<string | null> | null = null;
+
+  /** The latest pending thumbnail switch per Avatar id. */
+  private readonly thumbnailSwitches = new Map<string, Promise<ModelMetadata | null>>();
 
   /** Open the IndexedDB connection (idempotent). */
   initialize() {
@@ -202,7 +211,6 @@ class ModelStorageService {
   async addModel(file: File): Promise<StoredModelRecord> {
     await this.ensureMigrated();
     const [hash, { license, thumbnail }] = await Promise.all([blobHash(file), readVrmMeta(file)]);
-    const fileThumbnail = (await shrinkThumbnail(thumbnail)) ?? null;
     const record: StoredModelRecord = {
       id: randomUUID(),
       // Prefer the model's own title over the filename, which is often a export-tool default.
@@ -213,8 +221,7 @@ class ModelStorageService {
         size: file.size,
         hash,
         license,
-        thumbnail: fileThumbnail ?? undefined,
-        fileThumbnail,
+        ...await fileThumbnailFields(thumbnail),
       },
     };
     await this.store.store(record);
@@ -242,7 +249,6 @@ class ModelStorageService {
 
       const blob = await (await fetch(url)).blob();
       const [hash, { license, thumbnail }] = await Promise.all([blobHash(blob), readVrmMeta(blob)]);
-      const fileThumbnail = (await shrinkThumbnail(thumbnail)) ?? null;
       await this.store.store({
         id: DEFAULT_AVATAR_ID,
         name: license.title?.trim() || 'Default Avatar',
@@ -252,8 +258,7 @@ class ModelStorageService {
           size: blob.size,
           hash,
           license,
-          thumbnail: fileThumbnail ?? undefined,
-          fileThumbnail,
+          ...await fileThumbnailFields(thumbnail),
         },
       });
       // Only mark seeded once the store has actually landed. A transient fetch/store failure leaves the flag
@@ -338,10 +343,9 @@ class ModelStorageService {
         resolved.hash = hash;
         if (staleLicense) resolved.license = meta.license;
         if (!fileRead) {
-          // Only files without an embedded image were ever rendered, so an older stored thumbnail is the
-          // file variant when the file has one, and the rendered portrait when it doesn't.
+          // A stored thumbnail may be a render even when the file has an image, so only a file without one keeps it.
           if (meta.thumbnail) {
-            resolved.fileThumbnail = data.thumbnail ?? (await shrinkThumbnail(meta.thumbnail)) ?? null;
+            resolved.fileThumbnail = (await shrinkThumbnail(meta.thumbnail)) ?? null;
           } else {
             resolved.fileThumbnail = null;
             resolved.generatedThumbnail ??= data.thumbnail;
@@ -375,13 +379,22 @@ class ModelStorageService {
   }
 
   /**
-   * Show the `source` variant on one Avatar's card. The first switch to `generated` renders the portrait;
-   * later switches reuse the cached variants. The `.vrm` blob is never touched.
-   *
-   * @returns The Avatar's fresh metadata, or null when it was deleted meanwhile
-   * @throws When the portrait can't be rendered; the record then keeps its source and image
+   * Show the `source` variant on one Avatar's card and return its fresh metadata, or null once it is deleted.
+   * The first switch to `generated` renders the portrait and throws when that yields nothing, leaving the record
+   * as it was; later switches reuse the cached variants. The `.vrm` blob is never touched.
    */
-  async setThumbnailSource(id: string, source: AvatarThumbnailSource): Promise<ModelMetadata | null> {
+  setThumbnailSource(id: string, source: AvatarThumbnailSource): Promise<ModelMetadata | null> {
+    // Queued per Avatar, so a pick made during a render lands after it.
+    const next = (this.thumbnailSwitches.get(id) ?? Promise.resolve())
+      .catch(() => undefined)
+      .then(() => this.applyThumbnailSource(id, source));
+    this.thumbnailSwitches.set(id, next);
+    const settled = () => { if (this.thumbnailSwitches.get(id) === next) this.thumbnailSwitches.delete(id); };
+    next.then(settled, settled);
+    return next;
+  }
+
+  private async applyThumbnailSource(id: string, source: AvatarThumbnailSource): Promise<ModelMetadata | null> {
     // Resolves the file variant of a record stored before it existed.
     await this.ensureThumbnail(id);
     const record = await this.getRecord(id);

@@ -1,6 +1,6 @@
 # 01: Choose an Avatar's Thumbnail Source
 
-Status: in-progress
+Status: ready-for-human
 Base: e55d35dd
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
