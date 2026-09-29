@@ -478,7 +478,7 @@ Around 0.7 fits most story models. Above 1.2 the text can lose coherence.`,
   localMaxTokens: {
     label: 'Max Output Tokens',
     description: 'Caps how long each answer can run, not the reasoning',
-    info: 'A reply that hits the cap ends at the last full sentence',
+    info: 'An answer that hits the cap ends at the last full sentence',
   },
   localTopP: {
     label: 'Top-p',

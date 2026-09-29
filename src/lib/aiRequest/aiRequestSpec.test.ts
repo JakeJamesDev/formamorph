@@ -678,6 +678,22 @@ describe('reasoning budget base — the thinking rides on top of the answer', ()
     expect(buildRequestBody(snap, call())).not.toHaveProperty('max_tokens');
   });
 
+  it('sends Inline narration the Thought Ceiling on any endpoint, since its own <think> block rides in the answer', () => {
+    const inline = (target: AiEndpointTarget) => snapshot(target, { thinkingMode: 'inline', reasoningEngaged: true, reasoningEffort: 'high' });
+    expect(buildRequestBody(inline(lmStudio()), call()).max_tokens).toBe(2400);
+    expect(buildRequestBody(inline(lmStudioReasoning({ maxTokens: 800 })), call()))
+      .toMatchObject({ thinking_budget_tokens: 0, max_tokens: 2400 });
+    // An endpoint that refuses off still reasons natively under Inline narration.
+    const google3 = external({ reasoning: { ...accepts('low', 'high'), reasons: true, dialect: 'google-3', offAllowed: false } });
+    expect(buildRequestBody(inline(google3), call()).max_tokens).toBe(2400);
+    expect(buildRequestBody(inline(lmStudio()), call({ requestType: 'summary', maxTokensOverride: 300 })).max_tokens).toBe(300);
+  });
+
+  it('keeps the reserve at the Answer Cap for Inline narration', () => {
+    const snap = snapshot(lmStudio(), { thinkingMode: 'inline' });
+    expect(outputCaps(snap, { requestType: 'narration' }).reserve).toBe(800);
+  });
+
   it('sends a budget-taking target the Answer Cap plus its budget, not the Thought Ceiling', () => {
     const snap = snapshot(lmStudioReasoning({ maxTokens: 800 }), { promptReasoningBudget: { narration: 50 } });
     expect(buildRequestBody(snap, call())).toMatchObject({ thinking_budget_tokens: 400, max_tokens: 1200 });

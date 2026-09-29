@@ -1522,7 +1522,7 @@ const GameViewer = ({
   // The reserve holds the answer plus the prompt's own budget; the length guidance reads the answer alone.
   const narrationCaps = outputCaps(snapshotFor(narrationEndpoint), { requestType: 'narration' });
   const narrationAnswerCap = narrationCaps.answerCap;
-  const maxTokens = outputReserve(narrationCaps.reserve);
+  const reserveTokens = outputReserve(narrationCaps.reserve);
 
   const getTrimmedMessageHistory = useCallback((promptTokens = 0, action = "", relevanceScores: Map<string, number> | null = null, actionVec: Float32Array | null = null, liveRecall = false) => {
     const turns = parseEffectiveTurns(fullMessageHistory);
@@ -1530,7 +1530,7 @@ const GameViewer = ({
       const keywords = extractKeywords(action, dictionary);
       // Entities the action references (case-insensitive — actions are lowercase) drive participation rehydration.
       const actionEntities = findEntityNames(action, allEntities, { requireCapital: false });
-      const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - maxTokens) * 0.25);
+      const rehydrateCap = Math.round(Math.max(0, contextWindow - promptTokens - reserveTokens) * 0.25);
       // Semantic rehydration: rank the old scenes this action returns to (threshold + near-duplicate
       // guard in lib/semanticRehydration). Floor/band split here is the budget-free approximation of
       // buildBandedHistory's; it re-validates band membership before spending tokens.
@@ -1563,7 +1563,7 @@ const GameViewer = ({
         turns,
         contextWindow,
         promptTokens,
-        maxTokens,
+        maxTokens: reserveTokens,
         verbatimFloor: narrationVerbatimTurns,
         keywords,
         actionEntities,
@@ -1592,8 +1592,8 @@ const GameViewer = ({
     }
     lastBandCountsRef.current = null;
     // Digests off: no band to anchor into, so the player's own memories lead as a standing block.
-    return buildVerbatimHistory(turns, contextWindow, promptTokens, maxTokens, effectiveNotes, recapUserPrompt);
-  }, [fullMessageHistory, contextWindow, maxTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, calendar, nowLinePrompt, setContextMemoryIds, setRehydratedMemoryIds]);
+    return buildVerbatimHistory(turns, contextWindow, promptTokens, reserveTokens, effectiveNotes, recapUserPrompt);
+  }, [fullMessageHistory, contextWindow, reserveTokens, memoryDigests, semanticMemory, semanticRehydration, semanticBandCap, dictionary, allEntities, narrationVerbatimTurns, getMilestoneDrop, recapUserPrompt, rehydrateUserPrompt, currentLocation, parseEffectiveTurns, effectiveNotes, timeContext, gameTime, calendar, nowLinePrompt, setContextMemoryIds, setRehydratedMemoryIds]);
 
   // The action's embedding, shared by every semantic consumer this turn (band relevance + lore
   // activation) so the action is embedded once. Null when no semantic feature is on, the model is
@@ -4279,7 +4279,7 @@ const GameViewer = ({
     // Token breakdown of the model's context window: prompt + history + reserved output vs the window.
     const windowTokens = contextWindow || 1;
     const { promptTokens, trimmed, bandCounts, historyTokens } = memoryStats;
-    const outputTokens = maxTokens;
+    const outputTokens = reserveTokens;
     const usedTokens = promptTokens + historyTokens + outputTokens;
     const pct = (n: number) => (n / windowTokens) * 100;
     const usedPct = pct(usedTokens);
@@ -5226,8 +5226,12 @@ const GameViewer = ({
                                         </span>
                                       </Tip>
                                     )}
-                                    {req.endpoint && <ReasoningChip endpoint={req.endpoint} />}
-                                    {req.endpoint && <MaxTokensChip endpoint={req.endpoint} />}
+                                    {req.endpoint && (
+                                      <>
+                                        <ReasoningChip endpoint={req.endpoint} />
+                                        <MaxTokensChip endpoint={req.endpoint} />
+                                      </>
+                                    )}
                                   </span>
                                   {groupOpen ? (
                                     <ChevronDown className="h-4 w-4 flex-shrink-0" />
