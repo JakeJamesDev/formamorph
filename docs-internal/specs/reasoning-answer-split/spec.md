@@ -81,6 +81,8 @@ For the player:
   - Reasoning on, the target takes a budget: `max_tokens` is the Answer Cap plus the budget, as today. The server closes the thought at the budget.
   - Reasoning on, the target takes no budget: `max_tokens` is the Thought Ceiling, which is the Answer Cap plus the budget at the maximum slider value (200% of the endpoint's Max Output). A fixed size keeps the guard bounded and predictable.
   - The rule is "no budget on the wire → Thought Ceiling," not "the target takes no budget." A budget-taking target that sends no budget (for example, no base and a floor of 0) gets the ceiling too (ruling Q-C, ticket 03).
+  - "Reasoning on" means the model will reason on this request: the resolved effort is not `none`, or the endpoint refuses off (ruling R1, ticket 03). An unprobed endpoint that is sent no reasoning field keeps the Answer Cap, because nothing says it reasons (ruling R2, ticket 03).
+  - Inline narration sends the ceiling too, because its `<think>` block is in the answer text and would otherwise use the answer's room on the wire (ruling R3, ticket 03; user story 10).
   - With an Answer Cap but no base (the endpoint's Max Output override is off), the Answer Cap stands in as the base: the ceiling is the Answer Cap × 3 (ruling Q-A, ticket 03).
   - With no Answer Cap and no base, nothing changes: no `max_tokens` is sent.
 - **AI Context viewer.** A separate chip beside the reasoning chip, in the same muted style, shows the sent `max_tokens` (label "Max Tokens 1,200", tip `max_tokens: 1200`). The debug endpoint info carries the value, so bug reports include it. No chip when the body sent no `max_tokens`. It is separate because `max_tokens` is sent with reasoning off too (ruling Q-B, ticket 03).
