@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
-import { benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { act, screen, fireEvent, within } from '@testing-library/react';
+import { asMobile, benchEditorWorld, openEditorTab, renderWorldEditorBench } from '@/test/worldEditorBench';
 import { encodePlaceholderToken } from '@/lib/placeholders';
 import type { World } from '@/types';
 
@@ -39,7 +39,9 @@ const WORLD: World = benchEditorWorld({
     // Hair owns Color and references the shared Tone, which draws a second row beneath it.
     { id: 'hair', name: 'Hair', groupId: 'g-looks', values: [value('v-color', chip('color')), value('v-tone', chip('tone'))] },
     { id: 'color', name: 'Color', ownerId: 'hair', values: [value('v-red', 'red')] },
-    { id: 'tone', name: 'Tone', values: [value('v-warm', 'warm')] },
+    // Tone owns Grain, so Hair's reference to Tone repeats a Grain row beneath it.
+    { id: 'tone', name: 'Tone', values: [value('v-grain', chip('grain'))] },
+    { id: 'grain', name: 'Grain', ownerId: 'tone', values: [value('v-fine', 'fine')] },
   ],
   traits: [{ id: 't-paladin', name: 'Paladin', statChanges: [], aiDescription: `Wears ${chip('garb')}.` }],
   entities: [{
@@ -93,7 +95,10 @@ describe('the Placeholders tab search', () => {
     openTab();
 
     searchPlaceholders('Tone');
-    expect(searchRows()).toEqual(['Tone']);
+    expect(searchRows()).toEqual(['Tone', 'Tone › Grain']);
+
+    searchPlaceholders('Grain');
+    expect(searchRows()).toEqual(['Tone › Grain']);
 
     searchPlaceholders('Looks');
     expect(searchRows()).toEqual([]);
@@ -153,5 +158,26 @@ describe('the Placeholders tab search', () => {
 
     expect(ctx().placeholders.map((p) => p.name)).toContain('Tone (Copy)');
     expect(screen.getByDisplayValue('Tone (Copy)')).toBeInTheDocument();
+  });
+});
+
+describe('a Placeholders selection whose row is gone, on mobile', () => {
+  let restore: () => void;
+  beforeEach(() => { restore = asMobile(); });
+  afterEach(() => restore());
+
+  /** Whether the mobile push shows its detail, empty or not. */
+  const detailPushed = () => document.querySelector('[data-list-detail] > [aria-hidden]')?.getAttribute('aria-hidden') === 'false';
+
+  it('returns to the list rather than pushing an empty detail', () => {
+    const { ctx } = openTab();
+    searchPlaceholders('Iris');
+    fireEvent.click(screen.getByRole('button', { name: 'Select Molly › Eyes › Iris' }));
+    expect(detailPushed()).toBe(true);
+
+    openEditorTab(/Stats/);
+    act(() => ctx().editEntity('molly', (e) => ({ ...e, placeholders: [] })));
+    openEditorTab(/Placeholders/);
+    expect(detailPushed()).toBe(false);
   });
 });
