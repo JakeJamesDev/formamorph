@@ -1,6 +1,7 @@
 # Directional Travel Hints
 
 Status: ready-for-agent
+Spec session: directional-travel-hints — spec
 
 ## Problem Statement
 
