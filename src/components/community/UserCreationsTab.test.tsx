@@ -7,7 +7,7 @@ import type { ProfileCreation } from '@/types';
 vi.mock('@/lib/apiBase', () => ({ API_BASE_URL: 'https://server.test/api' }));
 // The thumbnail cache is IndexedDB-backed; the rows here are about what the list says, not what it draws.
 vi.mock('@/lib/useCachedThumbnail', () => ({
-  CachedThumbnail: ({ alt }: { alt: string }) => <img alt={alt} src="thumb" />,
+  CachedThumbnail: ({ alt, className }: { alt: string; className?: string }) => <img alt={alt} src="thumb" className={className} />,
 }));
 
 const creation = (over: Partial<ProfileCreation> = {}): ProfileCreation => ({
@@ -113,6 +113,22 @@ describe('a creation’s picture', () => {
 
     expect(screen.getByRole('img', { name: 'Wren' })).toBeTruthy();
     expect(container.querySelector('[data-morph-art]')).toBeNull();
+  });
+});
+
+describe('the row thumbnail crop', () => {
+  const cropOf = async (kind: 'model' | 'entity' | 'world') => {
+    listing([creation({ kind, name: 'Wren', thumbnailFile: 'wren.png' })]);
+    render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    return (await screen.findByRole('img', { name: 'Wren' })).className;
+  };
+
+  it('anchors an Avatar’s image to the top, as a portrait', async () => {
+    expect(await cropOf('model')).toContain('object-top');
+  });
+
+  it('centers a world’s image', async () => {
+    expect(await cropOf('world')).not.toContain('object-top');
   });
 });
 

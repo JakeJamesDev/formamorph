@@ -58,6 +58,12 @@ describe('community card reference', () => {
     expect(card.querySelector('img')).toBeNull();
   });
 
+  it('shows an Avatar in the split layout', () => {
+    renderReference();
+
+    expect(cardNamed('Tide Walker, a Full-Body Avatar for Lantern Ledger Readers').dataset.layout).toBe('split');
+  });
+
   it('draws Morph art for an entity with no image', () => {
     renderReference();
 

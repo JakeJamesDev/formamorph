@@ -43,8 +43,8 @@ export const thumbFit = (content: ThumbAspect): string =>
  */
 export type CardLayout = 'stacked' | 'split';
 
-/** The art a listing kind carries: character art for entities, scene art for the rest. */
-export const thumbAspectFor = (kind: CatalogKind): ThumbAspect => (kind === 'entity' ? 'portrait' : 'landscape');
+/** The art a listing kind carries: character art for entities and Avatars, scene art for the rest. */
+export const thumbAspectFor = (kind: CatalogKind): ThumbAspect => (kind === 'entity' || kind === 'model' ? 'portrait' : 'landscape');
 
 /** The card layout for an aspect: tall art sits beside the text rather than above it. */
 export const cardLayoutFor = (aspect: ThumbAspect): CardLayout => (aspect === 'portrait' ? 'split' : 'stacked');
