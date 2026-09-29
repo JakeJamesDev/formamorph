@@ -252,19 +252,20 @@ describe('per-prompt reasoning', () => {
 });
 
 describe('reasoning budget (local engine)', () => {
-  it('ships narration at 40% and every other prompt at 25%; the switch, not the %, decides off', () => {
-    expect(defaultReasoningBudgetPct('narration')).toBe(40);
-    for (const kind of ALL_KINDS.filter((k) => k !== 'narration')) expect(defaultReasoningBudgetPct(kind)).toBe(25);
+  it('ships narration at 150% and every other prompt at 75%; the switch, not the %, decides off', () => {
+    expect(defaultReasoningBudgetPct('narration')).toBe(150);
+    for (const kind of ALL_KINDS.filter((k) => k !== 'narration')) expect(defaultReasoningBudgetPct(kind)).toBe(75);
   });
 
-  it('resolves every kind to its stored/default %, clamped to the slider floor and 150', () => {
-    expect(resolveReasoningBudgetPct('narration', {})).toBe(40);
-    expect(resolveReasoningBudgetPct('narration', { narration: 20 })).toBe(20);
-    expect(resolveReasoningBudgetPct('choices', { choices: 30 })).toBe(30);
+  it('resolves every kind to its stored/default %, clamped to the slider range of 50 to 200', () => {
+    expect(resolveReasoningBudgetPct('narration', {})).toBe(150);
+    expect(resolveReasoningBudgetPct('choices', {})).toBe(75);
+    expect(resolveReasoningBudgetPct('choices', { choices: 60 })).toBe(60);
     expect(resolveReasoningBudgetPct('summary', { summary: 90 })).toBe(90);
+    expect(resolveReasoningBudgetPct('narration', { narration: 25 })).toBe(50); // a stored 25 reads as 50
     expect(resolveReasoningBudgetPct('statUpdates', { statUpdates: 0 })).toBe(MIN_REASONING_BUDGET_PCT); // clamp low
-    expect(resolveReasoningBudgetPct('narration', { narration: 150 })).toBe(150);
-    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(150); // clamp high
+    expect(resolveReasoningBudgetPct('narration', { narration: 200 })).toBe(200);
+    expect(resolveReasoningBudgetPct('narration', { narration: 250 })).toBe(200); // clamp high
   });
 });
 

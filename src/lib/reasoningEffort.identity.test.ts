@@ -104,7 +104,7 @@ describe('a resolved target reaches the wire in its own dialect', () => {
     return reasoningSlice(buildRequestBody({
       resolveTarget: () => target,
       thinkingMode: 'off', reasoningEffort: 'high', reasoningEngaged: true,
-      promptReasoning: {}, promptReasoningBudget: { narration: 40 }, promptSamplers: {}, promptMaxOutput: {},
+      promptReasoning: {}, promptReasoningBudget: { narration: 50 }, promptSamplers: {}, promptMaxOutput: {},
       genTemperature: 0.9, genRepetitionPenalty: 1.1, genTopP: 0.95, genTopK: 40, genMinP: 0.05,
       paragraphLimit: 'none', disableThinking: false,
     }, { systemPrompt: 'You narrate.', messages: [{ role: 'user', content: 'go north' }], requestType: 'narration' }));
@@ -113,7 +113,7 @@ describe('a resolved target reaches the wire in its own dialect', () => {
   // The endpoint documents `reasoning_effort` as ignored, so it must never appear on either Anthropic row.
   it('sends a Claude 4.6 model a thinking budget and no effort literal', async () => {
     expect(await wire(ANTHROPIC.url, 'claude-sonnet-4-6', 8000))
-      .toEqual({ thinking: { budget_tokens: 3200, type: 'enabled' } });
+      .toEqual({ thinking: { budget_tokens: 4000, type: 'enabled' } });
   });
 
   it('sends a Claude 5 model the adaptive switch alone, with no budget and no effort literal', async () => {
@@ -122,7 +122,7 @@ describe('a resolved target reaches the wire in its own dialect', () => {
 
   it('sends a Gemini 2.5 model its thinking budget', async () => {
     expect(await wire(GOOGLE.url, 'gemini-2.5-flash', 8000))
-      .toEqual({ google: { thinking_config: { thinking_budget: 3200 } } });
+      .toEqual({ google: { thinking_config: { thinking_budget: 4000 } } });
   });
 
   it('sends a Gemini 3 model its thinking level and no budget', async () => {
