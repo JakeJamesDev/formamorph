@@ -1,20 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link2, ArrowUpFromLine, BookOpen, CornerDownRight, Folder, LayoutTemplate, User } from 'lucide-react';
-import { randomUUID } from '@/lib/uuid';
-import { remintPlaceholderDef } from '@/lib/placeholders';
 import { removePlaceholderGroup } from '@/lib/placeholderGroups';
 import { blueprintMoveRefusal, copyName, type BlueprintRefusal } from '@/lib/placeholderBlueprints';
-import { isUntouchedCopy } from '@/lib/blueprintCopies';
 import { allPlaceholders, placeholderList, withPlaceholderList } from '@/lib/placeholderHomes';
 import {
-  applyPlaceholderDrop, chipValueFor, getPlaceholderDropProjection, ownedDescendants, placeholderRows,
-  placeholderUsedByMap, promotePlaceholder, releasePlaceholderOwners, removeChipValueFrom,
-  removeCollapsedPlaceholderRows, removePlaceholderCascade, type PlaceholderTreeRow,
+  applyPlaceholderDrop, getPlaceholderDropProjection, placeholderRows, placeholderUsedByMap, promotePlaceholder,
+  removeCollapsedPlaceholderRows,
 } from '@/lib/placeholderTree';
 import {
   applyScopedPlaceholderDrop, placeholderDropAllowed, placeholderTreeNodes, type PlaceholderTreeNode,
 } from '@/lib/placeholderScopes';
-import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Tip } from '@/components/ui/tooltip';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { TREE_INDENT } from '@/components/EditorRow';
@@ -23,6 +18,7 @@ import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import type { PlaceholderSlices } from '@/lib/placeholderHomes';
 import { BlueprintRefusalNotice } from './BlueprintRefusalNotice';
+import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 import { SortableTree, type SortableTreeAdapter } from './SortableTree';
 
 /**
@@ -42,7 +38,7 @@ import { SortableTree, type SortableTreeAdapter } from './SortableTree';
  * toolbar button), mirroring how the World Editor and library editor place their own.
  */
 const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) => {
-  const { placeholders, setPlaceholders, removePlaceholder, placedIds, lists, setLists, scope, copiesInUse } = usePlaceholderStore();
+  const { placeholders, setPlaceholders, placedIds, lists, setLists, scope } = usePlaceholderStore();
   const world = useGameDataOptional();
   // The last move across the Blueprints edge that was refused, and whether it was the group's removal.
   const [refusal, setRefusal] = useState<{ refusal: BlueprintRefusal; removing: boolean } | null>(null);
@@ -54,55 +50,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     setRefusal(refused && { refusal: refused, removing });
     if (!refused) setLists(next);
   };
-  // The placeholder a delete is waiting on, held so the confirmation can name what goes with it.
-  const [pendingDelete, setPendingDelete] = useState<PlaceholderTreeRow | null>(null);
-  const doomed = useMemo(
-    () => (pendingDelete ? ownedDescendants(placeholders, pendingDelete.placeholder.id) : []),
-    [placeholders, pendingDelete],
-  );
-
-  /** Delete a placeholder, plus the value its holder held it through — a value pointing at something just
-   *  deleted on purpose is a red `?` nobody asked for. A top-level row has no holder and only goes itself. */
-  const remove = (id: string, holderId: string | null) => {
-    if (holderId === null) removePlaceholder(id);
-    else setPlaceholders((prev) =>
-      releasePlaceholderOwners(removeChipValueFrom(removePlaceholderCascade(prev, id), holderId, id)));
-    // Selection speaks in row ids, and every row this placeholder reached goes with it.
-    if (selectedId?.split('/').includes(id)) onSelect(null);
-  };
-
-  const askRemove = (node: PlaceholderTreeRow) => {
-    const { placeholder, shared, holderId } = node;
-    // A shared row is a reference, never a possession: removing it removes the reference and the original
-    // stays for everyone else holding it.
-    if (shared && holderId !== null) {
-      setPlaceholders((prev) => releasePlaceholderOwners(removeChipValueFrom(prev, holderId, placeholder.id)));
-      return;
-    }
-    // Nothing else goes with it, so there is nothing to warn about.
-    if (!ownedDescendants(placeholders, placeholder.id).length) remove(placeholder.id, holderId);
-    else setPendingDelete(node);
-  };
-
-  const duplicate = (row: PlaceholderTreeRow) => {
-    setPlaceholders((prev) => {
-      const i = prev.findIndex((p) => p.id === row.placeholder.id);
-      if (i === -1) return prev;
-      // Re-mint value-chip placements so the copy never shares a nested Unique roll with the original.
-      const source = prev[i];
-      const copy = { ...remintPlaceholderDef(source), id: randomUUID(), name: `${source.name} (Copy)` };
-      // Selection speaks in row ids. Only a copy that stays owned lands under the row it came from; a copy
-      // of a shared row belongs to nobody, so its row is a top-level one named by its id alone.
-      onSelect(copy.ownerId && row.parentId ? `${row.parentId}/${copy.id}` : copy.id);
-      // Inserted right after its source, which is what keeps it in the source's list (see `scatterPlaceholders`).
-      const next = [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)];
-      // A copy of an owned row belongs where the original does, which only holds once its owner holds it.
-      const ownerId = copy.ownerId;
-      return ownerId
-        ? next.map((p) => (p.id === ownerId ? { ...p, values: [...p.values, chipValueFor(copy.id)] } : p))
-        : next;
-    });
-  };
+  const { askRemove, duplicate, copyOf, removeBlocked, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
 
   // The tree, the rows that hold at least one other (which drives the chevron), and who holds whom — each
   // derived once per change. `getVisible` runs on every drag frame, so re-walking there is a per-frame cost.
@@ -196,21 +144,14 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         };
       }
       const { placeholder, shared, holderId } = node;
-      const home = node.home;
-      const copyOwner = placeholder.blueprintId && home.kind !== 'world'
-        ? [...(lists?.entities ?? []), ...(lists?.dictionaries ?? [])].find((o) => o.id === home.ownerId)
-        : undefined;
-      const blueprint = copyOwner ? placeholders.find((p) => p.id === placeholder.blueprintId) : undefined;
+      const copy = copyOf(node);
+      const copyOwner = copy?.owner;
+      const blueprint = copy?.blueprint;
       // "Used by" belongs on the original, where the author reads it before dragging: it says whether the
       // drag will take the placeholder or share it.
       const usedBy = holderId === null ? usedByMap.get(placeholder.id) : undefined;
       const blueprintName = blueprint?.name ?? placeholder.name;
-      const untouchedCopy = !!copyOwner && isUntouchedCopy(placeholder);
-      // A copy in use comes straight back untouched when deleted. With no use data, only an untouched copy is
-      // known to be in use: nothing else keeps one.
-      const copyInUse = !!copyOwner && (copiesInUse
-        ? !!copiesInUse.get(copyOwner.id)?.has(placeholder.blueprintId!)
-        : untouchedCopy);
+      const untouchedCopy = !!copy?.untouched;
       const jump = (to: string, tip: string, glyph: ReactNode) => (
         <Tip tip={tip} labelsChild={false}>
           <button
@@ -251,10 +192,8 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         // The affordance has to say what it does: a shared row's X unhooks the reference, and only an
         // owned or top-level row's deletes anything.
         removeTitle: shared && holderId !== null ? 'Remove Reference' : 'Delete',
-        remove: copyInUse ? undefined : () => askRemove(node),
-        removeBlocked: !copyInUse ? undefined
-          : untouchedCopy ? 'A trait uses this copy. It goes away when nothing uses it.'
-          : 'A trait uses this copy. Use Reset to Blueprint to undo your edits.',
+        remove: copy?.inUse ? undefined : () => askRemove(node),
+        removeBlocked: removeBlocked(copy),
         // One copy per blueprint per owner.
         duplicate: placeholder.blueprintId ? undefined : () => duplicate(node),
       };
@@ -273,17 +212,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
         />
       )}
       <SortableTree adapter={adapter} selectedId={selectedId} onSelect={onSelect} />
-      <ConfirmDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
-        title={`Delete ${pendingDelete?.placeholder.name ?? ''}?`}
-        description={`This also deletes what it owns: ${doomed.map((p) => p.name).join(', ')}.`}
-        onConfirm={() => {
-          if (pendingDelete) remove(pendingDelete.placeholder.id, pendingDelete.holderId);
-          setPendingDelete(null);
-        }}
-        onCancel={() => setPendingDelete(null)}
-      />
+      {dialog}
     </>
   );
 };

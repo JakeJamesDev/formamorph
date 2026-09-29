@@ -32,12 +32,13 @@ import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor } from '@/components/listEditorHooks';
 import { matchesListSearch } from '@/lib/listSearch';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
+import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map, LayoutTemplate } from "lucide-react";
+import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -78,7 +79,6 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { blueprintsPlaceholderGroup } from '@/lib/placeholderBlueprints';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
@@ -87,8 +87,6 @@ import DictionaryManager from '../managers/DictionaryManager';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
-import PlaceholderList from '../managers/PlaceholderList';
-import { usePlaceholderDetail } from '../managers/PlaceholderDetail';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
@@ -101,7 +99,6 @@ import AddDictionaryModal from '@/components/modals/AddDictionaryModal';
 import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
-import { newPlaceholder } from '@/lib/placeholders';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
 import { type DragEndEvent } from '@dnd-kit/core';
@@ -145,7 +142,7 @@ const WorldEditorInner = ({
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
-    addEntityGroup, addPlaceholder, addPlaceholderGroup,
+    addEntityGroup, addPlaceholder,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
@@ -699,28 +696,6 @@ const WorldEditorInner = ({
     setSelectedItemId(id);
   };
 
-  const handleAddPlaceholder = (typed: string) => {
-    const p = newPlaceholder(typed || 'New Placeholder');
-    addPlaceholder(p);
-    setSelectedItemId(p.id);
-  };
-
-  // New placeholder folders append at the root; the author drags shared placeholders into them.
-  const handleAddPlaceholderGroup = (typed: string) => {
-    const id = randomUUID();
-    addPlaceholderGroup({ id, name: typed || 'New Group', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length });
-    setSelectedItemId(id);
-  };
-
-  // The world holds at most one placeholder Blueprints group, so its add hides once it exists.
-  const hasPlaceholderBlueprints = !!blueprintsPlaceholderGroup(placeholderGroups);
-  const handleAddPlaceholderBlueprints = () => {
-    const id = randomUUID();
-    addPlaceholderGroup({
-      id, name: 'Blueprints', parentId: null, order: placeholderGroups.filter(g => g.parentId === null).length, system: 'blueprints',
-    });
-    setSelectedItemId(id);
-  };
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
@@ -762,8 +737,21 @@ const WorldEditorInner = ({
     focusField: findField,
   });
   const traitsParts = useListEditor(traitsAdapter, { selectedId: selections.traits ?? null, onSelect: selectTrait, search });
+  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
+  // each of those weights it differently. An owner node opens a header naming its entity or book.
+  const selectPlaceholder = useCallback((id: string | null) => select('placeholders', id), [select]);
+  const placeholdersEditor = useWorldPlaceholdersAdapter({
+    selectedId: selections.placeholders ?? null,
+    onSelect: selectPlaceholder,
+    onOpenOwner: (owner) => (owner.kind === 'entity'
+      ? navigateToBenchItem('entities', owner.id, 'placeholders')
+      : navigateToBenchItem('dictionary', owner.id)),
+  });
+  const placeholdersParts = useListEditor(placeholdersEditor.adapter, {
+    selectedId: selections.placeholders ?? null, onSelect: selectPlaceholder, search,
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
-  const listEditorParts = activeTab === 'traits' ? traitsParts : null;
+  const listEditorParts = activeTab === 'traits' ? traitsParts : activeTab === 'placeholders' ? placeholdersParts : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
@@ -775,21 +763,12 @@ const WorldEditorInner = ({
     || !!listEditorParts?.fills
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
-  // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
-  // each of those weights it differently. An owner node opens a header naming its entity or book.
-  const placeholderDetail = usePlaceholderDetail({
-    selectedId: activeTab === 'placeholders' ? selectedItemId : null,
-    onSelect: (id) => select('placeholders', id),
-    onOpenOwner: (owner) => (owner.kind === 'entity'
-      ? navigateToBenchItem('entities', owner.id, 'placeholders')
-      : navigateToBenchItem('dictionary', owner.id)),
-  });
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
     activeTab === 'entities' ? selectedEntity?.id
     : activeTab === 'dictionary' ? (selectedBook ?? selectedEntryBook)?.id
-    : activeTab === 'placeholders' ? placeholderDetail.ownerId
+    : activeTab === 'placeholders' ? placeholdersEditor.ownerId
     : undefined;
 
   // Contextual footer actions. The whole world is the only thing still exported by a button of its own;
@@ -911,10 +890,10 @@ const WorldEditorInner = ({
         : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {listEditorParts?.list}
       {removeWorldTraitDialog}
+      {placeholdersEditor.dialog}
       {removeEntityDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
       {activeTab === "statUpdates" && renderItemList(filteredItems)}
-      {activeTab === "placeholders" && <PlaceholderList selectedId={selectedItemId} onSelect={setSelectedItemId} />}
     </>
   );
   const detailContent = (
@@ -988,7 +967,6 @@ const WorldEditorInner = ({
       {activeTab === "statUpdates" && selectedItem && (
         <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
       )}
-      {activeTab === "placeholders" && placeholderDetail.detail}
     </div>
     </ChipInsertTargetProvider>
   );
@@ -1093,24 +1071,17 @@ const WorldEditorInner = ({
   ));
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
-  // The tabs whose list is a folder tree offer Add Group beside Add <item> in Advanced mode.
-  const grouped = activeTab === "entities" || activeTab === "placeholders";
-  const addGroupHere = activeTab === "entities" ? handleAddEntityGroup : handleAddPlaceholderGroup;
-  const addItemHere = activeTab === "entities" ? addItem : handleAddPlaceholder;
-  const addItemLabel = activeTab === "entities" ? "Add Entity" : "Add Placeholder";
+  // The Entities tree offers Add Group beside Add Entity in Advanced mode.
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
   const addMenu = (
     <>
-      <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={addGroupHere} />
-      <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={addItemLabel} onAdd={addItemHere} />
-      {activeTab === "placeholders" && !hasPlaceholderBlueprints && (
-        <ListMenuRow icon={<LayoutTemplate className="h-4 w-4" />} label="Add Blueprints Group" onAdd={handleAddPlaceholderBlueprints} />
-      )}
+      <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddEntityGroup} />
+      <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label="Add Entity" onAdd={addItem} />
     </>
   );
-  const addSlot: ListAddSlot = advanced && grouped
-    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "placeholders" ? "w-56" : undefined }
-    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem };
+  const addSlot: ListAddSlot = advanced && activeTab === "entities"
+    ? { label: addLabel, menu: addMenu }
+    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : addItem };
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
   const addSearchBar = activeTab !== "overview" && (listEditorParts ? listEditorParts.toolbar('mt-4', { after: helpButton }) : (
@@ -1145,7 +1116,7 @@ const WorldEditorInner = ({
     </ListSearchToolbar>
   ));
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
-  const detailFooter = listEditorParts ? listEditorParts.footer : placeholderDetail.footer;
+  const detailFooter = listEditorParts?.footer;
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
       {downscaleDialog}
