@@ -48,6 +48,10 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q25** The drift log lives at `docs-internal/specs/list-editor-shell/drift.md`.
 - **Q26** The shell is the **List Editor** (`ListEditor`) in code and in `CONTEXT.md`.
 - **Q27** The parts come from a hook, `useListEditor(adapter, selection)`: toolbar, list, detail, footer, `showDetail`, `onBack`. The `ListEditor` component takes `layout: 'stacked' | 'sideBySide'` and wraps those parts in the existing `ListDetail`, toolbar above the scrolled list. `ListDetail` keeps its boolean `stacked` prop unchanged; there is no second `ListDetail`.
+- **Q28** "The label its row shows" in a flat search means the disambiguated label, as in Q11: an owned trait reads `Entity › Name`, a Link reads `Bearer › <Original's name>`, and a world trait reads its bare name. Two entities' same-named traits never read alike in search.
+- **Q29** The shell's flat list takes an optional drag. Traits search rows keep today's raw-index drag (Q18); drift #3 stays open for a later ruling. Ticket 07's Stats list uses the same option.
+- **Q30** The World Editor keeps one search term across its tabs, and a typed term survives a tab switch. It passes that term into `useListEditor` as an optional argument; hosts without one let the shell own it.
+- **Q31** Traits search lists each Link's own row, trait and group Links alike, never the rows of a linked group's subtree. World groups, owned groups and entity nodes stay out (mirror Q24).
 
 ## User Stories
 
