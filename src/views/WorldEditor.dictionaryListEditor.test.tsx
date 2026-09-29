@@ -41,6 +41,8 @@ const WORLD: World = benchEditorWorld({
 
 const box = () => screen.getByPlaceholderText('Search or add new dictionaries') as HTMLInputElement;
 const search = (term: string) => fireEvent.change(box(), { target: { value: term } });
+/** The tree's fold buttons, one per book in order: Fen Lore, then Harbor Lore. */
+const folds = (name: 'Collapse dictionary' | 'Expand dictionary') => screen.getAllByRole('button', { name });
 const row = (label: string) => screen.getByRole('button', { name: `Select ${label}` }).parentElement as HTMLElement;
 
 beforeEach(() => { localStorage.clear(); });
@@ -104,6 +106,41 @@ describe('the Dictionary tab search', () => {
 
     fireEvent.click(within(row('Fen Lore › Hostile Forces')).getByRole('button', { name: 'Delete' }));
     expect(ctx().dictionaries[0].entries.some((e) => e.id === 'e1')).toBe(false);
+  });
+});
+
+describe('the Dictionary tab folds', () => {
+  it('keeps a folded book folded through a search', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Dictionary/);
+    fireEvent.click(folds('Collapse dictionary')[0]);
+    expect(screen.queryByText('Hostile Forces')).toBeNull();
+
+    search('lamp');
+    search('');
+    expect(screen.queryByText('Hostile Forces')).toBeNull();
+    expect(folds('Expand dictionary')).toHaveLength(1);
+  });
+
+  it('unfolds a book that gets an entry from its search row', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Dictionary/);
+    fireEvent.click(folds('Collapse dictionary')[1]);
+
+    search('Harbor');
+    fireEvent.click(within(row('Harbor Lore')).getByRole('button', { name: 'Add entry' }));
+    search('');
+    expect(folds('Collapse dictionary')).toHaveLength(2);
+  });
+
+  it('draws no grip and no enabled box on a search row', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openEditorTab(/Dictionary/);
+    expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+
+    search('Lore');
+    expect(within(row('Fen Lore')).queryByRole('checkbox')).toBeNull();
+    expect(within(row('Fen Lore')).queryByLabelText(/^Drag/)).toBeNull();
   });
 });
 

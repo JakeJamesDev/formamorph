@@ -1,6 +1,6 @@
 # 10: Dictionary tab and library dictionary tree on the List Editor
 
-Status: in-progress
+Status: ready-for-human
 Base: 144b063c
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
