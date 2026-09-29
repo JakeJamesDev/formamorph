@@ -481,14 +481,18 @@ const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, 
 
 /** Whether the gate module refuses the player's switch-on: the trait is locked, its group is full, or the
  *  mode refuses it. */
-const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
-  isLocked(state, world, ownerId, traitId) || overfills(traitGateInput(state, world), ownerId, traitId)
-  || modeRefuses(traitGateInput(state, world), ownerId, traitId);
+const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean => {
+  const input = traitGateInput(state, world);
+  return gateOf(gateStates(input), ownerId, traitId)?.unlocked === false || overfills(input, ownerId, traitId)
+    || modeRefuses(input, ownerId, traitId);
+};
 
 /** Whether the gate module refuses the player's switch-off: its group would end below the minimum, or the
  *  mode refuses it. */
-const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
-  underfills(traitGateInput(state, world), ownerId, traitId) || modeRefuses(traitGateInput(state, world), ownerId, traitId);
+const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean => {
+  const input = traitGateInput(state, world);
+  return underfills(input, ownerId, traitId) || modeRefuses(input, ownerId, traitId);
+};
 
 /** The bearers other than the player's world owner. */
 const entityBearers = (world: TraitWorld): readonly GateOwner[] => (world.bearers ?? []).filter((o) => o.id !== WORLD_OWNER);
@@ -683,10 +687,9 @@ export function switchPlayerTrait(
 /**
  * Apply stat code's trait switches in order, each through the player's own switch and a settle. Code ignores
  * Player Can Toggle In-Game, so a switch-on of a trait the player lacks acquires it. Code never switches an
- * Always On trait. Code does not ignore
- * gates: a switch-on of a locked trait retires no sibling, and the settle turns it off again. A switch to the
- * state a trait already holds does nothing: switching an off trait off again would reverse its record a
- * second time. It does take a cascade-off trait off its list, so the trait stays off.
+ * Always On trait. Code does not ignore gates: a switch-on of a locked trait retires no sibling, and the
+ * settle turns it off again. A switch to the state a trait already holds does nothing: switching an off trait
+ * off again would reverse its record a second time. It does take a cascade-off trait off its list, so the trait stays off.
  */
 export function applyCodeTraitSwitches(
   state: TraitRuntimeState,

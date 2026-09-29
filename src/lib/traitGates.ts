@@ -442,12 +442,22 @@ export function switchTrait(
 /** Every owner's default traits, capped at each group's max in authored order after the Always On traits
  *  active with no pick, settled so a gated default whose chain has no open root starts unselected. */
 export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
-  const alwaysOn = settle({ ...input, active: {} }).active;
-  const active: Record<string, string[]> = {};
-  for (const owner of input.owners) {
-    active[owner.id] = defaultPicks(owner.traits, owner.groups, alwaysOn[owner.id] ?? []);
+  const alwaysOnIn = (active: Record<string, string[]>) => Object.fromEntries(input.owners.map((owner) =>
+    [owner.id, (active[owner.id] ?? []).filter((id) => owner.traits.some((t) => t.id === id && isAlwaysOn(t)))]));
+  const withDefaults = (alwaysOn: Record<string, string[]>) => settle({
+    ...input,
+    active: Object.fromEntries(input.owners.map((o) => [o.id, defaultPicks(o.traits, o.groups, alwaysOn[o.id] ?? [])])),
+  });
+  // A default can open an Always On trait that then takes its group's room, so the cap reruns with it counted.
+  let alwaysOn = alwaysOnIn(settle({ ...input, active: {} }).active);
+  let result = withDefaults(alwaysOn);
+  for (let pass = 0; pass < 3; pass++) {
+    const next = alwaysOnIn(result.active);
+    if (JSON.stringify(next) === JSON.stringify(alwaysOn)) break;
+    alwaysOn = next;
+    result = withDefaults(alwaysOn);
   }
-  return settle({ ...input, active });
+  return result;
 }
 
 /**

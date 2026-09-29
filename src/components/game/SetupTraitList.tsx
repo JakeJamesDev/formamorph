@@ -92,7 +92,7 @@ export function SetupTraitList({
         className={cn(choiceRowClass(selected), disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
       >
         {fixed ? (
-          <Check role="img" aria-label="Always on" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <Check role="img" aria-label="Always On" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         ) : radio ? (
           <RadioGroupItem
             id={`setup-trait-${trait.id}`}

@@ -1,6 +1,6 @@
 # 04: Always On traits
 
-Status: in-progress
+Status: ready-for-human
 Base: ec0a3fe9
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -34,4 +34,9 @@ An author can mark a trait Always On. It is active exactly when its gate holds, 
 - `exclusiveSiblings` leaves Always On traits out both ways (Q29). So a requirement on an Always On trait can hold through its max-one sibling, and the stat-toggle conflict note counts that sibling.
 - In play, settle acquires an Always On world trait the player lacks as it turns on. The log reads "Trait switched on".
 - Preview-only default readers (Test Bench lens, authored-scene chips, bearer preview) use `defaultPicks`, which counts only ungated Always On traits, since they check no gates.
-- Named, not fixed: an Enter World category whose traits are all dormant Always On still shows its page with no rows. Hiding it would move the category index as picks change.
+- `settleDefaults` reruns the cap with the Always On traits a default opens counted, so such a trait takes its group's room ahead of an Optional default (review fold-in).
+- Named, not fixed:
+  - An Enter World category whose traits are all dormant Always On still shows its page with no rows. Hiding it would move the category index as picks change. With a minimum that only those traits can meet, Begin stays disabled with nothing to pick; `trait-group-defaults-below-min` reports that world.
+  - Nothing settles on save load. A world edit that adds an ungated Always On trait, or turns a switched-off Optional trait into Always On, takes effect at the next switch or persona change.
+  - Stat code can switch on an Optional sibling beside an active Always On trait in a max-one group, since code ignores pick counts (ticket 01).
+  - `alwaysOnOverMax` ignores Optional groups' maximums when it picks what opens a gate, so it can over-report.
