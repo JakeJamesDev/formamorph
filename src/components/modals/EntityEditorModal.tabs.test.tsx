@@ -247,3 +247,39 @@ describe('the two entity editors', () => {
     expect(written.openingWeights).toEqual({ o1: 2 });
   });
 });
+
+describe('the library Openings tab toolbar', () => {
+  const twoOpenings = {
+    ...entity,
+    openings: [
+      { id: 'o1', text: 'Wren trims the lamp.', kind: 'narration' },
+      { id: 'o2', text: 'A gull steals your bread.', kind: 'action' },
+    ],
+  } as unknown as Entity;
+  const cards = () => within(panelOf('Openings')).queryAllByTestId('opening-row')
+    .map((row) => within(row).getAllByText(/^Opening \d+$/)[0].textContent);
+  const box = () => within(panelOf('Openings')).getByPlaceholderText('Search openings');
+
+  it('filters the cards by text and shows a no-match line', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={twoOpenings} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
+
+    await userEvent.type(box(), 'gull');
+    expect(cards()).toEqual(['Opening 2']);
+
+    await userEvent.clear(box());
+    await userEvent.type(box(), 'lantern');
+    expect(cards()).toEqual([]);
+    expect(within(panelOf('Openings')).getByText('No openings match “lantern”.')).toBeInTheDocument();
+  });
+
+  it('adds a card with the + and clears the box', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={twoOpenings} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Openings' }));
+
+    await userEvent.type(box(), 'gull');
+    await userEvent.click(within(panelOf('Openings')).getByRole('button', { name: 'Add Opening' }));
+    expect(box()).toHaveValue('');
+    expect(cards()).toEqual(['Opening 1', 'Opening 2', 'Opening 3']);
+  });
+});

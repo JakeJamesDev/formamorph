@@ -13,11 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
+import { ListSearchToolbar } from '@/components/ListToolbar';
+import { useListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
   setOpeningKind, setOpeningText, setOpeningWeight, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
+import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { cn } from '@/lib/utils';
 import type { Entity, Opening, OpeningKind, Placeholder } from '@/types';
@@ -41,9 +44,18 @@ export function OpeningsPanel({ onOpenEntity }: {
   const chancesStart = view.starts.find((l) => l.id === view.chancesStartId);
   const [world, ...entityGroups] = view.groups;
   const anyOpenings = hasAuthoredOpenings(worldOverview) || entities.some(hasAuthoredOpenings);
+  const search = useListSearch();
+  const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
+  const shows = (rows: EditorOpeningRow[]) => !search.typed || matchingRows(rows, search.typed, names).length > 0;
+  const noMatch = !!search.typed && !view.groups.some((g) => shows(g.rows));
 
   return (
     <div className="space-y-4">
+      <ListSearchToolbar
+        search={search}
+        add={{ label: 'Add Opening', onAdd: () => updateWorldOverview(addOpening(worldOverview)) }}
+        placeholder="Search openings"
+      />
       {view.starts.length > 1 && (
         <div className="flex items-center gap-2">
           <Label htmlFor="openings-chances-at" className="shrink-0">Chances At</Label>
@@ -58,30 +70,37 @@ export function OpeningsPanel({ onOpenEntity }: {
         </div>
       )}
 
-      <section aria-label="This World" className="space-y-2">
-        <h3 className="text-body font-semibold">This World</h3>
-        <OpeningsList
-          owner={worldOverview}
-          rows={world.rows}
-          onChange={updateWorldOverview}
-          placeholders={placeholders}
-          empty={(
-            <div className="space-y-1">
-              <Hint>No openings yet. This world starts on the text below.</Hint>
-              <div
-                role="note"
-                aria-label="Default Opening"
-                className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
-              >
-                {DEFAULT_OPENING.text}
+      {noMatch && <NoMatch typed={search.typed} />}
+
+      {shows(world.rows) && (
+        <section aria-label="This World" className="space-y-2">
+          <h3 className="text-body font-semibold">This World</h3>
+          <OpeningsList
+            owner={worldOverview}
+            rows={world.rows}
+            onChange={updateWorldOverview}
+            placeholders={placeholders}
+            search={search.typed}
+            names={names}
+            addButton={false}
+            empty={(
+              <div className="space-y-1">
+                <Hint>No openings yet. This world starts on the text below.</Hint>
+                <div
+                  role="note"
+                  aria-label="Default Opening"
+                  className="whitespace-pre-wrap rounded-md border bg-muted/40 px-3 py-2 text-helper text-muted-foreground"
+                >
+                  {DEFAULT_OPENING.text}
+                </div>
               </div>
-            </div>
-          )}
-        />
-      </section>
+            )}
+          />
+        </section>
+      )}
 
       {entityGroups.map(({ entity, name: rawName, rows, atNoStart, atChancesStart }) => {
-        if (!entity) return null;
+        if (!entity || !shows(rows)) return null;
         const name = label(rawName) || 'Unnamed entity';
         return (
           <section key={entity.id} aria-label={name} className="space-y-2" data-testid="opening-group">
@@ -116,6 +135,8 @@ export function OpeningsPanel({ onOpenEntity }: {
               ownerId={entity.id}
               ownerLabel={name}
               ownerName={entity.name}
+              search={search.typed}
+              names={names}
               empty={null}
             />
           </section>
@@ -139,17 +160,30 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
 }) {
+  const search = useListSearch();
+  const rows = ownerOpeningRows(entity);
+  const names: ListSearchNames = { placeholders };
   return (
     <div className="space-y-2">
-      <OpeningsList
-        owner={entity}
-        rows={ownerOpeningRows(entity)}
-        onChange={onChange}
-        placeholders={placeholders}
-        ownerId={entity.id}
-        ownerName={entity.name}
-        empty={<Hint>No openings yet</Hint>}
+      <ListSearchToolbar
+        search={search}
+        add={{ label: 'Add Opening', onAdd: () => onChange(addOpening(entity)) }}
+        placeholder="Search openings"
       />
+      {search.typed && matchingRows(rows, search.typed, names).length === 0 ? <NoMatch typed={search.typed} /> : (
+        <OpeningsList
+          owner={entity}
+          rows={rows}
+          onChange={onChange}
+          placeholders={placeholders}
+          ownerId={entity.id}
+          ownerName={entity.name}
+          search={search.typed}
+          names={names}
+          addButton={false}
+          empty={<Hint>No openings yet</Hint>}
+        />
+      )}
       <Hint>
         {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
       </Hint>
@@ -157,12 +191,23 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
   );
 }
 
+/** The rows whose text matches a search, each with its draw-order index. */
+function matchingRows(rows: EditorOpeningRow[], typed: string, names: ListSearchNames) {
+  return rows.map((row, i) => ({ row, i })).filter(({ row }) => matchesListSearch(row.opening.text, typed, names));
+}
+
+function NoMatch({ typed }: { typed: string }) {
+  return <p className="p-2 text-helper text-muted-foreground">No openings match &ldquo;{typed}&rdquo;.</p>;
+}
+
 /**
  * One owner's openings: a card per row with its kind, text, weight and chance, in draw order, and the Add
  * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
  * dash: the row is outside the pool the chances describe.
  */
-export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName }: {
+export function OpeningsList({
+  owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName, search = '', names, addButton = true,
+}: {
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
   onChange: (patch: OpeningOwner) => void;
@@ -175,7 +220,13 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
   ownerLabel?: string;
   /** The entity's authored name, which a Character Name chip previews as. */
   ownerName?: string;
+  /** The trimmed search text; only cards whose text matches draw, under their draw-order numbers. */
+  search?: string;
+  names?: ListSearchNames;
+  /** False where a toolbar's + adds to this owner. */
+  addButton?: boolean;
 }) {
+  const shown = search ? matchingRows(rows, search, names ?? { placeholders }) : rows.map((row, i) => ({ row, i }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
     const from = rows.findIndex((r) => r.opening.id === active.id);
@@ -187,9 +238,9 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
     <div className="space-y-2">
       {rows.length === 0 ? empty : (
         <EditorDndContext onDragEnd={handleDragEnd}>
-          <StableSortableContext items={rows.map((r) => r.opening)} strategy={verticalListSortingStrategy}>
+          <StableSortableContext items={shown.map(({ row }) => row.opening)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-3">
-              {rows.map(({ opening, weight, chance }, i) => (
+              {shown.map(({ row: { opening, weight, chance }, i }) => (
                 <OpeningCard
                   key={opening.id}
                   opening={opening}
@@ -210,16 +261,18 @@ export function OpeningsList({ owner, rows, onChange, placeholders, ownerId, emp
           </StableSortableContext>
         </EditorDndContext>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full"
-        aria-label={ownerLabel ? `Add Opening to ${ownerLabel}` : undefined}
-        onClick={() => onChange(addOpening(owner))}
-      >
-        <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
-      </Button>
+      {addButton && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          aria-label={ownerLabel ? `Add Opening to ${ownerLabel}` : undefined}
+          onClick={() => onChange(addOpening(owner))}
+        >
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Opening
+        </Button>
+      )}
     </div>
   );
 }

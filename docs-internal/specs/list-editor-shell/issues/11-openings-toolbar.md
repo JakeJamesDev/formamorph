@@ -1,6 +1,7 @@
 # 11: Openings toolbar
 
-Status: ready-for-agent
+Status: in-progress
+Base: 144b063c
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
