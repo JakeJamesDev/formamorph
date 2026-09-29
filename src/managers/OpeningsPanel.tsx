@@ -250,7 +250,7 @@ export function LocationOpenings({ location, onChange, placeholders, names = { p
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
-        {"Drawn with the world's openings when a game starts at this location, not at a location inside it. The world's switch turns them off too."}
+        {"Joins the world's openings when a game starts at this location, not at a location inside it. The world's Openings checkbox turns them off too."}
       </Hint>
     </div>
   );

@@ -677,7 +677,7 @@ The live reference renders four of the five production strips against their own 
 
 - Tab names come from the four production registries, so the reference and the editor cannot drift. Reuse does not certify those names as fully ASD-STE100 compliant.
 - **Unverified:** the section headings "Five Tabs" (entity and location), "A Tab Name the Editor Also Uses", and "Two Tabs, Two Hosts", and the four `Meta` lines, have terminology review only; vocabulary and grammar evidence is not recorded.
-- **Unverified:** the entity bodies for Traits and Openings, "The entity's own traits and groups, each one opening on the editor's Traits tab" and "The entity's openings, drawn when a player starts at one of its locations", have terminology review against the production tab contents only; vocabulary and grammar evidence is not recorded.
+- **Unverified:** the entity bodies for Traits and Openings, "The entity's own traits and groups, each one opening on the editor's Traits tab" and "The entity's openings, drawn when a player starts at one of its locations", and the location body for Openings, "The location's openings, drawn when a game starts at this location", have terminology review against the production tab contents only; vocabulary and grammar evidence is not recorded.
 
 ## Pattern: Narration Turn
 

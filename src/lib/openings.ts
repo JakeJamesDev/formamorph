@@ -1,5 +1,6 @@
 import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { entityIdsAt, entityIdsAtAny } from '@/lib/entityPresence';
+import { locationRows } from '@/lib/locationTree';
 import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
 import type { ResolvedPersona } from '@/lib/persona';
@@ -74,7 +75,7 @@ function drawable(owner: MaybeOwner, ownerId: string | null, self = false): Pool
 }
 
 /** A location's rows, keyed as the location's. A location has no Self rows. */
-const locationRows = (location: GameLocation | undefined): PoolEntry[] =>
+const locationEntries = (location: GameLocation | undefined): PoolEntry[] =>
   (location ? drawable(location, null).map((e) => ({ ...e, locationId: location.id })) : []);
 
 /** What a new playthrough's pool reads: the world, its authored entities and locations, and the chosen
@@ -125,7 +126,7 @@ export function openingPool({
   const present = new Set(entityIdsAt(startingLocationId, [...entities]));
   return [
     ...drawable(overview, null),
-    ...locationRows(locations.find((l) => l.id === startingLocationId)),
+    ...locationEntries(locations.find((l) => l.id === startingLocationId)),
     ...entities.filter((e) => present.has(e.id)).flatMap((e) => drawable(e, e.id)),
   ];
 }
@@ -280,9 +281,10 @@ export function ownerOpeningRows(owner: OpeningOwner, showSelf = canOwnSelfOpeni
 
 /**
  * Every opening in the world grouped by owner: the world's rows first, then each location with openings, in
- * editor order, then each authored entity that has openings to show, in cast order. An Others row's chance is its share of the whole pool at `startId`,
- * falling back to the first start; a Self row's is its share of its owner's Self rows. The switch is ignored,
- * so a switched-off draft reads the odds it will have.
+ * the location tree's order, then each authored entity that has openings to show, in cast order. An Others
+ * row's chance is its share of the whole pool at `startId`, falling back to the first start; a Self row's is
+ * its share of its owner's Self rows. The switch is ignored, so a switched-off draft reads the odds it will
+ * have.
  */
 export function openingsEditorView(
   { overview, entities, locations }: OpeningsEditorSources,
@@ -333,7 +335,7 @@ export function openingsEditorView(
         rows: editorRows(overview ?? {}, (o) => shares.get(openingKey(null, o.id)) ?? 0),
         showSelf: false, atNoStart: false, atChancesStart: true,
       },
-      ...locations.map(locationGroup).filter((g) => g.rows.length > 0),
+      ...locationRows([...locations]).map(({ location }) => locationGroup(location)).filter((g) => g.rows.length > 0),
       ...entities.map(entityGroup).filter((g) => g.rows.length > 0),
     ],
   };
