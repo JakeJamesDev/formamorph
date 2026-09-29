@@ -27,7 +27,7 @@ const ward: Trait = {
 const loadInto = (state: TraitRuntimeState, world: TraitWorld) => {
   const commit = vi.fn<(result: GatedTraitResult) => void>();
   const { rerender } = renderHook(
-    ({ loads }) => useSettleOnSaveLoad(loads, state, () => world, nameOf, commit),
+    ({ loads }) => useSettleOnSaveLoad(loads, true, state, () => world, nameOf, commit),
     { initialProps: { loads: 0 } },
   );
   expect(commit).not.toHaveBeenCalled();
@@ -70,11 +70,28 @@ describe('settling traits on save load', () => {
     expect(loadInto(state, { traits: [ring, ward], groups: [] })).not.toHaveBeenCalled();
   });
 
+  it('waits for a pending persona, then settles against the world it brings', () => {
+    const commit = vi.fn<(result: GatedTraitResult) => void>();
+    // Until the library persona lands, its world is missing the Always On trait it carries.
+    const pending: TraitWorld = { traits: [], groups: [] };
+    const landed: TraitWorld = { traits: [sworn], groups: [] };
+    const state = saved();
+    const { rerender } = renderHook(
+      ({ loads, ready, world }) => useSettleOnSaveLoad(loads, ready, state, () => world, nameOf, commit),
+      { initialProps: { loads: 0, ready: true, world: pending } },
+    );
+    rerender({ loads: 1, ready: false, world: pending });
+    expect(commit).not.toHaveBeenCalled();
+    rerender({ loads: 1, ready: true, world: landed });
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(on(commit.mock.calls[0][0].state)).toEqual(['sworn']);
+  });
+
   it('settles once per load, not on every render', () => {
     const commit = vi.fn<(result: GatedTraitResult) => void>();
     const world: TraitWorld = { traits: [sworn], groups: [] };
     const { rerender } = renderHook(
-      ({ loads, state }) => useSettleOnSaveLoad(loads, state, () => world, nameOf, commit),
+      ({ loads, state }) => useSettleOnSaveLoad(loads, true, state, () => world, nameOf, commit),
       { initialProps: { loads: 3, state: saved() } },
     );
     rerender({ loads: 3, state: saved() });

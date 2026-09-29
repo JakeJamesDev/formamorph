@@ -1,6 +1,7 @@
 # 08: Settle on save load
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 514bf3a6
 Blocked by: 04
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
