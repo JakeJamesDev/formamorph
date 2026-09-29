@@ -120,6 +120,18 @@ describe('the mode control', () => {
     expect(store.writes[store.writes.length - 1].mode).toBeUndefined();
     expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).toBeInTheDocument();
   });
+
+  it('writes Hidden, selects it, and hides the Default and Player Can Toggle fields', async () => {
+    const user = userEvent.setup();
+    renderManager('availability');
+    await user.click(screen.getByRole('radio', { name: 'Hidden' }));
+    expect(store.writes[store.writes.length - 1].mode).toBe('hidden');
+    expect(screen.getByRole('radio', { name: 'Hidden' })).toBeChecked();
+    expect(screen.queryByRole('checkbox', { name: /Enabled by Default/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /Player Can Toggle/ })).toBeNull();
+    await user.click(screen.getByRole('radio', { name: 'Always On' }));
+    expect(store.writes[store.writes.length - 1].mode).toBe('alwaysOn');
+  });
 });
 
 describe('the conflict note', () => {

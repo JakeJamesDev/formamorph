@@ -96,6 +96,13 @@ export const isAlwaysOn = (trait: Pick<Trait, 'mode'>): boolean => trait.mode ==
 export const isDormant = (trait: Pick<Trait, 'id' | 'mode'>, active: readonly string[]): boolean =>
   isAlwaysOn(trait) && !active.includes(trait.id);
 
+/** Whether the player never sees the trait (Q13). Dev tools, the Prompt viewer and Test Bench still name it. */
+export const isHidden = (trait: Pick<Trait, 'mode'>): boolean => trait.mode === 'hidden';
+
+/** Whether the player sees the trait's row: not Hidden, and not a dormant Always On trait. */
+export const isShown = (trait: Pick<Trait, 'id' | 'mode'>, active: readonly string[]): boolean =>
+  !isHidden(trait) && !isDormant(trait, active);
+
 /**
  * The traits a player toggle switches off alongside the one being switched on: a max-one group holds at
  * most one active trait, so enabling a member retires its active siblings. Nesting doesn't cascade — only

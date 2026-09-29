@@ -39,7 +39,7 @@ const gateMeta = (gate: GateState | undefined, placeholders: Parameters<typeof l
       </span>
     ),
     // The editor's gate input holds nothing active, so every gated row reads locked: "Requires A or B".
-    metaTitle: labelPlaceholders(gateLine(gate) ?? '', placeholders),
+    metaTitle: labelPlaceholders(gateLine(gate, { revealHidden: true }) ?? '', placeholders),
   };
 };
 

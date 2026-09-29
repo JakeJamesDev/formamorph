@@ -42,7 +42,14 @@ export interface TraitLinkEdit {
 const MODE_OPTIONS = [
   { value: 'optional', label: 'Optional' },
   { value: 'alwaysOn', label: 'Always On' },
+  { value: 'hidden', label: 'Hidden' },
 ] as const;
+
+const MODE_HINTS = {
+  optional: 'Lets the player choose it',
+  alwaysOn: 'Turns on whenever its requirements hold, and the player can’t switch it',
+  hidden: 'Works like Always On, but the player never sees it. The AI still does.',
+} as const;
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -249,18 +256,19 @@ const TraitManager = ({
   );
 
   const alwaysOn = isAlwaysOn(editingTrait);
+  const mode = editingTrait.mode ?? 'optional';
   const availabilityPanel = (
     <>
       <div className="space-y-2">
         <Label>Mode</Label>
         <OptionSwitcher
-          value={alwaysOn ? 'alwaysOn' : 'optional'}
-          onChange={(v) => apply({ mode: v === 'optional' ? undefined : editingTrait.mode ?? 'alwaysOn' })}
+          value={mode}
+          onChange={(v) => apply({ mode: v === 'optional' ? undefined : v })}
           options={MODE_OPTIONS}
           ariaLabel="Mode"
           disabled={readOnly}
         />
-        <Hint>{alwaysOn ? 'Turns on whenever its requirements hold, and the player can’t switch it' : 'Lets the player choose it'}</Hint>
+        <Hint>{MODE_HINTS[mode]}</Hint>
       </div>
       {!alwaysOn && (
         <>

@@ -556,6 +556,45 @@ describe('an Always On trait', () => {
   });
 });
 
+describe('a Hidden trait', () => {
+  const GROUPS = [G('g-oath', 'Oath', { maxPicks: 1 }), G('g-secret', 'Secrets')];
+  const TRAITS = [
+    T('t-paladin', 'Paladin'),
+    T('t-bond', 'Blood Bond', { mode: 'hidden', groupId: 'g-oath' }),
+    T('t-free', 'Free', { groupId: 'g-oath' }),
+    T('t-omen', 'Omen', { mode: 'hidden', groupId: 'g-secret' }),
+    T('t-rite', 'Rite', { requires: [{ kind: 'trait', id: 't-lost' }, { kind: 'trait', id: 't-paladin' }] }),
+    T('t-lost', 'Lost Name', { mode: 'hidden', requires: [{ kind: 'trait', id: 't-paladin' }] }),
+    T('t-veil', 'Veil', { requires: [{ kind: 'trait', id: 't-lost' }] }),
+  ];
+
+  it('never shows while active, in its row, its section or the active summary', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bond', 't-omen']);
+    expect(screen.queryByText(/Blood Bond|Omen/)).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Secrets' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Oath, 0 enabled' }));
+    openDisabled('Oath');
+    expect(screen.getByRole('radio', { name: 'Switch on Free' })).toBeDisabled();
+  });
+
+  it('leaves its name out of a gate line, and reads "Locked" when nothing else is listed', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bond', 't-omen']);
+    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
+    openDisabled('General');
+    expect(screen.getByText('Requires Paladin')).toBeInTheDocument();
+    expect(screen.getByText('Locked')).toBeInTheDocument();
+    expect(screen.queryByText(/Lost Name/)).toBeNull();
+  });
+
+  it('opens a trait with no line when only a Hidden requirement holds', () => {
+    renderTraits(TRAITS, GROUPS, ['t-paladin', 't-lost', 't-bond', 't-omen']);
+    openDisabled('General');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Veil' })).toBeEnabled();
+    expect(screen.getByText('Unlocked by Paladin')).toBeInTheDocument();
+    expect(screen.queryByText(/Lost Name/)).toBeNull();
+  });
+});
+
 describe('a max-one trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { maxPicks: 1 })];
   const TRAITS = [

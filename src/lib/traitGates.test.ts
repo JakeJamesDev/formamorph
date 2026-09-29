@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
-  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
+  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, shownRefs, switchTrait,
   underfills, withBearer, type GateInput, type GateOwner,
 } from './traitGates';
 
@@ -52,6 +52,20 @@ describe('gate states', () => {
     expect([...states.keys()]).toEqual([WORLD_OWNER, 'wolf']);
     expect(gateOf(states, 'wolf', 'Loyal')?.unlocked).toBe(false);
     expect(gateOf(states, WORLD_OWNER, 'Loyal')).toBeUndefined();
+  });
+
+  it('flags a requirement on a Hidden trait, in the owner’s tree or only in the originals', () => {
+    const traits = [T('Bond', { mode: 'hidden' }), T('Rite', { requires: [trait('Bond'), trait('Omen'), trait('Knight')] }), T('Knight')];
+    const input = world(traits, [], [], { originals: { traits: [T('Omen', { mode: 'hidden' })], groups: [] } });
+    expect(gateOf(gateStates(input), WORLD_OWNER, 'Rite')?.requirements.map((r) => [r.text, r.hidden])).toEqual([
+      ['Bond', true], ['Omen', true], ['Knight', false],
+    ]);
+  });
+
+  it('names every ref but a Hidden trait’s for the player', () => {
+    const owners = world([T('Bond', { mode: 'hidden' }), T('Knight')]).owners;
+    const refs = [{ ownerId: WORLD_OWNER, traitId: 'Bond' }, { ownerId: WORLD_OWNER, traitId: 'Knight' }];
+    expect(shownRefs(owners, refs)).toEqual([{ ownerId: WORLD_OWNER, traitId: 'Knight' }]);
   });
 });
 
@@ -187,8 +201,8 @@ describe('requirements per bearer', () => {
     const owners = [input({}).owners[0], { ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input({}), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
     expect(state.requirements).toEqual([
-      { text: 'You: Cleric', holds: false, unresolved: false },
-      { text: 'Old Albus: Paladin', holds: false, unresolved: true },
+      { text: 'You: Cleric', holds: false, unresolved: false, hidden: false },
+      { text: 'Old Albus: Paladin', holds: false, unresolved: true, hidden: false },
     ]);
     expect(reason({ ...input({}), owners }, 'Squire', 'mira')?.[0]).toBe('You: a missing trait');
   });

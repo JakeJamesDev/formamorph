@@ -559,6 +559,18 @@ describe('Begin and group minimums', () => {
     await user.click(screen.getByRole('radio', { name: 'Local' }));
     expect(begin).toBeDisabled();
   });
+
+  it('leaves out a page with no row the player sees, and still holds Begin for its short group', () => {
+    const omens = { id: 'omens', name: 'Omens', parentId: null, order: 2, minPicks: 1 };
+    const unseen: Trait[] = [
+      { id: 'sign', name: 'Sign', groupId: 'omens', order: 0, mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'outsider' }], statChanges: [] },
+      { id: 'veil', name: 'Veil', groupId: 'practice', order: 1, mode: 'hidden', statChanges: [] },
+    ];
+    render(<Harness traitGroups={[...groups, omens]} traits={[...traits, ...unseen]} />);
+    expect(screen.queryByRole('button', { name: /^Omens/ })).toBeNull();
+    expect(within(screen.getByRole('button', { name: /^Practice/ })).getByLabelText('0 of 1 selected')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled();
+  });
 });
 
 describe('Enter World library inspection', () => {

@@ -224,6 +224,13 @@ describe('the Traits chip', () => {
     expect(values['<TRAITS DESCRIPTION|xml>']).toContain('<name>Saltborn</name>');
   });
 
+  it('renders a Hidden trait in force like any other, with no marker (Q19)', () => {
+    const secret: Trait = { ...lightSleeper, mode: 'hidden' };
+    const values = chipValues(scene({ traits: [saltborn, secret] }));
+    expect(values['<TRAITS DESCRIPTION>']).toBe(chipValues(scene())['<TRAITS DESCRIPTION>']);
+    expect(values['<TRAITS DESCRIPTION>']).toContain('Light Sleeper: Wakes at the smallest sound.');
+  });
+
   it('renders the placeholder when no trait is in force', () => {
     const values = chipValues(scene({ traits: [] }));
     expect(values['<TRAITS DESCRIPTION>']).toBe(NONE_PLACEHOLDER);

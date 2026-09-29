@@ -9,7 +9,7 @@ import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
 import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
-import { isAlwaysOn, isDormant } from '@/lib/traitEffects';
+import { isAlwaysOn, isShown } from '@/lib/traitEffects';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -39,7 +39,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
  * One trait category of the setup screen: its heading, the Player-Facing Descriptions of the groups it
  * sits in, and its traits with their stat changes. A max-one category is a radio choice; a full category with
  * a larger max disables its unchecked rows. A short category says how many more picks it needs. An active
- * Always On trait shows checked with no control, and a dormant one doesn't show.
+ * Always On trait shows checked with no control. A dormant one and a Hidden one don't show.
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
@@ -71,10 +71,10 @@ export function SetupTraitList({
   const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
   const radio = picks?.max === 1;
   const needed = picks ? picks.min - picks.count : 0;
-  const shown = traits.filter((trait) => !isDormant(trait, selectedTraits));
+  const shown = traits.filter((trait) => isShown(trait, selectedTraits));
   const selectedRadio = shown.find((trait) => !isAlwaysOn(trait) && selectedTraits.includes(trait.id))?.id;
   // A max-one group's active Always On trait can't be swapped out.
-  const fixedRadio = radio && shown.some(isAlwaysOn);
+  const fixedRadio = radio && traits.some((trait) => isAlwaysOn(trait) && selectedTraits.includes(trait.id));
   const rows = shown.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
     const fixed = isAlwaysOn(trait);

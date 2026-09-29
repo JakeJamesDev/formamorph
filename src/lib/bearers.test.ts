@@ -391,7 +391,7 @@ describe('resolveBearers: the gate input', () => {
     const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ kind: 'trait', id: 'smite', bearer: { kind: 'you' } }] })] };
     const r = resolveBearers(world({ entities: [albus, gated] }), AS_ALBUS);
     expect(gateOf(gateStates({ ...r.gate, active: {} }), 'mira', 'vow')?.requirements).toEqual([
-      { text: 'You: Smite', holds: false, unresolved: false },
+      { text: 'You: Smite', holds: false, unresolved: false, hidden: false },
     ]);
   });
 
@@ -414,7 +414,7 @@ describe('editorGateInput', () => {
     expect(ids(input.owners[4].traits)).toEqual(['smite']);
     expect(input.active).toEqual({});
     expect(input.persona).toEqual(NONE);
-    expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false }]);
+    expect(gateOf(gateStates(input), PLAYER_BEARER, 'smite')?.requirements).toEqual([{ text: 'Paladin', holds: false, unresolved: false, hidden: false }]);
   });
 
   it('reads an entity placement under Blueprints as the top level', () => {

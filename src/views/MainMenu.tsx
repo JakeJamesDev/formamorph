@@ -65,7 +65,7 @@ import type { LibrarySource, LinkableContent } from '@/lib/linkedContent';
 import EnterWorldWorkspace from './EnterWorldWorkspace';
 import { startingLocations } from '@/lib/startingLocation';
 import {
-  WORLD_OWNER, gateStates, settle, switchTrait, type SettleResult,
+  WORLD_OWNER, gateStates, settle, shownRefs, switchTrait, type SettleResult,
 } from '@/lib/traitGates';
 import type { TraitCascade } from '@/components/game/SetupTraitList';
 import { buildInitialSelection, finalizeSelection, shouldShowDictionaryChoices } from '@/lib/dictionarySelection';
@@ -1397,7 +1397,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     [entryDraft.traitIds, entryDraft.ownedTraitIds],
   );
   const cascadeFrom = (result: SettleResult, because: string): TraitCascade | null => {
-    const names = result.turnedOff.map((ref) => traitName(ref.ownerId, ref.traitId));
+    const names = shownRefs(castOwners, result.turnedOff).map((ref) => traitName(ref.ownerId, ref.traitId));
     return names.length ? { off: names, because } : null;
   };
 
