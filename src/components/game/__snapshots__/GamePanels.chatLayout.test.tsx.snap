@@ -427,31 +427,35 @@ exports[`Narration Layout: Pages > renders a past page unchanged 1`] = `
                 />
               </svg>
             </button>
-            <button
-              aria-label="Send"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+            <div
+              class="flex flex-col items-end gap-1"
             >
-              <svg
-                aria-hidden="true"
-                class="lucide lucide-send h-4 w-4"
-                fill="none"
-                height="24"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="24"
-                xmlns="http://www.w3.org/2000/svg"
+              <button
+                aria-label="Send"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
               >
-                <path
-                  d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
-                />
-                <path
-                  d="m21.854 2.147-10.94 10.939"
-                />
-              </svg>
-            </button>
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-send h-4 w-4"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
+                  />
+                  <path
+                    d="m21.854 2.147-10.94 10.939"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1023,31 +1027,35 @@ exports[`Narration Layout: Pages > renders the latest page unchanged 1`] = `
                 />
               </svg>
             </button>
-            <button
-              aria-label="Send"
-              class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
+            <div
+              class="flex flex-col items-end gap-1"
             >
-              <svg
-                aria-hidden="true"
-                class="lucide lucide-send h-4 w-4"
-                fill="none"
-                height="24"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="24"
-                xmlns="http://www.w3.org/2000/svg"
+              <button
+                aria-label="Send"
+                class="inline-flex items-center justify-center whitespace-nowrap rounded-md border-transparent text-label font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary-foreground h-10 px-4 py-2 border-dashed border-2 w-12 sm:w-32"
               >
-                <path
-                  d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
-                />
-                <path
-                  d="m21.854 2.147-10.94 10.939"
-                />
-              </svg>
-            </button>
+                <svg
+                  aria-hidden="true"
+                  class="lucide lucide-send h-4 w-4"
+                  fill="none"
+                  height="24"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"
+                  />
+                  <path
+                    d="m21.854 2.147-10.94 10.939"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>

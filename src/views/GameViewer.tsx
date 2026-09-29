@@ -148,6 +148,7 @@ import {
 } from "@/lib/findMarks";
 import { buildStamper, hoursByPosition, FLAT_HOURS_PER_TURN } from "../lib/gameClock";
 import { agedMilestoneCandidates, resolveMilestoneDrop } from "../lib/milestoneMemory";
+import { recordSentPrompt } from "../lib/sentPromptLog";
 import { applyMemoryOverrides, activeNotes } from "../lib/memoryOverrides";
 import { buildRelevanceScores, vectorKey } from "../lib/memoryRelevance";
 import { entryVectorKey, entryEmbedText } from "../lib/semanticDictionary";
@@ -3840,6 +3841,8 @@ const GameViewer = ({
       setPlayerInput("");
       return;
     }
+    // Kept before the turn starts: the turn clears the box, so a request that fails would lose the text.
+    recordSentPrompt(input);
     sendGameAction(input, { attachments: pendingAttachments });
   };
 

@@ -21,6 +21,7 @@ import { WORLD_OWNER } from '@/lib/traitGates';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { ReasoningBlock } from './ReasoningBlock';
 import { ChatNarration, PLAYER_ACTION_BUBBLE, type ChatBubbleTurn, type ChatPlayerTurn } from './ChatNarration';
+import { SentPromptLog } from './SentPromptLog';
 import { ChatChoices } from './ChatChoices';
 import { ChoiceRows } from './ChoiceRows';
 import { TurnCard } from './TurnCard';
@@ -435,17 +436,22 @@ const ActionInput = ({
   onKeyDown,
   placeholder,
   disabled,
+  onFocusChange,
 }: {
   value: string;
   setValue: (value: string) => void;
   onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
   placeholder: string;
   disabled: boolean;
+  /** Told when the box gains or loses focus, which is when it expands and collapses. */
+  onFocusChange?: (focused: boolean) => void;
 }) => {
   // The wrapper mirrors the grown height so the box is real layout, not an overlay: the row above it moves
   // up instead of being covered, which is what lets it clear the on-screen keyboard.
   const { height, focused, stateClass, fieldProps } = useAutoGrowTextarea(value, ACTION_INPUT_LINE_H, ACTION_INPUT_MAX_H);
   const slash = useSlashCompletion(fieldProps.ref, value, setValue);
+  // The sent-prompt log follows the box: shown while it is focused (and so expanded).
+  React.useEffect(() => { onFocusChange?.(focused); }, [focused, onFocusChange]);
 
   return (
     <div className="relative flex-grow mr-2 flex-shrink-0" style={{ height }} data-testid="action-input-wrap">
@@ -738,6 +744,8 @@ export const MiddlePanel = ({
       },
     );
   };
+  // The sent-prompt log shows while the action box is focused (and so expanded).
+  const [inputFocused, setInputFocused] = useState(false);
   const editAction = (page: number, text: string) => {
     setEditTarget({ kind: 'action', page, text, turnId: pageTurnId(fullMessageHistory, page) });
     setIsEditMode(true);
@@ -1146,6 +1154,7 @@ export const MiddlePanel = ({
                 <AttachImagesButton attaching={attaching} disabled={disabled} onFiles={(files) => void attachFiles(files)} className="mr-2 shrink-0" />
               )}
               <ActionInput
+                onFocusChange={setInputFocused}
                 value={playerInput}
                 setValue={setPlayerInput}
                 onKeyDown={handleKeyPress}
@@ -1176,25 +1185,30 @@ export const MiddlePanel = ({
                   ),
                 }}
               />
-              {isWaitingForAI ? (
-                <Button
-                  onClick={abortGeneration}
-                  variant="destructive"
-                  aria-label="Stop generating"
-                  className="border-dashed border-2 w-12 sm:w-32"
-                >
-                  <Square className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSendAction}
-                  disabled={disabled}
-                  aria-label="Send"
-                  className="border-dashed border-2 w-12 sm:w-32"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              )}
+              {/* The sent-prompt log sits on Send while the box is open, so text from a failed turn is one click
+                  from coming back. */}
+              <div className="flex flex-col items-end gap-1">
+                <SentPromptLog visible={inputFocused} onPick={setPlayerInput} />
+                {isWaitingForAI ? (
+                  <Button
+                    onClick={abortGeneration}
+                    variant="destructive"
+                    aria-label="Stop generating"
+                    className="border-dashed border-2 w-12 sm:w-32"
+                  >
+                    <Square className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSendAction}
+                    disabled={disabled}
+                    aria-label="Send"
+                    className="border-dashed border-2 w-12 sm:w-32"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
