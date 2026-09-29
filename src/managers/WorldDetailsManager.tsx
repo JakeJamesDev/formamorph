@@ -66,9 +66,10 @@ const PanelFooter = ({ note, onReset }: { note: ReactNode; onReset?: () => void 
  * Openings need no player-facing opt-out where the prompts do: the pre-filled box is editable, so the
  * player already has the last word on what the opening turn says.
  */
-const CustomPromptsSection = ({ focusField, onOpenEntity }: {
+const CustomPromptsSection = ({ focusField, onOpenEntity, onOpenLocation }: {
   focusField?: FocusFieldHint | null;
   onOpenEntity?: (entityId: string) => void;
+  onOpenLocation?: (locationId: string) => void;
 }) => {
   const {
     worldOverview, updateWorldOverview, stats, locations, connections, entities, traits, traitGroups, dictionaries,
@@ -128,7 +129,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
 
   // Nothing to switch until an opening exists: the box derives off, so a click would write a flag that
   // reads off again. The world plays the default opening either way.
-  const noOpenings = !openingsEnabled(worldOverview, entities) && worldOverview.openingsEnabled !== false;
+  const noOpenings = !openingsEnabled(worldOverview, [...entities, ...locations]) && worldOverview.openingsEnabled !== false;
 
   const write = (kind: WorldPromptKind, update: { text?: string; enabled?: boolean }) =>
     updateWorldOverview({ promptOverrides: setWorldPromptOverride(worldOverview.promptOverrides, kind, update) });
@@ -187,7 +188,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
             >
               <Checkbox
                 className="shrink-0"
-                checked={kind === 'opening' ? openingsEnabled(worldOverview, entities) : worldPromptEnabled(worldOverview, kind)}
+                checked={kind === 'opening' ? openingsEnabled(worldOverview, [...entities, ...locations]) : worldPromptEnabled(worldOverview, kind)}
                 disabled={kind === 'opening' && noOpenings}
                 onCheckedChange={(c) => toggle(kind, c === true)}
                 aria-label={kind === 'opening'
@@ -205,7 +206,7 @@ const CustomPromptsSection = ({ focusField, onOpenEntity }: {
         ))}
       </ToggleGroup>
 
-      {tab === 'opening' && <OpeningsPanel onOpenEntity={onOpenEntity} />}
+      {tab === 'opening' && <OpeningsPanel onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />}
 
       {tab !== null && tab !== 'opening' && (() => {
         const kind = tab;
@@ -325,10 +326,12 @@ export const AI_DESCRIPTION_INFO = "Goes to the AI on every turn as your world's
 
 /** The AI-facing world content fields (description, system prompt, readmes), shown in the editor's right
  *  column on the Overview tab. Identity/listing fields live in WorldOverviewManager (left column). */
-const WorldDetailsManager = ({ focusField, onOpenEntity }: {
+const WorldDetailsManager = ({ focusField, onOpenEntity, onOpenLocation }: {
   focusField?: FocusFieldHint | null;
   /** Opens an entity's Openings tab, from the openings panel's group header. */
   onOpenEntity?: (entityId: string) => void;
+  /** Opens a location's Openings tab, from the openings panel's group header. */
+  onOpenLocation?: (locationId: string) => void;
 }) => {
   const { worldOverview, updateWorldOverview, placeholders } = useGameData();
   // The description shows in the library, before a playthrough exists — so placeholders can never be rolled
@@ -361,7 +364,7 @@ const WorldDetailsManager = ({ focusField, onOpenEntity }: {
         tourAnchor="world-ai-description"
       />
 
-      <CustomPromptsSection focusField={focusField} onOpenEntity={onOpenEntity} />
+      <CustomPromptsSection focusField={focusField} onOpenEntity={onOpenEntity} onOpenLocation={onOpenLocation} />
     </div>
   );
 };

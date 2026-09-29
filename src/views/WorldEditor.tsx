@@ -488,7 +488,7 @@ const WorldEditorInner = ({
     addEntity(placed);
     // The copy's openings switch the world's list on, which clears an author's off. The box changes without
     // the author touching it, so the add says which entity changed it.
-    if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, entities)) {
+    if (hasAuthoredOpenings(placed) && !openingsEnabled(worldOverview, [...entities, ...locations])) {
       updateWorldOverview(setOpeningsEnabled(true));
       const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
       toast.info(`${named || 'This entity'} has openings, so Openings is switched on.`);
@@ -784,6 +784,7 @@ const WorldEditorInner = ({
         <WorldDetailsManager
           focusField={findField}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
+          onOpenLocation={(id) => { navigateToBenchItem('locations', id); setLocationTab('openings'); }}
         />
       )}
       {listEditorParts?.detail}

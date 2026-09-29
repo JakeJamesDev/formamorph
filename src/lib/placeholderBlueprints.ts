@@ -4,6 +4,7 @@
 // a copy's values. A move across the group's edge that would strand one on the wrong side is refused.
 
 import { entityTexts } from './entityTexts';
+import { openingTexts } from './openings';
 import { overviewTexts } from './overviewTexts';
 import { isDescendantPlaceholderGroup, placeholderGroupOf } from './placeholderGroups';
 import { allPlaceholders, placeholderHomeIndex, type PlaceholderHomesWorld } from './placeholderHomes';
@@ -118,7 +119,7 @@ function sourcesOfUse(world: BlueprintUseWorld, blueprints: ReadonlySet<string>)
     }
   }
   for (const l of world.locations ?? []) {
-    add('location', l.name, false, named([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags], l.placeholderPins));
+    add('location', l.name, false, named([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags, ...openingTexts(l)], l.placeholderPins));
   }
   for (const s of world.stats ?? []) {
     const bands = s.descriptors ?? [];

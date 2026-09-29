@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { drawNewGameOpening } from './newGameOpening';
-import { drawUnseenOpening, openingPool, openingsEnabled } from './openings';
+import { drawUnseenOpening, openingPool, openingsEnabled, poolKey } from './openings';
 import { resolvePersona } from './persona';
 import { migrateWorld } from './version';
-import type { Entity, Opening, PersonaRef, WorldOverview } from '@/types';
+import type { Entity, GameLocation, Opening, PersonaRef, WorldOverview } from '@/types';
 
 const action = (id: string): Opening => ({ id, text: `Opening ${id}.`, kind: 'action' });
 
@@ -424,5 +424,67 @@ describe('Self openings of a library persona and the Custom Persona entity', () 
       return next.opening.id;
     });
     expect(new Set(redraws)).toEqual(new Set(['wanderer-self']));
+  });
+});
+
+describe('location openings', () => {
+  const start: GameLocation = { id: 'start', name: 'Start', isStarting: true, openings: [action('start-here')] };
+  const child: GameLocation = {
+    id: 'child', name: 'Child', parentId: 'start', isStarting: true, openings: [action('child-here')],
+  };
+  const locations = [start, child];
+  /** Every row the first draw can land on, and the entity each names, across the whole random range. */
+  const drawsAt = (
+    startingLocationId: string,
+    { ref = { source: 'none' } as PersonaRef, worldEntities = [guide], over = {} as Partial<WorldOverview>, places = locations } = {},
+  ) => new Map(Array.from({ length: 40 }, (_, i) => {
+    const result = drawNewGameOpening({
+      pick: { ref }, worldEntities, overview: { ...overview, ...over }, locations: places, startingLocationId,
+      picked: [], random: () => (i + 0.5) / 40,
+    });
+    return [result.draw.opening.id, result.owner?.id ?? null] as const;
+  }));
+
+  it('join the pool at their exact start, between the world’s rows and the present entities’', () => {
+    const pool = openingPool({ overview: { ...overview, openings: [action('world-hello')] }, entities: [guide], locations, startingLocationId: 'start' });
+    expect(pool.map((e) => e.opening.id)).toEqual(['world-hello', 'start-here', 'guide-hello']);
+    expect(drawsAt('start')).toEqual(new Map([['start-here', null], ['guide-hello', 'guide']]));
+  });
+
+  it('never reach a child start from its parent', () => {
+    expect(drawsAt('child')).toEqual(new Map([['child-here', null]]));
+  });
+
+  it('switch the list on by themselves', () => {
+    expect(openingsEnabled(overview, [start])).toBe(true);
+    expect(drawsAt('start', { worldEntities: [] })).toEqual(new Map([['start-here', null]]));
+  });
+
+  it('never draw with the world switch off', () => {
+    expect(drawsAt('start', { over: { openingsEnabled: false } })).toEqual(new Map([['default', null]]));
+  });
+
+  it('stay out when the played persona’s Self rows apply', () => {
+    const hero = entity('hero', { persona: true, locations: ['start'], openings: [selfRow('hero-self')] });
+    expect(drawsAt('start', { ref: { source: 'world', entityId: 'hero' }, worldEntities: [hero, guide] }))
+      .toEqual(new Map([['hero-self', 'hero']]));
+  });
+
+  it('keep an entity and a location with one id apart in the no-repeat list and the owner', () => {
+    // An entity whose id is the start's, standing there, with an opening id the start's own row shares.
+    const namesake = entity('start', { locations: ['start'], openings: [action('shared')] });
+    const place: GameLocation = { id: 'start', name: 'Start', openings: [action('shared')] };
+    const pool = openingPool({ overview, entities: [namesake], locations: [place], startingLocationId: 'start' });
+    expect(new Set(pool.map(poolKey)).size).toBe(2);
+
+    const first = drawUnseenOpening(pool, [], always);
+    const second = drawUnseenOpening(pool, first.shown, always);
+    expect([first.ownerId, second.ownerId]).toEqual([null, 'start']);
+    // The location's row names no entity, even though one shares its id.
+    const owners = new Set([0.1, 0.9].map((r) => drawNewGameOpening({
+      pick: { ref: { source: 'none' } }, worldEntities: [namesake], overview, locations: [place],
+      startingLocationId: 'start', picked: [], random: () => r,
+    }).owner?.id ?? null));
+    expect(owners).toEqual(new Set([null, 'start']));
   });
 });

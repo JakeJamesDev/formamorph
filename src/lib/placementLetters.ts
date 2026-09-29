@@ -13,6 +13,7 @@ import { qualifiedPlaceholderName } from './placeholderTree';
 import { sortedDescriptors } from './statDescriptorGeometry';
 import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import { entityTexts as entityTextFields } from './entityTexts';
+import { openingTexts } from './openings';
 import { overviewTexts } from './overviewTexts';
 
 /**
@@ -88,7 +89,7 @@ export interface PlacementWorld {
 }
 
 const entityTexts = (e: Entity) => present(entityTextFields(e));
-const locationTexts = (l: GameLocation) => present([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags]);
+const locationTexts = (l: GameLocation) => present([l.name, l.playerDescription, l.aiDescription, l.aiSummary, l.description, l.imageTags, ...openingTexts(l)]);
 const traitTexts = (t: Trait | TraitGroup) => present([t.name, t.playerDescription, t.aiDescription]);
 /** Bands run by threshold, the order the player meets them in, whatever order the author listed them. */
 const statTexts = (s: Stat) => present([s.name, s.description, ...sortedDescriptors(s).map((d) => d.description)]);

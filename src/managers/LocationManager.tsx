@@ -14,6 +14,7 @@ import { SoundUpload } from '../lib/UtilityComponents';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import ImageTagsField from './ImageTagsField';
 import LocationConnections from './LocationConnections';
+import { LocationOpenings } from './OpeningsPanel';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
 import { HintInfo } from '@/components/SettingsRows';
@@ -22,7 +23,7 @@ import { locationPanelTabsFor, locationTabForField, type LocationPanelTab } from
 import type { FocusFieldHint, GameLocation, PlaceholderPin } from '@/types';
 
 /**
- * Right-panel editor for one location: its fields split across Details, Presence, Media and Pins.
+ * Right-panel editor for one location: its fields split across Details, Presence, Media, Pins and Openings.
  *
  * The panel remounts per location, so the chosen tab is the editor's to hold and arrives as a prop. The
  * background image sits on Media rather than beside the name: a location has one slot and it is a backdrop,
@@ -203,6 +204,17 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             source={{ kind: 'location', id: editingLocation.id }}
             world={world}
             placeholders={placeholders}
+          />
+        </PanelTabContent>
+      )}
+
+      {advanced && (
+        <PanelTabContent value="openings">
+          <LocationOpenings
+            location={editingLocation}
+            placeholders={placeholders}
+            names={{ placeholders, letters: placementLetters, owners: placeholderOwners }}
+            onChange={apply}
           />
         </PanelTabContent>
       )}

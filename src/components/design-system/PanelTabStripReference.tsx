@@ -23,6 +23,7 @@ const LOCATION_BODY: Record<string, string> = {
   presence: 'The entity roster and the connections list.',
   media: 'Background image, tags, and ambient sound.',
   pins: 'Placeholder pin rows and their conflict notes.',
+  openings: 'The location\'s openings, drawn when a game starts at this location.',
 };
 
 const TRAIT_BODY: Record<string, string> = {
@@ -78,7 +79,7 @@ export function PanelTabStripReference() {
 
         <section aria-labelledby="panel-tab-strip-location" className="grid content-start gap-3 rounded-md border border-border p-4">
           <div className="space-y-1">
-            <h3 id="panel-tab-strip-location" className="text-label font-semibold">Four Tabs</h3>
+            <h3 id="panel-tab-strip-location" className="text-label font-semibold">Five Tabs</h3>
             <Meta>The location panel, in Advanced mode.</Meta>
           </div>
           <Strip tabs={LOCATION_PANEL_TABS} stripLabel="Sample Location Fields" body={LOCATION_BODY} />

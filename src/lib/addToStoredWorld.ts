@@ -124,7 +124,7 @@ export async function addCopyToStoredWorld(
     };
     // A switched-off list would bench the arriving openings, so the copy switches it back on, exactly as
     // the World Editor's own add does.
-    const overview = hasAuthoredOpenings(entity) && !openingsEnabled(data.worldOverview, [...kept, entity])
+    const overview = hasAuthoredOpenings(entity) && !openingsEnabled(data.worldOverview, [...kept, entity, ...places])
       ? { worldOverview: { ...(data.worldOverview as WorldOverview), ...setOpeningsEnabled(true) } }
       : {};
     return {

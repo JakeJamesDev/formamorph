@@ -1197,6 +1197,7 @@ const GameViewer = ({
   const sessionPool = () => openingPool({
     overview: worldOverview,
     entities,
+    locations,
     startingLocationId: openingSessionRef.current.startLocationId ?? pageOneLocationId(fullMessageHistory),
     picked: pickedAtStart(discoveredEntities),
     persona,
@@ -4086,7 +4087,7 @@ const GameViewer = ({
       // An Opening Narration is page one: the game starts on it at once, with the box left empty.
       // The whole world, since the cast in state still reads the persona from before this seed.
       const { persona: drawnPersona, draw: drawn, owner: drawnOwner } = drawNewGameOpening({
-        pick: personaPick, worldEntities: traitEntities, overview: worldOverview, startingLocationId: location?.id,
+        pick: personaPick, worldEntities: traitEntities, overview: worldOverview, locations, startingLocationId: location?.id,
         picked, random: Math.random,
       });
       openingSessionRef.current = {
