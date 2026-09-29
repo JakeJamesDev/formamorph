@@ -14,6 +14,7 @@ import { toolSchema } from '@/lib/tools/toolSchema';
 import { buildToolSnapshot } from '@/lib/tools/toolSnapshot';
 import type { AssistantToolCallMessage, Tool, ToolResultMessage, WireMessage } from '@/types';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
+import { AiStreamError } from './aiStream';
 import { DEFAULT_TOOL_ROUND_CAP, streamAiToolLoop, type AiToolLoopEvent, type AiToolLoopOptions } from './toolLoop';
 
 // --- Fixture: the Sedge Landing world behind the catalog's real entity lookup ------------------------------
@@ -474,6 +475,81 @@ describe('streamAiToolLoop: no Tools on the wire', () => {
     expect(transport.sent[0]).toEqual(s.body);
     expect(deltasOf(events)).toEqual(['plain ', 'reply']);
     expect(doneOf(events).content).toBe('plain reply');
+  });
+});
+
+describe('streamAiToolLoop: cut thoughts', () => {
+  const CUT = 'Bram is involved, so I should look him up before';
+  /** A round the server cut on length while the model was still thinking. */
+  const cutFrames = (...before: string[]): string[] => [...before, frame({ reasoning_content: CUT }), frame({}, 'length')];
+
+  /** Runs the loop to its end and returns the error it threw, with every event it yielded first. */
+  async function failure(transport: Transport, s: AiRequestSpec = spec()): Promise<{ error: unknown; events: AiToolLoopEvent[] }> {
+    const events: AiToolLoopEvent[] = [];
+    try {
+      for await (const event of streamAiToolLoop(s, { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0 })) events.push(event);
+    } catch (error) {
+      return { error, events };
+    }
+    throw new Error('The loop finished without failing');
+  }
+
+  it.each([['no Tools', null], ['Tools offered', [GET_ENTITY]]] as const)(
+    'fails a reasoning-only round that ends on length as a request failure, with no done (%s)',
+    async (_label, tools) => {
+      const { error, events } = await failure(scripted([cutFrames()]), spec(tools));
+
+      expect(error).toBeInstanceOf(AiStreamError);
+      expect(error).toMatchObject({ kind: 'cut-thought' });
+      expect((error as AiStreamError).details).toContain('max_tokens: 64');
+      expect(events.some((e) => e.type === 'done')).toBe(false);
+    },
+  );
+
+  it('fails an Inline-mode round cut inside its <think> block', async () => {
+    const { error } = await failure(scripted([[frame({ content: '<think>' }), frame({ content: CUT }), frame({}, 'length')]]), spec(null));
+
+    expect(error).toMatchObject({ kind: 'cut-thought' });
+  });
+
+  it('fails a round cut after a whitespace-only answer', async () => {
+    const { error } = await failure(scripted([cutFrames(frame({ content: '\n\n' }))]));
+
+    expect(error).toMatchObject({ kind: 'cut-thought' });
+  });
+
+  it('fails a cut round after a lookup and keeps its reasoning out of every request body', async () => {
+    const transport = scripted([
+      [frame({ reasoning_content: 'Look up Bram.' }), ...callFrames(['get_entity', { name: 'Bram' }])],
+      cutFrames(),
+      // A loop that carried the cut thought forward would send this round.
+      proseFrames('Bram waves.'),
+    ]);
+
+    const error = await run(transport).then(() => null, (e: unknown) => e);
+
+    for (const body of transport.sent) expect(JSON.stringify(body)).not.toContain(CUT);
+    expect(transport.sent).toHaveLength(2);
+    expect(error).toMatchObject({ kind: 'cut-thought' });
+  });
+
+  it('runs the call of a round whose thought finished, even when the server then stopped it on length', async () => {
+    const transport = scripted([
+      [frame({ reasoning_content: 'Look up Bram.' }), ...callFrames(['get_entity', { name: 'Bram' }]).slice(0, -1), frame({}, 'length')],
+      proseFrames('Bram waves.'),
+    ]);
+
+    const events = await run(transport);
+
+    expect(transport.sent).toHaveLength(2);
+    expect(toolMessagesOf(transport.sent[1])[0].content).toContain(BRAM_FACT);
+    expect(doneOf(events)).toMatchObject({ content: 'Bram waves.', finishReason: 'stop' });
+  });
+
+  it('returns a server-cut answer as today, finishing on length', async () => {
+    const events = await run(scripted([[frame({ reasoning_content: 'Write.' }), frame({ content: 'Bram waves and' }), frame({}, 'length')]]));
+
+    expect(doneOf(events)).toMatchObject({ content: 'Bram waves and', finishReason: 'length' });
   });
 });
 

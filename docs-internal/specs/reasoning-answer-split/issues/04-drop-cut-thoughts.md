@@ -1,6 +1,7 @@
 # 04: Drop cut thoughts
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3eeb07ff
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -14,9 +15,16 @@ A round that ends with `finish_reason: length` before any answer text and with n
 
 ## Acceptance criteria
 
-- [ ] Tool-loop test: a reasoning-only round ending on `length` fails through the existing failure path.
-- [ ] That reasoning is absent from every later request body.
-- [ ] A tool round whose thought finishes still runs its tool call.
-- [ ] Each guard test fails when its bug is put back.
-- [ ] Changelog line in 🚧 In Progress.
-- [ ] Four gates green.
+- [x] Tool-loop test: a reasoning-only round ending on `length` fails through the existing failure path.
+- [x] That reasoning is absent from every later request body.
+- [x] A tool round whose thought finishes still runs its tool call.
+- [x] Each guard test fails when its bug is put back.
+- [x] Changelog line in 🚧 In Progress.
+- [x] Four gates green.
+
+## Notes
+
+- A cut round throws `AiStreamError` of kind `cut-thought` from the tool loop, on the plain path and in every tool round. The Error Details carry the request, the model and the sent `max_tokens`.
+- A round that ends on `length` with a call is not cut: its call runs as today. A round with answer text is not cut: it returns its text on `length` as today.
+- Mutation proof: ignoring calls, ignoring answer text, no throw on the plain path, and carrying the cut reasoning into a retry round each fail their own test.
+- Full suite: one load-only failure in `VariableNode.label.test.tsx` (outside this unit); it passes alone.
