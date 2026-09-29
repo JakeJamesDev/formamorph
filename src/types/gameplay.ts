@@ -111,8 +111,14 @@ export interface VrmData {
   type: string;
   blob: Blob;
   size: number;
-  /** Portrait as a data URL: the file's embedded thumbnail, else one rendered on first view. */
+  /** The shown portrait as a data URL: the variant `thumbnailSource` picks, else whichever exists. */
   thumbnail?: string;
+  /** Which variant the card shows. Absent means `file`. */
+  thumbnailSource?: AvatarThumbnailSource;
+  /** The file's embedded image, card-sized. `null` when the file has none; absent until the file is read. */
+  fileThumbnail?: string | null;
+  /** The rendered head-and-shoulders portrait, cached after its first render. */
+  generatedThumbnail?: string;
   /** Absent on records stored before the library read metadata; resolved lazily, then kept. */
   license?: VrmLicense;
   /** Content hash for duplicate detection. Absent on records stored before hashing existed. */
@@ -146,12 +152,18 @@ export interface VrmLicense {
 
 /** Lightweight preview record for the model library grid and the character-model picker. Carries no blob, so
  *  the grid can render without holding every model's bytes. */
+/** Where an Avatar's card image comes from: the file's embedded image, or the rendered portrait. */
+export type AvatarThumbnailSource = 'file' | 'generated';
+
 export interface ModelMetadata extends CommunityLink {
   id: string;
   name: string;
   type: string;
   size: number;
   thumbnail?: string;
+  thumbnailSource?: AvatarThumbnailSource;
+  /** Whether the file carries an embedded image. Absent until the file has been read. */
+  hasFileThumbnail?: boolean;
   license?: VrmLicense;
   createdAt?: string;
   lastAccessed?: string;
