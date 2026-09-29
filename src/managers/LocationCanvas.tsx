@@ -34,7 +34,7 @@ import { labelPlaceholders } from '@/lib/placementLetters';
 import type { ConnectionDirection } from '@/lib/connectionEditing';
 import {
   applyCanvasDrops, applyCanvasIntent, beginCanvasDrag, buildLocationCanvas, CANVAS_GRID, connectIntent,
-  connectionEnds, deleteIntent, directionIntent, directionOf, hintIntent, isStationaryClick, leafTarget,
+  connectionEnds, deleteIntent, directionIntent, directionOf, updateIntent, isStationaryClick, leafTarget,
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
@@ -320,7 +320,7 @@ const ConnectionInspector = ({ connection, focus, nameOf, onIntent, onClose }: {
           };
         })}
         idPrefix={`canvas-connection-${connection.id}`}
-        onChange={(next, mergeKey) => onIntent(hintIntent(next), mergeKey)}
+        onChange={(next, mergeKey) => onIntent(updateIntent(next), mergeKey)}
         focus={focus}
       />
     </Panel>
@@ -892,7 +892,7 @@ const CanvasInner = ({ selectedId, onSelect, session, fullscreen, onToggleFullsc
     }
     setSelectedConnectionId(clicked.connectionId);
     const { connectionId, leg } = clicked;
-    if (leg) setHintFocus((last) => ({ connectionId, leg, at: (last?.at ?? 0) + 1 }));
+    if (leg) setHintFocus((last) => ({ connectionId, leg, nonce: (last?.nonce ?? 0) + 1 }));
   }, [map, connections, applyIntent, setSelectedConnectionId]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<LocationNodeType>([]);

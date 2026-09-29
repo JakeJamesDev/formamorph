@@ -5,7 +5,7 @@ import {
   type CanvasEdit, type CanvasHistory, type CanvasRestore, type CanvasWorld,
 } from "./canvasHistory";
 import {
-  applyCanvasDrops, applyCanvasIntent, connectIntent, deleteIntent, directionIntent, hintIntent,
+  applyCanvasDrops, applyCanvasIntent, connectIntent, deleteIntent, directionIntent, updateIntent,
   multiDropIntents,
 } from "./locationCanvas";
 import { autoArrange, autoArrangeAll } from "./locationArrange";
@@ -174,7 +174,7 @@ describe("the canvas history stack", () => {
 
   it("folds a run of hint keystrokes into one step, and starts a new one after something else", () => {
     const base: Connection[] = [{ id: "conn-1", a: "village", b: "shore", aToB: {}, bToA: {} }];
-    const typed = ["t", "th", "thr"].map((hint) => applyCanvasIntent(base, hintIntent(withHint(base[0], "aToB", hint))));
+    const typed = ["t", "th", "thr"].map((hint) => applyCanvasIntent(base, updateIntent(withHint(base[0], "aToB", hint))));
     let history = EMPTY_CANVAS_HISTORY;
     let before = base;
     for (const after of typed) {

@@ -828,12 +828,12 @@ The same levels work on desktop and on a phone. Nothing opens to the side, so a 
 
 ## Pattern: Travel Hint Pair
 
-**Purpose:** Edit a two-way Connection's two Travel Hints, one for each direction, and let one hint cover both.
+**Purpose:** Edit a two-way Connection's two Travel Hints, one for each direction, or use one hint for both.
 
-- 📚 **Two stacked boxes.** Each box edits one direction and carries that direction in its label. The first box is the one a link copies from.
-- 🔗 **Vertical link toggle.** A ghost button sits to the right of both boxes and spans their full height. It shows a vertical chain (`link-2`, rotated 90°) when linked and a broken chain (`link-2-off`) when unlinked. Its tooltip names what a click does: **Link Travel Hints** or **Unlink Travel Hints**.
-- 🔒 **Linked.** The first box writes both directions. The second box is read-only, muted, and shows the first box's text. Screen readers hear that it copies the first hint.
-- ✏️ **Unlinked.** Both boxes are editable. Unlinking gives the second box back the text it held before the last link.
+- 📚 **Two stacked boxes.** Each box edits one direction and carries that direction in its label. A link copies the top box into the bottom box.
+- 🔗 **Vertical link toggle.** A ghost button sits to the right of both boxes and spans their full height. Its icon, rotated 90°, is a chain (`link-2`) when linked and a broken chain (`link-2-off`) when unlinked. Its tooltip names what a click does: **Link Travel Hints** or **Unlink Travel Hints**.
+- 🔒 **Linked.** The top box writes both directions. The bottom box is read-only, muted, and shows the top box's text. Screen readers hear that it copies the first Travel Hint.
+- ✏️ **Unlinked.** Both boxes are editable. Unlinking restores the text the bottom box had before the last link.
 - ➡️ **One-way.** One box and no toggle. Switching to two-way adds the second box, linked.
 
 The link state is never saved. The pair opens linked when both hints are equal, and reads the state again when the hints change somewhere else, such as an undo.

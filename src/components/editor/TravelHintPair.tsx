@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { hintsLinked, withHint, withLink, withUnlink } from '@/lib/connectionEditing';
-import { otherLeg } from '@/lib/locationGraph';
 import type { Connection, LegKey } from '@/types';
 
 /** One hint box: the leg it edits, its visible label, and its accessible name. */
@@ -16,10 +15,10 @@ export interface TravelHintLeg {
   name: string;
 }
 
-/** A request to focus one leg's box. A new `at` refocuses the same leg. */
+/** A request to focus one leg's box. A new `nonce` refocuses the same leg. */
 export interface TravelHintFocus {
   leg: LegKey;
-  at: number;
+  nonce: number;
 }
 
 /**
@@ -33,7 +32,7 @@ interface LinkRecord {
   held?: string;
 }
 
-const COPIES = 'Copies the first Travel Hint while linked';
+const COPIES = 'Copies the first Travel Hint';
 
 /**
  * A Connection's Travel Hint boxes, first leg on top, with a vertical link toggle beside a two-way pair.
@@ -87,7 +86,7 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
       <div className="min-w-0 flex-1 space-y-2">
         {legs.map(({ key, label, name }) => {
           const id = `${idPrefix}-${key}`;
-          const copy = linked && key === otherLeg(first.key);
+          const copy = linked && key === second?.key;
           return (
             <div key={key} className="space-y-1">
               <Label htmlFor={id} className="flex items-center gap-1">{label}</Label>

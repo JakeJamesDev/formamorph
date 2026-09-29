@@ -70,6 +70,8 @@ export interface CanvasEdge {
   connectionId?: string;
   /** The leg this arrow draws, so selecting it can focus that leg's Travel Hint. */
   leg?: LegKey;
+  /** A partner arrow runs the other way beside this one. */
+  paired?: true;
 }
 
 export interface LocationCanvasMap {
@@ -176,8 +178,8 @@ export function buildLocationCanvas(
   for (const [a, b] of implicitPairs(locations)) {
     if (parentChild(a, b)) continue; // containment already draws this: the child sits in the box
     if (overridden.has(pairKey(a, b))) continue; // the Connection's arrows stand in its place
-    edges.push({ id: `implicit:${a}>${b}`, source: a, target: b, kind: "implicit" });
-    edges.push({ id: `implicit:${b}>${a}`, source: b, target: a, kind: "implicit" });
+    edges.push({ id: `implicit:${a}>${b}`, source: a, target: b, kind: "implicit", paired: true });
+    edges.push({ id: `implicit:${b}>${a}`, source: b, target: a, kind: "implicit", paired: true });
   }
   for (const connection of connections) {
     if (!known.has(connection.a) || !known.has(connection.b)) continue;
@@ -192,6 +194,7 @@ export function buildLocationCanvas(
         kind: "connection",
         connectionId: connection.id,
         leg: key,
+        ...(paired ? { paired: true as const } : {}),
         ...(label ? { label, ...(paired && !shared ? { labelOuter: true as const } : {}) } : {}),
       });
     }
@@ -627,7 +630,7 @@ export function directionIntent(connection: Connection, direction: ConnectionDir
 }
 
 /** A selected Connection as its Travel Hint pair rewrote it: a hint edit, a link, or an unlink. */
-export function hintIntent(connection: Connection): CanvasIntent {
+export function updateIntent(connection: Connection): CanvasIntent {
   return { kind: "update", connection };
 }
 

@@ -1,6 +1,6 @@
 # 02: Link toggle for Travel Hints
 
-Status: in-progress
+Status: ready-for-human
 Base: e29aaa9e
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -36,5 +36,7 @@ One shared component renders the pair and the toggle for both the canvas inspect
 - The pair keeps each Connection's link state with the record it last wrote. A record that arrives from anywhere else, such as a canvas undo, is read again from its hints, so undoing a link or an unlink also restores the toggle.
 - Unlink with no held text (the pair opened linked) keeps the copied text in the second box.
 - The toggle's accessible name stays **Link Travel Hints** with `aria-pressed`. Only the tooltip switches to **Unlink Travel Hints**, so a screen reader does not hear the state twice.
-- Each arrow of a pair now takes clicks only on its own outer side (`FloatingEdge` draws its own hit path). The two arrows sit 10px apart with 20px hit strokes, so a click on one arrow's line selected its partner leg.
+- Each arrow of a pair now takes clicks only on its own outer side (`FloatingEdge` draws its own hit path for a `paired` edge). The two arrows sit 10px apart with 20px hit strokes, so a click on one arrow's line selected its partner leg. A lone arrow keeps its centered hit stroke.
+- Review fold-in: `hintIntent` became `updateIntent`, since the pair hands it a whole rewritten record; `TravelHintFocus.at` became `nonce`; copy fixes in the changelog and the Design System entry.
+- Not covered by a test: the tooltip switching to **Unlink Travel Hints** (Base UI tooltips don't open in jsdom).
 - `e2e/locations-reference.spec.ts` covers the canvas path: arrow click focus, link, one undo step per keystroke run, and undo of the link.
