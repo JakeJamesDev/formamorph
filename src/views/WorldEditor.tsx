@@ -65,7 +65,6 @@ import LocationManager from '../managers/LocationManager';
 import TraitManager from '../managers/TraitManager';
 import GroupManager from '../managers/GroupManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
-import PlaceholderGroupManager from '../managers/PlaceholderGroupManager';
 import TraitTree from '../managers/TraitTree';
 import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
 import { useRemoveEntity } from '../managers/useRemoveEntity';
@@ -97,9 +96,8 @@ import DictionaryManager from '../managers/DictionaryManager';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
-import PlaceholderManager from '../managers/PlaceholderManager';
 import PlaceholderList from '../managers/PlaceholderList';
-import { PlaceholderCopyEditor, PlaceholderCopyFooter } from '../managers/PlaceholderCopyEditor';
+import { usePlaceholderDetail } from '../managers/PlaceholderDetail';
 import DictionaryTree from '../managers/DictionaryTree';
 import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
@@ -113,12 +111,8 @@ import AddEntityModal from '@/components/modals/AddEntityModal';
 import ReplaceSourceModal from '@/components/modals/ReplaceSourceModal';
 import { exportEntityCard } from '@/lib/entityFile';
 import { newPlaceholder } from '@/lib/placeholders';
-import { placeholderOwnerRef } from '@/lib/placeholderHomes';
-import { ownerIdOfNode } from '@/lib/placeholderScopes';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { hasAuthoredOpenings, openingsEnabled, setOpeningsEnabled } from '@/lib/openings';
-import { placeholderSelection } from '@/lib/placeholderTree';
-import PlaceholderOwnerPanel from '../managers/PlaceholderOwnerPanel';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
@@ -841,30 +835,20 @@ const WorldEditorInner = ({
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
   // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
-  // each of those weights it differently. Memoized because resolving one walks the whole tree, and this
-  // component re-renders on every keystroke in any panel.
-  // An owner node on that tab is derived from an entity or book: selecting it opens a header naming it.
-  const selectedPlaceholderOwner = useMemo(() => {
-    const ownerId = selectedItemId ? ownerIdOfNode(selectedItemId) : null;
-    return ownerId ? placeholderOwnerRef({ entities, dictionaries }, ownerId) ?? null : null;
-  }, [selectedItemId, entities, dictionaries]);
-  const selectedPlaceholderGroup = placeholderGroups.find(g => g.id === selectedItemId);
-  const selectedPlaceholder = useMemo(
-    () => placeholderSelection(placeholders, selectedItemId), [placeholders, selectedItemId],
-  );
-  // A copy edits over its blueprint, with Reset to Blueprint in the frozen footer.
-  const selectedCopy = activeTab === 'placeholders' && !selectedPlaceholderGroup ? selectedPlaceholder?.row.placeholder : undefined;
-  const copyBlueprint = selectedCopy?.blueprintId ? placeholders.find(p => p.id === selectedCopy.blueprintId) : undefined;
-  const copyFooter = selectedCopy && copyBlueprint
-    ? <PlaceholderCopyFooter copy={selectedCopy} onEditBlueprint={() => setSelectedItemId(copyBlueprint.id)} />
-    : undefined;
+  // each of those weights it differently. An owner node opens a header naming its entity or book.
+  const placeholderDetail = usePlaceholderDetail({
+    selectedId: activeTab === 'placeholders' ? selectedItemId : null,
+    onSelect: setSelectedItemId,
+    onOpenOwner: (owner) => (owner.kind === 'entity'
+      ? navigateToBenchItem('entities', owner.id, 'placeholders')
+      : navigateToBenchItem('dictionary', owner.id)),
+  });
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
     activeTab === 'entities' ? selectedEntity?.id
     : activeTab === 'dictionary' ? (selectedBook ?? selectedEntryBook)?.id
-    : activeTab === 'placeholders'
-      ? selectedPlaceholderOwner?.id ?? (selectedPlaceholder ? placeholderOwners.get(selectedPlaceholder.row.placeholder.id)?.id : undefined)
+    : activeTab === 'placeholders' ? placeholderDetail.ownerId
     : undefined;
 
   // Contextual footer actions. The whole world is the only thing still exported by a button of its own;
@@ -1123,34 +1107,7 @@ const WorldEditorInner = ({
       {activeTab === "statUpdates" && selectedItem && (
         <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
       )}
-      {activeTab === "placeholders" && selectedPlaceholderGroup && (
-        <PlaceholderGroupManager key={selectedPlaceholderGroup.id} group={selectedPlaceholderGroup} />
-      )}
-      {activeTab === "placeholders" && selectedPlaceholderOwner && (
-        <PlaceholderOwnerPanel
-          owner={selectedPlaceholderOwner}
-          placeholders={placeholders}
-          onOpen={() => (selectedPlaceholderOwner.kind === 'entity'
-            ? navigateToBenchItem('entities', selectedPlaceholderOwner.id, 'placeholders')
-            : navigateToBenchItem('dictionary', selectedPlaceholderOwner.id))}
-        />
-      )}
-      {selectedCopy && copyBlueprint && selectedPlaceholder && (
-        <PlaceholderCopyEditor
-          key={selectedPlaceholder.row.id}
-          copy={selectedCopy}
-          blueprint={copyBlueprint}
-          ownerName={placeholderOwners.get(selectedCopy.id)?.name ?? ''}
-        />
-      )}
-      {activeTab === "placeholders" && !selectedPlaceholderGroup && selectedPlaceholder && !copyBlueprint && (
-        <PlaceholderManager
-          key={selectedPlaceholder.row.id}
-          placeholder={selectedPlaceholder.row.placeholder}
-          rowId={selectedPlaceholder.row.id}
-          share={selectedPlaceholder.share}
-        />
-      )}
+      {activeTab === "placeholders" && placeholderDetail.detail}
     </div>
     </ChipInsertTargetProvider>
   );
@@ -1444,7 +1401,7 @@ const WorldEditorInner = ({
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
-                      detailFooter={detailFooter ?? copyFooter}
+                      detailFooter={detailFooter ?? placeholderDetail.footer}
                     />
                   ))}
                 </Tabs>
@@ -1492,7 +1449,7 @@ const WorldEditorInner = ({
                       ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
                       : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
-                  {detailFooter ?? copyFooter}
+                  {detailFooter ?? placeholderDetail.footer}
                 </Card>
               </div>
             </Panel>
