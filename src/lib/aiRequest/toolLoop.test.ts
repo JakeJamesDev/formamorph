@@ -550,3 +550,89 @@ describe('streamAiToolLoop: silent capture', () => {
     expect(rounds).toHaveLength(2);
   });
 });
+
+describe('streamAiToolLoop: Answer Cap', () => {
+  const capped = (answerCap: number, tools: readonly Tool[] | null = null): AiRequestSpec => ({ ...spec(tools), answerCap });
+  // At a cap of 5 the answer holds 20 characters, so the cut lands inside the second piece.
+  const LONG_PROSE = ['The door opens. ', 'Bram looks up and ', 'waves. ', 'He smiles.'];
+
+  /** A transport for one response that remembers the signal its request was sent with. */
+  function watched(frames: string[] | string): Transport & { signal: () => AbortSignal | undefined } {
+    let seen: AbortSignal | undefined;
+    const transport = scripted([(signal) => { seen = signal; return streamingResponse(typeof frames === 'string' ? [frames] : frames); }]);
+    return { ...transport, signal: () => seen };
+  }
+
+  it.each([['no Tools', null], ['Tools offered', [GET_ENTITY]]] as const)(
+    'aborts the request past the cap, trims to the last sentence end, and finishes on length (%s)',
+    async (_label, tools) => {
+      const transport = watched(proseFrames(...LONG_PROSE));
+
+      const events = await run(transport, {}, capped(5, tools));
+
+      expect(transport.signal()?.aborted).toBe(true);
+      expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'length', toolCalls: [] });
+      expect(deltasOf(events).join('')).toBe('The door opens. Bram');
+    },
+  );
+
+  it('keeps the cut text when the answer has no sentence end', async () => {
+    const events = await run(watched(proseFrames('The door opens and ', 'Bram looks up')), {}, capped(5));
+
+    expect(doneOf(events)).toMatchObject({ content: 'The door opens and B', finishReason: 'length' });
+  });
+
+  it('never counts reasoning, however long it runs', async () => {
+    const thought = Array.from({ length: 10 }, () => frame({ reasoning: 'x'.repeat(400) }));
+    const transport = watched([...thought, ...proseFrames('Bram waves.')]);
+
+    const events = await run(transport, {}, capped(5));
+
+    expect(transport.signal()?.aborted).toBe(false);
+    expect(doneOf(events)).toMatchObject({ content: 'Bram waves.', finishReason: 'stop' });
+    expect(doneOf(events).reasoningText).toHaveLength(4000);
+  });
+
+  it('gives the same trimmed text when every event arrives in one chunk, or the answer in one frame', async () => {
+    const oneChunk = await run(watched(proseFrames(...LONG_PROSE).join('')), {}, capped(5));
+    const oneFrame = await run(watched(proseFrames(LONG_PROSE.join(''))), {}, capped(5));
+
+    for (const events of [oneChunk, oneFrame]) {
+      expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'length' });
+      expect(deltasOf(events).join('')).toBe('The door opens. Bram');
+    }
+  });
+
+  it('counts the answer from the close of a leading <think> block', async () => {
+    const think = `<think>${'x'.repeat(300)}</think>`;
+    const long = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', ...LONG_PROSE)), {}, capped(5));
+    const short = await run(watched(proseFrames('<think>', 'x'.repeat(300), '</think>', 'Bram waves.')), {}, capped(5));
+
+    expect(doneOf(long)).toMatchObject({ content: `${think}The door opens.`, finishReason: 'length' });
+    expect(doneOf(short)).toMatchObject({ content: `${think}Bram waves.`, finishReason: 'stop' });
+  });
+
+  it('counts each round on its own, so text a tool round wrote takes none of the reply\'s room', async () => {
+    const transport = scripted([
+      [frame({ content: 'Let me check. ' }), ...callFrames(['get_entity', { name: 'Bram' }])],
+      proseFrames('The door opens.'),
+    ]);
+
+    const events = await run(transport, {}, capped(5, [GET_ENTITY]));
+
+    expect(doneOf(events)).toMatchObject({ content: 'The door opens.', finishReason: 'stop' });
+  });
+
+  it('finishes a player cancel as aborted, not length, with a cap set', async () => {
+    const controller = new AbortController();
+    const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' })])]);
+
+    const events: AiToolLoopEvent[] = [];
+    for await (const event of streamAiToolLoop(capped(5), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
+      events.push(event);
+      if (event.type === 'delta') controller.abort();
+    }
+
+    expect(doneOf(events)).toMatchObject({ content: 'The ', finishReason: 'aborted' });
+  });
+});

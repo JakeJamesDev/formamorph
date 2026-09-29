@@ -81,7 +81,7 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { streamAiRequest, ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
@@ -3080,9 +3080,7 @@ const GameViewer = ({
 
       // Tool rounds are silent requests: kept for the AI-context viewer only when the inspection toggle is on.
       const toolRounds: AiToolRound[] = [];
-      const events = executeTool
-        ? streamAiToolLoop(spec, { signal, execute: executeTool, captureRounds: showSilentRequests })
-        : streamAiRequest(spec, { signal });
+      const events = streamAiToolLoop(spec, { signal, execute: executeTool, captureRounds: showSilentRequests });
       for await (const event of events) {
         if (event.type === "debug") {
           // The endpoint answered: commit to this turn's reveal. The `request` debug is already captured

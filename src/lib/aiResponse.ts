@@ -52,6 +52,17 @@ export function stripReasoningLive(text: string): string {
 }
 
 /**
+ * Where the answer starts: past a leading reasoning block, 0 when the text opens with none, or null while
+ * that block has not closed. Pure.
+ */
+export function answerStart(text: string): number | null {
+  const open = text.match(new RegExp(`^\\s*<(${REASONING_ALT})(?:\\s[^>]*)?>`, 'i'));
+  if (!open) return 0;
+  const close = new RegExp(`</${open[1]}>`, 'i').exec(text.slice(open[0].length));
+  return close ? open[0].length + close.index + close[0].length : null;
+}
+
+/**
  * The inverse of `stripReasoning`: the concatenated text *inside* every complete reasoning block
  * (the model's private scratchpad), for the reasoning-block UI. Empty when there's no inline block
  * (a native reasoning model streams its scratchpad in a separate field, captured separately). Pure.

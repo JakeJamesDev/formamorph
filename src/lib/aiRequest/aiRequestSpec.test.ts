@@ -484,6 +484,20 @@ describe('the whole spec', () => {
     expect(spec.requestType).toBe('narration');
   });
 
+  it('carries the Answer Cap apart from a wire cap that adds the reasoning budget', () => {
+    const takesBudget = external({ reasoning: { ...accepts('none', 'low', 'high'), budget: true } });
+    const snap = snapshot(takesBudget, { reasoningEngaged: true, reasoningEffort: 'high', promptReasoningBudget: { narration: 50 } });
+    const spec = buildAiRequestSpec(snap, call());
+    expect(spec.body.max_tokens).toBe(1200);
+    expect(spec.answerCap).toBe(800);
+  });
+
+  it('carries a prompt’s custom Max Output as the Answer Cap, and none where nothing caps the output', () => {
+    const custom = snapshot(external(), { promptMaxOutput: { summary: { custom: true, value: 300 } } });
+    expect(buildAiRequestSpec(custom, call({ requestType: 'summary', maxTokensOverride: 200 })).answerCap).toBe(300);
+    expect(buildAiRequestSpec(snapshot(external({ maxTokens: undefined })), call())).not.toHaveProperty('answerCap');
+  });
+
   it('prefers a max-token override to the target cap', () => {
     const spec = buildAiRequestSpec(snapshot(external()), call({ maxTokensOverride: 120 }));
     expect(spec.body.max_tokens).toBe(120);

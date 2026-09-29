@@ -1,6 +1,9 @@
 import type { AssistantToolCallMessage, Tool, ToolCallPart, WireMessage } from '@/types';
 import { DEFAULT_TOOL_CALL_LIMIT } from '@/contexts/settingsDefaults';
 import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
+import { answerStart } from '@/lib/aiResponse';
+import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
+import { trimToLastSentence } from '@/lib/outputLength';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import {
   ABORTED_FINISH_REASON, streamAiRequest,
@@ -17,6 +20,8 @@ import {
  * model's own reasoning under the field the server named) plus one `tool` result per call. A limit, a
  * malformed call or an unknown Tool sends one more round without Tools, so the model finishes in prose;
  * that round streams live. Tool rounds are silent requests: they are captured only when asked.
+ *
+ * Every round runs under the spec's Answer Cap, counted on that round's answer text alone.
  */
 
 /** Requests one call of the loop may send, tool rounds and the final round together. */
@@ -57,7 +62,8 @@ export type AiToolLoopEvent =
   | { type: 'roundStarted' };
 
 export interface AiToolLoopOptions extends AiStreamOptions {
-  execute: ToolExecutor;
+  /** Runs the offered Tools. Without it, the request goes out as the plain stream. */
+  execute?: ToolExecutor;
   /** Calls one Tool may make per request where the Tool sets no limit of its own. */
   callLimit?: number;
   roundCap?: number;
@@ -73,22 +79,68 @@ const errorResult = (error: string): string => JSON.stringify({ error });
 /** Every round's reasoning as one text, blank rounds left out. */
 const joinReasoning = (parts: readonly string[]): string => parts.filter((p) => p.trim()).join('\n\n');
 
+/** The finish reason a server gives a reply it cut at its cap. A reply cut at the Answer Cap reports the same. */
+const LENGTH_FINISH_REASON = 'length';
+
+/**
+ * One request under the spec's Answer Cap. Answer text counts from the end of a leading reasoning block;
+ * reasoning events and call arguments never count. Past the cap, the request is aborted and no delta runs
+ * past the cut. `done` then carries the answer trimmed to its last sentence end, with no calls.
+ */
+async function* streamCapped(spec: AiStreamSpec, options: AiStreamOptions): AsyncGenerator<AiStreamEvent, void, void> {
+  if (spec.answerCap === undefined) {
+    yield* streamAiRequest(spec, options);
+    return;
+  }
+  const limit = spec.answerCap * CHARS_PER_TOKEN;
+  const stop = options.signal;
+  const controller = new AbortController();
+  const forwardStop = () => controller.abort();
+  if (stop?.aborted) controller.abort();
+  else stop?.addEventListener('abort', forwardStop, { once: true });
+  // The content at the cap, once the answer passes it.
+  let cut: string | null = null;
+  let start = 0;
+
+  try {
+    for await (const event of streamAiRequest(spec, { ...options, signal: controller.signal })) {
+      if (event.type === 'delta') {
+        if (cut !== null) continue;
+        const at = answerStart(event.content);
+        if (at === null || event.content.length - at <= limit) { yield event; continue; }
+        start = at;
+        cut = event.content.slice(0, at + limit);
+        controller.abort();
+        const delta = cut.slice(event.content.length - event.delta.length);
+        if (delta) yield { type: 'delta', delta, content: cut };
+      } else if (event.type === 'done' && cut !== null && !stop?.aborted) {
+        const content = cut.slice(0, start) + trimToLastSentence(cut.slice(start));
+        yield { type: 'done', result: { ...event.result, content, finishReason: LENGTH_FINISH_REASON, toolCalls: [] } };
+      } else {
+        yield event;
+      }
+    }
+  } finally {
+    stop?.removeEventListener('abort', forwardStop);
+  }
+}
+
 /**
  * Stream one request through the tool loop. Yields the stream's own events for the reply, `reasoning`
  * events carrying every round's thinking so far, and a `toolRound` per tool round when capturing. Without
- * Tools on the wire, this is the plain stream.
+ * Tools on the wire, this is the plain stream under the Answer Cap.
  */
 export async function* streamAiToolLoop(
   spec: AiRequestSpec,
   options: AiToolLoopOptions,
 ): AsyncGenerator<AiToolLoopEvent, void, void> {
   const tools = spec.tools;
-  if (!tools?.length || !spec.body.tools) {
-    yield* streamAiRequest(spec, options);
+  const { signal, execute } = options;
+  if (!tools?.length || !spec.body.tools || !execute) {
+    yield* streamCapped(spec, options);
     return;
   }
 
-  const { signal, execute } = options;
   const callLimit = options.callLimit ?? DEFAULT_TOOL_CALL_LIMIT;
   const roundCap = options.roundCap ?? DEFAULT_TOOL_ROUND_CAP;
   const messages: WireMessage[] = [...spec.body.messages];
@@ -149,7 +201,7 @@ export async function* streamAiToolLoop(
     let live = !offering;
     let result: AiStreamResult | undefined;
 
-    for await (const event of streamAiRequest(roundSpec, options)) {
+    for await (const event of streamCapped(roundSpec, options)) {
       if (event.type === 'done') { result = event.result; break; }
       if (answeredCalls && (event.type === 'delta' || event.type === 'reasoning')) {
         answeredCalls = false;
