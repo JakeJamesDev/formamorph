@@ -541,6 +541,84 @@ describe('the openings panel', () => {
     renderManager(true, { fieldKey: openingFieldKey('o2'), itemId: null });
     expect(field('Opening 2').value).toBe('The ferry bell rings twice.');
   });
+
+  describe('collapsing', () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => ({
+      id: `c${i + 1}`, text: `Line ${i + 1}\nSecond line ${i + 1}`, kind: 'action' as const,
+    }));
+    const textBoxes = () => screen.queryAllByTestId(/^Opening \d+$/);
+    const collapseAll = () => screen.getByRole('button', { name: /^(Collapse|Expand) all openings$/ });
+
+    it('opens a list of two rows expanded', async () => {
+      world.overview.openings = rows(2);
+      await browse();
+      expect(textBoxes()).toHaveLength(2);
+    });
+
+    it('opens a list of three rows collapsed, each on its first line with an ellipsis', async () => {
+      world.overview.openings = rows(3);
+      await browse();
+      expect(textBoxes()).toHaveLength(0);
+      expect(screen.getByRole('button', { name: 'Expand Opening 2' })).toHaveTextContent('Opening 2Line 2 …');
+    });
+
+    it('opens a row added to a collapsed list expanded', async () => {
+      world.overview.openings = rows(3);
+      const user = await browse();
+      await user.click(screen.getByRole('button', { name: /Add Opening/ }));
+      expect(textBoxes().map((b) => b.dataset.testid)).toEqual(['Opening 4']);
+    });
+
+    it('takes every card down and back up in one press', async () => {
+      world.overview.openings = rows(2);
+      const user = await browse();
+      await user.click(collapseAll());
+      expect(textBoxes()).toHaveLength(0);
+      await user.click(collapseAll()); // now reading 'Expand all openings'
+      expect(textBoxes()).toHaveLength(2);
+    });
+
+    it('is not offered for a lone opening', async () => {
+      world.overview.openings = rows(1);
+      await browse();
+      expect(screen.queryByRole('button', { name: /all openings$/ })).not.toBeInTheDocument();
+    });
+
+    it('keeps the kind, weight and remove live on a collapsed card', async () => {
+      world.overview.openings = rows(3);
+      const user = await browse();
+      const opensAs = within(screen.getByRole('radiogroup', { name: 'Opens As, Opening 2' }));
+      await user.click(opensAs.getByRole('radio', { name: 'Narration' }));
+      expect(world.overview.openings?.[1].kind).toBe('narration');
+
+      const weight = screen.getByLabelText('Draw weight for Opening 2');
+      await user.clear(weight);
+      await user.type(weight, '3');
+      expect(world.overview.openingWeights).toEqual({ c2: 3 });
+      expect(screen.getByLabelText('Chance for Opening 2')).toHaveTextContent('60%');
+
+      await user.click(screen.getByRole('button', { name: 'Remove Opening 3' }));
+      expect(world.overview.openings?.map((o) => o.id)).toEqual(['c1', 'c2']);
+      expect(textBoxes()).toHaveLength(0);
+    });
+
+    it('reorders collapsed cards by keyboard drag', async () => {
+      world.overview.openings = rows(3);
+      // jsdom lays nothing out; stack the rows 40px apart so the keyboard sensor can find a neighbor.
+      const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const row = this.closest<HTMLElement>('[data-testid="opening-row"]');
+        const i = row ? [...row.parentElement!.children].indexOf(row) : 0;
+        return DOMRect.fromRect({ x: 0, y: i * 40, width: 300, height: 36 });
+      });
+      const user = await browse();
+      screen.getByRole('button', { name: 'Reorder Opening 3' }).focus();
+      await user.keyboard('[Space]');
+      await user.keyboard('[ArrowUp]');
+      await user.keyboard('[Space]');
+      rect.mockRestore();
+      expect(world.overview.openings?.map((o) => o.id)).toEqual(['c1', 'c3', 'c2']);
+    });
+  });
 });
 
 describe('the mirrored openings panel', () => {

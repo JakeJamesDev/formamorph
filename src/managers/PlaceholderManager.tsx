@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { ChevronDown, ChevronsDownUp, ChevronsUpDown, Dices, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, Dices, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
+import { CollapseAllButton } from '@/components/CollapseAllButton';
+import { useCardCollapse } from '@/lib/cardCollapse';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { randomUUID } from '@/lib/uuid';
 import { Input } from '@/components/ui/input';
@@ -110,7 +112,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
     () => (placeholder.values.some((v) => v.text.includes('\n')) ? 'multiline' : 'chips'),
   );
   const [boxes, setBoxes] = useState<ValueBox[]>(() => toBoxes(placeholder.values));
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set<string>());
+  const collapse = useCardCollapse(boxes.map((b) => b.id));
   // The boxes are the editing truth only for the edits they made themselves. Someone else writing this
   // placeholder — the find bar replaces inside values, an import absorbs into them — leaves a list the boxes
   // no longer stand for, and the next keystroke in any box would paste the stale one back over it.
@@ -294,20 +296,12 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
   const pickStyle = (next: ValueStyle) => {
     // Reseeded rather than kept: the chip row may have added, renamed or reordered values since.
     if (next === 'multiline') {
-      setBoxes(toBoxes(editing.values));
-      setCollapsed(new Set<string>());
+      const fresh = toBoxes(editing.values);
+      setBoxes(fresh);
+      collapse.reset(fresh.map((b) => b.id));
     }
     setStyle(next);
   };
-
-  const toggleCollapsed = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-
-  const anyOpen = boxes.some((b) => !collapsed.has(b.id));
 
   /** The draw-weight pop-out, shared by the chip row and a shared row's read-only list — one anchor, one
    *  set of copy, whichever list is drawn. */
@@ -468,17 +462,7 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
           )}
           <div className="ml-auto flex items-center gap-1">
             {!locked && style === 'multiline' && boxes.length > 1 && (
-              <Tip tip={anyOpen ? 'Collapse all values' : 'Expand all values'}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setCollapsed(anyOpen ? new Set(boxes.map((b) => b.id)) : new Set<string>())}
-                >
-                  {anyOpen ? <ChevronsDownUp className="h-3.5 w-3.5" /> : <ChevronsUpDown className="h-3.5 w-3.5" />}
-                </Button>
-              </Tip>
+              <CollapseAllButton anyOpen={collapse.anyOpen} noun="values" onClick={() => collapse.setAll(!collapse.anyOpen)} />
             )}
             {/* A shared row edits no text, so the two text editors have nothing to choose between. */}
             {!locked && (
@@ -516,14 +500,14 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
         ) : style === 'multiline' ? (
           <MultilineValues
             boxes={boxes}
-            collapsed={collapsed}
+            isOpen={collapse.isOpen}
             placeholders={placeholders}
             ownerId={placeholder.id}
             line={valueLine}
             weight={weighable ? weightOf : undefined}
             chance={pct}
             aside={advanced ? valuePins : undefined}
-            onToggleCollapsed={toggleCollapsed}
+            onToggleCollapsed={collapse.toggle}
             onText={(id, text) => writeBoxes(boxes.map((b) => (b.id === id ? { ...b, text } : b)))}
             onWeight={setWeight}
             onRemove={(id) => writeBoxes(boxes.filter((b) => b.id !== id))}
@@ -623,10 +607,10 @@ const SharedValues = ({ values, line, style, suffix, register, onOpen }: {
  *  scannable. `weight` is omitted when nothing is drawn — one value, or an Object — and the chance goes
  *  with it. */
 const MultilineValues = ({
-  boxes, collapsed, placeholders, ownerId, line, weight, chance, aside, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
+  boxes, isOpen, placeholders, ownerId, line, weight, chance, aside, onToggleCollapsed, onText, onWeight, onRemove, onAdd,
 }: {
   boxes: ValueBox[];
-  collapsed: ReadonlySet<string>;
+  isOpen: (id: string) => boolean;
   placeholders: Placeholder[];
   /** The placeholder these boxes are the values of — see `ownerId` on `PlaceholderField`. */
   ownerId: string;
@@ -645,7 +629,7 @@ const MultilineValues = ({
 }) => (
   <div className="space-y-3">
     {boxes.map((box, i) => {
-      const open = !collapsed.has(box.id);
+      const open = isOpen(box.id);
       // What this box currently stands for in the value list — the key its weight and chance are read by.
       // A box the author has emptied stands for nothing, so it carries no odds either.
       const value = box.text.trim();
