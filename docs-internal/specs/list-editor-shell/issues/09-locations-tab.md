@@ -1,6 +1,6 @@
 # 09: Locations tab on the List Editor
 
-Status: in-progress
+Status: ready-for-human
 Base: cae6ba8d
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -31,5 +31,5 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 - Ticket 08 found no #2 on the Entities tab: the old detail read the open entity from the full list, so a search never blanked it. The adapter keeps that.
 - Ticket 09's Locations tab clears a selection whose location is gone, where the old tab kept it and pushed an empty detail on mobile. Keep: Q36. `holds` accepts every location, the canvas's picks included.
 - Ticket 09's location search rows read "Select <label>" to a screen reader, not the raw name. Keep: Q32.
-- Ticket 09 keeps #2 in both views: a search that leaves the open location out blanks its detail, on the canvas too, which ignores the search itself. It keeps #3's raw-index drag on search rows (Q29).
+- Ticket 09 keeps #2 in both views: a search that leaves the open location out blanks its detail, on the canvas too, which ignores the search itself. It keeps #3's raw-index drag on search rows, by Q18's default: Q29 names only Traits and Stats.
 - Ticket 11 moved the Openings panels onto the toolbar and found no drift. The world panel's **+** adds to the world, and each entity group keeps its own Add button (Q40).
