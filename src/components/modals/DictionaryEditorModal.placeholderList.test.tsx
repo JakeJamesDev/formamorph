@@ -89,3 +89,23 @@ describe('the library dictionary Placeholders tab', () => {
     expect(JSON.stringify(saved)).toContain('"name":"Tide"');
   });
 });
+
+/** The palette header's toggle, which names the section it opens. */
+const paletteIn = (pane: ReturnType<typeof within>) => pane.queryByRole('button', { name: /^Placeholders/ });
+
+describe("the library dictionary editor's placeholder palette", () => {
+  it('tops the detail pane on the Placeholders tab, with nothing selected, and never the list', async () => {
+    await openPlaceholders();
+    expect(paletteIn(detail())).toBeInTheDocument();
+    expect(paletteIn(list())).toBeNull();
+  });
+
+  it('tops the detail pane on the Dictionary tab before an entry is open, and stays there once one is', async () => {
+    await openPlaceholders();
+    await userEvent.click(screen.getByRole('tab', { name: 'Dictionary' }));
+    expect(paletteIn(detail())).toBeInTheDocument();
+    expect(paletteIn(list())).toBeNull();
+    await userEvent.click(list().getByText('Quiet Folk'));
+    expect(paletteIn(detail())).toBeInTheDocument();
+  });
+});

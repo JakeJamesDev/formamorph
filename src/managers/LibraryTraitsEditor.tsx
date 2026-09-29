@@ -1,4 +1,4 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Hint } from '@/components/ui/typography';
 import type { EntityRoot, TraitStore } from '@/contexts/TraitStoreContext';
 import { editorGateInput } from '@/lib/bearers';
@@ -53,12 +53,13 @@ function libraryTraitStore(
  * when the world has no such original, it reads by its stored name only. No link is made here. The tab
  * unmounts on a tab switch, so its selection starts over each time it opens.
  */
-const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, world = null }: {
+const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, world = null, detailHeader }: {
   entity: Entity;
   setEntity: Dispatch<SetStateAction<Entity | null>>;
   placeholders: Placeholder[];
   onOpenEntity: () => void;
   world?: LibraryEditorWorld | null;
+  detailHeader?: ReactNode;
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const store = useMemo(() => libraryTraitStore(entity, setEntity, placeholders, world), [entity, setEntity, placeholders, world]);
@@ -70,6 +71,7 @@ const LibraryTraitsEditor = ({ entity, setEntity, placeholders, onOpenEntity, wo
       onSelect={setSelectedId}
       onOpenEntity={onOpenEntity}
       emptyHint={<Hint className="p-2">No traits yet. Add one to describe this entity to the AI.</Hint>}
+      detailHeader={detailHeader}
     />
   );
 };

@@ -119,3 +119,21 @@ describe('the library entity Placeholders tab', () => {
     expect(screen.queryByRole('button', { name: /Reset to Blueprint/ })).toBeNull();
   });
 });
+
+/** The palette header's toggle, which names the section it opens. */
+const paletteIn = (pane: ReturnType<typeof within>) => pane.queryByRole('button', { name: /^Placeholders/ });
+
+describe("the library entity editor's placeholder palette", () => {
+  it('tops the detail pane on the Placeholders tab, with nothing selected, and never the list', async () => {
+    await openPlaceholders();
+    expect(paletteIn(detail())).toBeInTheDocument();
+    expect(paletteIn(list())).toBeNull();
+  });
+
+  it('tops the detail pane on the Traits tab, with nothing selected, and never the list', async () => {
+    render(<EntityEditorModal entityId={null} draft={maren} onClose={vi.fn()} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Traits' }));
+    expect(paletteIn(detail())).toBeInTheDocument();
+    expect(paletteIn(list())).toBeNull();
+  });
+});

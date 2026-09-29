@@ -10,7 +10,7 @@ export type ListEditorLayout = 'sideBySide' | 'stacked';
  * The List Editor in a panel or modal: the toolbar above the scrolled list, and the detail beside it or
  * pushed over it. A host that lays the parts out itself uses `useListEditor` instead.
  */
-export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel, toolbarChildren }: {
+export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel, toolbarChildren, detailHeader }: {
   adapter: ListEditorAdapter;
   layout: ListEditorLayout;
   selectedId: string | null;
@@ -19,6 +19,8 @@ export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel, t
   backLabel: string;
   /** Sits in the toolbar row after the +. */
   toolbarChildren?: ReactNode;
+  /** Tops the detail pane with or without a selection: the host's placeholder palette. */
+  detailHeader?: ReactNode;
 }) {
   const parts = useListEditor(adapter, { selectedId, onSelect });
   return (
@@ -40,7 +42,7 @@ export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel, t
           )}
         </div>
       }
-      detail={parts.detail}
+      detail={detailHeader ? <>{detailHeader}{parts.detail}</> : parts.detail}
     />
   );
 }
