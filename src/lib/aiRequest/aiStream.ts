@@ -3,8 +3,9 @@ import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 
 /** Why a stream failed. `parse` is reported per bad line as a debug event, never thrown — a malformed
- *  frame is skipped so the rest of the stream still arrives. */
-export type AiStreamErrorKind = 'http' | 'no-body' | 'parse';
+ *  frame is skipped so the rest of the stream still arrives. `cut-thought`: the server stopped the reply
+ *  on its token limit before any answer or call. */
+export type AiStreamErrorKind = 'http' | 'no-body' | 'parse' | 'cut-thought';
 
 /** Structured detail an endpoint returned with an HTTP failure, when it supplied an OpenAI-style error body. */
 export interface AiServerError {

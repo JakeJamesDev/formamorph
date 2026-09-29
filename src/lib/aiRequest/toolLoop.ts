@@ -4,9 +4,10 @@ import type { ToolCallFailure, ToolCallResult } from '@/lib/tools/toolRunner';
 import { answerStart } from '@/lib/aiResponse';
 import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
+import { redactUrl } from '@/lib/redactUrl';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import {
-  ABORTED_FINISH_REASON, LENGTH_FINISH_REASON, streamAiRequest,
+  ABORTED_FINISH_REASON, AiStreamError, LENGTH_FINISH_REASON, streamAiRequest,
   type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec, type AiToolCall,
 } from './aiStream';
 
@@ -21,7 +22,8 @@ import {
  * malformed call or an unknown Tool sends one more round without Tools, so the model finishes in prose;
  * that round streams live. Tool rounds are silent requests: they are captured only when asked.
  *
- * Every round runs under the spec's Answer Cap, counted on that round's answer text alone.
+ * Every round runs under the spec's Answer Cap, counted on that round's answer text alone. A round with a
+ * cut thought throws, so its reasoning reaches no later round and the request fails like any other.
  */
 
 /** Requests one call of the loop may send, tool rounds and the final round together. */
@@ -78,6 +80,23 @@ const errorResult = (error: string): string => JSON.stringify({ error });
 
 /** Every round's reasoning as one text, blank rounds left out. */
 const joinReasoning = (parts: readonly string[]): string => parts.filter((p) => p.trim()).join('\n\n');
+
+/** A round the server stopped on its token limit before any answer text or call: its thought never finished. */
+function isCutThought(result: AiStreamResult): boolean {
+  if (result.finishReason !== LENGTH_FINISH_REASON || result.toolCalls.length > 0) return false;
+  const at = answerStart(result.content);
+  return at === null || !result.content.slice(at).trim();
+}
+
+function cutThoughtError(spec: AiStreamSpec): AiStreamError {
+  const details = [
+    `Request: POST ${redactUrl(spec.url)}`,
+    spec.body.model && `Model: ${spec.body.model}`,
+    spec.body.max_tokens !== undefined && `max_tokens: ${spec.body.max_tokens}`,
+    `Finish reason: ${LENGTH_FINISH_REASON}`,
+  ].filter(Boolean).join('\n');
+  return new AiStreamError('cut-thought', 'The model reached its token limit before it wrote an answer', { details });
+}
 
 /**
  * One request under the spec's Answer Cap. Answer text counts from the end of a leading reasoning block;
@@ -138,7 +157,10 @@ export async function* streamAiToolLoop(
   const tools = spec.tools;
   const { signal, execute } = options;
   if (!tools?.length || !spec.body.tools || !execute) {
-    yield* streamCapped(spec, options);
+    for await (const event of streamCapped(spec, options)) {
+      if (event.type === 'done' && isCutThought(event.result)) throw cutThoughtError(spec);
+      yield event;
+    }
     return;
   }
 
@@ -230,6 +252,7 @@ export async function* streamAiToolLoop(
       yield { type: 'done', result: finalResult(result, live ? result.content : '', ABORTED_FINISH_REASON) };
       return;
     }
+    if (isCutThought(result)) throw cutThoughtError(roundSpec);
     if (!offering || result.toolCalls.length === 0) {
       for (const event of held) yield event;
       yield { type: 'done', result: finalResult(result, result.content, result.finishReason) };
