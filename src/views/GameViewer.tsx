@@ -168,6 +168,7 @@ import {
   settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
+import { useSettleOnSaveLoad } from "../lib/useSettleOnSaveLoad";
 import type { TraitCascade } from "../components/game/SetupTraitList";
 import { savedTraits } from "../lib/statCodeTraits";
 import { parseKeywords, locateMatches, type EntryActivation, type MatchHit, type MatchRule } from "../lib/dictionaryUtils";
@@ -627,6 +628,7 @@ const GameViewer = ({
     saveGame,
     autosaveGame,
     loadGame,
+    saveLoads,
     saveCurrentGameState,
     loadGameState,
     discoveredEntities,
@@ -3938,6 +3940,11 @@ const GameViewer = ({
     },
     [traitState, commitTraitState, addLogEntry],
   );
+  const commitLoadSettle = useCallback(
+    (result: GatedTraitResult) => commitGatedTraits(result, 'changes to the world'),
+    [commitGatedTraits],
+  );
+  useSettleOnSaveLoad(saveLoads, traitState, gatedWorld, traitName, commitLoadSettle);
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the

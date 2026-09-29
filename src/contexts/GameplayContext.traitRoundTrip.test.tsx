@@ -419,3 +419,21 @@ describe('code bounds across a save/load round trip', () => {
     expect(statOf(live())).toMatchObject({ max: 40, value: 40 });
   });
 });
+
+describe('the save-load count', () => {
+  it('counts each successful load, so the view settles once per load, and skips a missing save', async () => {
+    const live = mount();
+    await act(async () => {
+      await live().saveGame('slot', 'World', 'w1', 'save-5');
+    });
+    expect(live().saveLoads).toBe(0);
+    await act(async () => {
+      await live().loadGame('save-5', [], [authored]);
+    });
+    expect(live().saveLoads).toBe(1);
+    await act(async () => {
+      await live().loadGame('no-such-save', [], [authored]);
+    });
+    expect(live().saveLoads).toBe(1);
+  });
+});
