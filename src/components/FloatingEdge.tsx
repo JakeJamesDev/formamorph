@@ -37,11 +37,12 @@ export const FloatingEdge = ({ id, source, target, markerEnd, style, label, data
   // xyflow hands edge data back as unknown values; the shape it is holding is `toFlowEdge`'s own.
   const wanted = String(data?.connectionStyle);
   const edgeStyle = isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE;
-  const geometry = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), { style: edgeStyle, offset: ARROW_OFFSET });
-  // The click target spans from the pair's center line outward, so a pair's two arrows never share a pixel.
-  const hitPath = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
-    style: edgeStyle, offset: HIT_WIDTH / 2,
-  }).path;
+  const [from, to] = [rectOf(sourceNode), rectOf(targetNode)];
+  const geometry = edgeGeometry(from, to, { style: edgeStyle, offset: ARROW_OFFSET });
+  // A paired arrow's click target spans from the pair's center line outward, so the two never share a pixel.
+  const hitPath = data?.paired === true
+    ? edgeGeometry(from, to, { style: edgeStyle, offset: HIT_WIDTH / 2 }).path
+    : geometry.path;
   // Selection expands too, so touch (which never hovers) can still reach the full text by tapping.
   const expanded = hovered || selected;
   return (

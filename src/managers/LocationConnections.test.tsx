@@ -157,7 +157,7 @@ describe('Travel Hint link toggle', () => {
     expect(toggle()).toHaveAttribute('aria-pressed', 'true');
     expect(toBox()).not.toHaveAttribute('readonly');
     expect(fromBox()).toHaveAttribute('readonly');
-    expect(fromBox()).toHaveAccessibleDescription('Copies the first Travel Hint while linked');
+    expect(fromBox()).toHaveAccessibleDescription('Copies the first Travel Hint');
     fireEvent.change(toBox(), { target: { value: 'down the chute' } });
     expect(lastUpdate()).toEqual({
       id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' }, bToA: { hint: 'down the chute' },
