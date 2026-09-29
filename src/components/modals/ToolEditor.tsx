@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FieldError, Hint } from '@/components/ui/typography';
+import { Section } from '@/components/SettingsRows';
 import { CodeArea } from '@/components/prompt/CodeArea';
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
@@ -220,6 +221,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
   const surface = useMemo(() => toolScriptSurface(params, placeholderNames), [params, placeholderNames]);
   const vocabulary = useMemo(() => toolTemplateVocabulary(params), [params]);
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
+  const kind = HANDLER_KINDS.find((k) => k.value === handler.kind) ?? HANDLER_KINDS[0];
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
@@ -234,8 +236,13 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
             </Select>
           </Field>
         </div>
-        <Hint id={`${id}-kind-help`}>{HANDLER_KINDS.find((k) => k.value === handler.kind)?.help}</Hint>
+        <Hint id={`${id}-kind-help`}>{kind.help}</Hint>
       </div>
+      <Field id={`${id}-empty`} label="Empty Result" hint="Goes to the AI when the handler finds nothing">
+        <JsonField id={`${id}-empty`} value={draft.emptyResult} onChange={(emptyResult) => onChange({ ...draft, emptyResult })} />
+      </Field>
+      {/* Last, under a rule, since the type above swaps all of it. */}
+      <Section title={`${kind.label} Settings`}>
       {handler.kind === 'lookup' && (
         <div className="flex flex-col gap-1">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -308,9 +315,7 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
           />
         </div>
       )}
-      <Field id={`${id}-empty`} label="Empty Result" hint="Goes to the AI when the handler finds nothing">
-        <JsonField id={`${id}-empty`} value={draft.emptyResult} onChange={(emptyResult) => onChange({ ...draft, emptyResult })} />
-      </Field>
+      </Section>
     </div>
   );
 }
