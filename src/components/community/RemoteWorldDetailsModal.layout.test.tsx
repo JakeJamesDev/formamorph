@@ -97,6 +97,27 @@ describe('the details window’s layout', () => {
     for (const text of ['Author', 'Downloads', 'Likes']) expect(header()!.textContent).toContain(text);
   });
 
+  it('draws no description line for an Avatar with an empty credit line', async () => {
+    show({ kind: 'model', description: '' });
+    await screen.findByText('Author');
+
+    expect(screen.queryByText('Description')).toBeNull();
+    expect(screen.queryByText('No description available.')).toBeNull();
+  });
+
+  it('shows an Avatar’s credit line as its description', async () => {
+    show({ kind: 'model', description: 'By Wren.' });
+
+    expect(await screen.findByText('By Wren.')).toBeTruthy();
+    expect(screen.getByText('Description')).toBeTruthy();
+  });
+
+  it('keeps the fallback for a world with an empty description', async () => {
+    show({ kind: 'world', description: '' });
+
+    expect(await screen.findByText('No description available.')).toBeTruthy();
+  });
+
   it('keeps a world’s wide art above its details', async () => {
     show({ kind: 'world' });
     await screen.findByText('A ferry keeper.');
