@@ -1,49 +1,98 @@
 import { useMemo } from 'react';
-import { Label } from '@/components/ui/label';
-import { PlaceholderStoreProvider, usePlaceholderStoreOptional, type PlaceholderStore } from '@/contexts/PlaceholderStoreContext';
+import { ListEditor } from '@/components/ListEditor';
+import type { ListEditorAdapter } from '@/components/listEditorHooks';
+import { PlaceholderStoreProvider, usePlaceholderStore, usePlaceholderStoreOptional, type PlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { useEditorMode } from '@/lib/editorMode';
-import { cn } from '@/lib/utils';
-import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
-import type { PlaceholderHome } from '@/lib/placeholderHomes';
-import PlaceholderEditor from './PlaceholderEditor';
+import { OWNER_NAME_SEPARATOR, labelPlaceholders } from '@/lib/placementLetters';
+import { placeholderOwnerRef, type PlaceholderHome } from '@/lib/placeholderHomes';
+import { newPlaceholder } from '@/lib/placeholders';
+import { ownerPlaceholderNodes } from '@/lib/placeholderScopes';
+import PlaceholderList from './PlaceholderList';
+import { usePlaceholderDetail } from './PlaceholderDetail';
+import { placeholderSearchRows } from './placeholderSearchRows';
+import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 
 /** The world store narrowed to one owner's list: the same reads and writes, a list that draws only that
  *  owner's rows, and a create that lands there. */
 const scopedStore = (store: PlaceholderStore, scope: PlaceholderHome): PlaceholderStore =>
   ({ ...store, scope, addPlaceholder: (p) => store.addPlaceholder(p, scope) });
 
+interface ScopedSelection {
+  /** The open row, held by the host so a tab switch keeps it; the editor clears one the owner doesn't hold. */
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  /** Opens a world placeholder where the world's list is edited: a copy's Edit Blueprint. */
+  onOpenWorldPlaceholder: (id: string) => void;
+}
+
+/** One owner's placeholders on the List Editor, stacked: its tree, a flat search over its rows, and the
+ *  detail router's pane over the list. Reads the scoped store. */
+const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlaceholder }: ScopedSelection & { home: PlaceholderHome & { ownerId: string } }) => {
+  const { placeholders, lists, addPlaceholder } = usePlaceholderStore();
+  const { detail, footer } = usePlaceholderDetail({ selectedId, onSelect: onOpenWorldPlaceholder });
+  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
+  const nodes = useMemo(() => (lists ? ownerPlaceholderNodes(lists, home) : []), [lists, home]);
+  // A drawn row, or the bare id of a placeholder the tree draws: a shared row's link opens its original.
+  const heldIds = useMemo(() => new Set(nodes.flatMap((n) => [n.id, n.placeholder.id])), [nodes]);
+  if (!lists) return null;
+  const ownerName = labelPlaceholders(placeholderOwnerRef(lists, home.ownerId)?.name ?? '', placeholders);
+
+  const adapter: ListEditorAdapter = {
+    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} />,
+    rows: () => placeholderSearchRows(nodes, lists, rowRules, false),
+    names: { placeholders },
+    noun: 'placeholders',
+    detail: (id) => (
+      <div className="p-4">
+        {id ? detail : <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one</p>}
+      </div>
+    ),
+    footer: () => footer,
+    add: {
+      label: `Add Placeholder to ${ownerName}`,
+      onAdd: (typed) => {
+        const p = newPlaceholder(typed || 'New Placeholder');
+        addPlaceholder(p);
+        onSelect(p.id);
+      },
+    },
+    placeholder: 'Search or add new placeholders',
+    holds: (id) => heldIds.has(id),
+    // The tree draws its own empty hint.
+    isEmpty: false,
+    emptyHint: null,
+  };
+  return (
+    <>
+      <ListEditor adapter={adapter} layout="stacked" selectedId={selectedId} onSelect={onSelect} backLabel="Placeholders" />
+      {dialog}
+    </>
+  );
+};
+
 /**
- * The Placeholders section of an entity or dictionary panel: the same editor the Placeholders tab and the
- * library modals mount, bound to this one owner's list. A placeholder made here belongs to the owner and
- * reads `Owner › Name` everywhere else in the world. Advanced mode only, like the tab itself. It binds
- * only to a store that carries the world's lists, so a library modal's own store renders nothing here.
+ * The Placeholders tab of an entity or dictionary panel: the same editor as the top-level tab, bound to this
+ * one owner's list. A placeholder made here belongs to the owner and reads `Owner › Name` everywhere else in
+ * the world. Advanced mode only, like the tab itself. It binds only to a store that carries the world's
+ * lists, so a library modal's own store renders nothing here.
  */
-const ScopedPlaceholdersSection = ({ kind, ownerId, fill = false }: {
+const ScopedPlaceholdersSection = ({ kind, ownerId, ...selection }: ScopedSelection & {
   kind: 'entity' | 'dictionary';
   ownerId: string;
-  /** The host is a tab that already names this section and gives it a definite height: the label goes, and
-   *  the editor takes the height left under the helper line instead of sitting in a fixed box. */
-  fill?: boolean;
 }) => {
   const { advanced } = useEditorMode();
   const store = usePlaceholderStoreOptional();
-  const home = useMemo((): PlaceholderHome => ({ kind, ownerId }), [kind, ownerId]);
+  const home = useMemo(() => ({ kind, ownerId }), [kind, ownerId]);
   const scoped = useMemo(() => (store?.lists ? scopedStore(store, home) : null), [store, home]);
   if (!advanced || !scoped) return null;
   return (
-    <div className={cn(fill ? 'flex min-h-0 flex-1 flex-col gap-2' : 'space-y-2')}>
-      {!fill && <Label>Placeholders</Label>}
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       <p className="text-helper text-muted-foreground">
         Placeholders of this {kind}&apos;s own. Elsewhere in the world they read as {'{'}Name{OWNER_NAME_SEPARATOR}Placeholder{'}'}.
       </p>
-      <div className={cn(
-        'flex flex-col overflow-hidden rounded-md border',
-        fill ? 'min-h-0 flex-1' : 'h-[26rem]',
-      )}>
-        <PlaceholderStoreProvider value={scoped}>
-          <PlaceholderEditor />
-        </PlaceholderStoreProvider>
-      </div>
+      <PlaceholderStoreProvider value={scoped}>
+        <ScopedPlaceholdersEditor home={home} {...selection} />
+      </PlaceholderStoreProvider>
     </div>
   );
 };

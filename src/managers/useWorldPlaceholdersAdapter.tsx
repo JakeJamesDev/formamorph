@@ -1,22 +1,18 @@
 import { useMemo, type ReactNode } from 'react';
-import { Copy, FilePlus, FolderPlus, LayoutTemplate, Link2, X } from 'lucide-react';
-import type { EditorRowAction } from '@/components/EditorRow';
-import type { ListEditorAdapter, ListEditorRow } from '@/components/listEditorHooks';
+import { FilePlus, FolderPlus, LayoutTemplate } from 'lucide-react';
+import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { ListMenuRow } from '@/components/ListToolbar';
 import { useGameData } from '@/contexts/GameDataContext';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { useEditorMode } from '@/lib/editorMode';
-import { blueprintsPlaceholderGroup, copyName } from '@/lib/placeholderBlueprints';
-import {
-  allPlaceholders, placeholderOwnerRef, type PlaceholderHomesWorld, type PlaceholderOwnerRef,
-} from '@/lib/placeholderHomes';
-import { newPlaceholder, PLACEHOLDER_PATH_SEPARATOR, SHARED_PATH_SEP } from '@/lib/placeholders';
-import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
-import { ownerIdOfNode, placeholderTreeNodes, type PlaceholderRowNode } from '@/lib/placeholderScopes';
+import { blueprintsPlaceholderGroup } from '@/lib/placeholderBlueprints';
+import { placeholderOwnerRef, type PlaceholderOwnerRef } from '@/lib/placeholderHomes';
+import { newPlaceholder } from '@/lib/placeholders';
+import { ownerIdOfNode, placeholderTreeNodes } from '@/lib/placeholderScopes';
 import { randomUUID } from '@/lib/uuid';
-import type { Placeholder } from '@/types';
 import PlaceholderList from './PlaceholderList';
 import { usePlaceholderDetail } from './PlaceholderDetail';
+import { placeholderSearchRows } from './placeholderSearchRows';
 import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 
 /**
@@ -57,37 +53,9 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
     onSelect(id);
   };
 
-  // Each placeholder once, at its own row: a shared reference and the rows it repeats beneath it stay out.
-  const rows = (): ListEditorRow[] => {
-    if (!lists) return [];
-    const byId = new Map(allPlaceholders(lists).map((p) => [p.id, p]));
-    const repeated = new Set<string>();
-    const out: ListEditorRow[] = [];
-    for (const node of nodes) {
-      if (node.kind !== 'placeholder') continue;
-      if (node.shared || (node.parentId && repeated.has(node.parentId))) {
-        repeated.add(node.id);
-        continue;
-      }
-      const { copy, duplicate, remove, removeBlocked } = rowRules(node);
-      const actions: EditorRowAction[] = [];
-      if (duplicate) actions.push({ icon: <Copy className="h-4 w-4" />, title: 'Duplicate', onClick: duplicate });
-      if (remove || removeBlocked) {
-        actions.push({ icon: <X className="h-4 w-4" />, title: 'Delete', onClick: remove ?? (() => {}), disabledReason: removeBlocked });
-      }
-      out.push({
-        id: node.id,
-        name: rowLabel(node, byId, lists),
-        icon: copy ? <Link2 className="h-4 w-4 shrink-0" aria-label="Copy" /> : undefined,
-        actions,
-      });
-    }
-    return out;
-  };
-
   const adapter: ListEditorAdapter = {
     tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} />,
-    rows,
+    rows: () => (lists ? placeholderSearchRows(nodes, lists, rowRules, true) : []),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'placeholders',
     detail: (id) => id && detail,
@@ -117,19 +85,4 @@ export function useWorldPlaceholdersAdapter({ selectedId, onSelect, onOpenOwner 
     emptyHint: null,
   };
   return { adapter, ownerId, dialog };
-}
-
-/** A search row's label: a world row's chain of names, an owned row's chain under its owner, a copy as its tree row reads. */
-function rowLabel(node: PlaceholderRowNode, byId: ReadonlyMap<string, Placeholder>, lists: PlaceholderHomesWorld): string {
-  const chain = node.id.split(SHARED_PATH_SEP).map((id) => byId.get(id));
-  const names = chain.map((p) => p?.name ?? '');
-  const owner = node.home.kind === 'world' ? undefined : placeholderOwnerRef(lists, node.home.ownerId);
-  if (!owner) return names.join(PLACEHOLDER_PATH_SEPARATOR);
-  // A copy reads as its owner's, named after its blueprint live, as its tree row does.
-  const root = chain[0];
-  if (root?.blueprintId) {
-    names[0] = copyName(owner.name, byId.get(root.blueprintId)?.name ?? root.name);
-    return names.join(PLACEHOLDER_PATH_SEPARATOR);
-  }
-  return `${owner.name}${OWNER_NAME_SEPARATOR}${names.join(PLACEHOLDER_PATH_SEPARATOR)}`;
 }

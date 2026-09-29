@@ -8,7 +8,7 @@ import {
   removeCollapsedPlaceholderRows,
 } from '@/lib/placeholderTree';
 import {
-  applyScopedPlaceholderDrop, placeholderDropAllowed, placeholderTreeNodes, type PlaceholderTreeNode,
+  applyScopedPlaceholderDrop, ownerPlaceholderNodes, placeholderDropAllowed, placeholderTreeNodes, type PlaceholderTreeNode,
 } from '@/lib/placeholderScopes';
 import { Tip } from '@/components/ui/tooltip';
 import { EmptyListHint } from '@/components/EmptyListHint';
@@ -57,10 +57,8 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
   // Over a world the tree spans every list; bound to one owner's section it draws that list, still looking
   // chip targets and holders up across the world; bound to a lone list (the library) it is that list.
   const nodes = useMemo((): PlaceholderTreeNode[] => {
-    if (lists && !scope) return placeholderTreeNodes(lists);
-    const list = lists && scope ? placeholderList(lists, scope) : placeholders;
-    const all = lists ? allPlaceholders(lists) : placeholders;
-    return placeholderRows(list, all).map((row) => ({ ...row, kind: 'placeholder', home: scope ?? { kind: 'world' } }));
+    if (lists) return scope ? ownerPlaceholderNodes(lists, scope) : placeholderTreeNodes(lists);
+    return placeholderRows(placeholders, placeholders).map((row) => ({ ...row, kind: 'placeholder', home: scope ?? { kind: 'world' } }));
   }, [placeholders, lists, scope]);
   const parentRowIds = useMemo(
     () => new Set(nodes.map((r) => r.parentId).filter((id): id is string => id !== null)),
