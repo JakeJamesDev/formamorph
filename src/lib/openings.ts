@@ -227,6 +227,8 @@ export function openingChances(owner: MaybeOwner): Record<string, number> {
 /** One row as an editor shows it. A null chance marks a row outside the pool the chances describe. */
 export interface EditorOpeningRow {
   opening: Opening;
+  /** The row's place in its owner's list, which a filtered list keeps. */
+  index: number;
   weight: number;
   chance: number | null;
 }
@@ -239,18 +241,23 @@ export interface EditorOpeningGroup {
   rows: EditorOpeningRow[];
   /** The rows include Self rows, and each card sets Others or Self. */
   showSelf: boolean;
-  /** Holds Others rows but stands at, or is, none of the world's starting locations, so they never come up. */
+  /** Shows Others rows but stands at, or is, none of the world's starting locations, so they never come up. */
   atNoStart: boolean;
-  /** True when the group has no Others rows, or stands at, or is, the starting location the chances describe. */
-  atChancesStart: boolean;
 }
 
 export interface OpeningsEditorView {
   /** Where a new game may begin, resolved as the start of play resolves it. */
   starts: GameLocation[];
-  /** The start the chances describe; null in a world with no locations. */
-  chancesStartId: string | null;
+  /** Every group shows, and only Self rows carry a chance. Only a world with several starts offers it. */
+  allLocations: boolean;
+  /** The start the chances describe: the picked or lone start. Null under All Locations and in a world with
+   *  no locations. The list filters to it only when it was picked among several. */
+  startId: string | null;
   groups: EditorOpeningGroup[];
+  /** A game starts on the default opening somewhere the view covers: a start whose pool is empty. */
+  defaultOpening: boolean;
+  /** Those starts, in start order. Empty in a world with no locations. */
+  defaultStarts: GameLocation[];
 }
 
 export interface OpeningsEditorSources {
@@ -263,14 +270,17 @@ export interface OpeningsEditorSources {
 const shownOpenings = (owner: OpeningOwner, showSelf: boolean): Opening[] =>
   (owner.openings ?? []).filter((o) => showSelf || !o.self);
 
+/** The owner's shown rows that pass `keep`, each numbered by its place among all of them. */
 const editorRows = (
   owner: OpeningOwner, chanceOf: (opening: Opening) => number | null, showSelf = false,
+  keep: (opening: Opening) => boolean = () => true,
 ): EditorOpeningRow[] =>
-  shownOpenings(owner, showSelf).map((opening) => ({
+  shownOpenings(owner, showSelf).map((opening, index) => ({
     opening,
+    index,
     weight: openingWeight(owner.openingWeights, opening.id),
     chance: chanceOf(opening),
-  }));
+  })).filter((row) => keep(row.opening));
 
 /** One owner's rows with chances within its own list, for an entity's Openings tab. Self rows show only
  *  with `showSelf`. */
@@ -281,63 +291,78 @@ export function ownerOpeningRows(owner: OpeningOwner, showSelf = canOwnSelfOpeni
 
 /**
  * Every opening in the world grouped by owner: the world's rows first, then each location with openings, in
- * the location tree's order, then each authored entity that has openings to show, in cast order. An Others
- * row's chance is its share of the whole pool at `startId`, falling back to the first start; a Self row's is
- * its share of its owner's Self rows. The switch is ignored, so a switched-off draft reads the odds it will
- * have.
+ * the location tree's order, then each authored entity that has openings to show, in cast order.
+ *
+ * `filter` is a start id, or null for All Locations. A start picked among several keeps what can draw there:
+ * the world's rows, the start's own, those of the entities present, and every Self row. A lone start filters
+ * nothing, so rows no start reaches keep showing with their badge. An Others row's chance is its share of the
+ * start's pool; a Self row's is its share of its owner's Self rows at every filter. The switch is ignored, so
+ * a switched-off draft reads the odds it will have.
  */
 export function openingsEditorView(
   { overview, entities, locations }: OpeningsEditorSources,
-  startId?: string | null,
+  filter: string | null = null,
 ): OpeningsEditorView {
   const starts = startCandidates(locations);
-  const chancesStartId = starts.find((l) => l.id === startId)?.id ?? starts[0]?.id ?? null;
-  const pool = openingPool({
+  const allLocations = starts.length > 1 && !starts.some((l) => l.id === filter);
+  const startId = allLocations ? null : starts.length > 1 ? filter : starts[0]?.id ?? null;
+  const filtering = starts.length > 1 && startId !== null;
+  const poolAt = (startingLocationId: string | null) => openingPool({
     overview: overview && { ...overview, openingsEnabled: undefined },
     entities,
     locations,
-    startingLocationId: chancesStartId,
+    startingLocationId,
   });
+  const pool = poolAt(startId);
   const chances = poolChances(pool);
   const shares = new Map(pool.map((e, i) => [poolKey(e), chances[i]]));
-  const here = new Set(entityIdsAt(chancesStartId, [...entities]));
+  const othersChance = (key: string, drawsHere: boolean) => (allLocations || !drawsHere ? null : shares.get(key) ?? 0);
+  const here = new Set(entityIdsAt(startId, [...entities]));
   const atAnyStart = new Set(entityIdsAtAny(starts.map((l) => l.id), [...entities]));
+
   const entityGroup = (e: Entity): EditorOpeningGroup => {
     const showSelf = canOwnSelfOpenings(e);
     const own = openingChances(e);
-    const shareHere = (o: Opening) => (here.has(e.id) ? shares.get(openingKey(e.id, o.id)) ?? 0 : null);
-    const hasOthers = shownOpenings(e, false).length > 0;
+    // Picked, a start keeps an absent entity's Self rows only: they draw wherever the player plays it.
+    const rows = editorRows(
+      e, (o) => (o.self ? own[o.id] ?? 0 : othersChance(openingKey(e.id, o.id), here.has(e.id))), showSelf,
+      (o) => !filtering || here.has(e.id) || !!o.self,
+    );
     return {
       entity: e,
       name: e.name,
-      rows: editorRows(e, (o) => (o.self ? own[o.id] ?? 0 : shareHere(o)), showSelf),
+      rows,
       showSelf,
-      atNoStart: hasOthers && !atAnyStart.has(e.id),
-      atChancesStart: !hasOthers || here.has(e.id),
+      atNoStart: rows.some((r) => !r.opening.self) && !atAnyStart.has(e.id),
     };
   };
 
   const locationGroup = (l: GameLocation): EditorOpeningGroup => {
-    const rows = editorRows(l, (o) => (l.id === chancesStartId ? shares.get(openingKey(null, o.id, l.id)) ?? 0 : null));
+    const rows = editorRows(l, (o) => othersChance(openingKey(null, o.id, l.id), l.id === startId));
     return {
       entity: null, location: l, name: l.name, rows, showSelf: false,
       atNoStart: rows.length > 0 && !starts.some((s) => s.id === l.id),
-      atChancesStart: rows.length === 0 || l.id === chancesStartId,
     };
   };
 
+  const covered = allLocations ? starts : starts.filter((l) => l.id === startId);
+  const defaultStarts = covered.filter((l) => poolAt(l.id).length === 0);
   return {
     starts,
-    chancesStartId,
+    allLocations,
+    startId,
     groups: [
       {
         entity: null, name: overview?.name ?? '',
-        rows: editorRows(overview ?? {}, (o) => shares.get(openingKey(null, o.id)) ?? 0),
-        showSelf: false, atNoStart: false, atChancesStart: true,
+        rows: editorRows(overview ?? {}, (o) => othersChance(openingKey(null, o.id), true)),
+        showSelf: false, atNoStart: false,
       },
-      ...locationRows([...locations]).map(({ location }) => locationGroup(location)).filter((g) => g.rows.length > 0),
+      ...locationRows([...locations]).map(({ location }) => location)
+        .filter((l) => !filtering || l.id === startId).map(locationGroup).filter((g) => g.rows.length > 0),
       ...entities.map(entityGroup).filter((g) => g.rows.length > 0),
     ],
+    defaultOpening: starts.length === 0 ? pool.length === 0 : defaultStarts.length > 0,
+    defaultStarts,
   };
 }
 

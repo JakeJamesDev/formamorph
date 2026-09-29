@@ -1,6 +1,7 @@
 # 06: Starting Location Filter
 
-Status: ready-for-agent
+Status: in-progress
+Base: 20fae434
 Blocked by: 04; 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
