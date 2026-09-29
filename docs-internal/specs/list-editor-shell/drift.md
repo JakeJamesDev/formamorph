@@ -33,3 +33,7 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 - Ticket 09's location search rows read "Select <label>" to a screen reader, not the raw name. Keep: Q32.
 - Ticket 09 keeps #2 in both views: a search that leaves the open location out blanks its detail, on the canvas too, which ignores the search itself. It keeps #3's raw-index drag on search rows, by Q18's default: Q29 names only Traits and Stats.
 - Ticket 11 moved the Openings panels onto the toolbar and found no drift. The world panel's **+** adds to the world, and each entity group keeps its own Add button (Q40).
+- Ticket 10's Dictionary tab clears a selection whose book or entry is gone. The tree's delete set an empty id, which showed nothing; the shell now clears it. Keep: Q36. `holds` accepts every book and every entry.
+- Ticket 10's dictionary search rows read "Select <label>" to a screen reader, and an entry's label is `Book › Entry` on the tab and bare in the library modal (Q41). Keep: Q32.
+- Ticket 10 found no #2 on the Dictionary tab: the old detail read the open book or entry from every book, so a search never blanks it. The adapter keeps that. Search rows have no grip: dictionary search had no drag before, so #3 doesn't apply.
+- Ticket 10's library modal detail scrolls in the List Editor's pane while no entry is open, where the old pane was a fixed column. The "Select an entry to edit it" hint looks the same. Not ruled; logged for the record.

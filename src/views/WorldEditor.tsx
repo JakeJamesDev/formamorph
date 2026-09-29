@@ -1,4 +1,3 @@
-import { randomUUID } from "@/lib/uuid";
 import { useState, useEffect, useMemo, useCallback, useRef, type ChangeEvent, type ReactNode } from 'react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { useDevRoute } from '@/lib/devRouter';
@@ -26,7 +25,6 @@ import { TourInPlay } from '@/components/authoringTour/InPlayPane';
 import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HelpButton } from '@/components/HelpButton';
-import { ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor } from '@/components/listEditorHooks';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
@@ -62,6 +60,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import { useWorldLocationsAdapter } from '../managers/useWorldLocationsAdapter';
+import { useWorldDictionaryAdapter } from '../managers/useWorldDictionaryAdapter';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
 import { ENTITY_PANEL_TABS, entityPanelTabsFor, type EntityPanelTab } from './entityPanelTabs';
 import { LOCATION_PANEL_TABS, locationPanelTabsFor, type LocationPanelTab } from './locationPanelTabs';
@@ -71,15 +70,11 @@ import { DICTIONARY_PANEL_TABS, dictionaryPanelTabsFor, type DictionaryPanelTab 
 import {
   DICTIONARY_BOOK_PANEL_TABS, dictionaryBookPanelTabsFor, type DictionaryBookPanelTab,
 } from './dictionaryBookPanelTabs';
-import { focusFieldForItem } from './findFocus';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
-import DictionaryManager from '../managers/DictionaryManager';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
-import DictionaryTree from '../managers/DictionaryTree';
-import DictionaryBookManager from '../managers/DictionaryBookManager';
 import { exportedComponentLinks } from '@/lib/componentExportLinks';
 import { resolveImportedWorld } from '@/lib/worldBundleRun';
 import { buildDictionaryFile } from '@/lib/dictionaryFile';
@@ -647,13 +642,6 @@ const WorldEditorInner = ({
     }
   };
 
-  // The Dictionary tab's + adds a whole book (name from the search box); entries are added per-book in the tree.
-  const handleAddBook = (typed: string) => {
-    const id = randomUUID();
-    addDictionary({ id, name: typed || 'New Dictionary', enabled: true, entries: [] });
-    setSelectedItemId(id);
-  };
-
   // A library entity lands at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
@@ -720,21 +708,36 @@ const WorldEditorInner = ({
   const locationsParts = useListEditor(locationsAdapter, {
     selectedId: selections.locations ?? null, onSelect: selectLocation, search,
   });
+  // The book and entry panels' tabs and the book's placeholder row live here, so another book keeps them.
+  const selectDictionaryItem = useCallback((id: string | null) => select('dictionary', id), [select]);
+  const dictionaryEditor = useWorldDictionaryAdapter({
+    selectedId: selections.dictionary ?? null,
+    onSelect: selectDictionaryItem,
+    bookTab: shownBookTab,
+    onBookTabChange: setBookTab,
+    bookPlaceholderId,
+    onBookPlaceholderIdChange: setBookPlaceholderId,
+    onOpenWorldPlaceholder: openWorldPlaceholder,
+    entryTab: shownEntryTab,
+    onEntryTabChange: setEntryTab,
+    focusField: findField,
+  });
+  const dictionaryParts = useListEditor(dictionaryEditor.adapter, {
+    selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
   const listEditorParts = activeTab === 'traits' ? traitsParts
     : activeTab === 'placeholders' ? placeholdersParts
     : activeTab === 'stats' ? statsParts
     : activeTab === 'entities' ? entitiesParts
     : activeTab === 'locations' ? locationsParts
+    : activeTab === 'dictionary' ? dictionaryParts
     : null;
-  // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
-  const selectedBook = dictionaries.find(b => b.id === selectedItemId);
-  const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
+  // Dictionary tab: selection is either a book or one of its entries.
+  const selectedBook = dictionaries.find(b => b.id === selections.dictionary);
+  const selectedEntryBook = dictionaries.find(b => b.entries.some(e => e.id === selections.dictionary));
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
-  // Mirrors the panel branches in detailContent.
-  const detailFills = !!listEditorParts?.fills
-    || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
-  const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
+  const detailFills = !!listEditorParts?.fills;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
@@ -771,7 +774,7 @@ const WorldEditorInner = ({
       {removeWorldTraitDialog}
       {placeholdersEditor.dialog}
       {entitiesEditor.dialog}
-      {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
+      {dictionaryEditor.dialog}
     </>
   );
   const detailContent = (
@@ -790,29 +793,6 @@ const WorldEditorInner = ({
         />
       )}
       {listEditorParts?.detail}
-      {activeTab === "dictionary" && selectedBook && (
-        <DictionaryBookManager
-          key={selectedBook.id}
-          book={selectedBook}
-          tab={shownBookTab}
-          onTabChange={setBookTab}
-          placeholderId={bookPlaceholderId}
-          onPlaceholderIdChange={setBookPlaceholderId}
-          onOpenWorldPlaceholder={openWorldPlaceholder}
-          focusField={focusFieldForItem(findField, selectedBook.id)}
-        />
-      )}
-      {activeTab === "dictionary" && !selectedBook && selectedEntry && (
-        <DictionaryManager
-          key={selectedEntry.id}
-          entry={selectedEntry}
-          placeholders={placeholders}
-          ownerId={selectedEntryBook?.id}
-          tab={shownEntryTab}
-          onTabChange={setEntryTab}
-          focusField={focusFieldForItem(findField, selectedEntry.id)}
-        />
-      )}
     </div>
     </ChipInsertTargetProvider>
   );
@@ -917,8 +897,6 @@ const WorldEditorInner = ({
   ));
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
-  const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const addSlot: ListAddSlot = { label: addLabel, onAdd: handleAddBook };
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
   // The Locations toolbar's List/Canvas switch, after the +.
@@ -943,17 +921,7 @@ const WorldEditorInner = ({
       ))}
     </ToggleGroup>
   );
-  const addSearchBar = activeTab !== "overview" && (listEditorParts
-    ? listEditorParts.toolbar('mt-4', { children: locationViewToggle, after: helpButton })
-    : (
-      <ListSearchToolbar
-        className="mt-4"
-        search={search}
-        add={addSlot}
-        placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
-        after={helpButton}
-      />
-    ));
+  const addSearchBar = listEditorParts?.toolbar('mt-4', { children: locationViewToggle, after: helpButton });
   // The detail's frozen footer: the List Editor's on a tab that runs on it.
   const detailFooter = listEditorParts?.footer;
   const footerBar = (

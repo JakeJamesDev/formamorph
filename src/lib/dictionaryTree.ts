@@ -2,9 +2,14 @@ import { randomUUID } from "@/lib/uuid";
 import { remintPlaceholdersDeep } from "@/lib/placeholders";
 import type { Dictionary, DictionaryEntry } from '@/types';
 
-/** A new entry. Its name is blank, so the tree and the prompt label read its first keyword until it has one. */
-export function blankDictionaryEntry(): DictionaryEntry {
-  return { id: randomUUID(), name: '', key: [], value: '' };
+/** A new entry. Its name is blank by default, so the tree and the prompt label read its first keyword until it has one. */
+export function blankDictionaryEntry(name = ''): DictionaryEntry {
+  return { id: randomUUID(), name, key: [], value: '' };
+}
+
+/** The label an entry's row shows: its name, else its first keyword. */
+export function dictionaryEntryLabel(entry: DictionaryEntry): string {
+  return entry.name || entry.key?.[0] || 'Untitled';
 }
 
 /** The entry a book's tree shows first: its first Background entry, else its first Foreground one. */

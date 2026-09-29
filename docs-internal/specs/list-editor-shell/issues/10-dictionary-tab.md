@@ -1,6 +1,7 @@
 # 10: Dictionary tab and library dictionary tree on the List Editor
 
-Status: ready-for-agent
+Status: in-progress
+Base: 144b063c
 Blocked by: 03
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -15,12 +16,12 @@ The **Dictionary** tab runs on the List Editor. Its search, ignored today, lists
 
 ## Acceptance criteria
 
-- [ ] The dictionary tree, its drag, per-book add entry, delete confirmation and collapse behave as before.
-- [ ] Search lists matching books and entries flat through the shared match; selecting one opens its details.
-- [ ] The library dictionary modal's tree runs on the shell with the same behavior.
-- [ ] Bench and rendered modal tests cover search. Existing tests pass unchanged.
+- [x] The dictionary tree, its drag, per-book add entry, delete confirmation and collapse behave as before.
+- [x] Search lists matching books and entries flat through the shared match; selecting one opens its details.
+- [x] The library dictionary modal's tree runs on the shell with the same behavior.
+- [x] Bench and rendered modal tests cover search. Existing tests pass unchanged.
 
 ## Completion checks
 
-- [ ] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
-- [ ] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.
+- [x] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
+- [x] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.
