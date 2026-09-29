@@ -32,6 +32,11 @@ const tab = (name: string) => screen.getByRole('tab', { name });
 const saveButton = () => screen.getByRole('button', { name: 'Save Tool' });
 const nameInput = () => within(screen.getByRole('tabpanel')).getAllByRole('textbox', { name: 'Name' })[0];
 
+async function pickHandler(user: ReturnType<typeof userEvent.setup>, kind: string) {
+  await user.click(screen.getByRole('combobox', { name: 'Handler Type' }));
+  await user.click(await screen.findByRole('option', { name: kind }));
+}
+
 async function openEditor(user: ReturnType<typeof userEvent.setup>, tools: Tool[] = [weather()], fullscreen = false) {
   render(<Harness initial={userStore(tools)} fullscreen={fullscreen} />);
   await user.click(list().getByRole('button', { name: tools[0].name }));
@@ -120,7 +125,7 @@ describe('editing a Tool', () => {
     await user.click(tab('Handler'));
     expect(screen.getByRole('textbox', { name: 'Template' })).toHaveTextContent('Sunny in place.');
 
-    await user.click(screen.getByRole('radio', { name: 'Lookup' }));
+    await pickHandler(user, 'Lookup');
     await user.click(screen.getByRole('combobox', { name: 'Search' }));
     await user.click(await screen.findByRole('option', { name: 'Locations' }));
     await user.click(screen.getByRole('combobox', { name: 'Returns' }));
@@ -130,7 +135,7 @@ describe('editing a Tool', () => {
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.click(tab('Handler'));
-    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    await pickHandler(user, 'Script');
     const readable = screen.getByLabelText('What the script can read');
     expect(within(readable).getAllByRole('term').map((t) => t.textContent)).toEqual(['args', 'world', 'scene', 'placeholders', 'console']);
     expect(within(readable).getAllByRole('definition')[0]).toHaveTextContent('{ place }');
@@ -143,19 +148,19 @@ describe('editing a Tool', () => {
     const user = userEvent.setup();
     await openEditor(user);
     await user.click(tab('Handler'));
-    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    await pickHandler(user, 'Script');
     await user.type(screen.getByRole('textbox', { name: 'Script' }), 'return 1;');
     await user.click(tab('Definition'));
     await user.click(tab('Handler'));
-    await user.click(screen.getByRole('radio', { name: 'Template' }));
+    await pickHandler(user, 'Template');
     expect(screen.getByRole('textbox', { name: 'Template' })).toHaveTextContent('Sunny in place.');
-    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    await pickHandler(user, 'Script');
     expect(screen.getByRole('textbox', { name: 'Script' })).toHaveTextContent('return 1;');
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.click(tab('Handler'));
-    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    await pickHandler(user, 'Script');
     expect(screen.getByRole('textbox', { name: 'Script' })).toHaveTextContent(/^$/);
   });
 
