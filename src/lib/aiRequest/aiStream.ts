@@ -61,6 +61,18 @@ function parseServerError(raw: string): AiServerError | undefined {
   }
 }
 
+/** The Error Details lines that name the request. */
+const requestLines = (spec: AiStreamSpec): string[] =>
+  [`Request: POST ${redactUrl(spec.url)}`, spec.body.model ? `Model: ${spec.body.model}` : ''].filter(Boolean);
+
+/** The error for a reply the server stopped on its token limit before any answer or call. */
+export function cutThoughtFailure(spec: AiStreamSpec): AiStreamError {
+  const limit = spec.body.max_tokens === undefined ? [] : [`max_tokens: ${spec.body.max_tokens}`];
+  return new AiStreamError('cut-thought', 'The model reached its token limit before it wrote an answer', {
+    details: [...requestLines(spec), ...limit].join('\n'),
+  });
+}
+
 /** The error for an HTTP failure. The body is read once; its raw text goes into the details beside the parsed fields. */
 async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiStreamError> {
   let raw = '';
@@ -69,8 +81,7 @@ async function httpFailure(response: Response, spec: AiStreamSpec): Promise<AiSt
   } catch { /* An unreadable body leaves only the status. */ }
   const serverError = parseServerError(raw);
   const lines = [
-    `Request: POST ${redactUrl(spec.url)}`,
-    spec.body.model && `Model: ${spec.body.model}`,
+    ...requestLines(spec),
     `Status: ${[response.status, response.statusText].filter(Boolean).join(' ')}`,
     serverError?.message && `Message: ${serverError.message}`,
     serverError?.parameter && `Param: ${serverError.parameter}`,

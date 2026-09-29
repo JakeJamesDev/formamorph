@@ -484,7 +484,7 @@ describe('streamAiToolLoop: cut thoughts', () => {
   const cutFrames = (...before: string[]): string[] => [...before, frame({ reasoning_content: CUT }), frame({}, 'length')];
 
   /** Runs the loop to its end and returns the error it threw, with every event it yielded first. */
-  async function failure(transport: Transport, s: AiRequestSpec = spec()): Promise<{ error: unknown; events: AiToolLoopEvent[] }> {
+  async function runUntilThrow(transport: Transport, s: AiRequestSpec = spec()): Promise<{ error: unknown; events: AiToolLoopEvent[] }> {
     const events: AiToolLoopEvent[] = [];
     try {
       for await (const event of streamAiToolLoop(s, { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0 })) events.push(event);
@@ -494,10 +494,15 @@ describe('streamAiToolLoop: cut thoughts', () => {
     throw new Error('The loop finished without failing');
   }
 
-  it.each([['no Tools', null], ['Tools offered', [GET_ENTITY]]] as const)(
+  it.each([
+    ['no Tools', null, undefined],
+    ['Tools offered', [GET_ENTITY], undefined],
+    ['no Tools, Answer Cap set', null, 5],
+    ['Tools offered, Answer Cap set', [GET_ENTITY], 5],
+  ] as const)(
     'fails a reasoning-only round that ends on length as a request failure, with no done (%s)',
-    async (_label, tools) => {
-      const { error, events } = await failure(scripted([cutFrames()]), spec(tools));
+    async (_label, tools, answerCap) => {
+      const { error, events } = await runUntilThrow(scripted([cutFrames()]), { ...spec(tools), answerCap });
 
       expect(error).toBeInstanceOf(AiStreamError);
       expect(error).toMatchObject({ kind: 'cut-thought' });
@@ -507,13 +512,13 @@ describe('streamAiToolLoop: cut thoughts', () => {
   );
 
   it('fails an Inline-mode round cut inside its <think> block', async () => {
-    const { error } = await failure(scripted([[frame({ content: '<think>' }), frame({ content: CUT }), frame({}, 'length')]]), spec(null));
+    const { error } = await runUntilThrow(scripted([[frame({ content: '<think>' }), frame({ content: CUT }), frame({}, 'length')]]), spec(null));
 
     expect(error).toMatchObject({ kind: 'cut-thought' });
   });
 
   it('fails a round cut after a whitespace-only answer', async () => {
-    const { error } = await failure(scripted([cutFrames(frame({ content: '\n\n' }))]));
+    const { error } = await runUntilThrow(scripted([cutFrames(frame({ content: '\n\n' }))]));
 
     expect(error).toMatchObject({ kind: 'cut-thought' });
   });
