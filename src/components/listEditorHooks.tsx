@@ -49,6 +49,8 @@ export type ListEditorAdapter = {
   emptyHint: ReactNode;
   /** Runs after a selection the list doesn't hold is cleared. */
   onDropStale?: () => void;
+  /** The tree fills the slot and owns its clicks: no scroll, no click-to-deselect, and search never replaces it. */
+  ownsSlot?: boolean;
 };
 
 /** The List Editor's pieces, for a host that lays them out itself. */
@@ -61,6 +63,8 @@ export type ListEditorParts = {
   footer: ReactNode;
   /** The held selection's detail fills the pane; the host gives it a flex column instead of a scroll. */
   fills: boolean;
+  /** The list owns its slot; the host gives it neither a scroll nor a click-to-deselect. */
+  ownsSlot: boolean;
   showDetail: boolean;
   onBack: () => void;
 };
@@ -91,7 +95,8 @@ export function useListEditor(
     onDropStale?.();
   }, [stale, onSelect, onDropStale]);
 
-  const matches = search.typed ? adapter.rows().filter((row) => matchesListSearch(row.name, search.term, names)) : null;
+  const ownsSlot = !!adapter.ownsSlot;
+  const matches = search.typed && !ownsSlot ? adapter.rows().filter((row) => matchesListSearch(row.name, search.term, names)) : null;
 
   const { onReorder } = adapter;
   const searchList = (rows: ListEditorRow[]) => {
@@ -130,10 +135,11 @@ export function useListEditor(
         {extras?.children}
       </ListSearchToolbar>
     ),
-    list: matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree ?? searchList(adapter.rows()),
+    list: ownsSlot ? adapter.tree : matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree ?? searchList(adapter.rows()),
     detail: adapter.detail(heldId),
     footer: heldId !== null ? adapter.footer?.(heldId) : undefined,
     fills: heldId !== null && !!adapter.fills?.(heldId),
+    ownsSlot,
     showDetail: heldId !== null,
     onBack: () => onSelect(null),
   };
