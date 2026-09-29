@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FieldError, Hint } from '@/components/ui/typography';
-import { Section } from '@/components/SettingsRows';
+import { HintInfo, Section } from '@/components/SettingsRows';
 import { CodeArea } from '@/components/prompt/CodeArea';
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
@@ -210,6 +210,12 @@ function ParametersTab({ draft, onChange, problems }: TabProps) {
   );
 }
 
+/** The script's readable values as ⓘ markdown. */
+const scriptReference = (globals: readonly { name: string; detail: string; info: string }[]) => [
+  'Reads these read-only values. Returns text, or any other value as JSON.',
+  ...globals.map((g) => `- **\`${g.name}\`** \`${g.detail}\` ${g.info}`),
+].join('\n');
+
 function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames }: TabProps & {
   onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
 }) {
@@ -225,18 +231,17 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
+        <Label htmlFor={`${id}-kind`}>Handler Type</Label>
+        <Hint id={`${id}-kind-help`}>{kind.help}</Hint>
         {/* Half width, level with the lookup's Search column. */}
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field id={`${id}-kind`} label="Handler Type">
-            <Select value={handler.kind} onValueChange={(v) => onKindChange(v as ToolHandler['kind'])}>
-              <SelectTrigger id={`${id}-kind`} aria-describedby={`${id}-kind-help`}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {HANDLER_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </Field>
+          <Select value={handler.kind} onValueChange={(v) => onKindChange(v as ToolHandler['kind'])}>
+            <SelectTrigger id={`${id}-kind`} aria-describedby={`${id}-kind-help`}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {HANDLER_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-        <Hint id={`${id}-kind-help`}>{kind.help}</Hint>
       </div>
       <Field id={`${id}-empty`} label="Empty Result" hint="Goes to the AI when the handler finds nothing">
         <JsonField id={`${id}-empty`} value={draft.emptyResult} onChange={(emptyResult) => onChange({ ...draft, emptyResult })} />
@@ -295,25 +300,11 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
         />
       )}
       {handler.kind === 'script' && (
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <Hint>Reads these read-only values. Returns text, or any other value as JSON.</Hint>
-            <dl aria-label="What the script can read" className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 text-meta">
-              {surface.globals.map((entry) => (
-                <div key={entry.name} className="contents">
-                  <dt className="font-mono">{entry.name}</dt>
-                  <dd className="min-w-0 text-muted-foreground">
-                    <span className="font-mono break-words">{entry.detail}</span> {entry.info}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-          <CodeArea
-            label="Script" ariaLabel="Script" rows={10} surface={surface}
-            value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
-          />
-        </div>
+        <CodeArea
+          label="Script" ariaLabel="Script" rows={10} surface={surface}
+          info={<HintInfo>{scriptReference(surface.globals)}</HintInfo>}
+          value={handler.code} onChange={(code) => setHandler({ ...handler, code })}
+        />
       )}
       </Section>
     </div>
