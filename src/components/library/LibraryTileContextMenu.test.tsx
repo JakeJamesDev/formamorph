@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { LibraryGroup } from '@/lib/libraryOrganization';
 import { LibraryTileContextMenu, type LibraryTileMenuModel } from './LibraryTileContextMenu';
+import { AvatarThumbnailMenuItems } from './AvatarThumbnail';
+import type { ModelMetadata } from '@/types';
 
 const group: LibraryGroup = { id: 'group-1', name: 'Favorites', members: ['group-1'], settings: {} };
 
@@ -129,5 +131,53 @@ describe('Publish', () => {
     fireEvent.contextMenu(screen.getByRole('button', { name: 'Favorites tile' }));
 
     expect(screen.queryByRole('menuitem', { name: 'Publish' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Avatar Thumbnail', () => {
+  const showAvatar = (model: Pick<ModelMetadata, 'hasFileThumbnail' | 'thumbnailSource'>, onChange = vi.fn()) => {
+    render(
+      <LibraryTileContextMenu
+        id="model-1"
+        name="Sedge"
+        tiles={{ ...groupTileModel(), group: () => undefined }}
+        layout="grid"
+        renderedIds={['model-1']}
+        baseCols={4}
+        onOpenGroup={vi.fn()}
+        onDelete={vi.fn()}
+        itemActions={() => <AvatarThumbnailMenuItems model={model} onChange={onChange} />}
+      >
+        <button>Sedge tile</button>
+      </LibraryTileContextMenu>,
+    );
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Sedge tile' }));
+    return onChange;
+  };
+
+  it('marks From File active by default', () => {
+    showAvatar({ hasFileThumbnail: true });
+    expect(screen.getByText('Thumbnail')).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: 'From File' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('menuitemradio', { name: 'Generated' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('marks the stored choice active', () => {
+    showAvatar({ hasFileThumbnail: true, thumbnailSource: 'generated' });
+    expect(screen.getByRole('menuitemradio', { name: 'Generated' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('calls back with the picked source', async () => {
+    const user = userEvent.setup();
+    const onChange = showAvatar({ hasFileThumbnail: true });
+    await user.click(screen.getByRole('menuitemradio', { name: 'Generated' }));
+    expect(onChange).toHaveBeenCalledWith('generated');
+  });
+
+  it.each([false, undefined])('is absent when the file has no embedded image (%s)', (hasFileThumbnail) => {
+    showAvatar({ hasFileThumbnail });
+    expect(screen.queryByText('Thumbnail')).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitemradio', { name: 'Generated' })).not.toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
   });
 });

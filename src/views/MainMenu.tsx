@@ -24,6 +24,8 @@ import { Tip, Tooltip, TooltipTrigger, TooltipPortal, TooltipPositioner, Tooltip
 import {ConfirmDialog} from "@/components/ConfirmDialog";
 import {FilePlus2, DoorOpen, Pencil, AlertTriangle, Code, User, Shield, Globe, LayoutGrid, GalleryThumbnails, Columns2, RectangleVertical, Menu, Earth, BookOpen, ChevronLast, MoreHorizontal, PersonStanding, MessageSquarePlus, FolderOpen, Archive, Settings, ScrollText, type LucideIcon } from "lucide-react";
 import { DefaultPersonaBadge, DefaultPersonaMenuItem } from '@/components/library/DefaultPersona';
+import { AvatarThumbnailMenuItems } from '@/components/library/AvatarThumbnail';
+import { useAvatarThumbnails } from '@/lib/useAvatarThumbnails';
 import { ActionIcon } from '@/lib/actionIcons';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ImageZoomViewer } from "@/components/ImageZoomViewer";
@@ -998,27 +1000,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     return () => { cancelled = true; };
   }, [modelToDelete]);
 
-  // Fill in thumbnails for models that don't have one yet, one at a time so a grid of un-thumbnailed models
-  // doesn't try to hold several WebGL contexts at once. Each card updates in place as its picture arrives;
-  // models whose render fails are marked in storage, so this settles rather than retrying every visit.
-  useEffect(() => {
-    if (cardType !== 'models') return;
-    const pending = models.filter((model) => !model.thumbnail);
-    if (!pending.length) return;
-    let cancelled = false;
-    (async () => {
-      for (const model of pending) {
-        if (cancelled) return;
-        const thumbnail = await ModelStorageService.ensureThumbnail(model.id);
-        if (cancelled || !thumbnail) continue;
-        setModels((prev) => prev.map((m) => (m.id === model.id ? { ...m, thumbnail } : m)));
-      }
-    })();
-    return () => { cancelled = true; };
-    // Keyed on the id set, not on thumbnail state: one run processes every pending model in sequence, and
-    // a landing thumbnail (which changes `models` but not the id list) doesn't tear the loop down and restart
-    // it. It re-runs only when a model is added or removed.
-  }, [cardType, models.map((m) => m.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  const setModelThumbnailSource = useAvatarThumbnails(models, setModels, cardType === 'models');
 
   // Load the local character library metadata. Reused on mount and after the editor modal closes.
   const refreshEntities = useCallback(async () => {
@@ -2337,6 +2319,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
             const target = models.find((m) => m.id === id);
             if (target) void publishModel(target);
           } : undefined}
+          itemActions={(id) => {
+            const model = models.find((m) => m.id === id);
+            return model ? (
+              <AvatarThumbnailMenuItems model={model} onChange={(source) => { void setModelThumbnailSource(id, source); }} />
+            ) : null;
+          }}
           onDelete={setModelToDelete}
         />
       ) : cardType === 'entities' ? (
