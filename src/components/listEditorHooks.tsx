@@ -49,7 +49,7 @@ export type ListEditorAdapter = {
   emptyHint: ReactNode;
   /** Runs after a selection the list doesn't hold is cleared. */
   onDropStale?: () => void;
-  /** The tree fills the slot and owns its clicks: no scroll, no click-to-deselect, and search never replaces it. */
+  /** `tree` fills the slot and owns its clicks: no scroll, no click-to-deselect, and no search list in its place. */
   ownsSlot?: boolean;
 };
 
@@ -63,7 +63,6 @@ export type ListEditorParts = {
   footer: ReactNode;
   /** The held selection's detail fills the pane; the host gives it a flex column instead of a scroll. */
   fills: boolean;
-  /** The list owns its slot; the host gives it neither a scroll nor a click-to-deselect. */
   ownsSlot: boolean;
   showDetail: boolean;
   onBack: () => void;
