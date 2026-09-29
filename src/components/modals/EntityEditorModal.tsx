@@ -247,7 +247,6 @@ const EntityEditorModal = ({
                   <PanelTabContent value="openings">
                     <EntityOpenings
                       entity={entity}
-                      home="library"
                       placeholders={pool}
                       names={{ placeholders: pool, letters }}
                       onChange={(patch) => setEntity((prev) => (prev ? { ...prev, ...patch } : prev))}

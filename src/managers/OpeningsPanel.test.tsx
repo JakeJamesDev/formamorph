@@ -43,7 +43,7 @@ async function menu(): Promise<string[]> {
  *  no entity to name. */
 describe('opening fields', () => {
   it('offer Character Name in an entity’s opening', async () => {
-    mount(<EntityOpenings entity={keeper} home="world" onChange={() => {}} placeholders={[]} />);
+    mount(<EntityOpenings entity={keeper} onChange={() => {}} placeholders={[]} />);
     expect(await menu()).toEqual(['Player Name', 'Character Name']);
   });
 
@@ -57,7 +57,7 @@ describe('an entity opening’s Preview', () => {
   const greeting = { ...keeper, openings: [{ id: 'o1', text: '{{char}} nods to {{user}}.', kind: 'narration' }] } as Entity;
 
   it('reads Character Name as the entity’s name and Player Name as its label', async () => {
-    mount(<EntityOpenings entity={greeting} home="world" onChange={() => {}} placeholders={[]} />);
+    mount(<EntityOpenings entity={greeting} onChange={() => {}} placeholders={[]} />);
     await userEvent.setup().click(screen.getByRole('tab', { name: 'Preview' }));
     expect(screen.getByTestId('prompt-preview').textContent).toBe('Keeper nods to Player Name.');
   });
@@ -82,27 +82,27 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
   const switchFor = (n: number) => screen.queryByRole('radiogroup', { name: `Drawn For, Opening ${n}` });
 
   it('shows on a world entity with the Persona mark, set to each row’s value', () => {
-    mount(<EntityOpenings entity={warden} home="world" onChange={() => {}} placeholders={[]} />);
+    mount(<EntityOpenings entity={warden} onChange={() => {}} placeholders={[]} />);
     expect(within(switchFor(1)!).getByRole('radio', { name: 'Others' })).toBeChecked();
     expect(within(switchFor(2)!).getByRole('radio', { name: 'Self' })).toBeChecked();
   });
 
   it('hides, with the Self rows, on a world entity without the Persona mark', () => {
-    mount(<EntityOpenings entity={{ ...warden, persona: undefined }} home="world" onChange={() => {}} placeholders={[]} />);
+    mount(<EntityOpenings entity={{ ...warden, persona: undefined }} onChange={() => {}} placeholders={[]} />);
     expect(switchFor(1)).toBeNull();
     expect(screen.getAllByTestId('opening-row')).toHaveLength(1);
   });
 
-  it('stays off a library entity', () => {
-    mount(<EntityOpenings entity={warden} home="library" onChange={() => {}} placeholders={[]} />);
-    expect(switchFor(1)).toBeNull();
-    expect(screen.getAllByTestId('opening-row')).toHaveLength(1);
+  it('shows on the Custom Persona entity, which carries no Persona mark', () => {
+    mount(<EntityOpenings entity={{ ...warden, persona: undefined, customPersona: true }} onChange={() => {}} placeholders={[]} />);
+    expect(within(switchFor(2)!).getByRole('radio', { name: 'Self' })).toBeChecked();
+    expect(screen.getAllByTestId('opening-row')).toHaveLength(2);
   });
 
   it('flips only that field, keeping text, kind and weight', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    mount(<EntityOpenings entity={warden} home="world" onChange={onChange} placeholders={[]} />);
+    mount(<EntityOpenings entity={warden} onChange={onChange} placeholders={[]} />);
 
     await user.click(within(switchFor(1)!).getByRole('radio', { name: 'Self' }));
     const toSelf = { ...warden, ...onChange.mock.calls[0][0] };
@@ -128,7 +128,7 @@ describe('the Others | Self switch on an entity’s Openings tab', () => {
       return DOMRect.fromRect({ x: 0, y: i * 100, width: 300, height: 90 });
     });
     const user = userEvent.setup();
-    mount(<EntityOpenings entity={former} home="world" onChange={onChange} placeholders={[]} />);
+    mount(<EntityOpenings entity={former} onChange={onChange} placeholders={[]} />);
     screen.getByRole('button', { name: 'Reorder Opening 2' }).focus();
     await user.keyboard('[Space]');
     await user.keyboard('[ArrowUp]');
