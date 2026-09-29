@@ -94,11 +94,11 @@ export interface PoolSources {
 }
 
 /** The Self rows that replace the pool: the played entity's, or the Custom Persona entity's under a library
- *  persona with none. Under None the played entity is the Custom Persona entity. */
+ *  persona with none, or with no persona (a reference that no longer resolves plays as None). Under None the
+ *  played entity is the Custom Persona entity. */
 function personaSelfRows(persona: ResolvedPersona | null | undefined, customPersona: Entity | null | undefined): PoolEntry[] {
-  if (!persona) return [];
-  const own = drawable(persona.entity, persona.entity.id, true);
-  if (own.length || persona.source !== 'library' || !customPersona) return own;
+  const own = persona ? drawable(persona.entity, persona.entity.id, true) : [];
+  if (own.length || persona?.source === 'world' || persona?.source === 'custom' || !customPersona) return own;
   return drawable(customPersona, customPersona.id, true);
 }
 

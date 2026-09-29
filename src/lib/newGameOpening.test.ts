@@ -411,6 +411,13 @@ describe('Self openings of a library persona and the Custom Persona entity', () 
       .toEqual(new Map([['wanderer-self', 'wanderer']]));
   });
 
+  it.each<{ label: string; ref: PersonaRef }>([
+    { label: 'a library persona', ref: { source: 'library', entityId: 'gone' } },
+    { label: 'a world persona', ref: { source: 'world', entityId: 'gone' } },
+  ])('draw the Custom Persona entity’s Self rows when a saved reference to $label no longer resolves, as None does', ({ ref }) => {
+    expect(drawsUnder(ref)).toEqual(new Map([['wanderer-self', 'wanderer']]));
+  });
+
   it('are what the page-one redraw draws again from', () => {
     const { persona, cast } = resolvePersona({ source: 'library', entityId: 'bare' }, [wanderer, keeper], [bare]);
     const random = seeded(9);
