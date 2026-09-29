@@ -456,11 +456,18 @@ describe('the openings panel', () => {
     expect(world.overview).toBe(before);
   });
 
-  it('shows the default opening text read-only when the list is empty', async () => {
+  it('shows the default opening text read-only at a lone start where nothing can come up', async () => {
     await browse();
-    expect(screen.getByText(/starts on the text below/)).toBeInTheDocument();
+    expect(screen.getByText('No opening can come up at The Jetty, so a game there starts on the text below')).toBeInTheDocument();
     expect(screen.getByRole('note', { name: 'Default Opening' })).toHaveTextContent(OPENING_SCENE_CUE);
     expect(screen.queryByTestId('Opening 1')).not.toBeInTheDocument();
+  });
+
+  it('shows the default opening unnamed in a world with no locations', async () => {
+    world.locations = [];
+    await browse();
+    expect(screen.getByText('No opening can come up, so every game starts on the text below')).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'Default Opening' })).toHaveTextContent(OPENING_SCENE_CUE);
   });
 
   it('switches on and takes clicks as soon as the author writes an opening', async () => {
@@ -860,7 +867,7 @@ describe('the mirrored openings panel', () => {
 
       await pick(user, 'The Market');
       expect(defaultCard()).toHaveTextContent(OPENING_SCENE_CUE);
-      expect(screen.getByText('No opening can come up at The Market, so a game there starts on the text below.')).toBeInTheDocument();
+      expect(screen.getByText('No opening can come up at The Market, so a game there starts on the text below')).toBeInTheDocument();
     });
 
     it('names, under All Locations, every start that gets the default opening, and hides it when none does', async () => {
@@ -869,7 +876,7 @@ describe('the mirrored openings panel', () => {
       world.entities = [];
       await open();
       expect(defaultCard()).toBeInTheDocument();
-      expect(screen.getByText('No opening can come up at The Dock or The Market, so a game there starts on the text below.'))
+      expect(screen.getByText('No opening can come up at The Dock or The Market, so a game there starts on the text below'))
         .toBeInTheDocument();
 
       act(() => {

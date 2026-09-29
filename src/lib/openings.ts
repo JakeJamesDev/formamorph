@@ -323,7 +323,7 @@ export function openingsEditorView(
   const entityGroup = (e: Entity): EditorOpeningGroup => {
     const showSelf = canOwnSelfOpenings(e);
     const own = openingChances(e);
-    // Picked, a start keeps an absent entity's Self rows only: they draw wherever the player plays it.
+    // A picked start keeps only an absent entity's Self rows, which draw wherever the player plays it.
     const rows = editorRows(
       e, (o) => (o.self ? own[o.id] ?? 0 : othersChance(openingKey(e.id, o.id), here.has(e.id))), showSelf,
       (o) => !filtering || here.has(e.id) || !!o.self,
