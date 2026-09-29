@@ -97,6 +97,8 @@ Every trait is also something the player chooses. An author has no way to say:
 | Q21 | The editor offers a count preset (Any / Exactly One / Up to One / Custom). Custom shows "At least" and "At most" fields. |
 | Q22 | Test Bench gets four rules: min unreachable (error), min above max (error), Always On over max (warning), defaults over max (warning). |
 | Q23 | Implementation starts right after ticketing. Blueprints and Trait Links are cleared. |
+| Q24 | Ticket 01 keeps `TraitSelectionModal` compiling with a one-line `maxPicks === 1` read and names it dead in the ticket's comments. Removing it is the user's call, outside this effort. |
+| Q25 | Ticket 01 exports the pick-state query, and the setup list and the Traits tab read it. On Test Bench, 01 only moves the `exclusive` readers to `maxPicks === 1`. Ticket 03's rules are the first Test Bench readers of the query. |
 
 **Schema (world export shape).**
 
@@ -179,5 +181,5 @@ Every trait is also something the player chooses. An author has no way to say:
 ## Further Notes
 
 - ⚠️ **Export shape:** worlds gain `minPicks`, `maxPicks` and `mode`. Shipped worlds' `exclusive` is migrated away, because `exclusive` has been in releases since v2.9.0. Trait requirements and links are unreleased, so they need no compat.
-- `TraitSelectionModal` appears to be dead code, because only its test imports it. A ticket that touches exclusive readers should confirm this and name it rather than update it.
+- `TraitSelectionModal` appears to be dead code, because only its test imports it. Ticket 01 confirmed this and keeps it compiling (Q24).
 - The glossary (`CONTEXT.md`) needs entries for Always On, Hidden (trait) and Pick Count.
