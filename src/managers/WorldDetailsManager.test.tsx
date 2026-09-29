@@ -718,7 +718,7 @@ describe('the mirrored openings panel', () => {
     expect(chance('Guide Opening 1')).toBe('33%');
     expect(chance('Guide Opening 2')).toBe('33%');
     expect(chance('Hermit Opening 1')).toBe('—');
-    expect(screen.queryByRole('combobox', { name: 'Chances At' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Starting Location' })).not.toBeInTheDocument();
   });
 
   it('marks an entity at no starting location with a named term, not color alone', async () => {
@@ -778,31 +778,113 @@ describe('the mirrored openings panel', () => {
       expect(selfBadges('Warden')).toHaveLength(0);
     });
 
-    it('take no No Starting Location badge or Not At hint when a persona has only Self rows', async () => {
+    it('take no No Starting Location badge when a persona has only Self rows', async () => {
       world.locations = [dock, market];
       world.entities = [guide, { ...warden, locations: ['cave'], openings: warden.openings!.slice(1) }];
       await open();
       const group = within(screen.getByRole('region', { name: 'Warden' }));
       expect(group.queryByText('No Starting Location')).not.toBeInTheDocument();
-      expect(group.queryByText(/Not at/)).not.toBeInTheDocument();
       expect(chance('Warden Opening 1')).toBe('25%');
     });
   });
 
-  it('with several starting locations, names the one the chances describe and follows the pick', async () => {
-    world.locations = [dock, market];
-    world.entities = [guide, { ...hermit, locations: ['market'] }];
-    const user = await open();
-    const at = screen.getByRole('combobox', { name: 'Chances At' });
-    expect(at).toHaveTextContent('The Dock');
-    expect(chance('Hermit Opening 1')).toBe('—');
-    expect(within(screen.getByRole('region', { name: 'Hermit' })).getByText(/Not at The Dock/)).toBeInTheDocument();
+  describe('the Starting Location filter', () => {
+    const dockRow = { id: 'd1', text: 'Gulls fight over the nets.', kind: 'narration' as const };
+    const warden = {
+      id: 'warden', name: 'Warden', persona: true, locations: ['market'],
+      openings: [
+        { id: 'w1', text: 'The warden nods.', kind: 'action' },
+        { id: 's1', text: 'You take the lamp.', kind: 'narration', self: true },
+        { id: 's2', text: 'You bar the gate.', kind: 'narration', self: true },
+      ],
+      openingWeights: { s2: 3 },
+    } as unknown as Entity;
+    const filter = () => screen.getByRole('combobox', { name: 'Starting Location' });
+    const pick = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+      await user.click(filter());
+      await user.click(screen.getByRole('option', { name }));
+    };
+    const regions = () => screen.getAllByRole('region').map((g) => g.getAttribute('aria-label'));
+    const defaultCard = () => screen.queryByRole('note', { name: 'Default Opening' });
 
-    await user.click(at);
-    await user.click(screen.getByRole('option', { name: 'The Market' }));
-    expect(chance('Hermit Opening 1')).toBe('50%');
-    expect(chance('Guide Opening 1')).toBe('—');
-    expect(world.overview).not.toHaveProperty('startingLocationId');
+    beforeEach(() => {
+      world.locations = [{ ...dock, openings: [dockRow] }, market];
+      world.entities = [guide, { ...hermit, locations: ['market'] }, warden];
+    });
+
+    it('opens on All Locations, listed before each starting location by name', async () => {
+      const user = await open();
+      expect(filter()).toHaveTextContent('All Locations');
+      await user.click(filter());
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['All Locations', 'The Dock', 'The Market']);
+    });
+
+    it('shows every group under All Locations, with a chance on Self rows only', async () => {
+      await open();
+      expect(regions()).toEqual(['This World', 'The Dock', 'Guide', 'Hermit', 'Warden']);
+      for (const row of ['Opening 1', 'The Dock Opening 1', 'Guide Opening 1', 'Hermit Opening 1', 'Warden Opening 1']) {
+        expect(chance(row)).toBe('—');
+      }
+      expect(chance('Warden Opening 2')).toBe('25%');
+      expect(chance('Warden Opening 3')).toBe('75%');
+      expect(screen.queryByText(/Not at/)).not.toBeInTheDocument();
+    });
+
+    it('keeps what can draw at a picked start, and an absent persona’s Self rows, with their chances', async () => {
+      const user = await open();
+      await pick(user, 'The Dock');
+      expect(regions()).toEqual(['This World', 'The Dock', 'Guide', 'Warden']);
+      expect(['Opening 1', 'The Dock Opening 1', 'Guide Opening 1', 'Guide Opening 2'].map(chance)).toEqual(['25%', '25%', '25%', '25%']);
+      // The Warden stands elsewhere: its Others row leaves, and its Self rows keep their own shares.
+      expect(within(screen.getByRole('region', { name: 'Warden' })).getAllByTestId('opening-row')).toHaveLength(2);
+      expect(['Warden Opening 2', 'Warden Opening 3'].map(chance)).toEqual(['25%', '75%']);
+
+      await pick(user, 'The Market');
+      expect(regions()).toEqual(['This World', 'Hermit', 'Warden']);
+      expect(['Opening 1', 'Hermit Opening 1', 'Warden Opening 1'].map(chance)).toEqual(['33%', '33%', '33%']);
+      expect(['Warden Opening 2', 'Warden Opening 3'].map(chance)).toEqual(['25%', '75%']);
+
+      await pick(user, 'All Locations');
+      expect(regions()).toEqual(['This World', 'The Dock', 'Guide', 'Hermit', 'Warden']);
+      expect(world.overview).not.toHaveProperty('startingLocationId');
+    });
+
+    it('shows the default opening at a picked start only when nothing can come up there', async () => {
+      world.overview = { ...world.overview, openings: [] };
+      world.locations = [dock, market];
+      world.entities = [guide];
+      const user = await open();
+      await pick(user, 'The Dock');
+      expect(defaultCard()).not.toBeInTheDocument();
+      expect(within(screen.getByRole('region', { name: 'This World' })).getByText('No openings yet')).toBeInTheDocument();
+
+      await pick(user, 'The Market');
+      expect(defaultCard()).toHaveTextContent(OPENING_SCENE_CUE);
+      expect(screen.getByText('No opening can come up at The Market, so a game there starts on the text below.')).toBeInTheDocument();
+    });
+
+    it('names, under All Locations, every start that gets the default opening, and hides it when none does', async () => {
+      world.overview = { ...world.overview, openings: [] };
+      world.locations = [dock, market];
+      world.entities = [];
+      await open();
+      expect(defaultCard()).toBeInTheDocument();
+      expect(screen.getByText('No opening can come up at The Dock or The Market, so a game there starts on the text below.'))
+        .toBeInTheDocument();
+
+      act(() => {
+        world.entities = [guide];
+        world.rerender();
+      });
+      expect(screen.getByText(/^No opening can come up at The Market,/)).toBeInTheDocument();
+
+      act(() => {
+        world.overview = { ...world.overview, openings: [ROWS[0]] };
+        world.rerender();
+      });
+      expect(defaultCard()).not.toBeInTheDocument();
+      expect(screen.queryByText(/No opening can come up/)).not.toBeInTheDocument();
+    });
   });
 
   it('keeps the chances with the switch off, and says the list is off', async () => {
