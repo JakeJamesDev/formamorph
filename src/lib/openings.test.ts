@@ -409,7 +409,7 @@ describe('the editor view', () => {
   });
 
   it('keeps the world group when the world has no rows of its own', () => {
-    expect(view().groups).toEqual([{ entity: null, name: 'W', rows: [], atNoStart: false, atChancesStart: true }]);
+    expect(view().groups).toEqual([{ entity: null, name: 'W', rows: [], showSelf: false, atNoStart: false, atChancesStart: true }]);
   });
 
   it('gives each row its chance across every owner drawn at the starting location', () => {

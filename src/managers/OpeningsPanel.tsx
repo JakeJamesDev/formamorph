@@ -22,7 +22,7 @@ import { useListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, showsSelfOpenings, type EditorOpeningRow, type OpeningOwner,
+  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, canOwnSelfOpenings, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -103,7 +103,7 @@ export function OpeningsPanel({ onOpenEntity }: {
         </section>
       )}
 
-      {entityGroups.map(({ entity, name: rawName, rows, atNoStart, atChancesStart }) => {
+      {entityGroups.map(({ entity, name: rawName, rows, showSelf, atNoStart, atChancesStart }) => {
         if (!entity || !hasMatch(rows)) return null;
         const name = label(rawName) || 'Unnamed entity';
         return (
@@ -141,7 +141,7 @@ export function OpeningsPanel({ onOpenEntity }: {
               ownerName={entity.name}
               search={search.typed}
               names={names}
-              selfSwitch={showsSelfOpenings(entity)}
+              selfSwitch={showSelf}
               selfBadge
               empty={null}
             />
@@ -171,7 +171,7 @@ export function EntityOpenings({ entity, home, onChange, placeholders, names = {
   names?: ListSearchNames;
 }) {
   const search = useListSearch();
-  const showSelf = home === 'world' && showsSelfOpenings(entity);
+  const showSelf = home === 'world' && canOwnSelfOpenings(entity);
   return (
     <div className="space-y-2">
       <ListSearchToolbar
@@ -194,7 +194,7 @@ export function EntityOpenings({ entity, home, onChange, placeholders, names = {
       />
       <Hint>
         {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
-        {showSelf && ' A Self opening replaces every other opening when a player plays this entity.'}
+        {showSelf && ' Mark one Self to make it the only start for a player who plays this entity.'}
       </Hint>
     </div>
   );

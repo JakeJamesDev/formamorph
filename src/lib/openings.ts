@@ -19,6 +19,8 @@ export const DEFAULT_OPENING: Opening = { id: 'default', text: OPENING_SCENE_CUE
 export interface OpeningOwner {
   openings?: Opening[];
   openingWeights?: Record<string, number>;
+  /** The Persona mark, without which the owner's Self rows neither show nor draw. */
+  persona?: boolean;
 }
 
 /** One drawable row, its owner and its weight, always above 0. `ownerId` is the entity's id, or null for
@@ -42,10 +44,14 @@ export function openingsEnabled(overview: Overview, owners: readonly MaybeOwner[
   return hasAuthoredOpenings(overview) || owners.some(hasAuthoredOpenings);
 }
 
-/** Whether this owner has written an opening. Weight 0 benches one row, so it still counts here. */
+/** Whether this owner has written an opening that can draw. Weight 0 benches one row, so it still counts
+ *  here; a Self row counts only on an owner with the Persona mark. */
 export function hasAuthoredOpenings(owner: MaybeOwner): boolean {
-  return (owner?.openings ?? []).some((o) => o.text.trim().length > 0);
+  return (owner?.openings ?? []).some((o) => o.text.trim().length > 0 && (!o.self || canOwnSelfOpenings(owner)));
 }
+
+/** Whether an owner's Self rows exist for the editor and the draw: only an owner with the Persona mark has any. */
+export const canOwnSelfOpenings = (owner: MaybeOwner): boolean => !!owner?.persona;
 
 /** A row's relative weight: 1 unless the author set one. Negatives count as 0. */
 export function openingWeight(weights: Record<string, number> | undefined, id: string): number {
@@ -56,20 +62,16 @@ export function openingWeight(weights: Record<string, number> | undefined, id: s
 /** The Others rows of one owner that can come up, or its Self rows with `self`, with their weights. A blank
  *  or benched row never draws. */
 function drawable(owner: MaybeOwner, ownerId: string | null, self = false): PoolEntry[] {
+  if (self && !canOwnSelfOpenings(owner)) return [];
   return (owner?.openings ?? [])
     .filter((o) => o.text.trim() && !!o.self === self)
     .map((opening) => ({ ownerId, opening, weight: openingWeight(owner?.openingWeights, opening.id) }))
     .filter((e) => e.weight > 0);
 }
 
-/** Whether an owner's Self rows exist for the editor and the draw: only an entity with the Persona mark has any. */
-export const showsSelfOpenings = (entity: Entity | null | undefined): boolean => !!entity?.persona;
-
-/** The played persona's drawable Self rows. A world persona needs the Persona mark. */
-function selfPool(persona: ResolvedPersona | null | undefined): PoolEntry[] {
-  if (persona?.source !== 'world' || !showsSelfOpenings(persona.entity)) return [];
-  return drawable(persona.entity, persona.entity.id, true);
-}
+/** The played entity whose Self rows can draw: a world persona. */
+const selfOwner = (persona: ResolvedPersona | null | undefined): Entity | null =>
+  (persona?.source === 'world' ? persona.entity : null);
 
 /** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
 export interface PoolSources {
@@ -89,8 +91,11 @@ export interface PoolSources {
  * cast order. Only the played persona's Self rows ever draw.
  */
 export function openingPool({ overview, entities = [], startingLocationId, picked = [], persona }: PoolSources): PoolEntry[] {
-  if (!openingsEnabled(overview, [...entities, persona?.entity])) return [];
-  const selfRows = selfPool(persona);
+  const played = selfOwner(persona);
+  // The played entity's Others rows never draw, so only its Self rows can switch the list on.
+  const playedSelf = played && { ...played, openings: played.openings?.filter((o) => o.self) };
+  if (!openingsEnabled(overview, [...entities, playedSelf])) return [];
+  const selfRows = played ? drawable(played, played.id, true) : [];
   if (selfRows.length) return selfRows;
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
@@ -124,9 +129,12 @@ export function drawOpening(pool: readonly PoolEntry[], random: () => number): O
   return drawPoolEntry(pool, random).opening;
 }
 
-/** The entity among `entities` that owns a drawn row, or null for the world's own row. */
-export function openingOwner(ownerId: string | null, entities: readonly Entity[]): Entity | null {
-  return ownerId == null ? null : entities.find((e) => e.id === ownerId) ?? null;
+/** The entity that owns a drawn row, among `entities` and the played persona, or null for the world's own row. */
+export function openingOwner(
+  ownerId: string | null, entities: readonly Entity[], persona?: ResolvedPersona | null,
+): Entity | null {
+  if (ownerId == null) return null;
+  return entities.find((e) => e.id === ownerId) ?? (persona?.entity.id === ownerId ? persona.entity : null);
 }
 
 /** One row by weight from a pool that has weight to draw. */
@@ -200,9 +208,11 @@ export interface EditorOpeningGroup {
   entity: Entity | null;
   name: string;
   rows: EditorOpeningRow[];
+  /** The rows include Self rows, and each card sets Others or Self. */
+  showSelf: boolean;
   /** Holds Others rows but stands at none of the world's starting locations, so they never come up. */
   atNoStart: boolean;
-  /** Holds no Others rows outside the starting location the chances describe. */
+  /** True when the group has no Others rows, or stands at the starting location the chances describe. */
   atChancesStart: boolean;
 }
 
@@ -235,7 +245,7 @@ const editorRows = (
 
 /** One owner's rows with chances within its own list, for an entity's Openings tab. Self rows show only
  *  with `showSelf`. */
-export function ownerOpeningRows(owner: OpeningOwner, showSelf = false): EditorOpeningRow[] {
+export function ownerOpeningRows(owner: OpeningOwner, showSelf = canOwnSelfOpenings(owner)): EditorOpeningRow[] {
   const chances = openingChances(owner);
   return editorRows(owner, (o) => chances[o.id] ?? 0, showSelf);
 }
@@ -262,7 +272,7 @@ export function openingsEditorView(
   const here = new Set(entityIdsAt(chancesStartId, [...entities]));
   const atAnyStart = new Set(entityIdsAtAny(starts.map((l) => l.id), [...entities]));
   const entityGroup = (e: Entity): EditorOpeningGroup => {
-    const showSelf = showsSelfOpenings(e);
+    const showSelf = canOwnSelfOpenings(e);
     const own = openingChances(e);
     const shareHere = (o: Opening) => (here.has(e.id) ? shares.get(openingKey(e.id, o.id)) ?? 0 : null);
     const hasOthers = shownOpenings(e, false).length > 0;
@@ -270,6 +280,7 @@ export function openingsEditorView(
       entity: e,
       name: e.name,
       rows: editorRows(e, (o) => (o.self ? own[o.id] ?? 0 : shareHere(o)), showSelf),
+      showSelf,
       atNoStart: hasOthers && !atAnyStart.has(e.id),
       atChancesStart: !hasOthers || here.has(e.id),
     };
@@ -282,7 +293,7 @@ export function openingsEditorView(
       {
         entity: null, name: overview?.name ?? '',
         rows: editorRows(overview ?? {}, (o) => shares.get(openingKey(null, o.id)) ?? 0),
-        atNoStart: false, atChancesStart: true,
+        showSelf: false, atNoStart: false, atChancesStart: true,
       },
       ...entities.map(entityGroup).filter((g) => g.rows.length > 0),
     ],
