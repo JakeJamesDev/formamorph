@@ -197,7 +197,7 @@ function PreviewPanel() {
           </Row>
 
           <Row label="Categories" hint="Multiselect with chips.">
-            <MultiSelect options={MULTI_OPTIONS} defaultValue={['a', 'b']} onValueChange={noop} placeholder="Select…" hideSelectAll className="w-full" />
+            <MultiSelect options={MULTI_OPTIONS} defaultValue={['a', 'b']} onValueChange={noop} placeholder="Select…" className="w-full" />
           </Row>
 
           <Row label="Amount" hint="Sed do eiusmod.">

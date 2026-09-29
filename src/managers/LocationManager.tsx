@@ -160,7 +160,6 @@ const LocationManager = ({ location, tab, onTabChange, focusField }: {
             defaultValue={presentIds}
             onValueChange={handleEntitiesChange}
             placeholder="Select entities"
-            hideSelectAll
           />
         </div>
         <LocationConnections location={editingLocation} />
