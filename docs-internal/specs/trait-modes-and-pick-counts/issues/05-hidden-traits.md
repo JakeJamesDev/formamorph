@@ -18,6 +18,7 @@ An author can mark a trait Hidden. Hidden is Always On that the player never see
 - [ ] `mode: 'hidden'` behaves exactly like `alwaysOn` in the gate module and the pick counts.
 - [ ] The trait editor's mode control gains Hidden.
 - [ ] The setup list and the Traits tab never show a Hidden trait.
+- [ ] An Enter World category with no visible rows is not shown. This covers categories that hold only Hidden or dormant Always On traits (Q33). The page index may move as picks change.
 - [ ] Gate lines leave out hidden targets and read "Locked" when none remain.
 - [ ] Every player-facing surface that names traits leaves out Hidden traits. This covers history, stat change attribution and cascade banners. The ticket's comments list each surface checked.
 - [ ] AI context, the Prompt viewer and Test Bench still show Hidden traits.

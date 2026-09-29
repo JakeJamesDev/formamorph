@@ -106,6 +106,10 @@ Every trait is also something the player chooses. An author has no way to say:
 | Q30 | Stat code never switches an Always On or Hidden trait, in either direction. Its gate alone decides (Q2). |
 | Q31 | Ticket 04 treats `hidden` as Always On in the gate logic. Ticket 05 adds only the hiding and the editor option. |
 | Q32 | `trait-group-always-on-over-max` counts co-activation: it finds the largest set of the group's Always On traits whose gates one selection can open together, respecting max-1 rivals. If that can't stay small and pure, it counts every Always On trait that can ever unlock and accepts the false positives. |
+| Q33 | An Enter World category with no visible rows is not shown. This covers categories of only Hidden or dormant Always On traits. It is part of ticket 05. |
+| Q34 | A save load settles every bearer against the current world. This is ticket 08. |
+| Q35 | Stat code may switch on an Optional sibling beside an active Always On trait in a max-1 group. Stat code ignores pick counts. |
+| Q36 | `trait-group-always-on-over-max` may over-report because it ignores Optional groups' maximums. It is a warning, and that is accepted. |
 
 **Schema (world export shape).**
 
