@@ -67,6 +67,7 @@ export const linkFieldsOf = (trait: Trait): TraitLinkFields => ({
   placeholderPins: trait.placeholderPins ?? [],
   playerToggle: !!trait.playerToggle,
   statChanges: trait.statChanges,
+  mode: trait.mode ?? 'optional',
 });
 
 /** The original's overridable fields as `link` reads them, with what it overrides and what went stale. */
@@ -79,7 +80,15 @@ export function effectiveLinkTrait(trait: Trait, link: TraitLink | undefined): T
   const overrides = link?.overrides?.[trait.id];
   if (!overrides || !Object.keys(overrides).length) return trait;
   const { record, overridden } = effectiveRecord(linkFieldsOf(trait), overrides);
-  return { ...trait, ...Object.fromEntries(overridden.map((field) => [field, record[field]])) };
+  const { mode: _m, ...fields } = record;
+  const { mode: _t, ...base } = trait;
+  const mode = overridden.includes('mode') ? record.mode : trait.mode;
+  const others = overridden.filter((f) => f !== 'mode');
+  return {
+    ...base,
+    ...Object.fromEntries(others.map((field) => [field, fields[field as keyof typeof fields]])),
+    ...(mode && mode !== 'optional' ? { mode } : {}),
+  };
 }
 
 /**

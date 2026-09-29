@@ -174,6 +174,8 @@ export interface TraitLinkFields {
   placeholderPins: PlaceholderPin[];
   playerToggle: boolean;
   statChanges: StatChange[];
+  /** 'optional' stands for an absent `Trait.mode`, so an override to Optional survives the JSON export. */
+  mode: 'optional' | TraitMode;
 }
 
 export type TraitLinkOverrides = BlueprintOverrides<TraitLinkFields>;
