@@ -352,7 +352,7 @@ The reference keeps the embedded canvas inside a bounded editor panel. At deskto
 
 | State | Treatment |
 | --- | --- |
-| Selected | Nodes keep the production ring; selected authored arrows thicken and open the Connection inspector. |
+| Selected | Nodes keep the production ring; selected authored arrows thicken and open the Connection inspector with that arrow's Travel Hint box focused. Each arrow of a pair takes clicks only on its own outer side. |
 | Disabled | Undo/redo disable at empty history boundaries; alignment needs two locations and distribution needs three. |
 | Focus | Search and toolbar controls retain shared focus styling and accessible names. |
 | Overflow | Long node names truncate; search rows truncate too. Only the reference's selected-location output exposes the complete name. Long Connection labels clamp in the overview and expand on selection/hover; the inspector holds the full travel hint. |
@@ -825,6 +825,35 @@ The same levels work on desktop and on a phone. Nothing opens to the side, so a 
 | --- | --- |
 | Field Reset, stale marker, label row, footer | `FieldReset`, `LabelRow` and `BlueprintFooter` in [`BlueprintReset.tsx`](../src/components/editor/BlueprintReset.tsx) |
 | Trait link panel and footer | `LinkedTraitManager` and `LinkFooter` in [`TraitLinkPanel.tsx`](../src/managers/TraitLinkPanel.tsx) |
+
+## Pattern: Travel Hint Pair
+
+**Purpose:** Edit a two-way Connection's two Travel Hints, one for each direction, and let one hint cover both.
+
+- 📚 **Two stacked boxes.** Each box edits one direction and carries that direction in its label. The first box is the one a link copies from.
+- 🔗 **Vertical link toggle.** A ghost button sits to the right of both boxes and spans their full height. It shows a vertical chain (`link-2`, rotated 90°) when linked and a broken chain (`link-2-off`) when unlinked. Its tooltip names what a click does: **Link Travel Hints** or **Unlink Travel Hints**.
+- 🔒 **Linked.** The first box writes both directions. The second box is read-only, muted, and shows the first box's text. Screen readers hear that it copies the first hint.
+- ✏️ **Unlinked.** Both boxes are editable. Unlinking gives the second box back the text it held before the last link.
+- ➡️ **One-way.** One box and no toggle. Switching to two-way adds the second box, linked.
+
+The link state is never saved. The pair opens linked when both hints are equal, and reads the state again when the hints change somewhere else, such as an undo.
+
+| Instance | Box labels |
+| --- | --- |
+| Canvas inspector | An arrow icon plus the destination name. Clicking an arrow on the canvas focuses its box. |
+| Location panel's Connections list | **To** *partner* for the trip out, **From** *partner* for the trip in |
+
+### Production mapping
+
+| Need | Component |
+| --- | --- |
+| Boxes, toggle, link memory | `TravelHintPair` in [`TravelHintPair.tsx`](../src/components/editor/TravelHintPair.tsx) |
+| Link and unlink rewrites, opening state | `withLink`, `withUnlink` and `hintsLinked` in [`connectionEditing.ts`](../src/lib/connectionEditing.ts) |
+| Canvas inspector | `ConnectionInspector` in [`LocationCanvas.tsx`](../src/managers/LocationCanvas.tsx) |
+| Location panel | [`LocationConnections.tsx`](../src/managers/LocationConnections.tsx) |
+| Isolated reference | [`TravelHintPairReference.tsx`](../src/components/design-system/TravelHintPairReference.tsx) |
+
+Open `#dev?modal=designSystem&tab=travel-hints` for linked, unlinked, and one-way samples in local state. The **Locations** tab's quay-to-garden pair has different hints, so its arrow labels sit on their outer sides.
 
 ## UI and prototype workflow
 

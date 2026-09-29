@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from 'react';
 import { PromptNavigationReference } from '@/components/design-system/PromptNavigationReference';
 import { BearerFlyoutReference } from '@/components/design-system/BearerFlyoutReference';
+import { TravelHintPairReference } from '@/components/design-system/TravelHintPairReference';
 import { useDevRoute } from '@/lib/devRouter';
 import { BookOpen, MonitorCog } from 'lucide-react';
 import { OptionSwitcher, Row, Section } from '@/components/SettingsRows';
@@ -325,6 +326,12 @@ const DESIGN_SYSTEM_REFERENCES: readonly ReferenceDefinition[] = [
     label: 'Bearer Flyouts',
     description: 'Drill-down entity pickers in a menu and on a button',
     Component: BearerFlyoutReference,
+  },
+  {
+    id: 'travel-hints',
+    label: 'Travel Hints',
+    description: 'Two Travel Hint boxes joined by a link toggle',
+    Component: TravelHintPairReference,
   },
 ];
 

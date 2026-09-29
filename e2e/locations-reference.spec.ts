@@ -98,28 +98,54 @@ test('locations reference preserves local edits, hierarchy, and responsive tools
   expect(appearance.palette).toBe('purple');
   expect(appearance.font).toContain('Atkinson');
   expect(appearance.reduced).toBe(true);
-  const edge = page.locator('[data-id="connection:quay-garden:aToB"] .react-flow__edge-interaction');
-  const connectionPoint = () => edge.evaluate(element => {
-    const path = element as SVGPathElement;
-    // Pick the exposed end beyond the Group frame that the Connection crosses.
-    const at = path.getPointAtLength(path.getTotalLength() * 0.95);
-    const screen = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM()!);
-    return { x: screen.x, y: screen.y };
-  });
-  let point = await connectionPoint();
-  await page.mouse.click(point.x, point.y);
-  const hint = page.getByRole('textbox', { name: 'Travel Hint' });
-  const originalHint = 'along the elevated footbridge above the harbor warehouses and winter storage yards';
-  await expect(hint).toHaveValue(originalHint);
-  await hint.fill('through the north gate');
-  await hint.locator('..').getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Undo', exact: true }).click();
-  await expect(page.locator('.react-flow__edgelabel-renderer')).toContainText(originalHint);
-  point = await connectionPoint();
-  await page.mouse.click(point.x, point.y);
-  await expect(hint).toHaveValue(originalHint);
+  // Click a leg's drawn line near the garden: the exposed end beyond the Group frame the Connection crosses.
+  const clickLeg = async (leg: 'aToB' | 'bToA') => {
+    const line = page.locator(`[data-id="connection:quay-garden:${leg}"] .react-flow__edge-path`);
+    const point = await line.evaluate((element, fraction) => {
+      const path = element as SVGPathElement;
+      const at = path.getPointAtLength(path.getTotalLength() * fraction);
+      const screen = new DOMPoint(at.x, at.y).matrixTransform(path.getScreenCTM()!);
+      return { x: screen.x, y: screen.y };
+    }, leg === 'aToB' ? 0.95 : 0.05);
+    await page.mouse.click(point.x, point.y);
+  };
+  const toGarden = page.getByRole('textbox', { name: 'Travel Hint to Hill Garden', exact: true });
+  const toQuay = page.getByRole('textbox', { name: 'Travel Hint to Lower Quay', exact: true });
+  const linkToggle = page.getByRole('button', { name: 'Link Travel Hints', exact: true });
+  const closeInspector = page.locator('.react-flow__panel').filter({ has: toGarden })
+    .getByRole('button', { name: 'Close', exact: true });
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  const labels = page.locator('.react-flow__edgelabel-renderer');
+  const upHint = 'along the elevated footbridge above the harbor warehouses and winter storage yards';
+  const downHint = 'down the footbridge stairs to the quay';
+
+  await clickLeg('aToB');
+  await expect(toGarden).toBeFocused();
+  await expect(toGarden).toHaveValue(upHint);
+  await expect(toQuay).toHaveValue(downHint);
+  await expect(linkToggle).toHaveAttribute('aria-pressed', 'false');
+  await linkToggle.click();
+  await expect(linkToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(toQuay).toHaveValue(upHint);
+  await expect(toQuay).toHaveAttribute('readonly', '');
+  await toGarden.fill('');
+  await toGarden.pressSequentially('through the north gate');
+  await expect(toQuay).toHaveValue('through the north gate');
+  await closeInspector.click();
+
+  // The keystroke run is one step, and the link is the step before it.
+  await undo.click();
+  await expect(labels).toContainText(upHint);
+  await expect(labels).not.toContainText(downHint);
+  await undo.click();
+  await expect(labels).toContainText(downHint);
+  await clickLeg('bToA');
+  await expect(toQuay).toBeFocused();
+  await expect(toQuay).toHaveValue(downHint);
+  await expect(toGarden).toHaveValue(upHint);
+  await expect(linkToggle).toHaveAttribute('aria-pressed', 'false');
   await page.screenshot({ path: testInfo.outputPath('connection-inspector.png'), animations: 'disabled' });
-  await hint.locator('..').getByRole('button', { name: 'Close', exact: true }).click();
+  await closeInspector.click();
   expect(await page.evaluate(() => [
     localStorage.getItem('FORMAMORPH_canvasSnap'),
     localStorage.getItem('FORMAMORPH_canvasGridVisible'),

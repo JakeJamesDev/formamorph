@@ -8,7 +8,7 @@ import {
   newLocationPosition, withCanvasPosition,
   type CanvasIntent,
 } from "./locationCanvas";
-import { connectionsAt } from "./connectionEditing";
+import { connectionsAt, withHint } from "./connectionEditing";
 import { buildLocationTree, flattenLocationTree } from "./locationTree";
 import type { Connection, GameLocation } from "@/types";
 
@@ -195,6 +195,12 @@ describe("buildLocationCanvas edges", () => {
     const conn: Connection = { id: "c5", a: "shore", b: "landing", aToB: {}, bToA: {} };
     expect(canvas([landing, shore], [conn]).edges.every((e) => e.connectionId === "c5")).toBe(true);
     expect(canvas([village, tavern, house]).edges.every((e) => e.connectionId === undefined)).toBe(true);
+  });
+
+  it("names the leg each solid arrow draws, so a click can focus that leg's hint", () => {
+    const conn: Connection = { id: "c5", a: "shore", b: "landing", aToB: {}, bToA: {} };
+    const legs = canvas([landing, shore], [conn]).edges.map((e) => [e.source, e.target, e.leg]);
+    expect(legs).toEqual([["shore", "landing", "aToB"], ["landing", "shore", "bToA"]]);
   });
 
   it("drops an arrow whose far end no longer exists", () => {
@@ -776,19 +782,19 @@ describe("hintIntent", () => {
   const conn: Connection = { id: "c9", a: "shore", b: "landing", aToB: {}, bToA: {} };
 
   it("labels only the arrow of the leg the author typed into", () => {
-    const hinted = applied([conn], hintIntent(conn, "bToA", "along the jetty"));
+    const hinted = applied([conn], hintIntent(withHint(conn, "bToA", "along the jetty")));
     const labels = canvas([landing, shore], hinted).edges.map((e) => [e.id, e.label]);
     expect(labels).toEqual([["connection:c9:aToB", undefined], ["connection:c9:bToA", "along the jetty"]]);
   });
 
   it("drops the field when the hint is cleared, so an empty hint has one shape", () => {
     const hinted: Connection = { ...conn, aToB: { hint: "along the jetty" } };
-    const cleared = applied([hinted], hintIntent(hinted, "aToB", ""));
+    const cleared = applied([hinted], hintIntent(withHint(hinted, "aToB", "")));
     expect(cleared[0].aToB).toEqual({});
     expect(canvas([landing, shore], cleared).edges.every((e) => e.label === undefined)).toBe(true);
     // Spaces are not a hint either, and a hint being typed keeps the space the author just pressed.
-    expect(applied([hinted], hintIntent(hinted, "aToB", "   "))[0].aToB).toEqual({});
-    expect(applied([conn], hintIntent(conn, "aToB", "along the "))[0].aToB).toEqual({ hint: "along the " });
+    expect(applied([hinted], hintIntent(withHint(hinted, "aToB", "   ")))[0].aToB).toEqual({});
+    expect(applied([conn], hintIntent(withHint(conn, "aToB", "along the ")))[0].aToB).toEqual({ hint: "along the " });
   });
 });
 

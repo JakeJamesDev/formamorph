@@ -75,6 +75,22 @@ export function withHint(connection: Connection, leg: LegKey, hint: string): Con
   return { ...connection, [leg]: hint.trim() ? { ...rest, hint } : rest };
 }
 
+/** Whether a Connection opens with its hints linked: both legs exist and carry the same hint, where two
+ *  absent hints count as the same. The link itself is never stored; this is how it is read back. */
+export function hintsLinked(connection: Connection): boolean {
+  return !!connection.aToB && !!connection.bToA && connection.aToB.hint === connection.bToA.hint;
+}
+
+/** The record with the `first` leg's hint written into the other leg. A one-way record has nothing to link. */
+export function withLink(connection: Connection, first: LegKey): Connection {
+  return withHint(connection, otherLeg(first), connection[first]?.hint ?? '');
+}
+
+/** The record with `text` written back into the leg after `first`. The caller holds the text the link replaced. */
+export function withUnlink(connection: Connection, first: LegKey, text: string): Connection {
+  return withHint(connection, otherLeg(first), text);
+}
+
 /** Every Connection touching `locationId`, each turned into the view that location sees. A self-link is
  *  left out: it has no partner to name and reaches nowhere. */
 export function connectionsAt(locationId: string, connections: Connection[]): ConnectionView[] {

@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 /** Half the gap between a pair's two arrows — each rides to the left of its own direction of travel. */
 const ARROW_OFFSET = 5;
 
+/** The width of an arrow's click target, xyflow's default. */
+const HIT_WIDTH = 20;
+
 /**
  * A border-to-border arrow, drawn one step to the left of the direction it travels: a pair's two directions
  * therefore sit side by side instead of on top of each other, and the map is read by counting arrows.
@@ -33,16 +36,25 @@ export const FloatingEdge = ({ id, source, target, markerEnd, style, label, data
   });
   // xyflow hands edge data back as unknown values; the shape it is holding is `toFlowEdge`'s own.
   const wanted = String(data?.connectionStyle);
-  const geometry = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
-    style: isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE,
-    offset: ARROW_OFFSET,
-  });
+  const edgeStyle = isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE;
+  const geometry = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), { style: edgeStyle, offset: ARROW_OFFSET });
+  // The click target spans from the pair's center line outward, so a pair's two arrows never share a pixel.
+  const hitPath = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
+    style: edgeStyle, offset: HIT_WIDTH / 2,
+  }).path;
   // Selection expands too, so touch (which never hovers) can still reach the full text by tapping.
   const expanded = hovered || selected;
   return (
     <>
       <g onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-        <BaseEdge id={id} path={geometry.path} markerEnd={markerEnd} style={style} />
+        <BaseEdge id={id} path={geometry.path} markerEnd={markerEnd} style={style} interactionWidth={0} />
+        <path
+          d={hitPath}
+          fill="none"
+          strokeOpacity={0}
+          strokeWidth={HIT_WIDTH}
+          className="react-flow__edge-interaction"
+        />
       </g>
       {label && (
         <EdgeLabelRenderer>

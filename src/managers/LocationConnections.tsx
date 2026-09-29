@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, ArrowLeftRight, Plus, X } from 'lucide-react';
 import { useGameData } from '@/contexts/GameDataContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Hint } from '@/components/ui/typography';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,12 +13,12 @@ import {
   createConnection,
   legFrom,
   withDirection,
-  withHint,
   type ConnectionDirection,
 } from '@/lib/connectionEditing';
 import { otherLeg } from '@/lib/locationGraph';
 import type { Connection, GameLocation, LegKey } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
+import { TravelHintPair } from '@/components/editor/TravelHintPair';
 
 /** The direction control's options in the order they're offered, worded from the panel that's open. */
 const DIRECTIONS: { value: ConnectionDirection; label: string }[] = [
@@ -114,21 +113,16 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
                 <ToggleGroupItem key={d.value} value={d.value} className="flex-1">{d.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
-            {legsAt(connection, location.id).map(({ key, word }) => {
-              const id = `connection-${connection.id}-${key}`;
-              return (
-                <div key={key} className="space-y-1">
-                  <Label htmlFor={id} className="block">{word} {partnerName}</Label>
-                  <Input
-                    id={id}
-                    value={connection[key]?.hint ?? ''}
-                    onChange={(e) => updateConnection(withHint(connection, key, e.target.value))}
-                    placeholder="Travel Hint, e.g. through the shimmering portal"
-                    aria-label={`Travel Hint ${word.toLowerCase()} ${partnerName}`}
-                  />
-                </div>
-              );
-            })}
+            <TravelHintPair
+              connection={connection}
+              legs={legsAt(connection, location.id).map(({ key, word }) => ({
+                key,
+                label: `${word} ${partnerName}`,
+                name: `Travel Hint ${word.toLowerCase()} ${partnerName}`,
+              }))}
+              idPrefix={`connection-${connection.id}`}
+              onChange={updateConnection}
+            />
           </div>
         );
       })}
