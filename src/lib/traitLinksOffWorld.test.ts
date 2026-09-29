@@ -22,6 +22,7 @@ const home: TraitWorld = {
 /** What the Class link overrides on Paladin: default-on, and its pins aimed at the Garb blueprint. */
 const paladinOverrides = {
   isDefault: { value: true, blueprint: false },
+  mode: { value: 'hidden' as const, blueprint: 'optional' as const },
   placeholderPins: { value: [{ placeholderId: 'garb', value: 'plate' }], blueprint: [] },
 };
 const classLink: TraitLink = {
@@ -100,6 +101,7 @@ describe.each(carriers)('links through %s', (_name, carry) => {
     expect(playerBearerIds).toContain('lib-mira');
     expect(bearer.traits.map((t) => [t.id, !!t.isDefault])).toEqual([['t-vow', false], ['n-paladin', true], ['n-smite', false]]);
     expect(bearer.traits[1].placeholderPins).toEqual([{ placeholderId: 'garb', value: 'plate' }]);
+    expect(bearer.traits.map((t) => t.mode)).toEqual([undefined, 'hidden', undefined]);
   });
 
   it('rebind a named-scope requirement by bearer name', async () => {
