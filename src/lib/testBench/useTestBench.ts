@@ -193,6 +193,10 @@ export function useTestBench({
     (startLocationId: string) => setOpeningChoice((prev) => ({ ...prev, startLocationId })),
     [],
   );
+  const chooseOpeningPersona = useCallback(
+    (personaId: string | null) => setOpeningChoice((prev) => ({ ...prev, personaId })),
+    [],
+  );
   const chooseOpening = useCallback(
     (openingKey: string) => setOpeningChoice((prev) => ({ ...prev, openingKey })),
     [],
@@ -431,6 +435,7 @@ export function useTestBench({
         data: opening,
         onReroll: rerollOpening,
         onStartChange: chooseOpeningStart,
+        onPersonaChange: chooseOpeningPersona,
         onOpeningChange: chooseOpening,
       },
     },

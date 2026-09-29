@@ -96,7 +96,7 @@ const benchProps = (groups: FindingGroup[], over: BenchOver = {}): TestBenchProp
     ...over.triggers,
   },
   aiContext: over.aiContext ?? buildAiContext(defective, buildLens(defective, EMPTY_LENS)),
-  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), onStartChange: vi.fn(), onOpeningChange: vi.fn(), ...over.opening },
+  opening: { data: EMPTY_OPENING, onReroll: vi.fn(), onStartChange: vi.fn(), onPersonaChange: vi.fn(), onOpeningChange: vi.fn(), ...over.opening },
 });
 
 const renderBench = (from: RuleWorld, over: BenchOver = {}, placementControl?: PlacementControl) => {
@@ -677,6 +677,44 @@ describe('TestBench Opening instrument', () => {
     renderBench(off, { tab: 'opening', opening: { data: buildOpening(off, buildLens(off, EMPTY_LENS), {}) } });
     expect(screen.getByText(/openings list is off/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /System Prompt/ })).toBeInTheDocument();
+  });
+
+  const personaWorld: RuleWorld = {
+    ...pooledWorld,
+    locations: [{ id: 'harbor', name: 'Harbor Steps', isStarting: true, openings: [{ id: 'o-gull', text: 'Gulls wheel.', kind: 'narration' }] }],
+    entities: [{
+      id: 'e-wren', name: 'Wren', persona: true,
+      openings: [{ id: 'o-self', text: 'You are Wren.', kind: 'narration', self: true }],
+    }],
+  };
+  const personaData = (personaId?: string) => buildOpening(
+    personaWorld, buildLens(personaWorld, EMPTY_LENS), {}, { personaId },
+  );
+
+  it('offers the world’s personas and hands a pick to the editor', async () => {
+    const { opening } = renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
+    await userEvent.click(screen.getByRole('combobox', { name: 'Persona' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Wren' }));
+    expect(opening.onPersonaChange).toHaveBeenCalledWith('e-wren');
+  });
+
+  it('hands None back as null', async () => {
+    const { opening } = renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
+    await userEvent.click(screen.getByRole('combobox', { name: 'Persona' }));
+    await userEvent.click(screen.getByRole('option', { name: 'None' }));
+    expect(opening.onPersonaChange).toHaveBeenCalledWith(null);
+  });
+
+  it('marks a location’s row with its location and a persona’s row as Self', () => {
+    renderBench(personaWorld, { tab: 'opening', opening: { data: personaData() } });
+    expect(screen.getByRole('button', { name: /Harbor Steps.*Gulls wheel\./ })).toBeInTheDocument();
+    renderBench(personaWorld, { tab: 'opening', opening: { data: personaData('e-wren') } });
+    expect(screen.getByRole('button', { name: /Wren.*Narration \(Self\).*You are Wren\./ })).toBeInTheDocument();
+  });
+
+  it('shows no persona picker in a world without personas', () => {
+    renderOpening();
+    expect(screen.queryByRole('combobox', { name: 'Persona' })).toBeNull();
   });
 
   it('says a world with no locations has nowhere to start', () => {

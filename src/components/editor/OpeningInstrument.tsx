@@ -175,6 +175,9 @@ const PromptBlock = ({ label, text, open, onToggle }: {
   </div>
 );
 
+/** The picker's value for None: a Select item cannot hold an empty value. */
+const NO_PERSONA = 'none';
+
 const KIND_LABEL: Record<OpeningPoolRow['kind'], string> = { action: 'Player Action', narration: 'Narration' };
 
 /** One drawable opening: its owner, kind, text and chance. Selecting it shows what it sends on turn one. */
@@ -188,8 +191,10 @@ const PoolRow = ({ row, selected, onSelect }: { row: OpeningPoolRow; selected: b
       selected ? 'border-primary bg-muted/50' : 'hover:bg-muted/30',
     )}
   >
-    <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">{row.ownerName ?? 'This World'}</span>
-    <span className="shrink-0 text-meta text-muted-foreground">{KIND_LABEL[row.kind]}</span>
+    <span className="shrink-0 rounded bg-muted px-1 text-meta text-muted-foreground">
+      {row.ownerName ?? row.locationName ?? 'This World'}
+    </span>
+    <span className="shrink-0 text-meta text-muted-foreground">{row.self ? `${KIND_LABEL[row.kind]} (Self)` : KIND_LABEL[row.kind]}</span>
     <span className="min-w-0 flex-grow truncate text-label">{row.text}</span>
     <span className="shrink-0 text-meta font-medium">{Math.round(row.chance)}%</span>
   </button>
@@ -199,7 +204,7 @@ export interface OpeningInstrumentProps extends OpeningProps {
   data: OpeningData;
 }
 
-export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChange }: OpeningInstrumentProps) {
+export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChange, onOpeningChange }: OpeningInstrumentProps) {
   const [openBlocks, setOpenBlocks] = useState<Set<string>>(new Set());
   const toggle = (id: string) => setOpenBlocks((current) => {
     const next = new Set(current);
@@ -225,6 +230,22 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onOpeningChan
             Turn one as {data.pcName ?? 'the default character'}
             {narrated ? ', opening on a written page one' : ` ≈ ${tokenLabel(data.totalTokens)} tokens`}
           </p>
+          {data.personas.length > 0 && (
+            <div className="mt-1 flex items-center gap-2">
+              <Select value={data.personaId ?? NO_PERSONA} onValueChange={(id) => onPersonaChange(id === NO_PERSONA ? null : id)}>
+                <SelectTrigger className="h-6 w-auto min-w-0 max-w-[50%] px-2 text-meta" aria-label="Persona">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PERSONA}>None</SelectItem>
+                  {data.personas.map((persona) => (
+                    <SelectItem key={persona.id} value={persona.id}>{persona.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="min-w-0 truncate text-meta text-muted-foreground">who the player plays at Enter World</p>
+            </div>
+          )}
           {data.starts.length > 1 ? (
             <div className="mt-1 flex items-center gap-2">
               <Select value={data.location.id} onValueChange={onStartChange}>
