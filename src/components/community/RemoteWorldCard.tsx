@@ -80,6 +80,7 @@ export function RemoteWorldCard({
   const worldId = world._id || world.id;
   // Player-facing noun for this listing's kind (World / Entity / Dictionary), for the download tooltips.
   const noun = KIND_LABELS[kindOf(world)].one.toLowerCase();
+  const isAvatar = kindOf(world) === 'model';
   const thumbAspect = thumbAspectFor(kindOf(world));
   const layout = cardLayoutFor(thumbAspect);
   const thumbClass = cn("w-full h-full", thumbFit(thumbAspect));
@@ -138,7 +139,7 @@ export function RemoteWorldCard({
       name={world.name}
       description={world.description}
       // An Avatar's description is its generated credit line, so a file crediting nobody has none to show.
-      omitEmptyDescription={kindOf(world) === 'model'}
+      omitEmptyDescription={isAvatar}
       thumbnailOverlay={downloadProgress !== undefined ? (
         // Downloading: a centered status bar. -1 ⇒ size unknown.
         <div
@@ -261,7 +262,8 @@ export function RemoteWorldCard({
 
       {/* Tags */}
       <div className="mb-2">
-        <CardTags tags={world.tags || []} onHide={onHideTag} />
+        {/* An Avatar never carries tags, so it has no tag line. */}
+        <CardTags tags={world.tags || []} onHide={onHideTag} omitEmpty={isAvatar} />
       </div>
 
       {/* Only its author and the admins ever see this card, so the deadline is said plainly rather than

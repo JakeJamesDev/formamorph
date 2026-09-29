@@ -60,7 +60,7 @@ describe('WorldCardFace detailed layout by aspect', () => {
   });
 });
 
-describe('WorldCardFace empty description', () => {
+describe('WorldCardFace empty description and tags', () => {
   const blank = { ...world, description: '' };
 
   it('shows the stand-in line by default', () => {
@@ -71,6 +71,16 @@ describe('WorldCardFace empty description', () => {
   it('shows no description line when asked to omit an empty one', () => {
     render(<WorldCardFace world={blank} layout="detailed" aspect="portrait" omitEmptyDescription />);
     expect(screen.queryByText('No description available.')).toBeNull();
+  });
+
+  it('shows no tag line when asked to omit empty tags', () => {
+    render(<WorldCardFace world={blank} layout="detailed" aspect="portrait" omitEmptyTags />);
+    expect(screen.queryByText('No tags')).toBeNull();
+  });
+
+  it('shows the no-tags line by default', () => {
+    render(<WorldCardFace world={blank} layout="detailed" aspect="portrait" />);
+    expect(screen.getByText('No tags')).toBeInTheDocument();
   });
 
   it('still shows a description it has when asked to omit an empty one', () => {

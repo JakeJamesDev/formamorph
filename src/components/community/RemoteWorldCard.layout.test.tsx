@@ -90,3 +90,15 @@ describe('RemoteWorldCard description line', () => {
     expect(screen.getByText('No description available.')).toBeInTheDocument();
   });
 });
+
+describe('RemoteWorldCard tag line', () => {
+  it('leaves an Avatar without a tag line', () => {
+    show('model');
+    expect(screen.queryByText('No tags')).toBeNull();
+  });
+
+  it('keeps the no-tags line on an entity', () => {
+    show('entity');
+    expect(screen.getByText('No tags')).toBeInTheDocument();
+  });
+});
