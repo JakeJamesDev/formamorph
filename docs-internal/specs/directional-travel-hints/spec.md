@@ -121,6 +121,7 @@ A new two-way Connection starts linked. An author who writes one hint therefore 
 ### Other readers
 
 - The Authoring Tour steps and in-play checks, the design-system canvas reference fixtures, and the Locations Canvas builder move to the new shape.
+- The Authoring Tour's Connection step keeps its In Play lens at the first location, so In Play reads the leg toward the second location. Tour text that quotes the hint reads that same leg. The linked default from the link toggle makes the top box reach In Play (ruling from ticket 01).
 
 ### Design System
 
