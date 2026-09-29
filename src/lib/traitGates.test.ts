@@ -943,6 +943,15 @@ describe('Always On traits', () => {
       ], groups)).toEqual(['Tattoo', 'Scarred']);
     });
 
+    it('counts an Always On trait a default opens toward its group’s max', () => {
+      const groups = [G('Mark', { maxPicks: 1 })];
+      expect(defaults([
+        T('Brand', { groupId: 'Mark', isDefault: true }),
+        AO('Curse', { groupId: 'Mark', requires: [trait('Ring')] }),
+        T('Ring', { isDefault: true }),
+      ], groups)).toEqual(['Curse', 'Ring']);
+    });
+
     it('brings the Always On trait a default opens', () => {
       expect(defaults([T('Cursed Ring', { isDefault: true }), AO('Curse', { requires: [trait('Cursed Ring')] })]))
         .toEqual(['Cursed Ring', 'Curse']);

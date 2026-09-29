@@ -168,7 +168,7 @@ describe('SetupTraitList gates', () => {
     it('shows checked with no control while active, and blocks the max-one group’s other picks', () => {
       view({ traits, selectedTraits: ['marked'], picks: groupPickState(origin, traits, ['marked']) });
       expect(screen.getByText('Marked')).toBeInTheDocument();
-      expect(screen.getByRole('img', { name: 'Always on' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Always On' })).toBeInTheDocument();
       expect(screen.queryByRole('radio', { name: 'Marked' })).toBeNull();
       expect(screen.getByRole('radio', { name: 'Scholar' })).toBeDisabled();
       expect(screen.getByRole('radio', { name: 'Dockhand' })).toBeDisabled();
@@ -177,7 +177,7 @@ describe('SetupTraitList gates', () => {
     it('shows no control in a checkbox group either', () => {
       view({ traits: [marked], picks: null, selectedTraits: ['marked'] });
       expect(screen.queryByRole('checkbox')).toBeNull();
-      expect(screen.getByRole('img', { name: 'Always on' })).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Always On' })).toBeInTheDocument();
     });
   });
 });
