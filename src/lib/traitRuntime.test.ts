@@ -13,7 +13,7 @@ import {
   settleTraits,
   startingStatsWith,
   statTraitsInForce,
-  switchPersonaStats,
+  switchPersonaStats, startingTraitLog,
   switchPlayerTrait,
   traitGateInput,
   traitNameIn,
@@ -685,6 +685,13 @@ describe('Always On traits in play', () => {
     expect(switchPlayerTrait(cursed.state, 'curse', false, owned, name, 'ash')).toBeNull();
     const lifted = switchPlayerTrait(cursed.state, 'ring', false, owned, name, 'ash')!;
     expect(lifted.state.ownedTraits).toEqual({ ash: { chosen: ['ring', 'curse'], disabled: ['ring', 'curse'] } });
+  });
+});
+
+describe('the starting trait log', () => {
+  it('logs each starting trait but a Hidden one', () => {
+    const traits = [trait('wary', [], { name: 'Wary' }), trait('bond', [], { name: 'Blood Bond', mode: 'hidden' })];
+    expect(startingTraitLog(traits, (t) => t.name.toUpperCase())).toEqual(['Applied trait: WARY']);
   });
 });
 

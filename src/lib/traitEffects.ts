@@ -96,7 +96,7 @@ export const isAlwaysOn = (trait: Pick<Trait, 'mode'>): boolean => trait.mode ==
 export const isDormant = (trait: Pick<Trait, 'id' | 'mode'>, active: readonly string[]): boolean =>
   isAlwaysOn(trait) && !active.includes(trait.id);
 
-/** Whether the player never sees the trait (Q13). Dev tools, the Prompt viewer and Test Bench still name it. */
+/** Whether the player never sees the trait (Q13). */
 export const isHidden = (trait: Pick<Trait, 'mode'>): boolean => trait.mode === 'hidden';
 
 /** Whether the player sees the trait's row: not Hidden, and not a dormant Always On trait. */

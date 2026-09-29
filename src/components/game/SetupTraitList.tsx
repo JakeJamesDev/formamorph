@@ -9,7 +9,7 @@ import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
 import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
-import { isAlwaysOn, isShown } from '@/lib/traitEffects';
+import { isAlwaysOn, isDormant, isShown } from '@/lib/traitEffects';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -74,7 +74,7 @@ export function SetupTraitList({
   const shown = traits.filter((trait) => isShown(trait, selectedTraits));
   const selectedRadio = shown.find((trait) => !isAlwaysOn(trait) && selectedTraits.includes(trait.id))?.id;
   // A max-one group's active Always On trait can't be swapped out.
-  const fixedRadio = radio && traits.some((trait) => isAlwaysOn(trait) && selectedTraits.includes(trait.id));
+  const fixedRadio = radio && traits.some((trait) => isAlwaysOn(trait) && !isDormant(trait, selectedTraits));
   const rows = shown.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
     const fixed = isAlwaysOn(trait);

@@ -164,7 +164,7 @@ import {
 } from "../lib/traitEffects";
 import { usePlaceholderSession } from "../contexts/PlaceholderSessionContext";
 import {
-  acquireTrait, activeTraits as traitsInForce, applyPlayedStatTraits, heldPlayerTraits, playedStatTraits, seedNewGameStats,
+  acquireTrait, activeTraits as traitsInForce, applyPlayedStatTraits, heldPlayerTraits, playedStatTraits, seedNewGameStats, startingTraitLog,
   settleTraits, statTraitsInForce, switchPersonaStats, switchPlayerTrait, traitNameIn,
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from "../lib/traitRuntime";
@@ -4023,14 +4023,14 @@ const GameViewer = ({
       let seedState: TraitRuntimeState = { stats: seeded, traits: [], disabledTraitIds: [], appliedValues: {} };
       for (const trait of chosenList) {
         seedState = acquireTrait(seedState, trait, { traits: authoredTraits, groups: traitGroups }).state;
-        // Logs are write-time strings shown raw, and `trait` here is authored (chips intact) — resolve now,
-        // with the trait's own pins so the entry names what the player picked.
-        addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
       }
       // The persona's linked stat traits apply after the world picks, under the persona's own record keys.
       const played = applyPlayedStatTraits({ ...seedState, ownedTraits: ownedTraitStatesFrom(initialOwnedTraits) }, seedWorld);
       seedState = played.state;
-      for (const trait of played.applied) addLogEntry(`Applied trait: ${resolveTraitText(trait, trait.name)}`);
+      // Logs are write-time strings shown raw, and each trait here is authored (chips intact), so each resolves
+      // now with its own pins.
+      const traitLabel = (trait: Trait) => resolveTraitText(trait, trait.name);
+      for (const line of startingTraitLog([...chosenList, ...played.applied], traitLabel)) addLogEntry(line);
       commitTraitState(seedState);
 
       // Use the player's chosen starting location, else a random starting point (fallback: any location).
