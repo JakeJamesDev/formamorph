@@ -46,8 +46,8 @@ export function OpeningsPanel({ onOpenEntity }: {
   const anyOpenings = hasAuthoredOpenings(worldOverview) || entities.some(hasAuthoredOpenings);
   const search = useListSearch();
   const names: ListSearchNames = { placeholders, letters: placementLetters, owners: placeholderOwners };
-  const shows = (rows: EditorOpeningRow[]) => !search.typed || matchingRows(rows, search.typed, names).length > 0;
-  const noMatch = !!search.typed && !view.groups.some((g) => shows(g.rows));
+  const hasMatch = (rows: EditorOpeningRow[]) => !search.typed || matchingRows(rows, search.typed, names).length > 0;
+  const noMatch = !!search.typed && !view.groups.some((g) => hasMatch(g.rows));
 
   return (
     <div className="space-y-4">
@@ -72,7 +72,7 @@ export function OpeningsPanel({ onOpenEntity }: {
 
       {noMatch && <NoMatch typed={search.typed} />}
 
-      {shows(world.rows) && (
+      {hasMatch(world.rows) && (
         <section aria-label="This World" className="space-y-2">
           <h3 className="text-body font-semibold">This World</h3>
           <OpeningsList
@@ -100,7 +100,7 @@ export function OpeningsPanel({ onOpenEntity }: {
       )}
 
       {entityGroups.map(({ entity, name: rawName, rows, atNoStart, atChancesStart }) => {
-        if (!entity || !shows(rows)) return null;
+        if (!entity || !hasMatch(rows)) return null;
         const name = label(rawName) || 'Unnamed entity';
         return (
           <section key={entity.id} aria-label={name} className="space-y-2" data-testid="opening-group">
@@ -155,14 +155,14 @@ export function OpeningsPanel({ onOpenEntity }: {
 }
 
 /** One entity's openings, for both entity editors. */
-export function EntityOpenings({ entity, onChange, placeholders }: {
+export function EntityOpenings({ entity, onChange, placeholders, names = { placeholders } }: {
   entity: Entity;
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
+  /** How the search reads chips; defaults to the placeholders alone. */
+  names?: ListSearchNames;
 }) {
   const search = useListSearch();
-  const rows = ownerOpeningRows(entity);
-  const names: ListSearchNames = { placeholders };
   return (
     <div className="space-y-2">
       <ListSearchToolbar
@@ -170,20 +170,18 @@ export function EntityOpenings({ entity, onChange, placeholders }: {
         add={{ label: 'Add Opening', onAdd: () => onChange(addOpening(entity)) }}
         placeholder="Search openings"
       />
-      {search.typed && matchingRows(rows, search.typed, names).length === 0 ? <NoMatch typed={search.typed} /> : (
-        <OpeningsList
-          owner={entity}
-          rows={rows}
-          onChange={onChange}
-          placeholders={placeholders}
-          ownerId={entity.id}
-          ownerName={entity.name}
-          search={search.typed}
-          names={names}
-          addButton={false}
-          empty={<Hint>No openings yet</Hint>}
-        />
-      )}
+      <OpeningsList
+        owner={entity}
+        rows={ownerOpeningRows(entity)}
+        onChange={onChange}
+        placeholders={placeholders}
+        ownerId={entity.id}
+        ownerName={entity.name}
+        search={search.typed}
+        names={names}
+        addButton={false}
+        empty={<Hint>No openings yet</Hint>}
+      />
       <Hint>
         {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
       </Hint>
@@ -201,8 +199,8 @@ function NoMatch({ typed }: { typed: string }) {
 }
 
 /**
- * One owner's openings: a card per row with its kind, text, weight and chance, in draw order, and the Add
- * button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
+ * One owner's openings: a card per row with its kind, text, weight and chance, in draw order, and an optional
+ * Add button. Each edit goes to `onChange` as a patch of the owner's opening fields. A null chance renders as a
  * dash: the row is outside the pool the chances describe.
  */
 export function OpeningsList({
@@ -236,7 +234,7 @@ export function OpeningsList({
 
   return (
     <div className="space-y-2">
-      {rows.length === 0 ? empty : (
+      {shown.length === 0 ? (search ? <NoMatch typed={search} /> : empty) : (
         <EditorDndContext onDragEnd={handleDragEnd}>
           <StableSortableContext items={shown.map(({ row }) => row.opening)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-3">
