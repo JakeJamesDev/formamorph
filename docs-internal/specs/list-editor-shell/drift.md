@@ -26,3 +26,6 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 - Ticket 07's Stats list clears a selection whose stat is gone, where the old list kept it and pushed an empty detail on mobile. Keep: Q36. `holds` accepts every stat.
 - Ticket 07's Stats rows read "Select <label>" to a screen reader in the full list too, not only in search. The whole list is the shell's flat list, so #5's ruling (Q32) covers it.
 - Ticket 07 keeps #2: a search that leaves the open stat out blanks its detail, and clearing the search brings it back.
+- Ticket 08's Entities tab clears a selection whose entity or folder is gone, where the old tab kept it and pushed an empty detail on mobile. Keep: Q36. `holds` accepts every entity and every folder.
+- Ticket 08's entity search rows read "Select <label>" to a screen reader, not the raw name. Keep: Q32.
+- Ticket 08 found no #2 on the Entities tab: the old detail read the open entity from the full list, so a search never blanked it. The adapter keeps that.
