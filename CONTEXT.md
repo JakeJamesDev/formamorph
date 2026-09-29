@@ -21,7 +21,7 @@ The part of a Tool that runs when the AI calls it: a Lookup (searches world data
 _Avoid_: resolver, source
 
 **Connection**:
-An authored travel link between two locations — one-way or two-way. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
+An authored travel link between two locations — one-way or two-way. A Connection has one leg per direction of travel, and each leg carries its own optional Travel Hint. The narrator gets the hint of the leg the player travels. Where a Connection exists between a pair, it replaces that pair's implicit navigation.
 _Avoid_: edge (internal only), path, route
 
 **Auto Arrange**:
