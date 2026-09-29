@@ -1,6 +1,6 @@
 # 04: Drop cut thoughts
 
-Status: in-progress
+Status: ready-for-human
 Base: 3eeb07ff
 Blocked by: 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -27,4 +27,5 @@ A round that ends with `finish_reason: length` before any answer text and with n
 - A cut round throws `AiStreamError` of kind `cut-thought` from the tool loop, on the plain path and in every tool round. The Error Details carry the request, the model and the sent `max_tokens`.
 - A round that ends on `length` with a call is not cut: its call runs as today. A round with answer text is not cut: it returns its text on `length` as today.
 - Mutation proof: ignoring calls, ignoring answer text, no throw on the plain path, and carrying the cut reasoning into a retry round each fail their own test.
-- Full suite: one load-only failure in `VariableNode.label.test.tsx` (outside this unit); it passes alone.
+- Review fold-in: `cutThoughtFailure` sits beside `httpFailure` in `aiStream.ts` and shares its request lines; the cut-thought test also runs with an Answer Cap set.
+- Open, not in scope: after a failed narration, the live reasoning block keeps the cut thought until the next narration starts. It reaches no request.
