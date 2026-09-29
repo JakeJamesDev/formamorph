@@ -3,7 +3,7 @@ import { toolSchema, type ToolFunctionSchema } from '@/lib/tools/toolSchema';
 import type { ThinkingMode, ReasoningEffort } from '@/contexts/SettingsContext';
 import type { ParagraphLimit } from '@/lib/outputLength';
 import {
-  reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
+  MAX_REASONING_BUDGET_PCT, reasoningBudget, reasoningEffortValue, reasoningRuledOut, resolveRequestReasoning, toolsSupported,
   type KeptReasoningSettings, type PromptReasoning, type ReasoningCapability, type ReasoningEffortField,
 } from '@/lib/reasoningEffort';
 import { reasoningDialectBody, reasoningDialectBudgetFloor, type ReasoningBodyFields } from '@/lib/reasoningDialect';
@@ -175,10 +175,11 @@ function internalCapFor(snapshot: AiSettingsSnapshot, call: CapCall): number | n
   return customMaxOutput(snapshot.promptMaxOutput, call.requestType) ?? call.maxTokensOverride ?? null;
 }
 
-/** One call's output room: the answer's cap, and the request cap that adds the thinking where it applies. */
+/** One call's output room: the answer's cap, and the room the context reserve holds back for the reply. */
 export interface OutputCaps {
   answerCap: number | undefined;
-  maxTokens: number | undefined;
+  /** The Answer Cap plus the budget at the prompt's own percent, never the Thought Ceiling. */
+  reserve: number | undefined;
 }
 
 /** One call's reasoning slice, in the target's spelling, and the output caps that go with it. */
@@ -186,12 +187,22 @@ interface ResolvedReasoning extends OutputCaps {
   fields: ReasoningBodyFields;
   /** The effort literal the slice carries, whichever field spelled it. */
   level: ReasoningEffortField | null;
+  /** The `max_tokens` the request sends. */
+  maxTokens: number | undefined;
+}
+
+/** The Answer Cap plus the budget at the top of the slider. The Answer Cap is the base where the endpoint has none. */
+function thoughtCeiling(answerCap: number | undefined, base: number | undefined): number | undefined {
+  return answerCap === undefined
+    ? undefined
+    : answerCap + Math.round((MAX_REASONING_BUDGET_PCT / 100) * (base ?? answerCap));
 }
 
 /**
- * What one call says about reasoning, and the cap that holds it. The literal is withheld while reasoning is
+ * What one call says about reasoning, and the caps that hold it. The literal is withheld while reasoning is
  * engaged nowhere, and a record that rules the model out licenses no off signal. The budget rides on top of
- * the answer cap where the slice carries a reasoning field or the record knows the model reasons.
+ * the answer cap where the slice carries a reasoning field or the record knows the model reasons. A request
+ * that reasons with no budget on the wire sends the Thought Ceiling, since the server never closes its thought.
  */
 function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: AiEndpointTarget): ResolvedReasoning {
   const effort = resolveRequestReasoning(
@@ -208,18 +219,24 @@ function resolveReasoning(snapshot: AiSettingsSnapshot, call: CapCall, target: A
   // Reasoning is engaged somewhere and this model is not ruled out, so the target may hear about it at all.
   const eligible = snapshot.reasoningEngaged && reasons;
   const level = snapshot.reasoningEngaged ? reasoningEffortValue(effort, target.reasoning) : null;
+  const budget = takesBudget ? planned.budget : null;
   const fields = reasoningDialectBody(target.reasoning.dialect, {
-    budget: takesBudget ? planned.budget : null, level, off: eligible && effort === 'none', eligible,
+    budget, level, off: eligible && effort === 'none', eligible,
     unbounded: target.maxTokens === undefined,
   });
   const carriesReasoning = Object.keys(fields).length > 0 || target.reasoning.reasons === true;
-  return { fields, level, answerCap, maxTokens: carriesReasoning ? planned.maxTokens : answerCap };
+  const reserve = carriesReasoning ? planned.maxTokens : answerCap;
+  const ceiling = carriesReasoning && effort !== 'none' && budget === null;
+  return {
+    fields, level, answerCap, reserve,
+    maxTokens: ceiling ? thoughtCeiling(answerCap, target.maxTokens) : reserve,
+  };
 }
 
-/** The caps one call's request sends, for the context reserve and the length guidance to read. */
+/** The caps the context reserve and the length guidance read for one call. */
 export function outputCaps(snapshot: AiSettingsSnapshot, call: CapCall): OutputCaps {
-  const { answerCap, maxTokens } = resolveReasoning(snapshot, call, snapshot.resolveTarget(call.requestType));
-  return { answerCap, maxTokens };
+  const { answerCap, reserve } = resolveReasoning(snapshot, call, snapshot.resolveTarget(call.requestType));
+  return { answerCap, reserve };
 }
 
 function bodyForTarget(snapshot: AiSettingsSnapshot, call: AiCall, target: AiEndpointTarget): AiRequestBody {
