@@ -107,6 +107,21 @@ describe('the section help buttons', () => {
   });
 });
 
+describe('the mode control', () => {
+  it('writes Always On and hides the Default and Player Can Toggle fields, and Optional brings them back', async () => {
+    const user = userEvent.setup();
+    renderManager('availability');
+    expect(screen.getByRole('checkbox', { name: /Enabled by Default/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Always On' }));
+    expect(store.writes[store.writes.length - 1].mode).toBe('alwaysOn');
+    expect(screen.queryByRole('checkbox', { name: /Enabled by Default/ })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /Player Can Toggle/ })).toBeNull();
+    await user.click(screen.getByRole('radio', { name: 'Optional' }));
+    expect(store.writes[store.writes.length - 1].mode).toBeUndefined();
+    expect(screen.getByRole('checkbox', { name: /Player Can Toggle/ })).toBeInTheDocument();
+  });
+});
+
 describe('the conflict note', () => {
   it('names the winner and navigates to a clicked rival', async () => {
     renderManager();

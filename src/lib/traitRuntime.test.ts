@@ -610,6 +610,84 @@ describe('gates in play', () => {
   });
 });
 
+describe('Always On traits in play', () => {
+  // The Cursed Ring brings the Curse, which the player can never switch; Sworn is fixed in the max-one Oath group.
+  const ring = trait('ring', [], { playerToggle: true });
+  const curse = trait('curse', [{ statId: 'h', value: -10, type: 'starting' }], {
+    mode: 'alwaysOn', playerToggle: true, requires: [{ kind: 'trait', id: 'ring' }],
+  });
+  const oath: TraitGroup = { id: 'oath', name: 'Oath', parentId: null, maxPicks: 1 };
+  const sworn = trait('sworn', [], { mode: 'alwaysOn', groupId: 'oath' });
+  const free = trait('free', [], { playerToggle: true, groupId: 'oath' });
+  const w = world([ring, curse, sworn, free], [oath]);
+  const name = (t: Trait) => t.name;
+  const on = (s: TraitRuntimeState) => activeTraits(s.traits, s.disabledTraitIds).map((t) => t.id);
+  const player = (s: TraitRuntimeState, id: string, enabled: boolean) => {
+    const result = switchPlayerTrait(s, id, enabled, w, name);
+    if (!result) throw new Error(`switch of ${id} refused`);
+    return result;
+  };
+  // A new game starts with the ungated Always On trait already chosen.
+  const start = () => settleTraits(state(), w, name).state;
+
+  it('turns an ungated Always On trait on at the first settle', () => {
+    expect(on(start())).toEqual(['sworn']);
+  });
+
+  it('brings the curse with its item, lifts it when the item drops, and brings it back, stats and all', () => {
+    const cursed = player(start(), 'ring', true);
+    expect(on(cursed.state)).toEqual(['sworn', 'ring', 'curse']);
+    expect(cursed.log).toEqual(['Acquired trait: ring', 'Trait switched on: curse']);
+    expect(valueOf(cursed.state)).toBe(40);
+    const lifted = player(cursed.state, 'ring', false);
+    expect(on(lifted.state)).toEqual(['sworn']);
+    expect(lifted.cascade.map((t) => t.id)).toEqual(['curse']);
+    expect(valueOf(lifted.state)).toBe(50);
+    expect(lifted.state.cascadeOffTraitIds).toEqual({});
+    const again = player(lifted.state, 'ring', true);
+    expect(on(again.state)).toEqual(['sworn', 'ring', 'curse']);
+    expect(valueOf(again.state)).toBe(40);
+  });
+
+  it('refuses the player a switch of an Always On trait in either direction, whatever Player Can Toggle says', () => {
+    expect(switchPlayerTrait(start(), 'curse', true, w, name)).toBeNull();
+    const cursed = player(start(), 'ring', true).state;
+    expect(switchPlayerTrait(cursed, 'curse', false, w, name)).toBeNull();
+    expect(switchPlayerTrait(cursed, 'sworn', false, w, name)).toBeNull();
+  });
+
+  it('refuses the player a max-one swap that would retire the active Always On trait', () => {
+    expect(switchPlayerTrait(start(), 'free', true, w, name)).toBeNull();
+  });
+
+  it('skips stat code switches of an Always On trait in both directions (Q30)', () => {
+    const s = start();
+    const code = applyCodeTraitSwitches(s, [
+      { traitId: 'sworn', enabled: false, by: 'Vigor' },
+      { traitId: 'curse', enabled: true, by: 'Vigor' },
+    ], w, name);
+    expect(on(code.state)).toEqual(['sworn']);
+    expect(code.log).toEqual([]);
+  });
+
+  it('never lists an Always On trait as one the player can take', () => {
+    expect(listablePlayerTraits([], [ring, curse], traitOrderIndex([ring, curse], [])).map((t) => t.id)).toEqual(['ring']);
+  });
+
+  it('brings an entity’s curse in that entity’s lists, and refuses the player a switch of it', () => {
+    const ashTraits = [trait('ring', [], { playerToggle: true }), trait('curse', [], { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'ring' }] })];
+    const owned: TraitWorld = {
+      traits: [], groups: [], entities: [{ id: 'ash', name: 'Ash' }],
+      bearers: [{ id: 'world', name: '', traits: [], groups: [] }, { id: 'ash', name: 'Ash', traits: ashTraits, groups: [] }],
+    };
+    const cursed = switchPlayerTrait(state(), 'ring', true, owned, name, 'ash')!;
+    expect(cursed.state.ownedTraits).toEqual({ ash: { chosen: ['ring', 'curse'] } });
+    expect(switchPlayerTrait(cursed.state, 'curse', false, owned, name, 'ash')).toBeNull();
+    const lifted = switchPlayerTrait(cursed.state, 'ring', false, owned, name, 'ash')!;
+    expect(lifted.state.ownedTraits).toEqual({ ash: { chosen: ['ring', 'curse'], disabled: ['ring', 'curse'] } });
+  });
+});
+
 describe('owned traits in play', () => {
   // The player's Paladin opens Ash's Loyal (You: Paladin); Ash's Tamed opens the world's Beast Tamer
   // (Ash: Tamed). Tamed and Wild share Ash's exclusive Bond group. Gruff is Ash's but not switchable.

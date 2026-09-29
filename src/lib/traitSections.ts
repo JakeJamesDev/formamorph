@@ -5,6 +5,7 @@
 // Pure and display-only: nothing here decides what a trait does, only where its row lands.
 
 import { buildTraitTree, type TraitTreeNode } from './traitTree';
+import { isAlwaysOn } from './traitEffects';
 import type { Trait, TraitGroup } from '@/types';
 
 /** A run of traits under one (sub)group heading. A max-one block's traits are alternatives, not a set. */
@@ -132,7 +133,8 @@ export function viewTraitSection(
       .filter((b) => b.traits.length > 0);
 
   const enabled = split((t, bearerId) => !isOff(t.id, bearerId));
-  const disabled = split((t, bearerId) => isOff(t.id, bearerId));
+  // A dormant Always On trait isn't shown at all (Q15).
+  const disabled = split((t, bearerId) => isOff(t.id, bearerId) && !isAlwaysOn(t));
   const count = (blocks: TraitBlock[]) => blocks.reduce((n, b) => n + b.traits.length, 0);
   if (enabled.length === 0 && disabled.length === 0) return null;
   return { enabled, disabled, enabledCount: count(enabled), disabledCount: count(disabled) };

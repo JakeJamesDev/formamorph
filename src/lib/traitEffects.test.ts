@@ -10,6 +10,7 @@ import {
   exclusiveSiblings,
   traitConflicts,
   capDefaults,
+  defaultPicks,
   refreshChosenTraits,
   refreshSavedStats,
   renamedPlaceholderValues,
@@ -254,6 +255,35 @@ describe('capDefaults', () => {
 
   it('leaves groups with no max and ungrouped traits alone', () => {
     expect(capDefaults(['c', 'd', 'loose'], traits, groups)).toEqual(['c', 'd', 'loose']);
+  });
+});
+
+describe('defaultPicks', () => {
+  const groups = [G('two', { maxPicks: 2 })];
+
+  it('starts with the ungated Always On traits, which fill their group before the defaults', () => {
+    const traits = [
+      T('x', { groupId: 'two', order: 0, isDefault: true }), T('y', { groupId: 'two', order: 1, isDefault: true }),
+      T('z', { groupId: 'two', order: 2, mode: 'alwaysOn' }),
+      T('curse', { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] }),
+      T('fixed', { mode: 'alwaysOn', isDefault: true, requires: [{ kind: 'trait', id: 'y' }] }),
+    ];
+    expect(defaultPicks(traits, groups)).toEqual(['x', 'z']);
+  });
+
+  it('takes the active Always On traits a caller settled', () => {
+    const traits = [T('x', { groupId: 'two', isDefault: true }), T('curse', { groupId: 'two', mode: 'alwaysOn', requires: [{ kind: 'trait', id: 'x' }] })];
+    expect(defaultPicks(traits, groups, ['curse'])).toEqual(['x', 'curse']);
+  });
+});
+
+describe('an Always On trait in a max-one group', () => {
+  const groups = [G('oath', { maxPicks: 1 })];
+  const traits = [T('sworn', { groupId: 'oath', mode: 'alwaysOn' }), T('free', { groupId: 'oath' }), T('bound', { groupId: 'oath' })];
+
+  it('neither retires a sibling nor is retired by one (Q29)', () => {
+    expect(exclusiveSiblings(traits[0], traits, groups)).toEqual([]);
+    expect(exclusiveSiblings(traits[1], traits, groups)).toEqual(['bound']);
   });
 });
 

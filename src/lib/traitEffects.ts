@@ -89,42 +89,68 @@ export function enabledStats<T extends { id: string }>(stats: T[], enabled: Reco
   return stats.filter((s) => enabled[s.id] !== false);
 }
 
+/** Whether the trait is on exactly while its gate holds and the player never switches it: Always On and Hidden. */
+export const isAlwaysOn = (trait: Pick<Trait, 'mode'>): boolean => trait.mode === 'alwaysOn' || trait.mode === 'hidden';
+
+/** Whether an Always On trait is off in `active`, so the player doesn't see it (Q15). */
+export const isDormant = (trait: Pick<Trait, 'id' | 'mode'>, active: readonly string[]): boolean =>
+  isAlwaysOn(trait) && !active.includes(trait.id);
+
 /**
  * The traits a player toggle switches off alongside the one being switched on: a max-one group holds at
  * most one active trait, so enabling a member retires its active siblings. Nesting doesn't cascade — only
- * traits sitting directly in the same group compete.
+ * traits sitting directly in the same group compete. An Always On trait neither retires nor is retired.
  */
 export function exclusiveSiblings(trait: Trait, traits: readonly Trait[], groups: readonly TraitGroup[]): string[] {
   const groupId = trait.groupId ?? null;
-  if (groupId === null) return [];
+  if (groupId === null || isAlwaysOn(trait)) return [];
   if (groups.find((g) => g.id === groupId)?.maxPicks !== 1) return [];
-  return traits.filter((t) => (t.groupId ?? null) === groupId && t.id !== trait.id).map((t) => t.id);
+  return traits.filter((t) => (t.groupId ?? null) === groupId && t.id !== trait.id && !isAlwaysOn(t)).map((t) => t.id);
 }
 
 /**
  * Cap a default-trait selection so each group contributes at most its `maxPicks` ids, the first in authored
- * order. For a max-one group that is the radio the selection screen shows checked.
+ * order. For a max-one group that is the radio the selection screen shows checked. The `fixed` ids always
+ * stay and fill their groups first.
  */
-export function capDefaults(ids: readonly string[], traits: readonly Trait[], groups: readonly TraitGroup[]): string[] {
+export function capDefaults(
+  ids: readonly string[], traits: readonly Trait[], groups: readonly TraitGroup[], fixed: readonly string[] = [],
+): string[] {
   const byId = new Map(traits.map((t) => [t.id, t]));
   const order = traitOrderIndex(traits, groups);
   const max = new Map(groups.flatMap((g) => (g.maxPicks === undefined ? [] : [[g.id, g.maxPicks] as const])));
   const taken = new Map<string, number>();
-  const out: string[] = [];
-  const sorted = [...ids].sort(
-    (a, b) => (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER),
-  );
-  for (const id of sorted) {
-    const groupId = byId.get(id)?.groupId ?? null;
+  const groupOf = (id: string) => byId.get(id)?.groupId ?? null;
+  const inOrder = (list: readonly string[]) =>
+    [...list].sort((a, b) => (order.get(a) ?? Number.MAX_SAFE_INTEGER) - (order.get(b) ?? Number.MAX_SAFE_INTEGER));
+  for (const id of fixed) {
+    const groupId = groupOf(id);
+    if (groupId !== null) taken.set(groupId, (taken.get(groupId) ?? 0) + 1);
+  }
+  const kept = new Set(fixed);
+  for (const id of inOrder(ids)) {
+    if (kept.has(id)) continue;
+    const groupId = groupOf(id);
     const cap = groupId === null ? undefined : max.get(groupId);
     if (groupId !== null && cap !== undefined) {
       const count = taken.get(groupId) ?? 0;
       if (count >= cap) continue;
       taken.set(groupId, count + 1);
     }
-    out.push(id);
+    kept.add(id);
   }
-  return out;
+  return inOrder([...kept]);
+}
+
+/**
+ * A new game's picks: the active Always On traits, then the Optional defaults capped at each group's max.
+ * `alwaysOn` defaults to the ungated Always On traits, for callers that check no gates.
+ */
+export function defaultPicks(
+  traits: readonly Trait[], groups: readonly TraitGroup[],
+  alwaysOn: readonly string[] = traits.filter((t) => isAlwaysOn(t) && !t.requires?.length).map((t) => t.id),
+): string[] {
+  return capDefaults(traits.filter((t) => t.isDefault && !isAlwaysOn(t)).map((t) => t.id), traits, groups, alwaysOn);
 }
 
 /** Another trait claiming the same target, and which of the two the precedence rule picks. */

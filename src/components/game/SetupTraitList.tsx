@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { Info, Lock } from 'lucide-react';
+import { Check, Info, Lock } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -9,6 +9,7 @@ import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
 import { WORLD_OWNER, gateOf, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import { gateLine } from '@/lib/traitGateLine';
+import { isAlwaysOn, isDormant } from '@/lib/traitEffects';
 import type { Stat, StatChange, Trait, TraitGroup } from '@/types';
 
 /** What the last selection change turned off, by name, and the pick that caused it. */
@@ -37,7 +38,8 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
 /**
  * One trait category of the setup screen: its heading, the Player-Facing Descriptions of the groups it
  * sits in, and its traits with their stat changes. A max-one category is a radio choice; a full category with
- * a larger max disables its unchecked rows. A short category says how many more picks it needs.
+ * a larger max disables its unchecked rows. A short category says how many more picks it needs. An active
+ * Always On trait shows checked with no control, and a dormant one doesn't show.
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
@@ -69,12 +71,16 @@ export function SetupTraitList({
   const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
   const radio = picks?.max === 1;
   const needed = picks ? picks.min - picks.count : 0;
-  const selectedRadio = traits.find((trait) => selectedTraits.includes(trait.id))?.id;
-  const rows = traits.map((trait) => {
+  const shown = traits.filter((trait) => !isDormant(trait, selectedTraits));
+  const selectedRadio = shown.find((trait) => !isAlwaysOn(trait) && selectedTraits.includes(trait.id))?.id;
+  // A max-one group's active Always On trait can't be swapped out.
+  const fixedRadio = radio && shown.some(isAlwaysOn);
+  const rows = shown.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
+    const fixed = isAlwaysOn(trait);
     const gate = gates && gateOf(gates, ownerId, trait.id);
     const locked = gate?.unlocked === false;
-    const disabled = locked || (!radio && !selected && !!picks?.full);
+    const disabled = locked || (!selected && (radio ? fixedRadio : !!picks?.full));
     const line = gateLine(gate);
     const description = resolveTraitText(trait, trait.playerDescription ?? '').trim();
     const changes = trait.statChanges
@@ -85,12 +91,14 @@ export function SetupTraitList({
         key={trait.id}
         className={cn(choiceRowClass(selected), disabled && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-card')}
       >
-        {radio ? (
+        {fixed ? (
+          <Check role="img" aria-label="Always on" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        ) : radio ? (
           <RadioGroupItem
             id={`setup-trait-${trait.id}`}
             value={trait.id}
             aria-label={trait.name}
-            disabled={locked}
+            disabled={disabled}
             className="mt-0.5 shrink-0"
             onClick={(event) => {
               if (selected) {
@@ -111,7 +119,7 @@ export function SetupTraitList({
         )}
         <label
           htmlFor={`setup-trait-${trait.id}`}
-          className={cn('min-w-0 flex-1', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}
+          className={cn('min-w-0 flex-1', fixed ? undefined : disabled ? 'cursor-not-allowed' : 'cursor-pointer')}
         >
           <strong className="flex items-center gap-2 text-label font-semibold">
             {trait.name}
