@@ -12,7 +12,7 @@ import { DictionaryStoreProvider, useDictionaryStoreState } from '@/contexts/Dic
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
-import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import LibraryPlaceholdersEditor from '@/managers/LibraryPlaceholdersEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
@@ -204,7 +204,7 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
             <ChipInsertTargetProvider>
               <div className="flex min-h-0 flex-1 flex-col">
                 <PlaceholderPaletteBar placeholders={bookPlaceholders} className="mx-0 mb-0 px-4" />
-                <PlaceholderEditor />
+                <LibraryPlaceholdersEditor ownerName={labelPlaceholders(dictionaries[0]?.name ?? '', bookPlaceholders, { letters })} />
               </div>
             </ChipInsertTargetProvider>
           ) : (
