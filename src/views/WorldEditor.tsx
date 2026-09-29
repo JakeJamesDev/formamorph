@@ -11,7 +11,7 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld, newEntity, newLocation,
+  entityRootCount, newBlankWorld, newLocation,
 } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
@@ -27,7 +27,7 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
-import { ListMenuRow, ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
+import { ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import { useListEditor } from '@/components/listEditorHooks';
 import { matchesListSearch } from '@/lib/listSearch';
@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, FolderPlus, FilePlus, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
+import { ArrowLeft, Save, ImageDown, BookPlus, UserPlus, Loader2, Search, List, Map } from "lucide-react";
 import { ActionIcon } from '@/lib/actionIcons';
 import { cn } from "@/lib/utils";
 import EditorFindBar from '@/components/editor/EditorFindBar';
@@ -62,10 +62,8 @@ import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
 import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
-import EntityManager from '../managers/EntityManager';
+import { useWorldEntitiesAdapter } from '../managers/useWorldEntitiesAdapter';
 import LocationManager from '../managers/LocationManager';
-import EntityGroupManager from '../managers/EntityGroupManager';
-import { useRemoveEntity } from '../managers/useRemoveEntity';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
 import { LOCATION_VIEWS, type LocationView } from './locationViews';
@@ -78,8 +76,6 @@ import {
   DICTIONARY_BOOK_PANEL_TABS, dictionaryBookPanelTabsFor, type DictionaryBookPanelTab,
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
-import EntityTree from '../managers/EntityTree';
-import { duplicateEntityNode } from '@/lib/entityGroupTree';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
@@ -105,10 +101,10 @@ import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Entity, GameLocation, Dictionary, World, ContentLink, FocusFieldHint } from '@/types';
+import type { Entity, GameLocation, Dictionary, World, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
-import { ContentLinkIcon, SelectedContentActions } from '@/components/ContentLinkStatus';
+import { SelectedContentActions } from '@/components/ContentLinkStatus';
 import { SplitButton } from '@/components/ui/split-button';
 import { useLibraryLinking } from '@/lib/useLibraryLinking';
 import { EditorRowList } from '@/components/EditorRow';
@@ -141,7 +137,7 @@ const WorldEditorInner = ({
     stats, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addDictionary,
-    addEntityGroup, addPlaceholder,
+    addPlaceholder,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
@@ -670,9 +666,7 @@ const WorldEditorInner = ({
   const addItem = (typed: string) => {
     const newId = randomUUID();
 
-    if (activeTab === "entities") {
-      addEntity(newEntity(newId, entityRootSiblingCount(), typed || undefined));
-    } else if (activeTab === "locations") {
+    if (activeTab === "locations") {
       addLocation(newLocation(newId, typed || undefined));
     } else {
       return;
@@ -688,34 +682,18 @@ const WorldEditorInner = ({
     setSelectedItemId(id);
   };
 
-  // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
+  // A library entity lands at the root, after every root sibling.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
-  const handleAddEntityGroup = (typed: string) => {
-    const id = randomUUID();
-    addEntityGroup({ id, name: typed || 'New Group', parentId: null, order: entityRootSiblingCount() });
-    setSelectedItemId(id);
-  };
-
   const filteredItems = useMemo(() => {
-    const itemsToFilter =
-      activeTab === "entities" ? entities :
-      activeTab === "locations" ? locations : [];
+    const itemsToFilter = activeTab === "locations" ? locations : [];
     const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
     return itemsToFilter.filter((item) => matchesListSearch(item.name, search.term, names));
-  }, [activeTab, entities, locations, search.term, placeholders, placementLetters, placeholderOwners]);
-
-  // The search results reuse one row for every tab, and entities are the only kind here that follows a
-  // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
-  // lucide `Map` icon is imported above and shadows the global.
-  const entityLinks = useMemo(
-    () => Object.fromEntries(entities.map((e) => [e.id, e.link])) as Record<string, ContentLink | undefined>,
-    [entities],
-  );
+  }, [activeTab, locations, search.term, placeholders, placementLetters, placeholderOwners]);
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
-  const selectedEntity = entities.find(e => e.id === selectedItemId);
-  const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
+  const selectedEntity = entities.find(e => e.id === selections.entities);
+  const selectedEntityGroup = entityGroups.find(g => g.id === selections.entities);
   // The Traits tab runs on the List Editor; the host lays out its parts.
   const selectTrait = useCallback((id: string | null) => select('traits', id), [select]);
   const { adapter: traitsAdapter, dialog: removeWorldTraitDialog } = useWorldTraitsAdapter({
@@ -747,18 +725,35 @@ const WorldEditorInner = ({
     onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
   });
   const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
+  // The entity panel's tab and its trait and placeholder rows live here, so a new entity keeps them.
+  const selectEntity = useCallback((id: string | null) => select('entities', id), [select]);
+  const entitiesEditor = useWorldEntitiesAdapter({
+    selectedId: selections.entities ?? null,
+    onSelect: selectEntity,
+    tab: shownEntityTab,
+    onTabChange: setEntityTab,
+    traitId: entityTraitId,
+    onTraitIdChange: setEntityTraitId,
+    placeholderId: entityPlaceholderId,
+    onPlaceholderIdChange: setEntityPlaceholderId,
+    onOpenWorldPlaceholder: openWorldPlaceholder,
+    focusField: findField,
+  });
+  const entitiesParts = useListEditor(entitiesEditor.adapter, {
+    selectedId: selections.entities ?? null, onSelect: selectEntity, search,
+  });
   // The active tab's List Editor parts, on a tab that runs on it.
   const listEditorParts = activeTab === 'traits' ? traitsParts
     : activeTab === 'placeholders' ? placeholdersParts
     : activeTab === 'stats' ? statsParts
+    : activeTab === 'entities' ? entitiesParts
     : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   // Mirrors the panel branches in detailContent.
-  const detailFills = (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity)
-    || (activeTab === "locations" && !!selectedItem)
+  const detailFills = (activeTab === "locations" && !!selectedItem)
     || !!listEditorParts?.fills
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
@@ -786,7 +781,6 @@ const WorldEditorInner = ({
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
-    entities: { items: entities, setItems: setEntities },
     locations: { items: locations, setItems: setLocations },
   };
 
@@ -807,13 +801,6 @@ const WorldEditorInner = ({
 
   // Deep-copy an item and place the copy right after the original.
   const duplicateItem = (id: string) => {
-    // An entity copy needs fresh ids for what it owns, which the entity tree's duplicate gives it.
-    if (activeTab === "entities") {
-      const res = duplicateEntityNode(entityGroups, entities, id);
-      setEntities(res.entities);
-      setSelectedItemId(res.newId);
-      return;
-    }
     const config = tabConfig[activeTab as keyof typeof tabConfig];
     if (!config) return;
     const items = config.items as { id: string; name: string }[];
@@ -826,13 +813,8 @@ const WorldEditorInner = ({
     setSelectedItemId(copy.id);
   };
 
-  const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
   const removeItem = (id: string) => {
-    if (activeTab === "entities") {
-      askRemoveEntity(id);
-    } else if (activeTab === "locations") {
-      removeLocation(id);
-    }
+    if (activeTab === "locations") removeLocation(id);
     setSelectedItemId(null);
   };
 
@@ -852,7 +834,6 @@ const WorldEditorInner = ({
             <SortableRow
               key={item.id}
               item={item}
-              icon={<ContentLinkIcon link={entityLinks[item.id]} />}
               label={<PlaceholderText text={item.name} placeholders={placeholders} />}
               selected={selectedItemId === item.id}
               onSelect={setSelectedItemId}
@@ -876,14 +857,13 @@ const WorldEditorInner = ({
   const listContent = (
     <>
       {activeTab === "overview" && <WorldOverviewManager />}
-      {activeTab === "entities" && (search.typed ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "locations" && (canvasView
         ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
         : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {listEditorParts?.list}
       {removeWorldTraitDialog}
       {placeholdersEditor.dialog}
-      {removeEntityDialog}
+      {entitiesEditor.dialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
     </>
   );
@@ -900,23 +880,6 @@ const WorldEditorInner = ({
         <WorldDetailsManager
           focusField={findField}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
-        />
-      )}
-      {activeTab === "entities" && selectedEntityGroup && (
-        <EntityGroupManager key={selectedEntityGroup.id} group={selectedEntityGroup} />
-      )}
-      {activeTab === "entities" && !selectedEntityGroup && selectedEntity && (
-        <EntityManager
-          key={selectedEntity.id}
-          entity={selectedEntity}
-          tab={shownEntityTab}
-          onTabChange={setEntityTab}
-          traitId={entityTraitId}
-          onTraitIdChange={setEntityTraitId}
-          placeholderId={entityPlaceholderId}
-          onPlaceholderIdChange={setEntityPlaceholderId}
-          onOpenWorldPlaceholder={openWorldPlaceholder}
-          focusField={focusFieldForItem(findField, selectedEntity.id)}
         />
       )}
       {activeTab === "locations" && selectedItem && (
@@ -1056,17 +1019,8 @@ const WorldEditorInner = ({
   ));
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
-  // The Entities tree offers Add Group beside Add Entity in Advanced mode.
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const addMenu = (
-    <>
-      <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={handleAddEntityGroup} />
-      <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label="Add Entity" onAdd={addItem} />
-    </>
-  );
-  const addSlot: ListAddSlot = advanced && activeTab === "entities"
-    ? { label: addLabel, menu: addMenu }
-    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : addItem };
+  const addSlot: ListAddSlot = { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : addItem };
   // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
   const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
   const addSearchBar = activeTab !== "overview" && (listEditorParts ? listEditorParts.toolbar('mt-4', { after: helpButton }) : (
