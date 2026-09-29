@@ -24,6 +24,7 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
+	CommandSeparator,
 } from "@/components/ui/command";
 
 /**
@@ -1090,6 +1091,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 									{emptyIndicator || "No results found."}
 								</CommandEmpty>{" "}
 								{!searchValue && (
+									<>
 									<CommandGroup>
 										<CommandItem
 											key="all"
@@ -1110,15 +1112,11 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												aria-hidden="true">
 												<CheckIcon className="h-4 w-4" />
 											</div>
-											<span>
-												(Select All
-												{getAllOptions().length > 20
-													? ` - ${getAllOptions().length} options`
-													: ""}
-												)
-											</span>
+											<span>Select All</span>
 										</CommandItem>
 									</CommandGroup>
+									<CommandSeparator />
+									</>
 								)}
 								{isGroupedOptions(filteredOptions) ? (
 									filteredOptions.map((group) => (

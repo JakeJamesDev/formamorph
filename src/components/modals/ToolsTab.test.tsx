@@ -182,7 +182,7 @@ describe('Offered To', () => {
     render(<Harness initial={userState()} />);
     await user.click(offeredTo());
     const options = (await screen.findAllByRole('option')).map((o) => o.textContent);
-    expect(options).toEqual(['(Select All)', ...Object.values(PROMPT_TAB_REQUESTS).map((k) => REQUEST_LABELS[k]), 'Clear', 'Close']);
+    expect(options).toEqual(['Select All',...Object.values(PROMPT_TAB_REQUESTS).map((k) => REQUEST_LABELS[k]), 'Clear', 'Close']);
   });
 
   it('keeps Clear and Close in a footer outside the scroll list, through any search', async () => {
