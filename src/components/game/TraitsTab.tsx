@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Lock, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import { WORLD_OWNER, gateOf, type GateStates } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, groupPickState, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
@@ -116,8 +116,15 @@ export const TraitsTab = ({
     .filter((t) => !isOff(t.id, bearerOf(b)))
     .map((t) => (b.entityId && !isPlayer(b.entityId) ? `${entityNodes?.get(b.entityId)?.name ?? b.entityId}'s ${t.name}` : t.name))));
 
+  // Counted on the whole block: the view splits each block into enabled and disabled halves.
+  const picks = new Map<string, GroupPickState>(sections.flatMap((s) => s.blocks.flatMap((b) => (b.group
+    ? [[`${bearerOf(b)}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, bearerOf(b))).map((t) => t.id))] as const]
+    : []))));
+
   const row = (trait: Trait, block: TraitBlock, off: boolean) => {
     const bearerId = bearerOf(block);
+    const pick = picks.get(`${bearerId}/${block.key}`);
+    const radio = pick?.max === 1;
     const rowKey = `${bearerId}/${trait.id}`;
     // A change is listed only if the player can see the stat it targets: hidden stats stay behind the
     // scenes, and one whose stat the world no longer has would otherwise print a raw id.
@@ -130,8 +137,8 @@ export const TraitsTab = ({
     const gate = gates && gateOf(gates, bearerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
-    // A locked trait can still switch off; only switching it on waits for its gate.
-    const disabled = readOnly || (locked && off);
+    // A locked trait can still switch off. A switch-on needs an open gate and a group below its max.
+    const disabled = readOnly || (off && (locked || (!radio && !!pick?.full)));
     const name = (
       <span className="inline-flex items-center gap-1.5 font-medium">
         {trait.name}
@@ -143,7 +150,7 @@ export const TraitsTab = ({
         key={rowKey}
         className={cn('flex items-start gap-2 rounded px-1 py-1 hover:bg-accent/50', off && 'opacity-50')}
       >
-        {trait.playerToggle && (block.exclusive ? (
+        {trait.playerToggle && (radio ? (
           <button
             type="button"
             role="radio"

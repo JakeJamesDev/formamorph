@@ -376,7 +376,7 @@ describe('untyped stat changes', () => {
 });
 
 describe('exclusive groups', () => {
-  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, exclusive: true };
+  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, maxPicks: 1 };
   const chosen = trait('a', [{ statId: 'h', value: 10, type: 'starting' }], { groupId: 'g', playerToggle: true });
   const rival = trait('b', [{ statId: 'h', value: -5, type: 'starting' }], { groupId: 'g', playerToggle: true });
   const w = world([chosen, rival], [group]);
@@ -399,7 +399,7 @@ describe('exclusive groups', () => {
 });
 
 describe('applyCodeTraitSwitches', () => {
-  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, exclusive: true };
+  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, maxPicks: 1 };
   const noble = trait('noble', [{ statId: 'h', value: 10, type: 'starting' }], { groupId: 'g' });
   const outcast = trait('outcast', [], { groupId: 'g' });
   const w = world([noble, outcast], [group]);
@@ -425,7 +425,7 @@ describe('applyCodeTraitSwitches', () => {
 
 describe('gates in play', () => {
   // Paladin opens Plate, Plate opens Aura. Plate and Robes share an exclusive Armor group.
-  const armor: TraitGroup = { id: 'armor', name: 'Armor', parentId: null, exclusive: true };
+  const armor: TraitGroup = { id: 'armor', name: 'Armor', parentId: null, maxPicks: 1 };
   const paladin = trait('paladin', [{ statId: 'h', value: 10, type: 'starting' }], { playerToggle: true });
   const plate = trait('plate', [{ statId: 'h', value: 20, type: 'max' }, { statId: 'h', value: 15, type: 'starting' }], {
     playerToggle: true, groupId: 'armor', requires: [{ kind: 'trait', id: 'paladin' }],
@@ -499,6 +499,16 @@ describe('gates in play', () => {
 
   it('refuses the player a switch-on of a locked trait', () => {
     expect(switchPlayerTrait(state(), 'plate', true, gated(), name)).toBeNull();
+  });
+
+  it('refuses the player a switch-on in a full group with a max above one, and allows it once a pick is dropped', () => {
+    const skills: TraitGroup = { id: 'skills', name: 'Skills', parentId: null, maxPicks: 2 };
+    const picks = ['archery', 'stealth', 'lore'].map((id) => trait(id, [], { playerToggle: true, groupId: 'skills' }));
+    const w: TraitWorld = { traits: picks, groups: [skills] };
+    let s = player(player(state(), 'archery', true, w).state, 'stealth', true, w).state;
+    expect(switchPlayerTrait(s, 'lore', true, w, name)).toBeNull();
+    s = player(s, 'stealth', false, w).state;
+    expect(on(player(s, 'lore', true, w).state)).toEqual(['archery', 'lore']);
   });
 
   it('settles a persona change: a playing-as trait leaves with the persona and returns with it', () => {
@@ -579,7 +589,7 @@ describe('owned traits in play', () => {
   const tamer = trait('tamer', [{ statId: 'h', value: 10, type: 'starting' }], {
     name: 'Beast Tamer', playerToggle: true, requires: [{ kind: 'trait', id: 'tamed', bearer: { kind: 'entity', id: 'ash' } }],
   });
-  const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, exclusive: true };
+  const bond: TraitGroup = { id: 'bond', name: 'Bond', parentId: null, maxPicks: 1 };
   const ashTraits = [
     trait('tamed', [], { name: 'Tamed', playerToggle: true, groupId: 'bond' }),
     trait('wild', [], { name: 'Wild', playerToggle: true, groupId: 'bond' }),
@@ -622,6 +632,15 @@ describe('owned traits in play', () => {
   it('refuses a locked owned trait and one the author did not make switchable', () => {
     expect(switchPlayerTrait(state(), 'loyal', true, owned(), name)).toBeNull();
     expect(switchPlayerTrait(state(), 'gruff', true, owned(), name)).toBeNull();
+  });
+
+  it('refuses an owned switch-on in a full entity group with a max above one', () => {
+    const calm = trait('calm', [], { name: 'Calm', playerToggle: true, groupId: 'bond' });
+    const wide = { ...ash, traits: [...ashTraits, calm], groups: [{ ...bond, maxPicks: 2 }] };
+    const w: TraitWorld = { ...owned(), bearers: [owned().bearers![0], wide] };
+    const full = flip(flip(state(), 'tamed', true, w).state, 'wild', true, w).state;
+    expect(onOf(full)).toEqual(['tamed', 'wild']);
+    expect(switchPlayerTrait(full, 'calm', true, w, name)).toBeNull();
   });
 
   it('cascades across owners both ways, and returns what the cascade turned off', () => {
@@ -774,7 +793,7 @@ describe('linked stat traits follow whoever the player plays', () => {
   it('retires the exclusive sibling on the played persona’s linked group, reversing its stats through its record', () => {
     // Albus links an exclusive Classes group: Paladin (+10 max, +5 starting) and Wizard (+3 starting).
     const wizard = trait('wizard', [{ statId: 'h', value: 3, type: 'starting' }], { name: 'Wizard', playerToggle: true, groupId: 'classes' });
-    const classes: TraitGroup = { id: 'classes', name: 'Classes', parentId: null, exclusive: true };
+    const classes: TraitGroup = { id: 'classes', name: 'Classes', parentId: null, maxPicks: 1 };
     const albusClasses = { id: 'albus', name: 'Albus', traits: [{ ...paladin, groupId: 'classes' }, wizard], groups: [classes] };
     const w: TraitWorld = { ...asAlbus, bearers: [{ id: 'world', name: '', traits: [vigil], groups: [] }, albusClasses] };
     const seeded = applyPlayedStatTraits(state({ ownedTraits: { albus: { chosen: ['paladin'] } } }), w).state;

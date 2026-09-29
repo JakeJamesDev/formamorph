@@ -16,7 +16,7 @@ const traits = [
 ];
 const traitGroups: TraitGroup[] = [
   { id: 'blueprints', name: 'Blueprints', parentId: null, order: 1, system: 'blueprints' },
-  { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true },
+  { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, maxPicks: 1 },
 ];
 const albus: Entity = {
   id: 'albus', name: 'Albus', persona: true,

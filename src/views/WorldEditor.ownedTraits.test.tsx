@@ -32,7 +32,7 @@ const WORLD: World = benchEditorWorld({
     { id: 'wick', name: 'Odd Wick', playerDescription: 'The lamp-keeper.', aiDescription: 'Keeps the lamps.', locations: ['harbor'] },
     {
       id: 'ash', name: 'Ash', persona: true, playerDescription: 'A wolf.', aiDescription: 'A wolf.', locations: ['harbor'],
-      traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+      traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, maxPicks: 2 }],
       traits: [
         { id: 't-tamed', name: 'Tamed', groupId: 'g-bond', statChanges: [] },
         { id: 't-wild', name: 'Wild', groupId: 'g-bond', statChanges: [], requires: [{ kind: 'trait', id: 't-paladin' }] },
@@ -175,8 +175,9 @@ describe('entity nodes on the Traits tab', () => {
     const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
     openTab(/Traits/);
     fireEvent.click(treeRow('Bond')!);
-    fireEvent.click(screen.getByRole('checkbox', { name: /Exclusive/ }));
-    expect(entity(ctx, 'ash').traitGroups).toEqual([expect.objectContaining({ id: 'g-bond', exclusive: false })]);
+    // A max of 2 matches no preset, so the count fields show without opening the select.
+    fireEvent.change(screen.getByLabelText('At Most'), { target: { value: '1' } });
+    expect(entity(ctx, 'ash').traitGroups).toEqual([expect.objectContaining({ id: 'g-bond', maxPicks: 1 })]);
     expect(ctx().traitGroups).toEqual([]);
   });
 });

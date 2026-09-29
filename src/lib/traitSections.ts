@@ -7,12 +7,13 @@
 import { buildTraitTree, type TraitTreeNode } from './traitTree';
 import type { Trait, TraitGroup } from '@/types';
 
-/** A run of traits under one (sub)group heading. An exclusive block's traits are alternatives, not a set. */
+/** A run of traits under one (sub)group heading. A max-one block's traits are alternatives, not a set. */
 export interface TraitBlock {
   key: string;
   /** Path of nested subgroup names ("Mutations › Major"), or null for the section group's own traits. */
   subheader: string | null;
-  exclusive: boolean;
+  /** The group the traits sit in directly, whose pick count governs them; null outside any group. */
+  group: TraitGroup | null;
   traits: Trait[];
   /** Set when the block sits in an entity node's subtree: the bearer whose traits these are. */
   entityId?: string;
@@ -59,7 +60,7 @@ export function buildTraitSections(
 
   if (tops.length === 0) {
     return ungrouped.length > 0
-      ? [{ key: 'flat', name: null, blocks: [{ key: 'flat', subheader: null, exclusive: false, traits: ungrouped }] }]
+      ? [{ key: 'flat', name: null, blocks: [{ key: 'flat', subheader: null, group: null, traits: ungrouped }] }]
       : [];
   }
 
@@ -68,7 +69,7 @@ export function buildTraitSections(
     sections.push({
       key: 'general',
       name: 'General',
-      blocks: [{ key: 'general', subheader: null, exclusive: false, traits: ungrouped }],
+      blocks: [{ key: 'general', subheader: null, group: null, traits: ungrouped }],
     });
   }
   for (const top of tops) {
@@ -80,7 +81,7 @@ export function buildTraitSections(
         blocks.push({
           key: `g:${node.id}`,
           subheader: path.length > 0 ? path.join(' › ') : null,
-          exclusive: node.group.exclusive === true,
+          group: node.group,
           traits: own,
           ...bearer,
           ...(entityNodeIds.has(node.id) ? { entityNode: true as const } : {}),

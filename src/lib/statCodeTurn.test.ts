@@ -805,7 +805,7 @@ describe('runStatCodeTurn traits', () => {
   const seeded = (over: Partial<PlayerStat>): PlayerStat => stat({
     min: 0, max: 100, regen: 0, baseMin: 0, baseMax: 100, baseRegen: 0, aiMaxDelta: 0, ...over,
   });
-  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, exclusive: true };
+  const group: TraitGroup = { id: 'g', name: 'Origin', parentId: null, maxPicks: 1 };
   // Brave is acquired and on, Timid acquired and off, Cursed never acquired; Brave and Cursed share a group.
   const brave: Trait = { id: 'brave', name: 'Brave', groupId: 'g', statChanges: [{ statId: 'h', value: 10, type: 'starting' }] };
   const timid: Trait = { id: 'timid', name: 'Timid', statChanges: [{ statId: 'h', value: -20, type: 'starting' }] };

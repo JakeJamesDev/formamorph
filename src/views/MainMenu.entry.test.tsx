@@ -483,7 +483,7 @@ describe('the retained entry draft', () => {
       { id: 'first', name: 'First path', groupId: 'group', statChanges: [] },
       { id: 'second', name: 'Second path', groupId: 'group', statChanges: [] },
     ];
-    w.data.traitGroups = [{ id: 'group', name: 'Paths', parentId: null, exclusive: true }];
+    w.data.traitGroups = [{ id: 'group', name: 'Paths', parentId: null, maxPicks: 1 }];
     await WorldStorageService.storeWorld(w);
     renderMainMenu();
     await enter();

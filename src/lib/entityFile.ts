@@ -280,7 +280,8 @@ function cardOwnedTraits(obj: Record<string, unknown>): Pick<Entity, 'traits' | 
     ...(typeof g.playerDescription === 'string' ? { playerDescription: g.playerDescription } : {}),
     ...(typeof g.aiDescription === 'string' ? { aiDescription: g.aiDescription } : {}),
     ...(typeof g.order === 'number' ? { order: g.order } : {}),
-    ...(g.exclusive === true ? { exclusive: true } : {}),
+    ...(typeof g.minPicks === 'number' ? { minPicks: g.minPicks } : {}),
+    ...(typeof g.maxPicks === 'number' ? { maxPicks: g.maxPicks } : {}),
   }));
   const traitLinks = (Array.isArray(obj.traitLinks) ? obj.traitLinks : []).flatMap(cardLink);
   return {

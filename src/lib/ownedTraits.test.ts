@@ -10,7 +10,7 @@ const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id
 
 const ash = (extra: Partial<Entity> = {}): Entity => ({
   id: 'ash', name: 'Ash',
-  traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+  traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, maxPicks: 1 }],
   traits: [
     trait('t-tamed', { name: 'Tamed', groupId: 'g-bond' }),
     trait('t-wild', { name: 'Wild', groupId: 'g-bond' }),

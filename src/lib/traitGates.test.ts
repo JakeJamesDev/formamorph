@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
-  WORLD_OWNER, gateOf, gateStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
+  WORLD_OWNER, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
   withBearer, type GateInput, type GateOwner,
 } from './traitGates';
 
@@ -362,7 +362,7 @@ describe('return after a cascade', () => {
   });
 
   it('keeps a returning trait off when the player has picked its exclusive sibling since, and forgets it', () => {
-    const groups = [G('Stance', { exclusive: true })];
+    const groups = [G('Stance', { maxPicks: 1 })];
     const stances = [
       T('Knight'),
       T('Shield Wall', { groupId: 'Stance', requires: [trait('Knight')] }),
@@ -375,7 +375,7 @@ describe('return after a cascade', () => {
   });
 
   it('returns only one of two exclusive siblings that wait together', () => {
-    const groups = [G('Stance', { exclusive: true })];
+    const groups = [G('Stance', { maxPicks: 1 })];
     const stances = [
       T('Knight'),
       T('Shield Wall', { groupId: 'Stance', order: 0, requires: [trait('Knight')] }),
@@ -388,7 +388,7 @@ describe('return after a cascade', () => {
 });
 
 describe('switching a trait', () => {
-  const groups = [G('Class', { exclusive: true })];
+  const groups = [G('Class', { maxPicks: 1 })];
   const traits = [
     T('Paladin', { groupId: 'Class' }),
     T('Knight', { groupId: 'Class' }),
@@ -437,7 +437,7 @@ describe('switching a trait', () => {
   });
 
   it('never lets an exclusive sibling hold a trait up, since picking the trait retires it', () => {
-    const armor = [G('Armor', { exclusive: true })];
+    const armor = [G('Armor', { maxPicks: 1 })];
     const pieces = [
       T('Chain Mail', { groupId: 'Armor' }),
       T('Heavy Plate', { groupId: 'Armor', requires: [trait('Chain Mail')] }),
@@ -448,6 +448,70 @@ describe('switching a trait', () => {
     expect(unlocked(picked, 'Any Armor')).toBe(false);
     expect(switchTrait(picked, WORLD_OWNER, 'Heavy Plate')).toBeNull();
     expect(neverUnlockable(world(pieces, armor)).map((set) => set.map((r) => r.traitId).sort())).toEqual([['Any Armor', 'Heavy Plate']]);
+  });
+});
+
+describe('switching in a group with a max above one', () => {
+  const groups = [G('Skills', { maxPicks: 2 }), G('Deep', { parentId: 'Skills' })];
+  const traits = [
+    T('Archery', { groupId: 'Skills' }), T('Stealth', { groupId: 'Skills' }), T('Lore', { groupId: 'Skills' }),
+    T('Herbs', { groupId: 'Deep' }),
+  ];
+  const input = (active: string[]) => world(traits, groups, active);
+
+  it('refuses a switch-on once the group is full', () => {
+    expect(switchTrait(input(['Archery', 'Stealth']), WORLD_OWNER, 'Lore')).toBeNull();
+  });
+
+  it('allows a switch-on below the max, keeping every pick', () => {
+    expect(switchTrait(input(['Archery']), WORLD_OWNER, 'Lore')?.active[WORLD_OWNER]).toEqual(['Archery', 'Lore']);
+  });
+
+  it('allows a switch-off in a full group', () => {
+    expect(switchTrait(input(['Archery', 'Stealth']), WORLD_OWNER, 'Stealth')?.active[WORLD_OWNER]).toEqual(['Archery']);
+  });
+
+  it('counts only the traits placed directly in the group', () => {
+    expect(switchTrait(input(['Archery', 'Herbs']), WORLD_OWNER, 'Lore')?.active[WORLD_OWNER]).toEqual(['Archery', 'Herbs', 'Lore']);
+  });
+
+  it('applies the cap to an entity-owned group', () => {
+    const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits };
+    const two: GateInput = { ...world([], []), owners: [world([], []).owners[0], ash], active: { [WORLD_OWNER]: [], ash: ['Archery', 'Stealth'] } };
+    expect(switchTrait(two, 'ash', 'Lore')).toBeNull();
+    expect(switchTrait({ ...two, active: { ...two.active, ash: ['Archery'] } }, 'ash', 'Lore')?.active.ash).toEqual(['Archery', 'Lore']);
+  });
+});
+
+describe('group pick states', () => {
+  const groups = [G('Class', { minPicks: 1, maxPicks: 1 }), G('Skills', { minPicks: 2, maxPicks: 3 }), G('Folder'), G('Sub', { parentId: 'Skills' })];
+  const traits = [
+    T('Paladin', { groupId: 'Class' }), T('Knight', { groupId: 'Class' }),
+    T('Archery', { groupId: 'Skills' }), T('Stealth', { groupId: 'Skills' }), T('Lore', { groupId: 'Skills' }),
+    T('Herbs', { groupId: 'Sub' }), T('Map', { groupId: 'Folder' }),
+  ];
+  const states = (active: string[]) => groupPickStates(world(traits, groups, active)).get(WORLD_OWNER)!;
+
+  it('reports a short group and a full one', () => {
+    const s = states(['Paladin', 'Archery', 'Herbs']);
+    expect(s.get('Class')).toEqual({ count: 1, min: 1, max: 1, short: false, full: true });
+    expect(s.get('Skills')).toEqual({ count: 1, min: 2, max: 3, short: true, full: false });
+  });
+
+  it('reads an absent min as zero and an absent max as no limit', () => {
+    expect(states(['Map']).get('Folder')).toEqual({ count: 1, min: 0, max: null, short: false, full: false });
+  });
+
+  it('fills a group at its max', () => {
+    expect(states(['Archery', 'Stealth', 'Lore']).get('Skills')).toMatchObject({ count: 3, short: false, full: true });
+  });
+
+  it('reports each bearer against its own active set', () => {
+    const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits };
+    const input: GateInput = { ...world(traits, groups), owners: [world(traits, groups).owners[0], ash], active: { [WORLD_OWNER]: [], ash: ['Knight'] } };
+    const all = groupPickStates(input);
+    expect(all.get(WORLD_OWNER)!.get('Class')?.count).toBe(0);
+    expect(all.get('ash')!.get('Class')?.count).toBe(1);
   });
 });
 
@@ -472,12 +536,25 @@ describe('default selection', () => {
   });
 
   it('collapses exclusive defaults to the first, then drops what only the second held up', () => {
-    const groups = [G('Class', { exclusive: true })];
+    const groups = [G('Class', { maxPicks: 1 })];
     expect(defaults([
       T('Paladin', { groupId: 'Class', isDefault: true, order: 0 }),
       T('Knight', { groupId: 'Class', isDefault: true, order: 1 }),
       T('Lance', { isDefault: true, requires: [trait('Knight')] }),
     ], groups)).toEqual(['Paladin']);
+  });
+
+  it('caps defaults at a larger max in authored order, in every owner', () => {
+    const groups = [G('Skills', { maxPicks: 2 })];
+    const skills = [
+      T('Archery', { groupId: 'Skills', isDefault: true, order: 0 }),
+      T('Stealth', { groupId: 'Skills', isDefault: true, order: 1 }),
+      T('Lore', { groupId: 'Skills', isDefault: true, order: 2 }),
+    ];
+    expect(defaults(skills, groups)).toEqual(['Archery', 'Stealth']);
+    const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits: skills };
+    const { active: _active, ...rest } = world([], []);
+    expect(settleDefaults({ ...rest, owners: [rest.owners[0], ash] }).active.ash).toEqual(['Archery', 'Stealth']);
   });
 });
 
@@ -546,7 +623,7 @@ describe('never-unlockable sets', () => {
 });
 
 describe('requirement options', () => {
-  const groups = [G('Class', { exclusive: true }), G('Gear'), G('Heavy', { parentId: 'Gear' })];
+  const groups = [G('Class', { maxPicks: 1 }), G('Gear'), G('Heavy', { parentId: 'Gear' })];
   const traits = [
     T('Paladin', { groupId: 'Class' }),
     T('Knight', { groupId: 'Class' }),
@@ -573,7 +650,7 @@ describe('requirement options', () => {
   });
 
   it('lists a target once, where the first owner holds it, with You and every entity that bears it', () => {
-    const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [G('Class', { exclusive: true })], traits: [T('Paladin', { groupId: 'Class' }), T('Oath')] };
+    const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [G('Class', { maxPicks: 1 })], traits: [T('Paladin', { groupId: 'Class' }), T('Oath')] };
     const options = requirementOptions({ ...input, owners: [...input.owners, albus] }, 'Loose');
     expect(rows(options.traits)).toEqual(['Paladin @ Class', 'Knight @ Class', 'Plate Armor @ Gear › Heavy', 'Tamed @ Ash › Bond', 'Oath @ Albus']);
     const bearers = (label: string) => options.traits.find((o) => o.label === label)?.bearers.map((b) => b.name);
@@ -593,7 +670,7 @@ describe('requirement options', () => {
       ...input,
       owners: [{
         ...input.owners[0],
-        groups: [G('Martial'), G('Class', { exclusive: true, parentId: 'Martial' })],
+        groups: [G('Martial'), G('Class', { maxPicks: 1, parentId: 'Martial' })],
         traits: [...traits.filter((t) => t.groupId === 'Class'), T('Brawler', { groupId: 'Martial' })],
       }, wolf],
     };

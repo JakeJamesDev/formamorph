@@ -1,12 +1,34 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
 import { ListDetailFirstRow } from '@/components/ui/list-detail';
+import { Hint } from '@/components/ui/typography';
+
+type PickPreset = 'any' | 'exactlyOne' | 'upToOne' | 'custom';
+
+const PRESETS: Record<Exclude<PickPreset, 'custom'>, Pick<TraitGroup, 'minPicks' | 'maxPicks'>> = {
+  any: { minPicks: undefined, maxPicks: undefined },
+  exactlyOne: { minPicks: 1, maxPicks: 1 },
+  upToOne: { minPicks: undefined, maxPicks: 1 },
+};
+
+/** The preset a group's counts match; custom when none does. */
+function presetOf({ minPicks, maxPicks }: TraitGroup): PickPreset {
+  const min = minPicks ?? 0;
+  if (maxPicks === undefined) return min === 0 ? 'any' : 'custom';
+  if (maxPicks === 1) return min === 0 ? 'upToOne' : min === 1 ? 'exactlyOne' : 'custom';
+  return 'custom';
+}
+
+/** A count field's value: blank is absent, anything else a whole number of at least 0. */
+const countOf = (text: string): number | undefined =>
+  (text.trim() === '' ? undefined : Math.max(0, Math.round(Number(text) || 0)));
 
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
  *  makes it that entity's group, and edits write to the entity. A link shows its original here `readOnly`,
@@ -23,10 +45,13 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
     (next: TraitGroup) => (ownerId ? editEntity(ownerId, (e) => updateOwnedGroup(e, next)) : updateTraitGroup(next)),
     [ownerId, editEntity, updateTraitGroup],
   );
-  const { draft: editingGroup, setField: handleChange } = useEditingDraft(group, write);
+  const { draft: editingGroup, setField: handleChange, apply } = useEditingDraft(group, write);
   const traitField = useMemo(() => ({ owned: !!ownerId }), [ownerId]);
+  // Custom stays picked for this group even when its counts match a preset.
+  const [customFor, setCustomFor] = useState<string | null>(null);
 
   if (!editingGroup) return null;
+  const preset = customFor === editingGroup.id ? 'custom' : presetOf(editingGroup);
 
   const nameField = (
     <div className="space-y-2">
@@ -70,15 +95,59 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
         readOnly={readOnly}
         resizable
       />
-      <label className="flex items-center gap-2 cursor-pointer">
-        <Checkbox
+      <div className="space-y-2">
+        <Label htmlFor={`pick-count-${editingGroup.id}`}>Pick Count</Label>
+        <Select
           disabled={readOnly}
-          checked={!!editingGroup.exclusive}
-          onCheckedChange={(c) => handleChange('exclusive', c === true)}
-        />
-        <span>Exclusive</span>
-        <span className="text-meta text-muted-foreground">Shows as radio buttons, so the player picks at most one trait here</span>
-      </label>
+          value={preset}
+          onValueChange={(value) => {
+            const next = value as PickPreset;
+            setCustomFor(next === 'custom' ? editingGroup.id : null);
+            if (next !== 'custom') apply(PRESETS[next]);
+          }}
+        >
+          <SelectTrigger id={`pick-count-${editingGroup.id}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="any">Any</SelectItem>
+            <SelectItem value="exactlyOne">Exactly One</SelectItem>
+            <SelectItem value="upToOne">Up to One</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
+        {preset === 'custom' && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label htmlFor={`pick-min-${editingGroup.id}`} className="text-meta text-muted-foreground">At Least</Label>
+              <Input
+                id={`pick-min-${editingGroup.id}`}
+                type="number"
+                min={0}
+                step={1}
+                placeholder="0"
+                disabled={readOnly}
+                value={editingGroup.minPicks ?? ''}
+                onChange={(e) => handleChange('minPicks', countOf(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`pick-max-${editingGroup.id}`} className="text-meta text-muted-foreground">At Most</Label>
+              <Input
+                id={`pick-max-${editingGroup.id}`}
+                type="number"
+                min={0}
+                step={1}
+                placeholder="No limit"
+                disabled={readOnly}
+                value={editingGroup.maxPicks ?? ''}
+                onChange={(e) => handleChange('maxPicks', countOf(e.target.value))}
+              />
+            </div>
+          </div>
+        )}
+        <Hint>Counts only the traits placed directly in this group</Hint>
+      </div>
       {detailsFooter}
     </div>
   );

@@ -8,6 +8,7 @@ import { allPlaceholders } from '@/lib/placeholderHomes';
 import { describePlaceholders } from '@/lib/placeholders';
 import { traitScopedPins } from '@/lib/placeholderPins';
 import { buildTraitWorkspace } from '@/lib/setupTraitWorkspace';
+import { groupPickState, type GroupPickState } from '@/lib/traitGates';
 import { promptHeader } from '@/lib/promptHeader';
 import { chipHeaderFormat } from '@/lib/promptTemplate';
 import { splitToken } from '@/lib/promptVariables';
@@ -60,7 +61,7 @@ export interface SetupTraitCategory {
   name: string;
   groups: TraitGroup[];
   traits: Trait[];
-  exclusive: boolean;
+  picks: GroupPickState | null;
   stats: Stat[];
   /** The traits ticked: the world's defaults, with the tour trait picked. */
   selected: string[];
@@ -238,15 +239,16 @@ function setupCategory(world: TourWorld, items: TourItems, lens: BenchLens): Set
   // A trait's own text reads its own pins over the active ones, as the setup screen reads it.
   const resolveOwn = (trait: Trait, text: string) =>
     resolveLensText(text, placeholders, traitScopedPins(trait, lens.pins, placeholders));
+  const selected = lensActiveTraits(world, lens).map((t) => t.id);
   return {
     name: resolve(category.name),
     groups: category.path.map((g) => ({ ...g, playerDescription: resolve(g.playerDescription ?? '') })),
     traits: category.traits.map((t) => ({
       ...t, name: resolveOwn(t, t.name), playerDescription: resolveOwn(t, t.playerDescription ?? ''),
     })),
-    exclusive: category.group?.exclusive === true,
+    picks: category.group ? groupPickState(category.group, category.traits, selected) : null,
     stats: (world.stats ?? []).map((s) => ({ ...s, name: resolve(s.name) })),
-    selected: lensActiveTraits(world, lens).map((t) => t.id),
+    selected,
   };
 }
 

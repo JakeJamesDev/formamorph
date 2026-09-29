@@ -434,7 +434,7 @@ describe('pinConflict — who else pins it, and who wins', () => {
     const exclusive = {
       ...base, locations: [], stats: [], placeholders: [P('town', ['Marrow'])],
       traits: [T('above', { groupId: 'g' }), T('below', { groupId: 'g' })],
-      traitGroups: [{ id: 'g', name: 'Hair', parentId: null, exclusive: true }],
+      traitGroups: [{ id: 'g', name: 'Hair', parentId: null, maxPicks: 1 }],
     } as unknown as EditorWorld;
     expect(pinConflict(exclusive, 'town', { kind: 'trait', id: 'above' })).toBeNull();
   });
@@ -543,7 +543,7 @@ describe('pin write-back — add, update and remove on the source a row names', 
 describe('owned traits as pin sources — the world’s traits, then each cast entity’s', () => {
   const ash = {
     id: 'ash', name: 'Ash',
-    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, exclusive: true }],
+    traitGroups: [{ id: 'g-bond', name: 'Bond', parentId: null, maxPicks: 1 }],
     traits: [
       trait('tamed', [pin('town', 'Tame')], { name: 'Tamed', groupId: 'g-bond' }),
       trait('wild', [pin('town', 'Wild')], { name: 'Wild', groupId: 'g-bond' }),

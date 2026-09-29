@@ -49,7 +49,7 @@ const world = (extra: Partial<BearerWorld> = {}): BearerWorld => ({
   traitGroups: [
     group('oaths', null, 1, { name: 'Oaths' }),
     group('blueprints', null, 2, { name: 'Blueprints', system: 'blueprints' }),
-    group('classes', 'blueprints', 0, { name: 'Classes', exclusive: true }),
+    group('classes', 'blueprints', 0, { name: 'Classes', maxPicks: 1 }),
   ],
   entities: [albus, mira, custom],
   ...extra,
@@ -73,7 +73,7 @@ describe('resolveBearers: links', () => {
 
   it('expands a link to a group with its live subtree, keeping exclusivity and a later-added child', () => {
     const before = bearer(world(), 'albus');
-    expect(before.groups).toEqual([expect.objectContaining({ id: 'classes', parentId: null, order: 1, exclusive: true })]);
+    expect(before.groups).toEqual([expect.objectContaining({ id: 'classes', parentId: null, order: 1, maxPicks: 1 })]);
     expect(ids(before.traits)).toEqual(['oath', 'paladin', 'wizard']);
     expect(before.linkOf.get('classes')?.id).toBe('l-classes');
     expect(before.linkOf.get('wizard')?.id).toBe('l-classes');
@@ -199,7 +199,7 @@ describe('resolveBearers: the player bearer', () => {
       const cp = bearer(w, 'cp', persona, [...library]);
       expect(cp).toMatchObject({ isPlayer: true, present: true, entity: newcomer, name: 'Newcomer' });
       expect(ids(cp.groups)).toEqual(['classes']);
-      expect(cp.groups[0]).toMatchObject({ parentId: null, order: 0, exclusive: true });
+      expect(cp.groups[0]).toMatchObject({ parentId: null, order: 0, maxPicks: 1 });
       expect(ids(cp.traits)).toEqual(['paladin', 'wizard']);
       expect(cp.linkOf.get('paladin')?.id).toBe('cp-classes');
     }

@@ -4,7 +4,7 @@ import { placeholderWeight } from './placeholders';
 import { entityIdsAt } from './entityPresence';
 import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
-import type { Connection, Entity, GameLocation, Placeholder, SaveObject } from '@/types';
+import type { Connection, Entity, GameLocation, Placeholder, SaveObject, World } from '@/types';
 
 // Loose view of a migrated world for assertions (avoids `any`).
 type DescItem = {
@@ -800,5 +800,39 @@ describe('migrateWorld — player setting to persona rules', () => {
   it('is idempotent', () => {
     const once = migrateWorld({ version: APP_VERSION, worldOverview: { playerSetting: 'cast' }, entities: [playable] });
     expect(migrateWorld(JSON.parse(JSON.stringify(once))).worldOverview).toEqual(once.worldOverview);
+  });
+});
+
+describe('migrateWorld — exclusive groups to pick counts', () => {
+  const raw = () => ({
+    version: APP_VERSION,
+    traitGroups: [
+      { id: 'class', name: 'Class', parentId: null, exclusive: true },
+      { id: 'perks', name: 'Perks', parentId: null, exclusive: false },
+    ],
+    entities: [{ id: 'e', name: 'Maren', traitGroups: [{ id: 'bond', name: 'Bond', parentId: null, exclusive: true }] }],
+  });
+  const groupsOf = (world: World) => world.traitGroups as unknown as Record<string, unknown>[];
+  const ownedOf = (world: World) => world.entities[0].traitGroups as unknown as Record<string, unknown>[];
+
+  it('turns an exclusive world group into a max of one', () => {
+    const [cls, perks] = groupsOf(migrateWorld(raw()));
+    expect(cls.maxPicks).toBe(1);
+    expect('exclusive' in cls).toBe(false);
+    expect(perks.maxPicks).toBeUndefined();
+    expect('exclusive' in perks).toBe(false);
+  });
+
+  it('turns an exclusive entity-owned group into a max of one', () => {
+    const [bond] = ownedOf(migrateWorld(raw()));
+    expect(bond.maxPicks).toBe(1);
+    expect('exclusive' in bond).toBe(false);
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld(raw());
+    const twice = migrateWorld(JSON.parse(JSON.stringify(once)));
+    expect(twice.traitGroups).toEqual(once.traitGroups);
+    expect(twice.entities).toEqual(once.entities);
   });
 });

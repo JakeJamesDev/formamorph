@@ -216,7 +216,7 @@ describe('withBearerNames — linked rows in the Traits tab', () => {
 });
 
 describe('bearerTraitTree — the player-facing tree', () => {
-  const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true };
+  const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, maxPicks: 1 };
   const wizard = trait('wizard', [], { groupId: 'classes', order: 1 });
   const linkedWorld = {
     ...world,
@@ -244,7 +244,7 @@ describe('bearerTraitTree — the player-facing tree', () => {
       ['wizard', 'cp'],
     ]);
     expect([...tree.entityNodes.keys()]).toEqual(['albus', 'mira', 'cp']);
-    expect(tree.groups.find((g) => g.id === bearerGroupId('albus', 'classes'))?.exclusive).toBe(true);
+    expect(tree.groups.find((g) => g.id === bearerGroupId('albus', 'classes'))?.maxPicks).toBe(1);
     expect(tree.traits.map((t) => rowBearer(tree, t))).toEqual(['world', 'world', 'albus', 'albus', 'albus', 'mira', 'mira', 'cp']);
   });
 

@@ -86,7 +86,7 @@ afterEach(() => {
 
 const groups = [
   { id: 'origin', name: 'Origin', parentId: null, order: 0, playerDescription: 'Where you came from.' },
-  { id: 'culture', name: 'Culture', parentId: 'origin', order: 0, playerDescription: 'What **shaped** you.', exclusive: true },
+  { id: 'culture', name: 'Culture', parentId: 'origin', order: 0, playerDescription: 'What **shaped** you.', maxPicks: 1 },
   { id: 'calling', name: 'Calling', parentId: 'culture', order: 0 },
   { id: 'discipline', name: 'Discipline', parentId: 'calling', order: 0 },
   { id: 'practice', name: 'Practice', parentId: 'discipline', order: 0 },
@@ -1045,7 +1045,7 @@ describe('EnterWorldWorkspace cast pages', () => {
     // Blueprints › Classes holds Paladin (default) and Wizard. Ash links Classes, Bob links Paladin, and the
     // Custom Persona entity links Wizard for a player with no world persona.
     const blueprints = { id: 'blueprints', name: 'Blueprints', parentId: null, order: 2, system: 'blueprints' as const };
-    const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, exclusive: true };
+    const classes = { id: 'classes', name: 'Classes', parentId: 'blueprints', order: 0, maxPicks: 1 };
     const link = (id: string, originalId: string, kind: 'trait' | 'group') =>
       ({ id, originalId, kind, originalName: originalId, groupId: null, order: 5 });
     const linked: EntryTraitWorld = {

@@ -2,7 +2,7 @@
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
 import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement } from '@/types';
-import { collapseExclusiveDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
+import { capDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
 
@@ -339,9 +339,50 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
   return { active, turnedOff: off.map(ref), returned: returned.map(ref), cascadeOff: nextCascadeOff };
 }
 
+/** A group's picks against one bearer's active set. Only traits placed directly in the group count. */
+export interface GroupPickState {
+  count: number;
+  min: number;
+  /** null = no limit. */
+  max: number | null;
+  /** Fewer picks than the minimum. */
+  short: boolean;
+  /** At the maximum: no further pick fits. */
+  full: boolean;
+}
+
+/** `group`'s pick state against `active`, counting the traits in `traits` placed directly in it. */
+export function groupPickState(group: TraitGroup, traits: readonly Trait[], active: readonly string[]): GroupPickState {
+  const on = new Set(active);
+  const count = traits.filter((t) => (t.groupId ?? null) === group.id && on.has(t.id)).length;
+  const min = group.minPicks ?? 0;
+  const max = group.maxPicks ?? null;
+  return { count, min, max, short: count < min, full: max !== null && count >= max };
+}
+
+/** Owner id → group id → that bearer's pick state, for every group in every owner's tree. */
+export function groupPickStates(input: Pick<GateInput, 'owners' | 'active'>): Map<string, Map<string, GroupPickState>> {
+  return new Map(input.owners.map((owner) => {
+    const active = input.active[owner.id] ?? [];
+    return [owner.id, new Map(owner.groups.map((g) => [g.id, groupPickState(g, owner.traits, active)]))];
+  }));
+}
+
+/** Whether switching `traitId` on would overfill its group in `ownerId`: the group is full at a max above
+ *  one. A max-one group swaps its pick instead. */
+export function overfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
+  const owner = input.owners.find((o) => o.id === ownerId);
+  const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
+  const group = owner?.groups.find((g) => g.id === groupId);
+  const active = input.active[ownerId] ?? [];
+  return !!owner && !!group && group.maxPicks !== 1 && !active.includes(traitId)
+    && groupPickState(group, owner.traits, active).full;
+}
+
 /**
  * Switch one owner's trait on or off, then settle. Switching on retires its exclusive siblings first, so the
- * cascade sees the retirement. A locked trait cannot switch on: the result is null.
+ * cascade sees the retirement. A locked trait, or one whose group is full at a max above one, cannot switch
+ * on: the result is null.
  */
 export function switchTrait(
   input: GateInput, ownerId: string, traitId: string, cascadeOff: Readonly<Record<string, readonly string[]>> = {},
@@ -351,7 +392,7 @@ export function switchTrait(
   if (current.includes(traitId)) {
     next = current.filter((id) => id !== traitId);
   } else {
-    if (gateOf(gateStates(input), ownerId, traitId)?.unlocked === false) return null;
+    if (gateOf(gateStates(input), ownerId, traitId)?.unlocked === false || overfills(input, ownerId, traitId)) return null;
     const owner = input.owners.find((o) => o.id === ownerId);
     const trait = owner?.traits.find((t) => t.id === traitId);
     const retire = new Set(owner && trait ? exclusiveSiblings(trait, owner.traits, owner.groups) : []);
@@ -360,14 +401,12 @@ export function switchTrait(
   return settle({ ...input, active: { ...input.active, [ownerId]: next } }, cascadeOff);
 }
 
-/** Every owner's default traits, one per exclusive group, settled so a gated default whose chain has no open
- *  root starts unselected. */
+/** Every owner's default traits, capped at each group's max in authored order, settled so a gated default
+ *  whose chain has no open root starts unselected. */
 export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
   const active: Record<string, string[]> = {};
   for (const owner of input.owners) {
-    const traits = [...owner.traits];
-    const groups = [...owner.groups];
-    active[owner.id] = collapseExclusiveDefaults(traits.filter((t) => t.isDefault).map((t) => t.id), traits, groups);
+    active[owner.id] = capDefaults(owner.traits.filter((t) => t.isDefault).map((t) => t.id), owner.traits, owner.groups);
   }
   return settle({ ...input, active });
 }

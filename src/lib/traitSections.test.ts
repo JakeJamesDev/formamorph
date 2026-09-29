@@ -13,13 +13,13 @@ const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({
 const shape = (traits: Trait[], groups: TraitGroup[]) =>
   buildTraitSections(traits, groups).map((s) => ({
     name: s.name,
-    blocks: s.blocks.map((b) => ({ subheader: b.subheader, exclusive: b.exclusive, ids: b.traits.map((t) => t.id) })),
+    blocks: s.blocks.map((b) => ({ subheader: b.subheader, max: b.group?.maxPicks ?? null, ids: b.traits.map((t) => t.id) })),
   }));
 
 describe('building the traits panel sections', () => {
   it('gives a world with no groups one unnamed section, so the panel wears no chrome', () => {
     expect(shape([T('a'), T('b')], [])).toEqual([
-      { name: null, blocks: [{ subheader: null, exclusive: false, ids: ['a', 'b'] }] },
+      { name: null, blocks: [{ subheader: null, max: null, ids: ['a', 'b'] }] },
     ]);
   });
 
@@ -36,8 +36,8 @@ describe('building the traits panel sections', () => {
   it('collects ungrouped traits under General, ahead of the authored groups', () => {
     const traits = [T('loose'), T('a', { groupId: 'g1' })];
     expect(shape(traits, [G('g1')])).toEqual([
-      { name: 'General', blocks: [{ subheader: null, exclusive: false, ids: ['loose'] }] },
-      { name: 'g1', blocks: [{ subheader: null, exclusive: false, ids: ['a'] }] },
+      { name: 'General', blocks: [{ subheader: null, max: null, ids: ['loose'] }] },
+      { name: 'g1', blocks: [{ subheader: null, max: null, ids: ['a'] }] },
     ]);
   });
 
@@ -52,9 +52,9 @@ describe('building the traits panel sections', () => {
       {
         name: 'top',
         blocks: [
-          { subheader: null, exclusive: false, ids: ['own'] },
-          { subheader: 'mid', exclusive: false, ids: ['inner'] },
-          { subheader: 'mid › deep', exclusive: false, ids: ['deepest'] },
+          { subheader: null, max: null, ids: ['own'] },
+          { subheader: 'mid', max: null, ids: ['inner'] },
+          { subheader: 'mid › deep', max: null, ids: ['deepest'] },
         ],
       },
     ]);
@@ -68,29 +68,29 @@ describe('building the traits panel sections', () => {
   it('keeps a group that holds traits only in a nested subgroup', () => {
     const groups = [G('top'), G('sub', { parentId: 'top' })];
     expect(shape([T('a', { groupId: 'sub' })], groups)).toEqual([
-      { name: 'top', blocks: [{ subheader: 'sub', exclusive: false, ids: ['a'] }] },
+      { name: 'top', blocks: [{ subheader: 'sub', max: null, ids: ['a'] }] },
     ]);
   });
 
   it('falls back to the flat section when every authored group is empty', () => {
     expect(shape([T('loose')], [G('empty')])).toEqual([
-      { name: null, blocks: [{ subheader: null, exclusive: false, ids: ['loose'] }] },
+      { name: null, blocks: [{ subheader: null, max: null, ids: ['loose'] }] },
     ]);
   });
 
-  it('marks the block of an exclusive group, and only that block', () => {
-    const groups = [G('picks', { exclusive: true }), G('sub', { parentId: 'picks' })];
+  it('marks the block of a max-one group, and only that block', () => {
+    const groups = [G('picks', { maxPicks: 1 }), G('sub', { parentId: 'picks' })];
     const traits = [T('a', { groupId: 'picks' }), T('b', { groupId: 'sub' })];
     expect(shape(traits, groups)[0].blocks).toEqual([
-      { subheader: null, exclusive: true, ids: ['a'] },
-      { subheader: 'sub', exclusive: false, ids: ['b'] },
+      { subheader: null, max: 1, ids: ['a'] },
+      { subheader: 'sub', max: null, ids: ['b'] },
     ]);
   });
 
-  it('marks an exclusive subgroup inside a plain parent', () => {
-    const groups = [G('top'), G('sub', { parentId: 'top', exclusive: true })];
+  it('marks a max-one subgroup inside a plain parent', () => {
+    const groups = [G('top'), G('sub', { parentId: 'top', maxPicks: 1 })];
     expect(shape([T('a', { groupId: 'sub' })], groups)[0].blocks).toEqual([
-      { subheader: 'sub', exclusive: true, ids: ['a'] },
+      { subheader: 'sub', max: 1, ids: ['a'] },
     ]);
   });
 
@@ -102,8 +102,8 @@ describe('building the traits panel sections', () => {
   it('surfaces a trait pointing at a deleted group in the flat/General list rather than dropping it', () => {
     const traits = [T('orphan', { groupId: 'gone' }), T('a', { groupId: 'g1' })];
     expect(shape(traits, [G('g1')])).toEqual([
-      { name: 'General', blocks: [{ subheader: null, exclusive: false, ids: ['orphan'] }] },
-      { name: 'g1', blocks: [{ subheader: null, exclusive: false, ids: ['a'] }] },
+      { name: 'General', blocks: [{ subheader: null, max: null, ids: ['orphan'] }] },
+      { name: 'g1', blocks: [{ subheader: null, max: null, ids: ['a'] }] },
     ]);
   });
 

@@ -13,7 +13,7 @@ import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
 import { allPinRows, bindBlueprintPins, collectPinLayers, samePin, sameSource, type PinLayer } from '@/lib/placeholderPins';
 import { copyLookup, readerFor, type CopyLookup } from '@/lib/blueprints';
-import { activeStatEnabled, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
+import { activeStatEnabled, capDefaults, exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from '@/lib/traitEffects';
 import { startingStatsWith } from '@/lib/traitRuntime';
 import { PLAYER_BEARER, resolveBearers, type Bearer } from '@/lib/bearers';
 import type { GameLocation, Placeholder, Trait } from '@/types';
@@ -107,7 +107,7 @@ export interface BenchLens {
 export function lensPcOptions(world: LensWorld): LensOption[] {
   const placeholders = allPlaceholders(world);
   const { traits, groups } = lensPlayer(world);
-  const exclusive = new Map(groups.filter((g) => g.exclusive).map((g) => [g.id, g.name]));
+  const exclusive = new Map(groups.filter((g) => g.maxPicks === 1).map((g) => [g.id, g.name]));
   if (exclusive.size === 0) return [];
   const order = traitOrderIndex(traits, groups);
   const members = traits.filter((t) => t.groupId != null && exclusive.has(t.groupId));
@@ -245,7 +245,8 @@ const lensBlueprints = (world: LensWorld) => ({ placeholders: world.placeholders
 function activeTraitsFor(world: LensWorld, pc: Trait | null): Trait[] {
   const { traits, groups } = lensPlayer(world);
   const order = traitOrderIndex(traits, groups);
-  const defaults = traits.filter((t) => t.isDefault);
+  const capped = new Set(capDefaults(traits.filter((t) => t.isDefault).map((t) => t.id), traits, groups));
+  const defaults = traits.filter((t) => capped.has(t.id));
   if (!pc) return inAuthoredOrder(defaults, order);
   const retired = new Set(exclusiveSiblings(pc, traits, groups));
   const kept = defaults.filter((t) => t.id !== pc.id && !retired.has(t.id));
