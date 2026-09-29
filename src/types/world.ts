@@ -518,6 +518,9 @@ export interface Opening {
   id: string;
   text: string;
   kind: OpeningKind;
+  /** A Self opening: a start written for playing as its owner, drawn only while the player plays it. Absent =
+   *  Others, the owner greeting the player. Read only on an owner with the Persona mark. */
+  self?: true;
 }
 
 /** A complete authored world: overview plus all stats, locations, entities, traits, and updates. */

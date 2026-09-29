@@ -2,6 +2,7 @@ import { OPENING_SCENE_CUE } from '@/components/game/GamePrompts';
 import { entityIdsAt, entityIdsAtAny } from '@/lib/entityPresence';
 import { startCandidates } from '@/lib/startingLocation';
 import { randomUUID } from '@/lib/uuid';
+import type { ResolvedPersona } from '@/lib/persona';
 import type { Entity, GameLocation, Opening, OpeningKind, WorldOverview } from '@/types';
 
 /**
@@ -52,12 +53,22 @@ export function openingWeight(weights: Record<string, number> | undefined, id: s
   return typeof w === 'number' && Number.isFinite(w) ? Math.max(0, w) : 1;
 }
 
-/** The rows of one owner that can come up, with their weights. A blank or benched row never draws. */
-function drawable(owner: MaybeOwner, ownerId: string | null): PoolEntry[] {
+/** The Others rows of one owner that can come up, or its Self rows with `self`, with their weights. A blank
+ *  or benched row never draws. */
+function drawable(owner: MaybeOwner, ownerId: string | null, self = false): PoolEntry[] {
   return (owner?.openings ?? [])
-    .filter((o) => o.text.trim())
+    .filter((o) => o.text.trim() && !!o.self === self)
     .map((opening) => ({ ownerId, opening, weight: openingWeight(owner?.openingWeights, opening.id) }))
     .filter((e) => e.weight > 0);
+}
+
+/** Whether an owner's Self rows exist for the editor and the draw: only an entity with the Persona mark has any. */
+export const showsSelfOpenings = (entity: Entity | null | undefined): boolean => !!entity?.persona;
+
+/** The played persona's drawable Self rows. A world persona needs the Persona mark. */
+function selfPool(persona: ResolvedPersona | null | undefined): PoolEntry[] {
+  if (persona?.source !== 'world' || !showsSelfOpenings(persona.entity)) return [];
+  return drawable(persona.entity, persona.entity.id, true);
 }
 
 /** What a new playthrough's pool reads: the world, its authored entities and the chosen starting location. */
@@ -67,15 +78,20 @@ export interface PoolSources {
   startingLocationId?: string | null;
   /** The library entities the player picked at Enter World. */
   picked?: readonly Entity[];
+  /** The entity the player plays, whose Self rows replace the pool. */
+  persona?: ResolvedPersona | null;
 }
 
 /**
  * The rows a new playthrough draws from. The world switch benches every row, whoever owns it. With it on,
- * picked entities with a drawable row replace everything else; otherwise the world's own rows, then those
- * of the authored entities present at the starting location, in cast order.
+ * the played persona's Self rows replace everything else; then picked entities with a drawable row do;
+ * otherwise the world's own rows, then those of the authored entities present at the starting location, in
+ * cast order. Only the played persona's Self rows ever draw.
  */
-export function openingPool({ overview, entities = [], startingLocationId, picked = [] }: PoolSources): PoolEntry[] {
-  if (!openingsEnabled(overview, entities)) return [];
+export function openingPool({ overview, entities = [], startingLocationId, picked = [], persona }: PoolSources): PoolEntry[] {
+  if (!openingsEnabled(overview, [...entities, persona?.entity])) return [];
+  const selfRows = selfPool(persona);
+  if (selfRows.length) return selfRows;
   const pickedRows = picked.flatMap((e) => drawable(e, e.id));
   if (pickedRows.length) return pickedRows;
   const present = new Set(entityIdsAt(startingLocationId, [...entities]));
@@ -156,14 +172,17 @@ export function resolveOpening(overview: Overview, random: () => number = Math.r
   return drawOpening(openingPool({ overview }), random);
 }
 
-/** Each of one owner's rows' chance of being drawn from that owner's list, as a percentage keyed by id.
- *  Ignores the switch, so an author drafting a switched-off list still reads the odds it will have. */
+/** Each of one owner's rows' chance of being drawn from that owner's list, as a percentage keyed by id. Self
+ *  rows share among the owner's Self rows, Others rows among its Others rows. Ignores the switch, so an author
+ *  drafting a switched-off list still reads the odds it will have. */
 export function openingChances(owner: MaybeOwner): Record<string, number> {
-  const pool = drawable(owner, null);
-  const chances = poolChances(pool);
   const out: Record<string, number> = {};
   for (const o of owner?.openings ?? []) out[o.id] = 0;
-  pool.forEach((e, i) => { out[e.opening.id] = chances[i]; });
+  for (const self of [false, true]) {
+    const pool = drawable(owner, null, self);
+    const chances = poolChances(pool);
+    pool.forEach((e, i) => { out[e.opening.id] = chances[i]; });
+  }
   return out;
 }
 
@@ -181,9 +200,9 @@ export interface EditorOpeningGroup {
   entity: Entity | null;
   name: string;
   rows: EditorOpeningRow[];
-  /** At none of the world's starting locations, so its rows never come up. */
+  /** Holds Others rows but stands at none of the world's starting locations, so they never come up. */
   atNoStart: boolean;
-  /** At the starting location the chances describe, so its rows count in them. */
+  /** Holds no Others rows outside the starting location the chances describe. */
   atChancesStart: boolean;
 }
 
@@ -201,23 +220,31 @@ export interface OpeningsEditorSources {
   locations: readonly GameLocation[];
 }
 
-const editorRows = (owner: OpeningOwner, chanceOf: (id: string) => number | null): EditorOpeningRow[] =>
-  (owner.openings ?? []).map((opening) => ({
+/** The rows an editor lists: Self rows only with `showSelf`. */
+const shownOpenings = (owner: OpeningOwner, showSelf: boolean): Opening[] =>
+  (owner.openings ?? []).filter((o) => showSelf || !o.self);
+
+const editorRows = (
+  owner: OpeningOwner, chanceOf: (opening: Opening) => number | null, showSelf = false,
+): EditorOpeningRow[] =>
+  shownOpenings(owner, showSelf).map((opening) => ({
     opening,
     weight: openingWeight(owner.openingWeights, opening.id),
-    chance: chanceOf(opening.id),
+    chance: chanceOf(opening),
   }));
 
-/** One owner's rows with chances within its own list, for an entity's Openings tab. */
-export function ownerOpeningRows(owner: OpeningOwner): EditorOpeningRow[] {
+/** One owner's rows with chances within its own list, for an entity's Openings tab. Self rows show only
+ *  with `showSelf`. */
+export function ownerOpeningRows(owner: OpeningOwner, showSelf = false): EditorOpeningRow[] {
   const chances = openingChances(owner);
-  return editorRows(owner, (id) => chances[id] ?? 0);
+  return editorRows(owner, (o) => chances[o.id] ?? 0, showSelf);
 }
 
 /**
  * Every opening in the world grouped by owner: the world's rows first, then each authored entity that has
- * openings, in cast order. A chance is the row's share of the whole pool at `startId`, falling back to the
- * first start. The switch is ignored, so a switched-off draft reads the odds it will have.
+ * openings to show, in cast order. An Others row's chance is its share of the whole pool at `startId`,
+ * falling back to the first start; a Self row's is its share of its owner's Self rows. The switch is ignored,
+ * so a switched-off draft reads the odds it will have.
  */
 export function openingsEditorView(
   { overview, entities, locations }: OpeningsEditorSources,
@@ -234,24 +261,30 @@ export function openingsEditorView(
   const shares = new Map(pool.map((e, i) => [poolKey(e), chances[i]]));
   const here = new Set(entityIdsAt(chancesStartId, [...entities]));
   const atAnyStart = new Set(entityIdsAtAny(starts.map((l) => l.id), [...entities]));
-  const rowsOf = (owner: OpeningOwner, ownerId: string | null) =>
-    editorRows(owner, (id) => shares.get(openingKey(ownerId, id)) ?? 0);
+  const entityGroup = (e: Entity): EditorOpeningGroup => {
+    const showSelf = showsSelfOpenings(e);
+    const own = openingChances(e);
+    const shareHere = (o: Opening) => (here.has(e.id) ? shares.get(openingKey(e.id, o.id)) ?? 0 : null);
+    const hasOthers = shownOpenings(e, false).length > 0;
+    return {
+      entity: e,
+      name: e.name,
+      rows: editorRows(e, (o) => (o.self ? own[o.id] ?? 0 : shareHere(o)), showSelf),
+      atNoStart: hasOthers && !atAnyStart.has(e.id),
+      atChancesStart: !hasOthers || here.has(e.id),
+    };
+  };
 
   return {
     starts,
     chancesStartId,
     groups: [
       {
-        entity: null, name: overview?.name ?? '', rows: rowsOf(overview ?? {}, null),
+        entity: null, name: overview?.name ?? '',
+        rows: editorRows(overview ?? {}, (o) => shares.get(openingKey(null, o.id)) ?? 0),
         atNoStart: false, atChancesStart: true,
       },
-      ...entities.filter((e) => e.openings?.length).map((e) => ({
-        entity: e,
-        name: e.name,
-        rows: here.has(e.id) ? rowsOf(e, e.id) : editorRows(e, () => null),
-        atNoStart: !atAnyStart.has(e.id),
-        atChancesStart: here.has(e.id),
-      })),
+      ...entities.map(entityGroup).filter((g) => g.rows.length > 0),
     ],
   };
 }
@@ -313,6 +346,17 @@ export function setOpeningText(owner: OpeningOwner, id: string, text: string): O
 /** Sets whether one row opens as a Player Action or as Narration. */
 export function setOpeningKind(owner: OpeningOwner, id: string, kind: OpeningKind): OpeningOwner {
   return { openings: (owner.openings ?? []).map((o) => (o.id === id ? { ...o, kind } : o)) };
+}
+
+/** Marks one row Self or Others; Others is stored as absent. */
+export function setOpeningSelf(owner: OpeningOwner, id: string, self: boolean): OpeningOwner {
+  return {
+    openings: (owner.openings ?? []).map((o) => {
+      if (o.id !== id) return o;
+      const { self: _drop, ...others } = o;
+      return self ? { ...others, self: true } : others;
+    }),
+  };
 }
 
 /** Stores a weight only when it differs from the default of 1. */

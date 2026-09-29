@@ -19,7 +19,8 @@ export function drawNewGameOpening(
 ): { persona: ResolvedPersona | null; draw: UnseenDraw; owner: Entity | null } {
   const { pick, worldEntities, overview, startingLocationId, picked, random } = sources;
   const resolution = resolvePersona(pick.ref, worldEntities, pick.libraryEntity ? [pick.libraryEntity] : []);
-  const pool = openingPool({ overview, entities: resolution.cast, startingLocationId, picked });
+  const { persona, cast } = resolution;
+  const pool = openingPool({ overview, entities: cast, startingLocationId, picked, persona });
   const draw = drawUnseenOpening(pool, [], random);
-  return { persona: resolution.persona, draw, owner: openingOwner(draw.ownerId, [...resolution.cast, ...picked]) };
+  return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked, ...(persona ? [persona.entity] : [])]) };
 }

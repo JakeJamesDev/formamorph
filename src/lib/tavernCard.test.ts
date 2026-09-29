@@ -109,6 +109,12 @@ describe('readTavernCard greetings', () => {
     expect(new Set(entity.openings!.map((o) => o.id)).size).toBe(3);
   });
 
+  it('imports every greeting as an Others Narration opening, with no Self flag', () => {
+    const entity = read({ spec: 'chara_card_v2', data: { name: 'Aria', first_mes: 'One.', alternate_greetings: ['Two.'] } });
+    expect(entity.openings).toHaveLength(2);
+    for (const o of entity.openings!) expect(o).toStrictEqual({ id: o.id, text: o.text, kind: 'narration' });
+  });
+
   it('reads a V3 card from its ccv3 chunk', () => {
     expect(texts({ spec: 'chara_card_v3', data: { name: 'Aria', first_mes: 'V3 hello.', alternate_greetings: ['V3 again.'] } }, 'ccv3'))
       .toEqual(['V3 hello.', 'V3 again.']);

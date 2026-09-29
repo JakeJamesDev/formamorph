@@ -37,12 +37,19 @@ The entity that fills the player slot for a playthrough. It comes from the playe
 _Avoid_: player character, user
 
 **Opening**:
-One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration.
+One authored way to start a playthrough, with a draw weight. A world holds an ordered list of them, and a new game draws one by weight. With nothing to draw, the shipped default opening applies. Each Opening is an Opening Action or an Opening Narration, and an Others Opening or a Self Opening.
 _Avoid_: cue, opening cue, greeting, first message (the SillyTavern term)
 
 **Opening Action**:
 An Opening that fills the player's input box at Start Game. The player can edit it before they send it, and the AI writes page one from it.
 _Avoid_: player action (unqualified), prompt
+
+**Others Opening**:
+The usual Opening: one of the world's own, or one in which an entity greets the player. An entity's Others Openings never draw while the player plays that entity. Every Opening is one unless it is marked Self.
+
+**Self Opening**:
+An Opening written for playing as its owner, an entity with the Persona mark. While the player plays that entity, its Self Openings replace every other Opening in the draw. An entity without the Persona mark keeps its Self Openings, but they never draw.
+_Avoid_: persona opening, own opening
 
 **Opening Narration**:
 An Opening that is page one itself. Its text shows as written, and no narration request goes out for it.

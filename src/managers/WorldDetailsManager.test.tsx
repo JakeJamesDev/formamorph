@@ -720,6 +720,68 @@ describe('the mirrored openings panel', () => {
     expect(within(screen.getByRole('region', { name: 'Guide' })).queryByText('No Starting Location')).not.toBeInTheDocument();
   });
 
+  describe('Self rows', () => {
+    const warden = {
+      id: 'warden', name: 'Warden', persona: true, locations: ['dock'],
+      openings: [
+        { id: 'w1', text: 'The warden nods.', kind: 'action' },
+        { id: 's1', text: 'You take the lamp.', kind: 'narration', self: true },
+        { id: 's2', text: 'You bar the gate.', kind: 'narration', self: true },
+      ],
+      openingWeights: { s2: 3 },
+    } as unknown as Entity;
+    const selfBadges = (region: string) => within(screen.getByRole('region', { name: region }))
+      .queryAllByText('Self').filter((el) => !el.closest('[role="radio"]'));
+    const drawnFor = (label: string) => screen.queryByRole('radiogroup', { name: `Drawn For, ${label}` });
+
+    it('show in their persona’s group with a Self badge and their share of its Self rows', async () => {
+      world.entities = [guide, warden];
+      await open();
+      expect(within(screen.getByRole('region', { name: 'Warden' })).getAllByTestId('opening-row')).toHaveLength(3);
+      expect(selfBadges('Warden')).toHaveLength(2);
+      expect(chance('Warden Opening 2')).toBe('25%');
+      expect(chance('Warden Opening 3')).toBe('75%');
+      // The Others row still shares the pool at the start with the world's and the guide's rows.
+      expect(chance('Warden Opening 1')).toBe('25%');
+      expect(chance('Guide Opening 1')).toBe('25%');
+    });
+
+    it('put the Others | Self switch on a persona’s rows only', async () => {
+      world.entities = [guide, warden];
+      await open();
+      expect(drawnFor('Warden Opening 1')).toBeInTheDocument();
+      expect(drawnFor('Guide Opening 1')).toBeNull();
+      expect(drawnFor('Opening 1')).toBeNull();
+    });
+
+    it('write a flip to the persona, keeping the rest of the row', async () => {
+      world.entities = [guide, warden];
+      const user = await open();
+      await user.click(within(drawnFor('Warden Opening 1')!).getByRole('radio', { name: 'Self' }));
+      const next = world.entities.find((e) => e.id === 'warden')!;
+      expect(next.openings?.[0]).toEqual({ id: 'w1', text: 'The warden nods.', kind: 'action', self: true });
+      expect(next.openingWeights).toEqual({ s2: 3 });
+    });
+
+    it('hide on an entity without the Persona mark, with its group when they are all it has', async () => {
+      world.entities = [guide, { ...warden, persona: undefined }, { ...warden, id: 'former', name: 'Former', persona: undefined, openings: warden.openings!.slice(1) }];
+      await open();
+      expect(groups()).toEqual(['Guide', 'Warden']);
+      expect(within(screen.getByRole('region', { name: 'Warden' })).getAllByTestId('opening-row')).toHaveLength(1);
+      expect(selfBadges('Warden')).toHaveLength(0);
+    });
+
+    it('take no No Starting Location badge or Not At hint when a persona has only Self rows', async () => {
+      world.locations = [dock, market];
+      world.entities = [guide, { ...warden, locations: ['cave'], openings: warden.openings!.slice(1) }];
+      await open();
+      const group = within(screen.getByRole('region', { name: 'Warden' }));
+      expect(group.queryByText('No Starting Location')).not.toBeInTheDocument();
+      expect(group.queryByText(/Not at/)).not.toBeInTheDocument();
+      expect(chance('Warden Opening 1')).toBe('25%');
+    });
+  });
+
   it('with several starting locations, names the one the chances describe and follows the pick', async () => {
     world.locations = [dock, market];
     world.entities = [guide, { ...hermit, locations: ['market'] }];
