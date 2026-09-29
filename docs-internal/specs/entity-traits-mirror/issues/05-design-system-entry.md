@@ -1,8 +1,7 @@
 # 05: Design-System entry and showcase for stacked list-and-detail
 
-Status: in-progress
-Base: 757ed582
-Blocked by: 04 — The mirror
+Status: ready-for-agent
+Blocked by: 04 — The mirror; 07 — Inline back arrow and a collapsed mobile chip strip
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
 
@@ -16,8 +15,8 @@ The stacked list-and-detail inside an entity panel is recorded as an approved vi
 
 ## Acceptance criteria
 
-- [ ] The user has approved the stacked pattern from static frames of ticket 04 before this ticket edits the Design System.
-- [ ] The Design System gains an entry for stacked list-and-detail: purpose, when to use it over side by side, the back row, the toolbar staying in place, and the reduced-motion rule.
+- [ ] The user has approved the stacked pattern from static frames of ticket 07 before this ticket edits the Design System.
+- [ ] The Design System gains an entry for stacked list-and-detail: purpose, when to use it over side by side, the inline back arrow (Q33–Q36), the toolbar staying in place, and the reduced-motion rule.
 - [ ] The showcase gains a reference for the pattern with a dev-route entry, following the design-system skill's reference conventions.
 - [ ] The entry's usage table lists the entity **Traits** tab and the mobile push as the places it appears.
 - [ ] Copy follows the Writing Guide and passes the copy sweep.
