@@ -20,19 +20,26 @@ import { entityPanelTabsFor, entityTabForField, type EntityPanelTab } from '@/vi
  * Right-panel editor for one entity: the field groups split across Profile, Descriptions, Traits, Openings
  * and Placeholders. The Traits tab is the Traits tab's editor over this entity alone.
  *
- * The panel remounts per entity, so the chosen tab and the Traits tab's open trait are the editor's to hold
- * and arrive as props.
+ * The panel remounts per entity, so the chosen tab and the open trait and placeholder are the editor's to
+ * hold and arrive as props.
  *
  * `focusField` is the search target the find bar just navigated to. A hit on a tab that isn't showing has no
  * field to mark, so the panel opens the owning tab; the same hint the Overview panel takes for its own pair.
  */
-const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, focusField }: {
+const EntityManager = ({
+  entity, tab, onTabChange, traitId, onTraitIdChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder, focusField,
+}: {
   entity: Entity;
   tab: EntityPanelTab;
   onTabChange: (tab: EntityPanelTab) => void;
   /** The Traits tab's open trait, group or Link; null shows its list. */
   traitId: string | null;
   onTraitIdChange: (id: string | null) => void;
+  /** The Placeholders tab's open row; null shows its list. */
+  placeholderId: string | null;
+  onPlaceholderIdChange: (id: string | null) => void;
+  /** Opens a world placeholder on the editor's Placeholders tab. */
+  onOpenWorldPlaceholder: (id: string) => void;
   focusField?: FocusFieldHint | null;
 }) => {
   const { updateEntity, entities, locations, placeholders, placementLetters, placeholderOwners } = useGameData();
@@ -131,7 +138,13 @@ const EntityManager = ({ entity, tab, onTabChange, traitId, onTraitIdChange, foc
 
         {advanced && (
           <PanelTabContent value="placeholders" fill>
-            <ScopedPlaceholdersSection kind="entity" ownerId={entity.id} fill />
+            <ScopedPlaceholdersSection
+              kind="entity"
+              ownerId={entity.id}
+              selectedId={placeholderId}
+              onSelect={onPlaceholderIdChange}
+              onOpenWorldPlaceholder={onOpenWorldPlaceholder}
+            />
           </PanelTabContent>
         )}
     </PanelTabs>

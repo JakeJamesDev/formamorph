@@ -109,6 +109,12 @@ export function placeholderTreeNodes(world: PlaceholderHomesWorld): PlaceholderT
   return out;
 }
 
+/** One owner's list as its own tree, at the top level: what an entity or book panel draws. Rows still look
+ *  chip targets and holders up across the whole world. */
+export function ownerPlaceholderNodes(world: PlaceholderHomesWorld, home: PlaceholderHome): PlaceholderRowNode[] {
+  return placeholderRows(placeholderList(world, home), allPlaceholders(world)).map((row) => ({ ...row, kind: 'placeholder', home }));
+}
+
 /**
  * Whether the tab may land `activeId` under `parentId` (null for the root). One rule for the drag's indent
  * indicator and the drop, so the indicator never shows a nesting the drop would refuse: an owner node

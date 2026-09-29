@@ -12,14 +12,22 @@ import ScopedPlaceholdersSection from './ScopedPlaceholdersSection';
 /** Right-panel editor for a selected book (dictionary): its own fields on Details, its scoped placeholders
  *  on Placeholders. Entry editing is the DictionaryManager's job; add/delete entries from the tree on the left.
  *
- *  The panel remounts per book, so the chosen tab is the editor's to hold and arrives as a prop. Placeholders
+ *  The panel remounts per book, so the chosen tab and the open placeholder are the editor's to hold and
+ *  arrive as props. Placeholders
  *  is Advanced only, so Simple mode leaves one tab and no strip.
  *
  *  `focusField` is the Find hit the editor just navigated to. The panel opens the tab that holds it. */
-const DictionaryBookManager = ({ book, tab, onTabChange, focusField }: {
+const DictionaryBookManager = ({
+  book, tab, onTabChange, placeholderId, onPlaceholderIdChange, onOpenWorldPlaceholder, focusField,
+}: {
   book: Dictionary;
   tab: DictionaryBookPanelTab;
   onTabChange: (tab: DictionaryBookPanelTab) => void;
+  /** The Placeholders tab's open row; null shows its list. */
+  placeholderId: string | null;
+  onPlaceholderIdChange: (id: string | null) => void;
+  /** Opens a world placeholder on the editor's Placeholders tab. */
+  onOpenWorldPlaceholder: (id: string) => void;
   focusField?: FocusFieldHint | null;
 }) => {
   const { advanced } = useEditorMode();
@@ -45,7 +53,13 @@ const DictionaryBookManager = ({ book, tab, onTabChange, focusField }: {
     <PanelTabs tabs={tabs} value={tab} onValueChange={onTabChange} stripLabel="Dictionary Fields">
       <PanelTabContent value="details">{detailsPanel}</PanelTabContent>
       <PanelTabContent value="placeholders" fill>
-        <ScopedPlaceholdersSection kind="dictionary" ownerId={book.id} fill />
+        <ScopedPlaceholdersSection
+          kind="dictionary"
+          ownerId={book.id}
+          selectedId={placeholderId}
+          onSelect={onPlaceholderIdChange}
+          onOpenWorldPlaceholder={onOpenWorldPlaceholder}
+        />
       </PanelTabContent>
     </PanelTabs>
   );

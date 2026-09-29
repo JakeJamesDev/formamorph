@@ -1,6 +1,7 @@
 # 05: Scoped placeholder editor in the entity and dictionary panels
 
-Status: ready-for-agent
+Status: in-progress
+Base: 7b73793c
 Blocked by: 01, 02
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,14 +16,14 @@ An entity's Placeholders tab works like its **Traits** tab: a search box, a **+*
 
 ## Acceptance criteria
 
-- [ ] Both panels use the stacked layout and fill the pane.
-- [ ] **+** is one add action named from the search text; the box clears and the new placeholder's details open.
-- [ ] Search lists matching rows flat through the shared match; an empty match shows a no-match line.
-- [ ] The World Editor holds one placeholder selection per panel. Another entity tab and back keeps it; a new owner returns to the list.
-- [ ] A copy row opens the copy editor through the shared router.
-- [ ] Bench tests cover each point for the entity panel and the dictionary panel.
+- [x] Both panels use the stacked layout and fill the pane.
+- [x] **+** is one add action named from the search text; the box clears and the new placeholder's details open.
+- [x] Search lists matching rows flat through the shared match; an empty match shows a no-match line.
+- [x] The World Editor holds one placeholder selection per panel. Another entity tab and back keeps it; a new owner returns to the list.
+- [x] A copy row opens the copy editor through the shared router.
+- [x] Bench tests cover each point for the entity panel and the dictionary panel.
 
 ## Completion checks
 
-- [ ] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
-- [ ] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.
+- [x] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
+- [x] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.

@@ -34,11 +34,11 @@ const open = (host: 'world' | 'library') => render(
   <SettingsProvider>
     <GameDataProvider>
       {host === 'world' ? (
-        <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} />
+        <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />
       ) : (
         // A library modal binds a store over the book's own list, the way its modal does.
         <PlaceholderStoreProvider value={placeholderStore([], () => {})}>
-          <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} />
+          <DictionaryBookManager book={book} tab="placeholders" onTabChange={() => {}} placeholderId={null} onPlaceholderIdChange={() => {}} onOpenWorldPlaceholder={() => {}} />
         </PlaceholderStoreProvider>
       )}
     </GameDataProvider>

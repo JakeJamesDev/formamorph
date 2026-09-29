@@ -232,6 +232,9 @@ const WorldEditorInner = ({
   // The entity Traits tab's open trait, held here for the same reason. Never reset here: the tab's editor
   // clears a selection the shown entity doesn't hold, and a tab switch away and back keeps it.
   const [entityTraitId, setEntityTraitId] = useState<string | null>(null);
+  // The entity and book panels' open placeholder rows, one per panel, held and cleared the same way.
+  const [entityPlaceholderId, setEntityPlaceholderId] = useState<string | null>(null);
+  const [bookPlaceholderId, setBookPlaceholderId] = useState<string | null>(null);
   // The location panel's own tabs, held here for the same reason and answered the same way.
   const [locationTab, setLocationTab] = useState<LocationPanelTab>('details');
   const locationTabs = useMemo(() => locationPanelTabsFor(advanced), [advanced]);
@@ -747,6 +750,8 @@ const WorldEditorInner = ({
       ? navigateToBenchItem('entities', owner.id, 'placeholders')
       : navigateToBenchItem('dictionary', owner.id)),
   });
+  // A panel copy's Edit Blueprint: the blueprint opens on this tab, and the panel keeps its own row.
+  const openWorldPlaceholder = useCallback((id: string) => navigateToBenchItem('placeholders', id), [navigateToBenchItem]);
   const placeholdersParts = useListEditor(placeholdersEditor.adapter, {
     selectedId: selections.placeholders ?? null, onSelect: selectPlaceholder, search,
   });
@@ -931,6 +936,9 @@ const WorldEditorInner = ({
           onTabChange={setEntityTab}
           traitId={entityTraitId}
           onTraitIdChange={setEntityTraitId}
+          placeholderId={entityPlaceholderId}
+          onPlaceholderIdChange={setEntityPlaceholderId}
+          onOpenWorldPlaceholder={openWorldPlaceholder}
           focusField={focusFieldForItem(findField, selectedEntity.id)}
         />
       )}
@@ -950,6 +958,9 @@ const WorldEditorInner = ({
           book={selectedBook}
           tab={shownBookTab}
           onTabChange={setBookTab}
+          placeholderId={bookPlaceholderId}
+          onPlaceholderIdChange={setBookPlaceholderId}
+          onOpenWorldPlaceholder={openWorldPlaceholder}
           focusField={focusFieldForItem(findField, selectedBook.id)}
         />
       )}
