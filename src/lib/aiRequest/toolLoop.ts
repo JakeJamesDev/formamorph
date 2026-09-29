@@ -10,8 +10,9 @@ import {
 /**
  * The tool loop: one request that offers Tools, run to completion below the Turn Pipeline.
  *
- * A round that offers Tools holds its content until it ends. Ended without calls, the held deltas flush in
- * order and the round is the reply. Ended with calls, the content is dropped from the reply, each call runs
+ * A round that offers Tools holds whitespace-only content and streams live from its first visible character,
+ * since models write no prose before a call. Ended without calls, the round is the reply. Ended with calls,
+ * the content is dropped from the reply (`toolCalls` tells the consumer to clear what it showed), each call runs
  * through the caller's executor, and the next round carries the assistant message (content, calls and the
  * model's own reasoning under the field the server named) plus one `tool` result per call. A limit, a
  * malformed call or an unknown Tool sends one more round without Tools, so the model finishes in prose;
@@ -50,9 +51,9 @@ export interface AiToolRound {
 export type AiToolLoopEvent =
   | AiStreamEvent
   | { type: 'toolRound'; round: AiToolRound }
-  /** A round ended with calls, and they are about to run. */
+  /** A round ended with calls, and they are about to run. Any content that round streamed is not the reply. */
   | { type: 'toolCalls'; names: string[] }
-  /** The round after the calls sent its first token, held or not. */
+  /** The round after the calls sent its first token, even a held one. */
   | { type: 'roundStarted' };
 
 export interface AiToolLoopOptions extends AiStreamOptions {
@@ -143,7 +144,9 @@ export async function* streamAiToolLoop(
     const offering = offerTools && index < roundCap;
     const body: AiRequestBody<WireMessage> = offering ? { ...spec.body, messages: [...messages] } : { ...plainBody, messages: [...messages] };
     const roundSpec: AiStreamSpec = { ...spec, body };
+    // Whitespace-only deltas of a Tools-offered round, until its first visible character.
     const held: AiStreamEvent[] = [];
+    let live = !offering;
     let result: AiStreamResult | undefined;
 
     for await (const event of streamAiRequest(roundSpec, options)) {
@@ -153,8 +156,10 @@ export async function* streamAiToolLoop(
         yield { type: 'roundStarted' };
       }
       if (event.type === 'delta') {
-        if (offering) held.push(event);
-        else yield event;
+        if (!live && !event.content.trim()) { held.push(event); continue; }
+        live = true;
+        yield* held.splice(0);
+        yield event;
       } else if (event.type === 'reasoning') {
         yield { type: 'reasoning', text: joinReasoning([...reasoningByRound, event.text]) };
       } else if (event.debug.kind !== 'response' || index === 1) {
@@ -169,7 +174,7 @@ export async function* streamAiToolLoop(
     reasoningField ??= result.reasoningField;
 
     if (result.finishReason === ABORTED_FINISH_REASON) {
-      yield { type: 'done', result: finalResult(result, offering ? '' : result.content, ABORTED_FINISH_REASON) };
+      yield { type: 'done', result: finalResult(result, live ? result.content : '', ABORTED_FINISH_REASON) };
       return;
     }
     if (!offering || result.toolCalls.length === 0) {

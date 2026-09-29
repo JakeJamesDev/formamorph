@@ -3062,6 +3062,22 @@ const GameViewer = ({
         }
       };
 
+      // A round that streamed text ended in calls: that text is not the reply, so clear it from every surface.
+      const retractNarration = () => {
+        if (!content.trim()) return;
+        content = "";
+        narrationAt = 0;
+        if (requestType === "choices") setChoices([]);
+        if (requestType !== "narration") return;
+        fadeReveal.reset(); smoothReveal.reset();
+        entitySentenceCursorRef.current = 0;
+        if (assistantAddedRef.current) {
+          assistantAddedRef.current = false;
+          setFullMessageHistory((prev) => (prev.at(-1)?.role === "assistant" ? prev.slice(0, -1) : prev));
+        }
+        if (ttsStreaming) { ttsModalRef.current?.streamStart(); ttsSentenceCursorRef.current = 0; }
+      };
+
       // Tool rounds are silent requests: kept for the AI-context viewer only when the inspection toggle is on.
       const toolRounds: AiToolRound[] = [];
       const events = executeTool
@@ -3076,7 +3092,7 @@ const GameViewer = ({
           continue;
         }
         if (event.type === "toolRound") { toolRounds.push(event.round); continue; }
-        if (event.type === "toolCalls") { startLookup(); continue; }
+        if (event.type === "toolCalls") { retractNarration(); startLookup(); continue; }
         if (event.type === "roundStarted") { endLookup(); continue; }
         if (event.type === "done") {
           // `done` replaces the running values with the stream's own finals.
