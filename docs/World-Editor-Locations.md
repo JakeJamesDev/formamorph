@@ -88,7 +88,37 @@ The **Connections** section lists every link this location is part of, from this
 | **Outgoing** | The story can leave here for the other place. It can never bring the player back. |
 | **Incoming** | The story can arrive here from the other place. It can't go the other way. |
 
-Pick a place from the **Connect to…** dropdown and press **Add Connection**. The **Travel Hint** box is optional, and it goes to the AI: *through the shimmering portal*, *down the rope ladder*. It tells the story how the player makes the trip.
+Pick a place from the **Connect to…** dropdown and press **Add Connection**.
+
+### Travel Hints
+
+A **Travel Hint** is optional, and it goes to the AI: *through the shimmering portal*, *down the rope ladder*. It tells the story how the player makes the trip.
+
+Each direction has its own hint. The AI gets the hint for the direction the player travels. A direction with no hint gets none. The AI never uses the other direction's words.
+
+| Connection | Hint boxes |
+|---|---|
+| **Two-Way** | Two boxes, one for each direction. A **link toggle** sits to the right of both. |
+| **Outgoing** or **Incoming** | One box. There is no toggle. |
+
+On a location's panel, the boxes read **To** *place* and **From** *place*. On the Canvas, each box shows an arrow and the place it leads to.
+
+The link toggle joins the two boxes:
+
+- 🔗 **Linked.** The first hint applies to both directions. The second box is read-only and shows the first box's text.
+- 💔 **Unlinked.** Both boxes are editable and hold separate hints.
+
+A new two-way Connection starts linked. One hint covers both directions until you unlink.
+
+- Select **Unlink Travel Hints** to write a different hint for the return trip. The second box gets back the text it held before you linked.
+- Select **Link Travel Hints** to copy the first hint into the second direction.
+- Two boxes with the same text open linked. Two boxes with different text open unlinked.
+
+> 💡 The editor doesn't save the link state. It reads the state from the hints each time you open the panel. The text the second box held before you linked is lost when you close the panel.
+
+Change a Connection to one-way, and it keeps the hint for the direction that remains. Change it back to two-way, and the new direction starts with a copy of that hint.
+
+On the Canvas, each arrow shows its own hint as a label. Two arrows with the same hint share one label. Select an arrow to edit that direction's hint. Undo and redo cover the toggle and every hint edit.
 
 > ⚠️ **A Connection replaces the free travel those two places had.** This is what makes a one-way link truly one-way, even between two sub-locations of the same place. The story is never offered the trip back.
 
