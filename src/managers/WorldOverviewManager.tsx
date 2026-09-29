@@ -106,7 +106,7 @@ const PersonaRulesFields = () => {
 
   const options = [
     ...(limited ? [] : [{ value: PLAYER_DEFAULT, label: "Player's Default" }]),
-    ...(limited && !custom ? [] : [{ value: NONE, label: custom ? 'Custom Persona' : 'None' }]),
+    ...(limited && !custom ? [] : [{ value: NONE, label: custom ? custom.name || 'Custom Persona' : 'None' }]),
     ...personas.map((entity) => ({ value: entity.id, label: entity.name || 'Unnamed' })),
   ];
   // Under World Only the absent pick is the first offered persona; a stale pick reads as the absent one.
