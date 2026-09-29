@@ -348,6 +348,8 @@ function useProvideGameplay() {
   // The name of the save the player is currently "in" this session (last loaded or saved). Not persisted —
   // used to prefill the Save dialog so re-saving over the same slot is one step. Cleared per fresh session.
   const [lastSaveName, setLastSaveName] = useState('');
+  // Counts successful save loads, so the view settles traits against its world once per load.
+  const [saveLoads, setSaveLoads] = useState(0);
 
   const saveGame = useCallback(async (saveName: string, worldName: string, worldId?: string, saveId?: string, opts?: { isAutosave?: boolean; includeSceneImages?: boolean }) => {
     const isAutosave = opts?.isAutosave ?? false;
@@ -472,6 +474,7 @@ function useProvideGameplay() {
           // no pictures, which is the default.
           setSceneImages(migrated.sceneImages ?? {});
           addSystemLogEntry(`Game loaded from "${saveName}"`);
+          setSaveLoads((n) => n + 1);
         }
         return success;
       }
@@ -518,6 +521,7 @@ function useProvideGameplay() {
           if (success) {
             setPersonaRef(undefined);
             addSystemLogEntry(`Game loaded from "${saveName}"`);
+            setSaveLoads((n) => n + 1);
           }
           return success;
         } catch (error) {
@@ -531,6 +535,7 @@ function useProvideGameplay() {
             const success = loadGameState(savedData as unknown as GameState, locations, { worldStats });
             if (success) {
               addSystemLogEntry(`Game loaded from "${saveName}" (with conversion errors)`);
+              setSaveLoads((n) => n + 1);
             }
             return success;
           } catch (loadError) {
@@ -776,6 +781,7 @@ function useProvideGameplay() {
     saveGame,
     autosaveGame,
     loadGame,
+    saveLoads,
     lastSaveName,
     saveCurrentGameState,
     loadGameState
