@@ -1706,6 +1706,10 @@ const traitGroupMinAboveMax: Rule = {
   })),
 };
 
+/** A shortfall's rows: the group, then its traits. */
+const shortfallItems = (p: PickShortfall, world: RuleWorld): FindingItem[] =>
+  [bearerTraitItem(p.group, p.bearer, world), ...p.traits.map((t) => bearerTraitItem(t, p.bearer, world))];
+
 const traitGroupMinUnreachable: Rule = {
   id: 'trait-group-min-unreachable',
   severity: 'error',
@@ -1714,7 +1718,7 @@ const traitGroupMinUnreachable: Rule = {
   check: (world) => gateReportOf(world).picks.filter((p) => p.kind === 'unreachable').map((p) => finding(
     traitGroupMinUnreachable,
     `${groupSubject(p.group, p.bearer, world)} needs at least ${picksOf(p.min)} but ${p.count === 0 ? 'none' : `only ${p.count}`} of its traits can ever unlock`,
-    [bearerTraitItem(p.group, p.bearer, world), ...p.traits.map((t) => bearerTraitItem(t, p.bearer, world))],
+    shortfallItems(p, world),
   )),
 };
 
@@ -1726,7 +1730,7 @@ const traitGroupDefaultsBelowMin: Rule = {
   check: (world) => gateReportOf(world).picks.filter((p) => p.kind === 'defaults').map((p) => finding(
     traitGroupDefaultsBelowMin,
     `${groupSubject(p.group, p.bearer, world)} needs at least ${picksOf(p.min)} but a new game starts with ${p.count} — the defaults don’t meet the minimum`,
-    [bearerTraitItem(p.group, p.bearer, world), ...p.traits.map((t) => bearerTraitItem(t, p.bearer, world))],
+    shortfallItems(p, world),
   )),
 };
 
@@ -1886,22 +1890,22 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     for (const ids of Object.values(settled.active)) for (const id of ids) everOn.add(id);
     return settled;
   };
-  const startsBy = passes.map((pass) => settleInto(pass.gate).active);
+  const settledByPass = passes.map((pass) => settleInto(pass.gate).active);
   for (const persona of personaChoices(world)) settleInto({ ...input, persona });
   const offDefaults = traits.filter((t) => !stuckIds.has(t.id) && everOff.has(t.id) && !everOn.has(t.id)).map((t) => t.id);
 
   // A group is short only when it is short under every persona choice that holds its bearer. A group with an
   // unreachable minimum leaves its defaults to that finding, as does a minimum above the maximum.
-  const seen = new Map<string, { runs: number; unreachable: PickShortfall[]; defaults: PickShortfall[] }>();
+  const shortfallsByGroup = new Map<string, { runs: number; unreachable: PickShortfall[]; defaults: PickShortfall[] }>();
   passes.forEach((pass, i) => {
     for (const owner of pass.gate.owners) {
-      const started = startsBy[i][owner.id] ?? [];
+      const started = settledByPass[i][owner.id] ?? [];
       for (const group of owner.groups) {
         const min = group.minPicks ?? 0;
         const bearer = pass.bearers.get(owner.id);
         const direct = owner.traits.filter((t) => (t.groupId ?? null) === group.id);
-        const entry = seen.get(pairKey(owner.id, group.id)) ?? { runs: 0, unreachable: [], defaults: [] };
-        seen.set(pairKey(owner.id, group.id), entry);
+        const entry = shortfallsByGroup.get(pairKey(owner.id, group.id)) ?? { runs: 0, unreachable: [], defaults: [] };
+        shortfallsByGroup.set(pairKey(owner.id, group.id), entry);
         entry.runs++;
         const stuckHere = direct.filter((t) => pass.stuck.has(pairKey(owner.id, t.id)));
         if (min > direct.length - stuckHere.length) {
@@ -1916,7 +1920,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     }
   });
   const picks: PickShortfall[] = [];
-  for (const { runs, unreachable, defaults } of seen.values()) {
+  for (const { runs, unreachable, defaults } of shortfallsByGroup.values()) {
     if (unreachable.length === runs) picks.push(unreachable[0]);
     else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
   }
