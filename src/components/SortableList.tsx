@@ -18,15 +18,15 @@ export interface SortableRowMeta {
   title?: string;
 }
 
-/** An `EditorRow` that drags by its grip, for a list that draws its own rows. */
-export function SortableEditorRow({ id, ...row }: { id: string } & Omit<EditorRowProps, 'setNodeRef' | 'style' | 'gripProps'>) {
+/** An `EditorRow` that drags by its grip, for a list that draws its own rows. `faded` dims a row at rest. */
+export function SortableEditorRow({ id, faded = false, ...row }: { id: string; faded?: boolean } & Omit<EditorRowProps, 'setNodeRef' | 'style' | 'gripProps'>) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   return (
     <EditorRow
       {...row}
       setNodeRef={setNodeRef}
       // Translate, not Transform: Transform bakes in a scale that resizes the dragged row to the target slot.
-      style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined }}
+      style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging || faded ? 0.5 : 1, zIndex: isDragging ? 1 : undefined }}
       gripProps={{ ...attributes, ...listeners }}
     />
   );
@@ -60,20 +60,10 @@ export function SortableRow({
   enabled?: boolean;
   onToggleEnabled?: (id: string, enabled: boolean) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
-  const faded = !!onToggleEnabled && enabled === false;
-  const style = {
-    // Translate (not Transform): Transform bakes in a scale that resizes the dragged row to the target slot.
-    transform: CSS.Translate.toString(transform),
-    transition,
-    opacity: isDragging || faded ? 0.5 : 1,
-    zIndex: isDragging ? 1 : undefined,
-  };
   return (
-    <EditorRow
-      setNodeRef={setNodeRef}
-      style={style}
-      gripProps={{ ...attributes, ...listeners }}
+    <SortableEditorRow
+      id={item.id}
+      faded={!!onToggleEnabled && enabled === false}
       selected={selected}
       onSelect={() => onSelect(item.id)}
       selectionLabel={`Select ${item.name}`}
