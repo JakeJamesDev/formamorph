@@ -57,6 +57,8 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q34** A search row's label is exactly its tree row's label. A copy reads `Molly.Eyes`, as its row does; Q11's `Owner › Name` is an example, not a format.
 - **Q35** A placeholder search row carries its tree row's actions (Delete, the in-use block, Duplicate) through the same confirmation for owned descendants. Promote stays out of search.
 - **Q36** The shell's stale-selection clear applies on every list, hidden tabs included: a selection the list's `holds` rejects is cleared. `holds` accepts everything the list's detail opens, so nothing that opened a pane before is cleared. A migration that meets this logs it as "Keep: Q36" and needs no ruling.
+- **Q37** In the entity and dictionary panels, a copy's **Edit Blueprint** switches to the top-level Placeholders tab with the blueprint selected. The panel's own selection stays. The library modal still hides it (Q13).
+- **Q38** A scoped search row reads its tree label with no owner prefix (`Eyes`, `Hair › Color`, `Molly.Eyes`), per Q34. The scoped section keeps its helper line above the stacked editor.
 
 ## User Stories
 
