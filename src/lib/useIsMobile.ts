@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 
-/** True when the viewport is narrower than `breakpoint` (default 768px = Tailwind md). */
-export function useIsMobile(breakpoint = 768): boolean {
+/** Tailwind's `md`: narrower than this is mobile. */
+export const MOBILE_BREAKPOINT = 768;
+
+/** True when the viewport is narrower than `breakpoint`. */
+export function useIsMobile(breakpoint = MOBILE_BREAKPOINT): boolean {
   const [isMobile, setIsMobile] = useState(
     typeof window !== 'undefined' ? window.innerWidth < breakpoint : false,
   );

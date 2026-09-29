@@ -4,7 +4,7 @@ import { EditorRow, EditorRowList } from '@/components/EditorRow';
 import { ListMenuRow, ListSearchToolbar } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { ListDetail } from '@/components/ui/list-detail';
+import { ListDetail, ListDetailFirstRow } from '@/components/ui/list-detail';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TraitStoreContext, type EntityRoot, type TraitStore } from '@/contexts/TraitStoreContext';
 import { matchesListSearch } from '@/lib/listSearch';
@@ -189,10 +189,12 @@ const EntityTraitsEditor = ({ store, layout, selectedId, onSelect, onOpenEntity,
           <div className="p-4">
             {linkRow ? (
               linkRow.unbound ? (
-                <LinkNotice>
-                  Linked to <strong><PlaceholderText text={linkRow.link.originalName} placeholders={placeholders} /></strong>.{' '}
-                  {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
-                </LinkNotice>
+                <ListDetailFirstRow align="center">
+                  <LinkNotice>
+                    Linked to <strong><PlaceholderText text={linkRow.link.originalName} placeholders={placeholders} /></strong>.{' '}
+                    {world ? "This world doesn't have it." : 'Open this entity from a world to edit the link.'}
+                  </LinkNotice>
+                </ListDetailFirstRow>
               ) : (
                 <div key={selectedId}>
                   {linkedTrait ? (

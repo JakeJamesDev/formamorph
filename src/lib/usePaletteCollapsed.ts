@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MOBILE_BREAKPOINT } from '@/lib/useIsMobile';
 
 const STORAGE_KEY = 'fm-placeholder-palette-collapsed';
 const CHANGE_EVENT = 'fm-placeholder-palette-collapsed';
@@ -6,15 +7,17 @@ const CHANGE_EVENT = 'fm-placeholder-palette-collapsed';
 /**
  * Whether the placeholder palette strip is folded away. A statement about how the author likes to work
  * rather than a per-panel setting, so it is shared by every panel at once and persisted across reloads —
- * the same shape as the prompt editor's split preference.
+ * the same shape as the prompt editor's split preference. Mobile starts collapsed until a choice is stored.
  */
 export function usePaletteCollapsed(): [boolean, (v: boolean) => void] {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
+    let stored: string | null = null;
     try {
-      return localStorage.getItem(STORAGE_KEY) === '1';
+      stored = localStorage.getItem(STORAGE_KEY);
     } catch {
-      return false;
+      // Unreadable reads as no choice.
     }
+    return stored === null ? window.innerWidth < MOBILE_BREAKPOINT : stored === '1';
   });
 
   useEffect(() => {

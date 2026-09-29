@@ -80,12 +80,19 @@ const searchBox = () => screen.getByPlaceholderText('Search or add new traits');
 const openAddMenu = (name: string) => fireEvent.click(screen.getByRole('button', { name: `Add to ${name}` }));
 /** The mirror's draggable rows, in order: the entity panel's own, apart from the entity tree's rows beside it. */
 const mirrorRows = () => {
-  const panel = screen.getByRole('tablist', { name: 'Entity Fields' }).parentElement as HTMLElement;
+  // The tabs root, past the row a pushed panel's back arrow shares with the strip.
+  const panel = screen.getByRole('tablist', { name: 'Entity Fields' }).parentElement!.closest('[dir][data-orientation]') as HTMLElement;
   return within(panel).getAllByLabelText('Drag to reorder or nest').map((grip) => grip.parentElement as HTMLElement);
 };
 const rowNamed = (name: string) => mirrorRows().find((row) => within(row).queryByText(name));
 const detailsOpen = () => !!screen.queryByRole('tablist', { name: 'Trait Fields' });
-const backRow = () => screen.queryByRole('button', { name: 'Traits' });
+const backArrow = () => screen.queryByRole('button', { name: 'Back to Traits' });
+/** Whether the back arrow named `name` shares a row with the strip named `strip`, left of it. */
+const leadsStrip = (name: string, strip: string) => {
+  const list = screen.getByRole('tablist', { name: strip });
+  const arrow = within(list.parentElement!).queryByRole('button', { name });
+  return !!arrow && !list.contains(arrow) && !!(arrow.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING);
+};
 const entity = (ctx: () => { entities: World['entities'] }, id: string) => ctx().entities.find((e) => e.id === id)!;
 
 beforeEach(() => { localStorage.clear(); adapters.length = 0; });
@@ -115,7 +122,7 @@ describe('the entity Traits tab as a mirror', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Trait to Ash' }));
     expect(entity(ctx, 'ash').traits!.map((t) => t.name)).toEqual(['Tamed', 'Wild', 'Pack Sense', 'Fangs']);
     expect(searchBox()).toHaveValue('');
-    expect(backRow()).toBeInTheDocument();
+    expect(leadsStrip('Back to Traits', 'Trait Fields')).toBe(true);
     expect(screen.getByLabelText('Name')).toHaveTextContent('Fangs');
     // Still inside the entity, on its own Traits tab.
     expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
@@ -134,7 +141,7 @@ describe('the entity Traits tab as a mirror', () => {
     expect(screen.getByText('No traits match “zzz”.')).toBeInTheDocument();
   });
 
-  it('returns to the list from the back row, and keeps the open trait across a tab switch', () => {
+  it('returns to the list from the back arrow, and keeps the open trait across a tab switch', () => {
     renderWorldEditorBench(WORLD, 'advanced');
     openMirror('Ash');
     fireEvent.click(rowNamed('Wild')!);
@@ -143,7 +150,7 @@ describe('the entity Traits tab as a mirror', () => {
     expect(detailsOpen()).toBe(false);
     fireEvent.mouseDown(entityFieldsTab('Traits'));
     expect(screen.getByLabelText('Name')).toHaveTextContent('Wild');
-    fireEvent.click(backRow()!);
+    fireEvent.click(backArrow()!);
     expect(detailsOpen()).toBe(false);
     expect(rowNamed('Wild')).toBeDefined();
   });
@@ -198,7 +205,7 @@ describe('the entity Traits tab as a mirror', () => {
     openTraitFieldsTab('Details');
     expect(screen.getByText(/^Linked from/)).toBeInTheDocument();
     openTraitFieldsTab('Availability');
-    fireEvent.click(backRow()!);
+    fireEvent.click(backArrow()!);
     fireEvent.click(rowNamed('Wild')!);
     fireEvent.click(within(field()).getByRole('button', { name: 'Tamed' }));
     openTraitFieldsTab('Details');
@@ -230,18 +237,41 @@ describe('the entity Traits tab as a mirror', () => {
     expect(within(screen.getByRole('tablist', { name: 'Trait Fields' })).queryByRole('tab', { name: 'Stats' })).toBeNull();
   });
 
-  it('pushes the details in over the mirror on mobile, with their own back row inside the pushed entity panel', () => {
+  it('pushes the details in over the mirror on mobile, each push with its arrow leading its own tab strip', () => {
     const undo = asMobile();
     try {
       renderWorldEditorBench(WORLD, 'advanced');
       openMirror('Ash');
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+      expect(leadsStrip('Back to Entities', 'Entity Fields')).toBe(true);
+      expect(screen.getAllByRole('button', { name: /^Back to / })).toHaveLength(1);
       fireEvent.click(rowNamed('Tamed')!);
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
-      fireEvent.click(backRow()!);
+      expect(leadsStrip('Back to Traits', 'Trait Fields')).toBe(true);
+      expect(leadsStrip('Back to Entities', 'Entity Fields')).toBe(true);
+      // No push draws a row of its own for the control.
+      expect(screen.queryByRole('button', { name: /^(Back|Traits|Entities)$/ })).toBeNull();
+      fireEvent.click(backArrow()!);
       expect(detailsOpen()).toBe(false);
       expect(screen.getByRole('tablist', { name: 'Entity Fields' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Back to Entities' }));
+      expect(screen.queryByRole('tablist', { name: 'Entity Fields' })).toBeNull();
+    } finally {
+      undo();
+    }
+  });
+
+  it('leads a strip-less group detail\'s first row with its arrow on mobile, and goes back from it', () => {
+    const undo = asMobile();
+    try {
+      renderWorldEditorBench(WORLD, 'advanced');
+      openMirror('Ash');
+      fireEvent.click(rowNamed('Bond')!);
+      const name = screen.getByRole('textbox', { name: 'Group Name' });
+      const row = screen.getByRole('button', { name: 'Back to Traits' }).parentElement!;
+      expect(row.contains(name)).toBe(true);
+      expect(row.firstElementChild).toHaveAccessibleName('Back to Traits');
+      fireEvent.click(backArrow()!);
+      expect(rowNamed('Bond')).toBeDefined();
+      expect(screen.queryByRole('textbox', { name: 'Group Name' })).toBeNull();
     } finally {
       undo();
     }

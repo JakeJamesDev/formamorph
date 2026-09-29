@@ -13,6 +13,7 @@ import { copyName } from '@/lib/placeholderBlueprints';
 import { newPlaceholderValue, placeholderIsChoice, placeholderWeight, prunePlaceholderWeights } from '@/lib/placeholders';
 import { cn } from '@/lib/utils';
 import type { Placeholder, PlaceholderValue } from '@/types';
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /** A weight typed into a box: whole, never negative. */
 const typedWeight = (raw: string) => Math.max(0, Math.round(Number(raw) || 0));
@@ -86,10 +87,12 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
   const count = blueprint.values.length;
   return (
     <div className="space-y-4">
-      <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
-        Copy of the blueprint <strong>{blueprint.name}</strong>. Values follow the blueprint until you change them
-        here.
-      </p>
+      <ListDetailFirstRow align="center">
+        <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+          Copy of the blueprint <strong>{blueprint.name}</strong>. Values follow the blueprint until you change them
+          here.
+        </p>
+      </ListDetailFirstRow>
       <div className="space-y-2">
         <Label htmlFor={`copy-name-${copy.id}`}>Name</Label>
         <Input id={`copy-name-${copy.id}`} value={copyName(ownerName, blueprint.name)} disabled readOnly />

@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import PlaceholderField, { PlaceholderNameField } from '@/components/prompt/PlaceholderField';
 import { updateOwnedGroup } from '@/lib/ownedTraits';
 import type { TraitGroup } from '@/types';
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /** Right-panel editor for a trait group: name + audience-split descriptions (blank-friendly). An `ownerId`
  *  makes it that entity's group, and edits write to the entity. A link shows its original here `readOnly`,
@@ -27,20 +28,28 @@ const GroupManager = ({ group, ownerId, readOnly = false, detailsHeader, details
 
   if (!editingGroup) return null;
 
+  const nameField = (
+    <div className="space-y-2">
+      <Label>Group Name</Label>
+      <PlaceholderNameField
+        trait={traitField}
+        value={editingGroup.name || ''}
+        onChange={(v) => handleChange('name', v)}
+        placeholders={placeholders}
+        ariaLabel="Group Name"
+        readOnly={readOnly}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      {detailsHeader}
-      <div className="space-y-2">
-        <Label>Group Name</Label>
-        <PlaceholderNameField
-          trait={traitField}
-          value={editingGroup.name || ''}
-          onChange={(v) => handleChange('name', v)}
-          placeholders={placeholders}
-          ariaLabel="Group Name"
-          readOnly={readOnly}
-        />
-      </div>
+      {detailsHeader ? (
+        <>
+          <ListDetailFirstRow align="center">{detailsHeader}</ListDetailFirstRow>
+          {nameField}
+        </>
+      ) : <ListDetailFirstRow>{nameField}</ListDetailFirstRow>}
       <PlaceholderField
         trait={traitField}
         label="Player-Facing Description"

@@ -3,6 +3,7 @@ import { useGameData } from '@/contexts/GameDataContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { EntityGroup } from '@/types';
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /** Right-panel editor for an entity group: just a name — groups are editor-only folders with no AI fields. */
 const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
@@ -13,10 +14,12 @@ const EntityGroupManager = ({ group }: { group: EntityGroup }) => {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Group Name</Label>
-        <Input value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
-      </div>
+      <ListDetailFirstRow>
+        <div className="space-y-2">
+          <Label>Group Name</Label>
+          <Input value={editingGroup.name || ''} onChange={(e) => setField('name', e.target.value)} />
+        </div>
+      </ListDetailFirstRow>
       <p className="text-helper text-muted-foreground">
         Organizes entities in the editor only. Groups are never sent to the AI.
       </p>

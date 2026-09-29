@@ -4,6 +4,7 @@ import PlaceholderText from '@/components/prompt/PlaceholderText';
 import type { PlaceholderOwnerRef } from '@/lib/placeholderHomes';
 import { OWNER_NAME_SEPARATOR } from '@/lib/placementLetters';
 import type { Placeholder } from '@/types';
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /**
  * What the Placeholders tab shows for a selected owner node. The node is read off an entity or book, so
@@ -17,10 +18,12 @@ const PlaceholderOwnerPanel = ({ owner, placeholders, onOpen }: {
 }) => {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-label font-medium">
-        {owner.kind === 'entity' ? <User className="h-4 w-4 shrink-0" /> : <BookOpen className="h-4 w-4 shrink-0" />}
-        <PlaceholderText text={owner.name} placeholders={placeholders} />
-      </div>
+      <ListDetailFirstRow align="center">
+        <div className="flex items-center gap-2 text-label font-medium">
+          {owner.kind === 'entity' ? <User className="h-4 w-4 shrink-0" /> : <BookOpen className="h-4 w-4 shrink-0" />}
+          <PlaceholderText text={owner.name} placeholders={placeholders} />
+        </div>
+      </ListDetailFirstRow>
       <p className="text-helper text-muted-foreground">
         These placeholders belong to this {owner.kind}. Elsewhere in the world they read as{' '}
         <PlaceholderText text={owner.name} placeholders={placeholders} />{OWNER_NAME_SEPARATOR}Name. Drag one to the top of the

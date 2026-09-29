@@ -10,6 +10,7 @@ import { Plus, X } from "lucide-react";
 import type { StatUpdate, ChatMessage } from '@/types';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { Tip } from "@/components/ui/tooltip";
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
   const { stats, updateStatUpdate, placeholders, placementLetters, placeholderOwners } = useGameData();
@@ -43,14 +44,16 @@ const StatUpdatesManager = ({ statUpdate }: { statUpdate: StatUpdate }) => {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Update Name</Label>
-        <Input
-          value={editingStatUpdate.name || ''}
-          onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="e.g., Distance Traveled Update"
-        />
-      </div>
+      <ListDetailFirstRow>
+        <div className="space-y-2">
+          <Label>Update Name</Label>
+          <Input
+            value={editingStatUpdate.name || ''}
+            onChange={(e) => handleChange('name', e.target.value)}
+            placeholder="e.g., Distance Traveled Update"
+          />
+        </div>
+      </ListDetailFirstRow>
       <div className="space-y-2">
         <Label>AI Prompt</Label>
         <Textarea

@@ -32,6 +32,7 @@ import { PlaceholderPinsSection } from '@/components/editor/PlaceholderPinsSecti
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useRenameField } from '@/lib/useCodeRename';
 import { useEditorMode } from '@/lib/editorMode';
+import { ListDetailFirstRow } from '@/components/ui/list-detail';
 
 /** Which of the two value-editing styles a placeholder is being edited in. Session-only — nothing about it
  *  is stored, so a placeholder is re-read on every open rather than remembered. */
@@ -343,27 +344,35 @@ const PlaceholderManager = ({ placeholder, rowId, share }: {
     </PopoverContent>
   );
 
+  const nameInput = (
+    <div className="space-y-2">
+      <Label>Name</Label>
+      <Input
+        value={editing.name}
+        onChange={(e) => apply({ name: e.target.value })}
+        disabled={locked}
+        placeholder="e.g. Eye Color"
+        onFocus={rename.onFocus}
+        onBlur={rename.onBlur}
+        onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
+      />
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {locked && (
-        <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
-          Shared row. The name, the kind and the values come from the original.{' '}
-          {kind === 'object'
-            ? "An Object applies every value and never draws, so there's nothing to weigh here."
-            : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
-        </p>
+        <ListDetailFirstRow align="center">
+          <p className="rounded-md border border-dashed px-2 py-1.5 text-helper text-muted-foreground">
+            Shared row. The name, the kind and the values come from the original.{' '}
+            {kind === 'object'
+              ? "An Object applies every value and never draws, so there's nothing to weigh here."
+              : 'The draw weights are this row’s own. Benching a value here changes nothing anywhere else.'}
+          </p>
+        </ListDetailFirstRow>
       )}
       <div className="space-y-2">
-        <Label>Name</Label>
-        <Input
-          value={editing.name}
-          onChange={(e) => apply({ name: e.target.value })}
-          disabled={locked}
-          placeholder="e.g. Eye Color"
-          onFocus={rename.onFocus}
-          onBlur={rename.onBlur}
-          onKeyDown={(e) => { if (e.key === 'Enter') rename.onSubmit(); }}
-        />
+        {locked ? nameInput : <ListDetailFirstRow>{nameInput}</ListDetailFirstRow>}
         {shadowsMember && (
           <p role="status" className="text-meta text-warning">
             Every placeholder has a <code>{editing.name}</code> of its own, so stat code can’t reach this part

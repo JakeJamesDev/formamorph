@@ -156,6 +156,35 @@ describe('PlaceholderPaletteBar toggle', () => {
     expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveTextContent('Placeholders (5)');
     expect(names()).toEqual([]);
   });
+
+  describe('at mobile width', () => {
+    const width = window.innerWidth;
+    beforeEach(() => { localStorage.clear(); Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true }); });
+    afterEach(() => { Object.defineProperty(window, 'innerWidth', { value: width, configurable: true }); localStorage.clear(); });
+
+    it('starts collapsed when no choice is stored', () => {
+      bar();
+      expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveAttribute('aria-expanded', 'false');
+      expect(names()).toEqual([]);
+    });
+
+    it('starts open when the stored choice says so', () => {
+      localStorage.setItem('fm-placeholder-palette-collapsed', '0');
+      bar();
+      expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveAttribute('aria-expanded', 'true');
+    });
+  });
+
+  it('starts open at desktop width when no choice is stored, and collapsed when that is the stored choice', () => {
+    localStorage.clear();
+    const { unmount } = bar();
+    expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveAttribute('aria-expanded', 'true');
+    unmount();
+    localStorage.setItem('fm-placeholder-palette-collapsed', '1');
+    bar();
+    expect(screen.getByRole('button', { name: 'Placeholders' })).toHaveAttribute('aria-expanded', 'false');
+    localStorage.clear();
+  });
 });
 
 describe('PlaceholderPaletteBar click target', () => {
