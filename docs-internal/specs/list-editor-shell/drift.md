@@ -11,8 +11,10 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 | 5 | World Editor, Traits search rows | A search row's screen-reader name read "Select <raw name>", so a name holding a chip read its stored token. The List Editor's rows read "Select <label>", as the entity Traits editor has since ticket 01. | `src/components/listEditorHooks.tsx` (`selectionLabel`) | Ticket 03 | Keep the label: the raw token was never a readable name. |
 | 6 | World Editor, Traits tab | Deleting the open trait from the tree kept its id selected, so on mobile the push showed an empty detail. The List Editor clears a selection its list doesn't hold. | `src/components/listEditorHooks.tsx` (stale-selection clear) | Ticket 03 | Keep the clear: it is the shell's rule (spec Solution) and the in-tab half of #1. |
 | 7 | World Editor, library add | An entity or book added from the library selected its id on whichever tab was active. It now selects on the Entities or Dictionary tab. | `src/views/WorldEditor.tsx` (`addEntityToWorld`, `addBookToWorld`) | Ticket 03 | Keep: each tab holds its own selection (Q21), and the add opens from that tab. |
+| 8 | World Editor, Placeholders tab | A selection whose row was gone (a nested row promoted, a shared reference removed, its entity deleted on the Entities tab) stayed selected, so on mobile the push showed an empty detail. The List Editor clears a selection the tab can't resolve. | `src/managers/useWorldPlaceholdersAdapter.tsx` (`holds`) | Ticket 04 | Keep the clear: #6 on the Placeholders tab. `holds` accepts what the detail router resolves (a row, a folder, an owner, a bare placeholder id), so nothing it opened before is cleared. |
 
 ## 📌 Notes
 
 - Ticket 01 moved the Traits editors onto the shell and found no new drift.
 - Ticket 03 kept #3's raw-index drag on world trait search rows (Q29). Owned trait and Link rows have no grip, since they had no search row before.
+- Ticket 04's placeholder search rows have no grip: the tree's drop nests and moves records between lists, which a flat list can't express.
