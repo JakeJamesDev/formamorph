@@ -20,3 +20,6 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 - Ticket 03 kept #3's raw-index drag on world trait search rows (Q29). Owned trait and Link rows have no grip, since they had no search row before.
 - Ticket 04's placeholder search rows have no grip: the tree's drop nests and moves records between lists, which a flat list can't express.
 - Ticket 05's panel lists clear a selection whose row is gone, as #8 does on the tab. Keep: Q36. `holds` accepts every row the owner's tree draws and the bare id of each placeholder in it, so a shared row's link still opens its original in the panel.
+- Ticket 06's library modal lists clear a selection whose row is gone, where the old editor kept it and showed an empty detail. Keep: Q36. `holds` accepts every drawn row and the bare id of each placeholder in it.
+- Ticket 06 found that a world copy whose blueprint is gone still opens the raw placeholder manager on the tab and in the panels. Only the library entity modal shows the missing-blueprint notice (ticket 06). Not a drift from the move; named for a later ruling.
+- Ticket 06's library modal **+** keeps the old "Add Placeholder" name, not Q12's "Add Placeholder to <owner>". The modal is the owner's own editor, and the ticket keeps the existing modal tests unchanged, which name it so.

@@ -158,13 +158,13 @@ export function PlaceholderCopyEditor({ copy, blueprint, ownerName }: { copy: Pl
   );
 }
 
-/** The copy's frozen footer: Reset to Blueprint, and Edit Blueprint to open the blueprint itself. */
-export function PlaceholderCopyFooter({ copy, onEditBlueprint }: { copy: Placeholder; onEditBlueprint: () => void }) {
+/** The copy's frozen footer: Reset to Blueprint, and Edit Blueprint where the blueprint can be opened. */
+export function PlaceholderCopyFooter({ copy, onEditBlueprint }: { copy: Placeholder; onEditBlueprint?: () => void }) {
   const { updatePlaceholder } = usePlaceholderStore();
   const overridden = !!copy.valueOverrides && Object.keys(copy.valueOverrides).length > 0;
   return (
     <BlueprintFooter canReset={overridden} onReset={() => updatePlaceholder(resetCopyOverrides(copy))}>
-      <Button type="button" variant="outline" size="sm" onClick={onEditBlueprint}>Edit Blueprint</Button>
+      {onEditBlueprint && <Button type="button" variant="outline" size="sm" onClick={onEditBlueprint}>Edit Blueprint</Button>}
     </BlueprintFooter>
   );
 }

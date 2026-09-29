@@ -1,16 +1,14 @@
 import { useMemo } from 'react';
 import { ListEditor } from '@/components/ListEditor';
-import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { PlaceholderStoreProvider, usePlaceholderStore, usePlaceholderStoreOptional, type PlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { useEditorMode } from '@/lib/editorMode';
 import { OWNER_NAME_SEPARATOR, labelPlaceholders } from '@/lib/placementLetters';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { placeholderList, placeholderOwnerRef, type PlaceholderHome } from '@/lib/placeholderHomes';
-import { newPlaceholder } from '@/lib/placeholders';
 import { ownerPlaceholderNodes } from '@/lib/placeholderScopes';
 import PlaceholderList from './PlaceholderList';
 import { usePlaceholderDetail } from './PlaceholderDetail';
-import { placeholderSearchRows } from './placeholderSearchRows';
+import { usePlaceholderListAdapter } from './usePlaceholderListAdapter';
 import { usePlaceholderRowActions } from './usePlaceholderRowActions';
 
 /** The world store narrowed to one owner's list: the same reads and writes, a list that draws only that
@@ -29,7 +27,7 @@ interface ScopedSelection {
 /** One owner's placeholders on the List Editor, stacked: its tree, a flat search over its rows, and the
  *  detail router's pane over the list. Reads the scoped store. */
 const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlaceholder }: ScopedSelection & { home: PlaceholderHome & { ownerId: string } }) => {
-  const { placeholders, lists, owners, addPlaceholder } = usePlaceholderStore();
+  const { placeholders, lists, owners } = usePlaceholderStore();
   const letters = useGameDataOptional()?.placementLetters;
   const { detail, footer } = usePlaceholderDetail({ selectedId, onSelect: onOpenWorldPlaceholder });
   // A duplicate lands in its source's list, so a shared row's duplicate opens on the top-level tab (Q39).
@@ -39,36 +37,19 @@ const ScopedPlaceholdersEditor = ({ home, selectedId, onSelect, onOpenWorldPlace
   };
   const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect, openDuplicate });
   const nodes = useMemo(() => (lists ? ownerPlaceholderNodes(lists, home) : []), [lists, home]);
-  // A drawn row, or the bare id of a placeholder the tree draws: a shared row's link opens its original.
-  const heldIds = useMemo(() => new Set(nodes.flatMap((n) => [n.id, n.placeholder.id])), [nodes]);
-  if (!lists) return null;
-  const ownerName = labelPlaceholders(placeholderOwnerRef(lists, home.ownerId)?.name ?? '', placeholders);
-
-  const adapter: ListEditorAdapter = {
-    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} openDuplicate={openDuplicate} />,
-    rows: () => placeholderSearchRows(nodes, lists, rowRules, { withOwner: false }),
+  const ownerName = lists ? labelPlaceholders(placeholderOwnerRef(lists, home.ownerId)?.name ?? '', placeholders) : '';
+  const adapter = usePlaceholderListAdapter({
+    nodes,
+    lists: lists ?? {},
+    rowRules,
     names: { placeholders, letters, owners },
-    noun: 'placeholders',
-    detail: (id) => (
-      <div className="p-4">
-        {id ? detail : <p className="text-helper text-muted-foreground">Select a placeholder to edit it, or add one</p>}
-      </div>
-    ),
-    footer: () => footer,
-    add: {
-      label: `Add Placeholder to ${ownerName}`,
-      onAdd: (typed) => {
-        const p = newPlaceholder(typed || 'New Placeholder');
-        addPlaceholder(p);
-        onSelect(p.id);
-      },
-    },
-    placeholder: 'Search or add new placeholders',
-    holds: (id) => heldIds.has(id),
-    // The tree draws its own empty hint.
-    isEmpty: false,
-    emptyHint: null,
-  };
+    tree: <PlaceholderList selectedId={selectedId} onSelect={onSelect} openDuplicate={openDuplicate} />,
+    detail,
+    footer,
+    addLabel: `Add Placeholder to ${ownerName}`,
+    onSelect,
+  });
+  if (!lists) return null;
   return (
     <>
       <ListEditor adapter={adapter} layout="stacked" selectedId={selectedId} onSelect={onSelect} backLabel="Placeholders" />

@@ -7,7 +7,7 @@ import type { Placeholder } from '@/types';
 
 /**
  * The placeholder CRUD the placeholder-editing widgets need, scoped to whatever list is being edited.
- * Decouples `PlaceholderList`/`PlaceholderManager`/`PlaceholderEditor` from any specific global store: the
+ * Decouples `PlaceholderList`/`PlaceholderManager`/`LibraryPlaceholdersEditor` from any specific global store: the
  * World Editor binds this to the current world's combined view, routing each write to the list that holds
  * the id; a standalone library item binds it to an isolated adapter over the placeholders it carries.
  */

@@ -14,7 +14,7 @@ import { PanelTabContent, PanelTabs } from '@/components/ui/panel-tabs';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { TagsField } from '@/components/TagsField';
 import { LibraryAuthorField } from '@/components/LibraryAuthorField';
-import PlaceholderEditor from '@/managers/PlaceholderEditor';
+import LibraryPlaceholdersEditor from '@/managers/LibraryPlaceholdersEditor';
 import LibraryTraitsEditor, { type LibraryEditorWorld } from '@/managers/LibraryTraitsEditor';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { EMPTY_LETTERS, entityPlacementLetters, labelPlaceholders } from '@/lib/placementLetters';
@@ -36,6 +36,8 @@ import type { Entity, LibraryDetails, FocusFieldHint, Placeholder } from '@/type
 /** The baseline in the same canonical form the live value is compared in — a fresh cache each time, since
  *  a baseline is taken once and the graph it describes is about to be edited. */
 const canon = (v: unknown) => canonicalStringify(v, new WeakMap()) ?? '';
+
+const NO_BLUEPRINTS: readonly Placeholder[] = [];
 
 /** The library editor sits outside the World Editor's mode, even when a world opens it. */
 const ALWAYS_ADVANCED: EditorModeValue = { mode: 'advanced', advanced: true, setMode: () => {} };
@@ -262,7 +264,11 @@ const EntityEditorModal = ({
           <ChipInsertTargetProvider>
             <div className="flex min-h-0 flex-1 flex-col">
               <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
-              <PlaceholderEditor />
+              {/* A copy reads the blueprints the card carries and never writes them. */}
+              <LibraryPlaceholdersEditor
+                ownerName={labelPlaceholders(entity?.name ?? '', pool, { letters })}
+                carriedBlueprints={entity?.blueprints ?? NO_BLUEPRINTS}
+              />
             </div>
           </ChipInsertTargetProvider>
         )}

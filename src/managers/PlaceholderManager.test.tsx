@@ -10,7 +10,7 @@ import { tintMarkStyle } from '@/lib/previewTint';
 import { EditorModeContext } from '@/lib/editorMode';
 import type { GameLocation, Placeholder, PlaceholderGroup, Stat, Trait, TraitGroup } from '@/types';
 import type { PinsWorld } from '@/components/editor/PlaceholderPinsSection';
-import PlaceholderEditor from './PlaceholderEditor';
+import LibraryPlaceholdersEditor from './LibraryPlaceholdersEditor';
 import PlaceholderManager from './PlaceholderManager';
 import { phValueId, phValues } from '@/test/placeholderValues';
 
@@ -322,7 +322,7 @@ describe('PlaceholderManager — chips vs multiline', () => {
  */
 describe('PlaceholderManager — kind', () => {
   it('is born a Wildcard', () => {
-    render(<PlaceholderEditor />);
+    render(<LibraryPlaceholdersEditor ownerName="Molly" />);
     fireEvent.click(screen.getByRole('button', { name: 'Add Placeholder' }));
     expect(addPlaceholder).toHaveBeenCalledWith(expect.objectContaining({ roll: true }));
   });
@@ -622,7 +622,7 @@ describe('PlaceholderManager — a shared row', () => {
   // The wiring: the list selects rows, and which row it is decides whether the panel locks. Both rows here
   // are the one placeholder, so a panel keyed by the placeholder alone could not tell them apart.
   it('locks the nested row and leaves the original unlocked, from the list', () => {
-    render(<PlaceholderEditor />);
+    render(<LibraryPlaceholdersEditor ownerName="Molly" />);
     const rows = screen.getAllByRole('button', { name: 'Duplicate' })
       .map((b) => b.parentElement as HTMLElement);
     const named = (name: string) =>
