@@ -1439,7 +1439,7 @@ const WorldEditorInner = ({
                       className="mt-4"
                       showDetail={!!selectedItemId}
                       onBack={() => setSelectedItemId(null)}
-                      backLabel="Back"
+                      backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
                       scrollList={!canvasView}
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
