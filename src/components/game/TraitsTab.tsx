@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown, Lock, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buildTraitSections, viewTraitSection, type TraitBlock, type TraitSection } from '@/lib/traitSections';
-import { WORLD_OWNER, gateOf, groupPickState, type GateStates, type GroupPickState } from '@/lib/traitGates';
+import { WORLD_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type GroupPickState } from '@/lib/traitGates';
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
@@ -137,8 +137,8 @@ export const TraitsTab = ({
     const gate = gates && gateOf(gates, bearerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
-    // A locked trait can still switch off. A switch-on needs an open gate and a group below its max.
-    const disabled = readOnly || (off && (locked || (!radio && !!pick?.full)));
+    // A switch-on needs an open gate and a group below its max. A switch-off must not leave it below its min.
+    const disabled = readOnly || (off ? locked || (!radio && !!pick?.full) : !!pick && leavesShort(pick));
     const name = (
       <span className="inline-flex items-center gap-1.5 font-medium">
         {trait.name}

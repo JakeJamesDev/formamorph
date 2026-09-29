@@ -261,6 +261,21 @@ describe('the retained entry draft', () => {
     expect(screen.queryByRole('dialog', { name: 'Enter Entry World' })).not.toBeInTheDocument();
   });
 
+  it('starts Quick Start with a group short of its minimum, which disables Start game in setup', async () => {
+    const w = world();
+    w.data.traitGroups = [{ id: 'group', name: 'Other traits', parentId: null, minPicks: 1 }];
+    await WorldStorageService.storeWorld(w);
+    const onStartGame = vi.fn();
+    renderMainMenu({ onStartGame });
+    await enter();
+    expect(screen.getByRole('button', { name: 'Start game' })).toBeDisabled();
+    cleanup();
+    renderMainMenu({ onStartGame });
+    fireEvent.click(await screen.findByText('Entry World'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
+    await waitFor(() => expect(onStartGame).toHaveBeenCalledWith(['default'], null, true, null, null, null, NO_PERSONA, {}));
+  });
+
   it('starts from the workspace when no library or Avatar continuation remains', async () => {
     const w = world();
     w.data.dictionaries = [];

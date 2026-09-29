@@ -1,6 +1,7 @@
 # 02: Minimum picks in play
 
-Status: ready-for-agent
+Status: ready-for-human
+Base: 826df3ed
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,10 +16,10 @@ A group's minimum is enforced. On the setup screen, a group short of its minimum
 
 ## Acceptance criteria
 
-- [ ] The gate module refuses a switch-off that drops a group below `minPicks`, for every bearer.
-- [ ] Settle never refuses a cascade-off because of a minimum. A short group after a cascade is a valid state, and the Q34 return still fills it.
-- [ ] The setup list shows a short group's needed count. Begin is disabled while any group on any bearer is short.
-- [ ] Quick Start starts with no minimum check.
-- [ ] The Traits tab disables the switch on a trait whose switch-off would be refused.
-- [ ] Tests: the switch-off refusal; the short group after a cascade and its return; Begin disabled and enabled; Quick Start starting while short. Each guard is shown to bite.
-- [ ] The changelog line is in In Progress.
+- [x] The gate module refuses a switch-off that drops a group below `minPicks`, for every bearer.
+- [x] Settle never refuses a cascade-off because of a minimum. A short group after a cascade is a valid state, and the Q34 return still fills it.
+- [x] The setup list shows a short group's needed count. Begin is disabled while any group on any bearer is short.
+- [x] Quick Start starts with no minimum check.
+- [x] The Traits tab disables the switch on a trait whose switch-off would be refused.
+- [x] Tests: the switch-off refusal; the short group after a cascade and its return; Begin disabled and enabled; Quick Start starting while short. Each guard is shown to bite.
+- [x] The changelog line is in In Progress.

@@ -511,6 +511,34 @@ describe('gates in play', () => {
     expect(on(player(s, 'lore', true, w).state)).toEqual(['archery', 'lore']);
   });
 
+  it('refuses the player a switch-off that drops a group below its minimum, and allows it once another pick joins', () => {
+    const skills: TraitGroup = { id: 'skills', name: 'Skills', parentId: null, minPicks: 2 };
+    const picks = ['archery', 'stealth', 'lore'].map((id) => trait(id, [], { playerToggle: true, groupId: 'skills' }));
+    const w: TraitWorld = { traits: picks, groups: [skills] };
+    let s = player(player(state(), 'archery', true, w).state, 'stealth', true, w).state;
+    expect(switchPlayerTrait(s, 'stealth', false, w, name)).toBeNull();
+    s = player(s, 'lore', true, w).state;
+    expect(on(player(s, 'stealth', false, w).state)).toEqual(['archery', 'lore']);
+  });
+
+  it('lets stat code switch off a trait below its group minimum', () => {
+    const skills: TraitGroup = { id: 'skills', name: 'Skills', parentId: null, minPicks: 1 };
+    const archery = trait('archery', [], { playerToggle: true, groupId: 'skills' });
+    const w: TraitWorld = { traits: [archery], groups: [skills] };
+    const s = player(state(), 'archery', true, w).state;
+    expect(on(applyCodeTraitSwitches(s, [{ traitId: 'archery', enabled: false, by: 'Vigor' }], w).state)).toEqual([]);
+  });
+
+  it('lets a cascade leave a group short, and fills it again when the trait returns', () => {
+    const w: TraitWorld = { ...gated(), groups: [{ ...armor, minPicks: 1 }] };
+    const s = player(player(state(), 'paladin', true, w).state, 'plate', true, w).state;
+    expect(switchPlayerTrait(s, 'plate', false, w, name)).toBeNull();
+    const short = player(s, 'paladin', false, w);
+    expect(short.cascade.map((t) => t.id)).toEqual(['plate']);
+    expect(on(short.state)).toEqual([]);
+    expect(on(player(short.state, 'paladin', true, w).state)).toEqual(['paladin', 'plate']);
+  });
+
   it('settles a persona change: a playing-as trait leaves with the persona and returns with it', () => {
     let s = state();
     s = applyCodeTraitSwitches(s, [{ traitId: 'royal', enabled: true, by: 'Vigor' }], gated({ source: 'world', entityId: 'aldric' })).state;
@@ -641,6 +669,13 @@ describe('owned traits in play', () => {
     const full = flip(flip(state(), 'tamed', true, w).state, 'wild', true, w).state;
     expect(onOf(full)).toEqual(['tamed', 'wild']);
     expect(switchPlayerTrait(full, 'calm', true, w, name)).toBeNull();
+  });
+
+  it('refuses an owned switch-off that drops an entity group below its minimum', () => {
+    const w: TraitWorld = { ...owned(), bearers: [owned().bearers![0], { ...ash, groups: [{ ...bond, minPicks: 1 }] }] };
+    const s = flip(state(), 'tamed', true, w).state;
+    expect(switchPlayerTrait(s, 'tamed', false, w, name)).toBeNull();
+    expect(onOf(flip(s, 'wild', true, w).state)).toEqual(['wild']);
   });
 
   it('cascades across owners both ways, and returns what the cascade turned off', () => {

@@ -20,7 +20,7 @@ import { stripMarkdown } from '@/lib/stripMarkdown';
 import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
-import { buildTraitWorkspace } from '@/lib/setupTraitWorkspace';
+import { buildTraitWorkspace, type TraitCategory } from '@/lib/setupTraitWorkspace';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 export interface EnterWorldWorkspaceProps {
@@ -131,6 +131,10 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     ],
     [hasPersonas, props.dictionaryItems.length, props.libraryEntities.length, props.locations.length, traitWorkspace],
   );
+  const pickStateOf = (category: TraitCategory) =>
+    (category.group ? groupPickState(category.group, category.traits, picksOf(category.entityId)) : null);
+  // Begin waits for every bearer's groups to meet their minimums; Quick Start never comes through here.
+  const short = traitWorkspace.categories.some((category) => !!pickStateOf(category)?.short);
   const currentIndex = Math.min(props.categoryIndex, Math.max(categories.length - 1, 0));
   const current = categories[currentIndex];
   const visibleGroups = traitWorkspace.navigationGroups;
@@ -347,7 +351,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               name={current.name}
               groups={current.path}
               traits={current.traits}
-              picks={current.group ? groupPickState(current.group, current.traits, picksOf(current.entityId)) : null}
+              picks={pickStateOf(current)}
               stats={props.stats}
               selectedTraits={picksOf(current.entityId)}
               resolveText={props.resolveText}
@@ -493,7 +497,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
       <footer className="shrink-0 bg-background px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-6 sm:pb-2">
         <DialogFooter>
           <Button variant="ghost" className="w-full text-muted-foreground sm:w-auto" onClick={props.onCancel}>Cancel</Button>
-          <Button className="w-full sm:w-auto" disabled={props.resolving} onClick={props.onContinue}>
+          <Button className="w-full sm:w-auto" disabled={props.resolving || short} onClick={props.onContinue}>
             {props.resolving ? 'Loading…' : props.continueLabel}
           </Button>
         </DialogFooter>

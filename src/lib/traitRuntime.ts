@@ -20,7 +20,7 @@ import { activeOwnedTraitIds } from './ownedTraitsInPlay';
 import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
-  gateOf, gateStates, overfills, playerOwnerIds, settle, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
+  gateOf, gateStates, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
 } from './traitGates';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
@@ -483,6 +483,10 @@ const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, 
 const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
   isLocked(state, world, ownerId, traitId) || overfills(traitGateInput(state, world), ownerId, traitId);
 
+/** Whether the gate module refuses the player's switch-off: its group would end below the minimum. */
+const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
+  underfills(traitGateInput(state, world), ownerId, traitId);
+
 /** The bearers other than the player's world owner. */
 const entityBearers = (world: TraitWorld): readonly GateOwner[] => (world.bearers ?? []).filter((o) => o.id !== WORLD_OWNER);
 
@@ -617,6 +621,7 @@ function switchOwned(
   const chosen = !!state.ownedTraits?.[owner.id]?.chosen.includes(trait.id);
   if (ownedOn(state, owner.id, trait.id) === enabled) return null;
   if (enabled && (refusesOn(state, world, owner.id, trait.id) || (!chosen && !trait.playerToggle))) return null;
+  if (!enabled && refusesOff(state, world, owner.id, trait.id)) return null;
   const retired = enabled
     ? exclusiveSiblings(trait, owner.traits, owner.groups)
       .filter((id) => ownedOn(state, owner.id, id))
@@ -639,7 +644,7 @@ function switchOwned(
  * trait marked Player Can Toggle can be acquired this way. An entity's owned trait switches the same way,
  * in that entity's lists. `ownerId` names the bearer whose row the player switched; without it, the
  * player's own trait wins over an entity that links the same original. Null when the switch does nothing:
- * the trait already holds that state, is locked, or cannot be acquired.
+ * the trait already holds that state, is locked, cannot be acquired, or the gate module refuses it.
  */
 export function switchPlayerTrait(
   state: TraitRuntimeState,
@@ -658,6 +663,7 @@ export function switchPlayerTrait(
   const trait = acquired ?? world.traits.find((t) => t.id === traitId);
   if (!trait || (!!acquired && !state.disabledTraitIds.includes(traitId)) === enabled) return null;
   if (enabled && (refusesOn(state, world, WORLD_OWNER, traitId) || (!acquired && !trait.playerToggle))) return null;
+  if (!enabled && refusesOff(state, world, WORLD_OWNER, traitId)) return null;
   const switched = acquired ? setTraitEnabled(state, traitId, enabled, world) : acquireTrait(state, trait, world);
   const kind: TraitSwitchKind = !acquired ? 'acquired' : enabled ? 'on' : 'off';
   const settled = settleTraits(switched.state, world, nameOf);
