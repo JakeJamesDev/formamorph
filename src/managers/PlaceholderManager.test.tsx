@@ -303,6 +303,27 @@ describe('PlaceholderManager — chips vs multiline', () => {
       expect(box(2)).toHaveValue('Dusk');
     });
 
+    it('opens a list of three values collapsed and a list of two expanded', () => {
+      const { unmount } = render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Green']) })} />);
+      pickStyle('Multiline');
+      expect(box(1)).toHaveValue('Red');
+      expect(box(2)).toHaveValue('Green');
+      unmount();
+
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Green', 'Blue']) })} />);
+      pickStyle('Multiline');
+      expect(screen.queryByLabelText('Value 1')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Expand value 3' })).toBeInTheDocument();
+    });
+
+    it('opens a value added to a collapsed list expanded', () => {
+      render(<PlaceholderManager placeholder={ph({ values: phValues(['Red', 'Green', 'Blue']) })} />);
+      pickStyle('Multiline');
+      fireEvent.click(screen.getByRole('button', { name: 'Add Value' }));
+      expect(box(4)).toHaveValue('');
+      expect(screen.queryByLabelText('Value 1')).not.toBeInTheDocument();
+    });
+
     it('is not offered in the chip row, nor for a lone value', () => {
       const { unmount } = render(<PlaceholderManager placeholder={ph()} />);
       expect(screen.queryByRole('button', { name: /all values$/ })).not.toBeInTheDocument();
@@ -510,7 +531,7 @@ describe('PlaceholderManager — an Object', () => {
   it('shows no stepper in the box view', () => {
     render(<PlaceholderManager placeholder={ph({ roll: false, values: three() })} />);
     pickStyle('Multiline');
-    expect(box(3)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Expand value 3' })).toBeInTheDocument(); // three values open collapsed
     expect(stepper()).not.toBeInTheDocument();
   });
 

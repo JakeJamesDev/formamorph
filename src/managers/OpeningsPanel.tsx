@@ -2,7 +2,11 @@ import { useState, type ReactNode } from 'react';
 import { type DragEndEvent } from '@dnd-kit/core';
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, GripVertical, MapPinOff, Plus, Trash2 } from 'lucide-react';
+import { CollapseAllButton } from '@/components/CollapseAllButton';
+import { useCardCollapse } from '@/lib/cardCollapse';
+import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
+import { parsePlaceholderText, placeholderValueLine } from '@/lib/placeholders';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
 import { badgeVariants } from '@/components/ui/badge';
@@ -231,9 +235,15 @@ export function OpeningsList({
     const to = rows.findIndex((r) => r.opening.id === over.id);
     if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
+  const collapse = useCardCollapse(rows.map((r) => r.opening.id));
 
   return (
     <div className="space-y-2">
+      {rows.length > 1 && (
+        <div className="flex justify-end">
+          <CollapseAllButton anyOpen={collapse.anyOpen} noun="openings" onClick={() => collapse.setAll(!collapse.anyOpen)} />
+        </div>
+      )}
       {shown.length === 0 ? (search ? <NoMatch typed={search} /> : empty) : (
         <EditorDndContext onDragEnd={handleDragEnd}>
           <StableSortableContext items={shown.map(({ row }) => row.opening)} strategy={verticalListSortingStrategy}>
@@ -244,6 +254,8 @@ export function OpeningsList({
                   opening={opening}
                   label={`Opening ${i + 1}`}
                   a11yLabel={ownerLabel ? `${ownerLabel} Opening ${i + 1}` : `Opening ${i + 1}`}
+                  open={collapse.isOpen(opening.id)}
+                  onToggle={() => collapse.toggle(opening.id)}
                   weight={weight}
                   chance={chance}
                   placeholders={placeholders}
@@ -275,12 +287,16 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, weight, chance, placeholders, ownerId, ownerName, onKind, onText, onWeight, onRemove,
+  opening, label, a11yLabel, open, onToggle, weight, chance, placeholders, ownerId, ownerName, onKind, onText, onWeight,
+  onRemove,
 }: {
   opening: Opening;
   label: string;
   /** The row's accessible name, owner included where several share the screen. */
   a11yLabel: string;
+  /** Collapsed, the card shows its header and the first line of its text. */
+  open: boolean;
+  onToggle: () => void;
   weight: number;
   chance: number | null;
   placeholders: Placeholder[];
@@ -292,6 +308,11 @@ const OpeningCard = ({
   onRemove: () => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: opening.id });
+  const vocab = usePlaceholderChipVocabulary(placeholders, ownerId);
+  // A chip reads as its name, and a paragraph as its first line plus an ellipsis.
+  const firstLine = placeholderValueLine(
+    parsePlaceholderText(opening.text).map((s) => (s.type === 'text' ? s.value : vocab.label(s.token))).join(''),
+  );
   return (
     <div
       ref={setNodeRef}
@@ -301,7 +322,7 @@ const OpeningCard = ({
       data-testid="opening-row"
     >
       {/* Wraps on a narrow pane: the weight, chance and remove group drops to a second line, right-aligned. */}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b px-2 py-1.5">
+      <div className={cn('flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1.5', open && 'border-b')}>
         <button
           type="button"
           className="cursor-grab touch-none text-muted-foreground"
@@ -311,7 +332,19 @@ const OpeningCard = ({
         >
           <GripVertical className="h-3.5 w-3.5" />
         </button>
-        <span className="min-w-[4.5rem] flex-1 truncate text-helper font-medium text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          className="flex min-w-[4.5rem] flex-1 items-center gap-1.5 text-left"
+          aria-expanded={open}
+          aria-label={`${open ? 'Collapse' : 'Expand'} ${a11yLabel}`}
+          onClick={onToggle}
+        >
+          <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', !open && '-rotate-90')} />
+          <span className="shrink-0 text-helper font-medium text-muted-foreground">{label}</span>
+          {!open && (
+            <span className="min-w-0 truncate text-helper text-muted-foreground/70">{firstLine || 'Empty opening'}</span>
+          )}
+        </button>
         <ToggleGroup
           type="single"
           value={opening.kind}
@@ -350,18 +383,20 @@ const OpeningCard = ({
           </Tip>
         </div>
       </div>
-      <div className="p-2">
-        <PlaceholderField
-          value={opening.text}
-          onChange={onText}
-          placeholders={placeholders}
-          ownerId={ownerId}
-          ownerName={ownerName}
-          ariaLabel={a11yLabel}
-          placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
-          resizable
-        />
-      </div>
+      {open && (
+        <div className="p-2">
+          <PlaceholderField
+            value={opening.text}
+            onChange={onText}
+            placeholders={placeholders}
+            ownerId={ownerId}
+            ownerName={ownerName}
+            ariaLabel={a11yLabel}
+            placeholder={opening.kind === 'narration' ? 'Page one, exactly as the player reads it' : "What the player's first action says"}
+            resizable
+          />
+        </div>
+      )}
     </div>
   );
 };
