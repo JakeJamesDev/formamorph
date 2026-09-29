@@ -47,6 +47,7 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q24** The unreachable Stat Updates editor branches and `StatUpdatesManager` are deleted in the stats ticket. The world's `statUpdates` field stays. `drift.md` records the upstream idea (below) for a later ruling.
 - **Q25** The drift log lives at `docs-internal/specs/list-editor-shell/drift.md`.
 - **Q26** The shell is the **List Editor** (`ListEditor`) in code and in `CONTEXT.md`.
+- **Q27** The parts come from a hook, `useListEditor(adapter, selection)`: toolbar, list, detail, footer, `showDetail`, `onBack`. The `ListEditor` component takes `layout: 'stacked' | 'sideBySide'` and wraps those parts in the existing `ListDetail`, toolbar above the scrolled list. `ListDetail` keeps its boolean `stacked` prop unchanged; there is no second `ListDetail`.
 
 ## User Stories
 
