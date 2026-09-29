@@ -900,6 +900,11 @@ export function placeholderValueLine(value: string): string {
   return head ? `${head} …` : '…';
 }
 
+/** {@link placeholderValueLine} of text whose chips read as the names `label` gives them, not as their tokens. */
+export function placeholderChipLine(value: string, label: (token: string) => string): string {
+  return placeholderValueLine(parsePlaceholderText(value).map((s) => (s.type === 'text' ? s.value : label(s.token))).join(''));
+}
+
 /**
  * A Wildcard's options as one short line — first three, then `…`. The shared form behind the braces in
  * {@link describePlaceholders}, the *tooltip* of an in-editor chip, and the *label* of a read-only pill.
