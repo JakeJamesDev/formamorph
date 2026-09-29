@@ -121,7 +121,7 @@ A good test drives one seam from the outside and asserts what a player or the se
 
 ## Out of Scope
 
-- An "Unlimited" position on the slider. The split removes the need for it.
+- An "Unlimited" position on the slider. Tabled until it is seen as needed. If it returns: one notch past 200% that sends no budget and no `max_tokens`, stored as a sentinel above the maximum so older builds clamp it to 200 (an export-shape change). With the fixed Thought Ceiling, a no-budget notch would cut thoughts sooner than 200%, so it must drop the ceiling too.
 - Detecting a thought that the server closed at the budget. The server reports a normal stop, so the app cannot tell that thought was cut. It stays carried as today.
 - Endpoints that ignore `stream: true` and return one JSON body. The app has no non-streaming path today. Whether the AI Stream parses such a reply is UNVERIFIED and is a separate issue.
 - Testing whether the cloud default endpoint honors a reasoning budget. That decides whether the slider appears there, but the existing capability test already makes that call.
