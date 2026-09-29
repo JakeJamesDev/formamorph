@@ -151,7 +151,7 @@ import { FeedbackHubDialog } from "@/components/menu/FeedbackHubDialog";
 import { AuthModals } from "@/components/menu/AuthModals";
 import { onSignInSucceeded, requestSignIn } from "@/lib/signInStore";
 import { PublishModal } from "@/components/menu/PublishModal";
-import { entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
+import { creditLine, entityPublishPayload, dictionaryPublishPayload, type PublishPayload } from "@/lib/publishPayload";
 import { linkedSourceCopies, sourceBlockReason } from "@/lib/sourceChecks";
 import { readSourceCheck } from "@/lib/sourceCheckStore";
 import { buildAvatarPublish } from "@/lib/avatarPublish";
@@ -2281,11 +2281,12 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
           idOf={(model) => model.id}
           nameOf={(model) => model.name}
           tiles={modelTiles}
-          layout="grid"
+          layout={layoutMode}
           aspect="portrait"
           minMediumWidth={ENTITY_MIN_TILE}
-          detailedColumnsClass={DETAILED_GRID_CLASS}
+          detailedColumnsClass={DETAILED_SPLIT_GRID_CLASS}
           thumbnailOf={(model) => model.thumbnail}
+          placeholderOf={(model) => <EntityPlaceholderArt id={model.id} name={model.name} />}
           emptyState={!isLoadingModels ? (
             <div className="flex items-center justify-center py-16 px-4 select-none">
               <p className="max-w-md text-center text-helper text-muted-foreground">
@@ -2293,28 +2294,34 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
               </p>
             </div>
           ) : undefined}
-          renderCard={(model, { fill, compact }) => (
-            <SortableWorldCard
-              world={{ id: model.id, name: model.name, thumbnail: model.thumbnail }}
-              layout="grid"
-              aspect="portrait"
-              fill={fill}
-              compact={compact}
-              // A plain .glb carries no VRM metadata, so it has no license and its morph targets
-              // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
-              badge={model.license?.metaVersion === null ? (
-                <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
-                  <span
-                    tabIndex={0}
-                    className="rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-                  >
-                    GLB
-                  </span>
-                </Tip>
-              ) : undefined}
-              onSelect={setPreviewModelId}
-            />
-          )}
+          renderCard={(model, { layout, fill, compact }) => {
+            // A plain .glb carries no VRM metadata, so it has no license and its morph targets
+            // aren't guaranteed — say so on the card rather than letting it pass as a full VRM.
+            const glb = model.license?.metaVersion === null ? (
+              <Tip tip="Plain glTF: no license information, and morph targets aren't guaranteed.">
+                <span
+                  tabIndex={0}
+                  className="self-start rounded bg-overlay/70 px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                >
+                  GLB
+                </span>
+              </Tip>
+            ) : undefined;
+            return (
+              <SortableWorldCard
+                world={{ id: model.id, name: model.name, description: creditLine(model.license?.authors), thumbnail: model.thumbnail }}
+                layout={layout}
+                aspect="portrait"
+                fill={fill}
+                compact={compact}
+                placeholder={<EntityPlaceholderArt id={model.id} name={model.name} />}
+                omitEmptyDescription
+                badge={glb}
+                note={glb}
+                onSelect={setPreviewModelId}
+              />
+            );
+          }}
           onPublish={isAuthenticated ? (id) => {
             const target = models.find((m) => m.id === id);
             if (target) void publishModel(target);

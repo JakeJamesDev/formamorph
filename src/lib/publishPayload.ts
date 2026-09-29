@@ -107,7 +107,7 @@ export interface ModelPublishSource {
 }
 
 /** "By Alice.", "By Alice and Bob.", "By Alice, Bob, and Carol." — or nothing, for a file crediting nobody. */
-function creditLine(authors: string[] | undefined): string {
+export function creditLine(authors: string[] | undefined): string {
   const names = authors?.filter((name) => name.trim()) ?? [];
   if (names.length === 0) return '';
   if (names.length === 1) return `By ${names[0]}.`;

@@ -137,6 +137,8 @@ export function RemoteWorldCard({
       layout={layout}
       name={world.name}
       description={world.description}
+      // An Avatar's description is its generated credit line, so a file crediting nobody has none to show.
+      omitEmptyDescription={kindOf(world) === 'model'}
       thumbnailOverlay={downloadProgress !== undefined ? (
         // Downloading: a centered status bar. -1 ⇒ size unknown.
         <div
