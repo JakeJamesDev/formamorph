@@ -35,12 +35,13 @@ The Avatar details panel collapses its details table by default and remembers th
 | Q13 | The shared details panel owns the collapse. The Model Library modal and World Overview's custom player Avatar behave the same and share one remembered state. |
 | Q14 | **Export** and **Publish** sit side by side at equal width, without "Avatar" in their labels. **Export** fills the row when **Publish** is absent. |
 | Q15 | One spec, two tickets: thumbnail source, and details panel layout. They touch different files. |
+| Q16 | (Ticket 01 intent question) A legacy record whose file has an embedded image rebuilds its file variant from the blob and drops the stored thumbnail. Legacy downloads stored a render even when the file had an embedded image, so the stored image can't be trusted as the file variant. Q1 wins over story 3 for those records. |
 
 ## User Stories
 
 1. As a player, I want to switch an Avatar's card image to a generated portrait, so that a tilted artist shot doesn't look crooked in my library.
 2. As a player, I want to switch back to the file's own image at any time, so that trying **Generated** costs me nothing.
-3. As a player, I want the file's image to stay the default, so that my existing library looks the same after the update.
+3. As a player, I want the file's image to stay the default, so that my existing library looks the same after the update. Exception (Q16): a legacy download that showed a render switches to its embedded image.
 4. As a player, I want the context menu to show which image is active, so that I don't have to guess the current state.
 5. As a player, I want the **Thumbnail** submenu to appear only when there is a choice, so that the menu stays short for files without an embedded image.
 6. As a player, I want the card to keep its current image while the portrait renders, so that the card never goes blank.
@@ -69,7 +70,7 @@ The Avatar details panel collapses its details table by default and remembers th
 - The metadata listing exposes whether the file has an embedded image, so the context menu can hide the submenu (Q7) without loading the blob.
 - `ModelStorageService` gains a method that sets the source for one Avatar. On a switch to `generated` with no cached render, it renders first. On a failed render it leaves the source as `file` and reports the failure to the caller. It persists only if the record still exists, like the existing thumbnail backfill.
 - `ensureThumbnail` honors the source. Today it returns early once any thumbnail exists; that early return has to respect the chosen source and the cached variants.
-- Existing records store one `thumbnail` with no source. When the file has an embedded image, that stored thumbnail is treated as the file variant.
+- Existing records store one `thumbnail` with no source, and its origin is unknown: legacy downloads stored a render even when the file had an embedded image. When the file has an embedded image, the file variant is rebuilt from the blob and the stored thumbnail is dropped (Q16). When it has none, the stored thumbnail is the generated variant.
 - The Model Library's thumbnail backfill effect only runs when the list of ids changes. A switch updates the Avatar's entry in the grid state directly.
 - The Model Library grid passes a **Thumbnail** submenu through the context menu's `itemActions` slot. It follows the **Size** submenu's radio pattern.
 - A failed render shows an error toast. The copy follows the project's error-toast pattern.
@@ -92,7 +93,7 @@ The Avatar details panel collapses its details table by default and remembers th
   - The default source shows the embedded image.
   - The first switch to `generated` renders once. The second switch back and forth does not render again.
   - A failed render leaves the source on `file` and the shown image unchanged.
-  - A legacy record with one stored thumbnail treats it as the file variant.
+  - A legacy record whose file has an embedded image shows that image, not its stored thumbnail.
   - A delete during the render is not undone by the write.
   - The published payload carries the chosen image.
 - **The tile context menu**, in its existing test file: the **Thumbnail** submenu shows the active radio item, calls back with the new source, and is absent when the Avatar has no embedded image.
