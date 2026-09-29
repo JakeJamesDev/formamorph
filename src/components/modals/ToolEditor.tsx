@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { FieldError, Hint } from '@/components/ui/typography';
-import { OptionSwitcher } from '@/components/SettingsRows';
 import { CodeArea } from '@/components/prompt/CodeArea';
 import { HighlightedCode } from '@/components/prompt/HighlightedCode';
 import PromptField from '@/components/prompt/PromptField';
@@ -224,16 +223,18 @@ function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <Label>Handler Type</Label>
-        <OptionSwitcher ariaLabel="Handler Type" value={handler.kind} options={HANDLER_KINDS} onChange={onKindChange} />
-        {/* Stacked so switching types doesn't reflow the fields below. */}
-        <div className="grid">
-          {HANDLER_KINDS.map((k) => (
-            <Hint key={k.value} className={cn('col-start-1 row-start-1', k.value !== handler.kind && 'invisible')}>
-              {k.help}
-            </Hint>
-          ))}
+        {/* Half width, level with the lookup's Search column. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field id={`${id}-kind`} label="Handler Type">
+            <Select value={handler.kind} onValueChange={(v) => onKindChange(v as ToolHandler['kind'])}>
+              <SelectTrigger id={`${id}-kind`} aria-describedby={`${id}-kind-help`}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {HANDLER_KINDS.map((k) => <SelectItem key={k.value} value={k.value}>{k.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </Field>
         </div>
+        <Hint id={`${id}-kind-help`}>{HANDLER_KINDS.find((k) => k.value === handler.kind)?.help}</Hint>
       </div>
       {handler.kind === 'lookup' && (
         <div className="flex flex-col gap-1">
