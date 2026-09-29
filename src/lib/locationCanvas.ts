@@ -2,7 +2,9 @@ import type { Connection, GameLocation } from "@/types";
 import {
   createConnection, directionFrom, withDirection, withHint, type ConnectionDirection,
 } from "./connectionEditing";
-import { implicitPairs, overriddenPairs, pairKey, reachableFromStarts } from "./locationGraph";
+import {
+  connectionLegs, implicitPairs, overriddenPairs, pairKey, reachableFromStarts, type LegKey,
+} from "./locationGraph";
 import { holderOf, isDescendantLocation } from "./locationTree";
 
 /**
@@ -58,8 +60,12 @@ export interface CanvasEdge {
   source: string;
   target: string;
   kind: CanvasEdgeKind;
-  /** The travel hint, on the direction the Connection was authored in — one label per record, not per arrow. */
+  /** The travel hint of the leg this arrow draws. A pair whose legs share one hint labels only its `a → b`
+   *  arrow. */
   label?: string;
+  /** The label sits on the arrow's outer side, away from its partner arrow: set when a pair's legs carry
+   *  different hints, which would otherwise draw on top of each other. */
+  labelOuter?: true;
   /** The Connection this arrow came from, so selecting an arrow can reach its record. */
   connectionId?: string;
 }
@@ -172,22 +178,18 @@ export function buildLocationCanvas(
     edges.push({ id: `implicit:${b}>${a}`, source: b, target: a, kind: "implicit" });
   }
   for (const connection of connections) {
-    if (!known.has(connection.from) || !known.has(connection.to)) continue;
-    edges.push({
-      id: `connection:${connection.id}:forward`,
-      source: connection.from,
-      target: connection.to,
-      kind: "connection",
-      connectionId: connection.id,
-      ...(connection.aiHint ? { label: connection.aiHint } : {}),
-    });
-    if (connection.twoWay) {
+    if (!known.has(connection.a) || !known.has(connection.b)) continue;
+    const paired = !!connection.aToB && !!connection.bToA;
+    const shared = paired && connection.aToB?.hint === connection.bToA?.hint;
+    for (const { key, from, to, leg } of connectionLegs(connection)) {
+      const label = shared && key === "bToA" ? undefined : leg.hint;
       edges.push({
-        id: `connection:${connection.id}:back`,
-        source: connection.to,
-        target: connection.from,
+        id: `connection:${connection.id}:${key}`,
+        source: from,
+        target: to,
         kind: "connection",
         connectionId: connection.id,
+        ...(label ? { label, ...(paired && !shared ? { labelOuter: true as const } : {}) } : {}),
       });
     }
   }
@@ -591,14 +593,10 @@ export function applyCanvasIntent(connections: Connection[], intent: CanvasInten
   return connections.filter((c) => c.id !== intent.connectionId);
 }
 
-/**
- * A pair's two ends in a fixed order. A one-way direction is stored by rewriting `from` and `to`, so the
- * record's own ends swap under a flip — reading them in a stable order is what keeps the direction control's
- * three options in the same places while the author clicks between them. The first end is the one the
- * canvas words a direction from, standing in for the location a list panel would be open on.
- */
+/** A pair's two ends. The first end is the one the canvas words a direction from, standing in for the
+ *  location a list panel would be open on. */
 export function connectionEnds(connection: Connection): [string, string] {
-  return [connection.from, connection.to].sort() as [string, string];
+  return [connection.a, connection.b];
 }
 
 /** Which of the direction control's options a record currently sits on. */
@@ -615,7 +613,7 @@ export function directionOf(connection: Connection): ConnectionDirection {
 export function connectIntent(fromId: string, toId: string, connections: Connection[]): CanvasIntent | null {
   if (fromId === toId) return null;
   const key = pairKey(fromId, toId);
-  if (connections.some((c) => pairKey(c.from, c.to) === key)) return null;
+  if (connections.some((c) => pairKey(c.a, c.b) === key)) return null;
   return { kind: "add", connection: createConnection(fromId, toId) };
 }
 
@@ -625,9 +623,9 @@ export function directionIntent(connection: Connection, direction: ConnectionDir
   return { kind: "update", connection: withDirection(connection, connectionEnds(connection)[0], direction) };
 }
 
-/** The travel hint on a selected arrow. */
-export function hintIntent(connection: Connection, hint: string): CanvasIntent {
-  return { kind: "update", connection: withHint(connection, hint) };
+/** The travel hint on one leg of a selected Connection. */
+export function hintIntent(connection: Connection, leg: LegKey, hint: string): CanvasIntent {
+  return { kind: "update", connection: withHint(connection, leg, hint) };
 }
 
 /** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the

@@ -14,6 +14,7 @@ import {
   type PlaceholderFinding, type PlaceholderPick, type PlaceholderToken,
 } from '@/lib/placeholders';
 import { labelPlaceholders, worldPlacementLetters, type PlacementLetters } from '@/lib/placementLetters';
+import { travelEnds } from '@/lib/locationGraph';
 import {
   allPinRows, collectPins, hasDeadValueId, indexPlaceholders, isBlueprintSideSource, pinConflict, pinSourceOwnerId,
   valuePinners, type PinEditorWorld, type PinFinding, type PinRow, type PinSourceKind,
@@ -1422,8 +1423,9 @@ const connectionEndpointOrphan: Rule = {
   check: (world) => {
     const byId = new Map((world.locations ?? []).map((l) => [l.id, l]));
     return (world.connections ?? []).flatMap((connection) => {
-      const from = byId.get(connection.from);
-      const to = byId.get(connection.to);
+      const [fromId, toId] = travelEnds(connection);
+      const from = byId.get(fromId);
+      const to = byId.get(toId);
       if (from && to) return [];
       const survivor = from ?? to;
       // The way in is the endpoint that still exists — the link itself has no row of its own to open.

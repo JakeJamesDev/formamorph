@@ -4,7 +4,7 @@ import {
   CANVAS_GRID, CANVAS_NODE_HEIGHT, CANVAS_NODE_WIDTH, GROUP_HEADER, GROUP_PADDING,
   buildLocationCanvas,
 } from "./locationCanvas";
-import { pairKey } from "./locationGraph";
+import { pairKey, travelEnds } from "./locationGraph";
 import { holderOf } from "./locationTree";
 
 /**
@@ -53,7 +53,7 @@ function scopedEdges(connections: Connection[], inScope: Set<string>): [string, 
   const seen = new Set<string>();
   const edges: [string, string][] = [];
   for (const connection of connections) {
-    const { from, to } = connection;
+    const [from, to] = travelEnds(connection);
     if (from === to || !inScope.has(from) || !inScope.has(to)) continue;
     const key = pairKey(from, to);
     if (seen.has(key)) continue;

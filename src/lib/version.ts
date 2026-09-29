@@ -186,15 +186,37 @@ function migrateLocationConnections(world: Record<string, unknown>): void {
     const reciprocal = `${to}|${from}`;
     done.add(key);
     done.add(reciprocal);
-    records.push({
-      id: randomUUID(),
-      from,
-      to,
-      twoWay: declared.has(reciprocal) || implicit.has(pairKey(from, to)),
-    });
+    const twoWay = declared.has(reciprocal) || implicit.has(pairKey(from, to));
+    records.push({ id: randomUUID(), a: from, b: to, aToB: {}, ...(twoWay ? { bToA: {} } : {}) });
   }
   const existing = Array.isArray(world.connections) ? (world.connections as Connection[]) : [];
   world.connections = [...existing, ...records];
+}
+
+/**
+ * Convert each `{from, to, twoWay, aiHint}` Connection record to the leg shape: `from` becomes `a`, the old
+ * hint goes into `aToB`, and into `bToA` too when the record was two-way, so a shipped world plays the same.
+ * A blank hint becomes no hint. A record with no legs is dropped: it allows no travel and the editor never
+ * makes one. Idempotent: a record in the leg shape passes through. Deliberately NOT version-gated, for the
+ * same reason as `foldDictionaryIntoBooks`: shipped worlds carry `version === APP_VERSION` in the old shape.
+ */
+function migrateConnectionLegs(world: Record<string, unknown>): void {
+  if (!Array.isArray(world.connections)) return;
+  world.connections = world.connections.flatMap((raw: unknown): unknown[] => {
+    if (!raw || typeof raw !== 'object') return [];
+    const record = raw as Record<string, unknown>;
+    if (typeof record.a === 'string') return record.aToB || record.bToA ? [record] : [];
+    if (typeof record.from !== 'string' || typeof record.to !== 'string') return [];
+    const leg = typeof record.aiHint === 'string' && record.aiHint.trim() ? { hint: record.aiHint } : {};
+    const connection: Connection = {
+      id: typeof record.id === 'string' ? record.id : randomUUID(),
+      a: record.from,
+      b: record.to,
+      aToB: leg,
+      ...(record.twoWay ? { bToA: { ...leg } } : {}),
+    };
+    return [connection];
+  });
 }
 
 /**
@@ -382,7 +404,7 @@ function migrateStatCode(stats: readonly Stat[]): Stat[] {
 /**
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
- * connection-record pair-merge, the start-flag rename, the placeholder value-record conversion, the
+ * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
  * opening-cue move and the content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
@@ -398,6 +420,7 @@ export function migrateWorld(raw: unknown): World {
   migrateEntityGalleries(world);
   flipEntityLocationMembership(world);
   migrateLocationConnections(world);
+  migrateConnectionLegs(world);
   migrateStartLocationFlag(world);
   migrateWorldPlaceholders(world);
   migrateOpeningCue(world);

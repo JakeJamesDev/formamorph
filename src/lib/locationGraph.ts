@@ -1,4 +1,4 @@
-import type { Connection, GameLocation } from "@/types";
+import type { Connection, ConnectionLeg, GameLocation } from "@/types";
 
 /**
  * The location graph's rules (ADR-0002), as pure functions over plain world data.
@@ -38,7 +38,31 @@ export function implicitPairs(locations: GameLocation[]): [string, string][] {
   return [...pairs.values()];
 }
 
-const authoredPairs = (connections: Connection[]) => new Set(connections.map((c) => pairKey(c.from, c.to)));
+/** Which direction of a Connection a leg is. */
+export type LegKey = "aToB" | "bToA";
+
+/** One travelable direction of a Connection, with the ends it runs between. */
+export interface ConnectionLegView {
+  key: LegKey;
+  from: string;
+  to: string;
+  leg: ConnectionLeg;
+}
+
+/** A Connection's present legs, `a → b` first. */
+export function connectionLegs(connection: Connection): ConnectionLegView[] {
+  const legs: ConnectionLegView[] = [];
+  if (connection.aToB) legs.push({ key: "aToB", from: connection.a, to: connection.b, leg: connection.aToB });
+  if (connection.bToA) legs.push({ key: "bToA", from: connection.b, to: connection.a, leg: connection.bToA });
+  return legs;
+}
+
+/** A Connection's ends in travel order: `a → b`, unless travel runs only `b → a`. */
+export function travelEnds(connection: Connection): [string, string] {
+  return connection.bToA && !connection.aToB ? [connection.b, connection.a] : [connection.a, connection.b];
+}
+
+const authoredPairs = (connections: Connection[]) => new Set(connections.map((c) => pairKey(c.a, c.b)));
 
 /** The implicit pairs an authored Connection has replaced — what an editor surface must show as no longer
  *  free, so an author narrowing travel to one way can see they did. */
@@ -48,12 +72,14 @@ export function overriddenPairs(locations: GameLocation[], connections: Connecti
 }
 
 /** How a destination is reached: for free through containment, or across an authored Connection. */
-export type DestinationVia = { via: "implicit" } | { via: "connection"; connection: Connection };
+export type DestinationVia =
+  | { via: "implicit" }
+  | { via: "connection"; connection: Connection; leg: ConnectionLeg };
 
 /**
- * Where travel from `id` can actually go: its surviving implicit neighbors plus the Connections leaving it
- * (a two-way Connection also leaves from its `to` end). Keyed by destination id, so a place reachable both
- * ways appears once — the Connection wins, since it carries the travel hint.
+ * Where travel from `id` can actually go: its surviving implicit neighbors plus the Connection legs leaving
+ * it. Keyed by destination id, so a place reachable both ways appears once — the Connection wins, since its
+ * leg carries the travel hint.
  */
 export function effectiveDestinations(
   id: string,
@@ -68,8 +94,9 @@ export function effectiveDestinations(
     if (b === id) out.set(a, { via: "implicit" });
   }
   for (const connection of connections) {
-    if (connection.from === id) out.set(connection.to, { via: "connection", connection });
-    else if (connection.twoWay && connection.to === id) out.set(connection.from, { via: "connection", connection });
+    for (const { from, to, leg } of connectionLegs(connection)) {
+      if (from === id) out.set(to, { via: "connection", connection, leg });
+    }
   }
   out.delete(id); // a self-link is authorable and reaches nowhere new
   return out;
@@ -98,8 +125,7 @@ export function reachableFromStarts(locations: GameLocation[], connections: Conn
     link(b, a);
   }
   for (const connection of connections) {
-    link(connection.from, connection.to);
-    if (connection.twoWay) link(connection.to, connection.from);
+    for (const { from, to } of connectionLegs(connection)) link(from, to);
   }
 
   const flagged = locations.filter((l) => l.isStarting);
@@ -120,6 +146,6 @@ export function reachableFromStarts(locations: GameLocation[], connections: Conn
 /** `connections` minus every record touching `locationId` — run when a location is deleted, so no record is
  *  left pointing at a place that no longer exists. Returns the same array when nothing referenced it. */
 export function dropLocationFromConnections(locationId: string, connections: Connection[]): Connection[] {
-  if (!connections.some((c) => c.from === locationId || c.to === locationId)) return connections;
-  return connections.filter((c) => c.from !== locationId && c.to !== locationId);
+  if (!connections.some((c) => c.a === locationId || c.b === locationId)) return connections;
+  return connections.filter((c) => c.a !== locationId && c.b !== locationId);
 }

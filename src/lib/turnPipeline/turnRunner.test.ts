@@ -320,7 +320,7 @@ describe('the effective navigation rule reaching the router', () => {
   const cottage: GameLocation = { id: 'cottage', name: 'The Cottage', parentId: 'hamlet' };
   const landing: GameLocation = { id: 'landing', name: 'The Landing' };
   const locations = [hamlet, green, cottage, landing];
-  const drop: Connection = { id: 'c1', from: 'green', to: 'landing', twoWay: false };
+  const drop: Connection = { id: 'c1', a: 'green', b: 'landing', aToB: {} };
 
   const routeFrom = async (from: GameLocation, reply: string, connections = [drop]) => {
     const destinations = navigableDestinations(from, locations, connections).map((l) => l.name);
@@ -347,7 +347,7 @@ describe('the effective navigation rule reaching the router', () => {
   });
 
   it('discards a reply naming a sibling whose free travel a one-way Connection replaced', async () => {
-    const oneWay: Connection = { id: 'c2', from: 'green', to: 'cottage', twoWay: false };
+    const oneWay: Connection = { id: 'c2', a: 'green', b: 'cottage', aToB: {} };
     const destinations = navigableDestinations(cottage, locations, [oneWay]).map((l) => l.name);
     expect(destinations).toEqual(['Hamlet']);
     const { result } = await run({

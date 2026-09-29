@@ -267,38 +267,58 @@
   "connections": [
     {
       "id": "e32a4615-8373-4fc3-b212-ef701e1d34e3",
-      "from": "87697a8b-2d2b-4031-ad2a-6c8a94edf23d",
-      "to": "cd878787-2a85-4b0a-8639-109c3afd89da",
-      "twoWay": true,
-      "aiHint": "two blocks uphill, past the abandoned checkpoint"
+      "a": "87697a8b-2d2b-4031-ad2a-6c8a94edf23d",
+      "b": "cd878787-2a85-4b0a-8639-109c3afd89da",
+      "aToB": {
+        "hint": "two blocks uphill, past the abandoned checkpoint"
+      },
+      "bToA": {
+        "hint": "two blocks uphill, past the abandoned checkpoint"
+      }
     },
     {
       "id": "b43ada96-d897-4ba9-85f8-10db1b23ef8f",
-      "from": "87697a8b-2d2b-4031-ad2a-6c8a94edf23d",
-      "to": "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
-      "twoWay": true,
-      "aiHint": "downhill toward the lit towers"
+      "a": "87697a8b-2d2b-4031-ad2a-6c8a94edf23d",
+      "b": "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
+      "aToB": {
+        "hint": "downhill toward the lit towers"
+      },
+      "bToA": {
+        "hint": "downhill toward the lit towers"
+      }
     },
     {
       "id": "616547e1-049a-4112-a70f-1c474497d564",
-      "from": "cd878787-2a85-4b0a-8639-109c3afd89da",
-      "to": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
-      "twoWay": true,
-      "aiHint": "through the athletics field's back gate onto the coast road"
+      "a": "cd878787-2a85-4b0a-8639-109c3afd89da",
+      "b": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
+      "aToB": {
+        "hint": "through the athletics field's back gate onto the coast road"
+      },
+      "bToA": {
+        "hint": "through the athletics field's back gate onto the coast road"
+      }
     },
     {
       "id": "7755427d-4c7c-4b89-8906-47afd8c00140",
-      "from": "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
-      "to": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
-      "twoWay": true,
-      "aiHint": "where Vane Street drops to the water"
+      "a": "4d69afe1-53b0-4da1-af96-31fc5b7f3f7f",
+      "b": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
+      "aToB": {
+        "hint": "where Vane Street drops to the water"
+      },
+      "bToA": {
+        "hint": "where Vane Street drops to the water"
+      }
     },
     {
       "id": "06966df8-38de-4ca1-ae2c-402e7f06cd02",
-      "from": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
-      "to": "9dff7815-d46e-4900-990e-cd9c93a6cf1d",
-      "twoWay": true,
-      "aiHint": "along the seawall to the plant's rusted pier gate"
+      "a": "2eb4bf68-8cb4-43c0-b8ab-a7d34696e8ec",
+      "b": "9dff7815-d46e-4900-990e-cd9c93a6cf1d",
+      "aToB": {
+        "hint": "along the seawall to the plant's rusted pier gate"
+      },
+      "bToA": {
+        "hint": "along the seawall to the plant's rusted pier gate"
+      }
     }
   ],
   "entities": [

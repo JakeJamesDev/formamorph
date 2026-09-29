@@ -111,7 +111,7 @@ describe("buildLocationCanvas nodes", () => {
     expect(nodeOf(world, "landing").data.unreachable).toBe(false);
     expect(nodeOf(world, "cellar").data.unreachable).toBe(false);
     // A one-way link in is enough to clear the badge.
-    const oneWay: Connection = { id: "c1", from: "landing", to: "shore", twoWay: false };
+    const oneWay: Connection = { id: "c1", a: "landing", b: "shore", aToB: {} };
     expect(nodeOf(world, "shore", [oneWay]).data.unreachable).toBe(false);
   });
 
@@ -142,39 +142,63 @@ describe("buildLocationCanvas edges", () => {
   });
 
   it("draws nothing implicit for a pair an authored Connection has replaced", () => {
-    const oneWay: Connection = { id: "c2", from: "tavern", to: "house", twoWay: false };
+    const oneWay: Connection = { id: "c2", a: "tavern", b: "house", aToB: {} };
     // Only the Connection's own arrow survives — no dashed remnant of the free walk back.
-    expect(edgeIds([village, tavern, house], [oneWay])).toEqual(["connection:c2:forward"]);
+    expect(edgeIds([village, tavern, house], [oneWay])).toEqual(["connection:c2:aToB"]);
   });
 
   it("draws one solid arrow per travelable direction of a Connection", () => {
-    const oneWay: Connection = { id: "c3", from: "shore", to: "landing", twoWay: false };
-    expect(edgeIds([landing, shore], [oneWay])).toEqual(["connection:c3:forward"]);
-    expect(edgeIds([landing, shore], [{ ...oneWay, twoWay: true }]))
-      .toEqual(["connection:c3:back", "connection:c3:forward"]);
-    const [back, forward] = canvas([landing, shore], [{ ...oneWay, twoWay: true }]).edges
+    const oneWay: Connection = { id: "c3", a: "shore", b: "landing", aToB: {} };
+    expect(edgeIds([landing, shore], [oneWay])).toEqual(["connection:c3:aToB"]);
+    expect(edgeIds([landing, shore], [{ ...oneWay, bToA: {} }]))
+      .toEqual(["connection:c3:aToB", "connection:c3:bToA"]);
+    const [forward, back] = canvas([landing, shore], [{ ...oneWay, bToA: {} }]).edges
       .sort((a, b) => a.id.localeCompare(b.id));
     expect([forward.source, forward.target]).toEqual(["shore", "landing"]);
     expect([back.source, back.target]).toEqual(["landing", "shore"]);
   });
 
-  it("labels a Connection with its travel hint once, on the direction it was authored in", () => {
-    const hinted: Connection = { id: "c4", from: "shore", to: "landing", twoWay: true, aiHint: "along the jetty" };
-    const edges = canvas([landing, shore], [hinted]);
-    expect(edges.edges.find((e) => e.id === "connection:c4:forward")?.label).toBe("along the jetty");
-    expect(edges.edges.find((e) => e.id === "connection:c4:back")?.label).toBeUndefined();
-    const plain: Connection = { ...hinted, aiHint: undefined };
-    expect(canvas([landing, shore], [plain]).edges.every((e) => e.label === undefined)).toBe(true);
+  it("labels each arrow with its own leg's travel hint", () => {
+    const hinted: Connection = {
+      id: "c4", a: "shore", b: "landing", aToB: { hint: "down the jetty" }, bToA: { hint: "up the jetty" },
+    };
+    const labels = (connections: Connection[]) =>
+      canvas([landing, shore], connections).edges.map((e) => [e.id, e.label, e.labelOuter ?? false]);
+    // Different hints: each arrow carries its own, set on the arrow's outer side so the two never overlap.
+    expect(labels([hinted])).toEqual([
+      ["connection:c4:aToB", "down the jetty", true],
+      ["connection:c4:bToA", "up the jetty", true],
+    ]);
+    // A leg with no hint shows none, even when the other leg has one.
+    const oneSided: Connection = { ...hinted, bToA: {} };
+    expect(labels([oneSided])).toEqual([
+      ["connection:c4:aToB", "down the jetty", true],
+      ["connection:c4:bToA", undefined, false],
+    ]);
+  });
+
+  it("draws one shared label for a pair whose legs carry the same hint", () => {
+    const same: Connection = { id: "c5", a: "shore", b: "landing", aToB: { hint: "the jetty" }, bToA: { hint: "the jetty" } };
+    expect(canvas([landing, shore], [same]).edges.map((e) => [e.id, e.label, e.labelOuter ?? false])).toEqual([
+      ["connection:c5:aToB", "the jetty", false],
+      ["connection:c5:bToA", undefined, false],
+    ]);
+  });
+
+  it("centers a one-way Connection's label on its arrow", () => {
+    const oneWay: Connection = { id: "c6", a: "shore", b: "landing", bToA: { hint: "up the jetty" } };
+    expect(canvas([landing, shore], [oneWay]).edges.map((e) => [e.label, e.labelOuter ?? false]))
+      .toEqual([["up the jetty", false]]);
   });
 
   it("names the Connection each solid arrow came from, so a click can reach the record", () => {
-    const conn: Connection = { id: "c5", from: "shore", to: "landing", twoWay: true };
+    const conn: Connection = { id: "c5", a: "shore", b: "landing", aToB: {}, bToA: {} };
     expect(canvas([landing, shore], [conn]).edges.every((e) => e.connectionId === "c5")).toBe(true);
     expect(canvas([village, tavern, house]).edges.every((e) => e.connectionId === undefined)).toBe(true);
   });
 
   it("drops an arrow whose far end no longer exists", () => {
-    const dangling: Connection = { id: "c6", from: "shore", to: "gone", twoWay: true };
+    const dangling: Connection = { id: "c6", a: "shore", b: "gone", aToB: {}, bToA: {} };
     expect(edgeIds([landing, shore], [dangling])).toEqual([]);
   });
 });
@@ -404,11 +428,11 @@ describe("dropIntent", () => {
   it("leaves authored Connections untouched — they are id-based, not containment-based", () => {
     // Shore is dropped into the Tavern, which puts it inside the Village it is linked to: containment would
     // otherwise be its own travel rule for the pair, and the one-way link would quietly become a walk back.
-    const conns: Connection[] = [{ id: "c12", from: "shore", to: "village", twoWay: false, aiHint: "up the path" }];
+    const conns: Connection[] = [{ id: "c12", a: "shore", b: "village", aToB: { hint: "up the path" } }];
     const before = buildLocationCanvas(nested, conns).edges.filter((e) => e.connectionId === "c12");
     const after = applyCanvasDrop(nested, dropIntent(nested, "shore", { x: 40, y: 60 })!);
     expect(buildLocationCanvas(after, conns).edges.filter((e) => e.connectionId === "c12")).toEqual(before);
-    expect(before.map((e) => e.id)).toEqual(["connection:c12:forward"]);
+    expect(before.map((e) => e.id)).toEqual(["connection:c12:aToB"]);
   });
 
   it("holds a location dropped on a group's title strip clear of the frame it now sits in", () => {
@@ -601,7 +625,7 @@ describe("leaf nesting", () => {
   });
 
   it("leaves authored Connections between the nested pair untouched", () => {
-    const conns: Connection[] = [{ id: "c1", from: "shore", to: "landing", twoWay: false, aiHint: "along the sand" }];
+    const conns: Connection[] = [{ id: "c1", a: "shore", b: "landing", aToB: { hint: "along the sand" } }];
     const before = buildLocationCanvas(flat, conns).edges.filter((e) => e.connectionId === "c1");
     const after = applyCanvasDrop(flat, dropIntent(flat, "shore", { x: 10, y: 0 }, "landing")!);
     expect(after.find((l) => l.id === "shore")?.parentId).toBe("landing");
@@ -609,7 +633,7 @@ describe("leaf nesting", () => {
     // whose free travel would otherwise be its own rule for them and quietly hand back the walk home.
     const drawn = buildLocationCanvas(after, conns).edges.filter((e) => e.connectionId === "c1");
     expect(drawn).toEqual(before);
-    expect(drawn.map((e) => e.id)).toEqual(["connection:c1:forward"]);
+    expect(drawn.map((e) => e.id)).toEqual(["connection:c1:aToB"]);
     expect(connectionsAt("shore", conns).map((v) => v.connection)).toEqual(conns);
   });
 });
@@ -670,7 +694,7 @@ const applied = (connections: Connection[], intent: CanvasIntent | null): Connec
 describe("connectIntent", () => {
   it("gives a dragged pair a two-way Connection", () => {
     const intent = connectIntent("landing", "shore", []);
-    expect(intent).toMatchObject({ kind: "add", connection: { from: "landing", to: "shore", twoWay: true } });
+    expect(intent).toMatchObject({ kind: "add", connection: { a: "landing", b: "shore", aToB: {}, bToA: {} } });
     expect(edgeIds([landing, shore], applied([], intent)).length).toBe(2);
   });
 
@@ -687,43 +711,46 @@ describe("connectIntent", () => {
   });
 
   it("asks for nothing where a record already runs, whichever end the drag started from", () => {
-    const existing: Connection = { id: "c7", from: "shore", to: "landing", twoWay: false };
+    const existing: Connection = { id: "c7", a: "shore", b: "landing", aToB: {} };
     expect(connectIntent("shore", "landing", [existing])).toBeNull();
     expect(connectIntent("landing", "shore", [existing])).toBeNull();
   });
 });
 
 describe("directionIntent", () => {
-  const conn: Connection = { id: "c8", from: "shore", to: "landing", twoWay: true, aiHint: "along the jetty" };
-  // Ends read in a stable order, so a flip doesn't shuffle the control the author just clicked.
+  const conn: Connection = {
+    id: "c8", a: "shore", b: "landing", aToB: { hint: "down the jetty" }, bToA: { hint: "up the jetty" },
+  };
   const [a, b] = connectionEnds(conn);
 
-  it("reads a record's current direction from its stable ends", () => {
+  it("reads a record's current direction from its first end", () => {
+    expect([a, b]).toEqual(["shore", "landing"]);
     expect(directionOf(conn)).toBe("two-way");
-    expect(directionOf({ ...conn, twoWay: false, from: a, to: b })).toBe("outgoing");
-    expect(directionOf({ ...conn, twoWay: false, from: b, to: a })).toBe("incoming");
+    expect(directionOf({ id: "c8", a, b, aToB: {} })).toBe("outgoing");
+    expect(directionOf({ id: "c8", a, b, bToA: {} })).toBe("incoming");
   });
 
   it("names the same two ends whichever way the record currently runs", () => {
-    expect(connectionEnds({ ...conn, from: "landing", to: "shore" })).toEqual([a, b]);
+    expect(connectionEnds({ id: "c8", a, b, bToA: {} })).toEqual([a, b]);
   });
 
-  it("narrows travel to one way, and flips which way, by rewriting the record's ends", () => {
+  it("narrows travel to one way, and flips which way, by moving the leg with its hint", () => {
     const oneWay = directionIntent(conn, "outgoing");
     expect(oneWay.kind).toBe("update");
     const forward = applied([conn], oneWay);
-    expect(forward[0]).toMatchObject({ id: "c8", from: a, to: b, twoWay: false, aiHint: "along the jetty" });
+    expect(forward[0]).toEqual({ id: "c8", a, b, aToB: { hint: "down the jetty" } });
     // One arrow, pointing the way travel now runs.
     const drawn = canvas([landing, shore], forward).edges;
     expect(drawn.map((e) => [e.source, e.target])).toEqual([[a, b]]);
     const flipped = applied(forward, directionIntent(forward[0], "incoming"));
+    expect(flipped[0]).toEqual({ id: "c8", a, b, bToA: { hint: "down the jetty" } });
     expect(canvas([landing, shore], flipped).edges.map((e) => [e.source, e.target])).toEqual([[b, a]]);
   });
 
-  it("widens a one-way record back to two-way without moving its ends", () => {
-    const oneWay: Connection = { ...conn, twoWay: false, from: b, to: a };
+  it("widens a one-way record back to two-way, the new leg taking the existing hint", () => {
+    const oneWay: Connection = { id: "c8", a, b, bToA: { hint: "up the jetty" } };
     const both = applied([oneWay], directionIntent(oneWay, "two-way"));
-    expect(both[0]).toMatchObject({ from: b, to: a, twoWay: true });
+    expect(both[0]).toEqual({ id: "c8", a, b, aToB: { hint: "up the jetty" }, bToA: { hint: "up the jetty" } });
     expect(canvas([landing, shore], both).edges.length).toBe(2);
   });
 
@@ -740,33 +767,34 @@ describe("directionIntent", () => {
     expect(nodeOf([landing, shore], "shore", linked).data.unreachable).toBe(false);
     const leavingShore = connectionEnds(linked[0])[0] === "shore" ? "outgoing" : "incoming";
     const away = applied(linked, directionIntent(linked[0], leavingShore));
-    expect(away[0]).toMatchObject({ from: "shore", to: "landing", twoWay: false });
+    expect(away[0]).toEqual({ id: linked[0].id, a: "landing", b: "shore", bToA: {} });
     expect(nodeOf([landing, shore], "shore", away).data.unreachable).toBe(true);
   });
 });
 
 describe("hintIntent", () => {
-  const conn: Connection = { id: "c9", from: "shore", to: "landing", twoWay: true };
+  const conn: Connection = { id: "c9", a: "shore", b: "landing", aToB: {}, bToA: {} };
 
-  it("labels the arrow with what the author typed", () => {
-    const hinted = applied([conn], hintIntent(conn, "along the jetty"));
-    expect(canvas([landing, shore], hinted).edges.find((e) => e.label)?.label).toBe("along the jetty");
+  it("labels only the arrow of the leg the author typed into", () => {
+    const hinted = applied([conn], hintIntent(conn, "bToA", "along the jetty"));
+    const labels = canvas([landing, shore], hinted).edges.map((e) => [e.id, e.label]);
+    expect(labels).toEqual([["connection:c9:aToB", undefined], ["connection:c9:bToA", "along the jetty"]]);
   });
 
   it("drops the field when the hint is cleared, so an empty hint has one shape", () => {
-    const hinted = { ...conn, aiHint: "along the jetty" };
-    const cleared = applied([hinted], hintIntent(hinted, ""));
-    expect(cleared[0].aiHint).toBeUndefined();
+    const hinted: Connection = { ...conn, aToB: { hint: "along the jetty" } };
+    const cleared = applied([hinted], hintIntent(hinted, "aToB", ""));
+    expect(cleared[0].aToB).toEqual({});
     expect(canvas([landing, shore], cleared).edges.every((e) => e.label === undefined)).toBe(true);
     // Spaces are not a hint either, and a hint being typed keeps the space the author just pressed.
-    expect(applied([hinted], hintIntent(hinted, "   "))[0].aiHint).toBeUndefined();
-    expect(applied([conn], hintIntent(conn, "along the "))[0].aiHint).toBe("along the ");
+    expect(applied([hinted], hintIntent(hinted, "aToB", "   "))[0].aToB).toEqual({});
+    expect(applied([conn], hintIntent(conn, "aToB", "along the "))[0].aToB).toEqual({ hint: "along the " });
   });
 });
 
 describe("deleteIntent", () => {
   it("removes the record both of a pair's arrows came from, and hands the pair back to implicit travel", () => {
-    const conn: Connection = { id: "c10", from: "tavern", to: "house", twoWay: false };
+    const conn: Connection = { id: "c10", a: "tavern", b: "house", aToB: {} };
     const gone = applied([conn], deleteIntent(conn));
     expect(gone).toEqual([]);
     expect(edgeIds([village, tavern, house], gone)).toEqual(["implicit:house>tavern", "implicit:tavern>house"]);

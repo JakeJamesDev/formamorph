@@ -1,11 +1,12 @@
 import { randomUUID } from '@/lib/uuid';
-import type { Connection, GameLocation } from '@/types';
+import type { Connection, ConnectionLeg, GameLocation } from '@/types';
+import type { LegKey } from '@/lib/locationGraph';
 
 /**
  * Editing Connections from one end of them.
  *
  * A Connection is a single world-level record, but an author meets it twice — once on each location's
- * panel. These functions translate between the record's own `from`/`to` and the direction it reads as at
+ * panel. These functions translate between the record's own `a`/`b` legs and the direction it reads as at
  * the location being edited, so both panels can show and change the same record without either owning it.
  */
 
@@ -21,35 +22,60 @@ export interface ConnectionView {
 
 /** The other end of a Connection from where the author is standing. */
 function partnerOf(connection: Connection, locationId: string): string {
-  return connection.from === locationId ? connection.to : connection.from;
+  return connection.a === locationId ? connection.b : connection.a;
+}
+
+/** The leg that leaves `locationId`. */
+export function legFrom(connection: Connection, locationId: string): LegKey {
+  return connection.a === locationId ? 'aToB' : 'bToA';
+}
+
+const otherLeg = (key: LegKey): LegKey => (key === 'aToB' ? 'bToA' : 'aToB');
+
+/** The record with exactly the given legs; an absent leg leaves no key behind. */
+function withLegs(connection: Connection, legs: Partial<Record<LegKey, ConnectionLeg>>): Connection {
+  const { aToB: _aToB, bToA: _bToA, ...rest } = connection;
+  return {
+    ...rest,
+    ...(legs.aToB ? { aToB: legs.aToB } : {}),
+    ...(legs.bToA ? { bToA: legs.bToA } : {}),
+  };
 }
 
 /** Which way travel runs from `locationId` — the only thing about a Connection that differs by end. */
 export function directionFrom(connection: Connection, locationId: string): ConnectionDirection {
-  if (connection.twoWay) return 'two-way';
-  return connection.from === locationId ? 'outgoing' : 'incoming';
+  const out = legFrom(connection, locationId);
+  if (connection[out] && connection[otherLeg(out)]) return 'two-way';
+  return connection[out] ? 'outgoing' : 'incoming';
 }
 
 /**
- * The record rewritten so it reads as `direction` from `locationId`. A one-way direction rewrites the
- * endpoints rather than adding a flag, which is what makes flipping orientation and toggling two-way the
- * same gesture; id and hint survive both.
+ * The record rewritten so it reads as `direction` from `locationId`. Each hint stays with its leg. A one-way
+ * direction keeps only the leg that runs that way, moving the single leg across on a flip; a new return leg
+ * copies the existing leg's hint. `a` and `b` never change.
  */
 export function withDirection(
   connection: Connection,
   locationId: string,
   direction: ConnectionDirection,
 ): Connection {
-  if (direction === 'two-way') return { ...connection, twoWay: true };
-  const partnerId = partnerOf(connection, locationId);
-  const [from, to] = direction === 'outgoing' ? [locationId, partnerId] : [partnerId, locationId];
-  return { ...connection, from, to, twoWay: false };
+  const out = legFrom(connection, locationId);
+  const back = otherLeg(out);
+  const existing = connection[out] ?? connection[back] ?? {};
+  if (direction === 'two-way') {
+    return withLegs(connection, { [out]: connection[out] ?? existing, [back]: connection[back] ?? existing });
+  }
+  const kept = direction === 'outgoing' ? out : back;
+  return withLegs(connection, { [kept]: connection[kept] ?? existing });
 }
 
-/** The record with a new travel hint. A hint that is blank or only spaces drops the field rather than
- *  storing it, so an exported world has one shape for "no hint" instead of three. */
-export function withHint(connection: Connection, hint: string): Connection {
-  return { ...connection, aiHint: hint.trim() ? hint : undefined };
+/** The record with a new hint on one leg. A hint that is blank or only spaces drops the field rather than
+ *  storing it, so an exported world has one shape for "no hint" instead of three. A missing leg stays missing. */
+export function withHint(connection: Connection, leg: LegKey, hint: string): Connection {
+  const current = connection[leg];
+  if (!current) return connection;
+  const { hint: _old, ...rest } = current;
+  return { ...connection, [leg]: hint.trim() ? { ...rest, hint } : rest };
 }
 
 /** Every Connection touching `locationId`, each turned into the view that location sees. A self-link is
@@ -57,8 +83,8 @@ export function withHint(connection: Connection, hint: string): Connection {
 export function connectionsAt(locationId: string, connections: Connection[]): ConnectionView[] {
   const views: ConnectionView[] = [];
   for (const connection of connections) {
-    if (connection.from === connection.to) continue;
-    if (connection.from !== locationId && connection.to !== locationId) continue;
+    if (connection.a === connection.b) continue;
+    if (connection.a !== locationId && connection.b !== locationId) continue;
     views.push({
       connection,
       partnerId: partnerOf(connection, locationId),
@@ -81,5 +107,5 @@ export function connectionTargets(
 
 /** A new Connection out of `fromId`, two-way — the common case needs no follow-up click. */
 export function createConnection(fromId: string, toId: string): Connection {
-  return { id: randomUUID(), from: fromId, to: toId, twoWay: true };
+  return { id: randomUUID(), a: fromId, b: toId, aToB: {}, bToA: {} };
 }

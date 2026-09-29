@@ -18,7 +18,7 @@ import { buildLens, lensActiveTraits, resolveLensText, seedLens, type BenchLens 
 import { settledOpeningStats } from '@/lib/testBench/opening';
 import type { Connection, Entity, GameLocation, PlayerStat, Stat, Trait, TraitGroup } from '@/types';
 import {
-  liveTourItem, tourConnection, tourEntity, tourEntityPlaces, tourEntry, tourStat, type TourItems, type TourWorld,
+  liveTourItem, tourConnectionStart, tourEntity, tourEntityPlaces, tourEntry, tourStat, type TourItems, type TourWorld,
 } from './steps';
 import { readTestLine, type TestLineScan } from './testLine';
 
@@ -189,12 +189,6 @@ function entitySceneId(world: TourWorld, items: TourItems): string | null {
   return tourEntity(world, items)?.locations?.find((id) => live.has(id)) ?? null;
 }
 
-/** Where the tour Connection leaves from: its `from` end when one-way, else the first tour location. */
-function connectionSceneId(world: TourWorld, items: TourItems): string | null {
-  const connection = tourConnection(world, items);
-  return connection && !connection.twoWay ? connection.from : items.location ?? null;
-}
-
 /** The tour entity with its name and Player-Facing Description resolved as a player there reads them. */
 function entitySurface(
   kind: Extract<PlayerSurface, { entity: unknown }>['kind'], world: TourWorld, items: TourItems, lens: BenchLens,
@@ -293,7 +287,7 @@ export function computeInPlay(
 ): InPlaySlice {
   // The lens stands at the step's scene, else where the tour's own location is, else where a new game starts.
   const sceneId = spec.scene === 'entity' ? entitySceneId(world, items)
-    : spec.scene === 'connection' ? connectionSceneId(world, items)
+    : spec.scene === 'connection' ? tourConnectionStart(world, items)
       : spec.scene === 'secondLocation' ? items.secondLocation ?? null : null;
   const outOfScene = spec.scene === 'entity' && !sceneId;
   let lens: BenchLens | null = null;

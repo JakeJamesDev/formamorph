@@ -126,7 +126,7 @@ describe('defaultCollapsedLocations', () => {
   });
 
   it('opens the whole ancestor chain of a Connection\'s far end', () => {
-    const connections = [{ id: 'c1', from: 'cellar', to: 'barrow', twoWay: false }];
+    const connections = [{ id: 'c1', a: 'cellar', b: 'barrow', aToB: {} }];
     const collapsed = defaultCollapsedLocations(world, connections, 'cellar');
     expect(collapsed.has('moor')).toBe(false);
     expect(collapsed.has('cairn')).toBe(false);

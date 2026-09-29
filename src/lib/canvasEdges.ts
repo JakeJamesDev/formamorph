@@ -27,7 +27,7 @@ export function toFlowEdge(
     target: edge.target,
     type: 'floating',
     label: edge.label,
-    data: { connectionStyle },
+    data: { connectionStyle, labelOuter: !!edge.labelOuter },
     selectable: interactive,
     style: {
       stroke: color,

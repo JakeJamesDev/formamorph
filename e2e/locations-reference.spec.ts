@@ -98,7 +98,7 @@ test('locations reference preserves local edits, hierarchy, and responsive tools
   expect(appearance.palette).toBe('purple');
   expect(appearance.font).toContain('Atkinson');
   expect(appearance.reduced).toBe(true);
-  const edge = page.locator('[data-id="connection:quay-garden:forward"] .react-flow__edge-interaction');
+  const edge = page.locator('[data-id="connection:quay-garden:aToB"] .react-flow__edge-interaction');
   const connectionPoint = () => edge.evaluate(element => {
     const path = element as SVGPathElement;
     // Pick the exposed end beyond the Group frame that the Connection crosses.

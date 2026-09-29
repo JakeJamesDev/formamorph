@@ -12,7 +12,7 @@ const dock: GameLocation = { id: 'dock', name: 'Dock', playerDescription: 'Ropes
 const market: GameLocation = { id: 'market', name: 'Market' };
 const cellar: GameLocation = { id: 'cellar', name: 'Cellar', parentId: 'dock' };
 const locations = [dock, market, cellar];
-const connections: Connection[] = [{ id: 'c1', from: 'dock', to: 'market', twoWay: true }];
+const connections: Connection[] = [{ id: 'c1', a: 'dock', b: 'market', aToB: {}, bToA: {} }];
 
 afterEach(cleanup);
 

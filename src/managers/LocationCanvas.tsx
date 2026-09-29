@@ -24,6 +24,7 @@ import { useDevRoute } from '@/lib/devRouter';
 import { useMorphFullscreen } from '@/lib/useMorphFullscreen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
   ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuGroup, ContextMenuItem,
@@ -38,6 +39,7 @@ import {
   LONG_PRESS_MS, multiDropIntents, TOUCH_SLOP, UNNAMED_LOCATION,
   type CanvasDragSession, type CanvasIntent, type CanvasNodeData,
 } from '@/lib/locationCanvas';
+import { connectionLegs } from '@/lib/locationGraph';
 import {
   canvasMenuSections, type CanvasMenuItem, type CanvasMenuSection,
 } from '@/lib/canvasMenu';
@@ -300,13 +302,26 @@ const ConnectionInspector = ({ connection, nameOf, onIntent, onClose }: {
           </Tip>
         ))}
       </ToggleGroup>
-      <Input
-        value={connection.aiHint || ''}
-        // A run of keystrokes on one record is one edit to undo, not one per letter.
-        onChange={(e) => onIntent(hintIntent(connection, e.target.value), `hint:${connection.id}`)}
-        placeholder="Travel Hint, e.g. through the shimmering portal"
-        aria-label="Travel Hint"
-      />
+      {connectionLegs(connection).map(({ key }) => {
+        const [Icon, destination] = key === 'aToB' ? [ArrowRight, names[1]] : [ArrowLeft, names[0]];
+        const id = `canvas-connection-${connection.id}-${key}`;
+        return (
+          <div key={key} className="space-y-1">
+            <Label htmlFor={id} className="flex items-center gap-1">
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="min-w-0 truncate">{destination}</span>
+            </Label>
+            <Input
+              id={id}
+              value={connection[key]?.hint ?? ''}
+              // A run of keystrokes in one box is one edit to undo, not one per letter.
+              onChange={(e) => onIntent(hintIntent(connection, key, e.target.value), `hint:${connection.id}:${key}`)}
+              placeholder="Travel Hint, e.g. through the shimmering portal"
+              aria-label={`Travel Hint to ${destination}`}
+            />
+          </div>
+        );
+      })}
     </Panel>
   );
 };

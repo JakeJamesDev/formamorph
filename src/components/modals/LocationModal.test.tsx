@@ -188,7 +188,7 @@ describe('the Change Location list folds the branches the player is not standing
   it('opens the far branch when a Connection reaches into it', () => {
     openDialog({
       locations: FAR, currentLocationId: 'hall',
-      connections: [{ id: 'c1', from: 'hall', to: 'barrow', twoWay: false }],
+      connections: [{ id: 'c1', a: 'hall', b: 'barrow', aToB: {} }],
     });
     expect(names()).toContain('Barrow');
   });

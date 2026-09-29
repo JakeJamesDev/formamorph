@@ -76,7 +76,7 @@ const UNTIDY_WORLD = {
 const PARENT_CHILD_CONNECTION_WORLD = {
   ...WORLD,
   id: 'e2e-canvas-parent-child',
-  connections: [{ id: 'conn-parent-child', from: 'loc-parent', to: 'loc-child-a', twoWay: false }],
+  connections: [{ id: 'conn-parent-child', a: 'loc-parent', b: 'loc-child-a', aToB: {} }],
 };
 
 /** A translate in pixels, read off a node's or the viewport's own transform. */
@@ -664,7 +664,7 @@ test.describe('Locations canvas', () => {
     }, PARENT_CHILD_CONNECTION_WORLD);
     await gotoDev(page, 'mainMenu', { modal: 'worldEditor', tab: 'locations', subtab: 'canvas' });
 
-    const authored = page.locator('.react-flow__edge[data-id="connection:conn-parent-child:forward"] path.react-flow__edge-path');
+    const authored = page.locator('.react-flow__edge[data-id="connection:conn-parent-child:aToB"] path.react-flow__edge-path');
     await authored.waitFor();
     const shape = async () => (await authored.getAttribute('d'))!;
     const pick = async (label: string) => {

@@ -265,45 +265,69 @@
   "connections": [
     {
       "id": "4be9f3a0-22b3-46ce-a9f7-861554bf9d44",
-      "from": "689d2ae9-cd48-42a6-b148-610abb6e1547",
-      "to": "9af8c8ce-feec-4010-bc7c-882991da47f0",
-      "twoWay": true,
-      "aiHint": "through the classroom’s sliding door"
+      "a": "689d2ae9-cd48-42a6-b148-610abb6e1547",
+      "b": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+      "aToB": {
+        "hint": "through the classroom’s sliding door"
+      },
+      "bToA": {
+        "hint": "through the classroom’s sliding door"
+      }
     },
     {
       "id": "085e21ea-4d19-4da5-ad25-27f74f72575f",
-      "from": "9af8c8ce-feec-4010-bc7c-882991da47f0",
-      "to": "19cc2ffa-aad7-49ac-9885-e7748b63f1f7",
-      "twoWay": true,
-      "aiHint": "up the stairwell past the \"no students\" sign"
+      "a": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+      "b": "19cc2ffa-aad7-49ac-9885-e7748b63f1f7",
+      "aToB": {
+        "hint": "up the stairwell past the \"no students\" sign"
+      },
+      "bToA": {
+        "hint": "up the stairwell past the \"no students\" sign"
+      }
     },
     {
       "id": "a737e5a7-ffee-4b0c-9d03-9f2027737bbe",
-      "from": "9af8c8ce-feec-4010-bc7c-882991da47f0",
-      "to": "8381bbd7-3818-4527-a0a7-4a86fe411057",
-      "twoWay": true,
-      "aiHint": "down the main stairs and along the covered walkway"
+      "a": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+      "b": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+      "aToB": {
+        "hint": "down the main stairs and along the covered walkway"
+      },
+      "bToA": {
+        "hint": "down the main stairs and along the covered walkway"
+      }
     },
     {
       "id": "f005081b-56ff-4903-94b7-6209d49743d4",
-      "from": "9af8c8ce-feec-4010-bc7c-882991da47f0",
-      "to": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
-      "twoWay": true,
-      "aiHint": "down the main stairs and out through the shoe lockers"
+      "a": "9af8c8ce-feec-4010-bc7c-882991da47f0",
+      "b": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+      "aToB": {
+        "hint": "down the main stairs and out through the shoe lockers"
+      },
+      "bToA": {
+        "hint": "down the main stairs and out through the shoe lockers"
+      }
     },
     {
       "id": "291e6706-2c59-4611-939d-688bda91153b",
-      "from": "8381bbd7-3818-4527-a0a7-4a86fe411057",
-      "to": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
-      "twoWay": true,
-      "aiHint": "through the gym’s fire door"
+      "a": "8381bbd7-3818-4527-a0a7-4a86fe411057",
+      "b": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+      "aToB": {
+        "hint": "through the gym’s fire door"
+      },
+      "bToA": {
+        "hint": "through the gym’s fire door"
+      }
     },
     {
       "id": "f7068371-0603-4a47-921c-d8e5e6e87734",
-      "from": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
-      "to": "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
-      "twoWay": true,
-      "aiHint": "along the gravel path past the bike racks"
+      "a": "514a1361-8bf1-45b5-b1ab-d7adc0541f01",
+      "b": "0484b1c3-c15f-4b0c-8550-4e25e90e9367",
+      "aToB": {
+        "hint": "along the gravel path past the bike racks"
+      },
+      "bToA": {
+        "hint": "along the gravel path past the bike racks"
+      }
     }
   ],
   "entities": [

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONNECTION_STYLES, edgeAnchors, edgeGeometry, isConnectionStyle, type EdgeRect, type Point } from './canvasEdgePath';
+import { CONNECTION_STYLES, edgeAnchors, edgeGeometry, isConnectionStyle, labelTransform, type EdgeRect, type Point } from './canvasEdgePath';
 
 /**
  * The arrow's geometry, which is the whole of what the three styles change. What matters is where an arrow
@@ -144,6 +144,23 @@ describe('connection styles', () => {
       expect(there.start.y).not.toBeCloseTo(plain.start.y, 3);
       expect(Math.sign(there.start.y - plain.start.y)).toBe(-Math.sign(back.end.y - plain.start.y));
     }
+  });
+
+  it('sets an outer label on its own arrow\'s side, so a pair\'s two labels never share a spot', () => {
+    // A pair side by side: one arrow rides above the shared line, its partner below.
+    const there = edgeGeometry(CHILD, NEIGHBOR, { style: 'straight', offset: 5 });
+    const back = edgeGeometry(NEIGHBOR, CHILD, { style: 'straight', offset: 5 });
+    const plain = edgeGeometry(CHILD, NEIGHBOR, { style: 'straight' });
+    expect(Math.sign(there.side.y)).toBe(Math.sign(there.start.y - plain.start.y));
+    expect(back.side.y).toBeCloseTo(-there.side.y, 9);
+    // The box hangs off the anchor on that side: above for the upper arrow, below for the lower one.
+    const [upper, lower] = there.side.y < 0 ? [there, back] : [back, there];
+    const shiftY = (transform: string) => Number(/translate\([-\d.]+%, ([-\d.]+)%\)$/.exec(transform)![1]);
+    expect(shiftY(labelTransform(upper, { outer: true }))).toBeLessThan(-90);
+    expect(shiftY(labelTransform(lower, { outer: true }))).toBeGreaterThan(-10);
+    expect(labelTransform(upper, { outer: false })).toBe(
+      `translate(-50%, -50%) translate(${upper.labelAt.x}px, ${upper.labelAt.y - 10}px)`,
+    );
   });
 
   it('puts the label on the line in every shape', () => {

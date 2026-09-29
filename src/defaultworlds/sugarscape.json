@@ -245,31 +245,47 @@
   "connections": [
     {
       "id": "32386220-42a3-4e50-96c3-ea071a6e6b67",
-      "from": "1739135858396",
-      "to": "1739136073161",
-      "twoWay": true,
-      "aiHint": "down the fudge creekbed to the shore"
+      "a": "1739135858396",
+      "b": "1739136073161",
+      "aToB": {
+        "hint": "down the fudge creekbed to the shore"
+      },
+      "bToA": {
+        "hint": "down the fudge creekbed to the shore"
+      }
     },
     {
       "id": "cd294fe6-fabe-45bf-89c4-d5fff1c0f196",
-      "from": "1739135858396",
-      "to": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-      "twoWay": true,
-      "aiHint": "over the wafer ridge where the sprinkles thin out"
+      "a": "1739135858396",
+      "b": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+      "aToB": {
+        "hint": "over the wafer ridge where the sprinkles thin out"
+      },
+      "bToA": {
+        "hint": "over the wafer ridge where the sprinkles thin out"
+      }
     },
     {
       "id": "b55b1372-26c1-45d4-af97-e36a1600f9b8",
-      "from": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
-      "to": "74a7d597-53c6-46e8-832d-b4247d208a7a",
-      "twoWay": true,
-      "aiHint": "following the saltlick stones as the colors drain away"
+      "a": "dbdb8a20-c1d5-4f51-859c-172baa173c5d",
+      "b": "74a7d597-53c6-46e8-832d-b4247d208a7a",
+      "aToB": {
+        "hint": "following the saltlick stones as the colors drain away"
+      },
+      "bToA": {
+        "hint": "following the saltlick stones as the colors drain away"
+      }
     },
     {
       "id": "9be0bc1e-503e-4e3d-a448-805a1af95531",
-      "from": "1739136073161",
-      "to": "74a7d597-53c6-46e8-832d-b4247d208a7a",
-      "twoWay": true,
-      "aiHint": "along the crust where the cream turns to skin"
+      "a": "1739136073161",
+      "b": "74a7d597-53c6-46e8-832d-b4247d208a7a",
+      "aToB": {
+        "hint": "along the crust where the cream turns to skin"
+      },
+      "bToA": {
+        "hint": "along the crust where the cream turns to skin"
+      }
     }
   ],
   "entities": [

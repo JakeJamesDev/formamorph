@@ -4,7 +4,9 @@ import {
   connectionsAt,
   createConnection,
   directionFrom,
+  legFrom,
   withDirection,
+  withHint,
 } from './connectionEditing';
 import type { Connection, GameLocation } from '@/types';
 
@@ -18,11 +20,18 @@ const loc = (id: string, over: Partial<GameLocation> = {}): GameLocation => ({
 
 const conn = (over: Partial<Connection> = {}): Connection => ({
   id: 'c1',
-  from: 'a',
-  to: 'b',
-  twoWay: true,
+  a: 'a',
+  b: 'b',
+  aToB: {},
+  bToA: {},
   ...over,
 });
+
+/** A one-way record: `a → b`, or `b → a` when `back` is set. */
+const oneWay = (over: Partial<Connection> = {}, back = false): Connection => {
+  const { aToB, bToA, ...rest } = conn(over);
+  return back ? { ...rest, bToA } : { ...rest, aToB };
+};
 
 describe('directionFrom', () => {
   it('reads two-way from either end', () => {
@@ -30,44 +39,75 @@ describe('directionFrom', () => {
     expect(directionFrom(conn(), 'b')).toBe('two-way');
   });
 
-  it('reads a one-way record as outgoing at its from end and incoming at its to end', () => {
-    const oneWay = conn({ twoWay: false });
-    expect(directionFrom(oneWay, 'a')).toBe('outgoing');
-    expect(directionFrom(oneWay, 'b')).toBe('incoming');
+  it('reads a one-way record as outgoing where its leg leaves and incoming where it arrives', () => {
+    expect(directionFrom(oneWay(), 'a')).toBe('outgoing');
+    expect(directionFrom(oneWay(), 'b')).toBe('incoming');
+    const back = oneWay({}, true);
+    expect(directionFrom(back, 'b')).toBe('outgoing');
+    expect(directionFrom(back, 'a')).toBe('incoming');
+  });
+});
+
+describe('legFrom', () => {
+  it('names the leg that leaves the given end', () => {
+    expect(legFrom(conn(), 'a')).toBe('aToB');
+    expect(legFrom(conn(), 'b')).toBe('bToA');
   });
 });
 
 describe('withDirection', () => {
-  it('makes a one-way record two-way without disturbing its endpoints', () => {
-    expect(withDirection(conn({ twoWay: false }), 'a', 'two-way')).toEqual(conn({ twoWay: true }));
+  it('adds the return leg with the existing hint when a one-way record turns two-way', () => {
+    const next = withDirection(oneWay({ aToB: { hint: 'up the steps' } }), 'b', 'two-way');
+    expect(next).toEqual(conn({ aToB: { hint: 'up the steps' }, bToA: { hint: 'up the steps' } }));
   });
 
-  it('points a two-way record at the partner when set outgoing here', () => {
-    expect(withDirection(conn(), 'b', 'outgoing')).toEqual(conn({ from: 'b', to: 'a', twoWay: false }));
+  it('keeps the remaining leg and its own hint when a two-way record turns one-way', () => {
+    const twoWay = conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } });
+    const next = withDirection(twoWay, 'b', 'outgoing');
+    expect(next).toEqual({ id: 'c1', a: 'a', b: 'b', bToA: { hint: 'down' } });
+    expect(next).not.toHaveProperty('aToB');
   });
 
-  it('flips orientation when the same end asks for the opposite direction', () => {
-    const outgoing = conn({ twoWay: false }); // a → b
-    const flipped = withDirection(outgoing, 'a', 'incoming');
-    expect(flipped).toEqual(conn({ from: 'b', to: 'a', twoWay: false }));
+  it('moves the leg on a flip and leaves the ends alone', () => {
+    const flipped = withDirection(oneWay({ aToB: { hint: 'up' } }), 'a', 'incoming');
+    expect(flipped).toEqual({ id: 'c1', a: 'a', b: 'b', bToA: { hint: 'up' } });
+    expect(flipped).not.toHaveProperty('aToB');
     // The flip has to read the same from the other end, or the two panels disagree about one record.
     expect(directionFrom(flipped, 'b')).toBe('outgoing');
   });
 
-  it('keeps the id and hint through a direction change', () => {
-    const hinted = conn({ id: 'keep', aiHint: 'through the portal' });
-    expect(withDirection(hinted, 'b', 'outgoing')).toMatchObject({ id: 'keep', aiHint: 'through the portal' });
+  it('leaves a two-way record as it is when two-way is picked again', () => {
+    const twoWay = conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } });
+    expect(withDirection(twoWay, 'a', 'two-way')).toEqual(twoWay);
+  });
+});
+
+describe('withHint', () => {
+  it('writes only the named leg', () => {
+    expect(withHint(conn({ bToA: { hint: 'down' } }), 'aToB', 'up')).toEqual(
+      conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } }),
+    );
+  });
+
+  it('drops the field for a blank hint and keeps the leg', () => {
+    const next = withHint(conn({ aToB: { hint: 'up' } }), 'aToB', '   ');
+    expect(next.aToB).toEqual({});
+  });
+
+  it('adds no leg when the named direction is not travelable', () => {
+    const record = oneWay();
+    expect(withHint(record, 'bToA', 'down')).toBe(record);
   });
 });
 
 describe('connectionsAt', () => {
   const connections = [
-    conn({ id: 'ab', from: 'a', to: 'b', twoWay: false }),
-    conn({ id: 'cb', from: 'c', to: 'b', twoWay: true }),
-    conn({ id: 'cd', from: 'c', to: 'd', twoWay: true }),
+    oneWay({ id: 'ab', a: 'a', b: 'b' }),
+    conn({ id: 'cb', a: 'c', b: 'b' }),
+    conn({ id: 'cd', a: 'c', b: 'd' }),
   ];
 
-  it('lists every record touching the location, from either endpoint', () => {
+  it('lists every record touching the location, from either end', () => {
     expect(connectionsAt('b', connections).map((v) => [v.connection.id, v.partnerId, v.direction])).toEqual([
       ['ab', 'a', 'incoming'],
       ['cb', 'c', 'two-way'],
@@ -83,7 +123,7 @@ describe('connectionsAt', () => {
   });
 
   it('drops a self-link rather than listing a location as its own partner', () => {
-    expect(connectionsAt('a', [conn({ from: 'a', to: 'a' })])).toEqual([]);
+    expect(connectionsAt('a', [conn({ a: 'a', b: 'a' })])).toEqual([]);
   });
 });
 
@@ -95,16 +135,15 @@ describe('connectionTargets', () => {
   });
 
   it('leaves out the location itself and any partner it already connects to', () => {
-    const existing = [conn({ from: 'c', to: 'a', twoWay: false })];
+    const existing = [oneWay({ a: 'c', b: 'a' })];
     expect(connectionTargets('a', locations, existing).map((l) => l.id)).toEqual(['b']);
   });
 });
 
 describe('createConnection', () => {
-  it('defaults to two-way and departs from the location being edited', () => {
+  it('starts two-way with no hints, from the location being edited', () => {
     const created = createConnection('a', 'b');
-    expect(created).toMatchObject({ from: 'a', to: 'b', twoWay: true });
-    expect(created.id).toEqual(expect.any(String));
+    expect(created).toEqual({ id: expect.any(String), a: 'a', b: 'b', aToB: {}, bToA: {} });
     expect(created.id).not.toBe(createConnection('a', 'b').id);
   });
 });

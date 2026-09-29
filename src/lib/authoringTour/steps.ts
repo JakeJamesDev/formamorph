@@ -20,7 +20,8 @@ import { blankDictionaryEntry } from '@/lib/dictionaryTree';
 import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { withEntityLocations } from '@/lib/entityPresence';
-import { createConnection, withHint } from '@/lib/connectionEditing';
+import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
+import { connectionLegs, travelEnds } from '@/lib/locationGraph';
 import { followRename } from '@/lib/statDescriptors';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
@@ -224,9 +225,28 @@ function patchEntry(api: TourEditApi, world: TourWorld, items: TourItems, patch:
 export function tourConnection(world: TourWorld, items: TourItems): Connection | undefined {
   const { location, secondLocation } = items;
   if (!location || !secondLocation) return undefined;
-  return (world.connections ?? []).find((c) => (c.from === location && c.to === secondLocation)
-    || (c.from === secondLocation && c.to === location));
+  return (world.connections ?? []).find((c) => (c.a === location && c.b === secondLocation)
+    || (c.a === secondLocation && c.b === location));
 }
+
+/** Where the tour Connection's in-play lens stands: the start of its one leg when one-way, else the first
+ *  tour location. */
+export function tourConnectionStart(world: TourWorld, items: TourItems): string | null {
+  const connection = tourConnection(world, items);
+  const twoWay = !!connection?.aToB && !!connection.bToA;
+  return connection && !twoWay ? travelEnds(connection)[0] : items.location ?? null;
+}
+
+/** The Travel Hint the destinations block shows from where the tour Connection's lens stands. */
+function tourConnectionHint(world: TourWorld, items: TourItems): string {
+  const connection = tourConnection(world, items);
+  const start = tourConnectionStart(world, items);
+  return connection && start ? connection[legFrom(connection, start)]?.hint ?? '' : '';
+}
+
+/** The record with the example hint on every leg it has. */
+const withExampleHint = (connection: Connection): Connection =>
+  connectionLegs(connection).reduce((next, { key }) => withHint(next, key, TRAVEL_HINT_EXAMPLE), connection);
 
 /** The steps that close the tour. They stay after every tab step. */
 const ENDING_STEPS: readonly TourStep[] = [
@@ -460,9 +480,9 @@ const LOCATION_STEPS: readonly TourStep[] = [
     isComplete: (world, items) => !!tourConnection(world, items),
     useExample: (api, world, items) => {
       const existing = tourConnection(world, items);
-      if (existing) api.updateConnection(withHint(existing, TRAVEL_HINT_EXAMPLE));
+      if (existing) api.updateConnection(withExampleHint(existing));
       else if (items.location && items.secondLocation) {
-        api.addConnection(withHint(createConnection(items.secondLocation, items.location), TRAVEL_HINT_EXAMPLE));
+        api.addConnection(withExampleHint(createConnection(items.secondLocation, items.location)));
       }
     },
     inPlay: {
@@ -470,7 +490,7 @@ const LOCATION_STEPS: readonly TourStep[] = [
       scene: 'connection',
       readers: [{
         prompt: 'Location Change Prompt', reads: 'destinations',
-        authorText: (world, items) => tourConnection(world, items)?.aiHint ?? '',
+        authorText: tourConnectionHint,
       }],
     },
   },

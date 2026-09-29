@@ -49,7 +49,7 @@ const at = (id: string) => locations.find((l) => l.id === id)!;
 const lastUpdate = () => updateConnection.mock.calls.at(-1)?.at(0) as Connection;
 
 beforeEach(() => {
-  connections = [{ id: 'c1', from: 'ledge', to: 'cave', twoWay: false, aiHint: 'over the lip' }];
+  connections = [{ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'over the lip' } }];
   addConnection.mockClear();
   updateConnection.mockClear();
   removeConnection.mockClear();
@@ -66,35 +66,48 @@ describe('LocationConnections', () => {
     render(<LocationConnections location={at('cave')} />);
     expect(screen.getByText('Ledge')).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Incoming' })).toHaveAttribute('data-state', 'on');
-    expect(screen.getByLabelText('Travel Hint for the Connection to Ledge')).toHaveValue('over the lip');
+    expect(screen.getByLabelText('Travel Hint From Ledge')).toHaveValue('over the lip');
+    expect(screen.queryByLabelText('Travel Hint To Ledge')).not.toBeInTheDocument();
   });
 
   it('makes the Connection two-way from either end without touching its endpoints', () => {
     render(<LocationConnections location={at('cave')} />);
     fireEvent.click(screen.getByRole('radio', { name: 'Two-Way' }));
-    expect(lastUpdate()).toEqual({ id: 'c1', from: 'ledge', to: 'cave', twoWay: true, aiHint: 'over the lip' });
+    expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'over the lip' }, bToA: { hint: 'over the lip' } });
   });
 
-  it('flips a one-way Connection to run the other way', () => {
+  it('flips a one-way Connection to run the other way, taking its hint along', () => {
     render(<LocationConnections location={at('ledge')} />);
     fireEvent.click(screen.getByRole('radio', { name: 'Incoming' }));
-    expect(lastUpdate()).toMatchObject({ id: 'c1', from: 'cave', to: 'ledge', twoWay: false });
+    expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', bToA: { hint: 'over the lip' } });
   });
 
   it('writes the travel hint through to the record', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.change(screen.getByLabelText('Travel Hint for the Connection to Cave'), {
+    fireEvent.change(screen.getByLabelText('Travel Hint To Cave'), {
       target: { value: 'down the chute' },
     });
-    expect(lastUpdate()).toMatchObject({ id: 'c1', aiHint: 'down the chute' });
+    expect(lastUpdate()).toEqual({ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' } });
   });
 
   it('drops the hint field when the author clears it, rather than storing an empty one', () => {
     render(<LocationConnections location={at('ledge')} />);
-    fireEvent.change(screen.getByLabelText('Travel Hint for the Connection to Cave'), {
+    fireEvent.change(screen.getByLabelText('Travel Hint To Cave'), {
       target: { value: '' },
     });
-    expect(lastUpdate().aiHint).toBeUndefined();
+    expect(lastUpdate().aToB).toEqual({});
+  });
+
+  it('shows a two-way Connection as a To box and a From box, each with its own hint', () => {
+    connections = [{ id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' }, bToA: { hint: 'up the rope' } }];
+    render(<LocationConnections location={at('cave')} />);
+    expect(screen.getByText('To Ledge')).toBeInTheDocument();
+    expect(screen.getByLabelText('Travel Hint To Ledge')).toHaveValue('up the rope');
+    expect(screen.getByLabelText('Travel Hint From Ledge')).toHaveValue('down the chute');
+    fireEvent.change(screen.getByLabelText('Travel Hint To Ledge'), { target: { value: 'up the ladder' } });
+    expect(lastUpdate()).toEqual({
+      id: 'c1', a: 'ledge', b: 'cave', aToB: { hint: 'down the chute' }, bToA: { hint: 'up the ladder' },
+    });
   });
 
   it('deletes the Connection', () => {
@@ -107,7 +120,7 @@ describe('LocationConnections', () => {
     render(<LocationConnections location={at('ledge')} />);
     fireEvent.change(screen.getByLabelText('Connect To'), { target: { value: 'pool' } });
     fireEvent.click(screen.getByRole('button', { name: /Add Connection/ }));
-    expect(addConnection).toHaveBeenCalledWith(expect.objectContaining({ from: 'ledge', to: 'pool', twoWay: true }));
+    expect(addConnection).toHaveBeenCalledWith(expect.objectContaining({ a: 'ledge', b: 'pool', aToB: {}, bToA: {} }));
   });
 
   it('does not offer a partner that already has a Connection', () => {

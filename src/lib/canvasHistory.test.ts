@@ -83,7 +83,7 @@ describe("undoing a canvas edit", () => {
     ["editing the direction", (c: Connection[]) => directionIntent(c[0], "outgoing")],
     ["deleting", (c: Connection[]) => deleteIntent(c[0])],
   ])("puts a Connection back after %s one", (_label, intent) => {
-    const existing: Connection[] = [{ id: "conn-1", from: "village", to: "shore", twoWay: true }];
+    const existing: Connection[] = [{ id: "conn-1", a: "village", b: "shore", aToB: {}, bToA: {} }];
     const after = applyCanvasIntent(existing, intent(existing));
     expect(after).not.toEqual(existing);
 
@@ -108,8 +108,8 @@ describe("undoing against a world that moved on", () => {
 
   it("leaves a Connection authored since alone when a deletion is taken back", () => {
     const deleted: Connection[] = [];
-    const removed: Connection = { id: "conn-1", from: "village", to: "shore", twoWay: true };
-    const authoredSince: Connection = { id: "conn-2", from: "tavern", to: "house", twoWay: true };
+    const removed: Connection = { id: "conn-1", a: "village", b: "shore", aToB: {}, bToA: {} };
+    const authoredSince: Connection = { id: "conn-2", a: "tavern", b: "house", aToB: {}, bToA: {} };
     const history = recordCanvasEdit(EMPTY_CANVAS_HISTORY, {
       slice: "connections", before: [removed], after: deleted,
     });
@@ -172,8 +172,8 @@ describe("the canvas history stack", () => {
   });
 
   it("folds a run of hint keystrokes into one step, and starts a new one after something else", () => {
-    const base: Connection[] = [{ id: "conn-1", from: "village", to: "shore", twoWay: true }];
-    const typed = ["t", "th", "thr"].map((hint) => applyCanvasIntent(base, hintIntent(base[0], hint)));
+    const base: Connection[] = [{ id: "conn-1", a: "village", b: "shore", aToB: {}, bToA: {} }];
+    const typed = ["t", "th", "thr"].map((hint) => applyCanvasIntent(base, hintIntent(base[0], "aToB", hint)));
     let history = EMPTY_CANVAS_HISTORY;
     let before = base;
     for (const after of typed) {

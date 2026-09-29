@@ -12,11 +12,13 @@ import {
   connectionTargets,
   connectionsAt,
   createConnection,
+  legFrom,
   withDirection,
   withHint,
   type ConnectionDirection,
 } from '@/lib/connectionEditing';
-import type { GameLocation } from '@/types';
+import type { LegKey } from '@/lib/locationGraph';
+import type { Connection, GameLocation } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
 /** The direction control's options in the order they're offered, worded from the panel that's open. */
@@ -31,6 +33,16 @@ const DIRECTION_ICONS: Record<ConnectionDirection, typeof ArrowRight> = {
   outgoing: ArrowRight,
   incoming: ArrowLeft,
 };
+
+/** The legs a Connection has, seen from `locationId`: the trip leaving first, then the trip arriving. */
+function legsAt(connection: Connection, locationId: string): { key: LegKey; word: 'To' | 'From' }[] {
+  const out = legFrom(connection, locationId);
+  const back: LegKey = out === 'aToB' ? 'bToA' : 'aToB';
+  return [
+    ...(connection[out] ? [{ key: out, word: 'To' as const }] : []),
+    ...(connection[back] ? [{ key: back, word: 'From' as const }] : []),
+  ];
+}
 
 /**
  * The Connections on one location's editor panel: add, retarget direction, hint, delete.
@@ -102,12 +114,21 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
                 <ToggleGroupItem key={d.value} value={d.value} className="flex-1">{d.label}</ToggleGroupItem>
               ))}
             </ToggleGroup>
-            <Input
-              value={connection.aiHint || ''}
-              onChange={(e) => updateConnection(withHint(connection, e.target.value))}
-              placeholder="Travel Hint, e.g. through the shimmering portal"
-              aria-label={`Travel Hint for the Connection to ${partnerName}`}
-            />
+            {legsAt(connection, location.id).map(({ key, word }) => {
+              const id = `connection-${connection.id}-${key}`;
+              return (
+                <div key={key} className="space-y-1">
+                  <Label htmlFor={id} className="block">{word} {partnerName}</Label>
+                  <Input
+                    id={id}
+                    value={connection[key]?.hint ?? ''}
+                    onChange={(e) => updateConnection(withHint(connection, key, e.target.value))}
+                    placeholder="Travel Hint, e.g. through the shimmering portal"
+                    aria-label={`Travel Hint ${word} ${partnerName}`}
+                  />
+                </div>
+              );
+            })}
           </div>
         );
       })}

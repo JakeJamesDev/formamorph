@@ -40,7 +40,7 @@ const locations: GameLocation[] = [
 // One-way, hinted, and over a pair that would otherwise be implicitly two-way: Harbor reaches the Market,
 // the Market cannot come back.
 const connections: Connection[] = [
-  { id: 'c-bridge', from: 'loc-harbor', to: 'loc-market', twoWay: false, aiHint: `the ${HAIR_CHIP} plank bridge` },
+  { id: 'c-bridge', a: 'loc-harbor', b: 'loc-market', aToB: { hint: `the ${HAIR_CHIP} plank bridge` } },
 ];
 
 const entities: Entity[] = [
@@ -97,7 +97,7 @@ describe('context blocks', () => {
   it('renders each block exactly as the game builder does for the same inputs', () => {
     // Chip-free, so the comparison is against the builders' raw output with nothing resolved over it.
     const plain = {
-      connections: [{ ...connections[0], aiHint: 'the plank bridge' }],
+      connections: [{ ...connections[0], aToB: { hint: 'the plank bridge' } }],
       entities: entities.map((e) => (e.id === 'e-mara' ? { ...e, name: 'Mara' } : e)),
       placeholders: [],
     };
