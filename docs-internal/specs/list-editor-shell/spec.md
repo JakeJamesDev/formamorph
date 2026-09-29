@@ -61,6 +61,7 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q38** A scoped search row reads its tree label with no owner prefix (`Eyes`, `Hair › Color`, `Molly.Eyes`), per Q34. The scoped section keeps its helper line above the stacked editor.
 - **Q39** Drift #9: in a panel, **Duplicate** on a shared row makes a world copy and opens it on the top-level Placeholders tab, as **Edit Blueprint** does (Q37). The panel's own selection stays.
 - **Q40** The world Openings panel takes one toolbar at its top. Search filters every group's cards and hides a group with no match. **+** adds to This World; each entity group keeps its own **Add Opening to <entity>** button (Q18). Openings have no name, so **+** only clears the box. Cards keep their draw-order numbers while filtered, and drag reorders by opening id against the full list.
+- **Q41** Dictionary search: on the tab an entry row reads `Book › Entry` (a nested row reads its chain, as Q28 and Q33); in the library modal it reads its bare label (Q38). A book row carries Add entry and Delete dictionary through the tree's confirmation; an entry row carries Duplicate and Delete; no grip or enabled checkbox in search. The tab's box reads "Search or add new dictionaries" and **+** still names a book. The modal's **+** ("Add entry") names the new entry from the search text, "Untitled" when empty, and "No entries yet" stays in its toolbar row.
 
 ## User Stories
 
