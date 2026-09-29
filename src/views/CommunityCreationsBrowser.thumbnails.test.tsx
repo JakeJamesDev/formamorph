@@ -39,7 +39,7 @@ vi.mock('@/lib/useCatalogSync', () => ({
 
 vi.mock('@/components/community/RemoteWorldDetailsModal', () => ({ RemoteWorldDetailsModal: () => null }));
 
-/** The page preload warms stored thumbnails; a flagged entity's stand-in is never one of them. */
+/** The page preload warms stored thumbnails; a flagged entity or Avatar stand-in is never one of them. */
 
 const entity = (id: string, over: Record<string, unknown> = {}) => ({
   _id: id,
@@ -54,12 +54,12 @@ const entity = (id: string, over: Record<string, unknown> = {}) => ({
 
 const reader = { id: 'u1', username: 'reader', accountType: 'normal' } as unknown as WorldRecord;
 
-const renderBrowser = () =>
+const renderBrowser = (tab: 'entity' | 'model' = 'entity') =>
   render(
     <CommunityCreationsBrowser
       open
       onOpenChange={() => {}}
-      initialTab="entity"
+      initialTab={tab}
       worlds={[]}
       setWorlds={() => {}}
       entities={[]}
@@ -86,7 +86,10 @@ beforeEach(() => {
     addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 
-  catalog.items = [entity('e1', { placeholder: true }), entity('e2', { placeholder: false })];
+  catalog.items = [
+    entity('e1', { placeholder: true }), entity('e2', { placeholder: false }),
+    entity('m1', { kind: 'model', placeholder: true }), entity('m2', { kind: 'model', placeholder: false }),
+  ];
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ success: true }) } as unknown as Response)));
 });
@@ -105,5 +108,13 @@ describe('the page’s thumbnail preload', () => {
 
     expect(preloaded().has('e2.png')).toBe(true);
     expect(preloaded().has('e1.png')).toBe(false);
+  });
+
+  it('warms an unflagged avatar’s thumbnail and skips a flagged one', async () => {
+    renderBrowser('model');
+    await screen.findByText('Entity m1');
+
+    expect(preloaded().has('m2.png')).toBe(true);
+    expect(preloaded().has('m1.png')).toBe(false);
   });
 });

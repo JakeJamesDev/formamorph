@@ -18,7 +18,7 @@ import { useCachedThumbnail } from "@/lib/useCachedThumbnail";
 import { WorldDetailsColumn, DetailTags, DateTimeText, splitColumnClasses, type WorldRecord } from "@/components/WorldDetails";
 import { formatServerDateTime } from "@/lib/serverDate";
 import { type DownloadState } from "@/lib/downloadState";
-import { KIND_LABELS, kindOf, kindHasThumbnail, listingAppVersion, listingModels, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
+import { KIND_LABELS, kindOf, kindHasMorphArt, kindHasThumbnail, listingAppVersion, listingModels, showsMorphArt, type CatalogKind } from "@/lib/catalogKinds";
 import { KindArt } from "@/components/community/KindArt";
 import { EntityPlaceholderArt } from "@/components/EntityPlaceholderArt";
 import { CHIP_BASE } from "@/components/Chip";
@@ -285,15 +285,15 @@ export function RemoteWorldDetailsModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, world?._id, world?.id]);
 
-  // A kind with no cover art, and an entity drawn as Morph art, never ask for the server's stand-in file.
+  // A kind with no cover art, and an entity or Avatar drawn as Morph art, never ask for the server's stand-in file.
   const hasArt = world ? kindHasThumbnail(kindOf(world)) : false;
   const flagged = world ? showsMorphArt(world) : false;
   const thumbFile = hasArt && !flagged ? world?.thumbnail_file : undefined;
   const thumbUrl = thumbFile
     ? `${WorldStorageService.API_URL}/thumbnails/${thumbFile}`
     : (hasArt && !flagged && world?.thumbnail) || '';
-  // An entity with no picture at all draws it too, as its card does.
-  const showMorphArt = flagged || (world ? kindOf(world) === 'entity' && !thumbUrl : false);
+  // An entity or Avatar with no picture at all draws it too, as its card does.
+  const showMorphArt = flagged || (world ? kindHasMorphArt(kindOf(world)) && !thumbUrl : false);
   // Tall art sits beside the author and counts, as on the split card.
   const aspect = world ? thumbAspectFor(kindOf(world)) : 'landscape';
   const portrait = aspect === 'portrait';

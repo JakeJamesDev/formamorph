@@ -90,8 +90,27 @@ describe('the details window’s art', () => {
     expect(morphArt()).not.toBeNull();
   });
 
-  it('keeps an avatar’s silhouette even when flagged', async () => {
+  it('draws Morph art for a flagged avatar and requests no thumbnail', async () => {
     show({ kind: 'model', placeholder: true });
+    await screen.findByText('A ferry keeper.');
+
+    expect(morphArt()).not.toBeNull();
+    expect(screen.queryByRole('img', { name: 'Wren Hallow' })).toBeNull();
+    for (const [file, url] of useCachedThumbnail.mock.calls) {
+      expect(file).toBeUndefined();
+      expect(url).toBe('');
+    }
+  });
+
+  it('draws Morph art for an avatar with no thumbnail file', async () => {
+    show({ kind: 'model', thumbnail_file: null });
+    await screen.findByText('A ferry keeper.');
+
+    expect(morphArt()).not.toBeNull();
+  });
+
+  it('shows the art of an avatar that is not flagged', async () => {
+    show({ kind: 'model', placeholder: false });
     await screen.findByText('A ferry keeper.');
 
     expect(screen.getByRole('img', { name: 'Wren Hallow' }).getAttribute('src')).toBe('blob:stand-in.png');

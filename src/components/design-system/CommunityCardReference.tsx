@@ -108,6 +108,22 @@ const FLAGGED_ENTITY: WorldRecord = {
   tags: ['Artisan', 'Coastal'],
 };
 
+// The server flags this Avatar's stored file as its stand-in silhouette.
+const FLAGGED_AVATAR: WorldRecord = {
+  id: 'showcase-ember-stride',
+  name: 'Ember Stride',
+  description: 'By mira-vale.',
+  kind: 'model',
+  thumbnail_file: 'showcase-stand-in.png',
+  placeholder: true,
+  author: { id: 'mira-vale', username: 'mira-vale' },
+  downloads: 12,
+  comment_count: 1,
+  likes: 4,
+  liked: false,
+  tags: [],
+};
+
 type PendingLike = {
   complete: () => void;
   next: boolean;
@@ -140,7 +156,7 @@ export function CommunityCardReference() {
       <div className="grid gap-2">
         <h3 id="community-card-reference-title" className="text-heading">Community Creation Cards</h3>
         <Hint>
-          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity or Avatar card puts its image beside the text instead. An entity with no image shows its Morph art. So does an entity that the server flags as a stand-in.
+          Each card shows a creation. The title and author appear on the image. The description, counts, and tags appear below the image. An entity or Avatar card puts its image beside the text instead. An entity or Avatar with no image shows its Morph art. An entity or Avatar that the server flags as a stand-in shows it too.
         </Hint>
       </div>
 
@@ -183,6 +199,18 @@ export function CommunityCardReference() {
         />
         <RemoteWorldCard
           world={FEATURED_AVATAR}
+          downloadState="none"
+          downloadProgress={undefined}
+          isAuthenticated
+          currentUser={COMMUNITY_READER}
+          onView={(world) => {
+            setSelectedName(world.name);
+            setLastAction(`The selected creation is ${world.name}.`);
+          }}
+          onContextualDownload={(world) => setLastAction(`The local download action started for ${world.name}.`)}
+        />
+        <RemoteWorldCard
+          world={FLAGGED_AVATAR}
           downloadState="none"
           downloadProgress={undefined}
           isAuthenticated

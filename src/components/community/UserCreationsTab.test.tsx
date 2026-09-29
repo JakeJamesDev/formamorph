@@ -105,6 +105,16 @@ describe('a creation’s picture', () => {
     expect(screen.queryByRole('img', { name: 'Wren' })).toBeNull();
   });
 
+  it('draws Morph art for a flagged avatar and requests no thumbnail', async () => {
+    listing([creation({ kind: 'model', name: 'Wren', thumbnailFile: 'stand-in.png', placeholder: true })]);
+
+    const { container } = render(<UserCreationsTab userId="u1" username="wren_hallow" />);
+    await screen.findByText('Wren');
+
+    expect(container.querySelector('[data-morph-art]')).not.toBeNull();
+    expect(screen.queryByRole('img', { name: 'Wren' })).toBeNull();
+  });
+
   it('shows the stored image of an entity that is not flagged', async () => {
     listing([creation({ kind: 'entity', name: 'Wren', thumbnailFile: 'wren.png' })]);
 
