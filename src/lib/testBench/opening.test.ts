@@ -705,26 +705,44 @@ describe('the persona pick', () => {
     expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
   });
 
+  it('names the persona as the Player Name of its own row', () => {
+    const w = staged({ entities: [{ ...cast()[1], openings: [row('o-wren', '{{user}} steps ashore.', true)] }] });
+    expect(at(w, { personaId: 'e-wren' }).opening.text).toBe('Wren steps ashore.');
+  });
+
+  it('names the Custom Persona entity as the Player Name under None', () => {
+    const w = staged({ entities: [{ ...custom(), openings: [row('o-custom', '{{user}} arrives.', true)] }] });
+    expect(at(w, {}).opening.text).toBe('Newcomer arrives.');
+  });
+
+  it('reads the Player Name as "you" when the world has no persona to play', () => {
+    const w = staged({ worldOverview: { ...ov, openings: [row('o-world', '{{user}} wake.')] } });
+    expect(at(w, {}).opening.text).toBe('You wake.');
+  });
+
   it('shows the default opening when the switch is off, whatever the persona', () => {
     const off = staged({ worldOverview: { ...ov, openings: [row('o-world', 'The fen wakes.')], openingsEnabled: false } });
     expect(at(off, { personaId: 'e-wren' }).pool).toEqual([]);
   });
 
   // The Bench reads the pool play draws from: every row a sweep of new-game draws can land on is a row
-  // the Bench lists, and no other.
+  // the Bench lists, and no other. Row texts are unique and weights equal, so text names a row and the
+  // sweep reaches every one.
   it.each([
     ['a persona with Self rows', { source: 'world', entityId: 'e-wren' } as const, 'e-wren'],
     ['a persona with none', { source: 'world', entityId: 'e-sable' } as const, 'e-sable'],
     ['None', { source: 'none' } as const, null],
   ])('lists exactly what play draws for %s', (_label, ref, personaId) => {
     const w = staged({ entities: [...cast(), custom()] });
-    const drawn = new Set<string>();
-    for (let i = 0; i < 50; i++) {
-      drawn.add(drawNewGameOpening({
-        pick: { ref }, worldEntities: w.entities ?? [], overview: w.worldOverview, locations: w.locations,
-        startingLocationId: 'harbor', picked: [], random: () => i / 50,
-      }).draw.opening.text);
+    for (const start of ['harbor', 'market']) {
+      const drawn = new Set<string>();
+      for (let i = 0; i < 50; i++) {
+        drawn.add(drawNewGameOpening({
+          pick: { ref }, worldEntities: w.entities ?? [], overview: w.worldOverview, locations: w.locations,
+          startingLocationId: start, picked: [], random: () => i / 50,
+        }).draw.opening.text);
+      }
+      expect(new Set(texts(at(w, { personaId, startLocationId: start })))).toEqual(drawn);
     }
-    expect(new Set(texts(at(w, { personaId })))).toEqual(drawn);
   });
 });

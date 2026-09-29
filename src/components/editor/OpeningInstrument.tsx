@@ -243,7 +243,7 @@ export function OpeningInstrument({ data, onReroll, onStartChange, onPersonaChan
                   ))}
                 </SelectContent>
               </Select>
-              <p className="min-w-0 truncate text-meta text-muted-foreground">who the player plays at Enter World</p>
+              <p className="min-w-0 truncate text-meta text-muted-foreground">sets who you play</p>
             </div>
           )}
           {data.starts.length > 1 ? (

@@ -1,6 +1,6 @@
 # 07: Test Bench Persona Preview
 
-Status: in-progress
+Status: ready-for-human
 Base: 207679e4
 Blocked by: 04; 05
 Recommended model: Claude Sonnet 5 (`claude-sonnet-5`)
@@ -14,6 +14,6 @@ The Test Bench's opening view gets a persona picker beside its start picker: Non
 
 ## Acceptance criteria
 
-- [ ] The opening lens suite covers a persona pick that replaces the pool with Self rows, None with a Custom Persona entity, and location rows at the picked start.
-- [ ] The Bench reads the shared pool rule; no second copy of it.
-- [ ] Four gates green; changelog In Progress entry.
+- [x] The opening lens suite covers a persona pick that replaces the pool with Self rows, None with a Custom Persona entity, and location rows at the picked start.
+- [x] The Bench reads the shared pool rule; no second copy of it.
+- [x] Four gates green; changelog In Progress entry.
