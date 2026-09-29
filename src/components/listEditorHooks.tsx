@@ -23,9 +23,9 @@ export type ListEditorRow = {
 
 /** What one list plugs into the List Editor. */
 export type ListEditorAdapter = {
-  /** The list drawn while no search is typed. */
-  tree: ReactNode;
-  /** Every row a search can find; read only while a search is typed. */
+  /** The list drawn while no search is typed. A flat list omits it, and the shell draws every row. */
+  tree?: ReactNode;
+  /** Every row a search can find, read while a search is typed; a flat list draws them all without one. */
   rows: () => ListEditorRow[];
   /** The placeholders a row's chips resolve through, for matching and for its label. */
   names: ListSearchNames;
@@ -130,7 +130,7 @@ export function useListEditor(
         {extras?.children}
       </ListSearchToolbar>
     ),
-    list: matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree,
+    list: matches ? searchList(matches) : adapter.isEmpty ? adapter.emptyHint : adapter.tree ?? searchList(adapter.rows()),
     detail: adapter.detail(heldId),
     footer: heldId !== null ? adapter.footer?.(heldId) : undefined,
     fills: heldId !== null && !!adapter.fills?.(heldId),

@@ -280,26 +280,6 @@ function useProvideGameData() {
     setEntities(prevEntities => dropLinksTo(prevEntities, groupId));
   }, [traitGroups]);
 
-  const addStatUpdate = useCallback((newStatUpdate: StatUpdate) => {
-    setStatUpdates(prevStatUpdates => [...prevStatUpdates, {
-      ...newStatUpdate,
-      messageHistory: newStatUpdate.messageHistory || []
-    }]);
-  }, []);
-
-  const updateStatUpdate = useCallback((updatedStatUpdate: StatUpdate) => {
-    setStatUpdates(prevStatUpdates => prevStatUpdates.map(statUpdate =>
-      statUpdate.id === updatedStatUpdate.id ? {
-        ...updatedStatUpdate,
-        messageHistory: updatedStatUpdate.messageHistory || statUpdate.messageHistory || []
-      } : statUpdate
-    ));
-  }, []);
-
-  const removeStatUpdate = useCallback((statUpdateId: string) => {
-    setStatUpdates(prevStatUpdates => prevStatUpdates.filter(statUpdate => statUpdate.id !== statUpdateId));
-  }, []);
-
   const updateWorldOverview = useCallback((updates: Partial<WorldOverview>) => {
     setWorldOverview(prev => ({ ...prev, ...updates }));
   }, []);
@@ -647,9 +627,6 @@ function useProvideGameData() {
     addTraitGroup,
     updateTraitGroup,
     removeTraitGroup,
-    addStatUpdate,
-    updateStatUpdate,
-    removeStatUpdate,
     addDictionary,
     updateDictionary,
     removeDictionary,

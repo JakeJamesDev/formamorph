@@ -11,7 +11,7 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld, newEntity, newLocation, newStat,
+  entityRootCount, newBlankWorld, newEntity, newLocation,
 } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
@@ -61,7 +61,7 @@ import { toast } from 'react-toastify';
 import { toastError } from '@/lib/linkToast';
 import { ThemedToastContainer } from '@/components/ThemedToastContainer';
 import 'react-toastify/dist/ReactToastify.css';
-import StatManager from '../managers/StatManager';
+import { useWorldStatsAdapter } from '../managers/useWorldStatsAdapter';
 import EntityManager from '../managers/EntityManager';
 import LocationManager from '../managers/LocationManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
@@ -80,7 +80,6 @@ import {
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
-import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
 import DictionaryManager from '../managers/DictionaryManager';
@@ -106,7 +105,7 @@ import { arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import { UnsavedChangesDialog } from "@/components/UnsavedChangesDialog";
 import { APP_VERSION } from '@/lib/version';
-import type { Stat, Entity, GameLocation, StatUpdate, Dictionary, World, ContentLink, FocusFieldHint } from '@/types';
+import type { Entity, GameLocation, Dictionary, World, ContentLink, FocusFieldHint } from '@/types';
 import { useDownscalePrompt } from '@/lib/useDownscalePrompt';
 import { SortableRow, type SortableListItem } from '@/components/SortableList';
 import { ContentLinkIcon, SelectedContentActions } from '@/components/ContentLinkStatus';
@@ -139,15 +138,15 @@ const WorldEditorInner = ({
   const {
     updateWorldOverview, worldId, worldOverview,
     loadWorldData, getWorldData,
-    stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
+    stats, locations, entities, entityGroups, traits, traitGroups, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups,
-    addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
+    addStat, addLocation, addEntity, addTrait, addDictionary,
     addEntityGroup, addPlaceholder,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
-    removeStat, removeLocation, removeStatUpdate,
-    setStats, setLocations, setEntities, setStatUpdates, setDictionaries,
+    removeLocation,
+    setLocations, setEntities, setDictionaries,
     isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
@@ -671,20 +670,10 @@ const WorldEditorInner = ({
   const addItem = (typed: string) => {
     const newId = randomUUID();
 
-    if (activeTab === "stats") {
-      addStat(newStat(newId, typed || undefined));
-    } else if (activeTab === "entities") {
+    if (activeTab === "entities") {
       addEntity(newEntity(newId, entityRootSiblingCount(), typed || undefined));
     } else if (activeTab === "locations") {
       addLocation(newLocation(newId, typed || undefined));
-    } else if (activeTab === "statUpdates") {
-      addStatUpdate({
-        id: newId,
-        name: typed || 'New Stat Update',
-        prompt: '',
-        stats: [],
-        messageHistory: []
-      });
     } else {
       return;
     }
@@ -710,13 +699,11 @@ const WorldEditorInner = ({
 
   const filteredItems = useMemo(() => {
     const itemsToFilter =
-      activeTab === "stats" ? stats :
       activeTab === "entities" ? entities :
-      activeTab === "locations" ? locations :
-      activeTab === "statUpdates" ? statUpdates : [];
+      activeTab === "locations" ? locations : [];
     const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
     return itemsToFilter.filter((item) => matchesListSearch(item.name, search.term, names));
-  }, [activeTab, stats, entities, locations, statUpdates, search.term, placeholders, placementLetters, placeholderOwners]);
+  }, [activeTab, entities, locations, search.term, placeholders, placementLetters, placeholderOwners]);
 
   // The search results reuse one row for every tab, and entities are the only kind here that follows a
   // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
@@ -755,15 +742,22 @@ const WorldEditorInner = ({
   const placeholdersParts = useListEditor(placeholdersEditor.adapter, {
     selectedId: selections.placeholders ?? null, onSelect: selectPlaceholder, search,
   });
+  const selectStat = useCallback((id: string | null) => select('stats', id), [select]);
+  const statsAdapter = useWorldStatsAdapter({
+    onSelect: selectStat, search, tab: shownStatTab, onTabChange: setStatTab, focusField: findField,
+  });
+  const statsParts = useListEditor(statsAdapter, { selectedId: selections.stats ?? null, onSelect: selectStat, search });
   // The active tab's List Editor parts, on a tab that runs on it.
-  const listEditorParts = activeTab === 'traits' ? traitsParts : activeTab === 'placeholders' ? placeholdersParts : null;
+  const listEditorParts = activeTab === 'traits' ? traitsParts
+    : activeTab === 'placeholders' ? placeholdersParts
+    : activeTab === 'stats' ? statsParts
+    : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   // Mirrors the panel branches in detailContent.
-  const detailFills = (activeTab === "stats" && !!selectedItem)
-    || (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity)
+  const detailFills = (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity)
     || (activeTab === "locations" && !!selectedItem)
     || !!listEditorParts?.fills
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
@@ -792,10 +786,8 @@ const WorldEditorInner = ({
 
   // Per-tab data + setter so list behavior (selection, drag-reorder) is uniform across tabs.
   const tabConfig = {
-    stats: { items: stats, setItems: setStats },
     entities: { items: entities, setItems: setEntities },
     locations: { items: locations, setItems: setLocations },
-    statUpdates: { items: statUpdates, setItems: setStatUpdates },
   };
 
   // Reorder the active tab's full array (filter-safe: located by id).
@@ -836,14 +828,10 @@ const WorldEditorInner = ({
 
   const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
   const removeItem = (id: string) => {
-    if (activeTab === "stats") {
-      removeStat(id);
-    } else if (activeTab === "entities") {
+    if (activeTab === "entities") {
       askRemoveEntity(id);
     } else if (activeTab === "locations") {
       removeLocation(id);
-    } else if (activeTab === "statUpdates") {
-      removeStatUpdate(id);
     }
     setSelectedItemId(null);
   };
@@ -888,7 +876,6 @@ const WorldEditorInner = ({
   const listContent = (
     <>
       {activeTab === "overview" && <WorldOverviewManager />}
-      {activeTab === "stats" && renderItemList(filteredItems)}
       {activeTab === "entities" && (search.typed ? renderItemList(filteredItems) : <EntityTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
       {activeTab === "locations" && (canvasView
         ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
@@ -898,7 +885,6 @@ const WorldEditorInner = ({
       {placeholdersEditor.dialog}
       {removeEntityDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
-      {activeTab === "statUpdates" && renderItemList(filteredItems)}
     </>
   );
   const detailContent = (
@@ -914,15 +900,6 @@ const WorldEditorInner = ({
         <WorldDetailsManager
           focusField={findField}
           onOpenEntity={(id) => navigateToBenchItem('entities', id, 'openings')}
-        />
-      )}
-      {activeTab === "stats" && selectedItem && (
-        <StatManager
-          key={selectedItem.id}
-          stat={selectedItem as Stat}
-          tab={shownStatTab}
-          onTabChange={setStatTab}
-          focusField={focusFieldForItem(findField, selectedItem.id)}
         />
       )}
       {activeTab === "entities" && selectedEntityGroup && (
@@ -974,9 +951,6 @@ const WorldEditorInner = ({
           onTabChange={setEntryTab}
           focusField={focusFieldForItem(findField, selectedEntry.id)}
         />
-      )}
-      {activeTab === "statUpdates" && selectedItem && (
-        <StatUpdatesManager key={selectedItem.id} statUpdate={selectedItem as StatUpdate} />
       )}
     </div>
     </ChipInsertTargetProvider>
