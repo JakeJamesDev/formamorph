@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ListEditor } from '@/components/ListEditor';
 import { usePlaceholderStore } from '@/contexts/PlaceholderStoreContext';
 import { usePlacementLetters } from '@/contexts/PlacementLettersContext';
@@ -15,10 +15,11 @@ import { usePlaceholderRowActions } from './usePlaceholderRowActions';
  * the detail router's pane. Reads the modal's own store. `carriedBlueprints` are an entity card's blueprints,
  * which its copies open over read-only; a book passes none.
  */
-const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints }: {
+const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints, detailHeader }: {
   /** The item's name, which a copy reads as its owner's. */
   ownerName: string;
   carriedBlueprints?: readonly Placeholder[];
+  detailHeader?: ReactNode;
 }) => {
   const { placeholders } = usePlaceholderStore();
   const letters = usePlacementLetters();
@@ -42,7 +43,7 @@ const LibraryPlaceholdersEditor = ({ ownerName, carriedBlueprints }: {
   });
   return (
     <>
-      <ListEditor adapter={adapter} layout="sideBySide" selectedId={selectedId} onSelect={setSelectedId} backLabel="Placeholders" />
+      <ListEditor adapter={adapter} layout="sideBySide" selectedId={selectedId} onSelect={setSelectedId} backLabel="Placeholders" detailHeader={detailHeader} />
       {dialog}
     </>
   );

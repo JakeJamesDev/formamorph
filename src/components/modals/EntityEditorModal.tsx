@@ -4,7 +4,7 @@ import { toastError } from '@/lib/linkToast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import EditorModalShell from './EditorModalShell';
 import { FieldColumn } from './FieldColumn';
-import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
+import { DETAIL_PALETTE_CLASS, LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { EntityDescriptionFields, EntityProfileFields } from '@/managers/EntityFields';
 import { EntityOpenings } from '@/managers/OpeningsPanel';
 import {
@@ -257,26 +257,22 @@ const EntityEditorModal = ({
             </FieldColumn>
           </div>
         ) : entity && tab === 'traits' ? (
-          // The palette the other tabs get, over the trait fields.
+          // The palette tops the detail pane, over the fields it fills, as in the World Editor.
           <ChipInsertTargetProvider>
-            <div className="flex min-h-0 flex-1 flex-col">
-              <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
-              <LibraryTraitsEditor
-                entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
-              />
-            </div>
+            <LibraryTraitsEditor
+              entity={entity} setEntity={setEntity} placeholders={pool} onOpenEntity={() => setTab('entity')} world={traitWorld}
+              detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
+            />
           </ChipInsertTargetProvider>
         ) : (
-          // The same palette the field tabs get, over the value fields: a value is a chip field too.
+          // A value is a chip field too, so the palette tops the detail pane here as well.
           <ChipInsertTargetProvider>
-            <div className="flex min-h-0 flex-1 flex-col">
-              <PlaceholderPaletteBar placeholders={pool} className="mx-0 mb-0 px-4" />
-              {/* A copy reads the blueprints the card carries and never writes them. */}
-              <LibraryPlaceholdersEditor
-                ownerName={labelPlaceholders(entity?.name ?? '', pool, { letters })}
-                carriedBlueprints={entity?.blueprints ?? NO_BLUEPRINTS}
-              />
-            </div>
+            {/* A copy reads the blueprints the card carries and never writes them. */}
+            <LibraryPlaceholdersEditor
+              ownerName={labelPlaceholders(entity?.name ?? '', pool, { letters })}
+              carriedBlueprints={entity?.blueprints ?? NO_BLUEPRINTS}
+              detailHeader={<PlaceholderPaletteBar placeholders={pool} className={DETAIL_PALETTE_CLASS} />}
+            />
           </ChipInsertTargetProvider>
         )}
       </EditorModalShell>

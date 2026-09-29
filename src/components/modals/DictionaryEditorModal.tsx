@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { EmptyListHint } from '@/components/EmptyListHint';
 import EditorModalShell from './EditorModalShell';
 import { FieldColumn } from './FieldColumn';
-import { LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
+import { DETAIL_PALETTE_CLASS, LIBRARY_EDITOR_CONTENT_CLASS } from './libraryEditorLayout';
 import { DictionaryStoreProvider, useDictionaryStore, useDictionaryStoreState } from '@/contexts/DictionaryStoreContext';
 import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
@@ -64,16 +64,13 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
     detail: () => (
       <FieldColumn fill>
         {selectedEntry ? (
-          <ChipInsertTargetProvider>
-            <PlaceholderPaletteBar placeholders={bookPlaceholders} />
-            <DictionaryManager
-              key={selectedEntry.id}
-              entry={selectedEntry}
-              placeholders={bookPlaceholders}
-              tab={entryTab}
-              onTabChange={onEntryTabChange}
-            />
-          </ChipInsertTargetProvider>
+          <DictionaryManager
+            key={selectedEntry.id}
+            entry={selectedEntry}
+            placeholders={bookPlaceholders}
+            tab={entryTab}
+            onTabChange={onEntryTabChange}
+          />
         ) : (
           <p className="text-helper text-muted-foreground">Select an entry to edit it</p>
         )}
@@ -90,14 +87,18 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
   };
   return (
     <>
-      <ListEditor
-        adapter={adapter}
-        layout="sideBySide"
-        selectedId={selectedId}
-        onSelect={onSelect}
-        backLabel="Dictionary"
-        toolbarChildren={book?.entries.length === 0 && <EmptyListHint noun="entries" />}
-      />
+      {/* The palette tops the detail pane whether or not an entry is open, as in the World Editor. */}
+      <ChipInsertTargetProvider>
+        <ListEditor
+          adapter={adapter}
+          layout="sideBySide"
+          selectedId={selectedId}
+          onSelect={onSelect}
+          backLabel="Dictionary"
+          toolbarChildren={book?.entries.length === 0 && <EmptyListHint noun="entries" />}
+          detailHeader={<PlaceholderPaletteBar placeholders={bookPlaceholders} className={DETAIL_PALETTE_CLASS} />}
+        />
+      </ChipInsertTargetProvider>
       {actions.dialog}
     </>
   );
@@ -257,12 +258,12 @@ const DictionaryEditorModal = ({ dictionaryId, draft, onClose, onPublish, initia
               {dictionaries[0] && <DictionaryOverviewManager book={dictionaries[0]} author={libraryDetails?.author} onAuthorChange={(author) => setLibraryDetails((prev) => ({ ...prev, author }))} />}
             </ScrollArea>
           ) : tab === 'placeholders' ? (
-            // The same palette an entry gets, over the value fields: a value is a chip field too.
+            // A value is a chip field too, so the palette tops the detail pane, as an entry's does.
             <ChipInsertTargetProvider>
-              <div className="flex min-h-0 flex-1 flex-col">
-                <PlaceholderPaletteBar placeholders={bookPlaceholders} className="mx-0 mb-0 px-4" />
-                <LibraryPlaceholdersEditor ownerName={labelPlaceholders(dictionaries[0]?.name ?? '', bookPlaceholders, { letters })} />
-              </div>
+              <LibraryPlaceholdersEditor
+                ownerName={labelPlaceholders(dictionaries[0]?.name ?? '', bookPlaceholders, { letters })}
+                detailHeader={<PlaceholderPaletteBar placeholders={bookPlaceholders} className={DETAIL_PALETTE_CLASS} />}
+              />
             </ChipInsertTargetProvider>
           ) : (
             <LibraryEntriesEditor
