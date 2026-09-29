@@ -77,15 +77,24 @@ describe('renameParam', () => {
 
 describe('withHandlerKind', () => {
   it('starts a lookup on the first parameter', () => {
-    const next = withHandlerKind(draft({ handler: { kind: 'script', code: 'return 1;' } }), 'lookup');
+    const next = withHandlerKind(draft({ handler: { kind: 'script', code: 'return 1;' } }), 'lookup').draft;
     expect(next.handler).toEqual({ kind: 'lookup', source: 'entities', param: 'name', returns: 'full' });
   });
 
   it('starts a blank Template or Script, and keeps the handler when the kind is unchanged', () => {
-    expect(withHandlerKind(draft(), 'template').handler).toEqual({ kind: 'template', body: '' });
-    expect(withHandlerKind(draft(), 'script').handler).toEqual({ kind: 'script', code: '' });
+    expect(withHandlerKind(draft(), 'template').draft.handler).toEqual({ kind: 'template', body: '' });
+    expect(withHandlerKind(draft(), 'script').draft.handler).toEqual({ kind: 'script', code: '' });
     const d = draft();
-    expect(withHandlerKind(d, 'lookup')).toBe(d);
+    expect(withHandlerKind(d, 'lookup').draft).toBe(d);
+  });
+
+  it('keeps the handler switched away from and restores it on the way back', () => {
+    const script = { kind: 'script', code: 'return 1;' } as const;
+    const away = withHandlerKind(draft({ handler: script }), 'template');
+    expect(away.kept).toEqual({ script });
+    const back = withHandlerKind(away.draft, 'script', away.kept);
+    expect(back.draft.handler).toEqual(script);
+    expect(back.kept).toEqual({ script, template: { kind: 'template', body: '' } });
   });
 });
 

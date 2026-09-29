@@ -1035,7 +1035,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
   // DEV dev-router: `tab=tools&subtab=<edit tab>` opens a New Tool draft on that tab.
   useEffect(() => {
     const editTab = TOOL_EDIT_TABS.find((t) => t.value === initialPromptTab)?.value;
-    if (initialTab === 'tools' && editTab) setToolsView({ selectedId: null, draft: blankTool(randomUUID()), editTab });
+    if (initialTab === 'tools' && editTab) setToolsView({ selectedId: null, draft: blankTool(randomUUID()), editTab, keptHandlers: {} });
   }, [initialTab, initialPromptTab]);
   // Selecting a prompt — including re-selecting the open one — returns to its hub, so the map is always
   // one click away from any editor.

@@ -18,7 +18,7 @@ import { plainVocabulary } from '@/lib/chipVocabulary';
 import { cn } from '@/lib/utils';
 import {
   draftProblems, finishDraft, hasDraftProblems, namedParams, renameParam, withHandlerKind,
-  type DraftProblems, type HandlerProblem, type ParamProblem,
+  type DraftProblems, type KeptHandlers, type HandlerProblem, type ParamProblem,
 } from '@/lib/tools/toolDraft';
 import { toolScriptSurface } from '@/lib/tools/toolScriptSurface';
 import { toolTemplateVocabulary } from '@/lib/tools/toolTemplateVocabulary';
@@ -60,10 +60,10 @@ const PARAM_TYPES: readonly { value: ToolParamType; label: string }[] = [
   { value: 'enum', label: 'One of a List' },
 ];
 
-const HANDLER_KINDS: readonly { value: ToolHandler['kind']; label: string }[] = [
-  { value: 'lookup', label: 'Lookup' },
-  { value: 'template', label: 'Template' },
-  { value: 'script', label: 'Script' },
+const HANDLER_KINDS: readonly { value: ToolHandler['kind']; label: string; help: string }[] = [
+  { value: 'lookup', label: 'Lookup', help: 'Searches world data for the value the AI passes' },
+  { value: 'template', label: 'Template', help: 'Returns your text with the AI’s values filled in' },
+  { value: 'script', label: 'Script', help: 'Runs your code on the AI’s values and returns the result' },
 ];
 
 type LookupSource = Extract<ToolHandler, { kind: 'lookup' }>['source'];
@@ -210,7 +210,9 @@ function ParametersTab({ draft, onChange, problems }: TabProps) {
   );
 }
 
-function HandlerTab({ draft, onChange, problems, placeholderNames }: TabProps & { placeholderNames: readonly string[] }) {
+function HandlerTab({ draft, onChange, onKindChange, problems, placeholderNames }: TabProps & {
+  onKindChange: (kind: ToolHandler['kind']) => void; placeholderNames: readonly string[];
+}) {
   const id = useId();
   const { handler, params } = draft;
   const named = namedParams(params);
@@ -221,10 +223,18 @@ function HandlerTab({ draft, onChange, problems, placeholderNames }: TabProps & 
   const setHandler = (next: ToolHandler) => onChange({ ...draft, handler: next });
   return (
     <div className="flex flex-col gap-4">
-      <OptionSwitcher
-        ariaLabel="Handler" value={handler.kind} options={HANDLER_KINDS}
-        onChange={(kind) => onChange(withHandlerKind(draft, kind))}
-      />
+      <div className="flex flex-col gap-1">
+        <Label>Handler Type</Label>
+        <OptionSwitcher ariaLabel="Handler Type" value={handler.kind} options={HANDLER_KINDS} onChange={onKindChange} />
+        {/* Stacked so switching types doesn't reflow the fields below. */}
+        <div className="grid">
+          {HANDLER_KINDS.map((k) => (
+            <Hint key={k.value} className={cn('col-start-1 row-start-1', k.value !== handler.kind && 'invisible')}>
+              {k.help}
+            </Hint>
+          ))}
+        </div>
+      </div>
       {handler.kind === 'lookup' && (
         <div className="flex flex-col gap-1">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -330,10 +340,13 @@ function fixesToSave(draft: Tool, problems: DraftProblems): string | null {
  * beside them, and Cancel and Save Tool below. The draft and the tab live with the caller.
  */
 export function ToolEditor({
-  draft, onDraftChange, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton, onCancel, onSave,
+  draft, onDraftChange, keptHandlers, editTab, onEditTabChange, userTools, editing, world, fullscreen, fullscreenButton,
+  onCancel, onSave,
 }: {
   draft: Tool;
-  onDraftChange: Change;
+  /** Takes the new kept handlers too when a handler type switch changed them. */
+  onDraftChange: (next: Tool, kept?: KeptHandlers) => void;
+  keptHandlers: KeptHandlers;
   editTab: ToolEditTab;
   onEditTabChange: (tab: ToolEditTab) => void;
   /** The user Tools, for the name check. */
@@ -350,7 +363,11 @@ export function ToolEditor({
   const problems = draftProblems(draft, userTools);
   const blocked = hasDraftProblems(problems);
   const fixes = fixesToSave(draft, problems);
-  const body = { draft, onChange: onDraftChange, problems };
+  const body = { draft, onChange: (next: Tool) => onDraftChange(next), problems };
+  const switchKind = (kind: ToolHandler['kind']) => {
+    const next = withHandlerKind(draft, kind, keptHandlers);
+    onDraftChange(next.draft, next.kept);
+  };
   // Autocomplete lists the shared placeholders of the world Try It runs on.
   const { snapshot } = world;
   const placeholderNames = useMemo(() => Object.keys(snapshot().placeholders), [snapshot]);
@@ -377,7 +394,7 @@ export function ToolEditor({
             <div className="pr-3 pb-1">
               <TabsContent value="definition" className="mt-0"><DefinitionTab {...body} /></TabsContent>
               <TabsContent value="parameters" className="mt-0"><ParametersTab {...body} /></TabsContent>
-              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} placeholderNames={placeholderNames} /></TabsContent>
+              <TabsContent value="handler" className="mt-0"><HandlerTab {...body} onKindChange={switchKind} placeholderNames={placeholderNames} /></TabsContent>
             </div>
           </ScrollArea>
         </Tabs>
