@@ -94,8 +94,8 @@ export function OpeningsPanel({ onOpenEntity, onOpenLocation }: {
             <div className="space-y-1">
               <Hint>
                 {view.defaultStarts.length
-                  ? `No opening can come up at ${OR.format(view.defaultStarts.map((l) => label(l.name)))}, so a game there starts on the text below.`
-                  : 'No opening can come up, so every game starts on the text below.'}
+                  ? `No opening can come up at ${OR.format(view.defaultStarts.map((l) => label(l.name)))}, so a game there starts on the text below`
+                  : 'No opening can come up, so every game starts on the text below'}
               </Hint>
               <div
                 role="note"

@@ -1,6 +1,6 @@
 # 06: Starting Location Filter
 
-Status: in-progress
+Status: ready-for-human
 Base: 20fae434
 Blocked by: 04; 05
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -20,6 +20,6 @@ The world Openings panel's **Chances At** picker becomes a **Starting Location**
 
 ## Acceptance criteria
 
-- [ ] The World Details suite covers the default and options, chances hidden under All, filtering at a start, Self rows under every filter with their own chances, and every default-card case.
-- [ ] Verified in the live preview on a world with 2+ starts and entity, location and Self openings.
-- [ ] Four gates green; changelog In Progress entry.
+- [x] The World Details suite covers the default and options, chances hidden under All, filtering at a start, Self rows under every filter with their own chances, and every default-card case.
+- [x] Verified in the live preview on a world with 2+ starts and entity, location and Self openings.
+- [x] Four gates green; changelog In Progress entry.
