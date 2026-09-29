@@ -101,7 +101,7 @@ describe('publishing from the details view', () => {
     const onPublish = vi.fn();
     render(<ModelDetailsModal model={model} onPublish={onPublish} onClose={() => {}} />);
 
-    await userEvent.click(await screen.findByRole('button', { name: /publish avatar/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /^publish$/i }));
 
     expect(onPublish).toHaveBeenCalledWith(model);
   });
@@ -114,13 +114,32 @@ describe('publishing from the details view', () => {
 
     render(<ModelDetailsModal model={unshareable} onPublish={vi.fn()} onClose={() => {}} />);
 
-    expect(await screen.findByRole('button', { name: /publish avatar/i })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /^publish$/i })).toBeEnabled();
   });
 
   it('offers nothing to a reader who cannot publish at all', async () => {
     render(<ModelDetailsModal model={model} onClose={() => {}} />);
 
-    await screen.findByRole('button', { name: /export avatar/i });
-    expect(screen.queryByRole('button', { name: /publish avatar/i })).not.toBeInTheDocument();
+    await screen.findByRole('button', { name: /^export$/i });
+    expect(screen.queryByRole('button', { name: /^publish$/i })).not.toBeInTheDocument();
+  });
+
+  it('puts Export and Publish in one row at equal width', async () => {
+    render(<ModelDetailsModal model={model} onPublish={vi.fn()} onClose={() => {}} />);
+
+    const exportButton = await screen.findByRole('button', { name: /^export$/i });
+    const publishButton = screen.getByRole('button', { name: /^publish$/i });
+    expect(exportButton.parentElement).toBe(publishButton.parentElement);
+    expect(exportButton.parentElement).toHaveClass('flex');
+    expect(exportButton).toHaveClass('flex-1');
+    expect(publishButton).toHaveClass('flex-1');
+  });
+
+  it('lets Export fill the row when Publish is absent', async () => {
+    render(<ModelDetailsModal model={model} onClose={() => {}} />);
+
+    const exportButton = await screen.findByRole('button', { name: /^export$/i });
+    expect(exportButton).toHaveClass('flex-1');
+    expect(exportButton.parentElement?.children).toHaveLength(1);
   });
 });

@@ -71,7 +71,7 @@ const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fil
       onClose={onClose}
       footer={
         <Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={!blob}>
-          <ActionIcon.export className="mr-2 h-4 w-4" /> Export Avatar
+          <ActionIcon.export className="mr-2 h-4 w-4" /> Export
         </Button>
       }
     />

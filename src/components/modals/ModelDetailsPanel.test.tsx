@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ModelDetailsPanel } from './ModelDetailsPanel';
+import { useAvatarDetailsOpen } from '@/lib/useAvatarDetailsOpen';
 import type { VrmLicense } from '@/types';
 
 // The real viewer needs a WebGL context jsdom doesn't have; this suite is about the license verdict shown
@@ -16,10 +18,18 @@ const PERMISSIVE: VrmLicense = {
   commercialUse: 'corporation',
 };
 
-const renderPanel = (license?: VrmLicense) =>
-  render(
+const KEY = 'fm-avatar-details-open';
+
+beforeEach(() => localStorage.clear());
+afterEach(() => vi.restoreAllMocks());
+
+/** Renders with the details table open, the state most of these checks read. */
+const renderPanel = (license?: VrmLicense) => {
+  localStorage.setItem(KEY, '1');
+  return render(
     <ModelDetailsPanel open name="Test Avatar" url="blob:test" license={license} size={1024} onClose={() => {}} />,
   );
+};
 
 describe('ModelDetailsPanel Permissive License verdict', () => {
   it('shows Shareable for a license meeting every requirement, naming no requirement', () => {
@@ -55,5 +65,47 @@ describe('ModelDetailsPanel Permissive License verdict', () => {
   it('gates a model whose license has not resolved yet the same as a plain glTF, never as a pass', () => {
     renderPanel(undefined);
     expect(screen.getByText('Not shareable')).toBeInTheDocument();
+  });
+});
+
+describe('ModelDetailsPanel details collapse', () => {
+  const mount = () =>
+    render(<ModelDetailsPanel open name="Test Avatar" url="blob:test" license={PERMISSIVE} size={1024} onClose={() => {}} />);
+
+  it('starts collapsed', () => {
+    mount();
+    expect(screen.getByRole('button', { name: /details/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Shareable')).not.toBeInTheDocument();
+  });
+
+  it('opens on press and stores the choice', async () => {
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: /details/i }));
+    expect(screen.getByText('Shareable')).toBeInTheDocument();
+    expect(localStorage.getItem(KEY)).toBe('1');
+  });
+
+  it('reads the stored state on a fresh mount', () => {
+    localStorage.setItem(KEY, '1');
+    mount();
+    expect(screen.getByText('Shareable')).toBeInTheDocument();
+  });
+
+  it('shares the state with every other mounted surface', async () => {
+    // Two open dialogs block each other's pointer events, so the second surface is a bare hook consumer.
+    const Other = () => <span data-testid="other">{String(useAvatarDetailsOpen()[0])}</span>;
+    render(<Other />);
+    mount();
+    await userEvent.click(screen.getByRole('button', { name: /details/i }));
+    expect(screen.getByTestId('other')).toHaveTextContent('true');
+  });
+
+  it('falls back to collapsed when storage throws, and still opens for the session', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    mount();
+    expect(screen.queryByText('Shareable')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /details/i }));
+    expect(screen.getByText('Shareable')).toBeInTheDocument();
   });
 });

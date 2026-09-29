@@ -49,7 +49,7 @@ const openPreview = async () => {
   const user = userEvent.setup();
   render(<WorldOverviewManager />);
   await user.click(screen.getByRole('button', { name: 'Preview' }));
-  const exportButton = await screen.findByRole('button', { name: /Export Avatar/ });
+  const exportButton = await screen.findByRole('button', { name: /^Export$/ });
   await waitFor(() => expect(exportButton).toBeEnabled());
   return { user, exportButton };
 };
@@ -102,7 +102,7 @@ describe('exporting the world editor\'s player avatar', () => {
     render(<WorldOverviewManager />);
     await user.click(screen.getByRole('button', { name: 'Preview' }));
 
-    const exportButton = await screen.findByRole('button', { name: /Export Avatar/ });
+    const exportButton = await screen.findByRole('button', { name: /^Export$/ });
     expect(exportButton).toBeDisabled();
     release(new Response(AVATAR_BYTES));
     await waitFor(() => expect(exportButton).toBeEnabled());
