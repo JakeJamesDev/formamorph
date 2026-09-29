@@ -92,4 +92,20 @@ describe('the library dictionary editor’s entry search', () => {
     expect(within(entryList()).getByText('Bog Lights')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Search or add new entries')).toHaveValue('');
   });
+
+  it('adds an Untitled entry from an empty box', async () => {
+    await open();
+    fireEvent.click(within(entryList()).getByRole('button', { name: 'Add entry' }));
+    expect(within(entryList()).getByText('Untitled')).toBeInTheDocument();
+  });
+
+  it('keeps a folded zone folded through a search', async () => {
+    await open();
+    fireEvent.click(within(entryList()).getByRole('button', { name: /Background/ }));
+    expect(within(entryList()).queryByText('Quiet Folk')).toBeNull();
+    search('lant');
+    search('');
+    expect(within(entryList()).queryByText('Quiet Folk')).toBeNull();
+    expect(within(entryList()).getByText('Hostile Forces')).toBeInTheDocument();
+  });
 });

@@ -733,16 +733,13 @@ const WorldEditorInner = ({
     : activeTab === 'locations' ? locationsParts
     : activeTab === 'dictionary' ? dictionaryParts
     : null;
-  // Dictionary tab: selection is either a book or one of its entries.
-  const selectedBook = dictionaries.find(b => b.id === selections.dictionary);
-  const selectedEntryBook = dictionaries.find(b => b.entries.some(e => e.id === selections.dictionary));
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
   // owner of what is open on the Placeholders tab.
   const paletteScopeId =
     activeTab === 'entities' ? selectedEntity?.id
-    : activeTab === 'dictionary' ? (selectedBook ?? selectedEntryBook)?.id
+    : activeTab === 'dictionary' ? dictionaryEditor.book?.id
     : activeTab === 'placeholders' ? placeholdersEditor.ownerId
     : undefined;
 
@@ -753,7 +750,8 @@ const WorldEditorInner = ({
   // What the selected-content split button acts on, on the two tabs that have one.
   const selectedLinkable =
     activeTab === 'entities' ? (selectedEntityGroup ? null : selectedEntity)
-    : activeTab === 'dictionary' ? selectedBook
+    // A book, not an entry's book: the button acts on the open book itself.
+    : activeTab === 'dictionary' ? (dictionaryEditor.book?.id === selections.dictionary ? dictionaryEditor.book : undefined)
     : null;
   // "Add" opens the add-from-library picker (characters on Entities, books on Dictionary).
   const showImport = activeTab === 'entities' || activeTab === 'dictionary';

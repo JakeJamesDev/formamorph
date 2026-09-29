@@ -3,19 +3,20 @@ import type { ListEditorAdapter } from '@/components/listEditorHooks';
 import { useDictionaryStore } from '@/contexts/DictionaryStoreContext';
 import { useGameData } from '@/contexts/GameDataContext';
 import { randomUUID } from '@/lib/uuid';
-import type { FocusFieldHint } from '@/types';
+import type { Dictionary, FocusFieldHint } from '@/types';
 import type { DictionaryBookPanelTab } from '@/views/dictionaryBookPanelTabs';
 import type { DictionaryPanelTab } from '@/views/dictionaryPanelTabs';
 import { focusFieldForItem } from '@/views/findFocus';
 import DictionaryBookManager from './DictionaryBookManager';
 import DictionaryManager from './DictionaryManager';
 import DictionaryTree from './DictionaryTree';
-import { useDictionarySearchRows } from './useDictionarySearchRows';
+import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } from './useDictionaryActions';
 
 /**
  * The World Editor's Dictionary tab as a List Editor adapter: the book tree, a flat search over books and
  * entries, and the book or entry panel. The panels' tabs and the book's placeholder row are held by the host.
- * `dialog` is the search rows' book delete confirmation; the host renders it.
+ * The tree's folds live here, so a search keeps them. `dialog` is the search rows' book delete confirmation;
+ * the host renders it. `book` is the open book, or the book of the open entry.
  */
 export function useWorldDictionaryAdapter({
   selectedId, onSelect, bookTab, onBookTabChange, bookPlaceholderId, onBookPlaceholderIdChange,
@@ -31,13 +32,14 @@ export function useWorldDictionaryAdapter({
   entryTab: DictionaryPanelTab;
   onEntryTabChange: (tab: DictionaryPanelTab) => void;
   focusField: FocusFieldHint | null;
-}): { adapter: ListEditorAdapter; dialog: ReactNode } {
+}): { adapter: ListEditorAdapter; dialog: ReactNode; book: Dictionary | undefined } {
   const { placeholders, placementLetters, placeholderOwners } = useGameData();
   const { dictionaries, addDictionary } = useDictionaryStore();
-  const { rows, dialog } = useDictionarySearchRows({ selectedId, onSelect, withBooks: true });
+  const collapse = useDictionaryCollapse();
+  const actions = useDictionaryActions({ selectedId, onSelect, collapse });
 
   // A book's id opens its panel; an entry's opens the entry panel under its book.
-  const shown = (id: string | null) => {
+  const lookup = (id: string | null) => {
     const book = dictionaries.find((b) => b.id === id);
     if (book) return { book };
     const entryBook = dictionaries.find((b) => b.entries.some((e) => e.id === id));
@@ -45,7 +47,7 @@ export function useWorldDictionaryAdapter({
   };
 
   const detail = (id: string | null) => {
-    const { book, entry, entryBook } = shown(id);
+    const { book, entry, entryBook } = lookup(id);
     if (book) {
       return (
         <DictionaryBookManager
@@ -81,9 +83,8 @@ export function useWorldDictionaryAdapter({
   };
 
   const adapter: ListEditorAdapter = {
-    // The tree clears the selection with an empty id; the shell's stale clear turns it into none.
-    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} />,
-    rows,
+    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} collapse={collapse} />,
+    rows: () => dictionarySearchRows(dictionaries, actions, true),
     names: { placeholders, letters: placementLetters, owners: placeholderOwners },
     noun: 'dictionaries',
     detail,
@@ -91,10 +92,11 @@ export function useWorldDictionaryAdapter({
     fills: () => true,
     add: { label: 'Add to Dictionary', onAdd: addBook },
     placeholder: 'Search or add new dictionaries',
-    holds: (id) => { const { book, entry } = shown(id); return !!(book ?? entry); },
+    holds: (id) => { const { book, entry } = lookup(id); return !!(book ?? entry); },
     // The tree draws its own empty hint.
     isEmpty: false,
     emptyHint: null,
   };
-  return { adapter, dialog };
+  const open = lookup(selectedId);
+  return { adapter, dialog: actions.dialog, book: open.book ?? open.entryBook };
 }

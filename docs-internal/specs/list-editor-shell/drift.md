@@ -37,3 +37,5 @@ Behavior the move onto the List Editor found and did not change (Q18). Each row 
 - Ticket 10's dictionary search rows read "Select <label>" to a screen reader, and an entry's label is `Book › Entry` on the tab and bare in the library modal (Q41). Keep: Q32.
 - Ticket 10 found no #2 on the Dictionary tab: the old detail read the open book or entry from every book, so a search never blanks it. The adapter keeps that. Search rows have no grip: dictionary search had no drag before, so #3 doesn't apply.
 - Ticket 10's library modal detail scrolls in the List Editor's pane while no entry is open, where the old pane was a fixed column. The "Select an entry to edit it" hint looks the same. Not ruled; logged for the record.
+- Ticket 10 keeps the tree's folds through a search: the tab and the library modal hold them, since the flat list unmounts the tree. A search-row **Add entry** unfolds its book, as the tree's does.
+- Ticket 10: while a search is typed, the tree's book rows aren't drawn, so the Authoring Tour's `dictionary-add-entry` anchor is missing then. Before, the tab ignored its search and the tree always showed. Not ruled; logged for a later ruling.

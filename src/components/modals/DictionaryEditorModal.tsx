@@ -13,7 +13,7 @@ import DictionaryTree from '@/managers/DictionaryTree';
 import DictionaryOverviewManager from '@/managers/DictionaryOverviewManager';
 import DictionaryManager from '@/managers/DictionaryManager';
 import LibraryPlaceholdersEditor from '@/managers/LibraryPlaceholdersEditor';
-import { useDictionarySearchRows } from '@/managers/useDictionarySearchRows';
+import { dictionarySearchRows, useDictionaryActions, useDictionaryCollapse } from '@/managers/useDictionaryActions';
 import PlaceholderPaletteBar from '@/components/prompt/PlaceholderPaletteBar';
 import { ChipInsertTargetProvider } from '@/components/prompt/ChipInsertTarget';
 import { EditorPreviewRollsProvider } from '@/contexts/EditorPreviewRollsContext';
@@ -51,12 +51,14 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
   letters: PlacementLetters;
 }) {
   const { dictionaries } = useDictionaryStore();
-  const { rows, addEntry, dialog } = useDictionarySearchRows({ selectedId, onSelect, withBooks: false });
+  // Held here so a search, which unmounts the tree, keeps its folds.
+  const collapse = useDictionaryCollapse();
+  const actions = useDictionaryActions({ selectedId, onSelect, collapse });
   const book = dictionaries[0];
-  const selectedEntry = dictionaries.flatMap((b) => b.entries).find((e) => e.id === selectedId);
+  const selectedEntry = book?.entries.find((e) => e.id === selectedId);
   const adapter: ListEditorAdapter = {
-    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} hideBookRow />,
-    rows,
+    tree: <DictionaryTree selectedId={selectedId} onSelect={onSelect} hideBookRow collapse={collapse} />,
+    rows: () => dictionarySearchRows(dictionaries, actions, false),
     names: { placeholders: bookPlaceholders, letters },
     noun: 'entries',
     detail: () => (
@@ -79,7 +81,7 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
     ),
     // The entry panel keeps its tab strip above a body that scrolls itself.
     fills: () => true,
-    add: { label: 'Add entry', onAdd: (typed) => { if (book) addEntry(book.id, typed); } },
+    add: { label: 'Add entry', onAdd: (typed) => { if (book) actions.addEntry(book.id, typed); } },
     placeholder: 'Search or add new entries',
     holds: (id) => !!book?.entries.some((e) => e.id === id),
     // The hint sits beside the + instead.
@@ -96,7 +98,7 @@ function LibraryEntriesEditor({ selectedId, onSelect, entryTab, onEntryTabChange
         backLabel="Dictionary"
         toolbarChildren={book?.entries.length === 0 && <EmptyListHint noun="entries" />}
       />
-      {dialog}
+      {actions.dialog}
     </>
   );
 }
