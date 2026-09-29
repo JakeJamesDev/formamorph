@@ -139,6 +139,26 @@ describe('editing a Tool', () => {
     expect(saved()[0].handler).toEqual({ kind: 'script', code: '' });
   });
 
+  it('restores each handler type’s fields when you switch back, until the edit ends', async () => {
+    const user = userEvent.setup();
+    await openEditor(user);
+    await user.click(tab('Handler'));
+    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    await user.type(screen.getByRole('textbox', { name: 'Script' }), 'return 1;');
+    await user.click(tab('Definition'));
+    await user.click(tab('Handler'));
+    await user.click(screen.getByRole('radio', { name: 'Template' }));
+    expect(screen.getByRole('textbox', { name: 'Template' })).toHaveTextContent('Sunny in place.');
+    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    expect(screen.getByRole('textbox', { name: 'Script' })).toHaveTextContent('return 1;');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(tab('Handler'));
+    await user.click(screen.getByRole('radio', { name: 'Script' }));
+    expect(screen.getByRole('textbox', { name: 'Script' })).toHaveTextContent(/^$/);
+  });
+
   it('writes the empty result and keeps the call limit set on the read page', async () => {
     const user = userEvent.setup();
     await openEditor(user, [weather({ callLimit: 2 })]);

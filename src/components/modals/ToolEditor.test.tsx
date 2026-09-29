@@ -16,7 +16,7 @@ describe('the Handler tab', () => {
     const user = userEvent.setup();
     render(
       <ToolEditor
-        draft={lookup} onDraftChange={vi.fn()} editTab="handler" onEditTabChange={vi.fn()} userTools={[]}
+        draft={lookup} onDraftChange={vi.fn()} keptHandlers={{}} editTab="handler" onEditTabChange={vi.fn()} userTools={[]}
         editing world={{ snapshot: sampleToolSnapshot, open: false }}
         fullscreen={false} fullscreenButton={null} onCancel={vi.fn()} onSave={vi.fn()}
       />,

@@ -166,7 +166,8 @@ export function ToolsTab({
     return (
       <ToolEditor
         draft={draft}
-        onDraftChange={(next) => onViewChange({ ...view, draft: next })}
+        onDraftChange={(next, keptHandlers = view.keptHandlers) => onViewChange({ ...view, draft: next, keptHandlers })}
+        keptHandlers={view.keptHandlers}
         editTab={view.editTab}
         onEditTabChange={(editTab) => onViewChange({ ...view, editTab })}
         userTools={userTools}
@@ -244,7 +245,7 @@ export function ToolsTab({
 
             <button
               type="button"
-              onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID()), editTab: 'definition' })}
+              onClick={() => onViewChange({ ...view, draft: blankTool(randomUUID()), editTab: 'definition', keptHandlers: {} })}
               className="flex items-center gap-1 rounded border border-dashed px-2 py-1.5 text-label text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <Plus className="h-4 w-4" />New Tool
@@ -285,7 +286,7 @@ export function ToolsTab({
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: 'definition' })}>
+              <Button variant="outline" onClick={() => onViewChange({ ...view, draft: structuredClone(selected), editTab: 'definition', keptHandlers: {} })}>
                 <Pencil className="h-4 w-4 mr-1" />Edit
               </Button>
               <Button variant="outline" onClick={() => setConfirmDelete(selected)}>

@@ -2,6 +2,7 @@ import { Braces, Cog, FileText } from 'lucide-react';
 import type { Tool, ToolHandler } from '@/types';
 import type { PanelTab } from '@/components/ui/panel-tabs';
 import { RECALL_LIMIT } from '@/lib/tools/toolRecall';
+import type { KeptHandlers } from '@/lib/tools/toolDraft';
 
 /** Edit mode's tabs, in order. */
 export const TOOL_EDIT_TABS = [
@@ -18,9 +19,11 @@ export interface ToolsView {
   selectedId: string | null;
   draft: Tool | null;
   editTab: ToolEditTab;
+  /** The draft's handlers for the kinds it isn't on now. */
+  keptHandlers: KeptHandlers;
 }
 
-export const EMPTY_TOOLS_VIEW: ToolsView = { selectedId: null, draft: null, editTab: 'definition' };
+export const EMPTY_TOOLS_VIEW: ToolsView = { selectedId: null, draft: null, editTab: 'definition', keptHandlers: {} };
 
 const SOURCE_LABEL = { entities: 'entities', locations: 'locations', dictionary: 'dictionary entries' } as const;
 

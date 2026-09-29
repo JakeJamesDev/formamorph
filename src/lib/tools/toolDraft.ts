@@ -61,13 +61,19 @@ export function renameParam(draft: Tool, index: number, name: string): Tool {
   return { ...draft, params, handler: follows ? { ...handler, param: name } : handler };
 }
 
-/** `draft` with a fresh handler of `kind`. A lookup starts on the first parameter. */
-export function withHandlerKind(draft: Tool, kind: ToolHandler['kind']): Tool {
-  if (draft.handler.kind === kind) return draft;
-  const handler: ToolHandler = kind === 'lookup'
+/** The handler each kind last had in this edit, so switching away and back restores it. */
+export type KeptHandlers = Partial<Record<ToolHandler['kind'], ToolHandler>>;
+
+/** `draft` switched to a handler of `kind`: the one `kept` holds, else a fresh one. A fresh lookup starts on
+ *  the first parameter. The handler switched away from joins `kept`. */
+export function withHandlerKind(
+  draft: Tool, kind: ToolHandler['kind'], kept: KeptHandlers = {},
+): { draft: Tool; kept: KeptHandlers } {
+  if (draft.handler.kind === kind) return { draft, kept };
+  const handler: ToolHandler = kept[kind] ?? (kind === 'lookup'
     ? { kind, source: 'entities', param: draft.params[0]?.name ?? '', returns: 'full' }
-    : kind === 'template' ? { kind, body: '' } : { kind, code: '' };
-  return { ...draft, handler };
+    : kind === 'template' ? { kind, body: '' } : { kind, code: '' });
+  return { draft: { ...draft, handler }, kept: { ...kept, [draft.handler.kind]: draft.handler } };
 }
 
 /** The draft as saved: each list's options trimmed with the blanks dropped, and no options off a list. */
