@@ -17,6 +17,8 @@ export interface WorldCardFaceOwnProps {
   placeholder?: React.ReactNode;
   /** Drop the detailed card's description line when there is none, instead of the stand-in text. */
   omitEmptyDescription?: boolean;
+  /** Drop the detailed card's tag line when there are no tags, instead of "No tags". */
+  omitEmptyTags?: boolean;
   /** Fill the tile the grid hands it, instead of taking its height from `aspect`. */
   fill?: boolean;
   /** Trade the name strip for a tooltip, so the smallest tile is thumbnail and nothing else. */
@@ -36,7 +38,7 @@ export type WorldCardFaceProps = WorldCardFaceOwnProps
  *  grid thumbnail's top-left, and `note` is the same thing said as a line in the detailed layout, which has
  *  no thumbnail to overlay. The remaining props go to the frame, which is where a board attaches its drag. */
 export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(function WorldCardFace(
-  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, omitEmptyDescription, fill, compact, loading, ...frame },
+  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, omitEmptyDescription, omitEmptyTags, fill, compact, loading, ...frame },
   ref,
 ) {
   const select = loading ? undefined : onSelect;
@@ -75,7 +77,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
           : placeholder}
       >
         <div className="mt-auto" onClick={(e) => e.stopPropagation()}>
-          <CardTags tags={world.tags || []} />
+          <CardTags tags={world.tags || []} omitEmpty={omitEmptyTags} />
         </div>
       </WorldCardShell>
     );

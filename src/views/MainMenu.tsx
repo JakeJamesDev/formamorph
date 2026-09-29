@@ -2316,6 +2316,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
                 compact={compact}
                 placeholder={<EntityPlaceholderArt id={model.id} name={model.name} />}
                 omitEmptyDescription
+                omitEmptyTags
                 badge={glb}
                 note={glb}
                 onSelect={setPreviewModelId}

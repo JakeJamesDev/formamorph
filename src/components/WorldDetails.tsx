@@ -129,9 +129,9 @@ const MAX_MEASURED_CHIPS = 40;
  * Tag chips for a world card. Collapsed view shows as many chips as fit in ~4 rows with an inline
  * "(Show More)" link (overflow chips are hidden, never overlapped by the link); hovering reveals the
  * full set as an elevated overlay that floats over the layout without reflow. `onHide` makes each chip
- * clickable to hide that tag.
+ * clickable to hide that tag. `omitEmpty` draws nothing for an empty set instead of "No tags".
  */
-export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: string) => void }) {
+export function CardTags({ tags, onHide, omitEmpty }: { tags: string[]; onHide?: (tag: string) => void; omitEmpty?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const measuredFrom = Math.min(tags.length, MAX_MEASURED_CHIPS);
   const [count, setCount] = useState(measuredFrom); // visible chips before the link
@@ -162,7 +162,7 @@ export function CardTags({ tags, onHide }: { tags: string[]; onHide?: (tag: stri
   }, [count, tags]);
 
   if (!tags || tags.length === 0) {
-    return <span className="text-muted-foreground text-meta italic">No tags</span>;
+    return omitEmpty ? null : <span className="text-muted-foreground text-meta italic">No tags</span>;
   }
 
   const chip = (tag: string, i: number) => (
