@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
   WORLD_OWNER, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
-  withBearer, type GateInput, type GateOwner,
+  underfills, withBearer, type GateInput, type GateOwner,
 } from './traitGates';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -480,6 +480,68 @@ describe('switching in a group with a max above one', () => {
     const two: GateInput = { ...world([], []), owners: [world([], []).owners[0], ash], active: { [WORLD_OWNER]: [], ash: ['Archery', 'Stealth'] } };
     expect(switchTrait(two, 'ash', 'Lore')).toBeNull();
     expect(switchTrait({ ...two, active: { ...two.active, ash: ['Archery'] } }, 'ash', 'Lore')?.active.ash).toEqual(['Archery', 'Lore']);
+  });
+});
+
+describe('a switch-off below the minimum', () => {
+  const groups = [G('Skills', { minPicks: 2 }), G('Deep', { parentId: 'Skills' }), G('Class', { minPicks: 1, maxPicks: 1 })];
+  const traits = [
+    T('Archery', { groupId: 'Skills' }), T('Stealth', { groupId: 'Skills' }), T('Lore', { groupId: 'Skills' }),
+    T('Herbs', { groupId: 'Deep' }), T('Paladin', { groupId: 'Class' }), T('Knight', { groupId: 'Class' }),
+  ];
+  const input = (active: string[]) => world(traits, groups, active);
+
+  it('refuses the switch-off that drops the group below its minimum', () => {
+    expect(underfills(input(['Archery', 'Stealth']), WORLD_OWNER, 'Stealth')).toBe(true);
+  });
+
+  it('allows a switch-off that keeps the group at its minimum', () => {
+    expect(underfills(input(['Archery', 'Stealth', 'Lore']), WORLD_OWNER, 'Lore')).toBe(false);
+  });
+
+  it('refuses a switch-off in a group that is already short', () => {
+    expect(underfills(input(['Archery']), WORLD_OWNER, 'Archery')).toBe(true);
+  });
+
+  it('counts only the traits placed directly in the group', () => {
+    expect(underfills(input(['Archery', 'Stealth', 'Herbs']), WORLD_OWNER, 'Herbs')).toBe(false);
+  });
+
+  it('never refuses a switch-on, or a trait that is off', () => {
+    expect(underfills(input(['Archery']), WORLD_OWNER, 'Lore')).toBe(false);
+  });
+
+  it('refuses a switch-off of the one pick in an Exactly One group', () => {
+    expect(underfills(input(['Paladin']), WORLD_OWNER, 'Paladin')).toBe(true);
+  });
+
+  it('applies the minimum to an entity-owned group, against that bearer alone', () => {
+    const ash: GateOwner = { id: 'ash', name: 'Ash', groups, traits };
+    const two: GateInput = { ...input([]), owners: [input([]).owners[0], ash], active: { [WORLD_OWNER]: ['Archery', 'Stealth', 'Lore'], ash: ['Archery', 'Stealth'] } };
+    expect(underfills(two, 'ash', 'Stealth')).toBe(true);
+    expect(underfills(two, WORLD_OWNER, 'Stealth')).toBe(false);
+  });
+
+  it('leaves the setup switch free, so Begin gates the short group instead', () => {
+    expect(switchTrait(input(['Archery', 'Stealth']), WORLD_OWNER, 'Stealth')?.active[WORLD_OWNER]).toEqual(['Archery']);
+  });
+});
+
+describe('a short group after a cascade', () => {
+  const groups = [G('Oath', { minPicks: 1 })];
+  const traits = [T('Knight'), T('Vow', { groupId: 'Oath', requires: [trait('Knight')] }), T('Pledge', { groupId: 'Oath', requires: [trait('Knight')] })];
+
+  it('lets a cascade drop the group below its minimum', () => {
+    const result = switchTrait(world(traits, groups, ['Knight', 'Vow']), WORLD_OWNER, 'Knight')!;
+    expect(result.active[WORLD_OWNER]).toEqual([]);
+    expect(result.turnedOff.map((r) => r.traitId)).toEqual(['Vow']);
+    expect(groupPickStates({ ...world(traits, groups), active: result.active }).get(WORLD_OWNER)!.get('Oath')?.short).toBe(true);
+  });
+
+  it('fills the group again when the trait returns', () => {
+    const result = settle(world(traits, groups, ['Knight']), { [WORLD_OWNER]: ['Vow'] });
+    expect(result.active[WORLD_OWNER]).toEqual(['Knight', 'Vow']);
+    expect(groupPickStates({ ...world(traits, groups), active: result.active }).get(WORLD_OWNER)!.get('Oath')?.short).toBe(false);
   });
 });
 

@@ -89,6 +89,27 @@ describe('SetupTraitList outside the setup dialog', () => {
     expect(screen.getByRole('checkbox', { name: 'Scholar' })).toBeEnabled();
   });
 
+  describe('a group with a minimum', () => {
+    const skills = { ...origin, minPicks: 2, maxPicks: undefined };
+    const shortBy = (selectedTraits: string[]) =>
+      view({ selectedTraits, picks: groupPickState(skills, [dockhand, scholar], selectedTraits) });
+
+    it('says how many more picks it needs', () => {
+      shortBy([]);
+      expect(screen.getByText('Choose 2 more traits')).toBeInTheDocument();
+    });
+
+    it('names one more trait in the singular', () => {
+      shortBy(['dockhand']);
+      expect(screen.getByText('Choose 1 more trait')).toBeInTheDocument();
+    });
+
+    it('says nothing once the minimum is met', () => {
+      shortBy(['dockhand', 'scholar']);
+      expect(screen.queryByText(/more trait/)).toBeNull();
+    });
+  });
+
   it('keeps every row open below a larger max', () => {
     const skills = { ...origin, maxPicks: 2 };
     view({ selectedTraits: ['dockhand'], picks: groupPickState(skills, [dockhand, scholar], ['dockhand']) });

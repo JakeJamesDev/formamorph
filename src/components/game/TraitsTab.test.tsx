@@ -493,6 +493,32 @@ describe('a full group with a max above one', () => {
   });
 });
 
+describe('a group at its minimum', () => {
+  const GROUPS = [G('g-skill', 'Skills', { minPicks: 2 }), G('g-class', 'Class', { minPicks: 1, maxPicks: 1 })];
+  const TRAITS = [
+    T('t-bow', 'Archery', { groupId: 'g-skill' }),
+    T('t-hide', 'Stealth', { groupId: 'g-skill' }),
+    T('t-lore', 'Lore', { groupId: 'g-skill' }),
+    T('t-pal', 'Paladin', { groupId: 'g-class' }),
+    T('t-rog', 'Rogue', { groupId: 'g-class' }),
+  ];
+
+  it('disables the switch-off of a pick the minimum needs, and keeps switch-ons open', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bow', 't-hide', 't-pal']);
+    expect(screen.getByRole('checkbox', { name: 'Switch off Archery' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: 'Switch off Paladin' })).toBeDisabled();
+    openDisabled('Skills');
+    expect(screen.getByRole('checkbox', { name: 'Switch on Lore' })).toBeEnabled();
+    openDisabled('Class');
+    expect(screen.getByRole('radio', { name: 'Switch on Rogue' })).toBeEnabled();
+  });
+
+  it('keeps the switch-off open above the minimum', () => {
+    renderTraits(TRAITS, GROUPS, ['t-bow', 't-hide', 't-lore']);
+    expect(screen.getByRole('checkbox', { name: 'Switch off Archery' })).toBeEnabled();
+  });
+});
+
 describe('a max-one trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { maxPicks: 1 })];
   const TRAITS = [

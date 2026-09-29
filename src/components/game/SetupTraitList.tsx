@@ -3,6 +3,7 @@ import { Info, Lock } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Hint } from '@/components/ui/typography';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { choiceRowClass } from './setupChoiceRow';
 import { cn } from '@/lib/utils';
@@ -36,7 +37,7 @@ export function TraitCascadeNotice({ cascade, onDismiss }: { cascade: TraitCasca
 /**
  * One trait category of the setup screen: its heading, the Player-Facing Descriptions of the groups it
  * sits in, and its traits with their stat changes. A max-one category is a radio choice; a full category with
- * a larger max disables its unchecked rows.
+ * a larger max disables its unchecked rows. A short category says how many more picks it needs.
  */
 export function SetupTraitList({
   name, groups, traits, picks, stats, selectedTraits, resolveText, resolveTraitText, onTraitSelect,
@@ -67,6 +68,7 @@ export function SetupTraitList({
 }) {
   const statById = useMemo(() => new Map(stats.map((stat) => [stat.id, stat])), [stats]);
   const radio = picks?.max === 1;
+  const needed = picks ? picks.min - picks.count : 0;
   const selectedRadio = traits.find((trait) => selectedTraits.includes(trait.id))?.id;
   const rows = traits.map((trait) => {
     const selected = selectedTraits.includes(trait.id);
@@ -164,6 +166,7 @@ export function SetupTraitList({
           <div className="grid min-w-0 gap-3 xl:grid-cols-2">{rows}</div>
         )}
       </fieldset>
+      {needed > 0 && <Hint className="mt-3">Choose {needed} more {needed === 1 ? 'trait' : 'traits'}</Hint>}
       {cascade && onDismissCascade && <TraitCascadeNotice cascade={cascade} onDismiss={onDismissCascade} />}
     </>
   );

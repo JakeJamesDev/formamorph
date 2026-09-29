@@ -541,6 +541,26 @@ describe('EnterWorldWorkspace', () => {
   });
 });
 
+describe('Begin and group minimums', () => {
+  const counted = groups.map((g) => (g.id === 'culture' ? { ...g, minPicks: 1 } : g.id === 'practice' ? { ...g, minPicks: 1 } : g));
+
+  it('stays disabled while any group is short, on any page, and enables once every group meets its minimum', async () => {
+    const user = userEvent.setup();
+    render(<Harness traitGroups={counted} />);
+    const begin = screen.getByRole('button', { name: 'Start game' });
+    expect(begin).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /^Practice/ }));
+    expect(screen.getByText('Choose 1 more trait')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: 'Artisan' }));
+    expect(begin).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: /^Culture/ }));
+    await user.click(screen.getByRole('radio', { name: 'Local' }));
+    expect(begin).toBeDisabled();
+  });
+});
+
 describe('Enter World library inspection', () => {
   it('stages every narrow detail entry offscreen and cancels replaced or resized entries', () => {
     const containers = mockContainerWidths(1000, 680);
@@ -1018,6 +1038,20 @@ describe('EnterWorldWorkspace cast pages', () => {
     expect(within(nav()).getByRole('button', { name: /^Ash/ })).not.toHaveTextContent('You');
     await user.click(within(nav()).getByRole('button', { name: /^Bob/ }));
     expect(within(screen.getByRole('main')).getByRole('heading', { name: /^Bob/ })).toHaveTextContent('You');
+  });
+
+  it("disables Begin while an entity bearer's group is short, and enables it once that bearer picks enough", async () => {
+    const bonded = {
+      ...ash, traitGroups: [{ id: 'bond', name: 'Bond', parentId: null, minPicks: 1 }],
+      traits: [...ash.traits!, owned('wild', { groupId: 'bond' })],
+    };
+    const user = userEvent.setup();
+    render(<CastHarness cast={{ ...castWorld, entities: [bonded, bob] }} />);
+    const begin = screen.getByRole('button', { name: 'Start game' });
+    expect(begin).toBeDisabled();
+    await user.click(within(nav()).getByRole('button', { name: /^Bond/ }));
+    await user.click(screen.getByRole('checkbox', { name: 'Wild' }));
+    expect(begin).toBeEnabled();
   });
 
   it('locks a "playing as" owned trait after a switch away, with the banner on its page, and brings it back on the return', async () => {

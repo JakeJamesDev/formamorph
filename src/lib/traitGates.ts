@@ -379,6 +379,19 @@ export function overfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId: 
     && groupPickState(group, owner.traits, active).full;
 }
 
+/** Whether dropping one pick from a group in `picks` leaves it below its minimum. */
+export const leavesShort = (picks: GroupPickState): boolean => picks.count - 1 < picks.min;
+
+/** Whether switching `traitId` off would leave its group in `ownerId` below the minimum, including a group
+ *  a cascade has already left short. */
+export function underfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
+  const owner = input.owners.find((o) => o.id === ownerId);
+  const groupId = owner?.traits.find((t) => t.id === traitId)?.groupId ?? null;
+  const group = owner?.groups.find((g) => g.id === groupId);
+  const active = input.active[ownerId] ?? [];
+  return !!owner && !!group && active.includes(traitId) && leavesShort(groupPickState(group, owner.traits, active));
+}
+
 /**
  * Switch one owner's trait on or off, then settle. Switching on retires its exclusive siblings first, so the
  * cascade sees the retirement. A locked trait, or one whose group is full at a max above one, cannot switch
