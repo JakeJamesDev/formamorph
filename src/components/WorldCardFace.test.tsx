@@ -59,3 +59,22 @@ describe('WorldCardFace detailed layout by aspect', () => {
     expect(screen.getByText('By river-quill-with-a-long-handle')).toHaveClass('truncate');
   });
 });
+
+describe('WorldCardFace empty description', () => {
+  const blank = { ...world, description: '' };
+
+  it('shows the stand-in line by default', () => {
+    render(<WorldCardFace world={blank} layout="detailed" aspect="portrait" />);
+    expect(screen.getByText('No description available.')).toBeInTheDocument();
+  });
+
+  it('shows no description line when asked to omit an empty one', () => {
+    render(<WorldCardFace world={blank} layout="detailed" aspect="portrait" omitEmptyDescription />);
+    expect(screen.queryByText('No description available.')).toBeNull();
+  });
+
+  it('still shows a description it has when asked to omit an empty one', () => {
+    render(<WorldCardFace world={world} layout="detailed" aspect="portrait" omitEmptyDescription />);
+    expect(screen.getByText('A drowned coastal town.')).toBeInTheDocument();
+  });
+});

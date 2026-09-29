@@ -93,6 +93,8 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
   cornerAction?: ReactNode;
   name: string;
   description?: string;
+  /** Drop the description line when there is no description, instead of the stand-in text. */
+  omitEmptyDescription?: boolean;
   /** The author line — plain text, or an interactive element (e.g. a hide-author span). */
   author?: ReactNode;
   /** A line about the card's subject (e.g. a place badge), between the author and the card's own content. */
@@ -114,7 +116,7 @@ interface WorldCardShellProps extends React.HTMLAttributes<HTMLDivElement> {
  * Forwards a ref + spreads the rest onto the frame so a caller can attach dnd-kit listeners / `onClick`.
  */
 export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(function WorldCardShell(
-  { thumbnail, thumbnailOverlay, cornerAction, name, description, author, note, frameClassName, className, loading, layout = 'stacked', children, ...rest },
+  { thumbnail, thumbnailOverlay, cornerAction, name, description, omitEmptyDescription, author, note, frameClassName, className, loading, layout = 'stacked', children, ...rest },
   ref,
 ) {
   const split = layout === 'split';
@@ -158,11 +160,13 @@ export const WorldCardShell = forwardRef<HTMLDivElement, WorldCardShellProps>(fu
         </div>
       </div>
       <div className="p-4 flex flex-col flex-grow min-w-0">
-        <div className="text-helper text-muted-foreground mb-2 max-h-20 overflow-hidden">
-          {loading
-            ? <div className="space-y-1.5"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" /></div>
-            : <MarkdownRenderer text={description || 'No description available.'} />}
-        </div>
+        {(loading || description || !omitEmptyDescription) && (
+          <div className="text-helper text-muted-foreground mb-2 max-h-20 overflow-hidden">
+            {loading
+              ? <div className="space-y-1.5"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" /></div>
+              : <MarkdownRenderer text={description || 'No description available.'} />}
+          </div>
+        )}
         {note}
         {children}
       </div>

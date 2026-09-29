@@ -11,10 +11,10 @@ vi.mock('@/lib/useCachedThumbnail', () => ({ CachedThumbnail: () => <div data-te
  * hover actions then move to the bottom corner, clear of the name.
  */
 
-const listing = (kind: string): WorldRecord => ({
+const listing = (kind: string, description = 'A ferry keeper.'): WorldRecord => ({
   id: `${kind}-1`,
   name: 'Wren Hallow',
-  description: 'A ferry keeper.',
+  description,
   kind,
   author: { id: 'u1', username: 'sedge_reader' },
   tags: [],
@@ -22,10 +22,10 @@ const listing = (kind: string): WorldRecord => ({
   comment_count: 0,
 }) as unknown as WorldRecord;
 
-const show = (kind: string) =>
+const show = (kind: string, description?: string) =>
   render(
     <RemoteWorldCard
-      world={listing(kind)}
+      world={listing(kind, description)}
       downloadState="none"
       downloadProgress={undefined}
       isAuthenticated={false}
@@ -71,5 +71,22 @@ describe('RemoteWorldCard layout', () => {
     expect(frame.dataset.layout).toBe('stacked');
     expect(scrim).toHaveClass('bottom-0');
     expect(actions).toHaveClass('top-1');
+  });
+});
+
+describe('RemoteWorldCard description line', () => {
+  it('shows an Avatar’s credit line', () => {
+    show('model', 'By Ada Reyes.');
+    expect(screen.getByText('By Ada Reyes.')).toBeInTheDocument();
+  });
+
+  it('leaves an Avatar with no credit line without a description line', () => {
+    show('model', '');
+    expect(screen.queryByText('No description available.')).toBeNull();
+  });
+
+  it('keeps the stand-in line on an entity with no description', () => {
+    show('entity', '');
+    expect(screen.getByText('No description available.')).toBeInTheDocument();
   });
 });

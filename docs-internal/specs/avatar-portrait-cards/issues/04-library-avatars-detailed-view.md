@@ -1,6 +1,7 @@
 # 04: Library Avatars Detailed View
 
-Status: ready-for-agent
+Status: in-progress
+Base: be9bbf3d
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -11,9 +12,9 @@ Reasoning effort: high
 
 ## Acceptance criteria
 
-- [ ] Choosing **Detailed** on the Avatars tab shows split cards. Choosing **Grid** returns to tiles. The choice persists per tab.
-- [ ] A Detailed Avatar card shows its credit line. A record with no authors shows no description line.
-- [ ] A record with no thumbnail, or one marked as failed, draws Morph art in both views.
-- [ ] Plain glTF records keep the GLB badge in both views.
-- [ ] Checked in the preview through the dev-router at a real viewport, in both themes. No new render harness is added.
-- [ ] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add a 👤 changelog entry in the In Progress section.
+- [x] Choosing **Detailed** on the Avatars tab shows split cards. Choosing **Grid** returns to tiles. The choice persists per tab.
+- [x] A Detailed Avatar card shows its credit line. A record with no authors shows no description line.
+- [x] A record with no thumbnail, or one marked as failed, draws Morph art in both views.
+- [x] Plain glTF records keep the GLB badge in both views.
+- [x] Checked in the preview through the dev-router at a real viewport, in both themes. No new render harness is added.
+- [x] Typecheck, lint, tests and build pass. Report the test wall time. Update the code graph. Add a 👤 changelog entry in the In Progress section.

@@ -15,6 +15,8 @@ export interface WorldCardFaceOwnProps {
   note?: React.ReactNode;
   /** The art shown when the record has no thumbnail. */
   placeholder?: React.ReactNode;
+  /** Drop the detailed card's description line when there is none, instead of the stand-in text. */
+  omitEmptyDescription?: boolean;
   /** Fill the tile the grid hands it, instead of taking its height from `aspect`. */
   fill?: boolean;
   /** Trade the name strip for a tooltip, so the smallest tile is thumbnail and nothing else. */
@@ -34,7 +36,7 @@ export type WorldCardFaceProps = WorldCardFaceOwnProps
  *  grid thumbnail's top-left, and `note` is the same thing said as a line in the detailed layout, which has
  *  no thumbnail to overlay. The remaining props go to the frame, which is where a board attaches its drag. */
 export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(function WorldCardFace(
-  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, fill, compact, loading, ...frame },
+  { world, onSelect, layout, aspect = 'landscape', badge, note, placeholder, omitEmptyDescription, fill, compact, loading, ...frame },
   ref,
 ) {
   const select = loading ? undefined : onSelect;
@@ -57,6 +59,7 @@ export const WorldCardFace = forwardRef<HTMLDivElement, WorldCardFaceProps>(func
         loading={loading}
         name={world.name}
         description={world.description}
+        omitEmptyDescription={omitEmptyDescription}
         // Omitted rather than "By Unknown" when there is none: a character or a book in your own library
         // has no byline to print, and the shell drops the line entirely when it gets nothing.
         author={world.author ? `By ${world.author}` : undefined}
