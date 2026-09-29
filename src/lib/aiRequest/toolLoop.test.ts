@@ -66,6 +66,22 @@ const callFrames = (...calls: Array<[name: string, args: unknown]>): string[] =>
 /** A plain reply, streamed one token at a time. */
 const proseFrames = (...tokens: string[]): string[] => [...tokens.map((content) => frame({ content })), frame({}, 'stop')];
 
+/** A body that stays open after its frames until the abort errors it, like a real stopped fetch. */
+function hangingResponse(signal: AbortSignal | undefined, frames: string[]): Response {
+  const encoder = new TextEncoder();
+  let index = 0;
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      signal?.addEventListener('abort', () => controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
+    },
+    pull(controller) {
+      if (index < frames.length) { controller.enqueue(encoder.encode(frames[index++])); return; }
+      return new Promise(() => {});
+    },
+  });
+  return { ok: true, status: 200, body } as unknown as Response;
+}
+
 function streamingResponse(chunks: string[]): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
@@ -189,7 +205,7 @@ describe('streamAiToolLoop: one lookup, then prose', () => {
 });
 
 describe('streamAiToolLoop: what reaches the reply', () => {
-  it('drops content written in a tool round from the reply and from the delta stream; the final round streams', async () => {
+  it('streams text written in a tool round, then marks it void with toolCalls; the reply is the final round alone', async () => {
     const transport = scripted([
       [frame({ content: 'Let me look. ' }), ...callFrames(['get_entity', { name: 'Bram' }])],
       proseFrames('The ', 'ferryman ', 'waits.'),
@@ -197,22 +213,39 @@ describe('streamAiToolLoop: what reaches the reply', () => {
 
     const events = await run(transport);
 
-    expect(deltasOf(events)).toEqual(['The ', 'ferryman ', 'waits.']);
+    const marks = events.flatMap((e) => (e.type === 'delta' ? [e.delta] : e.type === 'toolCalls' ? ['<calls>'] : []));
+    expect(marks).toEqual(['Let me look. ', '<calls>', 'The ', 'ferryman ', 'waits.']);
     expect(doneOf(events).content).toBe('The ferryman waits.');
     // The model still sees what it wrote, so the history it continues is its own.
     expect(assistantOf(transport.sent[1])[0].content).toBe('Let me look. ');
   });
 
-  it('holds a tools-offered round\'s content until it ends without calls, then flushes it in order before done', async () => {
-    const transport = scripted([proseFrames('No ', 'lookup ', 'needed.')]);
+  it('streams a tools-offered round live from its first visible character, before the round ends', async () => {
+    const controller = new AbortController();
+    const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' })])]);
+    // A held delta never arrives while the body is open, so this backstop ends the stream for a clean failure.
+    const backstop = setTimeout(() => controller.abort(), 200);
 
+    const events: AiToolLoopEvent[] = [];
+    for await (const event of streamAiToolLoop(spec(), { execute, fetchImpl: transport.fetchImpl, signal: controller.signal })) {
+      if (event.type === 'delta' && !controller.signal.aborted) events.push(event);
+      if (event.type === 'delta') controller.abort();
+    }
+    clearTimeout(backstop);
+
+    expect(deltasOf(events)).toEqual(['The ']);
+  });
+
+  it('holds leading whitespace, then flushes it in order once visible text arrives', async () => {
+    const events = await run(scripted([proseFrames('\n\n', 'No ', 'lookup.')]));
+    expect(deltasOf(events)).toEqual(['\n\n', 'No ', 'lookup.']);
+    expect(doneOf(events).content).toBe('\n\nNo lookup.');
+  });
+
+  it('never streams a tool round that wrote only whitespace', async () => {
+    const transport = scripted([[frame({ content: '\n\n' }), ...callFrames(['get_entity', { name: 'Bram' }])], proseFrames('x')]);
     const events = await run(transport);
-
-    expect(transport.sent).toHaveLength(1);
-    const kinds = events.map((e) => e.type);
-    expect(deltasOf(events)).toEqual(['No ', 'lookup ', 'needed.']);
-    expect(kinds.lastIndexOf('delta')).toBeLessThan(kinds.indexOf('done'));
-    expect(doneOf(events).content).toBe('No lookup needed.');
+    expect(deltasOf(events)).toEqual(['x']);
   });
 
   it('echoes the round\'s reasoning on the assistant message under the field the server streamed', async () => {
@@ -362,22 +395,6 @@ describe('streamAiToolLoop: limits and bad calls end in a prose round', () => {
 });
 
 describe('streamAiToolLoop: Stop', () => {
-  /** A body that stays open after its frames until the abort errors it, like a real stopped fetch. */
-  function hangingResponse(signal: AbortSignal | undefined, frames: string[]): Response {
-    const encoder = new TextEncoder();
-    let index = 0;
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        signal?.addEventListener('abort', () => controller.error(Object.assign(new Error('aborted'), { name: 'AbortError' })), { once: true });
-      },
-      pull(controller) {
-        if (index < frames.length) { controller.enqueue(encoder.encode(frames[index++])); return; }
-        return new Promise(() => {});
-      },
-    });
-    return { ok: true, status: 200, body } as unknown as Response;
-  }
-
   it('aborts mid-stream in a tool round: no further round is sent and nothing held is revealed', async () => {
     const controller = new AbortController();
     // The model thinks, then starts writing; Stop lands on the first thought, with the content already held.
@@ -393,6 +410,22 @@ describe('streamAiToolLoop: Stop', () => {
     expect(doneOf(events).finishReason).toBe('aborted');
     expect(doneOf(events).content).toBe('');
     expect(deltasOf(events)).toEqual([]);
+  });
+
+  it('aborts after a tools-offered round streamed text: done carries the text the consumer already saw', async () => {
+    const controller = new AbortController();
+    const transport = scripted([(signal) => hangingResponse(signal, [frame({ content: 'The ' }), frame({ content: 'door' })])]);
+    const backstop = setTimeout(() => controller.abort(), 200);
+
+    const events: AiToolLoopEvent[] = [];
+    for await (const event of streamAiToolLoop(spec(), { execute, fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
+      events.push(event);
+      if (event.type === 'delta' && event.delta === 'door') controller.abort();
+    }
+    clearTimeout(backstop);
+
+    expect(deltasOf(events)).toEqual(['The ', 'door']);
+    expect(doneOf(events).content).toBe('The door');
   });
 
   it('aborts while a Tool runs: its result is dropped and no further round is sent', async () => {
@@ -473,8 +506,9 @@ describe('streamAiToolLoop: Tools running', () => {
     const kinds = events.map((e) => e.type);
     // A round that thinks first starts at its first reasoning token.
     expect(kinds.indexOf('roundStarted')).toBeLessThan(kinds.indexOf('reasoning'));
-    // The second mark comes at the reply round's first held token, before the reply flushes.
-    expect(kinds.lastIndexOf('roundStarted')).toBeLessThan(kinds.indexOf('delta'));
+    // The second mark comes before the reply round's first token.
+    const replyAt = events.findIndex((e) => e.type === 'delta' && e.delta === 'Both ');
+    expect(kinds.lastIndexOf('roundStarted')).toBeLessThan(replyAt);
   });
 
   it('says nothing for a round that ends in prose', async () => {
