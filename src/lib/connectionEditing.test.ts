@@ -4,9 +4,12 @@ import {
   connectionsAt,
   createConnection,
   directionFrom,
+  hintsLinked,
   legFrom,
   withDirection,
   withHint,
+  withLink,
+  withUnlink,
 } from './connectionEditing';
 import type { Connection, GameLocation } from '@/types';
 
@@ -97,6 +100,60 @@ describe('withHint', () => {
   it('adds no leg when the named direction is not travelable', () => {
     const record = oneWay();
     expect(withHint(record, 'bToA', 'down')).toBe(record);
+  });
+});
+
+describe('hintsLinked', () => {
+  it('reads equal hints on both legs as linked', () => {
+    expect(hintsLinked(conn({ aToB: { hint: 'up' }, bToA: { hint: 'up' } }))).toBe(true);
+  });
+
+  it('reads two legs with no hint as linked', () => {
+    expect(hintsLinked(conn())).toBe(true);
+  });
+
+  it('reads different hints as unlinked, including one leg with no hint', () => {
+    expect(hintsLinked(conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } }))).toBe(false);
+    expect(hintsLinked(conn({ aToB: { hint: 'up' } }))).toBe(false);
+  });
+
+  it('reads a one-way record as unlinked, since there is no second leg to link', () => {
+    expect(hintsLinked(oneWay())).toBe(false);
+    expect(hintsLinked(oneWay({}, true))).toBe(false);
+  });
+});
+
+describe('withLink', () => {
+  it('writes the first leg hint into the second leg', () => {
+    const next = withLink(conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } }), 'aToB');
+    expect(next).toEqual(conn({ aToB: { hint: 'up' }, bToA: { hint: 'up' } }));
+  });
+
+  it('copies from whichever leg is first, so the other end panel links its own way', () => {
+    const next = withLink(conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } }), 'bToA');
+    expect(next).toEqual(conn({ aToB: { hint: 'down' }, bToA: { hint: 'down' } }));
+  });
+
+  it('clears the second hint when the first leg has none', () => {
+    expect(withLink(conn({ bToA: { hint: 'down' } }), 'aToB')).toEqual(conn());
+  });
+
+  it('adds no leg to a one-way record', () => {
+    const record = oneWay({ aToB: { hint: 'up' } });
+    expect(withLink(record, 'aToB')).toBe(record);
+  });
+});
+
+describe('withUnlink', () => {
+  it('writes the given text back into the second leg and leaves the first alone', () => {
+    const linked = conn({ aToB: { hint: 'up' }, bToA: { hint: 'up' } });
+    expect(withUnlink(linked, 'aToB', 'down')).toEqual(conn({ aToB: { hint: 'up' }, bToA: { hint: 'down' } }));
+    expect(withUnlink(linked, 'bToA', 'down')).toEqual(conn({ aToB: { hint: 'down' }, bToA: { hint: 'up' } }));
+  });
+
+  it('drops the field for a blank restored text', () => {
+    const next = withUnlink(conn({ aToB: { hint: 'up' }, bToA: { hint: 'up' } }), 'aToB', '');
+    expect(next.bToA).toEqual({});
   });
 });
 

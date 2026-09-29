@@ -1,6 +1,6 @@
 import type { Connection, GameLocation, LegKey } from "@/types";
 import {
-  createConnection, directionFrom, withDirection, withHint, type ConnectionDirection,
+  createConnection, directionFrom, withDirection, type ConnectionDirection,
 } from "./connectionEditing";
 import {
   connectionLegs, implicitPairs, isTwoWay, overriddenPairs, pairKey, reachableFromStarts,
@@ -68,6 +68,8 @@ export interface CanvasEdge {
   labelOuter?: true;
   /** The Connection this arrow came from, so selecting an arrow can reach its record. */
   connectionId?: string;
+  /** The leg this arrow draws, so selecting it can focus that leg's Travel Hint. */
+  leg?: LegKey;
 }
 
 export interface LocationCanvasMap {
@@ -189,6 +191,7 @@ export function buildLocationCanvas(
         target: to,
         kind: "connection",
         connectionId: connection.id,
+        leg: key,
         ...(label ? { label, ...(paired && !shared ? { labelOuter: true as const } : {}) } : {}),
       });
     }
@@ -623,9 +626,9 @@ export function directionIntent(connection: Connection, direction: ConnectionDir
   return { kind: "update", connection: withDirection(connection, connectionEnds(connection)[0], direction) };
 }
 
-/** The travel hint on one leg of a selected Connection. */
-export function hintIntent(connection: Connection, leg: LegKey, hint: string): CanvasIntent {
-  return { kind: "update", connection: withHint(connection, leg, hint) };
+/** A selected Connection as its Travel Hint pair rewrote it: a hint edit, a link, or an unlink. */
+export function hintIntent(connection: Connection): CanvasIntent {
+  return { kind: "update", connection };
 }
 
 /** Deleting a selected arrow deletes the record both of the pair's directions came from, which hands the
