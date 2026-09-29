@@ -7,7 +7,8 @@ import { PLAYER_BEARER, resolveBearers, type BearerWorld } from './bearers';
 import { gateOf, gateStates, settleDefaults, switchTrait } from './traitGates';
 import { syncBlueprintCopies } from './blueprintCopies';
 import { copyLookup, effectiveCopy, readerFor } from './blueprints';
-import { resolvePlaceholders } from './placeholders';
+import { buildPlaceholderPreview, resolvePlaceholders } from './placeholders';
+import { bearerPreview } from './ownedTraitsInPlay';
 import type { Entity, PersonaRef, World } from '@/types';
 
 // Loaded the way the seeder loads it: raw text through the world migration.
@@ -82,6 +83,23 @@ describe('the Emberwatch default world', () => {
     };
     expect(classText('Mother Hesk', 'Cleric')).toMatch(/wears scorched gray vestments/);
     expect(classText('Albus', 'Paladin')).toContain(`wears ${garb.values[0].text}`);
+  });
+
+  it("previews a class's text as each bearer's: its name, its copy and its class's pin", () => {
+    const shared = world.placeholders ?? [];
+    const all = [...shared, ...world.entities.flatMap((e) => e.placeholders ?? [])];
+    const previewAs = (bearer: string, trait: string) => {
+      const entity = entityNamed(world, bearer);
+      const text = world.traits.find((t) => t.name === trait)!.aiDescription!;
+      const as = bearerPreview(bearerWorld(world), shared, all, entity.id, traitId(world, trait))!;
+      const values = buildPlaceholderPreview(text, all, (vs) => vs[vs.length - 1].text, undefined, entity.name, as);
+      return Object.entries(values).reduce((out, [token, value]) => out.split(token).join(value), text);
+    };
+    expect(previewAs('Albus', 'Paladin')).toMatch(/^Albus is a paladin.*Albus wears white tabard and mail/);
+    expect(previewAs('Mother Hesk', 'Cleric')).toMatch(/Mother Hesk wears scorched gray vestments/);
+    // Wanderer starts a Wizard; the Paladin being viewed outranks its exclusive sibling.
+    expect(previewAs('Wanderer', 'Paladin')).toMatch(/Wanderer wears white tabard and mail/);
+    expect(previewAs('Mother Hesk', 'Dwarf')).toMatch(/Mother Hesk has the iron-gray braids/);
   });
 
   it('teaches each feature in the readme by naming its example', () => {
