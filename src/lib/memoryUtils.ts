@@ -23,7 +23,10 @@ export function estimateHistoryChars(history: ChatMessage[]): number {
   return total;
 }
 
-/** Rough token estimate from a character count (~4 chars/token). For display gauges only. */
+/** Characters per token in the rough estimate. */
+export const CHARS_PER_TOKEN = 4;
+
+/** Rough token estimate from a character count. */
 export function estimateTokens(chars: number): number {
-  return Math.ceil(Math.max(0, chars) / 4);
+  return Math.ceil(Math.max(0, chars) / CHARS_PER_TOKEN);
 }

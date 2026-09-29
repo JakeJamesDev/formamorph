@@ -90,6 +90,8 @@ export interface AiRequestSpec<TMessage extends WireMessage = ChatMessage> {
   body: AiRequestBody<TMessage>;
   target: AiEndpointTarget;
   requestType: AIRequestType;
+  /** The Answer Cap in tokens, which the tool loop enforces on answer text. Absent where nothing caps the output. */
+  answerCap?: number;
   /** The Tools the body offers, present exactly when the body carries `tools`. The loop runs calls against these. */
   tools?: readonly Tool[];
   /** The effort literal this request carried, whichever field the dialect spelled it in. Absent where it
@@ -275,6 +277,7 @@ export function buildAiRequestSpec(snapshot: AiSettingsSnapshot, call: AiCall): 
     body: bodyForTarget(snapshot, call, target),
     target,
     requestType: call.requestType,
+    ...(reasoning.answerCap !== undefined && { answerCap: reasoning.answerCap }),
     ...(offeredTools(call, target) && { tools: call.tools }),
     ...(reasoning.level !== null && { reasoningLevel: reasoning.level }),
     ...(internalCapFor(snapshot, call) !== null
