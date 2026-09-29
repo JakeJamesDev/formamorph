@@ -26,7 +26,7 @@ import { worldUsesAdvancedFeatures } from '@/lib/editorAdvancedData';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { HelpButton } from '@/components/HelpButton';
 import { useListSearch } from '@/components/listToolbarHooks';
-import { useListEditor } from '@/components/listEditorHooks';
+import { useListEditor, type ListEditorParts } from '@/components/listEditorHooks';
 import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { useWorldPlaceholdersAdapter } from '../managers/useWorldPlaceholdersAdapter';
 import { worldEditorTopicId } from '@/lib/helpTopics';
@@ -305,8 +305,6 @@ const WorldEditorInner = ({
   const select = useCallback((tab: string, id: string | null) => {
     setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
   }, []);
-  const selectedItemId = selections[activeTab] ?? null;
-  const setSelectedItemId = (id: string | null) => select(activeTab, id);
 
   // ── Find & replace ────────────────────────────────────────────────────────
   const [findOpen, setFindOpen] = useState(false);
@@ -446,7 +444,7 @@ const WorldEditorInner = ({
   }, [deferReveal, clearSearch, select]);
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
-    selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
+    selectedLocationId: activeTab === 'locations' ? selections.locations ?? null : null,
     isMobile,
     advanced,
     routedTab: devRoute?.bench,
@@ -726,13 +724,11 @@ const WorldEditorInner = ({
     selectedId: selections.dictionary ?? null, onSelect: selectDictionaryItem, search,
   });
   // The active tab's List Editor parts, on a tab that runs on it.
-  const listEditorParts = activeTab === 'traits' ? traitsParts
-    : activeTab === 'placeholders' ? placeholdersParts
-    : activeTab === 'stats' ? statsParts
-    : activeTab === 'entities' ? entitiesParts
-    : activeTab === 'locations' ? locationsParts
-    : activeTab === 'dictionary' ? dictionaryParts
-    : null;
+  const partsByTab: Partial<Record<string, ListEditorParts>> = {
+    traits: traitsParts, placeholders: placeholdersParts, stats: statsParts,
+    entities: entitiesParts, locations: locationsParts, dictionary: dictionaryParts,
+  };
+  const listEditorParts = partsByTab[activeTab] ?? null;
   // Tabbed panels keep their strip above a body that scrolls itself, so the pane gives them its height.
   const detailFills = !!listEditorParts?.fills;
   // Whose panel the palette sits over: the entity, the book (selected itself or through an entry), or the
@@ -761,7 +757,7 @@ const WorldEditorInner = ({
   // A list that owns its slot (the Locations canvas) opts out of the list pane's scroller and of the
   // click-to-deselect that empties the detail panel.
   const listOwnsSlot = !!listEditorParts?.ownsSlot;
-  const deselectOnListClick = listOwnsSlot ? undefined : () => setSelectedItemId(null);
+  const deselectOnListClick = listOwnsSlot ? undefined : listEditorParts?.onBack;
 
   // The per-tab list (master) and detail, extracted so both the desktop resizable split and the mobile
   // single-panel push render from one source. `overview` isn't master-detail — it shows a form in each slot.
@@ -1034,7 +1030,7 @@ const WorldEditorInner = ({
                   {/* The tab strip doesn't fit mobile, so it scrolls horizontally. */}
                   <div className="overflow-x-auto flex-shrink-0">{tabsList}</div>
                   {addSearchBar}
-                  {tabPanels(activeTab === "overview" ? (
+                  {tabPanels(!listEditorParts ? (
                     // Overview isn't master-detail — stack its two forms.
                     <ScrollArea className="flex-grow min-h-0 mt-4">
                       {listContent}
@@ -1043,8 +1039,8 @@ const WorldEditorInner = ({
                   ) : (
                     <ListDetail
                       className="mt-4"
-                      showDetail={listEditorParts ? listEditorParts.showDetail : !!selectedItemId}
-                      onBack={listEditorParts ? listEditorParts.onBack : () => setSelectedItemId(null)}
+                      showDetail={listEditorParts.showDetail}
+                      onBack={listEditorParts.onBack}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
                       scrollList={!listOwnsSlot}
                       scrollDetail={!detailFills}

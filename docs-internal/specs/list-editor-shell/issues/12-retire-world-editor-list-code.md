@@ -1,6 +1,7 @@
 # 12: Retire the World Editor's own list code
 
-Status: ready-for-agent
+Status: in-progress
+Base: 038bd463
 Blocked by: 04, 07, 08, 09, 10
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
