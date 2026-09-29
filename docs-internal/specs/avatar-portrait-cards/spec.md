@@ -69,7 +69,7 @@ Avatars use the same portrait layout as entities, everywhere a listing or Librar
 
 **No new cropping (Q3).** Embedded VRM thumbnails keep the portrait fit: cover, anchored to the top. Import and publish do not crop or re-encode them to 2:3. Rendered thumbnails are already 2:3.
 
-**Community card text (Q6).** Avatar listings carry the VRM credit line as their description and no tags. The split card shows them as they are. An empty credit line leaves the text side with only the title, author and counts.
+**Community card text (Q6).** Avatar listings carry the VRM credit line as their description and no tags. The split card shows them as they are. An empty credit line leaves the text side with only the title, author and counts. The card shell omits the empty line for Avatars only, through an opt-in (Q10).
 
 **Library Detailed view (Q4, Q7).** The Avatars tab reads the per-tab layout state that already exists. In Detailed view it uses the split grid class entities use. Avatar records have no description, so the card derives the credit line from the record's license authors with the same helper the publish payload uses. The Avatars grid passes Morph art as its placeholder in both views (Q8).
 
@@ -109,5 +109,7 @@ Avatars use the same portrait layout as entities, everywhere a listing or Librar
 | Q6 | The community card shows the credit line; empty is fine. |
 | Q7 | The Library Detailed card shows the credit line derived from license authors. |
 | Q8 | A Library Avatar with no usable image draws Morph art in Grid and Detailed. |
+| Q9 | In the Library Detailed view, the GLB chip (same tip) moves to the card's note line, as the Default persona badge does. Nothing overlays the split art. Asked by ticket 04. |
+| Q10 | An empty Avatar description draws no line, on the Library Detailed card and on the community card. The card shell gets an opt-in to omit the empty line; worlds and entities keep the "No description available." fallback. Ticket 04 covers both surfaces. |
 
 - Prior art: the Blank Entity Art effort built Morph art, the placeholder flag and its backfill for entities. This effort extends the same mechanism to Avatars.
