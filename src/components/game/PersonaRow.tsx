@@ -14,7 +14,7 @@ import { pickedAtStart } from '@/lib/runtimeCharacters';
 import { primaryImage } from '@/lib/entityImages';
 import { thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
-import { offeredPersonas, rememberWorldPersona, samePersonaRef, worldPlayerSetting } from '@/lib/personaPick';
+import { offeredPersonas, rememberWorldPersona, samePersonaRef, worldAllowedPersonas } from '@/lib/personaPick';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { PersonaRef } from '@/types';
 
@@ -53,7 +53,7 @@ export function PersonaRow({ onChange }: { onChange: (ref: PersonaRef, name: str
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
-  const offer = offeredPersonas(worldPlayerSetting(worldOverview), {
+  const offer = offeredPersonas(worldAllowedPersonas(worldOverview), {
     world: worldPersonas.map(personaOption(resolveEntityText)), library: options,
     custom: customPersona ? personaOption(resolveEntityText)(customPersona) : undefined,
   });

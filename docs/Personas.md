@@ -129,4 +129,4 @@ A report lists each persona with no image, each skipped entry, each persona that
 ## Related
 
 - [🎭 Entities in Play](Entities) — the cast you meet, and how a game opens
-- [🪪 Personas for Authors](Persona-Authoring) — playable entities, **Persona Choice**, and the prompt chips
+- [🪪 Personas for Authors](Persona-Authoring) — playable entities, **Allowed Personas** and **Starts On**, and the prompt chips

@@ -16,9 +16,11 @@ import { readVrmMeta } from '../lib/vrmMeta';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { ActionIcon } from '@/lib/actionIcons';
 import { useEditorMode } from '@/lib/editorMode';
-import { PLAYER_SETTINGS, worldPlayerSetting } from '@/lib/personaPick';
+import { ALLOWED_PERSONAS, limitsToWorld, worldPersonaRules } from '@/lib/personaPick';
+import { customPersonaEntity } from '@/lib/blueprints';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { VrmLicense, WorldPlayerSetting } from '@/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { AllowedPersonas, VrmLicense } from '@/types';
 
 /**
  * The world's custom player VRM in the same details view the model library uses. The world stores the model
@@ -78,43 +80,76 @@ const PlayerVrmPreview = ({ data, fileName, open, onClose }: { data: string; fil
   );
 };
 
-const PLAYER_SETTING_LABELS: Record<WorldPlayerSetting, string> = { open: 'Open', fixed: 'Fixed', cast: 'Cast' };
+const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
 
-export const PLAYER_SETTING_HINTS: Record<WorldPlayerSetting, string> = {
-  open: 'Lets players pick any persona, or none',
-  fixed: 'Starts new players with no persona. They can still pick one.',
-  cast: "Limits players to this world's personas and starts on the first",
+export const ALLOWED_PERSONAS_HINTS: Record<AllowedPersonas, string> = {
+  any: 'Lets players pick any persona, their own included',
+  world: 'Limits players to the personas this world defines',
 };
 
-export const CAST_WITHOUT_PERSONAS_HINT = 'Works like Fixed until you select Persona on an entity';
+export const WORLD_ONLY_WITHOUT_PERSONAS_HINT = 'Works like Any until you give an entity a Persona role';
 
-/** Who the player can be in this world. Advanced only; Open writes no field. */
-const PlayerSettingField = () => {
+export const START_PERSONA_HINT = 'Sets the persona new players start on. Returning players start on their last pick.';
+
+const PLAYER_DEFAULT = 'default';
+const NONE = 'none';
+
+/** Which personas the player can pick, and which one a new player starts on. Advanced only; Any and the
+ *  player's default write no field. */
+const PersonaRulesFields = () => {
   const { worldOverview, updateWorldOverview, entities } = useGameData();
-  const setting = worldPlayerSetting(worldOverview);
-  const hint = setting === 'cast' && !entities.some((entity) => entity.persona === true)
-    ? CAST_WITHOUT_PERSONAS_HINT
-    : PLAYER_SETTING_HINTS[setting];
+  const { allowed, start } = worldPersonaRules(worldOverview);
+  const personas = entities.filter((entity) => entity.persona === true);
+  const custom = customPersonaEntity(entities);
+  const limited = limitsToWorld(allowed, { world: personas, custom });
+  const hint = allowed === 'world' && !limited ? WORLD_ONLY_WITHOUT_PERSONAS_HINT : ALLOWED_PERSONAS_HINTS[allowed];
+
+  const options = [
+    ...(limited ? [] : [{ value: PLAYER_DEFAULT, label: "Player's Default" }]),
+    ...(limited && !custom ? [] : [{ value: NONE, label: custom ? 'Custom Persona' : 'None' }]),
+    ...personas.map((entity) => ({ value: entity.id, label: entity.name || 'Unnamed' })),
+  ];
+  // Under World Only the absent pick is the first offered persona; a stale pick reads as the absent one.
+  const stored = start?.source === 'world' ? start.entityId : start ? NONE : PLAYER_DEFAULT;
+  const selected = options.some((o) => o.value === stored) ? stored : options[0]?.value;
+  const writeStart = (v: string) => updateWorldOverview({
+    startPersona: v === PLAYER_DEFAULT ? undefined : v === NONE ? { source: 'none' } : { source: 'world', entityId: v },
+  });
+
   return (
-    <div className="space-y-2">
-      <Label id="player-setting-label">Persona Choice</Label>
-      <ToggleGroup
-        type="single"
-        aria-labelledby="player-setting-label"
-        value={setting}
-        // A single ToggleGroup clears on a second click of the active item; the setting always has a value.
-        onValueChange={(v) => {
-          const next = PLAYER_SETTINGS.find((s) => s === v);
-          if (next) updateWorldOverview({ playerSetting: next === 'open' ? undefined : next });
-        }}
-        className="flex w-fit"
-      >
-        {PLAYER_SETTINGS.map((value) => (
-          <ToggleGroupItem key={value} value={value} className="px-3">{PLAYER_SETTING_LABELS[value]}</ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <Hint>{hint}</Hint>
-    </div>
+    <>
+      <div className="space-y-2">
+        <Label id="allowed-personas-label">Allowed Personas</Label>
+        <ToggleGroup
+          type="single"
+          aria-labelledby="allowed-personas-label"
+          value={allowed}
+          // A single ToggleGroup clears on a second click of the active item; the setting always has a value.
+          onValueChange={(v) => {
+            const next = ALLOWED_PERSONAS.find((s) => s === v);
+            if (next) updateWorldOverview({ allowedPersonas: next === 'any' ? undefined : next });
+          }}
+          className="flex w-fit"
+        >
+          {ALLOWED_PERSONAS.map((value) => (
+            <ToggleGroupItem key={value} value={value} className="px-3">{ALLOWED_PERSONAS_LABELS[value]}</ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <Hint>{hint}</Hint>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="start-persona">Starts On</Label>
+        <Hint>{START_PERSONA_HINT}</Hint>
+        <Select value={selected} onValueChange={writeStart}>
+          <SelectTrigger id="start-persona" className="w-64 max-w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+    </>
   );
 };
 
@@ -264,7 +299,7 @@ const WorldOverviewManager = () => {
           )}
         </div>
       )}
-      {advanced && <PlayerSettingField />}
+      {advanced && <PersonaRulesFields />}
       <div className="space-y-2">
         <Label htmlFor="sound-upload-world-bgm">Background Music</Label>
         {/* The world stores a bare data URL where a location stores a media record, so the shared widget

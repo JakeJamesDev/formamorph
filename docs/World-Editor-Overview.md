@@ -14,7 +14,8 @@ The **Overview** tab holds the world's own details: its name, its library card, 
 | **Thumbnail** | The card's picture. **Generate with AI** under the frame makes one from your description. |
 | **3D Player Avatar** | Gives this world a 3D avatar. The player can customize it before they start. |
 | **Custom Player Avatar** | **Advanced mode only**, and only with **3D Player Avatar** on. Your own `.vrm` or `.glb` replaces the bundled model. **Preview** opens it, and **Remove** goes back to the default. |
-| **Persona Choice** | **Advanced mode only.** Decides who the player can be: **Open**, **Fixed** or **Cast**. See [Personas for Authors](Persona-Authoring#persona-choice). |
+| **Allowed Personas** | **Advanced mode only.** Decides which personas the player can pick: **Any** or **World Only**. See [Personas for Authors](Persona-Authoring#persona-rules). |
+| **Starts On** | **Advanced mode only.** Decides which persona a new player starts on. See [Personas for Authors](Persona-Authoring#persona-rules). |
 | **Background Music** | The track the world plays. Drop a file on the box, or click the box to pick one. |
 
 ## The right column: what you write

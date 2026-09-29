@@ -79,7 +79,7 @@ import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
   clearDefaultPersona, hasPersonaChoice, namedStartLocation, offeredPersonas, offeredStartLocations, preselectPersona,
-  readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona, worldPlayerSetting,
+  readDefaultPersona, readWorldPersona, rememberWorldPersona, setDefaultPersona, withoutPersona, worldPersonaRules,
   type PersonaPickContext,
 } from '@/lib/personaPick';
 import { personaOption, withPersonaEntry } from '@/lib/persona';
@@ -1463,11 +1463,11 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
     () => withPersonaEntry(entryWorld.entities, entryDraft.persona, entryLibraryName),
     [entryWorld.entities, entryDraft.persona, entryLibraryName],
   );
-  const playerSetting = worldPlayerSetting(selectedWorld?.data.worldOverview);
-  /** What the step's Persona category lists under the world's player setting. */
+  const personaRules = worldPersonaRules(selectedWorld?.data.worldOverview);
+  /** What the step's Persona category lists under the world's Allowed Personas. */
   const personaOffer = useMemo(
-    () => offeredPersonas(playerSetting, { world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
-    [playerSetting, worldPersonaOptions, personaOptions, customPersonaOption],
+    () => offeredPersonas(personaRules.allowed, { world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
+    [personaRules.allowed, worldPersonaOptions, personaOptions, customPersonaOption],
   );
   const personaPickContext: PersonaPickContext = {
     worldEntities: resolvedWorldEntities,
@@ -1475,7 +1475,7 @@ const MainMenu = ({ onStartGame, onLoadSaveGame, onReplayIntro, introActive = fa
   };
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
-    playerSetting,
+    rules: personaRules,
     remembered: readWorldPersona(worldId),
     globalDefault: defaultPersona,
     available: {

@@ -1,6 +1,6 @@
 # 🪪 Personas for Authors
 
-How your world meets the player's persona: playable entities, the **Persona Choice** control, and the two chips that carry the player into your text.
+How your world meets the player's persona: playable entities, the **Allowed Personas** and **Starts On** controls, and the two chips that carry the player into your text.
 
 > Players read [Personas](Personas). This page covers the World Editor side. Everything here except the **Player Name** chip is **Advanced mode only**.
 
@@ -13,7 +13,7 @@ How your world meets the player's persona: playable entities, the **Persona Choi
 | The player to play as one of your entities | **Playable** under **Persona** on that entity |
 | An entity that exists only when the player picks it | **Persona-Only** under **Persona** |
 | Traits for a player with no world persona | The **Custom Persona** entity |
-| To decide who the player can be | **Persona Choice** on the **Overview** tab |
+| To decide who the player can be | **Allowed Personas** and **Starts On** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Player Name** chip |
 
@@ -76,22 +76,32 @@ A world with no marked entity keeps **None** as before. A blueprint chip then re
 
 See [Custom Persona](World-Editor-Traits#custom-persona) for how its links and pins work in the **Traits** tab.
 
-## Persona Choice
+## Persona Rules
 
-The **Overview** tab has a **Persona Choice** control with three values.
+Two controls on the **Overview** tab decide who the player can be. Both are **Advanced mode only**.
 
-| Value | At Enter World | **Quick Start** |
-|---|---|---|
-| **Open** | Any persona, or **None**. Starts on the player's default persona. | The player's default persona |
-| **Fixed** | Starts on **None**. The player can still pick. | **None** |
-| **Cast** | Only your world's personas, with no **None**. Starts on the first one. | The first one |
+**Allowed Personas** decides what the persona list offers:
 
-Use **Fixed** when your world already defines the player. Use **Cast** when the player must be one of your entities.
+| Value | The player can pick |
+|---|---|
+| **Any** | Your world's personas, their own library personas, and **None** (or your **Custom Persona**) |
+| **World Only** | Your world's personas and your **Custom Persona**. No library personas. |
 
-- **A pick the player made in your world before wins**, when the list still offers it. The control guides the player. It doesn't lock them. In a **Cast** world, an earlier **None** or library pick isn't offered, so the first persona is used.
-- **Cast with no playable entity works like Fixed** until you select **Persona** on an entity.
-- **A world with no value is Open**, so older worlds play as before.
-- **The side panel's Change list follows the same rule** as Enter World.
+**Starts On** decides which persona a new player starts on, at Enter World and in **Quick Start**:
+
+| Value | Starts on |
+|---|---|
+| **Player's Default** | The player's default persona. Under **World Only**, your first persona. |
+| **None** or **Custom Persona** | No persona, or your **Custom Persona** when the world has one |
+| One of your personas | That persona |
+
+Use **Starts On: None** when your world already defines the player. Use **World Only** when the player must be one of your entities.
+
+- **A pick the player made in your world before wins**, when the list still offers it. **Starts On** guides new players. It doesn't lock them.
+- **World Only with no playable entity works like Any** until you give an entity a **Persona** role.
+- **A start persona you later unmark falls back to Player's Default.**
+- **The side panel's Change list follows Allowed Personas** too.
+- **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**, and Cast becomes **World Only**.
 
 ## The Persona Chip
 

@@ -63,7 +63,8 @@ Every world saved or exported by Formamorph 2.0+ carries a top-level `version` s
 | `openings` | [Opening](#-openings)[] | The world's own openings, in authored order. One is drawn by weight at Start Game |
 | `openingWeights` | Object | Draw weight per opening `id`. A missing entry weighs 1; `0` keeps the opening without drawing it |
 | `openingsEnabled` | Boolean | `false` keeps the world's openings, and those of its entities, without drawing them. Absent = on |
-| `playerSetting` | `"open"` \| `"fixed"` \| `"cast"` | Who the player can be: the [Persona Choice](Persona-Authoring#persona-choice) control. Absent = `open`, and the editor writes no field for it |
+| `allowedPersonas` | `"any"` \| `"world"` | Which personas the player can pick: the [Allowed Personas](Persona-Authoring#persona-rules) control. Absent = `any`, and the editor writes no field for it |
+| `startPersona` | `{ "source": "none" }` \| `{ "source": "world", "entityId": string }` | The persona a new player starts on: the [Starts On](Persona-Authoring#persona-rules) control. Absent = the player's default. The older `playerSetting` field loads as these two |
 
 ### 📊 `stats`
 

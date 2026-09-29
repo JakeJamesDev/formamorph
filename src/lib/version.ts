@@ -360,6 +360,21 @@ function migrateOpeningCue(world: Record<string, unknown>): void {
 }
 
 /**
+ * Split the 3.0 `playerSetting` into `allowedPersonas` and `startPersona`. Fixed starts on None; Cast allows
+ * only the world's personas, and starts on None when no entity is playable, as Cast did then.
+ * Idempotent: a world without the old field passes through untouched.
+ */
+function migratePlayerSetting(world: Record<string, unknown>): void {
+  const ov = world.worldOverview as Record<string, unknown> | undefined;
+  if (!ov || typeof ov !== 'object' || !('playerSetting' in ov)) return;
+  const { playerSetting, ...next } = ov;
+  const playable = Array.isArray(world.entities) && world.entities.some((e) => (e as Record<string, unknown>)?.persona === true);
+  if (playerSetting === 'cast') next.allowedPersonas = 'world';
+  if (playerSetting === 'fixed' || (playerSetting === 'cast' && !playable)) next.startPersona = { source: 'none' };
+  world.worldOverview = next;
+}
+
+/**
  * Give every placeholder's values their stable ids. Deliberately NOT version-gated, for the same reason as
  * `foldDictionaryIntoBooks`: shipped 2.x worlds carry `version === APP_VERSION` yet predate the records.
  */
@@ -404,7 +419,7 @@ function migrateStatCode(stats: readonly Stat[]): Stat[] {
  * Bring an imported world up to the current format and stamp it with `APP_VERSION`. The dictionary→books
  * fold, the keyword-array migration, the entity-gallery fold, the entity-location flip, the
  * connection-record pair-merge, the Connection-leg conversion, the start-flag rename, the placeholder value-record conversion, the
- * opening-cue move and the content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
+ * opening-cue move, the player-setting split and the content-link guard run unconditionally (they aren't version-gated — see `foldDictionaryIntoBooks`); the
  * rest is skipped for a world already at `APP_VERSION`. Moves the legacy root `customPlayerVRM` bare
  * data-URL into `worldOverview.customPlayerVRM` as a `MediaAsset`, auto-binds legacy body stats to morphs,
  * rewrites stat code's `stats.find` lookups to the map form, and renames v1.2 description keys on
@@ -423,6 +438,7 @@ export function migrateWorld(raw: unknown): World {
   migrateStartLocationFlag(world);
   migrateWorldPlaceholders(world);
   migrateOpeningCue(world);
+  migratePlayerSetting(world);
   normalizeContentLinks(world);
   if (world.version === APP_VERSION) return world as unknown as World;
 
