@@ -11,7 +11,7 @@ import {
   useTutorialSeen,
 } from '@/lib/tutorials';
 import {
-  entityRootCount, newBlankWorld, newEntity, newLocation, newStat, newTrait, traitRootCount,
+  entityRootCount, newBlankWorld, newEntity, newLocation, newStat,
 } from '@/lib/blankWorld';
 import {
   TOUR_STEPS, replayTourSteps, tourStepIndex, type TourItems, type TourStep,
@@ -29,8 +29,9 @@ import { EmptyListHint } from '@/components/EmptyListHint';
 import { HelpButton } from '@/components/HelpButton';
 import { ListMenuRow, ListSearchToolbar, type ListAddSlot } from '@/components/ListToolbar';
 import { useListSearch } from '@/components/listToolbarHooks';
+import { useListEditor } from '@/components/listEditorHooks';
 import { matchesListSearch } from '@/lib/listSearch';
-import { TraitsAddMenu, type OwnedKind } from '../managers/TraitsAddMenu';
+import { useWorldTraitsAdapter } from '../managers/useWorldTraitsAdapter';
 import { worldEditorTopicId } from '@/lib/helpTopics';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,11 +63,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import StatManager from '../managers/StatManager';
 import EntityManager from '../managers/EntityManager';
 import LocationManager from '../managers/LocationManager';
-import TraitManager from '../managers/TraitManager';
-import GroupManager from '../managers/GroupManager';
 import EntityGroupManager from '../managers/EntityGroupManager';
-import TraitTree from '../managers/TraitTree';
-import { useRemoveWorldTrait } from '../managers/useRemoveWorldTrait';
 import { useRemoveEntity } from '../managers/useRemoveEntity';
 import LocationTree from '../managers/LocationTree';
 import LocationCanvas from '../managers/LocationCanvas';
@@ -81,14 +78,8 @@ import {
 } from './dictionaryBookPanelTabs';
 import { focusFieldForItem } from './findFocus';
 import EntityTree from '../managers/EntityTree';
-import { duplicateTraitNode, ownedTraitTree, blueprintsGroup } from '@/lib/traitTree';
 import { blueprintsPlaceholderGroup } from '@/lib/placeholderBlueprints';
-import { bearsTraits, originalOf } from '@/lib/bearers';
-import { LinkedFromLine, LinkedTraitManager, LinkFooter, ThisLinkSection } from '../managers/TraitLinkPanel';
-import { addOwnedGroup, addOwnedTrait, findOwnedItem } from '@/lib/ownedTraits';
-import { LinkToBearerButton } from '../managers/BearerPicker';
 import { duplicateEntityNode } from '@/lib/entityGroupTree';
-import { EntityTraitNodePanel } from '../managers/EntityTraitNodePanel';
 import StatUpdatesManager from '../managers/StatUpdatesManager';
 import WorldOverviewManager from '../managers/WorldOverviewManager';
 import WorldDetailsManager from '../managers/WorldDetailsManager';
@@ -154,13 +145,13 @@ const WorldEditorInner = ({
     stats, locations, entities, entityGroups, traits, traitGroups, statUpdates, dictionaries, placeholders, placementLetters,
     worldPlaceholders, placeholderOwners, placeholderGroups,
     addStat, addLocation, addEntity, addTrait, addStatUpdate, addDictionary,
-    addTraitGroup, addEntityGroup, addPlaceholder, addPlaceholderGroup,
+    addEntityGroup, addPlaceholder, addPlaceholderGroup,
     updateStat, updateEntity, updateEntityGroup, updateLocation, updateTrait, updateTraitGroup,
     addConnection, updateConnection,
     updateDictionary, addDictionaryEntry, updateDictionaryEntry, updatePlaceholder, updatePlaceholderGroup,
     removeStat, removeLocation, removeStatUpdate,
-    setStats, setLocations, setEntities, setTraits, setTraitGroups, setStatUpdates, setDictionaries,
-    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds, editEntity,
+    setStats, setLocations, setEntities, setStatUpdates, setDictionaries,
+    isWorldDirty, saveWorld: saveWorldCtx, discardChanges, setOwnedLibraryIds,
   } = useGameData();
   const { promptWorld, dialog: downscaleDialog } = useDownscalePrompt();
 
@@ -333,7 +324,13 @@ const WorldEditorInner = ({
   }, [devSubtab]);
   const search = useListSearch();
   const { clear: clearSearch } = search;
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  // Each tab keeps its own selection, so leaving a tab and coming back reopens what it showed.
+  const [selections, setSelections] = useState<Partial<Record<string, string | null>>>({});
+  const select = useCallback((tab: string, id: string | null) => {
+    setSelections((held) => (held[tab] === id ? held : { ...held, [tab]: id }));
+  }, []);
+  const selectedItemId = selections[activeTab] ?? null;
+  const setSelectedItemId = (id: string | null) => select(activeTab, id);
 
   // ── Find & replace ────────────────────────────────────────────────────────
   const [findOpen, setFindOpen] = useState(false);
@@ -409,7 +406,7 @@ const WorldEditorInner = ({
     setActiveTab(match.target.tab);
     // Same reason as a Bench finding's Open: the list filter would hide the row the hit lives on.
     clearSearch();
-    setSelectedItemId(match.target.itemId);
+    select(match.target.tab, match.target.itemId);
     // A panel that hides some of its fields behind its own tabs (the Readme pair) needs telling which one
     // was asked for; text alone can't reach a field that isn't rendered.
     setFindField({ fieldKey: match.target.fieldKey, itemId: match.target.itemId });
@@ -433,7 +430,7 @@ const WorldEditorInner = ({
       // stays wherever it was, with the selected row off screen.
       revealSelectedRow(editorRootRef.current);
     });
-  }, [deferReveal, clearSearch]);
+  }, [deferReveal, clearSearch, select]);
   useEffect(() => () => {
     if (revealTimerRef.current !== null) clearTimeout(revealTimerRef.current);
     cancelEditorReveals();
@@ -467,10 +464,10 @@ const WorldEditorInner = ({
   const navigateToBenchItem = useCallback((section: FindingSection, itemId: string, entityTab?: EntityPanelTab) => {
     setActiveTab(section);
     clearSearch();
-    setSelectedItemId(itemId);
+    select(section, itemId);
     if (entityTab) setEntityTab(entityTab);
     deferReveal(() => revealSelectedRow(editorRootRef.current));
-  }, [deferReveal, clearSearch]);
+  }, [deferReveal, clearSearch, select]);
   const bench = useTestBench({
     // Read at the moment of opening for the lens seed; other tabs' selections are not locations.
     selectedLocationId: activeTab === 'locations' ? selectedItemId : null,
@@ -522,11 +519,11 @@ const WorldEditorInner = ({
       const named = labelPlaceholders(placed.name, placeholders, { letters: placementLetters, owners: placeholderOwners });
       toast.info(`${named || 'This entity'} has openings, so Openings is switched on.`);
     }
-    setSelectedItemId(placed.id);
+    select('entities', placed.id);
   };
   const addBookToWorld = (book: Dictionary) => {
     addDictionary(book);
-    setSelectedItemId(book.id);
+    select('dictionary', book.id);
   };
 
   const linking = useLibraryLinking({
@@ -567,7 +564,7 @@ const WorldEditorInner = ({
       clearSearch();
     }
     const itemId = step.item ? readTourRecord(worldId)?.items[step.item] : undefined;
-    if (itemId) setSelectedItemId(itemId);
+    if (step.tab && itemId) select(step.tab, itemId);
     if (step.tab === 'locations' && step.item) {
       setLocationTab(LOCATION_PANEL_TABS.find((t) => t.value === step.panelTab)?.value ?? 'details');
     }
@@ -580,7 +577,7 @@ const WorldEditorInner = ({
     }
     if (step.tab === 'dictionary' && step.item) setEntryTab('details');
     deferReveal(() => focusTourField(step.anchor));
-  }, [deferReveal, worldId, clearSearch]);
+  }, [deferReveal, worldId, clearSearch, select]);
   const tourApi = useMemo(
     () => ({
       updateWorldOverview, addLocation, updateLocation, addConnection, updateConnection, addEntity, updateEntity,
@@ -715,36 +712,7 @@ const WorldEditorInner = ({
     setSelectedItemId(id);
   };
 
-  // New traits/groups append at the root; the author drags them into folders. Order = root sibling count.
-  const handleAddTrait = (typed: string) => {
-    const id = randomUUID();
-    addTrait(newTrait(id, traitRootCount({ traits, traitGroups }), typed || undefined));
-    setSelectedItemId(id);
-  };
-
-  const handleAddGroup = (typed: string) => {
-    const id = randomUUID();
-    addTraitGroup({
-      id,
-      name: typed || 'New Group',
-      playerDescription: '',
-      aiDescription: '',
-      parentId: null,
-      order: traitRootCount({ traits, traitGroups }),
-    });
-    setSelectedItemId(id);
-  };
-
-  // The world holds at most one of each system node, so each add hides once its node exists.
-  const hasBlueprints = !!blueprintsGroup(traitGroups);
-  const handleAddBlueprints = () => {
-    const id = randomUUID();
-    addTraitGroup({
-      id, name: 'Blueprints', playerDescription: '', aiDescription: '', parentId: null,
-      order: traitRootCount({ traits, traitGroups }), system: 'blueprints',
-    });
-    setSelectedItemId(id);
-  };
+  // The world holds at most one Blueprints group, so its add hides once it exists.
   const hasPlaceholderBlueprints = !!blueprintsPlaceholderGroup(placeholderGroups);
   const handleAddPlaceholderBlueprints = () => {
     const id = randomUUID();
@@ -753,14 +721,6 @@ const WorldEditorInner = ({
     });
     setSelectedItemId(id);
   };
-  // The first add to an entity gives it a node in the tree, which reveals the selected row.
-  const handleAddToEntity = (kind: OwnedKind, entityId: string, typed: string) => {
-    const id = randomUUID();
-    const name = typed || undefined;
-    editEntity(entityId, (e) => (kind === 'trait' ? addOwnedTrait(e, id, name) : addOwnedGroup(e, id, name)));
-    setSelectedItemId(id);
-  };
-
   // New entity groups append at the root; the author drags entities into them. Order = root sibling count.
   const entityRootSiblingCount = () => entityRootCount({ entities, entityGroups });
 
@@ -775,11 +735,10 @@ const WorldEditorInner = ({
       activeTab === "stats" ? stats :
       activeTab === "entities" ? entities :
       activeTab === "locations" ? locations :
-      activeTab === "traits" ? traits :
       activeTab === "statUpdates" ? statUpdates : [];
     const names = { placeholders, letters: placementLetters, owners: placeholderOwners };
     return itemsToFilter.filter((item) => matchesListSearch(item.name, search.term, names));
-  }, [activeTab, stats, entities, locations, traits, statUpdates, search.term, placeholders, placementLetters, placeholderOwners]);
+  }, [activeTab, stats, entities, locations, statUpdates, search.term, placeholders, placementLetters, placeholderOwners]);
 
   // The search results reuse one row for every tab, and entities are the only kind here that follows a
   // source — a row from any other tab misses this lookup and draws no marker. A record, not a `Map`: the
@@ -790,38 +749,21 @@ const WorldEditorInner = ({
   );
 
   const selectedItem = filteredItems.find(item => item.id === selectedItemId);
-  // Traits tab can select a trait, a group, or an entity node (the right panel branches on which). A trait
-  // or group may be the world's or an entity's own.
-  const selectedOwned = activeTab === 'traits' && selectedItemId ? findOwnedItem(entities, selectedItemId) : null;
-  const selectedTrait = traits.find(t => t.id === selectedItemId) ?? selectedOwned?.trait;
-  const selectedGroup = traitGroups.find(g => g.id === selectedItemId) ?? selectedOwned?.group;
   const selectedEntity = entities.find(e => e.id === selectedItemId);
-  const selectedTraitNode = activeTab === 'traits' && selectedEntity && bearsTraits(selectedEntity) ? selectedEntity : undefined;
-  // A link's row, or a row of its linked group's subtree, edits the original it reads.
-  const selectedLinkRow = useMemo(
-    () => (activeTab === 'traits' && selectedItemId
-      ? ownedTraitTree({ traits, traitGroups }, entities, [], { links: true }).linkRows.get(selectedItemId) : undefined),
-    [activeTab, selectedItemId, traits, traitGroups, entities],
-  );
-  const selectedLinkBearer = selectedLinkRow && entities.find((e) => e.id === selectedLinkRow.entityId);
-  const linkedTrait = selectedLinkRow && traits.find((t) => t.id === selectedLinkRow.originalId);
-  const linkedGroup = selectedLinkRow && traitGroups.find((g) => g.id === selectedLinkRow.originalId);
   const selectedEntityGroup = entityGroups.find(g => g.id === selectedItemId);
-  // The trait or group the Traits tab shows, or the original a link row reads. `originalOf` drops owned ones.
-  const shownOriginalId = activeTab !== 'traits' ? undefined
-    : selectedLinkRow ? (selectedLinkBearer ? selectedLinkRow.originalId : undefined)
-    : (selectedGroup ?? selectedTrait)?.id;
-  // In Advanced, its link button sits in the detail pane's frozen footer, below every panel tab. A link row's
-  // footer always shows, with Reset to Blueprint and Edit Blueprint.
-  const linkToButton = advanced && shownOriginalId && originalOf({ traits, traitGroups }, shownOriginalId)
-    ? <LinkToBearerButton originalId={shownOriginalId} /> : null;
-  const detailFooter = selectedLinkRow && selectedLinkBearer && shownOriginalId ? (
-    <LinkFooter bearer={selectedLinkBearer} row={selectedLinkRow} onEditBlueprint={() => setSelectedItemId(shownOriginalId)}>
-      {linkToButton}
-    </LinkFooter>
-  ) : linkToButton ? (
-    <div className="p-3 border-t flex justify-end">{linkToButton}</div>
-  ) : undefined;
+  // The Traits tab runs on the List Editor; the host lays out its parts.
+  const selectTrait = useCallback((id: string | null) => select('traits', id), [select]);
+  const { adapter: traitsAdapter, dialog: removeWorldTraitDialog } = useWorldTraitsAdapter({
+    selectedId: selections.traits ?? null,
+    onSelect: selectTrait,
+    navigate: navigateToBenchItem,
+    tab: shownTraitTab,
+    onTabChange: setTraitTab,
+    focusField: findField,
+  });
+  const traitsParts = useListEditor(traitsAdapter, { selectedId: selections.traits ?? null, onSelect: selectTrait, search });
+  // The active tab's List Editor parts, on a tab that has moved onto it.
+  const listEditorParts = activeTab === 'traits' ? traitsParts : null;
   // Dictionary tab: selection is either a book or one of its entries (the right panel branches on which).
   const selectedBook = dictionaries.find(b => b.id === selectedItemId);
   const selectedEntry = dictionaries.flatMap(b => b.entries).find(e => e.id === selectedItemId);
@@ -830,15 +772,14 @@ const WorldEditorInner = ({
   const detailFills = (activeTab === "stats" && !!selectedItem)
     || (activeTab === "entities" && !selectedEntityGroup && !!selectedEntity)
     || (activeTab === "locations" && !!selectedItem)
-    || (activeTab === "traits" && !selectedGroup && !!selectedTrait)
-    || (!!selectedLinkRow && !!selectedLinkBearer && !!linkedTrait)
+    || !!listEditorParts?.fills
     || (activeTab === "dictionary" && (!!selectedBook || !!selectedEntry));
   const selectedEntryBook = selectedEntry && dictionaries.find(b => b.entries.some(e => e.id === selectedEntry.id));
   // Placeholders tab: selection is a *row*, since one shared placeholder draws a row under every holder and
   // each of those weights it differently. An owner node opens a header naming its entity or book.
   const placeholderDetail = usePlaceholderDetail({
     selectedId: activeTab === 'placeholders' ? selectedItemId : null,
-    onSelect: setSelectedItemId,
+    onSelect: (id) => select('placeholders', id),
     onOpenOwner: (owner) => (owner.kind === 'entity'
       ? navigateToBenchItem('entities', owner.id, 'placeholders')
       : navigateToBenchItem('dictionary', owner.id)),
@@ -870,7 +811,6 @@ const WorldEditorInner = ({
     stats: { items: stats, setItems: setStats },
     entities: { items: entities, setItems: setEntities },
     locations: { items: locations, setItems: setLocations },
-    traits: { items: traits, setItems: setTraits },
     statUpdates: { items: statUpdates, setItems: setStatUpdates },
   };
 
@@ -889,16 +829,8 @@ const WorldEditorInner = ({
     (config.setItems as (next: { id: string }[]) => void)(arrayMove(items, oldIndex, newIndex));
   };
 
-  // Deep-copy an item and place the copy right after the original. Traits/groups keep their exact
-  // group/nesting (handled by duplicateTraitNode); the other tabs are flat arrays.
+  // Deep-copy an item and place the copy right after the original. The other tabs are flat arrays.
   const duplicateItem = (id: string) => {
-    if (activeTab === "traits") {
-      const res = duplicateTraitNode(traitGroups, traits, id);
-      setTraitGroups(res.groups);
-      setTraits(res.traits);
-      setSelectedItemId(res.newId);
-      return;
-    }
     // An entity copy needs fresh ids for what it owns, which the entity tree's duplicate gives it.
     if (activeTab === "entities") {
       const res = duplicateEntityNode(entityGroups, entities, id);
@@ -918,7 +850,6 @@ const WorldEditorInner = ({
     setSelectedItemId(copy.id);
   };
 
-  const { ask: askRemoveWorldTrait, dialog: removeWorldTraitDialog } = useRemoveWorldTrait();
   const { ask: askRemoveEntity, dialog: removeEntityDialog } = useRemoveEntity();
   const removeItem = (id: string) => {
     if (activeTab === "stats") {
@@ -927,8 +858,6 @@ const WorldEditorInner = ({
       askRemoveEntity(id);
     } else if (activeTab === "locations") {
       removeLocation(id);
-    } else if (activeTab === "traits") {
-      askRemoveWorldTrait(id, false);
     } else if (activeTab === "statUpdates") {
       removeStatUpdate(id);
     }
@@ -980,7 +909,7 @@ const WorldEditorInner = ({
       {activeTab === "locations" && (canvasView
         ? <LocationCanvas selectedId={selectedItemId} onSelect={setSelectedItemId} />
         : search.typed ? renderItemList(filteredItems) : <LocationTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
-      {activeTab === "traits" && (search.typed ? renderItemList(filteredItems) : <TraitTree selectedId={selectedItemId} onSelect={setSelectedItemId} />)}
+      {listEditorParts?.list}
       {removeWorldTraitDialog}
       {removeEntityDialog}
       {activeTab === "dictionary" && <DictionaryTree selectedId={selectedItemId} onSelect={setSelectedItemId} />}
@@ -1035,55 +964,7 @@ const WorldEditorInner = ({
           focusField={focusFieldForItem(findField, selectedItem.id)}
         />
       )}
-      {activeTab === "traits" && selectedGroup && (
-        <GroupManager
-          key={selectedGroup.id}
-          group={selectedGroup}
-          ownerId={selectedOwned?.entity.id}
-        />
-      )}
-      {selectedTraitNode && (
-        <EntityTraitNodePanel
-          key={selectedTraitNode.id}
-          entity={selectedTraitNode}
-          onOpenEntity={() => navigateToBenchItem('entities', selectedTraitNode.id, 'traits')}
-        />
-      )}
-      {activeTab === "traits" && !selectedGroup && selectedTrait && (
-        <TraitManager
-          key={selectedTrait.id}
-          trait={selectedTrait}
-          owner={selectedOwned?.entity}
-          // A conflict note names a rival trait; clicking the name lands on it like a Bench finding does.
-          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
-          onOpenEntity={(id) => navigateToBenchItem('entities', id)}
-          tab={shownTraitTab}
-          onTabChange={setTraitTab}
-          focusField={focusFieldForItem(findField, selectedTrait.id)}
-        />
-      )}
-      {selectedLinkRow && selectedLinkBearer && linkedTrait && (
-        <LinkedTraitManager
-          key={selectedItemId}
-          bearer={selectedLinkBearer}
-          link={selectedLinkRow.link}
-          original={linkedTrait}
-          onOpenTrait={(id) => navigateToBenchItem('traits', id)}
-          onOpenEntity={(id) => navigateToBenchItem('entities', id)}
-          tab={shownTraitTab}
-          onTabChange={setTraitTab}
-          focusField={focusFieldForItem(findField, linkedTrait.id)}
-        />
-      )}
-      {selectedLinkRow && selectedLinkBearer && linkedGroup && (
-        <GroupManager
-          key={selectedItemId}
-          group={linkedGroup}
-          readOnly
-          detailsHeader={<LinkedFromLine originalId={linkedGroup.id} />}
-          detailsFooter={<ThisLinkSection entity={selectedLinkBearer} link={selectedLinkRow.link} originalId={linkedGroup.id} />}
-        />
-      )}
+      {listEditorParts?.detail}
       {activeTab === "dictionary" && selectedBook && (
         <DictionaryBookManager
           key={selectedBook.id}
@@ -1213,23 +1094,12 @@ const WorldEditorInner = ({
   // The active tab's help topic, when it has copy yet — drives the `?` beside the search box.
   const helpTopicId = worldEditorTopicId(activeTab);
   // The tabs whose list is a folder tree offer Add Group beside Add <item> in Advanced mode.
-  const grouped = activeTab === "traits" || activeTab === "entities" || activeTab === "placeholders";
-  const addGroupHere = activeTab === "entities" ? handleAddEntityGroup : activeTab === "placeholders" ? handleAddPlaceholderGroup : handleAddGroup;
-  const addItemHere = activeTab === "entities" ? addItem : activeTab === "placeholders" ? handleAddPlaceholder : handleAddTrait;
-  const addItemLabel = activeTab === "entities" ? "Add Entity" : activeTab === "placeholders" ? "Add Placeholder" : "Add Trait";
+  const grouped = activeTab === "entities" || activeTab === "placeholders";
+  const addGroupHere = activeTab === "entities" ? handleAddEntityGroup : handleAddPlaceholderGroup;
+  const addItemHere = activeTab === "entities" ? addItem : handleAddPlaceholder;
+  const addItemLabel = activeTab === "entities" ? "Add Entity" : "Add Placeholder";
   const addLabel = `Add to ${visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}`;
-  const addMenu = activeTab === "traits" ? (
-    <TraitsAddMenu
-      advanced={advanced}
-      entities={entities}
-      entityGroups={entityGroups}
-      hasBlueprints={hasBlueprints}
-      onAddGroup={handleAddGroup}
-      onAddTrait={handleAddTrait}
-      onAddToEntity={handleAddToEntity}
-      onAddBlueprints={handleAddBlueprints}
-    />
-  ) : (
+  const addMenu = (
     <>
       <ListMenuRow icon={<FolderPlus className="h-4 w-4" />} label="Add Group" onAdd={addGroupHere} />
       <ListMenuRow icon={<FilePlus className="h-4 w-4" />} label={addItemLabel} onAdd={addItemHere} />
@@ -1239,16 +1109,17 @@ const WorldEditorInner = ({
     </>
   );
   const addSlot: ListAddSlot = advanced && grouped
-    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "traits" || activeTab === "placeholders" ? "w-56" : undefined }
-    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : activeTab === "traits" ? handleAddTrait : addItem };
-  const addSearchBar = activeTab !== "overview" && (
+    ? { label: addLabel, menu: addMenu, menuClassName: activeTab === "placeholders" ? "w-56" : undefined }
+    : { label: addLabel, onAdd: activeTab === "dictionary" ? handleAddBook : activeTab === "placeholders" ? handleAddPlaceholder : addItem };
+  // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
+  const helpButton = helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />;
+  const addSearchBar = activeTab !== "overview" && (listEditorParts ? listEditorParts.toolbar('mt-4', { after: helpButton }) : (
     <ListSearchToolbar
       className="mt-4"
       search={search}
       add={addSlot}
       placeholder={activeTab === "dictionary" ? "Name a new dictionary" : `Search or add new ${activeTab}`}
-      // key: remount per topic so each tab's nudge reads its own seen-state (HelpButton reads it on mount).
-      after={helpTopicId && <HelpButton key={helpTopicId} topicId={helpTopicId} />}
+      after={helpButton}
     >
       {activeTab === "locations" ? (
         <ToggleGroup
@@ -1272,7 +1143,9 @@ const WorldEditorInner = ({
         </ToggleGroup>
       ) : null}
     </ListSearchToolbar>
-  );
+  ));
+  // The detail's frozen footer: the List Editor's on a tab that has moved onto it.
+  const detailFooter = listEditorParts ? listEditorParts.footer : placeholderDetail.footer;
   const footerBar = (
     <div className="p-3 border-t flex flex-wrap gap-2 justify-between">
       {downscaleDialog}
@@ -1394,14 +1267,14 @@ const WorldEditorInner = ({
                   ) : (
                     <ListDetail
                       className="mt-4"
-                      showDetail={!!selectedItemId}
-                      onBack={() => setSelectedItemId(null)}
+                      showDetail={listEditorParts ? listEditorParts.showDetail : !!selectedItemId}
+                      onBack={listEditorParts ? listEditorParts.onBack : () => setSelectedItemId(null)}
                       backLabel={visibleTabs.find((t) => t.value === activeTab)?.label ?? 'List'}
                       scrollList={!canvasView}
                       scrollDetail={!detailFills}
                       list={<div className="h-full" onClick={deselectOnListClick}>{listContent}</div>}
                       detail={detailContent}
-                      detailFooter={detailFooter ?? placeholderDetail.footer}
+                      detailFooter={detailFooter}
                     />
                   ))}
                 </Tabs>
@@ -1449,7 +1322,7 @@ const WorldEditorInner = ({
                       ? <div data-detail-fill className="h-full flex flex-col">{detailContent}</div>
                       : <ScrollArea className="h-full">{detailContent}</ScrollArea>}
                   </CardContent>
-                  {detailFooter ?? placeholderDetail.footer}
+                  {detailFooter}
                 </Card>
               </div>
             </Panel>

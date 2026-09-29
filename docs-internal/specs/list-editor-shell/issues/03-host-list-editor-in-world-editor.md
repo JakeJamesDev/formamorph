@@ -1,6 +1,7 @@
 # 03: Host List Editor parts in the World Editor
 
-Status: ready-for-agent
+Status: in-progress
+Base: 3b03ae6e
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: high
@@ -15,13 +16,13 @@ The top-level **Traits** tab runs on the List Editor inside the World Editor's r
 
 ## Acceptance criteria
 
-- [ ] The World Editor places the shell's parts in its desktop split and its mobile push. The footer bar, palette bar, Bench and In Play panes stay outside the shell and work as before.
-- [ ] The Traits tab's tree, drill-in **+** menu, help button, details and Link footer behave as before.
-- [ ] Traits search lists world traits, owned traits and Links as flat rows; groups and entity nodes stay out.
-- [ ] Each top-level tab holds its own selection. Find, Bench and tour navigation set the target tab's selection.
-- [ ] Bench tests cover per-tab selection and the widened Traits search. Other World Editor tests pass unchanged.
+- [x] The World Editor places the shell's parts in its desktop split and its mobile push. The footer bar, palette bar, Bench and In Play panes stay outside the shell and work as before.
+- [x] The Traits tab's tree, drill-in **+** menu, help button, details and Link footer behave as before.
+- [x] Traits search lists world traits, owned traits and Links as flat rows; groups and entity nodes stay out.
+- [x] Each top-level tab holds its own selection. Find, Bench and tour navigation set the target tab's selection.
+- [x] Bench tests cover per-tab selection and the widened Traits search. Other World Editor tests pass unchanged.
 
 ## Completion checks
 
-- [ ] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
-- [ ] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.
+- [x] Run typecheck, lint, tests, and the build; report the timed test result and investigate unexplained process tail time.
+- [x] Record any behavior drift found in `drift.md` (Q18), with the old behavior kept.

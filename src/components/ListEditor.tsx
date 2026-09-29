@@ -25,6 +25,7 @@ export function ListEditor({ adapter, layout, selectedId, onSelect, backLabel }:
       onBack={parts.onBack}
       backLabel={backLabel}
       scrollList={false}
+      scrollDetail={!parts.fills}
       detailFooter={parts.footer}
       list={
         <div className="flex h-full min-h-0 flex-col">

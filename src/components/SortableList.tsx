@@ -3,7 +3,7 @@ import { useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/so
 import { CSS } from '@dnd-kit/utilities';
 import { type ReactNode } from 'react';
 import { Copy, X } from 'lucide-react';
-import { EditorRow, EditorRowList } from '@/components/EditorRow';
+import { EditorRow, EditorRowList, type EditorRowProps } from '@/components/EditorRow';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 
 export interface SortableListItem {
@@ -16,6 +16,20 @@ export interface SortableListItem {
 export interface SortableRowMeta {
   text: ReactNode;
   title?: string;
+}
+
+/** An `EditorRow` that drags by its grip, for a list that draws its own rows. */
+export function SortableEditorRow({ id, ...row }: { id: string } & Omit<EditorRowProps, 'setNodeRef' | 'style' | 'gripProps'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return (
+    <EditorRow
+      {...row}
+      setNodeRef={setNodeRef}
+      // Translate, not Transform: Transform bakes in a scale that resizes the dragged row to the target slot.
+      style={{ transform: CSS.Translate.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1 : undefined }}
+      gripProps={{ ...attributes, ...listeners }}
+    />
+  );
 }
 
 /** One selectable, drag-reorderable list row: a grip, the item name, and duplicate/delete actions (plus an
