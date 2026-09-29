@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { bearerPreview } from '@/lib/ownedTraitsInPlay';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { useEditingDraft } from '@/lib/useEditingDraft';
 import { Input } from "@/components/ui/input";
@@ -101,9 +102,16 @@ const TraitManager = ({
   focusField?: FocusFieldHint | null;
 }) => {
   const {
-    updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld,
+    updateTrait, editEntity, stats, placeholders, placementLetters, placeholderOwners, traits, traitGroups, pinWorld, entities,
   } = useTraitStore();
   const ownerId = owner?.id;
+  // A link or an owned trait previews as its bearer's text: the bearer's name, copies and pins.
+  const bearer = link ? entities.find((e) => e.id === link.bearerId) : owner;
+  const bearerId = bearer?.id;
+  const preview = useMemo(
+    () => (bearerId ? bearerPreview({ traits, traitGroups, entities }, placeholders, placeholders, bearerId, trait.id) ?? undefined : undefined),
+    [bearerId, traits, traitGroups, entities, placeholders, trait.id],
+  );
   // A link shows its original's text, which the world holds.
   const traitField = useMemo(() => ({ owned: !!owner && !link }), [owner, link]);
   const linkWrite = link?.write;
@@ -214,6 +222,8 @@ const TraitManager = ({
         value={editingTrait.playerDescription || ''}
         onChange={(v) => handleChange('playerDescription', v)}
         placeholders={placeholders}
+        ownerName={bearer?.name}
+        bearer={preview}
         readOnly={readOnly}
         resizable
       />
@@ -223,6 +233,8 @@ const TraitManager = ({
         value={editingTrait.aiDescription || ''}
         onChange={(v) => handleChange('aiDescription', v)}
         placeholders={placeholders}
+        ownerName={bearer?.name}
+        bearer={preview}
         readOnly={readOnly}
         resizable
         tourAnchor="trait-ai-description"

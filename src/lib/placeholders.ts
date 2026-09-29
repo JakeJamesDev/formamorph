@@ -618,11 +618,13 @@ export function buildPlaceholderPreview(
   store?: AuthorDrawStore,
   /** The owning entity's authored name, which Character Name previews as. Absent or blank, it shows its label. */
   ownerName?: string,
+  /** The bearer whose trait text this is: its copies stand in for blueprints, and its pins hold. */
+  bearer?: Pick<ResolveOptions, 'copies' | 'pins'>,
 ): Record<string, string> {
   if (!text || !hasPlaceholders(text)) return {};
   // One context across every token, so a structured chip resolves the way play resolves it and the sharing
   // rules still hold: World chips of one placeholder agree, Unique placements stay apart.
-  return drawWithValuePins(authorDraw(placeholders, pick, store), (ctx) => {
+  return drawWithValuePins({ ...authorDraw(placeholders, pick, store), ...bearer }, (ctx) => {
     // Drawn once, in the same context, so a chip the name shares with the text reads one value.
     let character: string | undefined;
     const previewBuiltin = (builtin: BuiltinPlaceholder): string => {

@@ -5,6 +5,7 @@ import {
   type ChosenTexts, type OpenPlaceholderValue, type PlaceholderMode, type PlaceholderToken,
 } from '@/lib/placeholders';
 import type { PinRow } from '@/lib/placeholderPins';
+import type { BearerPreview } from '@/lib/ownedTraitsInPlay';
 import { isPinStop, placeholderStops } from '@/lib/placeholderStops';
 import type { Placeholder, PlaceholderRolls } from '@/types';
 
@@ -26,8 +27,11 @@ export interface EditorPreviewRolls {
   /** Token → value for every chip in `text`. A chip nothing has drawn yet is drawn now and kept, so the
    *  next reader — this field's next render, or another field — sees the same value. `pinRows` are the
    *  world's pins, which a stop an author stepped to may name. `ownerName` is the owning entity's authored
-   *  name, which Character Name previews as. */
-  preview(text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[], ownerName?: string): Record<string, string>;
+   *  name, which Character Name previews as. `bearer` reads a trait's text as one bearer's (see
+   *  `buildPlaceholderPreview`). */
+  preview(
+    text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[], ownerName?: string, bearer?: BearerPreview,
+  ): Record<string, string>;
   /** Token → the value each chip in `text` opens on, from the same rolls `preview` reads. */
   open(text: string, placeholders: Placeholder[], pinRows?: readonly PinRow[]): Record<string, OpenPlaceholderValue>;
   /** Redraw `ids` and every placeholder reachable through their values; every other roll stays. */
@@ -105,9 +109,9 @@ function usePreviewRollStore(): EditorPreviewRolls {
     return {
       version,
       // The store reads the name's chips too, so a Unique chip in it keeps its roll.
-      preview: (text, placeholders, pinRows, ownerName) =>
+      preview: (text, placeholders, pinRows, ownerName, bearer) =>
         buildPlaceholderPreview(
-          text, placeholders, undefined, storeFor(`${text} ${ownerName ?? ''}`, placeholders, pinRows), ownerName,
+          text, placeholders, undefined, storeFor(`${text} ${ownerName ?? ''}`, placeholders, pinRows), ownerName, bearer,
         ),
       open: (text, placeholders, pinRows) =>
         drawOpenPlaceholderValues(text, placeholders, undefined, storeFor(text, placeholders, pinRows)),

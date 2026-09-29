@@ -8,7 +8,7 @@ import { entityTexts } from './entityTexts';
 import { bindBlueprintPins, collectPins, type PinSources } from './placeholderPins';
 import { bindOwnedTraits, type TraitWorld } from './portableTraits';
 import { INITIAL_SOURCE_TURN_ID } from './runtimeCharacters';
-import { inAuthoredOrder, traitOrderIndex } from './traitEffects';
+import { exclusiveSiblings, inAuthoredOrder, traitOrderIndex } from './traitEffects';
 import type { GateOwner } from './traitGates';
 import { effectivePlacement, placeableGroupIds } from './traitTree';
 import { mapPreservingIdentity } from './utils';
@@ -208,6 +208,32 @@ export function bearerPins(state: BearerPinState, sources: Omit<PinSources, 'tra
     return pins;
   };
   return { world: worldPins, of, bind, copies };
+}
+
+/** What an editor preview of one bearer's trait text reads: its copies and the pins in force on it. */
+export interface BearerPreview {
+  copies: CopyLookup;
+  pins: Record<string, string>;
+}
+
+/**
+ * One bearer's trait text as a new game would read it with `traitId` on: the bearer's default traits and
+ * `traitId`, minus its exclusive siblings, laying their pins on the bearer's copies. Null when the world has
+ * no such bearer.
+ */
+export function bearerPreview(
+  world: BearerWorld, sharedPlaceholders: readonly Placeholder[], placeholders: readonly Placeholder[], bearerId: string, traitId: string,
+): BearerPreview | null {
+  const bearer = resolveBearers(world, undefined).bearers.find((b) => b.id === bearerId);
+  const trait = bearer?.traits.find((t) => t.id === traitId);
+  if (!bearer?.entity || !trait) return null;
+  const retired = new Set(exclusiveSiblings(trait, bearer.traits, bearer.groups));
+  const on = [...bearer.traits.filter((t) => t.isDefault && !retired.has(t.id)).map((t) => t.id), traitId];
+  const set = bearerPins(
+    { world, persona: undefined, playerTraits: [], owned: { [bearerId]: [...new Set(on)] }, sharedPlaceholders },
+    { placeholders },
+  );
+  return { copies: set.copies(bearerId), pins: set.of(bearerId) };
 }
 
 const inBearerOrder = (traits: readonly Trait[], bearer: Bearer): Trait[] =>
