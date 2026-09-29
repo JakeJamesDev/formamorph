@@ -40,16 +40,10 @@ export interface TraitLinkEdit {
 }
 
 const MODE_OPTIONS = [
-  { value: 'optional', label: 'Optional' },
-  { value: 'alwaysOn', label: 'Always On' },
-  { value: 'hidden', label: 'Hidden' },
+  { value: 'optional', label: 'Optional', hint: 'Lets the player choose it' },
+  { value: 'alwaysOn', label: 'Always On', hint: 'Turns on whenever its requirements hold, and the player can’t switch it' },
+  { value: 'hidden', label: 'Hidden', hint: 'Acts as Always On, but the player never sees it. The AI does.' },
 ] as const;
-
-const MODE_HINTS = {
-  optional: 'Lets the player choose it',
-  alwaysOn: 'Turns on whenever its requirements hold, and the player can’t switch it',
-  hidden: 'Works like Always On, but the player never sees it. The AI still does.',
-} as const;
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -268,7 +262,7 @@ const TraitManager = ({
           ariaLabel="Mode"
           disabled={readOnly}
         />
-        <Hint>{MODE_HINTS[mode]}</Hint>
+        <Hint>{MODE_OPTIONS.find((o) => o.value === mode)?.hint}</Hint>
       </div>
       {!alwaysOn && (
         <>

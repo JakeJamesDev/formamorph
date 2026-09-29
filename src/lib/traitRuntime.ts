@@ -455,6 +455,10 @@ export function traitSwitchLog(name: string, kind: TraitSwitchKind, retired: rea
   ];
 }
 
+/** The turn log lines for the traits a new game starts with. A Hidden trait moves unseen. */
+export const startingTraitLog = (traits: readonly Trait[], nameOf: (trait: Trait) => string): string[] =>
+  traits.filter((trait) => !isHidden(trait)).map((trait) => `Applied trait: ${nameOf(trait)}`);
+
 /** One trait switch a stat's code made. `by` is that stat's name. */
 export interface CodeTraitSwitch {
   traitId: string;
