@@ -61,7 +61,7 @@ describe('trait links', () => {
     expect(linkTraitState(paladin, l)).toEqual({
       record: {
         isDefault: true, playerToggle: false, requires: paladin.requires, placeholderPins: paladin.placeholderPins,
-        statChanges: paladin.statChanges,
+        statChanges: paladin.statChanges, mode: 'optional',
       },
       overridden: [], stale: [],
     });
@@ -69,7 +69,20 @@ describe('trait links', () => {
 
   it('normalizes absent trait fields to their off or empty reading', () => {
     expect(linkTraitState(trait('bare'), link('l1', 'bare')).record)
-      .toEqual({ isDefault: false, playerToggle: false, requires: [], placeholderPins: [], statChanges: [] });
+      .toEqual({ isDefault: false, playerToggle: false, requires: [], placeholderPins: [], statChanges: [], mode: 'optional' });
+  });
+
+  it('overrides the mode, and an override to Optional clears the original\'s mode', () => {
+    const hiddenOriginal = trait('sage', { mode: 'hidden' });
+    const toOptional = setLinkOverride(link('l1', 'classes'), hiddenOriginal, 'mode', 'optional');
+    expect(toOptional.overrides).toEqual({ sage: { mode: { value: 'optional', blueprint: 'hidden' } } });
+    expect(effectiveLinkTrait(hiddenOriginal, toOptional)).not.toHaveProperty('mode');
+    const toAlwaysOn = setLinkOverride(link('l1', 'classes'), paladin, 'mode', 'alwaysOn');
+    expect(effectiveLinkTrait(paladin, toAlwaysOn).mode).toBe('alwaysOn');
+    expect(effectiveLinkTrait(hiddenOriginal, link('l2', 'classes')).mode).toBe('hidden');
+    // The editor's Optional choice arrives as an absent mode on the edited trait.
+    const { mode: _m, ...asOptional } = hiddenOriginal;
+    expect(setLinkEdits(link('l1', 'classes'), hiddenOriginal, asOptional).overrides?.sage?.mode?.value).toBe('optional');
   });
 
   it('writes one override with the original\'s value as the snapshot, and the trait reads it', () => {

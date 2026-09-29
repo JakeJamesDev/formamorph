@@ -4,6 +4,7 @@ import {
 } from './bearers';
 import { remintOwnedTraits } from './ownedTraits';
 import { gateOf, gateStates } from './traitGates';
+import { isShown } from './traitEffects';
 import type { Entity, PersonaRef, Trait, TraitGroup, TraitLink } from '@/types';
 
 const trait = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
@@ -93,6 +94,43 @@ describe('resolveBearers: links', () => {
     const b = bearer(world({ entities: [overridden] }), 'albus');
     expect(b.traits.find((t) => t.id === 'paladin')?.isDefault).toBe(false);
     expect(b.traits.find((t) => t.id === 'wizard')?.isDefault).toBe(true);
+  });
+
+  it('resolves the mode per bearer, and an unset override reads the original live', () => {
+    const wizardMode = { wizard: { mode: { value: 'hidden' as const, blueprint: 'optional' as const } } };
+    const albusHidden: Entity = { ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides: wizardMode }] };
+    const w = world({ entities: [albusHidden, newcomer] });
+    const modeOf = (bearerId: string, traitId: string) => bearer(w, bearerId).traits.find((t) => t.id === traitId)?.mode;
+    expect(modeOf('albus', 'wizard')).toBe('hidden');
+    expect(modeOf('cp', 'wizard')).toBeUndefined();
+    expect(modeOf('albus', 'paladin')).toBeUndefined();
+
+    // The original's mode change reaches every link that doesn't override it.
+    const live = world({
+      entities: [albusHidden, newcomer],
+      traits: world().traits.map((t) => (t.id === 'paladin' ? { ...t, mode: 'alwaysOn' as const } : t)),
+    });
+    expect(bearer(live, 'albus').traits.find((t) => t.id === 'paladin')?.mode).toBe('alwaysOn');
+    expect(bearer(live, 'cp').traits.find((t) => t.id === 'paladin')?.mode).toBe('alwaysOn');
+  });
+
+  it('reads an Optional override over an Always On original as Optional', () => {
+    const overrides = { paladin: { mode: { value: 'optional' as const, blueprint: 'alwaysOn' as const } } };
+    const w = world({
+      entities: [{ ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides }] }, newcomer],
+      traits: world().traits.map((t) => (t.id === 'paladin' ? { ...t, mode: 'alwaysOn' as const } : t)),
+    });
+    expect(bearer(w, 'albus').traits.find((t) => t.id === 'paladin')).not.toHaveProperty('mode');
+    expect(bearer(w, 'cp').traits.find((t) => t.id === 'paladin')?.mode).toBe('alwaysOn');
+  });
+
+  it("leaves a Hidden override out of that bearer's player-facing list only", () => {
+    const wizardMode = { wizard: { mode: { value: 'hidden' as const, blueprint: 'optional' as const } } };
+    const albusHidden: Entity = { ...albus, traitLinks: [{ ...albus.traitLinks![0], overrides: wizardMode }] };
+    const w = world({ entities: [albusHidden, newcomer] });
+    const shown = (id: string) => bearer(w, id).traits.filter((t) => isShown(t, [])).map((t) => t.id);
+    expect(shown('albus')).toEqual(['oath', 'paladin']);
+    expect(shown('cp')).toEqual(['paladin', 'wizard']);
   });
 
   it("carries the link's other overrides on the effective traits: requirements, toggle and stat changes", () => {

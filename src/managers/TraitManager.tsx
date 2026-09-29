@@ -254,13 +254,14 @@ const TraitManager = ({
   const availabilityPanel = (
     <>
       <div className="space-y-2">
-        <Label>Mode</Label>
+        <LabelRow reset={resetControl('mode', 'Mode')}>
+          <Label>Mode</Label>
+        </LabelRow>
         <OptionSwitcher
           value={mode}
           onChange={(v) => apply({ mode: v === 'optional' ? undefined : v })}
           options={MODE_OPTIONS}
           ariaLabel="Mode"
-          disabled={readOnly}
         />
         <Hint>{MODE_OPTIONS.find((o) => o.value === mode)?.hint}</Hint>
       </div>
