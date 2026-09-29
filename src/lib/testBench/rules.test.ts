@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type {
-  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitLink, TraitRequirement,
-  WorldOverview,
+  Dictionary, DictionaryEntry, Entity, GameLocation, Placeholder, PlaceholderPin, Stat, Trait, TraitGroup, TraitLink,
+  TraitRequirement, WorldOverview,
 } from '@/types';
 import { estimateTokens } from '@/lib/memoryUtils';
 import { IMAGE_CAPS } from '@/lib/imageOptim';
@@ -1495,10 +1495,13 @@ describe('entity completeness rules', () => {
 
 describe('trait group rules', () => {
   // `max: null` is a group with no limit.
-  const grouped = (over: { max?: number | null; defaults?: number; members?: number }) => {
-    const { max = 1, defaults = 0, members = 2 } = over;
+  const grouped = (over: { min?: number; max?: number | null; defaults?: number; members?: number }) => {
+    const { min, max = 1, defaults = 0, members = 2 } = over;
     return base({
-      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, ...(max === null ? {} : { maxPicks: max }) }],
+      traitGroups: [{
+        id: 'g1', name: 'Origin', parentId: null,
+        ...(max === null ? {} : { maxPicks: max }), ...(min === undefined ? {} : { minPicks: min }),
+      }],
       traits: Array.from({ length: members }, (_, i) => trait({
         id: `t${i + 1}`, name: `Origin ${i + 1}`, groupId: 'g1', isDefault: i < defaults,
       })),
@@ -1506,7 +1509,7 @@ describe('trait group rules', () => {
   };
 
   it('flags an exclusive group defaulting two traits at once', () => {
-    const found = only(grouped({ defaults: 2 }), 'trait-group-multiple-defaults');
+    const found = only(grouped({ defaults: 2 }), 'trait-group-defaults-over-max');
     expect(found).toHaveLength(1);
     expect(found[0].severity).toBe('warning');
     expect(found[0].message).toContain('Origin 1 and Origin 2');
@@ -1514,8 +1517,79 @@ describe('trait group rules', () => {
     expect(runRules(grouped({ defaults: 1 }))).toEqual([]);
   });
 
-  it('lets a non-exclusive group default whatever it likes', () => {
-    expect(only(grouped({ max: null, defaults: 2 }), 'trait-group-multiple-defaults')).toEqual([]);
+  it('flags defaults over any maximum, and passes defaults at the maximum', () => {
+    const found = only(grouped({ max: 2, members: 3, defaults: 3 }), 'trait-group-defaults-over-max');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toBe('“Origin” allows 2 active traits but marks Origin 1, Origin 2 and Origin 3 as defaults — only 2 can actually apply');
+    expect(only(grouped({ max: 2, members: 3, defaults: 2 }), 'trait-group-defaults-over-max')).toEqual([]);
+  });
+
+  it('lets a group with no maximum default whatever it likes', () => {
+    expect(only(grouped({ max: null, defaults: 2 }), 'trait-group-defaults-over-max')).toEqual([]);
+  });
+
+  it('flags a minimum above the maximum, and passes a minimum at it', () => {
+    const found = only(grouped({ min: 3, max: 2, members: 3, defaults: 2 }), 'trait-group-min-above-max');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].message).toBe('“Origin” needs at least 3 picks but allows at most 2');
+    expect(found[0].items.map((i) => i.id)).toEqual(['g1']);
+    expect(only(grouped({ min: 2, max: 2, members: 3, defaults: 2 }), 'trait-group-min-above-max')).toEqual([]);
+  });
+
+  it('flags a group whose defaults fall short of its minimum, and passes once they meet it', () => {
+    const found = only(grouped({ min: 2, max: null, members: 3, defaults: 1 }), 'trait-group-defaults-below-min');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].message).toBe('“Origin” needs at least 2 picks but a new game starts with 1 — the defaults don’t meet the minimum');
+    expect(found[0].items.map((i) => i.id)).toEqual(['g1', 't1']);
+    expect(only(grouped({ min: 2, max: null, members: 3, defaults: 2 }), 'trait-group-defaults-below-min')).toEqual([]);
+    expect(only(grouped({ members: 3, defaults: 0 }), 'trait-group-defaults-below-min')).toEqual([]);
+  });
+
+  it('counts a gated default that starts unselected as missing', () => {
+    const w = base({
+      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, minPicks: 1 }],
+      traits: [
+        trait({ id: 't1', name: 'Origin 1', groupId: 'g1', isDefault: true, requires: [{ kind: 'trait', id: 'key' }] }),
+        trait({ id: 't2', name: 'Origin 2', groupId: 'g1' }),
+        trait({ id: 'key', name: 'Key' }),
+      ],
+    });
+    expect(only(w, 'trait-group-defaults-below-min')).toHaveLength(1);
+  });
+
+  it('flags a group whose minimum outruns the traits that can unlock, naming the stuck ones', () => {
+    const stuck = (min: number) => base({
+      traitGroups: [{ id: 'g1', name: 'Origin', parentId: null, minPicks: min }],
+      traits: [
+        trait({ id: 't1', name: 'Origin 1', groupId: 'g1', isDefault: true }),
+        trait({ id: 't2', name: 'Origin 2', groupId: 'g1', requires: [{ kind: 'trait', id: 'loop' }] }),
+        trait({ id: 'loop', name: 'Loop', requires: [{ kind: 'trait', id: 't2' }] }),
+      ],
+    });
+    const found = only(stuck(2), 'trait-group-min-unreachable');
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].message).toBe('“Origin” needs at least 2 picks but only 1 of its traits can ever unlock');
+    expect(found[0].items.map((i) => i.id)).toEqual(['g1', 't2']);
+    expect(only(stuck(1), 'trait-group-min-unreachable')).toEqual([]);
+  });
+
+  it('leaves the defaults finding to the unreachable one for the same group', () => {
+    const w = grouped({ min: 3, max: null, members: 2, defaults: 2 });
+    expect(only(w, 'trait-group-min-unreachable')).toHaveLength(1);
+    expect(only(grouped({ min: 3, max: null, members: 2, defaults: 0 }), 'trait-group-defaults-below-min')).toEqual([]);
+  });
+
+  it('leaves the defaults finding to the minimum-above-maximum one for the same group', () => {
+    const w = grouped({ min: 3, max: 2, members: 4, defaults: 0 });
+    expect(only(w, 'trait-group-min-above-max')).toHaveLength(1);
+    expect(only(w, 'trait-group-defaults-below-min')).toEqual([]);
+  });
+
+  it('passes a group whose count is met by its defaults', () => {
+    expect(runRules(grouped({ min: 1, max: 1, members: 2, defaults: 1 }))).toEqual([]);
   });
 
   it('flags an exclusive group holding fewer than two traits — a choice that isn’t a choice', () => {
@@ -1826,6 +1900,71 @@ describe('trait link rules', () => {
         traits: [faithful, ...blueprinted.map((t) => (t.id === 'smite' ? { ...t, requires: [{ kind: 'trait' as const, id: 'oath', bearer: { kind: 'entity' as const, id: 'bree' } }] } : t))],
       }), rule);
       expect(twin.map((f) => f.message)).toEqual(['“Smite” on “Albus” and “Oath” on “Albus” can never unlock — no pick or persona can meet their requirements']);
+    });
+  });
+
+  describe('pick counts per bearer', () => {
+    const classes = (over: Partial<TraitGroup>) => traitGroups.map((g) => (g.id === 'classes' ? { ...g, ...over } : g));
+    const withClasses = (over: Partial<TraitGroup>, entities: Entity[], traits = [faithful, ...blueprinted]) =>
+      linked(entities, { traitGroups: classes(over), traits });
+    const bearing = (id: string, name: string) => albus({ id, name, traitLinks: [link(`l-${id}`, 'classes', 'group')] });
+
+    it('flags an unreachable minimum on each bearer that links the group, and opens the link', () => {
+      const w = withClasses({ minPicks: 3 }, [bearing('albus', 'Albus'), bearing('bree', 'Bree')]);
+      const found = only(w, 'trait-group-min-unreachable');
+      expect(found.map((f) => f.message)).toEqual([
+        '“Classes” on “Albus” needs at least 3 picks but only 2 of its traits can ever unlock',
+        '“Classes” on “Bree” needs at least 3 picks but only 2 of its traits can ever unlock',
+      ]);
+      expect(opened(found)).toEqual([['l-albus'], ['l-bree']]);
+      expect(only(withClasses({ minPicks: 2 }, [bearing('albus', 'Albus')]), 'trait-group-min-unreachable')).toEqual([]);
+    });
+
+    it('checks the defaults of a linked group on the bearer that holds it', () => {
+      const defaulted = [faithful, ...blueprinted.map((t) => (t.id === 'paladin' ? { ...t, isDefault: true } : t))];
+      const w = withClasses({ minPicks: 1 }, [bearing('albus', 'Albus'), albus({ id: 'bree', name: 'Bree' })], defaulted);
+      // Both bearers' entities hold the same default, so the group is met wherever it is linked.
+      expect(only(w, 'trait-group-defaults-below-min')).toEqual([]);
+      const short = only(withClasses({ minPicks: 1 }, [bearing('albus', 'Albus')]), 'trait-group-defaults-below-min');
+      expect(short.map((f) => f.message)).toEqual([
+        '“Classes” on “Albus” needs at least 1 pick but a new game starts with 0 — the defaults don’t meet the minimum',
+      ]);
+      expect(opened(short)).toEqual([['l-albus']]);
+    });
+
+    it('checks a minimum above the maximum and defaults over the maximum on the linked group', () => {
+      const defaulted = [faithful, ...blueprinted.map((t) => (t.groupId === 'classes' ? { ...t, isDefault: true } : t))];
+      const w = withClasses({ minPicks: 2, maxPicks: 1 }, [bearing('albus', 'Albus')], defaulted);
+      expect(only(w, 'trait-group-min-above-max').map((f) => f.message))
+        .toEqual(['“Classes” on “Albus” needs at least 2 picks but allows at most 1']);
+      const over = only(w, 'trait-group-defaults-over-max');
+      expect(over.map((f) => f.message)).toEqual([
+        '“Classes” on “Albus” allows one active trait but marks Paladin and Wizard as defaults — only one can actually apply',
+      ]);
+      expect(opened(over)).toEqual([['l-albus', 'l-albus', 'l-albus']]);
+    });
+
+    it('reports a short minimum only when every persona choice falls short', () => {
+      // Playing Ash drops the trait that names Ash, so the group is short then and met under None.
+      const ash = albus({ id: 'ash', name: 'Ash', persona: true, traits: [trait({ id: 'paladin-own', name: 'Oathbound' })] });
+      const w = linked([ash], {
+        traitGroups: [{ id: 'g', name: 'Vows', parentId: null, minPicks: 2 }],
+        traits: [
+          trait({ id: 'v1', name: 'Vow 1', groupId: 'g' }),
+          trait({ id: 'v2', name: 'Vow 2', groupId: 'g', requires: [{ kind: 'trait', id: 'paladin-own', bearer: { kind: 'entity', id: 'ash' } }] }),
+        ],
+      });
+      expect(only(w, 'trait-group-min-unreachable')).toEqual([]);
+    });
+
+    it('names an entity-owned group with its bearer', () => {
+      const own = albus({
+        traitGroups: [{ id: 'oaths', name: 'Oaths', parentId: null, minPicks: 2 }],
+        traits: [trait({ id: 'o1', name: 'Oath 1', groupId: 'oaths', isDefault: true })],
+      });
+      const found = only(linked([own]), 'trait-group-min-unreachable');
+      expect(found.map((f) => f.message)).toEqual(['“Oaths” on “Albus” needs at least 2 picks but only 1 of its traits can ever unlock']);
+      expect(opened(found)).toEqual([['oaths']]);
     });
   });
 
@@ -3487,7 +3626,10 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-percentage-bounds': 'simple',
   'stat-starting-out-of-range': 'simple',
   'stat-update-unknown-stat': 'simple',
-  'trait-group-multiple-defaults': 'simple',
+  'trait-group-defaults-over-max': 'simple',
+  'trait-group-min-above-max': 'simple',
+  'trait-group-min-unreachable': 'simple',
+  'trait-group-defaults-below-min': 'simple',
   'trait-group-too-small': 'simple',
   'trait-default-gated': 'simple',
   'trait-requirement-never-unlockable': 'simple',

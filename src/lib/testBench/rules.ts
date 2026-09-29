@@ -49,7 +49,9 @@ import {
   broughtIds, canBePlayer, editorGateInput, linksInTreeOrder, originalOf, PLAYER_BEARER, resolveBearers, type Bearer,
   type BearerWorld,
 } from '@/lib/bearers';
-import { WORLD_OWNER, gateOf, gateStates, neverUnlockable, settleDefaults, type GateInput } from '@/lib/traitGates';
+import {
+  WORLD_OWNER, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
+} from '@/lib/traitGates';
 import { offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
@@ -1659,27 +1661,73 @@ const locationNoEntities: Rule = {
 
 // ── Trait groups ──────────────────────────────────────────────────────────────────────────────────────────
 
-const traitGroupMultipleDefaults: Rule = {
-  id: 'trait-group-multiple-defaults',
+/** A group as a pick-count finding names it: the group, then "on" its bearer when an entity holds it. */
+const groupSubject = (group: TraitGroup, bearer: Bearer | undefined, world: RuleWorld): string => {
+  const on = bearerName(bearer);
+  return on === null ? quote(labelOf(group.name, world)) : `${quote(labelOf(group.name, world))} on ${quote(labelOf(on, world))}`;
+};
+
+const picksOf = (count: number) => `${count} pick${count === 1 ? '' : 's'}`;
+
+const traitGroupDefaultsOverMax: Rule = {
+  id: 'trait-group-defaults-over-max',
   severity: 'warning',
   section: 'traits',
-  summary: (count) => `${count} exclusive trait groups mark two or more traits as default`,
-  check: (world) => {
-    const traits = world.traits ?? [];
-    return (world.traitGroups ?? [])
-      .filter((group) => group.maxPicks === 1)
-      .flatMap((group) => {
-        const defaults = traits.filter((t) => t.groupId === group.id && t.isDefault);
-        if (defaults.length < 2) return [];
-        const groupItem = namedItem(group.id, group.name, world);
-        const defaultItems = defaults.map((t) => namedItem(t.id, t.name, world));
-        return [finding(
-          traitGroupMultipleDefaults,
-          `${quote(groupItem.name)} allows one active trait but marks ${listNames(defaultItems.map((i) => i.name))} as defaults — only one can actually apply`,
-          [groupItem, ...defaultItems],
-        )];
-      });
-  },
+  summary: (count) => `${count} trait groups mark more traits as default than they allow`,
+  check: (world) => [...bearersOf(world).values()].flatMap((bearer) => bearer.groups.flatMap((group) => {
+    const max = group.maxPicks;
+    if (max === undefined) return [];
+    const defaults = bearer.traits.filter((t) => (t.groupId ?? null) === group.id && t.isDefault);
+    if (defaults.length <= max) return [];
+    const groupItem = bearerTraitItem(group, bearer, world);
+    const defaultItems = defaults.map((t) => bearerTraitItem(t, bearer, world));
+    const allowed = max === 1 ? 'one active trait' : `${max} active traits`;
+    return [finding(
+      traitGroupDefaultsOverMax,
+      `${groupSubject(group, bearer, world)} allows ${allowed} but marks ${listNames(defaultItems.map((i) => i.name))} as defaults — only ${max === 1 ? 'one' : max} can actually apply`,
+      [groupItem, ...defaultItems],
+    )];
+  })),
+};
+
+const traitGroupMinAboveMax: Rule = {
+  id: 'trait-group-min-above-max',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} trait groups need more picks than they allow`,
+  check: (world) => [...bearersOf(world).values()].flatMap((bearer) => bearer.groups.flatMap((group) => {
+    const min = group.minPicks ?? 0;
+    if (group.maxPicks === undefined || min <= group.maxPicks) return [];
+    return [finding(
+      traitGroupMinAboveMax,
+      `${groupSubject(group, bearer, world)} needs at least ${picksOf(min)} but allows at most ${group.maxPicks}`,
+      [bearerTraitItem(group, bearer, world)],
+    )];
+  })),
+};
+
+const traitGroupMinUnreachable: Rule = {
+  id: 'trait-group-min-unreachable',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} trait groups need more picks than their traits can unlock`,
+  check: (world) => gateReportOf(world).picks.filter((p) => p.kind === 'unreachable').map((p) => finding(
+    traitGroupMinUnreachable,
+    `${groupSubject(p.group, p.bearer, world)} needs at least ${picksOf(p.min)} but ${p.count === 0 ? 'none' : `only ${p.count}`} of its traits can ever unlock`,
+    [bearerTraitItem(p.group, p.bearer, world), ...p.traits.map((t) => bearerTraitItem(t, p.bearer, world))],
+  )),
+};
+
+const traitGroupDefaultsBelowMin: Rule = {
+  id: 'trait-group-defaults-below-min',
+  severity: 'error',
+  section: 'traits',
+  summary: (count) => `${count} trait groups start with fewer picks than they need`,
+  check: (world) => gateReportOf(world).picks.filter((p) => p.kind === 'defaults').map((p) => finding(
+    traitGroupDefaultsBelowMin,
+    `${groupSubject(p.group, p.bearer, world)} needs at least ${picksOf(p.min)} but a new game starts with ${p.count} — the defaults don’t meet the minimum`,
+    [bearerTraitItem(p.group, p.bearer, world), ...p.traits.map((t) => bearerTraitItem(t, p.bearer, world))],
+  )),
 };
 
 const traitGroupTooSmall: Rule = {
@@ -1752,6 +1800,21 @@ interface GateReport {
   stuck: StuckTrait[][];
   /** Defaults that start unselected under every persona choice, outside the never-unlockable sets. */
   offDefaults: string[];
+  /** Groups whose minimum a bearer can't meet, under every persona choice that holds the bearer. */
+  picks: PickShortfall[];
+}
+
+/** One group on one bearer that can't meet its minimum. */
+interface PickShortfall {
+  /** `unreachable`: too few traits can unlock. `defaults`: the settled defaults fall short. */
+  kind: 'unreachable' | 'defaults';
+  bearer: Bearer | undefined;
+  group: TraitGroup;
+  min: number;
+  /** The unlockable traits (`unreachable`) or the settled defaults (`defaults`) placed directly in the group. */
+  count: number;
+  /** The traits behind the finding: the stuck ones (`unreachable`) or the settled defaults (`defaults`). */
+  traits: Trait[];
 }
 
 /**
@@ -1821,12 +1884,44 @@ const gateReportOf = (world: RuleWorld): GateReport => {
     const settled = settleDefaults(gate);
     for (const r of settled.turnedOff) everOff.add(r.traitId);
     for (const ids of Object.values(settled.active)) for (const id of ids) everOn.add(id);
+    return settled;
   };
-  for (const pass of passes) settleInto(pass.gate);
+  const startsBy = passes.map((pass) => settleInto(pass.gate).active);
   for (const persona of personaChoices(world)) settleInto({ ...input, persona });
   const offDefaults = traits.filter((t) => !stuckIds.has(t.id) && everOff.has(t.id) && !everOn.has(t.id)).map((t) => t.id);
 
-  report = { requirementTexts, unresolved, stuck, offDefaults };
+  // A group is short only when it is short under every persona choice that holds its bearer. A group with an
+  // unreachable minimum leaves its defaults to that finding, as does a minimum above the maximum.
+  const seen = new Map<string, { runs: number; unreachable: PickShortfall[]; defaults: PickShortfall[] }>();
+  passes.forEach((pass, i) => {
+    for (const owner of pass.gate.owners) {
+      const started = startsBy[i][owner.id] ?? [];
+      for (const group of owner.groups) {
+        const min = group.minPicks ?? 0;
+        const bearer = pass.bearers.get(owner.id);
+        const direct = owner.traits.filter((t) => (t.groupId ?? null) === group.id);
+        const entry = seen.get(pairKey(owner.id, group.id)) ?? { runs: 0, unreachable: [], defaults: [] };
+        seen.set(pairKey(owner.id, group.id), entry);
+        entry.runs++;
+        const stuckHere = direct.filter((t) => pass.stuck.has(pairKey(owner.id, t.id)));
+        if (min > direct.length - stuckHere.length) {
+          entry.unreachable.push({ kind: 'unreachable', bearer, group, min, count: direct.length - stuckHere.length, traits: stuckHere });
+        }
+        const state = groupPickState(group, owner.traits, started);
+        if (state.short) {
+          const on = new Set(started);
+          entry.defaults.push({ kind: 'defaults', bearer, group, min, count: state.count, traits: direct.filter((t) => on.has(t.id)) });
+        }
+      }
+    }
+  });
+  const picks: PickShortfall[] = [];
+  for (const { runs, unreachable, defaults } of seen.values()) {
+    if (unreachable.length === runs) picks.push(unreachable[0]);
+    else if (defaults.length === runs && defaults[0].min <= (defaults[0].group.maxPicks ?? Infinity)) picks.push(defaults[0]);
+  }
+
+  report = { requirementTexts, unresolved, stuck, offDefaults, picks };
   gateReportsByWorld.set(world, report);
   return report;
 };
@@ -2807,8 +2902,8 @@ export const RULES: readonly Rule[] = [
   aliasLowercaseNoTwin, entityNameInWildcardPool,
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
-  traitGroupMultipleDefaults, traitGroupTooSmall,
-  traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
+  traitGroupDefaultsOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
+  traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
   traitLinkRedundant,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,
   placeholderWeightUnknownValue, wildcardSingleValue,
