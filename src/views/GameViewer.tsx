@@ -1207,7 +1207,7 @@ const GameViewer = ({
   };
   /** A drawn row's text, with its owning entity as the Character Name. */
   const resolveDrawn = (drawn: DrawnOpening): string => resolveOpening(drawn.opening.text, {
-    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities), ...(persona ? [persona.entity] : [])]),
+    owner: openingOwner(drawn.ownerId, [...entities, ...pickedAtStart(discoveredEntities)], persona),
   });
   // Snapshot of the pre-game state (before the opening turn), so page 1 can also be re-generated —
   // gameStates only holds post-turn snapshots, so the first turn has no predecessor there. Captured in

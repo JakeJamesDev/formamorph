@@ -22,5 +22,5 @@ export function drawNewGameOpening(
   const { persona, cast } = resolution;
   const pool = openingPool({ overview, entities: cast, startingLocationId, picked, persona });
   const draw = drawUnseenOpening(pool, [], random);
-  return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked, ...(persona ? [persona.entity] : [])]) };
+  return { persona, draw, owner: openingOwner(draw.ownerId, [...cast, ...picked], persona) };
 }

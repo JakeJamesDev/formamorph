@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { drawNewGameOpening } from './newGameOpening';
-import { drawUnseenOpening, openingPool } from './openings';
+import { drawUnseenOpening, openingPool, openingsEnabled } from './openings';
 import { resolvePersona } from './persona';
 import { migrateWorld } from './version';
 import type { Entity, Opening, PersonaRef, WorldOverview } from '@/types';
@@ -263,6 +263,37 @@ describe('a world whose openings carry no Self flag, as every shipped world', ()
     const pool = openingPool({ overview: world.worldOverview, entities: cast, startingLocationId: 'start', persona });
     expect(pool.map((row) => [row.opening.id, row.weight])).toEqual(ids.map((id, i) => [id, weights[i]]));
     expect(firstDraws(ref, world.entities, world.worldOverview)).toEqual(new Set(ids));
+  });
+});
+
+describe('the derived Openings switch in a world with no openings that can draw', () => {
+  // A Library Addition's row draws only once the world's list reads on, so it shows whether a row switched it on.
+  const visitor = entity('visitor', { openings: [action('visitor-hello')] });
+  const drawWith = (pick: PersonaRef, worldEntities: Entity[], libraryEntity?: Entity) => drawNewGameOpening({
+    pick: { ref: pick, libraryEntity }, worldEntities, overview, startingLocationId: 'start', picked: [visitor],
+    random: always,
+  }).draw.opening.id;
+
+  it('stays off for a library persona’s rows, which never draw', () => {
+    const own = entity('own', { persona: true, openings: [action('own-hello'), selfRow('own-self')] });
+    expect(drawWith({ source: 'library', entityId: 'own' }, [], own)).toBe('default');
+  });
+
+  it('stays off for the played world persona’s Others rows', () => {
+    const hero = entity('hero', { persona: true, openings: [action('hero-hello')] });
+    expect(drawWith({ source: 'world', entityId: 'hero' }, [hero])).toBe('default');
+  });
+
+  it('stays off for Self rows on an entity without the Persona mark', () => {
+    const former = entity('former', { locations: ['start'], openings: [selfRow('former-self')] });
+    expect(openingsEnabled(overview, [former])).toBe(false);
+    expect(drawWith({ source: 'none' }, [former])).toBe('default');
+  });
+
+  it('turns on for Self rows on an entity with the Persona mark, so the guards above can fail', () => {
+    const marked = entity('marked', { persona: true, locations: ['start'], openings: [selfRow('marked-self')] });
+    expect(openingsEnabled(overview, [marked])).toBe(true);
+    expect(drawWith({ source: 'none' }, [marked])).toBe('visitor-hello');
   });
 });
 
