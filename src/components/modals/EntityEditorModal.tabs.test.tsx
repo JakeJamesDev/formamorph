@@ -280,9 +280,19 @@ describe('the Others | Self switch on the Openings tab', () => {
     renderLibrary(<EntityEditorModal entityId={null} draft={withRows({ persona: true })} onClose={vi.fn()} />);
     await openTab();
     await userEvent.click(within(switchFor(1)!).getByRole('radio', { name: 'Self' }));
+    const panel = panelOf('Openings');
     expect(within(switchFor(1)!).getByRole('radio', { name: 'Self' })).toBeChecked();
-    expect(within(panelOf('Openings')).getByDisplayValue('2')).toBeInTheDocument();
+    expect(within(within(panel).getByRole('radiogroup', { name: 'Opens As, Opening 1' })).getByRole('radio', { name: 'Narration' })).toBeChecked();
+    expect(within(panel).getByLabelText('Draw weight for Opening 1')).toHaveValue(2);
+    expect(within(panel).getByText('Wren trims the lamp.')).toBeInTheDocument();
     expect(cardCount()).toBe(2);
+  });
+
+  it('hides on a library copy of a Custom Persona entity, which no player can pick', async () => {
+    renderLibrary(<EntityEditorModal entityId={null} draft={withRows({ customPersona: true })} onClose={vi.fn()} />);
+    await openTab();
+    expect(switchFor(1)).toBeNull();
+    expect(cardCount()).toBe(1);
   });
 
   it('shows on the world’s Custom Persona entity and writes a flip to it', async () => {
