@@ -6,7 +6,7 @@ import { CHARS_PER_TOKEN } from '@/lib/memoryUtils';
 import { trimToLastSentence } from '@/lib/outputLength';
 import type { AiRequestBody, AiRequestSpec } from './aiRequestSpec';
 import {
-  ABORTED_FINISH_REASON, streamAiRequest,
+  ABORTED_FINISH_REASON, LENGTH_FINISH_REASON, streamAiRequest,
   type AiReasoningField, type AiStreamEvent, type AiStreamOptions, type AiStreamResult, type AiStreamSpec, type AiToolCall,
 } from './aiStream';
 
@@ -79,13 +79,10 @@ const errorResult = (error: string): string => JSON.stringify({ error });
 /** Every round's reasoning as one text, blank rounds left out. */
 const joinReasoning = (parts: readonly string[]): string => parts.filter((p) => p.trim()).join('\n\n');
 
-/** The finish reason a server gives a reply it cut at its cap. A reply cut at the Answer Cap reports the same. */
-const LENGTH_FINISH_REASON = 'length';
-
 /**
  * One request under the spec's Answer Cap. Answer text counts from the end of a leading reasoning block;
  * reasoning events and call arguments never count. Past the cap, the request is aborted and no delta runs
- * past the cut. `done` then carries the answer trimmed to its last sentence end, with no calls.
+ * past the cut. `done` then carries the cut answer with no calls; narration's ends on its last sentence end.
  */
 async function* streamCapped(spec: AiStreamSpec, options: AiStreamOptions): AsyncGenerator<AiStreamEvent, void, void> {
   if (spec.answerCap === undefined) {
@@ -93,35 +90,39 @@ async function* streamCapped(spec: AiStreamSpec, options: AiStreamOptions): Asyn
     return;
   }
   const limit = spec.answerCap * CHARS_PER_TOKEN;
-  const stop = options.signal;
+  const callerSignal = options.signal;
   const controller = new AbortController();
   const forwardStop = () => controller.abort();
-  if (stop?.aborted) controller.abort();
-  else stop?.addEventListener('abort', forwardStop, { once: true });
-  // The content at the cap, once the answer passes it.
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener('abort', forwardStop, { once: true });
+  // The content at the cap, once the answer passes it, and where its answer starts.
   let cut: string | null = null;
-  let start = 0;
+  let answerFrom = 0;
 
   try {
     for await (const event of streamAiRequest(spec, { ...options, signal: controller.signal })) {
       if (event.type === 'delta') {
         if (cut !== null) continue;
-        const at = answerStart(event.content);
-        if (at === null || event.content.length - at <= limit) { yield event; continue; }
-        start = at;
-        cut = event.content.slice(0, at + limit);
+        const answerAt = answerStart(event.content);
+        if (answerAt === null || event.content.length - answerAt <= limit) { yield event; continue; }
+        answerFrom = answerAt;
+        cut = event.content.slice(0, answerAt + limit);
         controller.abort();
         const delta = cut.slice(event.content.length - event.delta.length);
         if (delta) yield { type: 'delta', delta, content: cut };
-      } else if (event.type === 'done' && cut !== null && !stop?.aborted) {
-        const content = cut.slice(0, start) + trimToLastSentence(cut.slice(start));
-        yield { type: 'done', result: { ...event.result, content, finishReason: LENGTH_FINISH_REASON, toolCalls: [] } };
+      } else if (event.type === 'done' && cut !== null) {
+        // A Stop that lands after the cut keeps what the consumer saw.
+        const answer = spec.requestType === 'narration' ? trimToLastSentence(cut.slice(answerFrom)) : cut.slice(answerFrom);
+        const result = callerSignal?.aborted
+          ? { ...event.result, content: cut, toolCalls: [] }
+          : { ...event.result, content: cut.slice(0, answerFrom) + answer, finishReason: LENGTH_FINISH_REASON, toolCalls: [] };
+        yield { type: 'done', result };
       } else {
         yield event;
       }
     }
   } finally {
-    stop?.removeEventListener('abort', forwardStop);
+    callerSignal?.removeEventListener('abort', forwardStop);
   }
 }
 

@@ -1,6 +1,6 @@
 # 02: Client-side Answer Cap
 
-Status: in-progress
+Status: ready-for-human
 Base: 59fe15e9
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)

@@ -162,6 +162,9 @@ export const DEFAULT_REASONING_THROTTLE_MS = 80;
  *  rather than a literal they can mistype. */
 export const ABORTED_FINISH_REASON = 'aborted';
 
+/** The finish reason of a reply cut at a cap: the server's own, or the Answer Cap. */
+export const LENGTH_FINISH_REASON = 'length';
+
 /** Reads one `data:` line. Returns null for a non-data line, the `[DONE]` sentinel, or a frame with nothing in it. */
 function parseFrame(line: string): FrameDelta | null {
   if (!line.startsWith('data: ')) return null;
