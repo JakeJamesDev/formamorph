@@ -17,6 +17,7 @@ import { WORLD_OWNER, gateOf, groupPickState, leavesShort, type GateStates, type
 import type { Entity, Stat, StatChange, Trait, TraitGroup, TraitsPanelView } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 import { gateLine } from '@/lib/traitGateLine';
+import { isAlwaysOn } from '@/lib/traitEffects';
 import { TraitCascadeNotice, type TraitCascade } from './SetupTraitList';
 
 /** What a trait's stat-change list needs of a stat: its name, and whether the player may see it at all. */
@@ -120,6 +121,9 @@ export const TraitsTab = ({
   const picks = new Map<string, GroupPickState>(sections.flatMap((s) => s.blocks.flatMap((b) => (b.group
     ? [[`${bearerOf(b)}/${b.key}`, groupPickState(b.group, b.traits, b.traits.filter((t) => !isOff(t.id, bearerOf(b))).map((t) => t.id))] as const]
     : []))));
+  const fixedBlocks = new Set(sections.flatMap((s) => s.blocks
+    .filter((b) => b.traits.some((t) => isAlwaysOn(t) && !isOff(t.id, bearerOf(b))))
+    .map((b) => `${bearerOf(b)}/${b.key}`)));
 
   const row = (trait: Trait, block: TraitBlock, off: boolean) => {
     const bearerId = bearerOf(block);
@@ -137,8 +141,10 @@ export const TraitsTab = ({
     const gate = gates && gateOf(gates, bearerId, trait.id);
     const locked = gate?.unlocked === false;
     const line = gateLine(gate);
-    // A switch-on needs an open gate and a group below its max. A switch-off must not leave it below its min.
-    const disabled = readOnly || (off ? locked || (!radio && !!pick?.full) : !!pick && leavesShort(pick));
+    // A switch-on needs an open gate and a group below its max, and a max-one group's active Always On trait
+    // can't be swapped out. A switch-off must not leave the group below its min.
+    const fixedIn = fixedBlocks.has(`${bearerId}/${block.key}`);
+    const disabled = readOnly || (off ? locked || (radio ? fixedIn : !!pick?.full) : !!pick && leavesShort(pick));
     const name = (
       <span className="inline-flex items-center gap-1.5 font-medium">
         {trait.name}
@@ -150,7 +156,7 @@ export const TraitsTab = ({
         key={rowKey}
         className={cn('flex items-start gap-2 rounded px-1 py-1 hover:bg-accent/50', off && 'opacity-50')}
       >
-        {trait.playerToggle && (radio ? (
+        {trait.playerToggle && !isAlwaysOn(trait) && (radio ? (
           <button
             type="button"
             role="radio"

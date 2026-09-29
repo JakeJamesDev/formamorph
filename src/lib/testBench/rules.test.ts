@@ -1524,6 +1524,22 @@ describe('trait group rules', () => {
     expect(only(grouped({ max: 2, members: 3, defaults: 2 }), 'trait-group-defaults-over-max')).toEqual([]);
   });
 
+  it('flags Always On traits that can be active together past the max, naming them', () => {
+    const w = grouped({ members: 3 });
+    const fixed = { ...w, traits: w.traits!.map((t) => (t.id === 't3' ? t : { ...t, mode: 'alwaysOn' as const })) };
+    const found = only(fixed, 'trait-group-always-on-over-max');
+    expect(found.map((f) => f.message)).toEqual([
+      '“Origin” allows at most 1 pick but Origin 1 and Origin 2 are Always On and can be active together',
+    ]);
+    expect(found[0].items.map((i) => i.id)).toEqual(['g1', 't1', 't2']);
+  });
+
+  it('never counts an Always On trait’s Default toward defaults over the max', () => {
+    const w = grouped({ defaults: 2 });
+    const one = { ...w, traits: w.traits!.map((t) => (t.id === 't2' ? { ...t, mode: 'alwaysOn' as const } : t)) };
+    expect(only(one, 'trait-group-defaults-over-max')).toEqual([]);
+  });
+
   it('lets a group with no maximum default whatever it likes', () => {
     expect(only(grouped({ max: null, defaults: 2 }), 'trait-group-defaults-over-max')).toEqual([]);
   });
@@ -1930,6 +1946,17 @@ describe('trait link rules', () => {
         '“Classes” on “Albus” needs at least 1 pick but a new game starts with 0 — the defaults don’t meet the minimum',
       ]);
       expect(opened(short)).toEqual([['l-albus']]);
+    });
+
+    it('flags Always On traits past the max on each bearer that links the group, and opens the link', () => {
+      const fixed = [faithful, ...blueprinted.map((t) => (t.groupId === 'classes' ? { ...t, mode: 'alwaysOn' as const } : t))];
+      const found = only(withClasses({ maxPicks: 1 }, [bearing('albus', 'Albus')], fixed), 'trait-group-always-on-over-max');
+      expect(found.map((f) => f.message)).toEqual([
+        '“Classes” on “Albus” allows at most 1 pick but Paladin and Wizard are Always On and can be active together',
+      ]);
+      expect(found[0].severity).toBe('warning');
+      expect(opened(found)).toEqual([['l-albus', 'l-albus', 'l-albus']]);
+      expect(only(withClasses({ maxPicks: 2 }, [bearing('albus', 'Albus')], fixed), 'trait-group-always-on-over-max')).toEqual([]);
     });
 
     it('checks a minimum above the maximum and defaults over the maximum on the linked group', () => {
@@ -3627,6 +3654,7 @@ const RULE_SCOPE: Record<string, 'simple' | 'advanced'> = {
   'stat-starting-out-of-range': 'simple',
   'stat-update-unknown-stat': 'simple',
   'trait-group-defaults-over-max': 'simple',
+  'trait-group-always-on-over-max': 'simple',
   'trait-group-min-above-max': 'simple',
   'trait-group-min-unreachable': 'simple',
   'trait-group-defaults-below-min': 'simple',

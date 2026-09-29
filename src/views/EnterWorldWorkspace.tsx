@@ -21,6 +21,7 @@ import { useElementSize } from '@/lib/useElementSize';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/useIsMobile';
 import { buildTraitWorkspace, type TraitCategory } from '@/lib/setupTraitWorkspace';
+import { isDormant } from '@/lib/traitEffects';
 import EnterWorldLibrary, { type EntityAddition } from './EnterWorldLibrary';
 
 export interface EnterWorldWorkspaceProps {
@@ -141,9 +142,9 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
   const dialogDescription = 'Configure this playthrough before entering the world.';
 
   const categoryButton = (category: (typeof categories)[number], index: number, depth = 0) => {
-    const selected = category.kind === 'traits'
-      ? category.traits.filter((trait) => picksOf(category.entityId).includes(trait.id)).length
-      : 0;
+    const picks = category.kind === 'traits' ? picksOf(category.entityId) : [];
+    const shown = category.kind === 'traits' ? category.traits.filter((trait) => !isDormant(trait, picks)) : [];
+    const selected = shown.filter((trait) => picks.includes(trait.id)).length;
     return (
       <button
         type="button"
@@ -167,12 +168,12 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
           {category.name}
           {category.kind === 'traits' && category.entityNode && !!category.entityId && playerIds.includes(category.entityId) && youMark}
         </span>
-        {category.kind === 'traits' && category.traits.length > 0 && (
+        {shown.length > 0 && (
           <span
-            aria-label={`${selected} of ${category.traits.length} selected`}
+            aria-label={`${selected} of ${shown.length} selected`}
             className={cn('shrink-0 text-meta font-normal', selected ? 'text-primary' : 'text-muted-foreground')}
           >
-            {selected}/{category.traits.length}
+            {selected}/{shown.length}
           </span>
         )}
       </button>

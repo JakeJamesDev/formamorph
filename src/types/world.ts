@@ -201,7 +201,13 @@ export interface Trait {
   placeholderPins?: PlaceholderPin[];
   /** Any one of these unlocks the trait. Absent or empty = always available. */
   requires?: TraitRequirement[];
+  /** Absent = Optional. Always On is active exactly while its gate holds, and the player never switches it;
+   *  Hidden is Always On and never shown. Both ignore `isDefault` and `playerToggle`. */
+  mode?: TraitMode;
 }
+
+/** A trait's non-Optional mode. */
+export type TraitMode = 'alwaysOn' | 'hidden';
 
 /** A character or object in the world, with separate player-facing and AI-facing descriptions plus optional media. */
 export interface Entity {

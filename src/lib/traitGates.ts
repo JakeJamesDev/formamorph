@@ -2,7 +2,7 @@
 // and gates on its own active set; the player's owners (the world root and the played entity) read as one.
 
 import type { PersonaRef, RequirementBearer, Trait, TraitGroup, TraitRequirement } from '@/types';
-import { capDefaults, exclusiveSiblings, traitOrderIndex } from './traitEffects';
+import { defaultPicks, exclusiveSiblings, isAlwaysOn, traitOrderIndex } from './traitEffects';
 // The generic tree, not traitTree: that module reads the bearer resolver, which reads this one.
 import { buildTree, flattenTree } from './groupTree';
 
@@ -286,15 +286,20 @@ function locate(idx: Index, lists: Readonly<Record<string, readonly string[]>>):
  *
  * A trait in `cascadeOff` joins the same way, so it returns once its gate holds again. One whose exclusive
  * sibling is proposed stays off and leaves the list: the player picked the sibling since.
+ *
+ * Every Always On trait is proposed too, so it joins whenever its gate holds and is reported as returned
+ * when no pick named it. It never waits on the cascade-off list: its mode alone brings it back.
  */
 export function settle(input: GateInput, cascadeOff: Readonly<Record<string, readonly string[]>> = {}): SettleResult {
   const idx = index(input);
+  const rank = authoredRank(input);
   const proposed = locate(idx, input.active);
   const proposedKeys = new Set(proposed.map(keyOf));
+  const automatic = byRank([...idx.owners.values()].flatMap((o) => [...o.traits.values()])
+    .filter((t) => isAlwaysOn(t.item) && !proposedKeys.has(keyOf(t))), rank);
   const rivalIn = (t: Located<Trait>, keys: ReadonlySet<string>) =>
     [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => keys.has(key(t.owner.id, id)));
-  const waiting = locate(idx, cascadeOff).filter((t) => !proposedKeys.has(keyOf(t)));
-  const rank = authoredRank(input);
+  const waiting = locate(idx, cascadeOff).filter((t) => !proposedKeys.has(keyOf(t)) && !isAlwaysOn(t.item));
   const candidates = byRank(waiting.filter((t) => !rivalIn(t, proposedKeys)), rank);
 
   const kept = new Set<string>();
@@ -309,6 +314,12 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
     for (const t of proposed) {
       if (kept.has(keyOf(t)) || !opens(t)) continue;
       kept.add(keyOf(t));
+      joined = true;
+    }
+    for (const t of automatic) {
+      if (kept.has(keyOf(t)) || !opens(t)) continue;
+      kept.add(keyOf(t));
+      returned.push(t);
       joined = true;
     }
     for (const t of candidates) {
@@ -333,7 +344,7 @@ export function settle(input: GateInput, cascadeOff: Readonly<Record<string, rea
   const stillWaiting = candidates.filter((t) => !kept.has(keyOf(t)));
   const nextCascadeOff: Record<string, string[]> = {};
   for (const owner of input.owners) {
-    nextCascadeOff[owner.id] = [...off, ...stillWaiting].filter((t) => t.owner === owner).map((t) => t.item.id);
+    nextCascadeOff[owner.id] = [...off, ...stillWaiting].filter((t) => t.owner === owner && !isAlwaysOn(t.item)).map((t) => t.item.id);
   }
   const ref = (t: Located<Trait>): GateTraitRef => ({ ownerId: t.owner.id, traitId: t.item.id });
   return { active, turnedOff: off.map(ref), returned: returned.map(ref), cascadeOff: nextCascadeOff };
@@ -392,14 +403,28 @@ export function underfills(input: Pick<GateInput, 'owners' | 'active'>, ownerId:
   return !!owner && !!group && active.includes(traitId) && leavesShort(groupPickState(group, owner.traits, active));
 }
 
+/** Whether a trait's mode refuses the switch in `ownerId`: the trait is Always On, or switching it on would
+ *  retire an active Always On sibling in a max-one group. */
+export function modeRefuses(input: Pick<GateInput, 'owners' | 'active'>, ownerId: string, traitId: string): boolean {
+  const owner = input.owners.find((o) => o.id === ownerId);
+  const trait = owner?.traits.find((t) => t.id === traitId);
+  if (!owner || !trait) return false;
+  if (isAlwaysOn(trait)) return true;
+  const active = input.active[ownerId] ?? [];
+  const groupId = trait.groupId ?? null;
+  return !active.includes(traitId) && owner.groups.find((g) => g.id === groupId)?.maxPicks === 1
+    && owner.traits.some((t) => (t.groupId ?? null) === groupId && isAlwaysOn(t) && active.includes(t.id));
+}
+
 /**
  * Switch one owner's trait on or off, then settle. Switching on retires its exclusive siblings first, so the
  * cascade sees the retirement. A locked trait, or one whose group is full at a max above one, cannot switch
- * on: the result is null.
+ * on, and the mode refuses what `modeRefuses` names: the result is null.
  */
 export function switchTrait(
   input: GateInput, ownerId: string, traitId: string, cascadeOff: Readonly<Record<string, readonly string[]>> = {},
 ): SettleResult | null {
+  if (modeRefuses(input, ownerId, traitId)) return null;
   const current = input.active[ownerId] ?? [];
   let next: string[];
   if (current.includes(traitId)) {
@@ -414,12 +439,13 @@ export function switchTrait(
   return settle({ ...input, active: { ...input.active, [ownerId]: next } }, cascadeOff);
 }
 
-/** Every owner's default traits, capped at each group's max in authored order, settled so a gated default
- *  whose chain has no open root starts unselected. */
+/** Every owner's default traits, capped at each group's max in authored order after the Always On traits
+ *  active with no pick, settled so a gated default whose chain has no open root starts unselected. */
 export function settleDefaults(input: Omit<GateInput, 'active'>): SettleResult {
+  const alwaysOn = settle({ ...input, active: {} }).active;
   const active: Record<string, string[]> = {};
   for (const owner of input.owners) {
-    active[owner.id] = capDefaults(owner.traits.filter((t) => t.isDefault).map((t) => t.id), owner.traits, owner.groups);
+    active[owner.id] = defaultPicks(owner.traits, owner.groups, alwaysOn[owner.id] ?? []);
   }
   return settle({ ...input, active });
 }
@@ -465,6 +491,102 @@ export function neverUnlockable(input: Omit<GateInput, 'active'>): GateTraitRef[
     sets.set(k, [...(sets.get(k) ?? []), { ownerId: t.owner.id, traitId: t.item.id }]);
   }
   return [...sets.values()];
+}
+
+/** A group whose Always On traits can be on together past its max, on one bearer. */
+export interface AlwaysOnOverflow {
+  ownerId: string;
+  groupId: string;
+  max: number;
+  /** The largest set one selection opens together, in authored order. */
+  traitIds: string[];
+}
+
+// Search steps per group before the query gives up and reports every unlockable Always On trait.
+const OVERFLOW_SEARCH_BUDGET = 20_000;
+
+/**
+ * Every group whose Always On traits placed directly in it can be on together past its max, under the
+ * input's persona. A set counts when one selection opens every trait in it: each gate's chain reaches an
+ * open root with no two max-one rivals picked. The search is brute force over the group's Always On traits.
+ */
+export function alwaysOnOverMax(input: Omit<GateInput, 'active'>): AlwaysOnOverflow[] {
+  const idx = index({ ...input, active: {} });
+  const rank = authoredRank({ ...input, active: {} });
+  const stuck = new Set(neverUnlockable(input).flat().map((r) => key(r.ownerId, r.traitId)));
+  const out: AlwaysOnOverflow[] = [];
+  for (const { owner, traits } of idx.owners.values()) {
+    for (const group of owner.groups) {
+      const max = group.maxPicks;
+      if (max === undefined) continue;
+      const fixed = byRank([...traits.values()].filter((t) =>
+        (t.item.groupId ?? null) === group.id && isAlwaysOn(t.item) && !stuck.has(keyOf(t))), rank);
+      if (fixed.length <= max) continue;
+      const together = largestTogether(fixed, max + 1, idx, stuck);
+      if (together) out.push({ ownerId: owner.id, groupId: group.id, max, traitIds: together.map((t) => t.item.id) });
+    }
+  }
+  return out;
+}
+
+/** The largest subset of `traits`, at least `atLeast` strong, that one selection opens together; null when
+ *  none is. Past the search budget, every trait counts. */
+function largestTogether(traits: Located<Trait>[], atLeast: number, idx: Index, stuck: ReadonlySet<string>): Located<Trait>[] | null {
+  const budget = { left: OVERFLOW_SEARCH_BUDGET };
+  for (let size = traits.length; size >= atLeast; size--) {
+    for (const subset of combinations(traits, size)) {
+      if (opensTogether(subset, idx, stuck, budget)) return subset;
+      if (budget.left <= 0) return traits;
+    }
+  }
+  return null;
+}
+
+function* combinations<T>(items: readonly T[], size: number, from = 0): Generator<T[]> {
+  if (size === 0) { yield []; return; }
+  for (let i = from; i <= items.length - size; i++) {
+    for (const rest of combinations(items, size - 1, i + 1)) yield [items[i], ...rest];
+  }
+}
+
+/** Whether one selection opens every trait in `targets`: a backtracking search that opens each gate through
+ *  some requirement, prerequisites first, and never picks two max-one rivals. */
+function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet<string>, budget: { left: number }): boolean {
+  const picked = new Set<string>();
+  const pending = new Set<string>();
+  const clashes = (t: Located<Trait>) =>
+    [...(idx.owners.get(t.owner.id)?.rivals.get(t.item.id) ?? [])].some((id) => picked.has(key(t.owner.id, id)));
+  const satisfiers = (req: Exclude<TraitRequirement, { kind: 'playingAs' }>, t: Located<Trait>): Located<Trait>[] => {
+    const set = idx.bearerSet(req.bearer, t.owner);
+    const rivals = idx.owners.get(t.owner.id)?.rivals.get(t.item.id);
+    const ids = req.kind === 'trait' ? [req.id] : [...new Set(idx.traitsBelow(set, req.id))];
+    return ids.filter((id) => !rivals?.has(id)).flatMap((id) => [...set].flatMap((ownerId) => {
+      const found = idx.owners.get(ownerId)?.traits.get(id);
+      return found ? [found] : [];
+    }));
+  };
+  const open = (t: Located<Trait>, then: () => boolean): boolean => {
+    const k = keyOf(t);
+    if (picked.has(k)) return then();
+    if (pending.has(k) || stuck.has(k) || --budget.left < 0) return false;
+    pending.add(k);
+    const finish = () => {
+      if (clashes(t)) return false;
+      picked.add(k);
+      if (then()) return true;
+      picked.delete(k);
+      return false;
+    };
+    const reqs = t.item.requires ?? [];
+    const ok = reqs.length === 0
+      ? finish()
+      : reqs.some((req) => (req.kind === 'playingAs'
+        ? idx.persona.source === 'world' && idx.persona.entityId === req.id && finish()
+        : satisfiers(req, t).some((s) => open(s, finish))));
+    pending.delete(k);
+    return ok;
+  };
+  return targets.reduceRight<() => boolean>((then, t) => () => open(t, then), () => true)();
 }
 
 /** A bearer the picker can name for a target, with the name its row shows. */

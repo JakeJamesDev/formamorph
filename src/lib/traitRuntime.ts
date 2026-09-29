@@ -17,10 +17,10 @@ import type {
 import { clamp } from './utils';
 import { ownedTraitStatesFrom, recordKey } from './ownedTraitState';
 import { activeOwnedTraitIds } from './ownedTraitsInPlay';
-import { exclusiveSiblings, inAuthoredOrder } from './traitEffects';
+import { exclusiveSiblings, inAuthoredOrder, isAlwaysOn } from './traitEffects';
 import { hasStatEffects, offeredWorldTraits } from './traitTree';
 import {
-  gateOf, gateStates, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
+  gateOf, gateStates, modeRefuses, overfills, playerOwnerIds, settle, underfills, WORLD_OWNER, type GateEntity, type GateInput, type GateOwner, type GateTraitRef,
 } from './traitGates';
 
 /** What a trait's last switch actually moved: record key → stat id → value delta, keyed as `recordKey`
@@ -479,13 +479,16 @@ export const traitGateInput = (
 const isLocked = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
   gateOf(gateStates(traitGateInput(state, world)), ownerId, traitId)?.unlocked === false;
 
-/** Whether the gate module refuses the player's switch-on: the trait is locked, or its group is full. */
+/** Whether the gate module refuses the player's switch-on: the trait is locked, its group is full, or the
+ *  mode refuses it. */
 const refusesOn = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
-  isLocked(state, world, ownerId, traitId) || overfills(traitGateInput(state, world), ownerId, traitId);
+  isLocked(state, world, ownerId, traitId) || overfills(traitGateInput(state, world), ownerId, traitId)
+  || modeRefuses(traitGateInput(state, world), ownerId, traitId);
 
-/** Whether the gate module refuses the player's switch-off: its group would end below the minimum. */
+/** Whether the gate module refuses the player's switch-off: its group would end below the minimum, or the
+ *  mode refuses it. */
 const refusesOff = (state: TraitRuntimeState, world: TraitWorld, ownerId: string, traitId: string): boolean =>
-  underfills(traitGateInput(state, world), ownerId, traitId);
+  underfills(traitGateInput(state, world), ownerId, traitId) || modeRefuses(traitGateInput(state, world), ownerId, traitId);
 
 /** The bearers other than the player's world owner. */
 const entityBearers = (world: TraitWorld): readonly GateOwner[] => (world.bearers ?? []).filter((o) => o.id !== WORLD_OWNER);
@@ -569,7 +572,8 @@ export interface GatedTraitResult {
 /**
  * Settle every owner's traits against every gate: traits whose gate stopped holding switch off, dependents
  * first, each world trait reversed through its record; traits a cascade turned off switch back on once
- * their gate holds again. The same state comes back when nothing moves.
+ * their gate holds again. An Always On world trait the player lacks is acquired as it turns on. The same
+ * state comes back when nothing moves.
  */
 export function settleTraits(
   state: TraitRuntimeState,
@@ -580,7 +584,7 @@ export function settleTraits(
   const result = settle(traitGateInput(state, world), state.cascadeOffTraitIds ?? {});
   const held = (refs: GateTraitRef[]) => refs.flatMap(({ ownerId, traitId }) => {
     const trait = ownerId === WORLD_OWNER
-      ? state.traits.find((t) => t.id === traitId)
+      ? state.traits.find((t) => t.id === traitId) ?? world.traits.find((t) => t.id === traitId && isAlwaysOn(t))
       : ownedTrait(world, traitId, ownerId)?.trait;
     return trait ? [{ ownerId, trait }] : [];
   });
@@ -592,7 +596,10 @@ export function settleTraits(
   }
   let next = state;
   for (const { ownerId, trait } of off) next = flipBearerTrait(next, ownerId, trait, false, world);
-  for (const { ownerId, trait } of back) next = flipBearerTrait(next, ownerId, trait, true, world);
+  for (const { ownerId, trait } of back) {
+    if (ownerId === WORLD_OWNER && !next.traits.some((t) => t.id === trait.id)) next = { ...next, traits: [...next.traits, trait] };
+    next = flipBearerTrait(next, ownerId, trait, true, world);
+  }
   const label = labeler(world, nameOf);
   const cascadeNames = off.map(({ ownerId, trait }) => label(trait, ownerId));
   return {
@@ -675,7 +682,8 @@ export function switchPlayerTrait(
 
 /**
  * Apply stat code's trait switches in order, each through the player's own switch and a settle. Code ignores
- * Player Can Toggle In-Game, so a switch-on of a trait the player lacks acquires it. Code does not ignore
+ * Player Can Toggle In-Game, so a switch-on of a trait the player lacks acquires it. Code never switches an
+ * Always On trait. Code does not ignore
  * gates: a switch-on of a locked trait retires no sibling, and the settle turns it off again. A switch to the
  * state a trait already holds does nothing: switching an off trait off again would reverse its record a
  * second time. It does take a cascade-off trait off its list, so the trait stays off.
@@ -691,7 +699,7 @@ export function applyCodeTraitSwitches(
   for (const { traitId, enabled, by } of switches) {
     const acquired = next.traits.find((t) => t.id === traitId);
     const trait = acquired ?? world.traits.find((t) => t.id === traitId);
-    if (!trait) continue;
+    if (!trait || isAlwaysOn(world.traits.find((t) => t.id === traitId) ?? trait)) continue;
     if ((!!acquired && !next.disabledTraitIds.includes(traitId)) === enabled) {
       if (!enabled) next = withoutCascadeOff(next, traitId);
       continue;
@@ -719,6 +727,6 @@ export function listablePlayerTraits(
   order: Map<string, number>,
 ): Trait[] {
   const acquiredIds = new Set(acquiredTraits.map((t) => t.id));
-  const acquirable = authored.filter((t) => t.playerToggle && !acquiredIds.has(t.id));
+  const acquirable = authored.filter((t) => t.playerToggle && !isAlwaysOn(t) && !acquiredIds.has(t.id));
   return inAuthoredOrder([...acquiredTraits, ...acquirable], order);
 }

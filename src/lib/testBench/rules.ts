@@ -50,8 +50,9 @@ import {
   type BearerWorld,
 } from '@/lib/bearers';
 import {
-  WORLD_OWNER, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
+  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickState, neverUnlockable, settleDefaults, type GateInput,
 } from '@/lib/traitGates';
+import { isAlwaysOn } from '@/lib/traitEffects';
 import { offeredWorldTraits } from '@/lib/traitTree';
 import type {
   DictionaryEntry, Entity, GameLocation, PersonaRef, Placeholder, PlaceholderPin, PlaceholderValue, Stat, StatDescriptor,
@@ -1677,7 +1678,7 @@ const traitGroupDefaultsOverMax: Rule = {
   check: (world) => [...bearersOf(world).values()].flatMap((bearer) => bearer.groups.flatMap((group) => {
     const max = group.maxPicks;
     if (max === undefined) return [];
-    const defaults = bearer.traits.filter((t) => (t.groupId ?? null) === group.id && t.isDefault);
+    const defaults = bearer.traits.filter((t) => (t.groupId ?? null) === group.id && t.isDefault && !isAlwaysOn(t));
     if (defaults.length <= max) return [];
     const groupItem = bearerTraitItem(group, bearer, world);
     const defaultItems = defaults.map((t) => bearerTraitItem(t, bearer, world));
@@ -1688,6 +1689,38 @@ const traitGroupDefaultsOverMax: Rule = {
       [groupItem, ...defaultItems],
     )];
   })),
+};
+
+const traitGroupAlwaysOnOverMax: Rule = {
+  id: 'trait-group-always-on-over-max',
+  severity: 'warning',
+  section: 'traits',
+  summary: (count) => `${count} trait groups can have more Always On traits active than they allow`,
+  // Under every persona choice; a group reports the largest set any one of them opens together.
+  check: (world) => {
+    const found = new Map<string, { bearer: Bearer | undefined; group: TraitGroup; traits: Trait[] }>();
+    for (const persona of personaChoices(world)) {
+      const { bearers, gate } = resolveBearers(bearerWorldOf(world), persona);
+      for (const over of alwaysOnOverMax(gate)) {
+        const k = pairKey(over.ownerId, over.groupId);
+        if ((found.get(k)?.traits.length ?? 0) >= over.traitIds.length) continue;
+        const owner = gate.owners.find((o) => o.id === over.ownerId)!;
+        found.set(k, {
+          bearer: bearers.find((b) => b.id === over.ownerId),
+          group: owner.groups.find((g) => g.id === over.groupId)!,
+          traits: over.traitIds.map((id) => owner.traits.find((t) => t.id === id)!),
+        });
+      }
+    }
+    return [...found.values()].map(({ bearer, group, traits }) => {
+      const items = traits.map((t) => bearerTraitItem(t, bearer, world));
+      return finding(
+        traitGroupAlwaysOnOverMax,
+        `${groupSubject(group, bearer, world)} allows at most ${picksOf(group.maxPicks ?? 0)} but ${listNames(items.map((i) => i.name))} are Always On and can be active together`,
+        [bearerTraitItem(group, bearer, world), ...items],
+      );
+    });
+  },
 };
 
 const traitGroupMinAboveMax: Rule = {
@@ -2906,7 +2939,7 @@ export const RULES: readonly Rule[] = [
   aliasLowercaseNoTwin, entityNameInWildcardPool,
   entityMissingPlayerDescription, entityMissingAiDescription, entityMissingBothDescriptions,
   entityLongDescriptionNoSummary, aiSummaryHidesDescription, locationNoEntities,
-  traitGroupDefaultsOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
+  traitGroupDefaultsOverMax, traitGroupAlwaysOnOverMax, traitGroupTooSmall, traitGroupMinAboveMax, traitGroupMinUnreachable,
   traitGroupDefaultsBelowMin, traitRequirementNeverUnlockable, traitRequirementUnresolved, traitDefaultGated,
   traitLinkRedundant,
   copyPinRemovedValue, blueprintRefusedField, copyEditedUnused, copyMissing,

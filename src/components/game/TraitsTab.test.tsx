@@ -519,6 +519,43 @@ describe('a group at its minimum', () => {
   });
 });
 
+describe('an Always On trait', () => {
+  const GROUPS = [G('g-oath', 'Oath', { maxPicks: 1 })];
+  const TRAITS = [
+    T('t-ring', 'Cursed Ring'),
+    T('t-curse', 'Curse', { mode: 'alwaysOn', requires: [{ kind: 'trait', id: 't-ring' }] }),
+    T('t-sworn', 'Sworn', { mode: 'alwaysOn', groupId: 'g-oath' }),
+    T('t-free', 'Free', { groupId: 'g-oath' }),
+  ];
+
+  it('does not show while dormant and never taken', () => {
+    renderTraits(TRAITS, GROUPS, ['t-sworn']);
+    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
+    openDisabled('General');
+    expect(within(section('General')).getByText('Cursed Ring')).toBeInTheDocument();
+    expect(screen.queryByText('Curse')).toBeNull();
+  });
+
+  it('does not show once lifted, though the player still holds it', () => {
+    renderTraits(TRAITS, GROUPS, ['t-sworn', 't-curse'], {
+      seed: (gameplay) => gameplay.setDisabledTraitIds(['t-curse']),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'General, 0 enabled' }));
+    openDisabled('General');
+    expect(within(section('General')).getByText('Cursed Ring')).toBeInTheDocument();
+    expect(screen.queryByText('Curse')).toBeNull();
+  });
+
+  it('shows checked with no control while active, and blocks the max-one group’s other picks', () => {
+    renderTraits(TRAITS, GROUPS, ['t-ring', 't-curse', 't-sworn']);
+    expect(screen.getByText('Curse')).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Curse$/ })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /Sworn$/ })).toBeNull();
+    openDisabled('Oath');
+    expect(screen.getByRole('radio', { name: 'Switch on Free' })).toBeDisabled();
+  });
+});
+
 describe('a max-one trait group reads as a set of alternatives', () => {
   const GROUPS = [G('g-past', 'Background', { maxPicks: 1 })];
   const TRAITS = [

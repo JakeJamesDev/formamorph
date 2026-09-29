@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { PersonaRef, Trait, TraitGroup, TraitRequirement } from '@/types';
 import {
-  WORLD_OWNER, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
+  WORLD_OWNER, alwaysOnOverMax, gateOf, gateStates, groupPickStates, neverUnlockable, playerOwnerIds, requirementOptions, settle, settleDefaults, switchTrait,
   underfills, withBearer, type GateInput, type GateOwner,
 } from './traitGates';
 
@@ -761,5 +761,191 @@ describe('requirement options', () => {
     expect(withBearer(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', bearer: { kind: 'you' } });
     expect(withBearer(options.traits[0].requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
     expect(withBearer(options.personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
+  });
+});
+
+describe('Always On traits', () => {
+  const AO = (id: string, extra: Partial<Trait> = {}): Trait => T(id, { mode: 'alwaysOn', ...extra });
+  // A curse is an Always On trait that requires the cursed item.
+  const gear = [G('Gear', { maxPicks: 2 })];
+  const curse = [T('Cursed Ring', { groupId: 'Gear' }), T('Lantern', { groupId: 'Gear' }), AO('Curse', { requires: [trait('Cursed Ring')] })];
+
+  it('turns an ungated Always On trait on without a pick, and reports it as it joins', () => {
+    const result = settle(world([AO('Scarred'), T('Brave')], [], ['Brave']));
+    expect(result.active[WORLD_OWNER]).toEqual(['Brave', 'Scarred']);
+    expect(result.returned).toEqual([{ ownerId: WORLD_OWNER, traitId: 'Scarred' }]);
+  });
+
+  it('brings the curse when its item is picked, and lifts it when the item drops', () => {
+    const picked = switchTrait(world(curse, gear), WORLD_OWNER, 'Cursed Ring')!;
+    expect(picked.active[WORLD_OWNER]).toEqual(['Cursed Ring', 'Curse']);
+    const dropped = switchTrait(world(curse, gear, picked.active[WORLD_OWNER]), WORLD_OWNER, 'Cursed Ring', picked.cascadeOff)!;
+    expect(dropped.active[WORLD_OWNER]).toEqual([]);
+    expect(dropped.turnedOff).toEqual([{ ownerId: WORLD_OWNER, traitId: 'Curse' }]);
+    // It returns by its mode, so it never waits on the cascade-off list.
+    expect(dropped.cascadeOff[WORLD_OWNER]).toEqual([]);
+    const again = switchTrait(world(curse, gear, dropped.active[WORLD_OWNER]), WORLD_OWNER, 'Cursed Ring', dropped.cascadeOff)!;
+    expect(again.active[WORLD_OWNER]).toEqual(['Cursed Ring', 'Curse']);
+    expect(again.returned).toEqual([{ ownerId: WORLD_OWNER, traitId: 'Curse' }]);
+  });
+
+  it('keeps a dormant Always On trait off without reporting it', () => {
+    const result = settle(world(curse, gear, ['Lantern']));
+    expect(result.active[WORLD_OWNER]).toEqual(['Lantern']);
+    expect(result.turnedOff).toEqual([]);
+    expect(result.returned).toEqual([]);
+  });
+
+  it('lets an Always On trait open the traits that require it', () => {
+    const traits = [...curse, T('Dark Pact', { requires: [trait('Curse')] })];
+    const result = settle(world(traits, gear, ['Cursed Ring', 'Dark Pact']));
+    expect(result.active[WORLD_OWNER]).toEqual(['Cursed Ring', 'Dark Pact', 'Curse']);
+  });
+
+  it('refuses to switch an Always On trait in either direction', () => {
+    expect(switchTrait(world([AO('Scarred')]), WORLD_OWNER, 'Scarred')).toBeNull();
+    expect(switchTrait(world([AO('Scarred')], [], ['Scarred']), WORLD_OWNER, 'Scarred')).toBeNull();
+    expect(switchTrait(world(curse, gear, ['Cursed Ring']), WORLD_OWNER, 'Curse')).toBeNull();
+  });
+
+  it('counts toward the max, so a full group refuses another pick', () => {
+    const groups = [G('Marks', { maxPicks: 2 })];
+    const traits = [AO('Scarred', { groupId: 'Marks' }), T('Tattoo', { groupId: 'Marks' }), T('Brand', { groupId: 'Marks' })];
+    expect(switchTrait(world(traits, groups, ['Scarred', 'Tattoo']), WORLD_OWNER, 'Brand')).toBeNull();
+    expect(switchTrait(world(traits, groups, ['Scarred']), WORLD_OWNER, 'Brand')?.active[WORLD_OWNER]).toEqual(['Scarred', 'Brand']);
+  });
+
+  it('counts toward the min, so dropping the other pick leaves the group short', () => {
+    const groups = [G('Marks', { minPicks: 2 })];
+    const traits = [AO('Scarred', { groupId: 'Marks' }), T('Tattoo', { groupId: 'Marks' })];
+    const input = world(traits, groups, ['Scarred', 'Tattoo']);
+    expect(groupPickStates(input).get(WORLD_OWNER)!.get('Marks')?.short).toBe(false);
+    expect(underfills(input, WORLD_OWNER, 'Tattoo')).toBe(true);
+  });
+
+  it('refuses a max-one swap that would retire an active Always On sibling', () => {
+    const groups = [G('Oath', { maxPicks: 1 })];
+    const traits = [AO('Sworn', { groupId: 'Oath' }), T('Free', { groupId: 'Oath' })];
+    expect(switchTrait(world(traits, groups, ['Sworn']), WORLD_OWNER, 'Free')).toBeNull();
+    // A dormant Always On sibling blocks nothing.
+    const gated = [AO('Sworn', { groupId: 'Oath', requires: [trait('Vow')] }), T('Free', { groupId: 'Oath' }), T('Vow')];
+    expect(switchTrait(world(gated, groups), WORLD_OWNER, 'Free')?.active[WORLD_OWNER]).toEqual(['Free']);
+  });
+
+  it('joins a full group over its max and retires nothing (Q29)', () => {
+    const groups = [G('Oath', { maxPicks: 1 })];
+    const traits = [AO('Sworn', { groupId: 'Oath', requires: [trait('Vow')] }), T('Free', { groupId: 'Oath' }), T('Vow')];
+    const result = switchTrait(world(traits, groups, ['Free']), WORLD_OWNER, 'Vow')!;
+    expect(result.active[WORLD_OWNER]).toEqual(['Free', 'Vow', 'Sworn']);
+    expect(result.turnedOff).toEqual([]);
+  });
+
+  it('treats Hidden as Always On (Q31)', () => {
+    expect(settle(world([T('Secret', { mode: 'hidden' })])).active[WORLD_OWNER]).toEqual(['Secret']);
+    expect(switchTrait(world([T('Secret', { mode: 'hidden' })], [], ['Secret']), WORLD_OWNER, 'Secret')).toBeNull();
+  });
+
+  it('behaves the same for an entity-owned trait, against that bearer alone', () => {
+    const ash: GateOwner = { id: 'ash', name: 'Ash', groups: gear, traits: curse };
+    const input: GateInput = {
+      owners: [{ id: WORLD_OWNER, name: '', traits: [], groups: [] }, ash],
+      active: { [WORLD_OWNER]: [], ash: [] }, entities: [], persona: { source: 'none' },
+    };
+    const picked = switchTrait(input, 'ash', 'Cursed Ring')!;
+    expect(picked.active).toEqual({ [WORLD_OWNER]: [], ash: ['Cursed Ring', 'Curse'] });
+    expect(switchTrait({ ...input, active: picked.active }, 'ash', 'Curse')).toBeNull();
+  });
+
+  describe('Always On traits over a max', () => {
+    const over = (traits: Trait[], groups: TraitGroup[], extra: Partial<GateInput> = {}) => {
+      const { active: _active, ...input } = world(traits, groups, [], extra);
+      return alwaysOnOverMax(input).map((o) => `${o.ownerId}/${o.groupId}: ${o.traitIds.join(', ')}`);
+    };
+    const curses = [G('Curses', { maxPicks: 1 })];
+    const weapons = [G('Weapon', { maxPicks: 1 })];
+
+    it('reports ungated Always On traits past the max', () => {
+      expect(over([AO('Weak', { groupId: 'Curses' }), AO('Slow', { groupId: 'Curses' })], curses))
+        .toEqual([`${WORLD_OWNER}/Curses: Weak, Slow`]);
+    });
+
+    it('stays quiet at the max, and for a group with no max', () => {
+      expect(over([AO('Weak', { groupId: 'Curses' })], curses)).toEqual([]);
+      expect(over([AO('Weak', { groupId: 'Free' }), AO('Slow', { groupId: 'Free' })], [G('Free')])).toEqual([]);
+    });
+
+    it('stays quiet when only rival picks open the curses, since one selection never holds both', () => {
+      const traits = [
+        T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
+        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Axe')] }),
+      ];
+      expect(over(traits, [...curses, ...weapons])).toEqual([]);
+    });
+
+    it('reports curses that one selection can open together', () => {
+      const traits = [
+        T('Sword', { groupId: 'Weapon' }), T('Ring'),
+        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Ring')] }),
+      ];
+      expect(over(traits, [...curses, ...weapons])).toEqual([`${WORLD_OWNER}/Curses: Weak, Slow`]);
+    });
+
+    it('follows a chain down to rival roots', () => {
+      const traits = [
+        T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
+        T('Blade Oath', { requires: [trait('Sword')] }),
+        AO('Weak', { groupId: 'Curses', requires: [trait('Blade Oath')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Axe')] }),
+      ];
+      expect(over(traits, [...curses, ...weapons])).toEqual([]);
+    });
+
+    it('never lets a gate open itself through a loop on the way to a clash', () => {
+      // Slow's Pact opens through Slow itself or through the Axe, which Weak's Sword rules out.
+      const traits = [
+        T('Sword', { groupId: 'Weapon' }), T('Axe', { groupId: 'Weapon' }),
+        T('Pact', { requires: [trait('Slow'), trait('Axe')] }),
+        AO('Weak', { groupId: 'Curses', requires: [trait('Sword')] }), AO('Slow', { groupId: 'Curses', requires: [trait('Pact')] }),
+      ];
+      expect(over(traits, [...curses, ...weapons])).toEqual([]);
+    });
+
+    it('never counts a trait that can never unlock, or a loop that only opens itself', () => {
+      const traits = [
+        AO('Weak', { groupId: 'Curses' }),
+        AO('Slow', { groupId: 'Curses', requires: [trait('Sun')] }),
+        T('Sun', { requires: [trait('Moon')] }), T('Moon', { requires: [trait('Sun')] }),
+      ];
+      expect(over(traits, curses)).toEqual([]);
+    });
+
+    it('checks an entity-owned group against its own bearer', () => {
+      const ash: GateOwner = {
+        id: 'ash', name: 'Ash', groups: curses, traits: [AO('Weak', { groupId: 'Curses' }), AO('Slow', { groupId: 'Curses' })],
+      };
+      expect(over([], [], { owners: [world([]).owners[0], ash] })).toEqual(['ash/Curses: Weak, Slow']);
+    });
+  });
+
+  describe('default selection', () => {
+    const defaults = (traits: Trait[], groups: TraitGroup[] = []) => settleDefaults(world(traits, groups)).active[WORLD_OWNER];
+
+    it('includes active Always On traits and ignores their Default field', () => {
+      expect(defaults([AO('Scarred'), AO('Cursed', { isDefault: true, requires: [trait('Ring')] }), T('Ring')]))
+        .toEqual(['Scarred']);
+    });
+
+    it('counts active Always On traits toward the max before the defaults, in authored order', () => {
+      const groups = [G('Marks', { maxPicks: 2 })];
+      expect(defaults([
+        T('Tattoo', { groupId: 'Marks', isDefault: true, order: 0 }),
+        T('Brand', { groupId: 'Marks', isDefault: true, order: 1 }),
+        AO('Scarred', { groupId: 'Marks', order: 2 }),
+      ], groups)).toEqual(['Tattoo', 'Scarred']);
+    });
+
+    it('brings the Always On trait a default opens', () => {
+      expect(defaults([T('Cursed Ring', { isDefault: true }), AO('Curse', { requires: [trait('Cursed Ring')] })]))
+        .toEqual(['Cursed Ring', 'Curse']);
+    });
   });
 });

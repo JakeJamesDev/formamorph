@@ -16,7 +16,8 @@ import { TraitRequiresField } from '@/components/editor/TraitRequiresField';
 import { useRenameField } from '@/lib/useCodeRename';
 import { statCodeName } from '@/lib/statCodeNames';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { isAlwaysOn, traitConflicts, type TraitConflict } from '@/lib/traitEffects';
+import { OptionSwitcher } from '@/components/SettingsRows';
 import { updateOwnedTrait } from '@/lib/ownedTraits';
 import { useEditorMode } from '@/lib/editorMode';
 import { HelpButton } from '@/components/HelpButton';
@@ -37,6 +38,11 @@ export interface TraitLinkEdit {
   reset: (field: keyof TraitLinkFields) => void;
   defaultHint: string;
 }
+
+const MODE_OPTIONS = [
+  { value: 'optional', label: 'Optional' },
+  { value: 'alwaysOn', label: 'Always On' },
+] as const;
 
 /** Names another trait that claims the same target, and says which way the tie falls. Silent when nothing
  *  else claims it — the common case, where an extra line would just be noise. */
@@ -242,28 +248,44 @@ const TraitManager = ({
     </>
   );
 
+  const alwaysOn = isAlwaysOn(editingTrait);
   const availabilityPanel = (
     <>
-      <LabelRow reset={resetControl('isDefault', 'Enabled by Default')}>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={!!editingTrait.isDefault}
-            onCheckedChange={(c) => handleChange('isDefault', c === true)}
-          />
-          <span>Enabled by Default</span>
-          <Hint as="span">{link?.defaultHint ?? 'Selected when a new game starts'}</Hint>
-        </label>
-      </LabelRow>
-      <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In-Game')}>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <Checkbox
-            checked={!!editingTrait.playerToggle}
-            onCheckedChange={(c) => handleChange('playerToggle', c === true)}
-          />
-          <span>Player Can Toggle In-Game</span>
-          <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
-        </label>
-      </LabelRow>
+      <div className="space-y-2">
+        <Label>Mode</Label>
+        <OptionSwitcher
+          value={alwaysOn ? 'alwaysOn' : 'optional'}
+          onChange={(v) => apply({ mode: v === 'optional' ? undefined : editingTrait.mode ?? 'alwaysOn' })}
+          options={MODE_OPTIONS}
+          ariaLabel="Mode"
+          disabled={readOnly}
+        />
+        <Hint>{alwaysOn ? 'Turns on whenever its requirements hold, and the player can’t switch it' : 'Lets the player choose it'}</Hint>
+      </div>
+      {!alwaysOn && (
+        <>
+          <LabelRow reset={resetControl('isDefault', 'Enabled by Default')}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={!!editingTrait.isDefault}
+                onCheckedChange={(c) => handleChange('isDefault', c === true)}
+              />
+              <span>Enabled by Default</span>
+              <Hint as="span">{link?.defaultHint ?? 'Selected when a new game starts'}</Hint>
+            </label>
+          </LabelRow>
+          <LabelRow reset={resetControl('playerToggle', 'Player Can Toggle In-Game')}>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <Checkbox
+                checked={!!editingTrait.playerToggle}
+                onCheckedChange={(c) => handleChange('playerToggle', c === true)}
+              />
+              <span>Player Can Toggle In-Game</span>
+              <Hint as="span">The player can turn it on or off from the Traits tab during play</Hint>
+            </label>
+          </LabelRow>
+        </>
+      )}
       <TraitRequiresField
         trait={editingTrait}
         onChange={setRequires}
