@@ -17,7 +17,7 @@ One shared component renders the pair and the toggle for both the canvas inspect
 
 ## Acceptance criteria
 
-- [x] The toggle sits to the right of both boxes and spans their height. The icon is a vertical chain: `link-2` when linked, `link-2-off` when unlinked, rotated 90°.
+- [x] The toggle sits to the right of both boxes and spans their height. The icon is a vertical chain: `link` when linked, `unlink` when unlinked, turned upright by -45°.
 - [x] The toggle is a button with `aria-pressed`. Tooltips: **Link Travel Hints** / **Unlink Travel Hints**.
 - [x] The panel opens linked when both legs exist and their hints are equal (both absent counts). Otherwise it opens unlinked.
 - [x] Link writes the first leg's hint into the second leg and keeps the second box's earlier text in memory. Unlink writes that text back. The text is lost when the component unmounts.
