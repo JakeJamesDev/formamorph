@@ -629,6 +629,7 @@ const GameViewer = ({
     autosaveGame,
     loadGame,
     saveLoads,
+    personaPending,
     saveCurrentGameState,
     loadGameState,
     discoveredEntities,
@@ -3944,7 +3945,7 @@ const GameViewer = ({
     (result: GatedTraitResult) => commitGatedTraits(result, 'changes to the world'),
     [commitGatedTraits],
   );
-  useSettleOnSaveLoad(saveLoads, traitState, gatedWorld, traitName, commitLoadSettle);
+  useSettleOnSaveLoad(saveLoads, !personaPending, traitState, gatedWorld, traitName, commitLoadSettle);
 
   /**
    * Switch a trait on or off mid-play, acquiring it first if the player doesn't have it yet. Every trait the
