@@ -1,6 +1,6 @@
 # 01: Connection legs and per-direction hints
 
-Status: in-progress
+Status: ready-for-human
 Base: 577648bb
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
@@ -35,3 +35,5 @@ Both editors (canvas inspector and the location panel's Connections list) show o
 
 - Saves carry no copy of Connections (`SaveObject` and `GameState` hold no locations), so the save criterion needs no code. The world a save plays is migrated by `loadWorldData`.
 - Arrow labels follow the spec session's A + B ruling: equal leg hints draw one shared label on the `a → b` arrow; different hints draw each label on its arrow's outer side.
+- The Authoring Tour's Connection step keeps its In Play lens at the first location (spec session ruling B). Its quoted hint reads the leg leaving the lens, so a hint typed only in the top box shows after ticket 02 links the boxes.
+- Review fold-in: `LegKey` moved to `@/types`; the migration now normalizes new-shape records too; `docs/WorldFormat.md` documents the leg shape.

@@ -21,7 +21,7 @@ import { parseKeywords } from '@/lib/dictionaryUtils';
 import { entityImages } from '@/lib/entityImages';
 import { withEntityLocations } from '@/lib/entityPresence';
 import { createConnection, legFrom, withHint } from '@/lib/connectionEditing';
-import { connectionLegs, travelEnds } from '@/lib/locationGraph';
+import { connectionLegs, isTwoWay, travelEnds } from '@/lib/locationGraph';
 import { followRename } from '@/lib/statDescriptors';
 import { randomUUID } from '@/lib/uuid';
 import { EDITOR_MODE_TUTORIAL_ID, markTutorialSeen } from '@/lib/tutorials';
@@ -233,8 +233,7 @@ export function tourConnection(world: TourWorld, items: TourItems): Connection |
  *  tour location. */
 export function tourConnectionStart(world: TourWorld, items: TourItems): string | null {
   const connection = tourConnection(world, items);
-  const twoWay = !!connection?.aToB && !!connection.bToA;
-  return connection && !twoWay ? travelEnds(connection)[0] : items.location ?? null;
+  return connection && !isTwoWay(connection) ? travelEnds(connection)[0] : items.location ?? null;
 }
 
 /** The Travel Hint the destinations block shows from where the tour Connection's lens stands. */

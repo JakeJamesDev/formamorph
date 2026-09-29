@@ -184,10 +184,18 @@ Travel links the author draws between two locations, by `id` — so renaming a l
 | Field | Type | Description |
 |---|---|---|
 | `id` | String | Unique identifier |
-| `from` | String | Location `id` travel departs from |
-| `to` | String | Location `id` travel arrives at |
-| `twoWay` | Boolean | Travelable both ways. `false` = one-way, `from` → `to` only |
-| `aiHint` | String | Optional note on *how* the trip is made ("through the shimmering portal"), shown to the AI as a `— via …` suffix on the destination |
+| `a` | String | One location `id` |
+| `b` | String | The other location `id` |
+| `aToB` | Leg | Present when travel runs `a` → `b` |
+| `bToA` | Leg | Present when travel runs `b` → `a` |
+
+Each leg is one direction of travel. At least one leg is present; both = two-way.
+
+| Leg field | Type | Description |
+|---|---|---|
+| `hint` | String | Optional note on *how* this trip is made ("through the shimmering portal"), shown to the AI as a `— via …` suffix on the destination. Each direction has its own |
+
+> 📦 Older files store `from`, `to`, `twoWay` and one `aiHint`. They still load: the hint goes on both legs of a two-way link.
 
 > ⚠️ A Connection between two locations **replaces** the free travel nesting gave that pair. Without one, a location always reaches its parent, its children and its siblings; with one, the Connection's own directions are all the travel there is between them. That's what makes a one-way link between two sub-locations of the same place actually one-way.
 

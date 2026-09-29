@@ -352,6 +352,9 @@ export interface Connection {
   bToA?: ConnectionLeg;
 }
 
+/** Which direction of a Connection a leg is. */
+export type LegKey = 'aToB' | 'bToA';
+
 /** One direction of a Connection. */
 export interface ConnectionLeg {
   /** How this trip is made ("through the shimmering portal"), rendered as a `— via …` suffix on the

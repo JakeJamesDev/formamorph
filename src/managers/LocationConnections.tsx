@@ -17,8 +17,8 @@ import {
   withHint,
   type ConnectionDirection,
 } from '@/lib/connectionEditing';
-import type { LegKey } from '@/lib/locationGraph';
-import type { Connection, GameLocation } from '@/types';
+import { otherLeg } from '@/lib/locationGraph';
+import type { Connection, GameLocation, LegKey } from '@/types';
 import { Tip } from '@/components/ui/tooltip';
 
 /** The direction control's options in the order they're offered, worded from the panel that's open. */
@@ -37,7 +37,7 @@ const DIRECTION_ICONS: Record<ConnectionDirection, typeof ArrowRight> = {
 /** The legs a Connection has, seen from `locationId`: the trip leaving first, then the trip arriving. */
 function legsAt(connection: Connection, locationId: string): { key: LegKey; word: 'To' | 'From' }[] {
   const out = legFrom(connection, locationId);
-  const back: LegKey = out === 'aToB' ? 'bToA' : 'aToB';
+  const back = otherLeg(out);
   return [
     ...(connection[out] ? [{ key: out, word: 'To' as const }] : []),
     ...(connection[back] ? [{ key: back, word: 'From' as const }] : []),
@@ -124,7 +124,7 @@ const LocationConnections = ({ location }: { location: GameLocation }) => {
                     value={connection[key]?.hint ?? ''}
                     onChange={(e) => updateConnection(withHint(connection, key, e.target.value))}
                     placeholder="Travel Hint, e.g. through the shimmering portal"
-                    aria-label={`Travel Hint ${word} ${partnerName}`}
+                    aria-label={`Travel Hint ${word.toLowerCase()} ${partnerName}`}
                   />
                 </div>
               );
