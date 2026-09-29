@@ -60,10 +60,10 @@ describe('sanitize / compat', () => {
     expect(parseSharedCode('@@@not-base64@@@', APP).ok).toBe(false);
   });
 
-  it('keeps a reasoning budget up to 150% and clamps one above it', () => {
-    const shared = buildSharedPreset({ ...base, reasoningBudget: { narration: 150, summary: 200 } }, APP);
+  it('keeps a reasoning budget up to 200% and clamps one above it', () => {
+    const shared = buildSharedPreset({ ...base, reasoningBudget: { narration: 200, summary: 250 } }, APP);
     const r = parseSharedJson(serializeSharedJson(shared), APP);
-    expect(r.preset!.reasoningBudget).toEqual({ narration: 150, summary: 150 });
+    expect(r.preset!.reasoningBudget).toEqual({ narration: 200, summary: 200 });
   });
 
   it('drops unknown text keys with a warning, keeps known ones', () => {

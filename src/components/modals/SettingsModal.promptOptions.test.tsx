@@ -92,9 +92,9 @@ describe('the Scene Tags Options panel tunes Scene Tags', () => {
   it('reads the Scene Tags reasoning switch and budget, not Narration’s', () => {
     seedTakesBudget();
     openOptions('scenetags');
-    // Scene Tags ships switched off at a 25% budget; Narration ships on at 40%.
+    // Scene Tags ships switched off at a 75% budget; Narration ships on at 150%.
     expect(reasoningSwitch().getAttribute('data-state')).toBe('unchecked');
-    expect(budgetValue()).toBe('25');
+    expect(budgetValue()).toBe('75');
   });
 
   it('writes the Scene Tags reasoning switch and budget without moving Narration’s', () => {
@@ -105,11 +105,11 @@ describe('the Scene Tags Options panel tunes Scene Tags', () => {
     fireEvent.keyDown(screen.getByRole('slider', { name: 'Reasoning Budget' }), { key: 'ArrowRight' });
     expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
     const sceneBudget = budgetValue();
-    expect(sceneBudget).not.toBe('25');
+    expect(sceneBudget).not.toBe('75');
 
     switchTo('narration');
     expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
-    expect(budgetValue()).toBe('40');
+    expect(budgetValue()).toBe('150');
 
     switchTo('scenetags');
     expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
@@ -223,25 +223,25 @@ describe('the Reasoning Budget readout', () => {
   it('reads its tokens from the endpoint’s Max Output, not the prompt’s row', () => {
     seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('summary');
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
 
     makeEditable();
     fireEvent.click(maxOutputRow().box);
     fireEvent.keyDown(maxOutputRow().slider, { key: 'ArrowRight' });
     expect(within(maxOutputRow().row).getByText('208 tok')).toBeTruthy();
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
   });
 
   it('reads the passes without a row from the same endpoint base, whatever their own cap', () => {
     localStorage.setItem('FORMAMORPH_aiClock', 'true');
     seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('statupdates');
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
     switchTo('location');
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
     // Time Passed sends a 12-token answer; the budget still comes from the endpoint.
     switchTo('timepassed');
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
   });
 
   it('shows the token result where the budget is the only strength', () => {
@@ -253,19 +253,22 @@ describe('the Reasoning Budget readout', () => {
     seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('diary');
     expect(screen.queryByRole('combobox', { name: /Native Reasoning/ })).toBeNull();
-    expect(screen.getByText('25% · 200 tok')).toBeTruthy();
+    expect(screen.getByText('75% · 600 tok')).toBeTruthy();
   });
 
-  it('goes up to 150% in steps of 5', () => {
+  it('runs from 50% to 200% in steps of 5', () => {
     seedEndpointMaxOutput({ enabled: true, value: 800 });
     openOptions('narration');
     makeEditable();
     const slider = budgetSlider();
-    expect(slider.getAttribute('aria-valuemax')).toBe('150');
+    expect(slider.getAttribute('aria-valuemin')).toBe('50');
+    expect(slider.getAttribute('aria-valuemax')).toBe('200');
     fireEvent.keyDown(slider, { key: 'End' });
-    expect(screen.getByText('150% · 1200 tok')).toBeTruthy();
+    expect(screen.getByText('200% · 1600 tok')).toBeTruthy();
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
-    expect(screen.getByText('145% · 1160 tok')).toBeTruthy();
+    expect(screen.getByText('195% · 1560 tok')).toBeTruthy();
+    fireEvent.keyDown(slider, { key: 'Home' });
+    expect(screen.getByText('50% · 400 tok')).toBeTruthy();
   });
 
   it('disables the slider, keeps the percent, and names the fix while the endpoint override is off', () => {
@@ -276,7 +279,7 @@ describe('the Reasoning Budget readout', () => {
     expect(reasoningSwitch().getAttribute('data-state')).toBe('checked');
     expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
     expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
-    expect(screen.getByText('40%')).toBeTruthy();
+    expect(screen.getByText('150%')).toBeTruthy();
     expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
   });
 
@@ -290,7 +293,7 @@ describe('the Reasoning Budget readout', () => {
     makeEditable();
     expect(reasoningSwitch().hasAttribute('disabled')).toBe(false);
     expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
-    expect(screen.getByText('40%')).toBeTruthy();
+    expect(screen.getByText('150%')).toBeTruthy();
     expect(screen.getByText(REASONING_NOTES.noBudgetBase)).toBeTruthy();
   });
 
@@ -301,7 +304,7 @@ describe('the Reasoning Budget readout', () => {
     );
     seedEndpointMaxOutput({ enabled: false, value: 800 });
     openOptions('narration');
-    expect(screen.getByText('40% · 1024 tok')).toBeTruthy();
+    expect(screen.getByText('150% · 1024 tok')).toBeTruthy();
     expect(budgetSlider().getAttribute('data-disabled')).not.toBeNull();
   });
 });

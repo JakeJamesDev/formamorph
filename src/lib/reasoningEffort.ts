@@ -388,21 +388,21 @@ export function resolveRequestReasoning(
 }
 
 /** The budget slider's floor. Off is the prompt's switch, not a 0% position, so the slider never reads as off. */
-export const MIN_REASONING_BUDGET_PCT = 5;
+export const MIN_REASONING_BUDGET_PCT = 50;
 
 /** The budget readout: the percent, and its token result when the prompt's cap is known. */
 export function budgetReadout(pct: number, tokens: number | undefined): string {
   return tokens === undefined ? `${pct}%` : `${pct}% · ${tokens} tok`;
 }
 
-/** Shipped reasoning budget (percent of max output) per prompt: narration 40%, everything else 25%. The budget
+/** Shipped reasoning budget (percent of max output) per prompt: narration 150%, everything else 75%. The budget
  *  is a strength, kept while a prompt is switched off; whether it applies at all is the prompt's switch. */
 export function defaultReasoningBudgetPct(kind: AIRequestType): number {
-  return kind === 'narration' ? 40 : 25;
+  return kind === 'narration' ? 150 : 75;
 }
 
-/** The highest budget percent, so a thought may run a little longer than one normal reply. */
-export const MAX_REASONING_BUDGET_PCT = 150;
+/** The highest budget percent, so a thought may run up to twice the length of one normal reply. */
+export const MAX_REASONING_BUDGET_PCT = 200;
 
 /** The budget percent a prompt would spend while on: the stored value or the shipped default, clamped to the
  *  budget range. */
