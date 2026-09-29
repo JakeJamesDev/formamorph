@@ -52,6 +52,7 @@ This is a refactor. The only behavior changes are the ones the rulings name. Any
 - **Q29** The shell's flat list takes an optional drag. Traits search rows keep today's raw-index drag (Q18); drift #3 stays open for a later ruling. Ticket 07's Stats list uses the same option.
 - **Q30** The World Editor keeps one search term across its tabs, and a typed term survives a tab switch. It passes that term into `useListEditor` as an optional argument; hosts without one let the shell own it.
 - **Q31** Traits search lists each Link's own row, trait and group Links alike, never the rows of a linked group's subtree. World groups, owned groups and entity nodes stay out (mirror Q24).
+- **Q32** Drift #5 is ruled: a search row's screen-reader name reads its chip label, never the raw token. Drifts #6 and #7 follow from the spec's stale-selection rule and Q21, so they need no ruling. Every other drift still keeps the old behavior until ruled (Q18).
 
 ## User Stories
 
