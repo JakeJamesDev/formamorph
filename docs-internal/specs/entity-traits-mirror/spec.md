@@ -57,6 +57,11 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 - **Q30** A stacked details panel nested inside a panel takes the host panel's surface color, never the page background. The top-level mobile push over the page keeps the page color. The dashed Linked-from box stays.
 - **Q31** In the **This Link** section, the pinned-value rows share a three-column grid: label, arrow and select. The label and arrow columns size to their longest entry, labels stay left-aligned, and every arrow and every select start on one line. The single pin row uses the same grid.
 - **Q32** On the **Traits** tab, a world original's **Link To…** moves from the Details header to a frozen footer, like the editor's **Save** bar: the detail pane's own bar outside the detail scroll, in the side-by-side card and in `ListDetail`'s push (`detailFooter`), not a slot inside the trait or group panel. It shows on every panel tab (Details, Stats, Pins) and its flyout opens upward. The Linked-from line and **This Link** stay on Details. Ticket 06.
+- **Q33** A pushed detail's back control is an icon-only arrow in the detail panel's own header, never a row of its own. `ListDetail` supplies the button; the panel places it. Its accessible name and tooltip read "Back to <list name>". Side by side shows no arrow, as today. Ticket 07.
+- **Q34** On a panel with a tab strip, the arrow leads the strip: the shared `PanelTabsList` takes a leading slot. On the Dictionary entry the arrow leads the tab strip, and the palette bar stays above it. Ticket 07.
+- **Q35** On a panel with no tab strip (the placeholder detail, the entity group detail), the arrow sits at the left of the panel's first row. No new row. Ticket 07.
+- **Q36** Every `ListDetail` surface takes the inline arrow, the mobile push included, so the pattern stays one pattern. On mobile the outer push's arrow leads the entity tab strip, and the trait detail's arrow leads the trait tab strip. Ticket 07.
+- **Q37** On mobile the placeholder chip strip starts collapsed until the user expands it. The existing remembered choice then applies on that device. Ticket 07.
 - **Test seams** Behavior is tested through the World Editor bench and the rendered library entity editor only. No unit seam on the widget or its search. `ListDetail`'s stacked option is tested in its own `list-detail.test.tsx`, as its mobile push is.
 
 ## User Stories
@@ -65,7 +70,7 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 2. As an author, I want the entity's **Traits** tab to show its traits in the same tree as the **Traits** tab, so that I don't learn a second list.
 3. As an author, I want each row in the mirror to have the same buttons as on the **Traits** tab, so that I can duplicate or delete a trait where I see it.
 4. As an author, I want to select a trait in the mirror and see its details slide in, so that the list and the details share the panel's width.
-5. As an author, I want a back row above a trait's details, so that I can return to the entity's list in one click.
+5. As an author, I want a back arrow in a trait's details header, so that I can return to the entity's list in one click without losing a row.
 6. As an author, I want a **+** menu in the mirror with **Add Trait to Mira** and **Add Group to Mira**, so that I can see which entity gets the new item.
 7. As an author, I want the search text to name a trait I add from the mirror, so that I can type a name and press **+**, as on every World Editor tab.
 8. As an author, I want a new trait's details to open right after I add it, so that I can fill it in at once.
@@ -80,7 +85,7 @@ The mirror and the library editor's **Traits** tab become one entity traits edit
 17. As an author, I want a trait's details to scroll inside the panel, so that long details don't push the toolbar away.
 18. As an author, I want the mirror to return to its list when I select another entity, so that I never see one entity's trait under another's name.
 19. As an author, I want the open trait to stay open when I switch to Profile and back, so that a quick check elsewhere doesn't lose my place.
-20. As an author on mobile, I want a trait's details to push in over the mirror with their own back row, so that each back row returns one level.
+20. As an author on mobile, I want a trait's details to push in over the mirror with their own back arrow, so that each arrow returns one level.
 21. As an author, I want reduced motion to skip the slide, so that the mirror respects my system setting.
 22. As an author in Basic mode, I want the entity's **Traits** tab to stay hidden, so that Basic stays simple.
 23. As an author, I want the **Traits** tab's entity node panel to show the entity's name and **Open Entity**, so that it doesn't repeat the tree beside it.
