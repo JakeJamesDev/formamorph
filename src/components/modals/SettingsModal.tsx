@@ -19,7 +19,7 @@ import { Row, CheckRow, Section, HintInfo } from '@/components/SettingsRows';
 import { SETTINGS_COPY, SETTINGS_BUTTONS, SETTINGS_CONFIRMS, REASONING_NOTES } from '@/components/modals/settingsCopy';
 import { rowCopy } from '@/components/modals/settingsRowCopy';
 import TagField from '@/components/prompt/TagField';
-import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, defaultReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, reasoningBudget, type PromptReasoningSetting } from '@/lib/reasoningEffort';
+import { promptReasoningLevelOptions, reasoningRuledOut, reasoningLevelControl, reasoningOffRefused, reasoningAwaitingProof, toolsSupported, defaultPromptReasoningSetting, resolveReasoningBudgetPct, nativeReasoningSuppressed, MIN_REASONING_BUDGET_PCT, MAX_REASONING_BUDGET_PCT, budgetReadout, reasoningBudget, type PromptReasoningSetting } from '@/lib/reasoningEffort';
 import { reasoningDialectTakesBudget, reasoningDialectBudgetFloor } from '@/lib/reasoningDialect';
 import { ReasoningSwitch, type ReasoningStrength } from './ReasoningSwitch';
 import { DisplaySettingsSection } from './DisplaySettingsSection';
@@ -1257,7 +1257,7 @@ export const SettingsModal = ({ isOpen, onOpenChange, previewValues, toolWorld, 
     effort: 'auto', kind: activeKind, budgets: promptReasoningBudget, base: budgetBase, answerCap: undefined,
     floor: reasoningDialectBudgetFloor(promptReasoningCapability.dialect),
   }).budget ?? undefined;
-  const budgetPct = promptReasoningBudget[activeKind] ?? defaultReasoningBudgetPct(activeKind);
+  const budgetPct = resolveReasoningBudgetPct(activeKind, promptReasoningBudget);
   const samplerControls: SamplerControlProps[] = [
     {
       id: 'customTemp',

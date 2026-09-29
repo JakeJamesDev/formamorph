@@ -10,6 +10,7 @@ import { normalizeEndpointUrl } from '@/lib/endpointUrl';
 import { DEFAULT_ENDPOINT, DEFAULT_MODEL_NAME } from '@/contexts/settingsDefaults';
 import type { ReasoningCapability } from '@/lib/reasoningEffort';
 import { DEFAULT_TEXT_ENDPOINT_VALUES, textEndpointPresetCodec } from '@/lib/textEndpointPresets';
+import { presetStoreCodec } from '@/lib/promptPresets';
 import { SETTINGS_COPY, REASONING_NOTES } from './settingsCopy';
 
 /**
@@ -254,6 +255,23 @@ describe('the Reasoning Budget readout', () => {
     openOptions('diary');
     expect(screen.queryByRole('combobox', { name: /Native Reasoning/ })).toBeNull();
     expect(screen.getByText('75% · 600 tok')).toBeTruthy();
+  });
+
+  it('shows a fresh narration prompt at 150% with its tokens', () => {
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
+    openOptions('narration');
+    expect(screen.getByText('150% · 1200 tok')).toBeTruthy();
+  });
+
+  it('reads a stored 25% as 50%', () => {
+    seedEndpointMaxOutput({ enabled: true, value: 800 });
+    localStorage.setItem('FORMAMORPH_promptPresets', presetStoreCodec.serialize({
+      activeId: 'old',
+      presets: [{ id: 'old', name: 'Old', values: { systemPrompt: 'A' } as never, style: 'markdown', reasoningBudget: { narration: 25 } }],
+    }));
+    openOptions('narration');
+    expect(screen.getByText('50% · 400 tok')).toBeTruthy();
+    expect(budgetValue()).toBe('50');
   });
 
   it('runs from 50% to 200% in steps of 5', () => {
