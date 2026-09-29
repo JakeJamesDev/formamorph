@@ -101,6 +101,7 @@ Every trait is also something the player chooses. An author has no way to say:
 | Q25 | Ticket 01 exports the pick-state query, and the setup list and the Traits tab read it. On Test Bench, 01 only moves the `exclusive` readers to `maxPicks === 1`. Ticket 03's rules are the first Test Bench readers of the query. |
 | Q26 | The minimum refusal is mid-game only (Q6). The gate module exports it as a pure query, and the play runtime refuses through it for every bearer. On the setup screen, a switch-off is never refused for the minimum, because refusing it would lock an "Exactly N" group. Begin gates the short group instead (Q9). |
 | Q27 | Mid-game, a player switch-off is refused whenever it ends below the minimum, including in a group already short after a cascade. |
+| Q28 | Mid-game, an "Exactly N" group with N above 1 can't change. That is accepted. An author who wants swaps sets a range. There is no swap picker. |
 
 **Schema (world export shape).**
 
