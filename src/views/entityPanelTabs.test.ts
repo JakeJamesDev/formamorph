@@ -57,6 +57,11 @@ describe('entityTabForField', () => {
     }
   });
 
+  it('lists Openings last', () => {
+    expect(ENTITY_PANEL_TABS.at(-1)?.value).toBe('openings');
+    expect(ENTITY_EDITOR_SUBTABS.at(-1)?.value).toBe('openings');
+  });
+
   it('shows Simple mode only Profile and Descriptions', () => {
     expect(entityPanelTabsFor(false).map((t) => t.value)).toEqual(['profile', 'descriptions']);
   });

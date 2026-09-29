@@ -598,7 +598,9 @@ describe('the mirrored openings panel', () => {
     await user.type(weight, '3');
     expect(guideNow().openingWeights).toEqual({ g2: 3 });
 
-    await user.click(screen.getByRole('button', { name: 'Add Opening to Guide' }));
+    const addToGuide = screen.getByRole('button', { name: 'Add Opening to Guide' });
+    expect(addToGuide).toHaveTextContent('Add Opening to Guide');
+    await user.click(addToGuide);
     expect(guideNow().openings).toHaveLength(3);
 
     await user.click(screen.getByRole('button', { name: 'Remove Guide Opening 2' }));
