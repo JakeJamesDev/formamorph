@@ -124,6 +124,7 @@ Selectable characteristics that adjust stats at character creation.
 | `groupId` | String \| null | Owning `traitGroups` folder; null/absent = ungrouped |
 | `isDefault` | Boolean | Pre-checked in the selection screen |
 | `order` | Number | Sibling order among items sharing the same group |
+| `mode` | `"alwaysOn"` \| `"hidden"` | Absent means Optional. Always On is active whenever its requirements hold and the player can't switch it. Hidden is Always On and never shown to the player. Both ignore `isDefault` and `playerToggle` |
 | `playerToggle` | Boolean | The player may switch this trait on and off during play, not only at character creation |
 | `statToggles` | `{ statId, enabled }[]` | Stats forced on or off while this trait is active — how a stat authored `enabled: false` becomes visible for one kind of character |
 | `placeholderPins` | `{ placeholderId, value }[]` | Placeholder values this trait fixes, overriding the roll |
@@ -138,7 +139,8 @@ Selectable characteristics that adjust stats at character creation.
 | `aiDescription` | String | Becomes a header above this group's chosen traits in the AI prompt |
 | `parentId` | String \| null | Parent group `id` for nesting; null = top-level |
 | `order` | Number | Sibling order |
-| `exclusive` | Boolean | At most one trait in the group may be active — renders as radio buttons. Mark one member `isDefault` so there is always a valid answer; if two are marked, the first in order wins |
+| `minPicks` | Number | Fewest picks the group needs. Absent means 0. **Begin** stays disabled until the group meets it |
+| `maxPicks` | Number | Most picks the group allows. Absent means no limit. `1` is "Up to One" and renders as radio buttons. Older worlds with `exclusive: true` import as `maxPicks: 1` |
 
 #### Stat changes
 

@@ -244,3 +244,15 @@ _Avoid_: owner (an owner holds its own traits only), holder
 **Original**:
 The world trait or group a Link points at, at the root or under Blueprints. An Original is a Blueprint trait. An entity's own trait is never an Original.
 _Avoid_: source (a listing's term), template, parent
+
+**Always On**:
+A trait Mode. The trait is active exactly when its gate holds, and no one can switch it: not the player, not Stat code. With no requirements it is always active. A curse is an Always On trait that requires the cursed item. Always On traits count toward their group's Pick Count.
+_Avoid_: forced, mandatory, locked (a Locked trait is one whose gate fails), permanent
+
+**Hidden (trait)**:
+A trait Mode that is Always On and never shown to the player. The AI reads it like any active trait. Only dev tools, the Prompt viewer and Test Bench show its name. Its Stat changes apply.
+_Avoid_: secret, invisible, silent
+
+**Pick Count**:
+A trait group's minimum and maximum number of picks, counting only traits placed directly in the group. The presets are Any, Exactly One, Up to One and Custom. Up to One is a maximum of 1 and renders radio buttons.
+_Avoid_: exclusive (the old flag), limit, quota, selection count

@@ -224,7 +224,7 @@ A write to a placeholder name the world does not have is dropped. **Test Code** 
 | `enabled` | True when the player has the trait and it is on. Write it to switch the trait |
 | `acquired` | True when the player has the trait, on or off. Read-only |
 
-Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its exclusive siblings. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
+Writing `enabled` switches the trait after the run, with the same effect as the player's checkbox. Switching on disables its siblings in an Up to One group. Code never switches an Always On or Hidden trait, and it ignores pick counts. Switching on a trait the player never took acquires it. The switch persists until the player, the AI, or a later run switches it again. Code ignores **Player Can Toggle In-Game**, so a script can switch a trait the player cannot toggle.
 
 ```javascript
 // Cursed while Sanity is on the floor.
