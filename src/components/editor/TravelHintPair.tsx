@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link2, Link2Off } from 'lucide-react';
+import { Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,8 +117,8 @@ export function TravelHintPair({ connection, legs, idPrefix, onChange, focus }: 
             onClick={toggle}
           >
             {linked
-              ? <Link2 className="h-4 w-4 rotate-90" aria-hidden="true" />
-              : <Link2Off className="h-4 w-4 rotate-90" aria-hidden="true" />}
+              ? <Link className="h-4 w-4 -rotate-45" aria-hidden="true" />
+              : <Unlink className="h-4 w-4 -rotate-45" aria-hidden="true" />}
           </Button>
         </Tip>
       )}
