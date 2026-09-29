@@ -13,15 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tip } from '@/components/ui/tooltip';
 import { Hint } from '@/components/ui/typography';
+import { useWheelScroll } from '@/lib/useWheelScroll';
 import 'streamdown/styles.css';
 
 /** An `ⓘ` button that reveals its full explanation in a popover, so a setting row can show a terse lead
  *  inline and keep the long detail on demand. `children` is a **Markdown string** — write hints with a
  *  lead sentence and a short bullet list so the popover reads as structure, not a blob. Portaled (the
- *  default) so it floats above the settings ScrollArea instead of being clipped by its overflow; content
- *  is short and never scrolls, so the scroll-lock caveat in popover.tsx doesn't apply. Click-to-open so
- *  it works on touch. */
+ *  default) so it floats above the settings ScrollArea instead of being clipped by its overflow. Content
+ *  taller than the room scrolls, by `useWheelScroll` since a modal's scroll lock cancels the wheel.
+ *  Click-to-open so it works on touch. */
 export function HintInfo({ children }: { children: string }) {
+  const wheelRef = useWheelScroll<HTMLDivElement>();
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -34,11 +36,12 @@ export function HintInfo({ children }: { children: string }) {
         </button>
       </PopoverTrigger>
       <PopoverContent
+        ref={wheelRef}
         align="center"
         collisionPadding={12}
         // `h4` is reserved for the "this part is about your current selection" header a segmented row's
         // ⓘ puts above the option detail — styled like a Section title so it reads as a divider, not prose.
-        className="w-80 max-w-[calc(100vw-2rem)] text-helper leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:border-t [&_h4]:border-border [&_h4]:pt-3 [&_h4]:text-meta [&_h4]:font-semibold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-foreground"
+        className="w-80 max-w-[calc(100vw-2rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto text-helper leading-relaxed text-muted-foreground [&_p]:my-0 [&_*+p]:mt-2 [&_ul]:my-0 [&_*+ul]:mt-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_li]:mt-0.5 [&_li]:pl-0.5 [&_strong]:font-medium [&_strong]:text-foreground [&_code]:text-[0.9em] [&_h4]:mt-3 [&_h4]:mb-1 [&_h4]:border-t [&_h4]:border-border [&_h4]:pt-3 [&_h4]:text-meta [&_h4]:font-semibold [&_h4]:uppercase [&_h4]:tracking-wider [&_h4]:text-foreground"
       >
         {/* Keyed by content: Streamdown memoizes blocks by their position in the source, so a hint whose
             text swaps with the selected option keeps the old block at that position otherwise. */}

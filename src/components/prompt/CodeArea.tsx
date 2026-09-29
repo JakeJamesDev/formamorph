@@ -57,6 +57,8 @@ interface CodeAreaProps {
   placeholder?: string;
   /** Shown at the start of the toolbar row, so a caption costs no extra line. */
   label?: ReactNode;
+  /** An affordance beside the label, such as a `HintInfo`. */
+  info?: ReactNode;
   /** Offer the `{{slot}}` menu. Template editing only. */
   slots?: boolean;
   /** What the code can reach: the Variable menu, completions and diagnostics all read it. */
@@ -79,7 +81,7 @@ interface CodeAreaProps {
 /** Toolbar + editor. Split out so the fullscreen overlay can mount a second copy against the same
  *  value without the outer component recursing into itself. */
 function CodeAreaBody({
-  value, onChange, ariaLabel, placeholder, label, slots, surface, preview, className, rows = 8, fullscreen,
+  value, onChange, ariaLabel, placeholder, label, info, slots, surface, preview, className, rows = 8, fullscreen,
   onToggleFullscreen, session, active, expose,
 }: Omit<CodeAreaProps, 'statNames' | 'selfName' | 'placeholders' | 'traits'> & {
   fullscreen: boolean;
@@ -162,6 +164,7 @@ function CodeAreaBody({
       <div className="flex items-center gap-1 flex-shrink-0">
         <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           {label && <Label className="leading-none">{label}</Label>}
+          {info}
           {slots && <InsertMenu items={SLOT_SNIPPETS} label="Slot" Icon={Braces} onPick={insert} />}
           <InsertMenu items={surface.snippets} label="Variable" Icon={Variable} onPick={insert} />
         </div>
