@@ -61,7 +61,11 @@ const WORLD: World = benchEditorWorld({
     },
     {
       id: 'harbor', name: 'Harbor Lore', enabled: true, entries: [],
-      placeholders: [{ id: 'dock', name: 'Dock', values: [value('v-pier', 'the pier')] }],
+      placeholders: [
+        { id: 'dock', name: 'Dock', values: [value('v-pier', 'the pier')] },
+        // Named after Tam's Scar, whose chip reads under Tam's name.
+        { id: 'tale', name: `${chip('scar')} Tale`, values: [value('v-told', 'as told')] },
+      ],
     },
   ],
 } as Partial<World>);
@@ -136,7 +140,8 @@ describe('the entity panel Placeholders tab', () => {
     const row = within(panel(ENTITY)).getByRole('button', { name: 'Select Eyes' }).parentElement as HTMLElement;
     fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
     // Eyes owns Iris, so the delete asks first and takes Iris with it.
-    fireEvent.click(screen.getByRole('button', { name: /^Delete$|^Confirm$/ }));
+    expect(screen.getByRole('alertdialog', { name: 'Delete Eyes?' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
     expect(ctx().entities.find((e) => e.id === 'molly')!.placeholders!.map((p) => p.id)).toEqual(['c-garb']);
   });
 
@@ -157,6 +162,32 @@ describe('the entity panel Placeholders tab', () => {
     expect(backArrow()).toBeInTheDocument();
     expect(paneShows('Tone')).toBe(true);
     expect(entityFieldsTab('Placeholders')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it("opens a shared row's duplicate, a world placeholder, on the Placeholders tab", () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEntityPlaceholders('Molly');
+    const shared = within(panel(ENTITY)).getByRole('button', { name: 'Open Tone' }).closest('.cursor-pointer') as HTMLElement;
+    fireEvent.click(within(shared).getByRole('button', { name: 'Duplicate' }));
+    expect(ctx().getWorldData().placeholders?.map((p) => p.name)).toEqual(['Class Garb', 'Tone', 'Tone (Copy)']);
+    expect(screen.getByRole('tab', { name: /Placeholders/, selected: true })).toBeInTheDocument();
+    expect(paneShows('Tone (Copy)')).toBe(true);
+    // The panel keeps its own place: back on the entity, its list shows.
+    openEditorTab(/Entities/);
+    expect(backArrow()).toBeNull();
+    expect(treeRow(ENTITY, 'Eyes')).toBeInTheDocument();
+  });
+
+  it("opens an owned row's duplicate in the panel", () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openEntityPlaceholders('Molly');
+    search(ENTITY, 'Iris');
+    const row = within(panel(ENTITY)).getByRole('button', { name: 'Select Eyes › Iris' }).parentElement as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Duplicate' }));
+    expect(ctx().entities.find((e) => e.id === 'molly')!.placeholders!.map((p) => p.name)).toContain('Iris (Copy)');
+    expect(screen.getByRole('tab', { name: /Entities/, selected: true })).toBeInTheDocument();
+    expect(backArrow()).toBeInTheDocument();
+    expect(paneShows('Iris (Copy)')).toBe(true);
   });
 
   it('keeps the open placeholder across a switch to Profile and back', () => {
@@ -220,6 +251,24 @@ describe('the dictionary panel Placeholders tab', () => {
     expect(searchRows(BOOK)).toEqual(['Bog Name']);
     search(BOOK, 'Dock');
     expect(within(panel(BOOK)).getByText('No placeholders match “Dock”.')).toBeInTheDocument();
+  });
+
+  it('matches a chip in a name by the owner-qualified label it reads', () => {
+    renderWorldEditorBench(WORLD, 'advanced');
+    openBookPlaceholders('Harbor Lore');
+    search(BOOK, 'Tam');
+    expect(searchRows(BOOK)).toHaveLength(1);
+  });
+
+  it('duplicates a search row into the book and opens the duplicate', () => {
+    const { ctx } = renderWorldEditorBench(WORLD, 'advanced');
+    openBookPlaceholders('Fen Lore');
+    search(BOOK, 'Bog');
+    const row = within(panel(BOOK)).getByRole('button', { name: 'Select Bog Name' }).parentElement as HTMLElement;
+    fireEvent.click(within(row).getByRole('button', { name: 'Duplicate' }));
+    expect(ctx().dictionaries.find((b) => b.id === 'fen')!.placeholders!.map((p) => p.name)).toEqual(['Bog Name', 'Bog Name (Copy)']);
+    expect(backArrow()).toBeInTheDocument();
+    expect(paneShows('Bog Name (Copy)')).toBe(true);
   });
 
   it('keeps the open placeholder across a switch to Details, and returns to the list for another book', () => {

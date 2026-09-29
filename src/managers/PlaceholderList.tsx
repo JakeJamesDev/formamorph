@@ -37,7 +37,12 @@ import { SortableTree, type SortableTreeAdapter } from './SortableTree';
  * this component only wires them to the shared drag-tree scaffold. Adding is the caller's concern (a
  * toolbar button), mirroring how the World Editor and library editor place their own.
  */
-const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string | null) => void }) => {
+const PlaceholderList = ({ selectedId, onSelect, openDuplicate }: {
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  /** Opens a row's fresh duplicate, given the id of the placeholder it copies; absent, the row is selected. */
+  openDuplicate?: (rowId: string, sourceId: string) => void;
+}) => {
   const { placeholders, setPlaceholders, placedIds, lists, setLists, scope } = usePlaceholderStore();
   const world = useGameDataOptional();
   // The last move across the Blueprints edge that was refused, and whether it was the group's removal.
@@ -50,7 +55,7 @@ const PlaceholderList = ({ selectedId, onSelect }: { selectedId: string | null; 
     setRefusal(refused && { refusal: refused, removing });
     if (!refused) setLists(next);
   };
-  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect });
+  const { rowRules, dialog } = usePlaceholderRowActions({ selectedId, onSelect, openDuplicate });
 
   // The tree, the rows that hold at least one other (which drives the chevron), and who holds whom — each
   // derived once per change. `getVisible` runs on every drag frame, so re-walking there is a per-frame cost.

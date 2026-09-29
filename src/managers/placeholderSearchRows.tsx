@@ -18,7 +18,7 @@ export function placeholderSearchRows(
   nodes: readonly PlaceholderTreeNode[],
   lists: PlaceholderHomesWorld,
   rowRules: (node: PlaceholderRowNode) => PlaceholderRowRules,
-  withOwner: boolean,
+  { withOwner }: { withOwner: boolean },
 ): ListEditorRow[] {
   const byId = new Map(allPlaceholders(lists).map((p) => [p.id, p]));
   const repeated = new Set<string>();
