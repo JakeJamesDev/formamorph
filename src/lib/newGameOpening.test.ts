@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { drawNewGameOpening } from './newGameOpening';
 import { drawUnseenOpening, openingPool } from './openings';
 import { resolvePersona } from './persona';
+import { migrateWorld } from './version';
 import type { Entity, Opening, PersonaRef, WorldOverview } from '@/types';
 
 const action = (id: string): Opening => ({ id, text: `Opening ${id}.`, kind: 'action' });
@@ -147,5 +148,149 @@ describe('the pool with a persona-only entity', () => {
     const { cast, ids } = drawAll(ref);
     expect(cast.map((e) => e.id)).not.toContain('custom');
     expect(ids).not.toContain('custom-hello');
+  });
+});
+
+// ── Self openings ─────────────────────────────────────────────────────────────
+
+const selfRow = (id: string): Opening => ({ ...action(id), self: true });
+
+/** Every opening the first draw can land on: one draw at each of 40 evenly spaced points in [0, 1). */
+const firstDraws = (pick: PersonaRef, worldEntities: Entity[], over: Partial<WorldOverview> = {}) => new Set(
+  Array.from({ length: 40 }, (_, i) => drawNewGameOpening({
+    pick: { ref: pick }, worldEntities, overview: { ...overview, ...over }, startingLocationId: 'start', picked: [],
+    random: () => (i + 0.5) / 40,
+  }).draw.opening.id),
+);
+
+describe('Self openings of a world persona', () => {
+  const hero = entity('hero', {
+    persona: true, locations: ['start'],
+    openings: [action('hero-hello'), selfRow('hero-self-a'), selfRow('hero-self-b')],
+  });
+  const plain = entity('plain', { persona: true, locations: ['start'], openings: [action('plain-hello')] });
+  const worldEntities = [hero, plain, keeper];
+  const worldRows = { openings: [action('world-hello')] };
+
+  it('replace the pool when the player plays their owner', () => {
+    expect(firstDraws({ source: 'world', entityId: 'hero' }, worldEntities, worldRows))
+      .toEqual(new Set(['hero-self-a', 'hero-self-b']));
+  });
+
+  it('name their owner as the drawn row’s owner', () => {
+    const result = drawNewGameOpening({
+      pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview, startingLocationId: 'start',
+      picked: [], random: always,
+    });
+    expect(result.owner).toBe(hero);
+  });
+
+  it('leave a persona without them on the location pool, its own Others rows still out', () => {
+    expect(firstDraws({ source: 'world', entityId: 'plain' }, worldEntities, worldRows))
+      .toEqual(new Set(['world-hello', 'hero-hello', 'keeper-hello']));
+  });
+
+  it.each<{ label: string; ref: PersonaRef }>([
+    { label: 'None', ref: { source: 'none' } },
+    { label: 'another world persona', ref: { source: 'world', entityId: 'plain' } },
+  ])('never join the location pool when their owner stands at the start under $label', ({ ref }) => {
+    expect(firstDraws(ref, worldEntities)).not.toContain('hero-self-a');
+    expect(firstDraws(ref, worldEntities)).not.toContain('hero-self-b');
+  });
+
+  it('never draw with the world switch off', () => {
+    const result = drawNewGameOpening({
+      pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview: { ...overview, openingsEnabled: false },
+      startingLocationId: 'start', picked: [], random: always,
+    });
+    expect(result.draw.opening.id).toBe('default');
+  });
+
+  it('switch the list on by themselves when the persona is the only owner with openings', () => {
+    const alone = entity('alone', { persona: true, openings: [selfRow('alone-self')] });
+    expect(firstDraws({ source: 'world', entityId: 'alone' }, [alone])).toEqual(new Set(['alone-self']));
+  });
+
+  it('keep a picked library entity’s Self rows out of the Library Additions pool', () => {
+    const visitor = entity('visitor', { openings: [action('visitor-hello'), selfRow('visitor-self')] });
+    const result = drawNewGameOpening({
+      pick: { ref: { source: 'none' } }, worldEntities: [keeper], overview, startingLocationId: 'start',
+      picked: [visitor], random: seeded(5),
+    });
+    expect(result.draw.opening.id).toBe('visitor-hello');
+    expect(openingPool({ overview, entities: [keeper], startingLocationId: 'start', picked: [visitor] })
+      .map((row) => row.opening.id)).toEqual(['visitor-hello']);
+  });
+
+  it('are what the page-one redraw draws again from', () => {
+    const played = resolvePersona({ source: 'world', entityId: 'hero' }, worldEntities, []);
+    const first = drawNewGameOpening({
+      pick: { ref: { source: 'world', entityId: 'hero' } }, worldEntities, overview, startingLocationId: 'start',
+      picked: [], random: seeded(3),
+    });
+    const random = seeded(9);
+    let seen = first.draw.shown;
+    const redraws = Array.from({ length: 20 }, () => {
+      const pool = openingPool({ overview, entities: played.cast, startingLocationId: 'start', picked: [], persona: played.persona });
+      const next = drawUnseenOpening(pool, seen, random);
+      seen = next.shown;
+      return next.opening.id;
+    });
+    expect(new Set(redraws)).toEqual(new Set(['hero-self-a', 'hero-self-b']));
+  });
+});
+
+describe('a world whose openings carry no Self flag, as every shipped world', () => {
+  const world = migrateWorld(JSON.parse(JSON.stringify({
+    id: 'w', version: '3.0.1', worldOverview: { ...overview, openings: [action('world-hello')], openingWeights: { 'world-hello': 3 } },
+    stats: [], traits: [], statUpdates: [], locations: [{ id: 'start', name: 'Start', description: '', isStartingLocation: true }],
+    entities: [
+      { ...guide, persona: true },
+      { ...keeper, openingWeights: { 'keeper-hello': 2 } },
+    ],
+  })));
+
+  it('loads with the flag still absent', () => {
+    const rows = [world.worldOverview, ...world.entities].flatMap((owner) => owner.openings ?? []);
+    expect(rows.every((o) => !('self' in o))).toBe(true);
+  });
+
+  it.each<{ label: string; ref: PersonaRef; ids: string[]; weights: number[] }>([
+    { label: 'None', ref: { source: 'none' }, ids: ['world-hello', 'guide-hello', 'keeper-hello'], weights: [3, 1, 2] },
+    { label: 'the world persona', ref: { source: 'world', entityId: 'guide' }, ids: ['world-hello', 'keeper-hello'], weights: [3, 2] },
+  ])('draws from the location pool under $label', ({ ref, ids, weights }) => {
+    const { cast, persona } = resolvePersona(ref, world.entities, []);
+    const pool = openingPool({ overview: world.worldOverview, entities: cast, startingLocationId: 'start', persona });
+    expect(pool.map((row) => [row.opening.id, row.weight])).toEqual(ids.map((id, i) => [id, weights[i]]));
+    expect(firstDraws(ref, world.entities, world.worldOverview)).toEqual(new Set(ids));
+  });
+});
+
+describe('Self openings of a persona-only entity', () => {
+  const ghost = entity('ghost', {
+    persona: true, personaOnly: true, locations: ['start'], openings: [action('ghost-hello'), selfRow('ghost-self')],
+  });
+  const worldEntities = [ghost, keeper];
+
+  it('draw when the player picks it, and its Others rows don’t', () => {
+    expect(firstDraws({ source: 'world', entityId: 'ghost' }, worldEntities)).toEqual(new Set(['ghost-self']));
+  });
+
+  it('never draw while it is unpicked', () => {
+    expect(firstDraws({ source: 'none' }, worldEntities)).toEqual(new Set(['keeper-hello']));
+  });
+});
+
+describe('Self openings of an entity without the Persona mark', () => {
+  // An id still resolves after the mark comes off, so a save can play an unmarked entity.
+  const former = entity('former', { locations: ['start'], openings: [action('former-hello'), selfRow('former-self')] });
+  const worldEntities = [former, keeper];
+
+  it('never draw when that entity is played', () => {
+    expect(firstDraws({ source: 'world', entityId: 'former' }, worldEntities)).toEqual(new Set(['keeper-hello']));
+  });
+
+  it('never draw when it stands at the start', () => {
+    expect(firstDraws({ source: 'none' }, worldEntities)).toEqual(new Set(['former-hello', 'keeper-hello']));
   });
 });

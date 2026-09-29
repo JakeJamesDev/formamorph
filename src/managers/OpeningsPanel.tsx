@@ -9,7 +9,7 @@ import { usePlaceholderChipVocabulary } from '@/lib/chipVocabulary';
 import { placeholderChipLine } from '@/lib/placeholders';
 import { EditorDndContext, StableSortableContext } from '@/components/dnd/EditorDndContext';
 import PlaceholderField from '@/components/prompt/PlaceholderField';
-import { badgeVariants } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,7 @@ import { useListSearch } from '@/components/listToolbarHooks';
 import { useGameData } from '@/contexts/GameDataContext';
 import {
   addOpening, DEFAULT_OPENING, hasAuthoredOpenings, moveOpening, openingsEditorView, openingsEnabled, ownerOpeningRows, removeOpening,
-  setOpeningKind, setOpeningText, setOpeningWeight, type EditorOpeningRow, type OpeningOwner,
+  setOpeningKind, setOpeningSelf, setOpeningText, setOpeningWeight, showsSelfOpenings, type EditorOpeningRow, type OpeningOwner,
 } from '@/lib/openings';
 import { matchesListSearch, type ListSearchNames } from '@/lib/listSearch';
 import { labelPlaceholders } from '@/lib/placementLetters';
@@ -141,6 +141,8 @@ export function OpeningsPanel({ onOpenEntity }: {
               ownerName={entity.name}
               search={search.typed}
               names={names}
+              selfSwitch={showsSelfOpenings(entity)}
+              selfBadge
               empty={null}
             />
           </section>
@@ -159,14 +161,17 @@ export function OpeningsPanel({ onOpenEntity }: {
 }
 
 /** One entity's openings, for both entity editors. */
-export function EntityOpenings({ entity, onChange, placeholders, names = { placeholders } }: {
+export function EntityOpenings({ entity, home, onChange, placeholders, names = { placeholders } }: {
   entity: Entity;
+  /** Which editor holds the entity. Only a world entity's Self rows show. */
+  home: 'world' | 'library';
   onChange: (patch: OpeningOwner) => void;
   placeholders: Placeholder[];
   /** How the search reads chips; defaults to the placeholders alone. */
   names?: ListSearchNames;
 }) {
   const search = useListSearch();
+  const showSelf = home === 'world' && showsSelfOpenings(entity);
   return (
     <div className="space-y-2">
       <ListSearchToolbar
@@ -176,7 +181,7 @@ export function EntityOpenings({ entity, onChange, placeholders, names = { place
       />
       <OpeningsList
         owner={entity}
-        rows={ownerOpeningRows(entity)}
+        rows={ownerOpeningRows(entity, showSelf)}
         onChange={onChange}
         placeholders={placeholders}
         ownerId={entity.id}
@@ -184,10 +189,12 @@ export function EntityOpenings({ entity, onChange, placeholders, names = { place
         search={search.typed}
         names={names}
         addButton={false}
+        selfSwitch={showSelf}
         empty={<Hint>No openings yet</Hint>}
       />
       <Hint>
         {"Drawn with the world's openings when a player starts at one of this entity's locations. The world's switch turns them off too."}
+        {showSelf && ' A Self opening replaces every other opening when a player plays this entity.'}
       </Hint>
     </div>
   );
@@ -209,6 +216,7 @@ function NoMatch({ typed }: { typed: string }) {
  */
 export function OpeningsList({
   owner, rows, onChange, placeholders, ownerId, empty, ownerLabel, ownerName, search = '', names, addButton = true,
+  selfSwitch = false, selfBadge = false,
 }: {
   owner: OpeningOwner;
   rows: EditorOpeningRow[];
@@ -227,12 +235,18 @@ export function OpeningsList({
   names?: ListSearchNames;
   /** False where a toolbar's + adds to this owner. */
   addButton?: boolean;
+  /** Each card sets whether its row is Others or Self. */
+  selfSwitch?: boolean;
+  /** A Self row names itself with a badge, where several owners share one screen. */
+  selfBadge?: boolean;
 }) {
   const shown = search ? matchingRows(rows, search, names ?? { placeholders }) : rows.map((row, i) => ({ row, i }));
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = rows.findIndex((r) => r.opening.id === active.id);
-    const to = rows.findIndex((r) => r.opening.id === over.id);
+    // The owner's own indexes: the rows may leave out its hidden Self rows.
+    const ids = (owner.openings ?? []).map((o) => o.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
     if (from !== -1 && to !== -1) onChange(moveOpening(owner, from, to));
   };
   const collapse = useCardCollapse(shown.map(({ row }) => row.opening.id));
@@ -262,6 +276,8 @@ export function OpeningsList({
                   ownerId={ownerId}
                   ownerName={ownerName}
                   onKind={(kind) => onChange(setOpeningKind(owner, opening.id, kind))}
+                  onSelf={selfSwitch ? (self) => onChange(setOpeningSelf(owner, opening.id, self)) : undefined}
+                  selfBadge={selfBadge && !!opening.self}
                   onText={(text) => onChange(setOpeningText(owner, opening.id, text))}
                   onWeight={(w) => onChange(setOpeningWeight(owner, opening.id, w))}
                   onRemove={() => onChange(removeOpening(owner, opening.id))}
@@ -287,8 +303,8 @@ export function OpeningsList({
 }
 
 const OpeningCard = ({
-  opening, label, a11yLabel, open, onToggle, weight, chance, placeholders, ownerId, ownerName, onKind, onText, onWeight,
-  onRemove,
+  opening, label, a11yLabel, open, onToggle, weight, chance, placeholders, ownerId, ownerName, onKind, onSelf, selfBadge,
+  onText, onWeight, onRemove,
 }: {
   opening: Opening;
   label: string;
@@ -303,6 +319,9 @@ const OpeningCard = ({
   ownerId?: string;
   ownerName?: string;
   onKind: (kind: OpeningKind) => void;
+  /** Sets Others or Self. Absent, the card has no switch. */
+  onSelf?: (self: boolean) => void;
+  selfBadge: boolean;
   onText: (text: string) => void;
   onWeight: (weight: number) => void;
   onRemove: () => void;
@@ -343,6 +362,7 @@ const OpeningCard = ({
             <span className="min-w-0 truncate text-helper text-muted-foreground/70">{firstLine || 'Empty opening'}</span>
           )}
         </button>
+        {selfBadge && <Badge variant="outline">Self</Badge>}
         <ToggleGroup
           type="single"
           value={opening.kind}
@@ -353,6 +373,18 @@ const OpeningCard = ({
           <ToggleGroupItem value="action" className="px-2 py-0 text-helper">Player Action</ToggleGroupItem>
           <ToggleGroupItem value="narration" className="px-2 py-0 text-helper">Narration</ToggleGroupItem>
         </ToggleGroup>
+        {onSelf && (
+          <ToggleGroup
+            type="single"
+            value={opening.self ? 'self' : 'others'}
+            onValueChange={(v) => { if (v) onSelf(v === 'self'); }}
+            aria-label={`Drawn For, ${a11yLabel}`}
+            className="h-6"
+          >
+            <ToggleGroupItem value="others" className="px-2 py-0 text-helper">Others</ToggleGroupItem>
+            <ToggleGroupItem value="self" className="px-2 py-0 text-helper">Self</ToggleGroupItem>
+          </ToggleGroup>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <Input
             type="number"

@@ -63,7 +63,7 @@ Three more problems follow from this:
 
 27. As an author, I want to mark a persona as persona-only, so that Custom Character exists only when the player picks it.
 28. As a player who picks Albus, I want Custom Character absent from the world, so that I never meet an empty player slot in the cast.
-29. As a player, I want a persona-only entity's openings never to draw, so that its openings never run for someone else. Picked, it is the played entity and persona story 54 keeps it out; unpicked, it is absent (Q80).
+29. As a player, I want a persona-only entity's Others openings never to draw, so that its openings never run for someone else. Picked, it is the played entity and persona story 54 keeps its Others openings out, while its Self openings draw; unpicked, it is absent (Q80, amended by Openings Refresh Q8).
 
 ### Bearers in play
 
@@ -188,7 +188,7 @@ All items are additive export-shape changes to the world, entity, card and save 
 - Entity pages and the in-game Traits tab show the bearer tree in author order, with links and owned traits together. Under None or a library persona, Custom Persona's links merge into the player's root categories with no separate heading (Q83). A played persona's link to an original the root already offers shows once, at the root, with one stat record; the Test Bench reports it as redundant (Q84).
 - The player picks a cast entity's link defaults under the existing owned-trait rules. Toggling in play follows the original's Player Can Toggle for every bearer (Q52).
 - A persona switch in play applies the new persona's active linked stat traits and reverses the old one's, through the honest reversal path, like traits turning on and off (Q53).
-- The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool. A persona-only entity's openings therefore never draw (Q80). The Persona-only switch shows in the world entity editor only; a library entity is never in a cast (Q81).
+- The persona cast filter leaves out an unpicked persona-only entity everywhere the cast is read: the roster, participation, diaries, discovery, scene tags, the planner, the entity panel, and the opening pool. A persona-only entity's Others openings therefore never draw; its Self openings draw when it is the pick (Q80, amended by Openings Refresh Q8). The Persona-only switch shows in the world entity editor only; a library entity is never in a cast (Q81).
 
 ### AI context
 
@@ -290,7 +290,7 @@ All items are additive export-shape changes to the world, entity, card and save 
   | Q77 | The player's own placeholders follow the persona; None means the world's. |
   | Q78 | Pins list: link rows edit the link's value; conflicts between pins that can lay in one text (one bearer, or player vs cast entity). |
   | Q79 | A cast entity's text: world pins, then the player's trait pins, then its own on top. |
-  | Q80 | Persona story 54 stands: a persona-only entity's openings never draw. |
+  | Q80 | Persona story 54 stands: a persona-only entity's Others openings never draw. Amended by Openings Refresh Q8: its Self openings draw when it is the pick. |
   | Q81 | The Persona-only switch is in the world entity editor only. |
   | Q82 | In the conflict note a Persona-marked entity's traits count as both its own and the player's, so they rival every cast entity's; the cast entity wins in its own text. Amended by emberwatch-world Q27: two Persona-marked entities' traits never rival each other, since only one is played and each wins in its own text. |
   | Q83 | Under None or a library persona, Custom Persona's links merge into the player's root categories; no separate heading. |

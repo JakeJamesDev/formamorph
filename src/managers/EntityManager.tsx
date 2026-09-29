@@ -130,6 +130,7 @@ const EntityManager = ({
           <PanelTabContent value="openings">
             <EntityOpenings
               entity={editingEntity}
+              home="world"
               placeholders={placeholders}
               names={{ placeholders, letters: placementLetters, owners: placeholderOwners }}
               onChange={(patch) => writeWhole({ ...editingEntity, ...patch })}
