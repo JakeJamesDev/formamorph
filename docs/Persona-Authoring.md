@@ -92,7 +92,7 @@ Two controls on the **Overview** tab decide who the player can be. Both are **Ad
 | Value | Starts on |
 |---|---|
 | **Player's Default** | The player's default persona. Under **World Only**, your first persona. |
-| **None** or **Custom Persona** | No persona, or your **Custom Persona** when the world has one |
+| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one |
 | One of your personas | That persona |
 
 Use **Starts On: None** when your world already defines the player. Use **World Only** when the player must be one of your entities.

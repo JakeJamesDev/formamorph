@@ -243,14 +243,14 @@ describe('the Overview persona rules', () => {
     expect(screen.queryByRole('option', { name: 'None' })).toBeNull();
   });
 
-  it('names the Custom Persona in place of None', async () => {
+  it('names the Custom Persona entity in place of None', async () => {
     const user = userEvent.setup();
     renderWorldEditorBench(withPersonas({ allowedPersonas: 'world' }, [
       { id: 'cp', name: 'Wanderer', playerDescription: '', aiDescription: '', customPersona: true },
     ]), 'advanced');
     await screen.findByLabelText('World Name');
     await openStartsOn(user);
-    expect(await screen.findByRole('option', { name: 'Custom Persona' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Wanderer' })).toBeInTheDocument();
   });
 
   it('reads a pick of an entity that is no longer a persona as the default', async () => {
