@@ -218,6 +218,7 @@ function cardOverride<V>(raw: unknown, read: (v: unknown) => V | undefined): Blu
 }
 
 const cardBoolean = (v: unknown) => (typeof v === 'boolean' ? v : undefined);
+const cardMode = (v: unknown) => (v === 'optional' || v === 'alwaysOn' || v === 'hidden' ? v : undefined);
 const cardList = <T>(read: (raw: unknown[]) => T[]) => (v: unknown) => (Array.isArray(v) ? read(v) : undefined);
 const cardRequirements = cardList((v) => v.flatMap(cardRequirement));
 
@@ -229,8 +230,10 @@ function cardLinkOverrides(raw: unknown): TraitLinkOverrides | undefined {
   const requires = cardOverride(raw.requires, cardRequirements);
   const placeholderPins = cardOverride(raw.placeholderPins, cardList(cardPins));
   const statChanges = cardOverride(raw.statChanges, cardList(cardStatChanges));
+  const mode = cardOverride(raw.mode, cardMode);
   const out: TraitLinkOverrides = {
     ...(isDefault ? { isDefault } : {}),
+    ...(mode ? { mode } : {}),
     ...(requires ? { requires } : {}),
     ...(placeholderPins ? { placeholderPins } : {}),
     ...(playerToggle ? { playerToggle } : {}),
