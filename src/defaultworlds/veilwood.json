@@ -301,38 +301,58 @@
   "connections": [
     {
       "id": "d0b02078-0fd4-4941-a971-7d31e60a799c",
-      "from": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-      "to": "343d2396-c459-44f2-bf1a-8df30863d44e",
-      "twoWay": true,
-      "aiHint": "along a spine of roots above the waterline"
+      "a": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+      "b": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "aToB": {
+        "hint": "along a spine of roots above the waterline"
+      },
+      "bToA": {
+        "hint": "along a spine of roots above the waterline"
+      }
     },
     {
       "id": "28097286-1991-4afe-b9a0-9ef0a5110270",
-      "from": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
-      "to": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-      "twoWay": true,
-      "aiHint": "where the hollow's water drains into the channels"
+      "a": "952e1bae-8503-46b7-9a66-15e05d3ec38c",
+      "b": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "aToB": {
+        "hint": "where the hollow's water drains into the channels"
+      },
+      "bToA": {
+        "hint": "where the hollow's water drains into the channels"
+      }
     },
     {
       "id": "091b2a03-4e2b-4754-aee8-8d58ff35b53a",
-      "from": "343d2396-c459-44f2-bf1a-8df30863d44e",
-      "to": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-      "twoWay": true,
-      "aiHint": "following the fig's colossal roots home"
+      "a": "343d2396-c459-44f2-bf1a-8df30863d44e",
+      "b": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "aToB": {
+        "hint": "following the fig's colossal roots home"
+      },
+      "bToA": {
+        "hint": "following the fig's colossal roots home"
+      }
     },
     {
       "id": "ca91b347-3f53-4deb-b728-b2c4e91d00d9",
-      "from": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
-      "to": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-      "twoWay": true,
-      "aiHint": "hauling out of the water at the fig's knees"
+      "a": "1ca86d9a-0690-4865-be91-3c6ee21b53ea",
+      "b": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "aToB": {
+        "hint": "hauling out of the water at the fig's knees"
+      },
+      "bToA": {
+        "hint": "hauling out of the water at the fig's knees"
+      }
     },
     {
       "id": "b1bbae38-3e93-4f25-a962-f2ed78613415",
-      "from": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
-      "to": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
-      "twoWay": true,
-      "aiHint": "a hard eastward climb — the same way the moths go at dusk"
+      "a": "2dcf2b34-f694-4018-bfca-83a02db92e7a",
+      "b": "f0977527-8c51-47a3-b0d9-f2efdd11709c",
+      "aToB": {
+        "hint": "a hard eastward climb — the same way the moths go at dusk"
+      },
+      "bToA": {
+        "hint": "a hard eastward climb — the same way the moths go at dusk"
+      }
     }
   ],
   "entities": [

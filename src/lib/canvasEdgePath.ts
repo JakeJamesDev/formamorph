@@ -96,6 +96,23 @@ export interface EdgeGeometry {
   path: string;
   /** Where a travel hint sits: on the line, halfway along the shape rather than halfway between its ends. */
   labelAt: Point;
+  /** Unit direction the `offset` slides the arrow toward: its outer side, away from a partner arrow. */
+  side: Point;
+}
+
+/** The gap between an outer label and its arrow. */
+const OUTER_LABEL_GAP = 4;
+
+/**
+ * The CSS transform that places an arrow's label. A shared label centers just above the line; an outer label
+ * hangs off the line on the arrow's own side, so a pair's two labels sit apart.
+ */
+export function labelTransform(geometry: EdgeGeometry, { outer }: { outer: boolean }): string {
+  const { labelAt, side } = geometry;
+  if (!outer) return `translate(-50%, -50%) translate(${labelAt.x}px, ${labelAt.y - 10}px)`;
+  const x = round(labelAt.x + side.x * OUTER_LABEL_GAP);
+  const y = round(labelAt.y + side.y * OUTER_LABEL_GAP);
+  return `translate(${x}px, ${y}px) translate(${round(-50 + side.x * 50)}%, ${round(-50 + side.y * 50)}%)`;
 }
 
 /**
@@ -115,7 +132,8 @@ export function edgeGeometry(
   const span = { x: anchors.end.x - anchors.start.x, y: anchors.end.y - anchors.start.y };
   const length = Math.hypot(span.x, span.y) || 1;
   const slide = opts.offset ?? 0;
-  const shift = { x: (-span.y / length) * slide, y: (span.x / length) * slide };
+  const side = { x: -span.y / length, y: span.x / length };
+  const shift = { x: side.x * slide, y: side.y * slide };
   const start = { x: anchors.start.x + shift.x, y: anchors.start.y + shift.y };
   const end = { x: anchors.end.x + shift.x, y: anchors.end.y + shift.y };
   const along = { x: end.x - start.x, y: end.y - start.y };
@@ -131,6 +149,7 @@ export function edgeGeometry(
     return {
       start,
       end,
+      side,
       path: `M ${at(start)} C ${at(c1)} ${at(c2)} ${at(end)}`,
       // The curve's own halfway point, so a hint sits on the line rather than beside it.
       labelAt: {
@@ -153,6 +172,7 @@ export function edgeGeometry(
     return {
       start,
       end,
+      side,
       path: `M ${at(start)} L ${at(corner1)} L ${at(corner2)} L ${at(end)}`,
       labelAt: { x: (corner1.x + corner2.x) / 2, y: (corner1.y + corner2.y) / 2 },
     };
@@ -161,6 +181,7 @@ export function edgeGeometry(
   return {
     start,
     end,
+    side,
     path: `M ${at(start)} L ${at(end)}`,
     labelAt: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
   };

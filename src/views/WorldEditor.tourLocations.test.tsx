@@ -5,6 +5,7 @@ import { AUTHORING_TOUR_SAVE_NOTE_ID, markTutorialSeen, resetTutorials } from '@
 import { reloadTourProgress, writeTourRecord } from '@/lib/authoringTour/progress';
 import { TOUR_STEPS, replayTourSteps } from '@/lib/authoringTour/steps';
 import { NEW_LOCATION_NAME } from '@/lib/blankWorld';
+import { connectionLegs } from '@/lib/locationGraph';
 import WorldStorageService from '../services/WorldStorageService';
 import type { World } from '@/types';
 
@@ -161,12 +162,13 @@ describe('Authoring Tour — Locations steps', () => {
       playerDescription: 'The village inn, warm and smelling of peat smoke and fried fish.',
       aiDescription: expect.stringMatching(/^A two-story inn on the harbor\./),
     });
-    expect(ctx().connections).toEqual([expect.objectContaining({ aiHint: 'down the lane past the net sheds' })]);
+    // Both legs of the new two-way Connection carry the example hint.
+    expect(ctx().connections).toEqual([expect.objectContaining({ aToB: { hint: 'down the lane past the net sheds' }, bToA: { hint: 'down the lane past the net sheds' } })]);
     const [link] = ctx().connections;
-    expect([link.from, link.to].sort()).toEqual([tidewell.id, lantern.id].sort());
+    expect([link.a, link.b].sort()).toEqual([tidewell.id, lantern.id].sort());
     // The last save holds the whole Locations slice.
     expect(storeWorld.mock.calls.at(-1)![0]).toMatchObject({
-      data: { connections: [expect.objectContaining({ aiHint: 'down the lane past the net sheds' })] },
+      data: { connections: [expect.objectContaining({ aToB: { hint: 'down the lane past the net sheds' } })] },
     });
   });
 });
@@ -279,7 +281,7 @@ describe('Authoring Tour — add steps', () => {
     await next();
     fireEvent.click(noteButton('Use Example')!);
     await waitFor(() => expect(ctx().connections).toHaveLength(1));
-    expect([ctx().connections[0].from, ctx().connections[0].to]).toContain(first.id);
+    expect([ctx().connections[0].a, ctx().connections[0].b]).toContain(first.id);
   });
 
   it('resumes a Locations step with its location selected', async () => {
@@ -321,11 +323,11 @@ describe('Authoring Tour — completion', () => {
     const lantern = ctx().locations.find((l) => l.name === 'The Salt Lantern')!;
 
     // A Connection to a location outside the tour does not count.
-    ctx().addConnection({ id: 'other', from: lantern.id, to: 'harbor', twoWay: true });
+    ctx().addConnection({ id: 'other', a: lantern.id, b: 'harbor', aToB: {}, bToA: {} });
     await waitFor(() => expect(ctx().connections).toHaveLength(1));
     expect(noteButton('Next')).toBeDisabled();
 
-    ctx().addConnection({ id: 'tour', from: tidewell.id, to: lantern.id, twoWay: false });
+    ctx().addConnection({ id: 'tour', a: tidewell.id, b: lantern.id, aToB: {} });
     await waitFor(() => expect(noteButton('Next')).toBeEnabled());
   });
 });
@@ -420,7 +422,7 @@ describe('In Play — Locations', () => {
     // The step selects the second location, so the only direction control on screen runs from there.
     const setDirection = async (name: 'Outgoing' | 'Incoming', from: string, to: string) => {
       fireEvent.click(screen.getByRole('radio', { name }));
-      await waitFor(() => expect(ctx().connections[0]).toMatchObject({ from, to, twoWay: false }));
+      await waitFor(() => expect(connectionLegs(ctx().connections[0]).map((l) => [l.from, l.to])).toEqual([[from, to]]));
     };
 
     /** Player Sees and the Location Change reader both stand at `here` and list `there`, hint marked. */

@@ -343,14 +343,20 @@ export interface GameLocation {
  */
 export interface Connection {
   id: string;
-  /** The location travel departs from — the only direction offered unless `twoWay`. */
-  from: string;
-  to: string;
-  /** Travelable in both directions. A newly authored Connection defaults to true. */
-  twoWay: boolean;
-  /** Optional note on *how* the trip is made ("through the shimmering portal"), rendered as a `— via …`
-   *  suffix on the destination line. Direction-neutral: one hint serves both directions. */
-  aiHint?: string;
+  /** One end. `a` and `b` are neutral: travel may run only `b → a`. */
+  a: string;
+  b: string;
+  /** Present when travel runs `a → b`. At least one leg is present. */
+  aToB?: ConnectionLeg;
+  /** Present when travel runs `b → a`. */
+  bToA?: ConnectionLeg;
+}
+
+/** One direction of a Connection. */
+export interface ConnectionLeg {
+  /** How this trip is made ("through the shimmering portal"), rendered as a `— via …` suffix on the
+   *  destination line. Blank is stored as absent. */
+  hint?: string;
 }
 
 /** A world-defined rule that periodically asks the AI to adjust a set of stats via its own prompt. */

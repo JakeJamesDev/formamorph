@@ -194,10 +194,11 @@
   "connections": [
     {
       "id": "dev-conn-1",
-      "from": "1783535114538",
-      "to": "dev-corridor",
-      "twoWay": false,
-      "aiHint": "through the sealed hatch"
+      "a": "1783535114538",
+      "b": "dev-corridor",
+      "aToB": {
+        "hint": "through the sealed hatch"
+      }
     }
   ]
 }

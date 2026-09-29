@@ -42,7 +42,7 @@ const WORLD: World = benchEditorWorld({
     },
     { id: 'hollow', name: 'The Hollow', parentId: 'veil', aiDescription: 'A dip below the roots.' },
   ],
-  connections: [{ id: 'c1', from: 'veil', to: 'hollow', twoWay: true }],
+  connections: [{ id: 'c1', a: 'veil', b: 'hollow', aToB: {}, bToA: {} }],
   entities: [{ id: 'resident', name: 'Odd Wick', aiDescription: 'Keeps the lamps.', locations: ['veil'] }],
 });
 

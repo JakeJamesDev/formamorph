@@ -290,9 +290,9 @@ describe('connections', () => {
       { id: 'l3', name: 'Landing' },
     ],
     connections: [
-      { id: 'c1', from: 'l1', to: 'l2', twoWay: true },
-      { id: 'c2', from: 'l3', to: 'l1', twoWay: false },
-      { id: 'c3', from: 'l2', to: 'l3', twoWay: true },
+      { id: 'c1', a: 'l1', b: 'l2', aToB: {}, bToA: {} },
+      { id: 'c2', a: 'l3', b: 'l1', aToB: {} },
+      { id: 'c3', a: 'l2', b: 'l3', aToB: {}, bToA: {} },
     ],
   } as unknown as World);
 

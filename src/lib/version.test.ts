@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { APP_VERSION, migrateWorld, migrateSave, isSaveEnvelope, migrateCarriedPlaceholders } from './version';
 import { placeholderWeight } from './placeholders';
 import { entityIdsAt } from './entityPresence';
-import { buildEntityContext } from './locationContext';
+import { buildEntityContext, navigableDestinationEntries } from './locationContext';
 import { effectiveDestinations } from './locationGraph';
 import type { Connection, Entity, GameLocation, Placeholder, SaveObject } from '@/types';
 
@@ -172,8 +172,8 @@ describe('migrateWorld — connection records (ADR-0002)', () => {
 
   type WithConnections = { locations: (GameLocation & { connections?: string[] })[]; connections?: Connection[] };
   const migrated = (raw: unknown) => migrateWorld(raw) as unknown as WithConnections;
-  const record = (world: WithConnections, from: string, to: string) =>
-    world.connections!.find((c) => (c.from === from && c.to === to) || (c.twoWay && c.from === to && c.to === from));
+  const record = (world: WithConnections, a: string, b: string) =>
+    world.connections!.find((c) => (c.a === a && c.b === b) || (c.a === b && c.b === a));
 
   /**
    * Effective destinations as the pre-migration union rule computed them: authored names resolved
@@ -198,15 +198,15 @@ describe('migrateWorld — connection records (ADR-0002)', () => {
   it('pair-merges reciprocal declarations into one two-way record', () => {
     const out = migrated(legacyWorld());
     const pair = out.connections!.filter((c) =>
-      [c.from, c.to].sort().join('|') === ['green', 'cottage'].sort().join('|'));
+      [c.a, c.b].sort().join('|') === ['green', 'cottage'].sort().join('|'));
     expect(pair).toHaveLength(1);
-    expect(pair[0].twoWay).toBe(true);
+    expect(pair[0]).toMatchObject({ aToB: {}, bToA: {} });
   });
 
   it('makes an unmatched declaration a one-way record from the declaring end', () => {
     const out = migrated(legacyWorld());
     const link = record(out, 'green', 'landing')!;
-    expect(link).toMatchObject({ from: 'green', to: 'landing', twoWay: false });
+    expect(link).toEqual({ id: expect.any(String), a: 'green', b: 'landing', aToB: {} });
   });
 
   it('drops a name matching no location and strips every list from the locations', () => {
@@ -228,7 +228,7 @@ describe('migrateWorld — connection records (ADR-0002)', () => {
       ],
       entities: [],
     });
-    expect(out.connections![0].twoWay).toBe(true);
+    expect(out.connections![0]).toMatchObject({ aToB: {}, bToA: {} });
     expect([...effectiveDestinations('cottage', out.locations, out.connections!).keys()].sort())
       .toEqual(['green', 'hamlet']);
   });
@@ -266,7 +266,7 @@ describe('migrateWorld — connection records (ADR-0002)', () => {
   });
 
   it('keeps records an author already authored, appending the migrated ones', () => {
-    const authored: Connection = { id: 'existing', from: 'hamlet', to: 'landing', twoWay: true };
+    const authored: Connection = { id: 'existing', a: 'hamlet', b: 'landing', aToB: {}, bToA: {} };
     const out = migrated({ ...legacyWorld(), connections: [authored] });
     expect(out.connections![0]).toEqual(authored);
     expect(out.connections).toHaveLength(4);
@@ -279,6 +279,56 @@ describe('migrateWorld — connection records (ADR-0002)', () => {
       entities: [],
     });
     expect(out.connections).toBeUndefined();
+  });
+});
+
+describe('migrateWorld — Connection legs', () => {
+  const locations = [{ id: 'quay', name: 'Quay' }, { id: 'tower', name: 'Tower' }];
+  const connectionsOf = (connections: unknown[], version?: string) =>
+    (migrateWorld({ worldOverview: {}, locations, entities: [], connections, version }) as unknown as {
+      connections: Connection[];
+    }).connections;
+
+  it('puts a two-way hint on both legs, so the pair plays as before', () => {
+    const [record] = connectionsOf([{ id: 'c1', from: 'quay', to: 'tower', twoWay: true, aiHint: 'up the steps' }]);
+    expect(record).toEqual({
+      id: 'c1', a: 'quay', b: 'tower', aToB: { hint: 'up the steps' }, bToA: { hint: 'up the steps' },
+    });
+    expect(navigableDestinationEntries(locations[1], locations, [record])[0].hint).toBe('up the steps');
+  });
+
+  it('gives a one-way record one leg, from its old start', () => {
+    const [record] = connectionsOf([{ id: 'c1', from: 'tower', to: 'quay', twoWay: false, aiHint: 'down the chute' }]);
+    expect(record).toEqual({ id: 'c1', a: 'tower', b: 'quay', aToB: { hint: 'down the chute' } });
+  });
+
+  it('stores a blank old hint as no hint', () => {
+    const [record] = connectionsOf([{ id: 'c1', from: 'quay', to: 'tower', twoWay: true, aiHint: '  ' }]);
+    expect(record).toEqual({ id: 'c1', a: 'quay', b: 'tower', aToB: {}, bToA: {} });
+  });
+
+  it('passes a new-shape record through unchanged', () => {
+    const current: Connection = { id: 'c1', a: 'quay', b: 'tower', bToA: { hint: 'down' } };
+    expect(connectionsOf([current])).toEqual([current]);
+  });
+
+  it('drops a record with no legs', () => {
+    expect(connectionsOf([{ id: 'c1', a: 'quay', b: 'tower' }, { id: 'c2', a: 'tower', b: 'quay', aToB: {} }]))
+      .toEqual([{ id: 'c2', a: 'tower', b: 'quay', aToB: {} }]);
+  });
+
+  it('runs on a world already stamped at APP_VERSION (shipped worlds carry the old shape)', () => {
+    const [record] = connectionsOf([{ id: 'c1', from: 'quay', to: 'tower', twoWay: false }], APP_VERSION);
+    expect(record).toEqual({ id: 'c1', a: 'quay', b: 'tower', aToB: {} });
+  });
+
+  it('migrating twice is identical to migrating once', () => {
+    const raw = {
+      worldOverview: {}, locations, entities: [],
+      connections: [{ id: 'c1', from: 'quay', to: 'tower', twoWay: true, aiHint: 'up' }],
+    };
+    const once = migrateWorld(raw);
+    expect(migrateWorld(structuredClone(once))).toEqual(once);
   });
 });
 

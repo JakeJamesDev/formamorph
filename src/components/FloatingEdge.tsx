@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, useInternalNode, type EdgeProps } from '@xyflow/react';
 import { DEFAULT_CANVAS_CONNECTION_STYLE } from '@/contexts/settingsDefaults';
-import { edgeGeometry, isConnectionStyle } from '@/lib/canvasEdgePath';
+import { edgeGeometry, isConnectionStyle, labelTransform } from '@/lib/canvasEdgePath';
 import { cn } from '@/lib/utils';
 
 /**
@@ -33,7 +33,7 @@ export const FloatingEdge = ({ id, source, target, markerEnd, style, label, data
   });
   // xyflow hands edge data back as unknown values; the shape it is holding is `toFlowEdge`'s own.
   const wanted = String(data?.connectionStyle);
-  const { path, labelAt } = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
+  const geometry = edgeGeometry(rectOf(sourceNode), rectOf(targetNode), {
     style: isConnectionStyle(wanted) ? wanted : DEFAULT_CANVAS_CONNECTION_STYLE,
     offset: ARROW_OFFSET,
   });
@@ -42,7 +42,7 @@ export const FloatingEdge = ({ id, source, target, markerEnd, style, label, data
   return (
     <>
       <g onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-        <BaseEdge id={id} path={path} markerEnd={markerEnd} style={style} />
+        <BaseEdge id={id} path={geometry.path} markerEnd={markerEnd} style={style} />
       </g>
       {label && (
         <EdgeLabelRenderer>
@@ -53,7 +53,7 @@ export const FloatingEdge = ({ id, source, target, markerEnd, style, label, data
                 ? 'pointer-events-auto z-10 max-w-72 bg-background'
                 : 'pointer-events-none line-clamp-2 max-w-44 bg-background/80',
             )}
-            style={{ transform: `translate(-50%, -50%) translate(${labelAt.x}px, ${labelAt.y - 10}px)` }}
+            style={{ transform: labelTransform(geometry, { outer: data?.labelOuter === true }) }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
           >

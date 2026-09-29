@@ -280,7 +280,8 @@ export function buildSublocationEntitiesContext(
 /** One place the player can move to, and how the trip is made. */
 export interface DestinationEntry {
   location: GameLocation;
-  /** A Connection's authored travel hint. Absent for implicit travel and for hintless Connections. */
+  /** The travel hint of the Connection leg that reaches this place. Absent for implicit travel and for a
+   *  hintless leg. */
   hint?: string;
   via: "implicit" | "connection";
 }
@@ -301,7 +302,7 @@ export function navigableDestinationEntries(
     if (!location) continue; // a Connection pointing at a deleted location reaches nowhere
     entries.push({
       location,
-      hint: via.via === "connection" ? via.connection.aiHint : undefined,
+      hint: via.via === "connection" ? via.leg.hint : undefined,
       via: via.via,
     });
   }

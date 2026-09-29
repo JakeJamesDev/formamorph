@@ -1198,7 +1198,7 @@ describe('the deferred reference checks', () => {
       { id: 'market', name: 'The Long Market' },
     ],
     entities: [resident, { ...resident, id: 'e-m', name: 'Stallkeep', locations: ['market'] }],
-    connections: [{ id: 'c1', from, to, twoWay: true }],
+    connections: [{ id: 'c1', a: from, b: to, aToB: {}, bToA: {} }],
   });
 
   it('flags a travel link with a dead endpoint, naming the end that still exists', () => {

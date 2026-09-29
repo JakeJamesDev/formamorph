@@ -650,24 +650,36 @@
   "connections": [
     {
       "id": "a416a996-aec9-4e73-9fa0-1667e665a535",
-      "from": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
-      "to": "e699335f-a661-4aab-a158-0214b0bef613",
-      "twoWay": true,
-      "aiHint": "along the old trade road"
+      "a": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
+      "b": "e699335f-a661-4aab-a158-0214b0bef613",
+      "aToB": {
+        "hint": "along the old trade road"
+      },
+      "bToA": {
+        "hint": "along the old trade road"
+      }
     },
     {
       "id": "283ca63c-9795-49ce-a20c-a738368d4fc5",
-      "from": "e699335f-a661-4aab-a158-0214b0bef613",
-      "to": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
-      "twoWay": true,
-      "aiHint": "across the glass dunes"
+      "a": "e699335f-a661-4aab-a158-0214b0bef613",
+      "b": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
+      "aToB": {
+        "hint": "across the glass dunes"
+      },
+      "bToA": {
+        "hint": "across the glass dunes"
+      }
     },
     {
       "id": "97ef9a23-0ef3-4ca8-84a4-d53a49e29385",
-      "from": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
-      "to": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
-      "twoWay": true,
-      "aiHint": "down the fortified Pilgrim’s Road"
+      "a": "beab09b0-447f-4b95-b91b-3a3af8bcbc43",
+      "b": "92cf612e-88a5-48db-a1b7-81e569cc6d1d",
+      "aToB": {
+        "hint": "down the fortified Pilgrim’s Road"
+      },
+      "bToA": {
+        "hint": "down the fortified Pilgrim’s Road"
+      }
     }
   ]
 }

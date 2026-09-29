@@ -257,38 +257,58 @@
   "connections": [
     {
       "id": "c7c4f340-255a-4817-97e1-2da5b1b509a5",
-      "from": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-      "to": "542a8d1e-f045-432c-89e0-836be699b1dc",
-      "twoWay": true,
-      "aiHint": "up the waterfront boulevard"
+      "a": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+      "b": "542a8d1e-f045-432c-89e0-836be699b1dc",
+      "aToB": {
+        "hint": "up the waterfront boulevard"
+      },
+      "bToA": {
+        "hint": "up the waterfront boulevard"
+      }
     },
     {
       "id": "40d3813b-e7a0-4d0d-9021-6428b10a8fde",
-      "from": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
-      "to": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
-      "twoWay": true,
-      "aiHint": "along the dockside rail line"
+      "a": "dec4e8c6-1154-4e81-bf05-425478e5fec4",
+      "b": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+      "aToB": {
+        "hint": "along the dockside rail line"
+      },
+      "bToA": {
+        "hint": "along the dockside rail line"
+      }
     },
     {
       "id": "b93ef1d3-8704-433c-abcb-da671b727d06",
-      "from": "542a8d1e-f045-432c-89e0-836be699b1dc",
-      "to": "7669f491-6486-4012-b827-442f0b18c26d",
-      "twoWay": true,
-      "aiHint": "across the river bridges"
+      "a": "542a8d1e-f045-432c-89e0-836be699b1dc",
+      "b": "7669f491-6486-4012-b827-442f0b18c26d",
+      "aToB": {
+        "hint": "across the river bridges"
+      },
+      "bToA": {
+        "hint": "across the river bridges"
+      }
     },
     {
       "id": "2fc08f03-b925-40d1-bee2-355d7b7d0d00",
-      "from": "542a8d1e-f045-432c-89e0-836be699b1dc",
-      "to": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
-      "twoWay": true,
-      "aiHint": "through the freight underpass"
+      "a": "542a8d1e-f045-432c-89e0-836be699b1dc",
+      "b": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+      "aToB": {
+        "hint": "through the freight underpass"
+      },
+      "bToA": {
+        "hint": "through the freight underpass"
+      }
     },
     {
       "id": "8ddf5b3e-930f-4741-9458-c86c16e8125a",
-      "from": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
-      "to": "545f34f6-5efc-4a96-918a-49fea1db9652",
-      "twoWay": true,
-      "aiHint": "up the highway interchange"
+      "a": "fbf2ccb1-bee4-4273-89bf-8ed35ed2fbc3",
+      "b": "545f34f6-5efc-4a96-918a-49fea1db9652",
+      "aToB": {
+        "hint": "up the highway interchange"
+      },
+      "bToA": {
+        "hint": "up the highway interchange"
+      }
     }
   ],
   "entities": [

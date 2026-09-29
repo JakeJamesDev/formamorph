@@ -37,8 +37,8 @@ const WORLD = benchEditorWorld({
     aiDescription: 'Keeps the harbor lamps lit.', locations: ['harbor', 'wood'],
   }],
   connections: [
-    { id: 'c1', from: 'harbor', to: 'wood', twoWay: true },
-    { id: 'c2', from: 'hollow', to: 'harbor', twoWay: true },
+    { id: 'c1', a: 'harbor', b: 'wood', aToB: {}, bToA: {} },
+    { id: 'c2', a: 'hollow', b: 'harbor', aToB: {}, bToA: {} },
   ],
 } as never);
 

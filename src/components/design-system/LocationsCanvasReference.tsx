@@ -23,9 +23,9 @@ const SAMPLE_LOCATIONS: GameLocation[] = [
 ];
 
 const SAMPLE_CONNECTIONS: Connection[] = [
-  { id: 'market-archive', from: 'market', to: 'archive', twoWay: false, aiHint: 'through the covered east passage' },
-  { id: 'quay-garden', from: 'quay', to: 'garden', twoWay: true, aiHint: 'along the elevated footbridge above the harbor warehouses and winter storage yards' },
-  { id: 'garden-station', from: 'garden', to: 'station', twoWay: false, aiHint: 'up the survey steps' },
+  { id: 'market-archive', a: 'market', b: 'archive', aToB: { hint: 'through the covered east passage' } },
+  { id: 'quay-garden', a: 'quay', b: 'garden', aToB: { hint: 'along the elevated footbridge above the harbor warehouses and winter storage yards' }, bToA: { hint: 'along the elevated footbridge above the harbor warehouses and winter storage yards' } },
+  { id: 'garden-station', a: 'garden', b: 'station', aToB: { hint: 'up the survey steps' } },
 ];
 
 export function LocationsCanvasReference() {

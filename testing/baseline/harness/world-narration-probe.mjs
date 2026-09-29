@@ -187,9 +187,11 @@ function renderWorld(w, run, startId) {
   const R = (t) => resolveChips(t, ph, run);
   const start = w.locations.find((l) => l.id === startId);
   const kids = w.locations.filter((l) => l.parentId === start.id);
+  // The leg leaving the start: `aToB` from end `a`, `bToA` from end `b`.
   const connected = (w.connections ?? [])
-    .filter((c) => c.from === start.id || (c.twoWay && c.to === start.id))
-    .map((c) => ({ loc: w.locations.find((l) => l.id === (c.from === start.id ? c.to : c.from)), via: c.aiHint }));
+    .map((c) => (c.a === start.id && c.aToB ? { to: c.b, leg: c.aToB } : c.b === start.id && c.bToA ? { to: c.a, leg: c.bToA } : null))
+    .filter(Boolean)
+    .map(({ to, leg }) => ({ loc: w.locations.find((l) => l.id === to), via: leg.hint }));
   const here = w.entities.filter((e) => (e.locations ?? []).includes(start.id));
   const away = w.entities.filter((e) => !(e.locations ?? []).includes(start.id));
   const entityMd = (list, summary) => list.length

@@ -256,38 +256,58 @@
   "connections": [
     {
       "id": "412c6e1a-eb4f-506d-9a33-dba2afd46d30",
-      "from": "12fb7d50-05f3-557d-907a-8f1310d89790",
-      "to": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-      "twoWay": true,
-      "aiHint": "down the cobbled ramp from the gate yard"
+      "a": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "b": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "aToB": {
+        "hint": "down the cobbled ramp from the gate yard"
+      },
+      "bToA": {
+        "hint": "down the cobbled ramp from the gate yard"
+      }
     },
     {
       "id": "474b5306-776a-563b-89b0-e8becf6b101c",
-      "from": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-      "to": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
-      "twoWay": true,
-      "aiHint": "across the square to the door under the crown sign"
+      "a": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "b": "926ba2be-4e5d-53be-8b11-cda86f0e4be3",
+      "aToB": {
+        "hint": "across the square to the door under the crown sign"
+      },
+      "bToA": {
+        "hint": "across the square to the door under the crown sign"
+      }
     },
     {
       "id": "eb464aea-a157-5d8e-9593-f490a52fa30b",
-      "from": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
-      "to": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
-      "twoWay": true,
-      "aiHint": "along the lane beside the well"
+      "a": "ceeed07b-7534-547a-9bb1-c80dfffb598b",
+      "b": "7ea23cd8-d58b-59a8-a0e4-2f6b1cc01ea4",
+      "aToB": {
+        "hint": "along the lane beside the well"
+      },
+      "bToA": {
+        "hint": "along the lane beside the well"
+      }
     },
     {
       "id": "5f141850-57a0-51a3-9849-fe19f144ecff",
-      "from": "12fb7d50-05f3-557d-907a-8f1310d89790",
-      "to": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
-      "twoWay": true,
-      "aiHint": "up the ridge path behind the barracks"
+      "a": "12fb7d50-05f3-557d-907a-8f1310d89790",
+      "b": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+      "aToB": {
+        "hint": "up the ridge path behind the barracks"
+      },
+      "bToA": {
+        "hint": "up the ridge path behind the barracks"
+      }
     },
     {
       "id": "b04741d7-29b6-5414-9825-217c8b4767cd",
-      "from": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
-      "to": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
-      "twoWay": true,
-      "aiHint": "through the sally gate in the boundary wall and across the field"
+      "a": "6e4d04b1-c137-5019-b976-808c75cd4d7b",
+      "b": "e4f542ae-3045-53c8-9125-d42ed8e5f0a6",
+      "aToB": {
+        "hint": "through the sally gate in the boundary wall and across the field"
+      },
+      "bToA": {
+        "hint": "through the sally gate in the boundary wall and across the field"
+      }
     }
   ],
   "entities": [
