@@ -81,7 +81,7 @@ import { entityIdsAt } from "../lib/entityPresence";
 import { selectRegenSource, buildRegenContext } from "../lib/discoveredRegen";
 import { outputReserve, trimToLastSentence } from "../lib/outputLength";
 import { buildAiRequestSpec, outputCaps, type AiEndpointTarget, type AiSettingsSnapshot } from "../lib/aiRequest/aiRequestSpec";
-import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS } from "../lib/aiRequest/aiStream";
+import { ABORTED_FINISH_REASON, DEFAULT_REASONING_THROTTLE_MS, LENGTH_FINISH_REASON } from "../lib/aiRequest/aiStream";
 import { streamAiToolLoop, type AiToolRound, type ToolExecutor } from "../lib/aiRequest/toolLoop";
 import { surfaceRejectedEndpointOverride } from "../lib/aiRequest/rejectedOverrideNotice";
 import { toastAiRequestFailure } from "../lib/aiRequest/aiRequestFailureToast";
@@ -3148,7 +3148,7 @@ const GameViewer = ({
         const ms = reasoning ? Math.max(0, Math.round((narrationAt || performance.now()) - (firstTokenAt || narrationAt || performance.now()))) : 0;
         turnReasoningRef.current = { text: reasoning, ms };
         setLiveReasoning({ text: reasoning, ms, active: false });
-        if (finishReason === "length") finalContent = trimToLastSentence(finalContent);
+        if (finishReason === LENGTH_FINISH_REASON) finalContent = trimToLastSentence(finalContent);
         // Hand the authoritative final text (incl. any held last sentence) to the active reveal. The
         // pacer drains any remaining backlog at its measured rate (capped to not dawdle on the tail).
         if (fadeRevealActive) fadeReveal.finish(finalContent);

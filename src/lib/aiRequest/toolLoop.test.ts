@@ -576,6 +576,12 @@ describe('streamAiToolLoop: Answer Cap', () => {
     },
   );
 
+  it('keeps the raw cut text on a prompt other than narration, still finishing on length', async () => {
+    const events = await run(watched(proseFrames(...LONG_PROSE)), {}, { ...capped(5), requestType: 'choices' });
+
+    expect(doneOf(events)).toMatchObject({ content: 'The door opens. Bram', finishReason: 'length' });
+  });
+
   it('keeps the cut text when the answer has no sentence end', async () => {
     const events = await run(watched(proseFrames('The door opens and ', 'Bram looks up')), {}, capped(5));
 
@@ -634,5 +640,18 @@ describe('streamAiToolLoop: Answer Cap', () => {
     }
 
     expect(doneOf(events)).toMatchObject({ content: 'The ', finishReason: 'aborted' });
+  });
+
+  it('finishes a player cancel that lands on the cut as aborted, with the text the consumer saw', async () => {
+    const controller = new AbortController();
+    const transport = watched(proseFrames(...LONG_PROSE));
+
+    const events: AiToolLoopEvent[] = [];
+    for await (const event of streamAiToolLoop(capped(5), { fetchImpl: transport.fetchImpl, reasoningThrottleMs: 0, signal: controller.signal })) {
+      events.push(event);
+      if (event.type === 'delta' && event.content.length >= 20) controller.abort();
+    }
+
+    expect(doneOf(events)).toMatchObject({ content: 'The door opens. Bram', finishReason: 'aborted', toolCalls: [] });
   });
 });
