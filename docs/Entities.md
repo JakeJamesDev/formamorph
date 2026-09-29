@@ -86,12 +86,15 @@ At **Start Game**, the game draws one opening. **Quick Start** draws the same wa
 
 | At Enter World you pick | The draw uses |
 |---|---|
-| One or more entities with openings | Only the picked entities' openings, by weight. They win over the world's, even with the world's list switched off. |
-| No entity, or only entities with no openings | The world's openings, plus those of entities at your starting location |
+| A persona with [Self Openings](World-Editor-Openings#self-openings) | Only those Self openings, by weight |
+| **None**, and the world has a **Custom Persona** with Self openings | Only the Custom Persona's Self openings |
+| A library persona with no Self openings, and the same Custom Persona | Only the Custom Persona's Self openings |
+| One or more entities with openings in Library Additions | Only the picked entities' Others openings, by weight. They win over the world's, even with the world's list switched off. |
+| Nothing above | The world's openings, the openings of your starting location, and those of entities at your starting location |
 
-You start on the default opening when no picked entity has an opening and the world's list is switched off or has nothing to draw.
+You start on the default opening when no source has an opening for your start, or the world's list is switched off.
 
-An entity you play as your [persona](Personas#play-a-worlds-own-entity) keeps its openings out of the draw, so page one never greets you as yourself.
+An entity you play as your [persona](Personas#play-a-worlds-own-entity) keeps its Others openings out of the draw, so page one never greets you as yourself. Its Self openings, if any, replace every other opening.
 
 Loading a save draws nothing.
 

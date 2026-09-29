@@ -62,7 +62,10 @@ Pick an entity under **From This World**, and you play it:
 - It leaves the cast for that game, so you never meet yourself.
 - The AI reads that everyone in the world already knows you.
 - Its first starting location is selected for you. You can pick another.
-- Its own openings leave the draw.
+- Its Others openings leave the draw, so page one never greets you as yourself.
+- If it has Self openings, the game draws only from those. See [Self Openings](World-Editor-Openings#self-openings).
+
+A persona from your library can bring its own Self openings. They draw in any world you play it in. If it has none, the world's Custom Persona Self openings apply. See [Self Openings](World-Editor-Openings#self-openings).
 
 ## Create Your Own
 

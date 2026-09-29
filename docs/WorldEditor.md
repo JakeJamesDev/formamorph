@@ -9,7 +9,7 @@ Each tab has its own page. A tab missing below isn't documented yet.
 | Page | Covers |
 |---|---|
 | [🌍 Overview](World-Editor-Overview) | The world's name, card, avatar, music and AI-facing text |
-| [🎬 Openings](World-Editor-Openings) | The ways a playthrough can start, on the world and on each entity |
+| [🎬 Openings](World-Editor-Openings) | The ways a playthrough can start, on the world, each location and each entity |
 | [📊 Stats](World-Editor-Stats) | The numbers that describe the player |
 | [🎭 Entities](World-Editor-Entities) | The people, creatures and things in your world |
 | [🗺️ Locations](World-Editor-Locations) | The places, and how the story moves between them |
@@ -27,7 +27,7 @@ The world's own tab: its name, description, thumbnail and the AI-facing text tha
 
 ## Openings
 
-An opening is one way a playthrough can start. The world and each entity can have their own.
+An opening is one way a playthrough can start. The world, each location and each entity can have their own. A playable entity can have Self openings for a player who plays it.
 
 ➡️ [World Editor: Openings](World-Editor-Openings)
 
